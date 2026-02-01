@@ -19,8 +19,9 @@
 #### 1. 실시간 라이브 스트리밍
 - ✅ YouTube Live API 연동
 - ✅ 영상 이탈 없는 플로팅 상품 바텀시트
-- ✅ 실시간 시청자 수 표시
-- ✅ WebSocket 기반 실시간 통신
+- ✅ 실시간 '🔴 LIVE' 뱃지 표시
+- ✅ 폴링 기반 실시간 통신 (3초 간격)
+- 📺 **Instagram Live**: OBS/Restream으로 YouTube+Instagram 동시 송출 지원
 
 #### 2. 실시간 상품 전환 시스템
 - ✅ 폴링 기반 실시간 상품 정보 업데이트 (3초 간격)
@@ -459,6 +460,65 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
 - **프로젝트 타입**: 토스 인앱 서비스 (Apps in Toss)
 - **기술 스택**: Hono + Cloudflare Pages + D1 + Durable Objects
 - **배포 플랫폼**: Cloudflare Pages
+
+## 📺 Instagram Live 연동 가능성
+
+### ❌ 불가능한 것
+Instagram은 라이브 영상을 외부 웹사이트에 임베드할 수 있는 공식 API를 제공하지 않습니다:
+- **웹 임베드 불가**: Instagram 라이브는 Instagram 앱 내에서만 시청 가능
+- **Graph API 제한**: 메타데이터만 읽기 가능, 실제 비디오 스트림 접근 불가
+- **웹뷰 재생 불가**: 토스 앱 웹뷰에서 Instagram 라이브 시청 불가능
+
+### ✅ 권장 대안: 멀티스트리밍
+
+**YouTube + Instagram 동시 송출** (현재 코드 수정 없음)
+
+```
+OBS / Restream
+       │
+       ├──► YouTube Live ──► 토스 앱 웹뷰 (✅ 시청 가능)
+       │
+       └──► Instagram Live ──► Instagram 앱 (✅ 시청 가능)
+```
+
+#### 작동 방식
+1. **방송자**: OBS, Streamlabs, Restream 등으로 YouTube와 Instagram에 동시 송출
+2. **토스 앱 시청자**: YouTube 라이브로 시청 (현재 구현과 동일)
+3. **Instagram 팔로워**: Instagram 앱으로 시청
+4. **실시간 상품 전환**: 토스 앱에서만 작동 (Instagram은 정보 표시 안 됨)
+
+#### 장점
+- ✅ 현재 코드 수정 없이 바로 사용 가능
+- ✅ YouTube와 Instagram 양쪽 오디언스 확보
+- ✅ 토스 앱에서는 YouTube 영상 + 실시간 상품 정보 표시
+- ✅ Instagram은 순수 라이브 방송으로 활용
+
+#### 추천 도구
+- **무료**: OBS Studio + Instagram Live Producer (RTMP)
+- **유료**: Restream, StreamYard (멀티플랫폼 동시 송출)
+
+### 📋 Instagram Live 설정 방법
+
+1. **Instagram에서 Stream Key 가져오기**
+   ```
+   instagram.com 접속 → Create → Live Video 
+   → Stream URL과 Stream Key 복사
+   ```
+
+2. **OBS에 설정**
+   ```
+   Settings → Stream → Custom...
+   Server: [Instagram Stream URL]
+   Stream Key: [복사한 Stream Key]
+   ```
+
+3. **YouTube도 동일하게 추가**
+   - YouTube Live 대시보드에서 Stream Key 가져오기
+   - OBS에 두 번째 출력 설정
+
+4. **토스 앱 설정**
+   - YouTube Video ID만 사용 (현재와 동일)
+   - Instagram은 별도 앱으로 시청
 
 ## 📄 라이선스
 
