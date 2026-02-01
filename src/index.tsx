@@ -513,6 +513,7 @@ app.get('/live/:streamId', (c) => {
             height: 100vh;
             overflow: hidden;
             z-index: 1;
+            background: #000;
           }
           .video-container iframe {
             position: absolute;
@@ -521,7 +522,7 @@ app.get('/live/:streamId', (c) => {
             width: 100vw;
             height: 100vh;
             transform: translate(-50%, -50%);
-            pointer-events: none; /* 클릭 이벤트 무시 (상품 선택 우선) */
+            pointer-events: auto; /* 클릭 가능하게 변경 */
           }
           /* 그라디언트 오버레이 - 하단 가독성 확보 */
           .video-overlay {

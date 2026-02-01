@@ -46,15 +46,32 @@
       if (response.data.success) {
         const stream = response.data.data;
         
+        // 라이브 타이틀 업데이트
+        const titleEl = document.getElementById('stream-title');
+        if (titleEl) {
+          titleEl.textContent = stream.title;
+        }
+        
         // YouTube Player 초기화
         state.player = new YT.Player('youtube-player', {
+          height: '100%',
+          width: '100%',
           videoId: stream.youtube_video_id,
           playerVars: {
             autoplay: 1,
+            mute: 0, // 음소거 해제
             controls: 1,
             modestbranding: 1,
             rel: 0,
+            fs: 1, // 전체화면 허용
+            playsinline: 1, // 인라인 재생
+            enablejsapi: 1,
           },
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError
+          }
         });
 
         // 현재 상품 로드 (있는 경우)
@@ -67,6 +84,32 @@
       console.error('Failed to load stream info:', error);
       throw error;
     }
+  }
+
+  function onPlayerReady(event) {
+    console.log('YouTube Player Ready');
+    // 자동 재생 시도
+    event.target.playVideo();
+  }
+
+  function onPlayerStateChange(event) {
+    console.log('Player State:', event.data);
+    // YT.PlayerState.PLAYING = 1
+    if (event.data === 1) {
+      console.log('Video is playing');
+    }
+  }
+
+  function onPlayerError(event) {
+    console.error('YouTube Player Error:', event.data);
+    const errorMessages = {
+      2: '잘못된 비디오 ID입니다',
+      5: 'HTML5 플레이어 오류입니다',
+      100: '비디오를 찾을 수 없습니다',
+      101: '비디오 소유자가 임베드를 허용하지 않습니다',
+      150: '비디오 소유자가 임베드를 허용하지 않습니다'
+    };
+    showToast(`❌ ${errorMessages[event.data] || '재생 오류가 발생했습니다'}`, 'info');
   }
 
   function startPolling() {
