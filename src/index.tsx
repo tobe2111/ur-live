@@ -661,10 +661,18 @@ app.get('/live/:streamId', (c) => {
                 <span id="stream-title">토스 라이브 커머스</span>
             </div>
             
-            <!-- LIVE 뱃지 -->
-            <div class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                <i class="fas fa-circle mr-1 animate-pulse"></i>
-                LIVE
+            <div class="flex items-center gap-2">
+                <!-- 음소거 토글 버튼 -->
+                <button id="unmute-button" onclick="toggleMute()" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center transition hidden">
+                    <i id="mute-icon" class="fas fa-volume-mute mr-1"></i>
+                    <span id="mute-text">음소거 해제</span>
+                </button>
+                
+                <!-- LIVE 뱃지 -->
+                <div class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
+                    <i class="fas fa-circle mr-1 animate-pulse"></i>
+                    LIVE
+                </div>
             </div>
         </div>
 

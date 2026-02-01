@@ -149,7 +149,7 @@
           videoId: stream.youtube_video_id,
           playerVars: {
             autoplay: 1,
-            mute: 0,
+            mute: 1, // 브라우저 자동재생 정책을 위해 음소거
             controls: 1,
             modestbranding: 1,
             rel: 0,
@@ -191,9 +191,32 @@
   }
 
   function onPlayerReady(event) {
-    console.log('YouTube Player Ready');
-    // 자동 재생 시도
+    console.log('✅ YouTube Player Ready');
+    
+    // 자동 재생 시도 (음소거 상태로 시작)
     event.target.playVideo();
+    
+    // 음소거 해제 버튼 표시
+    const unmuteButton = document.getElementById('unmute-button');
+    if (unmuteButton) {
+      unmuteButton.classList.remove('hidden');
+    }
+    
+    // 1초 후 자동 음소거 해제 시도
+    setTimeout(() => {
+      try {
+        if (state.player && typeof state.player.isMuted === 'function') {
+          const isMuted = state.player.isMuted();
+          if (isMuted) {
+            state.player.unMute();
+            updateMuteButton(false);
+            console.log('✅ Unmuted successfully');
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Could not unmute automatically');
+      }
+    }, 1000);
   }
 
   function onPlayerStateChange(event) {
@@ -506,6 +529,50 @@
     if (data.status === 'ended') {
       alert('라이브 방송이 종료되었습니다.');
       window.location.href = '/';
+    }
+  }
+
+  // 음소거 토글 함수 (전역 함수로 노출)
+  window.toggleMute = function() {
+    if (!state.player || typeof state.player.isMuted !== 'function') {
+      console.warn('Player not ready');
+      return;
+    }
+
+    try {
+      const isMuted = state.player.isMuted();
+      if (isMuted) {
+        state.player.unMute();
+        updateMuteButton(false);
+        console.log('✅ Unmuted');
+      } else {
+        state.player.mute();
+        updateMuteButton(true);
+        console.log('🔇 Muted');
+      }
+    } catch (e) {
+      console.error('Failed to toggle mute:', e);
+    }
+  };
+
+  function updateMuteButton(isMuted) {
+    const icon = document.getElementById('mute-icon');
+    const text = document.getElementById('mute-text');
+    const button = document.getElementById('unmute-button');
+    
+    if (!icon || !text || !button) return;
+    
+    if (isMuted) {
+      icon.className = 'fas fa-volume-mute mr-1';
+      text.textContent = '음소거 해제';
+      button.classList.remove('hidden');
+    } else {
+      icon.className = 'fas fa-volume-up mr-1';
+      text.textContent = '음소거';
+      // 음소거가 해제되면 버튼을 3초 후 숨김
+      setTimeout(() => {
+        button.classList.add('hidden');
+      }, 3000);
     }
   }
 })();
