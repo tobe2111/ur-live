@@ -153,10 +153,19 @@
   }
 
   function onPlayerStateChange(event) {
-    console.log('Player State:', event.data);
-    // YT.PlayerState.PLAYING = 1
+    const states = {
+      '-1': 'unstarted',
+      '0': 'ended',
+      '1': 'playing',
+      '2': 'paused',
+      '3': 'buffering',
+      '5': 'video cued'
+    };
+    console.log('Player State:', event.data, '(' + (states[event.data] || 'unknown') + ')');
+    
+    // 재생 중인 경우
     if (event.data === 1) {
-      console.log('Video is playing');
+      console.log('✅ Video is playing');
     }
   }
 
