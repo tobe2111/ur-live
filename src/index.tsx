@@ -529,10 +529,10 @@ app.get('/live/:streamId', (c) => {
             border-top-left-radius: 20px;
             border-top-right-radius: 20px;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            transform: translateY(calc(100% - 120px));
+            transform: translateY(calc(100% - 200px));
             transition: transform 0.3s ease;
             z-index: 1000;
-            max-height: 80vh;
+            max-height: 75vh;
           }
           .product-sheet.expanded {
             transform: translateY(0);
@@ -543,6 +543,13 @@ app.get('/live/:streamId', (c) => {
             background: #E5E8EB;
             border-radius: 2px;
             margin: 8px auto;
+            cursor: pointer;
+          }
+          /* 모바일 최적화 */
+          @media (max-width: 768px) {
+            .product-sheet {
+              transform: translateY(calc(100% - 180px));
+            }
           }
         </style>
     </head>
@@ -552,18 +559,22 @@ app.get('/live/:streamId', (c) => {
             <div id="youtube-player"></div>
         </div>
 
-        <!-- 시청자 수 표시 -->
-        <div class="fixed top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm z-50">
-            <i class="fas fa-eye mr-1"></i>
-            <span id="viewer-count">0</span>명 시청 중
+        <!-- LIVE 뱃지 -->
+        <div class="fixed top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold z-50 flex items-center">
+            <i class="fas fa-circle mr-1 animate-pulse"></i>
+            LIVE
         </div>
 
         <!-- 상품 플로팅 바텀시트 -->
         <div id="product-sheet" class="product-sheet">
-            <div class="product-sheet-drag-handle"></div>
-            <div class="p-4 overflow-y-auto" style="max-height: calc(80vh - 40px);">
+            <div class="product-sheet-drag-handle" onclick="toggleSheet()"></div>
+            <div class="p-4 overflow-y-auto" style="max-height: calc(75vh - 40px);">
                 <div id="product-content">
                     <!-- 상품 정보가 여기에 로드됩니다 -->
+                    <div class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-500">상품 정보를 불러오는 중...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -578,6 +589,12 @@ app.get('/live/:streamId', (c) => {
         <script src="https://www.youtube.com/iframe_api"></script>
         <script>
           const STREAM_ID = '${streamId}';
+          
+          // 바텀시트 토글 함수
+          function toggleSheet() {
+            const sheet = document.getElementById('product-sheet');
+            sheet.classList.toggle('expanded');
+          }
         </script>
         <script src="/static/live.js"></script>
     </body>

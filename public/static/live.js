@@ -268,30 +268,33 @@
   }
 
   function updateCartBadge() {
-    // 상품 시트 드래그 핸들 클릭
-    const sheet = document.getElementById('product-sheet');
-    const handle = sheet.querySelector('.product-sheet-drag-handle');
+    const badge = document.getElementById('cart-badge');
+    const count = state.cart.length;
     
-    handle.addEventListener('click', () => {
-      state.sheetExpanded = !state.sheetExpanded;
-      sheet.classList.toggle('expanded', state.sheetExpanded);
-    });
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('hidden');
+      badge.classList.add('flex');
+    } else {
+      badge.classList.add('hidden');
+      badge.classList.remove('flex');
+    }
+  }
 
+  function setupUIEvents() {
     // 장바구니 버튼 클릭
     document.getElementById('cart-button').addEventListener('click', () => {
-      window.location.href = '/cart';
+      showToast('장바구니 페이지는 준비 중입니다', 'info');
     });
   }
 
   function showProductChangeAnimation() {
     showToast('새로운 상품이 소개됩니다!', 'info');
     
-    // 상품 시트가 닫혀있으면 자동으로 열기
-    if (!state.sheetExpanded) {
-      const sheet = document.getElementById('product-sheet');
-      state.sheetExpanded = true;
-      sheet.classList.add('expanded');
-    }
+    // 상품 시트 자동으로 확장
+    const sheet = document.getElementById('product-sheet');
+    sheet.classList.add('expanded');
+    state.sheetExpanded = true;
   }
 
   function showToast(message, type = 'success') {
