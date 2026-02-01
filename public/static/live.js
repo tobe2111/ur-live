@@ -14,22 +14,63 @@
     player: null,
     sheetExpanded: false,
     pollingInterval: null,
+    initAttempts: 0,
   };
+
+  let appInitialized = false;
 
   // YouTube Player API 로드 완료 시 호출
   window.onYouTubeIframeAPIReady = function() {
-    console.log('YouTube IFrame API Ready');
-    initApp();
+    console.log('✅ YouTube IFrame API Ready');
+    if (!appInitialized) {
+      initApp();
+    }
   };
 
-  // 페이지 로드 시 바로 초기화 시도 (API가 이미 로드된 경우)
-  if (window.YT && window.YT.Player) {
-    console.log('YouTube API already loaded');
-    initApp();
+  // DOM 로드 완료 후 초기화 시도
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM Content Loaded');
+    tryInitialize();
+  });
+
+  // 페이지 로드 완료 후에도 시도
+  window.addEventListener('load', function() {
+    console.log('Window Load Complete');
+    tryInitialize();
+  });
+
+  // YouTube API 로딩 대기 및 재시도
+  function tryInitialize() {
+    if (appInitialized) {
+      console.log('App already initialized');
+      return;
+    }
+
+    if (window.YT && window.YT.Player) {
+      console.log('✅ YouTube API available, initializing...');
+      initApp();
+    } else {
+      state.initAttempts++;
+      console.log(`⏳ YouTube API not ready yet (attempt ${state.initAttempts}), retrying...`);
+      
+      if (state.initAttempts < 20) { // 최대 10초 대기 (20 * 500ms)
+        setTimeout(tryInitialize, 500);
+      } else {
+        console.error('❌ YouTube API failed to load after 10 seconds');
+        showError('YouTube API를 불러올 수 없습니다. 페이지를 새로고침해주세요.');
+      }
+    }
   }
 
   async function initApp() {
-    console.log('Initializing app...');
+    if (appInitialized) {
+      console.log('⚠️ App already initialized, skipping...');
+      return;
+    }
+    
+    appInitialized = true;
+    console.log('🚀 Initializing app...');
+    
     try {
       // 라이브 스트림 정보 로드
       await loadStreamInfo();
@@ -54,8 +95,11 @@
           }
         }
       });
+      
+      console.log('✅ App initialization complete');
     } catch (error) {
-      console.error('Failed to initialize app:', error);
+      console.error('❌ Failed to initialize app:', error);
+      appInitialized = false; // 실패 시 다시 시도 가능하도록
       showError('앱을 시작할 수 없습니다.');
     }
   }

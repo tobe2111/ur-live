@@ -1,6 +1,6 @@
 -- 테스트 라이브 스트림 데이터
 INSERT OR IGNORE INTO live_streams (id, title, description, youtube_video_id, status, created_at) VALUES 
-  (1, '토스 라이브 커머스 - 겨울 특집', '겨울 시즌 인기 상품 라이브 방송', 'jfKfPfyJRdk', 'live', datetime('now')),
+  (1, '토스 라이브 커머스 - 겨울 특집', '겨울 시즌 인기 상품 라이브 방송', '21X5lGlDOfg', 'live', datetime('now')),
   (2, '토스 라이브 커머스 - 봄맞이 세일', '봄 시즌 특가 상품 방송', 'jNQXAC9IVRw', 'scheduled', datetime('now'));
 
 -- 테스트 상품 데이터
