@@ -125,15 +125,29 @@ app.get('/api/streams/:streamId/products', async (c) => {
 // Cart API
 app.get('/api/cart/:userId', async (c) => {
   const { DB } = c.env;
-  const userId = c.req.param('userId');
+  const tossUserId = c.req.param('userId');
 
   try {
+    // 사용자 ID 조회 (toss_user_id -> user.id)
+    const user = await DB.prepare(
+      'SELECT id FROM users WHERE toss_user_id = ?'
+    ).bind(tossUserId).first();
+
+    if (!user) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: [], // 사용자가 없으면 빈 장바구니 반환
+      });
+    }
+
+    const userId = user.id as number;
+
     const result = await DB.prepare(`
       SELECT 
         ci.*,
         p.name as product_name,
-        p.image_url as product_image,
-        po.option_type || ': ' || po.option_value as option_info
+        p.image_url as image_url,
+        po.option_value as option_value
       FROM cart_items ci
       JOIN products p ON ci.product_id = p.id
       LEFT JOIN product_options po ON ci.option_id = po.id
@@ -157,7 +171,21 @@ app.post('/api/cart', async (c) => {
   const { DB } = c.env;
 
   try {
-    const { userId, productId, optionId, quantity, priceSnapshot, liveStreamId } = await c.req.json();
+    const { userId: tossUserId, productId, optionId, quantity, priceSnapshot, liveStreamId } = await c.req.json();
+
+    // 사용자 ID 조회 (toss_user_id -> user.id)
+    const user = await DB.prepare(
+      'SELECT id FROM users WHERE toss_user_id = ?'
+    ).bind(tossUserId).first();
+
+    if (!user) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'User not found',
+      }, 404);
+    }
+
+    const userId = user.id as number;
 
     // 상품 재고 확인
     const product = await DB.prepare(
@@ -673,6 +701,193 @@ app.get('/live/:streamId', (c) => {
           }
         </script>
         <script src="/static/live.js"></script>
+    </body>
+    </html>
+  `);
+});
+
+// 장바구니 페이지
+app.get('/cart', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>장바구니 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          :root {
+            --toss-blue: #3182F6;
+            --toss-gray: #191F28;
+            --toss-light-gray: #F2F4F6;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+          }
+          .toss-primary {
+            background-color: var(--toss-blue);
+          }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- 헤더 -->
+        <div class="bg-white border-b sticky top-0 z-50">
+            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center">
+                <button onclick="window.history.back()" class="mr-4">
+                    <i class="fas fa-arrow-left text-xl text-gray-700"></i>
+                </button>
+                <h1 class="text-xl font-bold text-gray-800">장바구니</h1>
+            </div>
+        </div>
+
+        <!-- 장바구니 컨텐츠 -->
+        <div class="max-w-2xl mx-auto px-4 py-6">
+            <div id="cart-items">
+                <!-- 로딩 상태 -->
+                <div class="text-center py-12">
+                    <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500">장바구니를 불러오는 중...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 결제 바 -->
+        <div id="checkout-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg" style="display: none;">
+            <div class="max-w-2xl mx-auto px-4 py-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-gray-600">총 상품 금액</span>
+                    <span id="total-amount" class="text-2xl font-bold text-gray-900">0원</span>
+                </div>
+                <button onclick="goToCheckout()" class="w-full toss-primary text-white font-bold py-4 rounded-lg hover:opacity-90 transition">
+                    <i class="fas fa-credit-card mr-2"></i>
+                    결제하기
+                </button>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+          const API_BASE = '/api';
+          const userId = 'toss_user_001'; // 실제로는 토스 로그인에서 받아옴
+          
+          let cartData = [];
+
+          async function loadCart() {
+            try {
+              const response = await axios.get(\`\${API_BASE}/cart/\${userId}\`);
+              if (response.data.success) {
+                cartData = response.data.data;
+                renderCart();
+              }
+            } catch (error) {
+              console.error('Failed to load cart:', error);
+              document.getElementById('cart-items').innerHTML = \`
+                <div class="text-center py-12">
+                  <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
+                  <p class="text-gray-500">장바구니를 불러올 수 없습니다</p>
+                </div>
+              \`;
+            }
+          }
+
+          function renderCart() {
+            const container = document.getElementById('cart-items');
+            
+            if (cartData.length === 0) {
+              container.innerHTML = \`
+                <div class="text-center py-12">
+                  <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
+                  <p class="text-gray-500 text-lg mb-4">장바구니가 비어있습니다</p>
+                  <button onclick="window.location.href='/'" class="toss-primary text-white px-6 py-3 rounded-lg font-semibold">
+                    쇼핑 계속하기
+                  </button>
+                </div>
+              \`;
+              document.getElementById('checkout-bar').style.display = 'none';
+              return;
+            }
+
+            container.innerHTML = cartData.map(item => \`
+              <div class="bg-white rounded-lg p-4 mb-3 shadow-sm">
+                <div class="flex gap-4">
+                  <img src="\${item.image_url || 'https://via.placeholder.com/100'}" 
+                       alt="\${item.product_name}"
+                       class="w-24 h-24 object-cover rounded-lg flex-shrink-0">
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-gray-800 mb-1 truncate">\${item.product_name}</h3>
+                    \${item.option_value ? \`<p class="text-sm text-gray-500 mb-2">옵션: \${item.option_value}</p>\` : ''}
+                    <div class="flex items-center justify-between">
+                      <span class="text-xl font-bold text-gray-900">\${formatPrice(item.price_snapshot)}원</span>
+                      <div class="flex items-center gap-2">
+                        <button onclick="updateQuantity(\${item.id}, \${item.quantity - 1})" 
+                                class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
+                                \${item.quantity <= 1 ? 'disabled style="opacity: 0.5"' : ''}>
+                          <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <span class="text-lg font-semibold w-8 text-center">\${item.quantity}</span>
+                        <button onclick="updateQuantity(\${item.id}, \${item.quantity + 1})" 
+                                class="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
+                          <i class="fas fa-plus text-xs"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <button onclick="removeItem(\${item.id})" class="text-gray-400 hover:text-red-500">
+                    <i class="fas fa-times text-xl"></i>
+                  </button>
+                </div>
+              </div>
+            \`).join('');
+
+            // 총 금액 계산
+            const totalAmount = cartData.reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
+            document.getElementById('total-amount').textContent = formatPrice(totalAmount) + '원';
+            document.getElementById('checkout-bar').style.display = 'block';
+          }
+
+          async function updateQuantity(cartItemId, newQuantity) {
+            if (newQuantity < 1) return;
+            
+            try {
+              // TODO: 수량 업데이트 API 구현 필요
+              const item = cartData.find(i => i.id === cartItemId);
+              if (item) {
+                item.quantity = newQuantity;
+                renderCart();
+              }
+            } catch (error) {
+              console.error('Failed to update quantity:', error);
+              alert('수량 변경에 실패했습니다');
+            }
+          }
+
+          async function removeItem(cartItemId) {
+            if (!confirm('이 상품을 장바구니에서 삭제하시겠습니까?')) return;
+            
+            try {
+              const response = await axios.delete(\`\${API_BASE}/cart/\${cartItemId}\`);
+              if (response.data.success) {
+                await loadCart();
+              }
+            } catch (error) {
+              console.error('Failed to remove item:', error);
+              alert('상품 삭제에 실패했습니다');
+            }
+          }
+
+          function goToCheckout() {
+            alert('결제 기능은 준비 중입니다.\\n토스페이 연동 후 사용 가능합니다.');
+          }
+
+          function formatPrice(price) {
+            return price.toLocaleString('ko-KR');
+          }
+
+          // 페이지 로드 시 실행
+          loadCart();
+        </script>
     </body>
     </html>
   `);

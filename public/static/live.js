@@ -346,7 +346,7 @@
   function setupUIEvents() {
     // 장바구니 버튼 클릭
     document.getElementById('cart-button').addEventListener('click', () => {
-      showToast('🛒 장바구니 페이지는 준비 중입니다', 'info');
+      window.location.href = '/cart';
     });
   }
 
