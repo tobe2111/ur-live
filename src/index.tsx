@@ -504,20 +504,35 @@ app.get('/live/:streamId', (c) => {
           .toss-text-primary {
             color: var(--toss-blue);
           }
-          /* YouTube 플레이어 컨테이너 */
+          /* YouTube 플레이어 컨테이너 - 전체 화면 배경 */
           .video-container {
-            position: relative;
-            width: 100%;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
-            height: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             overflow: hidden;
+            z-index: 1;
           }
           .video-container iframe {
             position: absolute;
-            top: 0;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: 100vh;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* 클릭 이벤트 무시 (상품 선택 우선) */
+          }
+          /* 그라디언트 오버레이 - 하단 가독성 확보 */
+          .video-overlay {
+            position: fixed;
+            bottom: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+            z-index: 2;
+            pointer-events: none;
           }
           /* 상품 플로팅 바텀시트 */
           .product-sheet {
@@ -525,51 +540,90 @@ app.get('/live/:streamId', (c) => {
             bottom: 0;
             left: 0;
             right: 0;
-            background: white;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            transform: translateY(calc(100% - 200px));
-            transition: transform 0.3s ease;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+            transform: translateY(calc(100% - 160px));
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
-            max-height: 75vh;
+            max-height: 80vh;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
           }
           .product-sheet.expanded {
             transform: translateY(0);
           }
           .product-sheet-drag-handle {
-            width: 40px;
+            width: 36px;
             height: 4px;
-            background: #E5E8EB;
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 2px;
-            margin: 8px auto;
+            margin: 12px auto;
             cursor: pointer;
+            flex-shrink: 0;
+          }
+          /* 토스트 메시지 */
+          .toast-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+          }
+          .toast-message.show {
+            opacity: 1;
           }
           /* 모바일 최적화 */
           @media (max-width: 768px) {
             .product-sheet {
-              transform: translateY(calc(100% - 180px));
+              transform: translateY(calc(100% - 140px));
+            }
+            .video-container iframe {
+              width: 100vw;
+              height: 56.25vw; /* 16:9 → 모바일은 세로 전체 */
+              min-height: 100vh;
             }
           }
         </style>
     </head>
-    <body class="bg-gray-900">
-        <!-- 라이브 영상 영역 -->
+    <body class="bg-black overflow-hidden">
+        <!-- YouTube 전체 화면 배경 -->
         <div class="video-container">
             <div id="youtube-player"></div>
         </div>
+        
+        <!-- 그라디언트 오버레이 -->
+        <div class="video-overlay"></div>
 
-        <!-- LIVE 뱃지 -->
-        <div class="fixed top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold z-50 flex items-center">
-            <i class="fas fa-circle mr-1 animate-pulse"></i>
-            LIVE
+        <!-- 상단 헤더 정보 -->
+        <div class="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
+            <!-- 라이브 타이틀 -->
+            <div class="text-white text-lg font-bold flex items-center">
+                <i class="fas fa-tv mr-2"></i>
+                <span id="stream-title">토스 라이브 커머스</span>
+            </div>
+            
+            <!-- LIVE 뱃지 -->
+            <div class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
+                <i class="fas fa-circle mr-1 animate-pulse"></i>
+                LIVE
+            </div>
         </div>
 
         <!-- 상품 플로팅 바텀시트 -->
         <div id="product-sheet" class="product-sheet">
             <div class="product-sheet-drag-handle" onclick="toggleSheet()"></div>
-            <div class="p-4 overflow-y-auto" style="max-height: calc(75vh - 40px);">
-                <div id="product-content">
+            <div class="overflow-y-auto" style="max-height: calc(80vh - 60px);">
+                <div id="product-content" class="p-4">
                     <!-- 상품 정보가 여기에 로드됩니다 -->
                     <div class="text-center py-8">
                         <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
@@ -580,10 +634,13 @@ app.get('/live/:streamId', (c) => {
         </div>
 
         <!-- 장바구니 플로팅 버튼 -->
-        <button id="cart-button" class="fixed bottom-32 right-4 toss-primary text-white w-14 h-14 rounded-full shadow-lg z-50 flex items-center justify-center">
+        <button id="cart-button" class="fixed bottom-[180px] right-4 toss-primary text-white w-14 h-14 rounded-full shadow-lg z-50 flex items-center justify-center">
             <i class="fas fa-shopping-cart text-xl"></i>
-            <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full hidden items-center justify-center">0</span>
+            <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full hidden items-center justify-center font-bold">0</span>
         </button>
+        
+        <!-- 토스트 메시지 -->
+        <div id="toast-message" class="toast-message"></div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://www.youtube.com/iframe_api"></script>

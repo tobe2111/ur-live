@@ -223,7 +223,7 @@
       const optionSelects = document.querySelectorAll('[id^="option-"]');
       for (const select of optionSelects) {
         if (!select.value) {
-          alert('모든 옵션을 선택해주세요.');
+          showToast('❌ 모든 옵션을 선택해주세요');
           return;
         }
         selectedOptionId = parseInt(select.value);
@@ -241,12 +241,12 @@
       });
 
       if (response.data.success) {
-        showToast('장바구니에 추가되었습니다!');
+        showToast('✓ 장바구니에 추가되었습니다!');
         await loadCart();
       }
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      alert('장바구니 추가에 실패했습니다.');
+      showToast('❌ 장바구니 추가에 실패했습니다', 'info');
     }
   };
 
@@ -284,31 +284,38 @@
   function setupUIEvents() {
     // 장바구니 버튼 클릭
     document.getElementById('cart-button').addEventListener('click', () => {
-      showToast('장바구니 페이지는 준비 중입니다', 'info');
+      showToast('🛒 장바구니 페이지는 준비 중입니다', 'info');
     });
   }
 
   function showProductChangeAnimation() {
-    showToast('새로운 상품이 소개됩니다!', 'info');
+    showToast('✨ 새로운 상품이 소개됩니다!', 'info');
     
     // 상품 시트 자동으로 확장
     const sheet = document.getElementById('product-sheet');
-    sheet.classList.add('expanded');
-    state.sheetExpanded = true;
+    if (!state.sheetExpanded) {
+      sheet.classList.add('expanded');
+      state.sheetExpanded = true;
+    }
   }
 
   function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `fixed top-20 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity ${
-      type === 'success' ? 'bg-green-500' : 'bg-blue-500'
-    } text-white`;
-    toast.textContent = message;
+    const toastEl = document.getElementById('toast-message');
+    if (!toastEl) {
+      console.error('Toast element not found');
+      return;
+    }
     
-    document.body.appendChild(toast);
+    // 아이콘 선택
+    const icon = type === 'success' ? '✓' : 'ℹ';
+    toastEl.textContent = `${icon} ${message}`;
     
+    // 토스트 표시
+    toastEl.classList.add('show');
+    
+    // 2초 후 숨김
     setTimeout(() => {
-      toast.style.opacity = '0';
-      setTimeout(() => toast.remove(), 300);
+      toastEl.classList.remove('show');
     }, 2000);
   }
 
