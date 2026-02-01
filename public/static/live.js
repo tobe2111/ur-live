@@ -202,19 +202,39 @@
       unmuteButton.classList.remove('hidden');
     }
     
-    // 1초 후 자동 음소거 해제 시도
+    // 1초 후 자동 음소거 해제 시도 (실패해도 재생 계속)
     setTimeout(() => {
       try {
         if (state.player && typeof state.player.isMuted === 'function') {
           const isMuted = state.player.isMuted();
           if (isMuted) {
+            // 재생 상태 확인
+            const playerState = state.player.getPlayerState();
+            
+            // 음소거 해제 시도
             state.player.unMute();
-            updateMuteButton(false);
-            console.log('✅ Unmuted successfully');
+            
+            // 음소거 해제 후 일시정지되었다면 다시 재생
+            setTimeout(() => {
+              const newState = state.player.getPlayerState();
+              if (newState === 2) { // 2 = paused
+                console.log('⚠️ Unmute caused pause, keeping video muted and playing');
+                state.player.mute(); // 다시 음소거
+                state.player.playVideo(); // 재생 재개
+                updateMuteButton(true); // 버튼 계속 표시
+              } else {
+                console.log('✅ Unmuted successfully');
+                updateMuteButton(false);
+              }
+            }, 100);
           }
         }
       } catch (e) {
         console.log('⚠️ Could not unmute automatically');
+        // 에러 발생 시에도 재생 유지
+        if (state.player) {
+          state.player.playVideo();
+        }
       }
     }, 1000);
   }
