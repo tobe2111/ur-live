@@ -1,4 +1,4 @@
-// 라이브 스트림 뷰어 JavaScript (폴링 방식)
+// 라이브 스트림 뷰어 JavaScript (ClickMate 스타일)
 (function() {
   'use strict';
 
@@ -9,12 +9,11 @@
     streamId: STREAM_ID,
     currentProductId: null,
     currentProduct: null,
-    cart: [],
     userId: 'toss_user_001', // 실제로는 토스 로그인에서 받아옴
     player: null,
-    sheetExpanded: false,
     pollingInterval: null,
     initAttempts: 0,
+    chatMessages: [],
   };
 
   let appInitialized = false;
@@ -53,7 +52,7 @@
       state.initAttempts++;
       console.log(`⏳ YouTube API not ready yet (attempt ${state.initAttempts}), retrying...`);
       
-      if (state.initAttempts < 20) { // 최대 10초 대기 (20 * 500ms)
+      if (state.initAttempts < 20) {
         setTimeout(tryInitialize, 500);
       } else {
         console.error('❌ YouTube API failed to load after 10 seconds');
@@ -78,13 +77,10 @@
       // 폴링 시작 (3초마다 상품 확인)
       startPolling();
       
-      // 장바구니 로드
-      await loadCart();
-      
       // UI 이벤트 바인딩
       setupUIEvents();
       
-      // 페이지 가시성 변경 감지 (페이지로 돌아왔을 때)
+      // 페이지 가시성 변경 감지
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && state.player && typeof state.player.playVideo === 'function') {
           console.log('Page visible again, resuming video...');
@@ -96,10 +92,17 @@
         }
       });
       
+      // 채팅 입력 엔터키 이벤트
+      document.getElementById('chat-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          sendChatMessage();
+        }
+      });
+      
       console.log('✅ App initialization complete');
     } catch (error) {
       console.error('❌ Failed to initialize app:', error);
-      appInitialized = false; // 실패 시 다시 시도 가능하도록
+      appInitialized = false;
       showError('앱을 시작할 수 없습니다.');
     }
   }
@@ -121,7 +124,6 @@
         // YouTube Player 초기화
         console.log('Creating YouTube Player with video ID:', stream.youtube_video_id);
         
-        // 기존 플레이어 완전히 제거하고 컨테이너 재생성
         const playerContainer = document.getElementById('youtube-player');
         if (!playerContainer) {
           console.error('YouTube player container not found!');
@@ -149,7 +151,7 @@
           videoId: stream.youtube_video_id,
           playerVars: {
             autoplay: 1,
-            mute: 1, // 브라우저 자동재생 정책을 위해 음소거
+            mute: 1,
             controls: 1,
             modestbranding: 1,
             rel: 0,
@@ -166,26 +168,16 @@
 
         console.log('YouTube Player created');
 
-        // 현재 상품 로드 (있는 경우)
+        // 현재 상품 로드
         if (stream.current_product_id) {
           state.currentProductId = stream.current_product_id;
           await loadCurrentProduct();
         } else {
           console.warn('No current product');
-          renderProduct(); // 빈 상태 렌더링
         }
       }
     } catch (error) {
       console.error('Failed to load stream info:', error);
-      document.getElementById('product-content').innerHTML = `
-        <div class="text-center py-8 text-red-500">
-          <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
-          <p class="font-semibold">방송 정보를 불러올 수 없습니다</p>
-          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">
-            다시 시도
-          </button>
-        </div>
-      `;
       throw error;
     }
   }
@@ -202,26 +194,23 @@
       unmuteButton.classList.remove('hidden');
     }
     
-    // 1초 후 자동 음소거 해제 시도 (실패해도 재생 계속)
+    // 1초 후 자동 음소거 해제 시도
     setTimeout(() => {
       try {
         if (state.player && typeof state.player.isMuted === 'function') {
           const isMuted = state.player.isMuted();
           if (isMuted) {
-            // 재생 상태 확인
-            const playerState = state.player.getPlayerState();
-            
             // 음소거 해제 시도
             state.player.unMute();
             
             // 음소거 해제 후 일시정지되었다면 다시 재생
             setTimeout(() => {
               const newState = state.player.getPlayerState();
-              if (newState === 2) { // 2 = paused
+              if (newState === 2) {
                 console.log('⚠️ Unmute caused pause, keeping video muted and playing');
-                state.player.mute(); // 다시 음소거
-                state.player.playVideo(); // 재생 재개
-                updateMuteButton(true); // 버튼 계속 표시
+                state.player.mute();
+                state.player.playVideo();
+                updateMuteButton(true);
               } else {
                 console.log('✅ Unmuted successfully');
                 updateMuteButton(false);
@@ -231,7 +220,6 @@
         }
       } catch (e) {
         console.log('⚠️ Could not unmute automatically');
-        // 에러 발생 시에도 재생 유지
         if (state.player) {
           state.player.playVideo();
         }
@@ -250,7 +238,6 @@
     };
     console.log('Player State:', event.data, '(' + (states[event.data] || 'unknown') + ')');
     
-    // 재생 중인 경우
     if (event.data === 1) {
       console.log('✅ Video is playing');
     }
@@ -265,11 +252,10 @@
       101: '비디오 소유자가 임베드를 허용하지 않습니다',
       150: '비디오 소유자가 임베드를 허용하지 않습니다'
     };
-    showToast(`❌ ${errorMessages[event.data] || '재생 오류가 발생했습니다'}`, 'info');
+    addChatMessage(`❌ ${errorMessages[event.data] || '재생 오류가 발생했습니다'}`, 'system');
   }
 
   function startPolling() {
-    // 3초마다 현재 상품 확인
     state.pollingInterval = setInterval(async () => {
       await checkCurrentProduct();
     }, 3000);
@@ -281,12 +267,12 @@
       if (response.data.success && response.data.data) {
         const newProduct = response.data.data.product;
         
-        // 상품이 변경되었는지 확인
         if (newProduct && newProduct.id !== state.currentProductId) {
           state.currentProductId = newProduct.id;
           state.currentProduct = response.data.data;
-          renderProduct();
-          showProductChangeAnimation();
+          
+          // 상품 변경 알림
+          addChatMessage(`✨ 새로운 상품: ${newProduct.name}`, 'system');
         }
       }
     } catch (error) {
@@ -299,260 +285,90 @@
       const response = await axios.get(`${API_BASE}/streams/${state.streamId}/current-product`);
       if (response.data.success && response.data.data) {
         state.currentProduct = response.data.data;
-        renderProduct();
       }
     } catch (error) {
       console.error('Failed to load current product:', error);
     }
   }
 
-  async function loadProduct(productId) {
-    try {
-      const response = await axios.get(`${API_BASE}/products/${productId}`);
-      if (response.data.success) {
-        state.currentProduct = response.data.data;
-        renderProduct();
-      }
-    } catch (error) {
-      console.error('Failed to load product:', error);
-    }
+  function setupUIEvents() {
+    // 구매하기 버튼
+    document.getElementById('buy-button').addEventListener('click', () => {
+      quickBuy();
+    });
+    
+    // 내 주문 버튼
+    document.getElementById('my-orders-button').addEventListener('click', () => {
+      window.location.href = '/cart';
+    });
   }
 
-  function renderProduct() {
+  // 원클릭 구매
+  async function quickBuy() {
     if (!state.currentProduct) {
-      document.getElementById('product-content').innerHTML = `
-        <div class="text-center py-8 text-gray-500">
-          <i class="fas fa-box-open text-4xl mb-2"></i>
-          <p>현재 소개 중인 상품이 없습니다</p>
-        </div>
-      `;
+      addChatMessage('❌ 현재 소개 중인 상품이 없습니다', 'system');
       return;
     }
 
-    const { product, options } = state.currentProduct;
-    const discountPercent = product.discount_rate || 0;
+    const { product } = state.currentProduct;
     
-    document.getElementById('product-content').innerHTML = `
-      <!-- 축약형 (접힌 상태) -->
-      <div class="product-content-compact">
-        <img src="${product.image_url || 'https://via.placeholder.com/100'}" 
-             alt="${product.name}" 
-             class="w-20 h-20 object-cover rounded-lg flex-shrink-0">
-        <div class="flex-1 min-w-0">
-          <h3 class="text-lg font-bold text-gray-800 truncate">${product.name}</h3>
-          <div class="flex items-center gap-2 mt-1">
-            ${discountPercent > 0 ? `<span class="text-xl font-bold text-red-500">${discountPercent}%</span>` : ''}
-            <span class="text-xl font-bold text-gray-900">${formatPrice(product.price)}원</span>
-            ${product.original_price ? `<span class="text-sm text-gray-400 line-through">${formatPrice(product.original_price)}원</span>` : ''}
-          </div>
-          <div class="text-xs text-gray-500 mt-1">
-            <i class="fas fa-box"></i> 재고 ${product.stock}개
-          </div>
-        </div>
-      </div>
-      
-      <!-- 전체형 (확장 상태) -->
-      <div class="product-content-full space-y-4">
-        <!-- 상품 이미지 -->
-        <img src="${product.image_url || 'https://via.placeholder.com/400'}" 
-             alt="${product.name}" 
-             class="w-full h-64 object-cover rounded-lg">
-        
-        <!-- 상품 정보 -->
-        <div>
-          ${product.category ? `<span class="text-sm text-blue-600 font-semibold">${product.category}</span>` : ''}
-          <h2 class="text-2xl font-bold text-gray-800 mt-1">${product.name}</h2>
-          <p class="text-gray-600 mt-2">${product.description || ''}</p>
-        </div>
-
-        <!-- 가격 정보 -->
-        <div class="flex items-end gap-3">
-          ${discountPercent > 0 ? `
-            <span class="text-3xl font-bold text-red-500">${discountPercent}%</span>
-            <span class="text-2xl text-gray-400 line-through">${formatPrice(product.original_price)}원</span>
-          ` : ''}
-          <span class="text-3xl font-bold text-gray-900">${formatPrice(product.price)}원</span>
-        </div>
-
-        <!-- 재고 정보 -->
-        <div class="flex items-center gap-2 text-sm">
-          <i class="fas fa-box text-gray-500"></i>
-          <span class="text-gray-600">재고: ${product.stock}개</span>
-        </div>
-
-        <!-- 옵션 선택 -->
-        ${renderOptions(options)}
-
-        <!-- 구매 버튼 -->
-        <div class="grid grid-cols-2 gap-3 pt-4">
-          <button onclick="addToCart()" class="bg-white border-2 border-blue-500 text-blue-500 font-bold py-4 rounded-lg hover:bg-blue-50 transition">
-            <i class="fas fa-cart-plus mr-2"></i>
-            장바구니
-          </button>
-          <button onclick="buyNow()" class="toss-primary text-white font-bold py-4 rounded-lg hover:opacity-90 transition">
-            <i class="fas fa-bolt mr-2"></i>
-            바로 구매
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderOptions(options) {
-    if (!options || options.length === 0) return '';
-
-    // 옵션 타입별로 그룹화
-    const groupedOptions = {};
-    options.forEach(opt => {
-      if (!groupedOptions[opt.option_type]) {
-        groupedOptions[opt.option_type] = [];
-      }
-      groupedOptions[opt.option_type].push(opt);
-    });
-
-    return `
-      <div class="space-y-3">
-        ${Object.entries(groupedOptions).map(([type, opts]) => `
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">${type}</label>
-            <select id="option-${type}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-              <option value="">선택하세요</option>
-              ${opts.map(opt => `
-                <option value="${opt.id}" data-adjustment="${opt.price_adjustment}" data-stock="${opt.stock}">
-                  ${opt.option_value} ${opt.price_adjustment > 0 ? `(+${formatPrice(opt.price_adjustment)}원)` : ''}
-                  ${opt.stock > 0 ? '' : '(품절)'}
-                </option>
-              `).join('')}
-            </select>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
-
-  window.addToCart = async function() {
-    if (!state.currentProduct) return;
-
-    const { product, options } = state.currentProduct;
-    
-    // 옵션 선택 확인
-    let selectedOptionId = null;
-    if (options && options.length > 0) {
-      const optionSelects = document.querySelectorAll('[id^="option-"]');
-      for (const select of optionSelects) {
-        if (!select.value) {
-          showToast('❌ 모든 옵션을 선택해주세요');
-          return;
-        }
-        selectedOptionId = parseInt(select.value);
-      }
-    }
-
     try {
+      // 장바구니에 자동 담기 (옵션 없이)
       const response = await axios.post(`${API_BASE}/cart`, {
         userId: state.userId,
         productId: product.id,
-        optionId: selectedOptionId,
+        optionId: null,
         quantity: 1,
         priceSnapshot: product.price,
         liveStreamId: state.streamId,
       });
 
       if (response.data.success) {
-        showToast('✓ 장바구니에 추가되었습니다!');
-        await loadCart();
+        // 구매 메시지 자동 표시
+        addChatMessage(`${product.name} 구매 감사합니다♡`, 'purchase');
+        console.log('✅ Quick buy success');
       }
     } catch (error) {
-      console.error('Failed to add to cart:', error);
-      showToast('❌ 장바구니 추가에 실패했습니다', 'info');
-    }
-  };
-
-  window.buyNow = async function() {
-    await addToCart();
-    window.location.href = '/cart';
-  };
-
-  async function loadCart() {
-    try {
-      const response = await axios.get(`${API_BASE}/cart/${state.userId}`);
-      if (response.data.success) {
-        state.cart = response.data.data;
-        updateCartBadge();
-      }
-    } catch (error) {
-      console.error('Failed to load cart:', error);
+      console.error('Failed to quick buy:', error);
+      addChatMessage('❌ 구매에 실패했습니다', 'system');
     }
   }
 
-  function updateCartBadge() {
-    const badge = document.getElementById('cart-badge');
-    const count = state.cart.length;
+  // 채팅 메시지 전송
+  function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
     
-    if (count > 0) {
-      badge.textContent = count;
-      badge.classList.remove('hidden');
-      badge.classList.add('flex');
-    } else {
-      badge.classList.add('hidden');
-      badge.classList.remove('flex');
+    if (!message) return;
+    
+    addChatMessage(message, 'user');
+    input.value = '';
+  }
+
+  // 채팅 메시지 추가
+  function addChatMessage(text, type = 'user') {
+    const container = document.getElementById('chat-messages');
+    const messageEl = document.createElement('div');
+    messageEl.className = `chat-message ${type === 'purchase' ? 'purchase' : ''}`;
+    messageEl.textContent = text;
+    
+    container.appendChild(messageEl);
+    
+    // 자동 스크롤
+    container.scrollTop = container.scrollHeight;
+    
+    // 메시지 수 제한 (최근 50개만 유지)
+    const messages = container.querySelectorAll('.chat-message');
+    if (messages.length > 50) {
+      messages[0].remove();
     }
-  }
-
-  function setupUIEvents() {
-    // 장바구니 버튼 클릭
-    document.getElementById('cart-button').addEventListener('click', () => {
-      window.location.href = '/cart';
-    });
-  }
-
-  function showProductChangeAnimation() {
-    showToast('✨ 새로운 상품이 소개됩니다!', 'info');
-    
-    // 상품 시트 자동으로 확장
-    const sheet = document.getElementById('product-sheet');
-    if (!state.sheetExpanded) {
-      sheet.classList.add('expanded');
-      state.sheetExpanded = true;
-    }
-  }
-
-  function showToast(message, type = 'success') {
-    const toastEl = document.getElementById('toast-message');
-    if (!toastEl) {
-      console.error('Toast element not found');
-      return;
-    }
-    
-    // 아이콘 선택
-    const icon = type === 'success' ? '✓' : 'ℹ';
-    toastEl.textContent = `${icon} ${message}`;
-    
-    // 토스트 표시
-    toastEl.classList.add('show');
-    
-    // 2초 후 숨김
-    setTimeout(() => {
-      toastEl.classList.remove('show');
-    }, 2000);
-  }
-
-  function formatPrice(price) {
-    return price.toLocaleString('ko-KR');
   }
 
   function showError(message) {
     alert(message);
   }
 
-  function handleStreamStatusChange(data) {
-    if (data.status === 'ended') {
-      alert('라이브 방송이 종료되었습니다.');
-      window.location.href = '/';
-    }
-  }
-
-  // 음소거 토글 함수 (전역 함수로 노출)
+  // 음소거 토글 함수
   window.toggleMute = function() {
     if (!state.player || typeof state.player.isMuted !== 'function') {
       console.warn('Player not ready');
@@ -588,7 +404,6 @@
     } else {
       icon.className = 'fas fa-volume-up text-lg';
       button.title = '음소거';
-      // 음소거가 해제되면 버튼을 3초 후 숨김
       setTimeout(() => {
         button.classList.add('hidden');
       }, 3000);

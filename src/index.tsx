@@ -563,54 +563,114 @@ app.get('/live/:streamId', (c) => {
             z-index: 2;
             pointer-events: none;
           }
-          /* 상품 플로팅 바텀시트 */
-          .product-sheet {
+          /* 채팅 영역 */
+          .chat-container {
+            position: fixed;
+            left: 16px;
+            bottom: 140px;
+            width: calc(100% - 32px);
+            max-width: 400px;
+            height: 50vh;
+            max-height: 500px;
+            z-index: 100;
+            pointer-events: none;
+          }
+          .chat-messages {
+            height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            scrollbar-width: none;
+          }
+          .chat-messages::-webkit-scrollbar {
+            display: none;
+          }
+          .chat-message {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+            max-width: 80%;
+            word-break: break-word;
+            animation: slideInLeft 0.3s ease-out;
+          }
+          .chat-message.purchase {
+            background: rgba(49, 130, 246, 0.7);
+            font-weight: 600;
+          }
+          @keyframes slideInLeft {
+            from {
+              opacity: 0;
+              transform: translateX(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+          /* 하단 컨트롤 바 */
+          .bottom-controls {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 16px;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            background: rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-            transform: translateY(calc(100% - 200px));
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-            max-height: 90vh;
-            padding-bottom: env(safe-area-inset-bottom, 20px);
-            overflow: hidden; /* 스크롤 제거 */
+            z-index: 200;
+            display: flex;
+            gap: 8px;
+            align-items: center;
           }
-          .product-sheet.expanded {
-            transform: translateY(0);
-            overflow-y: auto; /* 확장 시에만 스크롤 */
+          .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 24px;
+            padding: 12px 16px;
+            font-size: 14px;
+            outline: none;
           }
-          .product-sheet-drag-handle {
-            width: 36px;
-            height: 4px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 2px;
-            margin: 12px auto;
+          .buy-button {
+            background: #FF4785;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 700;
             cursor: pointer;
-            flex-shrink: 0;
+            white-space: nowrap;
+            transition: all 0.2s;
           }
-          /* 상품 정보 컨텐츠 */
-          .product-content {
-            padding: 0 16px 16px 16px;
+          .buy-button:hover {
+            background: #E63C6F;
+            transform: scale(1.05);
           }
-          .product-content-compact {
+          .my-orders-button {
+            background: rgba(255, 255, 255, 0.9);
+            color: #191F28;
+            border: none;
+            border-radius: 24px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 6px;
+            transition: all 0.2s;
           }
-          .product-content-full {
-            display: none;
-          }
-          .product-sheet.expanded .product-content-compact {
-            display: none;
-          }
-          .product-sheet.expanded .product-content-full {
-            display: block;
+          .my-orders-button:hover {
+            background: white;
+            transform: scale(1.05);
           }
           /* 토스트 메시지 */
           .toast-message {
@@ -675,23 +735,30 @@ app.get('/live/:streamId', (c) => {
             </div>
         </div>
 
-        <!-- 상품 플로팅 바텀시트 -->
-        <div id="product-sheet" class="product-sheet">
-            <div class="product-sheet-drag-handle" onclick="toggleSheet()"></div>
-            <div id="product-content" class="product-content">
-                <!-- 상품 정보가 여기에 로드됩니다 -->
-                <div class="text-center py-8">
-                    <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
-                    <p class="text-gray-500">상품 정보를 불러오는 중...</p>
-                </div>
+        <!-- 채팅 영역 -->
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+                <!-- 채팅 메시지가 여기에 추가됩니다 -->
             </div>
         </div>
 
-        <!-- 장바구니 플로팅 버튼 -->
-        <button id="cart-button" class="fixed bottom-[180px] right-4 toss-primary text-white w-14 h-14 rounded-full shadow-lg z-50 flex items-center justify-center">
-            <i class="fas fa-shopping-cart text-xl"></i>
-            <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full hidden items-center justify-center font-bold">0</span>
-        </button>
+        <!-- 하단 컨트롤 바 -->
+        <div class="bottom-controls">
+            <input 
+                type="text" 
+                id="chat-input" 
+                class="chat-input" 
+                placeholder="메시지를 입력하세요..."
+                maxlength="200"
+            />
+            <button id="my-orders-button" class="my-orders-button">
+                <i class="fas fa-shopping-bag"></i>
+                <span>내 주문</span>
+            </button>
+            <button id="buy-button" class="buy-button">
+                구매하기
+            </button>
+        </div>
         
         <!-- 토스트 메시지 -->
         <div id="toast-message" class="toast-message"></div>
@@ -700,12 +767,6 @@ app.get('/live/:streamId', (c) => {
         <script src="https://www.youtube.com/iframe_api"></script>
         <script>
           const STREAM_ID = '${streamId}';
-          
-          // 바텀시트 토글 함수
-          function toggleSheet() {
-            const sheet = document.getElementById('product-sheet');
-            sheet.classList.toggle('expanded');
-          }
         </script>
         <script src="/static/live.js"></script>
     </body>
