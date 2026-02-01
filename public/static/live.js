@@ -13,7 +13,6 @@
     player: null,
     pollingInterval: null,
     initAttempts: 0,
-    chatMessages: [],
   };
 
   let appInitialized = false;
@@ -89,13 +88,6 @@
           } catch (e) {
             console.warn('Failed to resume video:', e);
           }
-        }
-      });
-      
-      // 채팅 입력 엔터키 이벤트
-      document.getElementById('chat-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          sendChatMessage();
         }
       });
       
@@ -252,7 +244,7 @@
       101: '비디오 소유자가 임베드를 허용하지 않습니다',
       150: '비디오 소유자가 임베드를 허용하지 않습니다'
     };
-    addChatMessage(`❌ ${errorMessages[event.data] || '재생 오류가 발생했습니다'}`, 'system');
+    console.log('YouTube Player Error:', event.data, errorMessages[event.data] || '재생 오류');
   }
 
   function startPolling() {
@@ -270,9 +262,7 @@
         if (newProduct && newProduct.id !== state.currentProductId) {
           state.currentProductId = newProduct.id;
           state.currentProduct = response.data.data;
-          
-          // 상품 변경 알림
-          addChatMessage(`✨ 새로운 상품: ${newProduct.name}`, 'system');
+          console.log('✨ New product:', newProduct.name);
         }
       }
     } catch (error) {
@@ -306,7 +296,7 @@
   // 원클릭 구매
   async function quickBuy() {
     if (!state.currentProduct) {
-      addChatMessage('❌ 현재 소개 중인 상품이 없습니다', 'system');
+      alert('현재 소개 중인 상품이 없습니다');
       return;
     }
 
@@ -324,43 +314,12 @@
       });
 
       if (response.data.success) {
-        // 구매 메시지 자동 표시
-        addChatMessage(`${product.name} 구매 감사합니다♡`, 'purchase');
+        alert(`${product.name}\n장바구니에 담았습니다! 🛒`);
         console.log('✅ Quick buy success');
       }
     } catch (error) {
       console.error('Failed to quick buy:', error);
-      addChatMessage('❌ 구매에 실패했습니다', 'system');
-    }
-  }
-
-  // 채팅 메시지 전송
-  function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    addChatMessage(message, 'user');
-    input.value = '';
-  }
-
-  // 채팅 메시지 추가
-  function addChatMessage(text, type = 'user') {
-    const container = document.getElementById('chat-messages');
-    const messageEl = document.createElement('div');
-    messageEl.className = `chat-message ${type === 'purchase' ? 'purchase' : ''}`;
-    messageEl.textContent = text;
-    
-    container.appendChild(messageEl);
-    
-    // 자동 스크롤
-    container.scrollTop = container.scrollHeight;
-    
-    // 메시지 수 제한 (최근 50개만 유지)
-    const messages = container.querySelectorAll('.chat-message');
-    if (messages.length > 50) {
-      messages[0].remove();
+      alert('구매에 실패했습니다');
     }
   }
 

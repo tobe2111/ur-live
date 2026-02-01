@@ -563,56 +563,7 @@ app.get('/live/:streamId', (c) => {
             z-index: 2;
             pointer-events: none;
           }
-          /* 채팅 영역 */
-          .chat-container {
-            position: fixed;
-            left: 16px;
-            bottom: 140px;
-            width: calc(100% - 32px);
-            max-width: 400px;
-            height: 50vh;
-            max-height: 500px;
-            z-index: 100;
-            pointer-events: none;
-          }
-          .chat-messages {
-            height: 100%;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 12px;
-            scrollbar-width: none;
-          }
-          .chat-messages::-webkit-scrollbar {
-            display: none;
-          }
-          .chat-message {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 10px 14px;
-            border-radius: 20px;
-            font-size: 14px;
-            line-height: 1.4;
-            max-width: 80%;
-            word-break: break-word;
-            animation: slideInLeft 0.3s ease-out;
-          }
-          .chat-message.purchase {
-            background: rgba(49, 130, 246, 0.7);
-            font-weight: 600;
-          }
-          @keyframes slideInLeft {
-            from {
-              opacity: 0;
-              transform: translateX(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(0);
-            }
-          }
+
           /* 하단 컨트롤 바 */
           .bottom-controls {
             position: fixed;
@@ -628,15 +579,7 @@ app.get('/live/:streamId', (c) => {
             gap: 8px;
             align-items: center;
           }
-          .chat-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 24px;
-            padding: 12px 16px;
-            font-size: 14px;
-            outline: none;
-          }
+
           .buy-button {
             background: #FF4785;
             color: white;
@@ -735,22 +678,8 @@ app.get('/live/:streamId', (c) => {
             </div>
         </div>
 
-        <!-- 채팅 영역 -->
-        <div class="chat-container">
-            <div id="chat-messages" class="chat-messages">
-                <!-- 채팅 메시지가 여기에 추가됩니다 -->
-            </div>
-        </div>
-
         <!-- 하단 컨트롤 바 -->
         <div class="bottom-controls">
-            <input 
-                type="text" 
-                id="chat-input" 
-                class="chat-input" 
-                placeholder="메시지를 입력하세요..."
-                maxlength="200"
-            />
             <button id="my-orders-button" class="my-orders-button">
                 <i class="fas fa-shopping-bag"></i>
                 <span>내 주문</span>
