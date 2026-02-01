@@ -656,16 +656,15 @@ app.get('/live/:streamId', (c) => {
         <!-- 상단 헤더 정보 -->
         <div class="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
             <!-- 라이브 타이틀 -->
-            <div class="text-white text-lg font-bold flex items-center">
-                <i class="fas fa-tv mr-2"></i>
-                <span id="stream-title">토스 라이브 커머스</span>
+            <div class="text-white text-lg font-bold flex items-center max-w-[60%]">
+                <i class="fas fa-tv mr-2 flex-shrink-0"></i>
+                <span id="stream-title" class="truncate">토스 라이브 커머스</span>
             </div>
             
             <div class="flex items-center gap-2">
-                <!-- 음소거 토글 버튼 -->
-                <button id="unmute-button" onclick="toggleMute()" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center transition hidden">
-                    <i id="mute-icon" class="fas fa-volume-mute mr-1"></i>
-                    <span id="mute-text">음소거 해제</span>
+                <!-- 음소거 토글 버튼 (아이콘만) -->
+                <button id="unmute-button" onclick="toggleMute()" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white w-10 h-10 rounded-full flex items-center justify-center transition hidden" title="음소거 토글">
+                    <i id="mute-icon" class="fas fa-volume-mute text-lg"></i>
                 </button>
                 
                 <!-- LIVE 뱃지 -->

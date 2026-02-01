@@ -577,18 +577,17 @@
 
   function updateMuteButton(isMuted) {
     const icon = document.getElementById('mute-icon');
-    const text = document.getElementById('mute-text');
     const button = document.getElementById('unmute-button');
     
-    if (!icon || !text || !button) return;
+    if (!icon || !button) return;
     
     if (isMuted) {
-      icon.className = 'fas fa-volume-mute mr-1';
-      text.textContent = '음소거 해제';
+      icon.className = 'fas fa-volume-mute text-lg';
       button.classList.remove('hidden');
+      button.title = '음소거 해제';
     } else {
-      icon.className = 'fas fa-volume-up mr-1';
-      text.textContent = '음소거';
+      icon.className = 'fas fa-volume-up text-lg';
+      button.title = '음소거';
       // 음소거가 해제되면 버튼을 3초 후 숨김
       setTimeout(() => {
         button.classList.add('hidden');
