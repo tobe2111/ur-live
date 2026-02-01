@@ -1,10 +1,10 @@
 -- 테스트 라이브 스트림 데이터
 -- Video ID Options (임베드 가능한 24/7 라이브 스트림):
--- 1. 5qap5aO4i9A: Chillhop Radio - jazzy & lofi hip hop beats (추천 ⭐)
--- 2. DWcJFNfaw9c: Chillhop Radio - 24/7 live stream
--- 3. MVPTGNGiI-4: Relaxing Jazz Piano Radio - 24/7 Chill Out Music
+-- 1. 4xDzrJKXOOY: synthwave radio - beats to chill/game to (추천 ⭐)
+-- 2. 36YnV9STBqc: Space Ambient Music - 24/7 Space Journey
+-- 참고: YouTube 임베드 정책이 엄격하므로 자신의 영상을 사용하는 것을 권장합니다
 INSERT OR IGNORE INTO live_streams (id, title, description, youtube_video_id, status, created_at) VALUES 
-  (1, '토스 라이브 커머스 - 겨울 특집', '겨울 시즌 인기 상품 라이브 방송', '5qap5aO4i9A', 'live', datetime('now')),
+  (1, '토스 라이브 커머스 - 겨울 특집', '겨울 시즌 인기 상품 라이브 방송', '4xDzrJKXOOY', 'live', datetime('now')),
   (2, '토스 라이브 커머스 - 봄맞이 세일', '봄 시즌 특가 상품 방송', 'jNQXAC9IVRw', 'scheduled', datetime('now'));
 
 -- 테스트 상품 데이터
