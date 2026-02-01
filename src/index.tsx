@@ -545,14 +545,16 @@ app.get('/live/:streamId', (c) => {
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-            transform: translateY(calc(100% - 160px));
+            transform: translateY(calc(100% - 200px));
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
-            max-height: 80vh;
+            max-height: 90vh;
             padding-bottom: env(safe-area-inset-bottom, 20px);
+            overflow: hidden; /* 스크롤 제거 */
           }
           .product-sheet.expanded {
             transform: translateY(0);
+            overflow-y: auto; /* 확장 시에만 스크롤 */
           }
           .product-sheet-drag-handle {
             width: 36px;
@@ -562,6 +564,24 @@ app.get('/live/:streamId', (c) => {
             margin: 12px auto;
             cursor: pointer;
             flex-shrink: 0;
+          }
+          /* 상품 정보 컨텐츠 */
+          .product-content {
+            padding: 0 16px 16px 16px;
+          }
+          .product-content-compact {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .product-content-full {
+            display: none;
+          }
+          .product-sheet.expanded .product-content-compact {
+            display: none;
+          }
+          .product-sheet.expanded .product-content-full {
+            display: block;
           }
           /* 토스트 메시지 */
           .toast-message {
@@ -622,13 +642,11 @@ app.get('/live/:streamId', (c) => {
         <!-- 상품 플로팅 바텀시트 -->
         <div id="product-sheet" class="product-sheet">
             <div class="product-sheet-drag-handle" onclick="toggleSheet()"></div>
-            <div class="overflow-y-auto" style="max-height: calc(80vh - 60px);">
-                <div id="product-content" class="p-4">
-                    <!-- 상품 정보가 여기에 로드됩니다 -->
-                    <div class="text-center py-8">
-                        <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
-                        <p class="text-gray-500">상품 정보를 불러오는 중...</p>
-                    </div>
+            <div id="product-content" class="product-content">
+                <!-- 상품 정보가 여기에 로드됩니다 -->
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-500">상품 정보를 불러오는 중...</p>
                 </div>
             </div>
         </div>

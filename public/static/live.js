@@ -134,7 +134,26 @@
     const discountPercent = product.discount_rate || 0;
     
     document.getElementById('product-content').innerHTML = `
-      <div class="space-y-4">
+      <!-- 축약형 (접힌 상태) -->
+      <div class="product-content-compact">
+        <img src="${product.image_url || 'https://via.placeholder.com/100'}" 
+             alt="${product.name}" 
+             class="w-20 h-20 object-cover rounded-lg flex-shrink-0">
+        <div class="flex-1 min-w-0">
+          <h3 class="text-lg font-bold text-gray-800 truncate">${product.name}</h3>
+          <div class="flex items-center gap-2 mt-1">
+            ${discountPercent > 0 ? `<span class="text-xl font-bold text-red-500">${discountPercent}%</span>` : ''}
+            <span class="text-xl font-bold text-gray-900">${formatPrice(product.price)}원</span>
+            ${product.original_price ? `<span class="text-sm text-gray-400 line-through">${formatPrice(product.original_price)}원</span>` : ''}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">
+            <i class="fas fa-box"></i> 재고 ${product.stock}개
+          </div>
+        </div>
+      </div>
+      
+      <!-- 전체형 (확장 상태) -->
+      <div class="product-content-full space-y-4">
         <!-- 상품 이미지 -->
         <img src="${product.image_url || 'https://via.placeholder.com/400'}" 
              alt="${product.name}" 
