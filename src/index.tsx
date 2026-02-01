@@ -2,10 +2,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
-import { LiveStreamDurableObject } from './durable-object';
-
-// Export Durable Object
-export { LiveStreamDurableObject };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -338,22 +334,52 @@ app.get('/api/orders/:userId', async (c) => {
   }
 });
 
-// WebSocket Connection API
-app.get('/api/ws/:streamId', async (c) => {
-  const { LIVE_STREAM } = c.env;
+// 현재 상품 조회 API (폴링용)
+app.get('/api/streams/:streamId/current-product', async (c) => {
+  const { DB } = c.env;
   const streamId = c.req.param('streamId');
 
-  // Durable Object ID 생성
-  const id = LIVE_STREAM.idFromName(streamId);
-  const stub = LIVE_STREAM.get(id);
+  try {
+    // 라이브 스트림의 현재 상품 ID 조회
+    const stream = await DB.prepare(
+      'SELECT current_product_id FROM live_streams WHERE id = ?'
+    ).bind(streamId).first();
 
-  // WebSocket 업그레이드 요청을 Durable Object로 전달
-  return stub.fetch(c.req.raw);
+    if (!stream || !stream.current_product_id) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: null,
+      });
+    }
+
+    // 상품 정보 조회
+    const product = await DB.prepare(
+      'SELECT * FROM products WHERE id = ?'
+    ).bind(stream.current_product_id).first();
+
+    // 상품 옵션 조회
+    const options = await DB.prepare(
+      'SELECT * FROM product_options WHERE product_id = ?'
+    ).bind(stream.current_product_id).all();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        product,
+        options: options.results,
+      },
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
 });
 
 // Admin: 상품 전환 API
 app.post('/api/admin/streams/:streamId/change-product', async (c) => {
-  const { DB, LIVE_STREAM } = c.env;
+  const { DB } = c.env;
   const streamId = c.req.param('streamId');
 
   try {
@@ -380,23 +406,6 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
     await DB.prepare(
       'UPDATE live_streams SET current_product_id = ?, updated_at = datetime("now") WHERE id = ?'
     ).bind(productId, streamId).run();
-
-    // Durable Object를 통해 모든 시청자에게 브로드캐스트
-    const id = LIVE_STREAM.idFromName(streamId);
-    const stub = LIVE_STREAM.get(id);
-
-    await stub.fetch(new Request('http://localhost/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'product_change',
-        data: {
-          product,
-          options: options.results,
-        },
-        timestamp: Date.now(),
-      }),
-    }));
 
     return c.json<ApiResponse>({
       success: true,

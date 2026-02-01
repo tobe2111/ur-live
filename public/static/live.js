@@ -1,4 +1,4 @@
-// 라이브 스트림 뷰어 JavaScript
+// 라이브 스트림 뷰어 JavaScript (폴링 방식)
 (function() {
   'use strict';
 
@@ -7,13 +7,13 @@
   // 앱 상태
   const state = {
     streamId: STREAM_ID,
-    ws: null,
+    currentProductId: null,
     currentProduct: null,
     cart: [],
     userId: 'toss_user_001', // 실제로는 토스 로그인에서 받아옴
-    viewerCount: 0,
     player: null,
     sheetExpanded: false,
+    pollingInterval: null,
   };
 
   // YouTube Player API 로드 완료 시 호출
@@ -26,8 +26,8 @@
       // 라이브 스트림 정보 로드
       await loadStreamInfo();
       
-      // WebSocket 연결
-      connectWebSocket();
+      // 폴링 시작 (3초마다 상품 확인)
+      startPolling();
       
       // 장바구니 로드
       await loadCart();
@@ -59,7 +59,8 @@
 
         // 현재 상품 로드 (있는 경우)
         if (stream.current_product_id) {
-          await loadProduct(stream.current_product_id);
+          state.currentProductId = stream.current_product_id;
+          await loadCurrentProduct();
         }
       }
     } catch (error) {
@@ -68,51 +69,41 @@
     }
   }
 
-  function connectWebSocket() {
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${location.host}/api/ws/${state.streamId}`;
-    
-    state.ws = new WebSocket(wsUrl);
-
-    state.ws.onopen = () => {
-      console.log('WebSocket connected');
-    };
-
-    state.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        handleWSMessage(message);
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
-      }
-    };
-
-    state.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    state.ws.onclose = () => {
-      console.log('WebSocket closed, reconnecting...');
-      setTimeout(connectWebSocket, 3000);
-    };
+  function startPolling() {
+    // 3초마다 현재 상품 확인
+    state.pollingInterval = setInterval(async () => {
+      await checkCurrentProduct();
+    }, 3000);
   }
 
-  function handleWSMessage(message) {
-    switch (message.type) {
-      case 'product_change':
-        state.currentProduct = message.data;
+  async function checkCurrentProduct() {
+    try {
+      const response = await axios.get(`${API_BASE}/streams/${state.streamId}/current-product`);
+      if (response.data.success && response.data.data) {
+        const newProduct = response.data.data.product;
+        
+        // 상품이 변경되었는지 확인
+        if (newProduct && newProduct.id !== state.currentProductId) {
+          state.currentProductId = newProduct.id;
+          state.currentProduct = response.data.data;
+          renderProduct();
+          showProductChangeAnimation();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check current product:', error);
+    }
+  }
+
+  async function loadCurrentProduct() {
+    try {
+      const response = await axios.get(`${API_BASE}/streams/${state.streamId}/current-product`);
+      if (response.data.success && response.data.data) {
+        state.currentProduct = response.data.data;
         renderProduct();
-        showProductChangeAnimation();
-        break;
-      
-      case 'viewer_count':
-        state.viewerCount = message.data.count;
-        updateViewerCount();
-        break;
-      
-      case 'stream_status':
-        handleStreamStatusChange(message.data);
-        break;
+      }
+    } catch (error) {
+      console.error('Failed to load current product:', error);
     }
   }
 
@@ -277,24 +268,6 @@
   }
 
   function updateCartBadge() {
-    const badge = document.getElementById('cart-badge');
-    const count = state.cart.length;
-    
-    if (count > 0) {
-      badge.textContent = count;
-      badge.classList.remove('hidden');
-      badge.classList.add('flex');
-    } else {
-      badge.classList.add('hidden');
-      badge.classList.remove('flex');
-    }
-  }
-
-  function updateViewerCount() {
-    document.getElementById('viewer-count').textContent = state.viewerCount;
-  }
-
-  function setupUIEvents() {
     // 상품 시트 드래그 핸들 클릭
     const sheet = document.getElementById('product-sheet');
     const handle = sheet.querySelector('.product-sheet-drag-handle');

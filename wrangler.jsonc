@@ -13,15 +13,5 @@
       "database_name": "webapp-production",
       "database_id": "local-db-id"
     }
-  ],
-  // Durable Objects for WebSocket connections
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "LIVE_STREAM",
-        "class_name": "LiveStreamDurableObject",
-        "script_name": "webapp"
-      }
-    ]
-  }
+  ]
 }

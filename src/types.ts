@@ -1,7 +1,6 @@
 // Type definitions for Cloudflare bindings
 export type Bindings = {
   DB: D1Database;
-  LIVE_STREAM: DurableObjectNamespace;
 };
 
 // Live Stream Types
