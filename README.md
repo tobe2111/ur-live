@@ -23,10 +23,11 @@
 - ✅ WebSocket 기반 실시간 통신
 
 #### 2. 실시간 상품 전환 시스템
-- ✅ Cloudflare Durable Objects를 통한 WebSocket 서버
-- ✅ 관리자 상품 전환 시 모든 시청자에게 즉시 브로드캐스트
+- ✅ 폴링 기반 실시간 상품 정보 업데이트 (3초 간격)
+- ✅ 관리자 상품 전환 시 모든 시청자에게 자동 반영
 - ✅ 새로고침 없는 상품 정보 업데이트
 - ✅ 상품 변경 시 자동 알림 및 바텀시트 확장
+- ⚠️ **참고**: 프로덕션에서는 Cloudflare Durable Objects + WebSocket 사용 권장
 
 #### 3. Seamless 장바구니
 - ✅ 실시간 장바구니 상태 관리
@@ -68,7 +69,7 @@ Frontend:
 Backend:
 ├── Hono (Cloudflare Workers 프레임워크)
 ├── Cloudflare D1 (SQLite 기반 관계형 DB)
-├── Cloudflare Durable Objects (WebSocket 서버)
+├── 폴링 기반 실시간 업데이트 (로컬 개발)
 └── TypeScript
 
 Infrastructure:
@@ -79,12 +80,12 @@ Infrastructure:
 ### 데이터 흐름도
 
 ```
-┌─────────────────┐      WebSocket       ┌──────────────────────┐
-│  시청자 브라우저  │◄──────────────────►│  Durable Object      │
-│  (Live View)    │      실시간 통신      │  (WebSocket Server)  │
+┌─────────────────┐      폴링 (3초)       ┌──────────────────────┐
+│  시청자 브라우저  │◄──────────────────►│  Hono Backend        │
+│  (Live View)    │   상품 정보 요청      │  (API Routes)        │
 └─────────────────┘                      └──────────────────────┘
          ↓                                          ↑
-         ↓ HTTP API                                 ↑ Broadcast
+         ↓ HTTP API                                 ↑ 상품 전환 요청
          ↓                                          ↑
 ┌─────────────────┐                      ┌──────────────────────┐
 │   Hono Backend  │◄─────────────────────│  관리자 대시보드      │
@@ -99,26 +100,26 @@ Infrastructure:
 └─────────────────┘
 ```
 
-### WebSocket 실시간 통신 구조
+### 상품 전환 동작 방식 (폴링)
 
 ```javascript
-// 메시지 타입
-{
-  type: 'product_change',     // 상품 전환
-  type: 'viewer_count',       // 시청자 수 업데이트
-  type: 'cart_update',        // 장바구니 변경
-  type: 'stream_status'       // 스트림 상태 변경
-}
+// 클라이언트: 3초마다 현재 상품 확인
+setInterval(async () => {
+  const response = await fetch('/api/streams/1/current-product');
+  const { product } = response.data;
+  
+  if (product.id !== currentProductId) {
+    // 상품이 변경됨 - UI 업데이트
+    updateProduct(product);
+  }
+}, 3000);
 
-// 상품 전환 메시지 예시
-{
-  type: 'product_change',
-  data: {
-    product: { id, name, price, ... },
-    options: [{ id, type, value, ... }]
-  },
-  timestamp: 1706872800000
-}
+// 관리자: 상품 전환
+await fetch('/api/admin/streams/1/change-product', {
+  method: 'POST',
+  body: JSON.stringify({ productId: 2 })
+});
+// → DB 업데이트 → 클라이언트 폴링으로 자동 감지
 ```
 
 ## 📊 데이터 모델
@@ -164,8 +165,8 @@ orders (id, order_number, user_id, total_amount, payment_status)
 - `GET /api/orders/:userId` - 주문 내역 조회
 - `POST /api/orders` - 주문 생성
 
-### WebSocket API
-- `GET /api/ws/:streamId` - WebSocket 연결 (업그레이드)
+### 실시간 상품 조회 API
+- `GET /api/streams/:streamId/current-product` - 현재 소개 중인 상품 조회 (폴링용)
 
 ### 관리자 API
 - `POST /api/admin/streams/:streamId/change-product` - 상품 전환
@@ -322,31 +323,26 @@ npx wrangler pages secret put TOSS_SECRET_KEY --project-name webapp
 
 ## 🔧 핵심 코드 스니펫
 
-### 1. 실시간 상품 업데이트 (클라이언트)
+### 1. 실시간 상품 업데이트 (클라이언트 - 폴링)
 
 ```javascript
-// WebSocket 연결
-const ws = new WebSocket(`wss://${host}/api/ws/${streamId}`);
-
-// 상품 변경 메시지 수신
-ws.onmessage = (event) => {
-  const message = JSON.parse(event.data);
+// 폴링 시작 (3초 간격)
+setInterval(async () => {
+  const response = await axios.get(`/api/streams/${streamId}/current-product`);
+  const newProduct = response.data.data?.product;
   
-  if (message.type === 'product_change') {
-    // 상품 정보 업데이트
-    updateProduct(message.data);
-    // UI 반영
-    renderProduct();
-    // 알림 표시
+  if (newProduct && newProduct.id !== currentProductId) {
+    // 상품이 변경됨
+    currentProductId = newProduct.id;
+    updateProduct(response.data.data);
     showNotification('새로운 상품이 소개됩니다!');
   }
-};
+}, 3000);
 ```
 
 ### 2. 관리자 상품 전환 (서버)
 
 ```typescript
-// 관리자가 상품 전환 요청
 app.post('/api/admin/streams/:streamId/change-product', async (c) => {
   const { productId } = await c.req.json();
   
@@ -355,41 +351,31 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
     'SELECT * FROM products WHERE id = ?'
   ).bind(productId).first();
   
-  // 2. Durable Object를 통해 모든 시청자에게 브로드캐스트
-  const stub = LIVE_STREAM.get(id);
-  await stub.fetch(new Request('/broadcast', {
-    method: 'POST',
-    body: JSON.stringify({
-      type: 'product_change',
-      data: { product, options },
-    }),
-  }));
+  // 2. 라이브 스트림 업데이트
+  await DB.prepare(
+    'UPDATE live_streams SET current_product_id = ? WHERE id = ?'
+  ).bind(productId, streamId).run();
+  
+  // → 클라이언트의 폴링으로 자동 감지됨
 });
 ```
 
-### 3. Durable Object WebSocket 서버
+### 3. 현재 상품 조회 API
 
 ```typescript
-export class LiveStreamDurableObject extends DurableObject {
-  private sessions: Set<WebSocket>;
-
-  handleSession(webSocket: WebSocket) {
-    webSocket.accept();
-    this.sessions.add(webSocket);
-    
-    // 메시지 브로드캐스트
-    webSocket.addEventListener('message', (msg) => {
-      this.broadcast(JSON.parse(msg.data));
-    });
-  }
-
-  broadcast(message: any) {
-    const messageStr = JSON.stringify(message);
-    this.sessions.forEach((session) => {
-      session.send(messageStr);
-    });
-  }
-}
+app.get('/api/streams/:streamId/current-product', async (c) => {
+  // 라이브 스트림의 현재 상품 조회
+  const stream = await DB.prepare(
+    'SELECT current_product_id FROM live_streams WHERE id = ?'
+  ).bind(streamId).first();
+  
+  // 상품 정보 및 옵션 조회
+  const product = await DB.prepare(
+    'SELECT * FROM products WHERE id = ?'
+  ).bind(stream.current_product_id).first();
+  
+  return c.json({ success: true, data: { product, options } });
+});
 ```
 
 ## 📋 토스 심사 통과 전략
