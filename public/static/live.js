@@ -42,6 +42,18 @@
       
       // UI 이벤트 바인딩
       setupUIEvents();
+      
+      // 페이지 가시성 변경 감지 (페이지로 돌아왔을 때)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && state.player && typeof state.player.playVideo === 'function') {
+          console.log('Page visible again, resuming video...');
+          try {
+            state.player.playVideo();
+          } catch (e) {
+            console.warn('Failed to resume video:', e);
+          }
+        }
+      });
     } catch (error) {
       console.error('Failed to initialize app:', error);
       showError('앱을 시작할 수 없습니다.');
@@ -65,13 +77,28 @@
         // YouTube Player 초기화
         console.log('Creating YouTube Player with video ID:', stream.youtube_video_id);
         
-        // 기존 플레이어 제거
+        // 기존 플레이어 완전히 제거하고 컨테이너 재생성
         const playerContainer = document.getElementById('youtube-player');
         if (!playerContainer) {
           console.error('YouTube player container not found!');
           throw new Error('Player container not found');
         }
         
+        // 기존 플레이어 파괴
+        if (state.player && typeof state.player.destroy === 'function') {
+          console.log('Destroying existing player...');
+          try {
+            state.player.destroy();
+          } catch (e) {
+            console.warn('Failed to destroy player:', e);
+          }
+          state.player = null;
+        }
+        
+        // 컨테이너 내용 지우기
+        playerContainer.innerHTML = '';
+        
+        // 새 플레이어 생성
         state.player = new YT.Player('youtube-player', {
           height: '100%',
           width: '100%',
