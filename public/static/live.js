@@ -18,10 +18,18 @@
 
   // YouTube Player API 로드 완료 시 호출
   window.onYouTubeIframeAPIReady = function() {
+    console.log('YouTube IFrame API Ready');
     initApp();
   };
 
+  // 페이지 로드 시 바로 초기화 시도 (API가 이미 로드된 경우)
+  if (window.YT && window.YT.Player) {
+    console.log('YouTube API already loaded');
+    initApp();
+  }
+
   async function initApp() {
+    console.log('Initializing app...');
     try {
       // 라이브 스트림 정보 로드
       await loadStreamInfo();
@@ -42,9 +50,11 @@
 
   async function loadStreamInfo() {
     try {
+      console.log('Loading stream info...');
       const response = await axios.get(`${API_BASE}/streams/${state.streamId}`);
       if (response.data.success) {
         const stream = response.data.data;
+        console.log('Stream data:', stream);
         
         // 라이브 타이틀 업데이트
         const titleEl = document.getElementById('stream-title');
@@ -53,18 +63,27 @@
         }
         
         // YouTube Player 초기화
+        console.log('Creating YouTube Player with video ID:', stream.youtube_video_id);
+        
+        // 기존 플레이어 제거
+        const playerContainer = document.getElementById('youtube-player');
+        if (!playerContainer) {
+          console.error('YouTube player container not found!');
+          throw new Error('Player container not found');
+        }
+        
         state.player = new YT.Player('youtube-player', {
           height: '100%',
           width: '100%',
           videoId: stream.youtube_video_id,
           playerVars: {
             autoplay: 1,
-            mute: 0, // 음소거 해제
+            mute: 0,
             controls: 1,
             modestbranding: 1,
             rel: 0,
-            fs: 1, // 전체화면 허용
-            playsinline: 1, // 인라인 재생
+            fs: 1,
+            playsinline: 1,
             enablejsapi: 1,
           },
           events: {
@@ -74,14 +93,28 @@
           }
         });
 
+        console.log('YouTube Player created');
+
         // 현재 상품 로드 (있는 경우)
         if (stream.current_product_id) {
           state.currentProductId = stream.current_product_id;
           await loadCurrentProduct();
+        } else {
+          console.warn('No current product');
+          renderProduct(); // 빈 상태 렌더링
         }
       }
     } catch (error) {
       console.error('Failed to load stream info:', error);
+      document.getElementById('product-content').innerHTML = `
+        <div class="text-center py-8 text-red-500">
+          <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
+          <p class="font-semibold">방송 정보를 불러올 수 없습니다</p>
+          <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg">
+            다시 시도
+          </button>
+        </div>
+      `;
       throw error;
     }
   }
