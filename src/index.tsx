@@ -171,12 +171,23 @@ app.post('/api/cart', async (c) => {
   const { DB } = c.env;
 
   try {
-    const { userId: tossUserId, productId, optionId, quantity, priceSnapshot, liveStreamId } = await c.req.json();
+    const body = await c.req.json();
+    const { userId, tossUserId, productId, optionId, quantity, priceSnapshot, liveStreamId } = body;
+    
+    // userId 또는 tossUserId 중 하나를 사용
+    const userIdToUse = tossUserId || userId;
+    
+    if (!userIdToUse) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'userId or tossUserId is required',
+      }, 400);
+    }
 
     // 사용자 ID 조회 (toss_user_id -> user.id)
     const user = await DB.prepare(
       'SELECT id FROM users WHERE toss_user_id = ?'
-    ).bind(tossUserId).first();
+    ).bind(userIdToUse).first();
 
     if (!user) {
       return c.json<ApiResponse>({
@@ -185,7 +196,7 @@ app.post('/api/cart', async (c) => {
       }, 404);
     }
 
-    const userId = user.id as number;
+    const dbUserId = user.id as number;
 
     // 상품 재고 확인
     const product = await DB.prepare(
@@ -203,7 +214,14 @@ app.post('/api/cart', async (c) => {
     const result = await DB.prepare(`
       INSERT INTO cart_items (user_id, product_id, option_id, quantity, price_snapshot, live_stream_id)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(userId, productId, optionId, quantity, priceSnapshot, liveStreamId).run();
+    `).bind(
+      dbUserId, 
+      productId, 
+      optionId || null,  // null 처리
+      quantity, 
+      priceSnapshot, 
+      liveStreamId || null  // null 처리
+    ).run();
 
     return c.json<ApiResponse>({
       success: true,
