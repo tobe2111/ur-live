@@ -1206,20 +1206,35 @@ app.get('/live/:streamId', (c) => {
             
             // Initialize Firebase for chat
             function initFirebase() {
-                fetch('/static/firebase-config.js')
-                    .then(r => r.text())
-                    .then(configText => {
-                        eval(configText);
-                        
-                        const database = firebase.database();
-                        const chatRef = database.ref("chats/stream_" + STREAM_ID);
-                        
-                        chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
-                            const message = snapshot.val();
-                            addChatMessage(message.username, message.message);
-                        });
-                    })
-                    .catch(err => console.error('Firebase init failed:', err));
+                try {
+                    // Firebase 설정
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+                        authDomain: "urteam-live-commerce.firebaseapp.com",
+                        databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+                        projectId: "urteam-live-commerce",
+                        storageBucket: "urteam-live-commerce.firebasestorage.app",
+                        messagingSenderId: "1098157020294",
+                        appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
+                    };
+                    
+                    // Firebase 초기화
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                    }
+                    
+                    const database = firebase.database();
+                    const chatRef = database.ref("chats/stream_" + STREAM_ID);
+                    
+                    chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
+                        const message = snapshot.val();
+                        addChatMessage(message.username, message.message || message.text);
+                    });
+                    
+                    console.log('✅ Firebase initialized successfully');
+                } catch (err) {
+                    console.error('Firebase init failed:', err);
+                }
             }
             
             // Add chat message
