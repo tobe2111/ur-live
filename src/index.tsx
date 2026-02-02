@@ -15,6 +15,198 @@ app.use('/static/*', serveStatic({ root: './public' }));
 // API Routes
 // =================================
 
+// =================================
+// Authentication APIs
+// =================================
+
+// 세션 저장소 (메모리 기반 - 프로덕션에서는 KV나 D1 사용 권장)
+const sessions = new Map();
+
+// 세션 생성
+function createSession(userId: number, userType: 'admin' | 'seller', userData: any) {
+  const sessionToken = `${userType}_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  sessions.set(sessionToken, {
+    userId,
+    userType,
+    userData,
+    createdAt: Date.now()
+  });
+  return sessionToken;
+}
+
+// 관리자 로그인 API
+app.post('/api/auth/login', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { username, password, userType } = await c.req.json();
+    
+    if (!username || !password || !userType) {
+      return c.json({ success: false, error: '아이디와 비밀번호를 입력해주세요' }, 400);
+    }
+    
+    let user;
+    let table = userType === 'admin' ? 'admins' : 'sellers';
+    
+    // 사용자 조회
+    user = await DB.prepare(`SELECT * FROM ${table} WHERE username = ?`).bind(username).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // 간단한 비밀번호 검증 (실제로는 bcrypt 사용해야 함)
+    // 테스트용: admin123, seller123
+    const validPassword = (userType === 'admin' && password === 'admin123') || 
+                         (userType === 'seller' && password === 'seller123');
+    
+    if (!validPassword) {
+      return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // 활성 상태 확인
+    if (!user.is_active) {
+      return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
+    }
+    
+    // 판매자인 경우 승인 상태 확인
+    if (userType === 'seller' && user.status !== 'approved') {
+      return c.json({ success: false, error: '승인 대기 중인 계정입니다' }, 403);
+    }
+    
+    // 세션 생성
+    const sessionToken = createSession(user.id, userType, {
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      businessName: user.business_name,
+      role: user.role
+    });
+    
+    // 마지막 로그인 시간 업데이트
+    await DB.prepare(`UPDATE ${table} SET last_login_at = datetime('now') WHERE id = ?`).bind(user.id).run();
+    
+    return c.json({
+      success: true,
+      data: {
+        sessionToken,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+          type: userType,
+          businessName: user.business_name,
+          role: user.role
+        }
+      }
+    });
+    
+  } catch (err) {
+    console.error('Login error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 로그아웃 API
+app.post('/api/auth/logout', async (c) => {
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    
+    if (sessionToken) {
+      sessions.delete(sessionToken);
+    }
+    
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 세션 검증 API
+app.get('/api/auth/verify', async (c) => {
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    
+    if (!sessionToken) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다' }, 401);
+    }
+    
+    const session = sessions.get(sessionToken);
+    
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
+    }
+    
+    // 세션 만료 체크 (24시간)
+    if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
+      sessions.delete(sessionToken);
+      return c.json({ success: false, error: '세션이 만료되었습니다' }, 401);
+    }
+    
+    return c.json({
+      success: true,
+      data: {
+        user: {
+          id: session.userId,
+          type: session.userType,
+          ...session.userData
+        }
+      }
+    });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 세션 검증 헬퍼 함수
+async function verifyAdminSession(c: any) {
+  const sessionToken = c.req.header('X-Session-Token');
+  
+  if (!sessionToken) {
+    return { success: false, error: '인증 토큰이 없습니다' };
+  }
+  
+  const session = sessions.get(sessionToken);
+  
+  if (!session || session.userType !== 'admin') {
+    return { success: false, error: '관리자 권한이 필요합니다' };
+  }
+  
+  if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
+    sessions.delete(sessionToken);
+    return { success: false, error: '세션이 만료되었습니다' };
+  }
+  
+  return { success: true, adminId: session.userId, userData: session.userData };
+}
+
+async function verifySellerSession(c: any) {
+  const sessionToken = c.req.header('X-Session-Token');
+  
+  if (!sessionToken) {
+    return { success: false, error: '인증 토큰이 없습니다' };
+  }
+  
+  const session = sessions.get(sessionToken);
+  
+  if (!session || session.userType !== 'seller') {
+    return { success: false, error: '판매자 권한이 필요합니다' };
+  }
+  
+  if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
+    sessions.delete(sessionToken);
+    return { success: false, error: '세션이 만료되었습니다' };
+  }
+  
+  return { success: true, sellerId: session.userId, userData: session.userData };
+}
+
+// =================================
+// Live Stream API
+// =================================
+
 // Live Stream API
 app.get('/api/streams', async (c) => {
   const { DB } = c.env;
@@ -2461,9 +2653,10 @@ app.get('/admin/login', (c) => {
                 const password = document.getElementById('password').value;
                 
                 try {
-                    const response = await axios.post('/api/admin/login', {
+                    const response = await axios.post('/api/auth/login', {
                         username,
-                        password
+                        password,
+                        userType: 'admin'
                     });
                     
                     if (response.data.success) {
@@ -2667,9 +2860,10 @@ app.get('/seller/login', (c) => {
                 const password = document.getElementById('password').value;
                 
                 try {
-                    const response = await axios.post('/api/seller/login', {
+                    const response = await axios.post('/api/auth/login', {
                         username,
-                        password
+                        password,
+                        userType: 'seller'
                     });
                     
                     if (response.data.success) {
