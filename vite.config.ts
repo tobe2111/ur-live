@@ -11,9 +11,11 @@ export default defineConfig({
       entry: 'src/index.tsx'
     })
   ],
+  publicDir: 'public',
   build: {
     rollupOptions: {
       external: ['cloudflare:workers']
-    }
+    },
+    copyPublicDir: true
   }
 })

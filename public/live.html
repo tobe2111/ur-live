@@ -454,8 +454,8 @@
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://www.youtube.com/iframe_api"></script>
         <script>
-            // Get stream ID from window (set by redirect) or URL path
-            const STREAM_ID = window.STREAM_ID || window.location.pathname.split('/').pop() || '1';
+            // Get stream ID from URL hash (e.g., /live.html#1) or default to 1
+            const STREAM_ID = window.location.hash.substring(1) || '1';
             const API_BASE = '/api';
             let currentProduct = null;
             let likeCount = 0;
