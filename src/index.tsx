@@ -1263,7 +1263,7 @@ app.get('/live/:streamId', (c) => {
                     
                     try {
                         // Get Toss user info
-                        const userResponse = await axios.get(API_BASE + ");
+                        const userResponse = await axios.get(API_BASE + "/toss/user-info");
                         const userId = userResponse.data.data?.userId || 'test_user_001';
                         
                         // Add to cart
