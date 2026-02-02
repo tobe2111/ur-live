@@ -1227,7 +1227,7 @@ app.get('/live/:streamId', (c) => {
                 const container = document.getElementById('chat-container');
                 const messageEl = document.createElement('div');
                 messageEl.className = 'chat-message';
-                messageEl.innerHTML = "<span class="chat-username">" + username + "</span>" + message;
+                messageEl.innerHTML = "<span class='chat-username'>" + username + "</span>" + message;
                 
                 container.appendChild(messageEl);
                 
