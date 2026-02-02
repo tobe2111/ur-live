@@ -62,10 +62,16 @@ app.post('/api/auth/login', cors(), async (c) => {
       return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
     
-    // 간단한 비밀번호 검증 (실제로는 bcrypt 사용해야 함)
-    // 테스트용: admin123, seller123
-    const validPassword = (userType === 'admin' && password === 'admin123') || 
-                         (userType === 'seller' && password === 'seller123');
+    // 비밀번호 검증
+    // 기본 테스트 계정 (admin, seller1, seller2)
+    const isDefaultAccount = (userType === 'admin' && username === 'admin' && password === 'admin123') ||
+                            (userType === 'seller' && username === 'seller1' && password === 'seller123') ||
+                            (userType === 'seller' && username === 'seller2' && password === 'seller123');
+    
+    // 관리자가 생성한 계정 (password_hash에 비밀번호가 포함됨)
+    const isCustomAccount = user.password_hash && user.password_hash.includes(`placeholder_hash_for_${password}`);
+    
+    const validPassword = isDefaultAccount || isCustomAccount;
     
     if (!validPassword) {
       return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
@@ -2411,6 +2417,211 @@ app.get('/api/admin/orders', async (c) => {
     `).all();
 
     return c.json({ success: true, data: orders.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// Seller Management APIs (Admin only)
+// =================================
+
+// Get all sellers
+app.get('/api/admin/sellers', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellers = await DB.prepare(`
+      SELECT id, username, name, email, phone, business_name, business_number, 
+             status, is_active, last_login_at, created_at
+      FROM sellers
+      ORDER BY created_at DESC
+    `).all();
+
+    return c.json({ success: true, data: sellers.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Create new seller
+app.post('/api/admin/sellers', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { username, password, name, email, phone, business_name, business_number } = await c.req.json();
+
+    // 필수 필드 검증
+    if (!username || !password || !name || !email || !business_name) {
+      return c.json({ success: false, error: '필수 항목을 모두 입력해주세요' }, 400);
+    }
+
+    // 아이디 중복 체크
+    const existingUser = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(username).first();
+    
+    if (existingUser) {
+      return c.json({ success: false, error: '이미 존재하는 아이디입니다' }, 400);
+    }
+
+    // 이메일 중복 체크
+    const existingEmail = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first();
+    
+    if (existingEmail) {
+      return c.json({ success: false, error: '이미 존재하는 이메일입니다' }, 400);
+    }
+
+    // 비밀번호 해시 (실제로는 bcrypt 사용 권장, 여기서는 간단히 처리)
+    const password_hash = `$2a$10$placeholder_hash_for_${password}`;
+
+    // 판매자 생성 (관리자가 생성하면 자동 승인)
+    const result = await DB.prepare(`
+      INSERT INTO sellers (username, password_hash, name, email, phone, business_name, business_number, 
+                          status, is_active, approved_by, approved_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', 1, ?, datetime('now'))
+    `).bind(username, password_hash, name, email, phone || null, business_name, business_number || null, auth.adminId).run();
+
+    return c.json({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        username,
+        name,
+        email,
+        business_name
+      }
+    });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update seller
+app.put('/api/admin/sellers/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+    const { name, email, phone, business_name, business_number, is_active, status } = await c.req.json();
+
+    // 판매자 존재 확인
+    const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 업데이트
+    await DB.prepare(`
+      UPDATE sellers 
+      SET name = ?, email = ?, phone = ?, business_name = ?, business_number = ?, 
+          is_active = ?, status = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(name, email, phone || null, business_name, business_number || null, is_active, status, sellerId).run();
+
+    return c.json({ success: true });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete seller (비활성화)
+app.delete('/api/admin/sellers/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+
+    // 판매자 존재 확인
+    const seller = await DB.prepare('SELECT id, username FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 실제 삭제 대신 비활성화 (데이터 보존)
+    await DB.prepare(`
+      UPDATE sellers 
+      SET is_active = 0, status = 'suspended', updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(sellerId).run();
+
+    // 해당 판매자의 모든 세션 삭제 (로그아웃 처리)
+    await DB.prepare('DELETE FROM admin_sessions WHERE seller_id = ?').bind(sellerId).run();
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.username}'의 로그인 권한이 삭제되었습니다` 
+    });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Reset seller password (관리자가 비밀번호 재설정)
+app.post('/api/admin/sellers/:id/reset-password', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+    const { new_password } = await c.req.json();
+
+    if (!new_password || new_password.length < 6) {
+      return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다' }, 400);
+    }
+
+    // 판매자 존재 확인
+    const seller = await DB.prepare('SELECT id, username FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 비밀번호 해시
+    const password_hash = `$2a$10$placeholder_hash_for_${new_password}`;
+
+    // 비밀번호 업데이트
+    await DB.prepare(`
+      UPDATE sellers 
+      SET password_hash = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(password_hash, sellerId).run();
+
+    // 해당 판매자의 모든 세션 삭제 (재로그인 필요)
+    await DB.prepare('DELETE FROM admin_sessions WHERE seller_id = ?').bind(sellerId).run();
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.username}'의 비밀번호가 재설정되었습니다` 
+    });
+
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
