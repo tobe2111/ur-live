@@ -2396,6 +2396,219 @@ app.get('/api/seller/stats', async (c) => {
 });
 
 // =================================
+// Order Management API
+// =================================
+
+// Get user's orders
+app.get('/api/orders/user/:userId', async (c) => {
+  const { DB } = c.env;
+  const userId = c.req.param('userId');
+
+  try {
+    // Get orders
+    const orders = await DB.prepare(
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
+    ).bind(userId).all();
+
+    // Get order items for each order
+    const ordersWithItems = await Promise.all(
+      orders.results.map(async (order: any) => {
+        const items = await DB.prepare(`
+          SELECT oi.*, p.name as product_name, p.image_url
+          FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = ?
+        `).bind(order.id).all();
+
+        return {
+          ...order,
+          items: items.results
+        };
+      })
+    );
+
+    return c.json({ success: true, data: ordersWithItems });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get order by order number
+app.get('/api/orders/:orderNo', async (c) => {
+  const { DB } = c.env;
+  const orderNo = c.req.param('orderNo');
+
+  try {
+    const order = await DB.prepare(
+      'SELECT * FROM orders WHERE order_no = ?'
+    ).bind(orderNo).first();
+
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    // Get order items
+    const items = await DB.prepare(`
+      SELECT oi.*, p.name as product_name, p.image_url
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?
+    `).bind(order.id).all();
+
+    return c.json({
+      success: true,
+      data: {
+        ...order,
+        items: items.results
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get seller's orders
+app.get('/api/seller/orders', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    // Get orders that contain this seller's products
+    const orders = await DB.prepare(`
+      SELECT DISTINCT o.*, u.name as user_name
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE oi.seller_id = ?
+      ORDER BY o.created_at DESC
+    `).bind(auth.sellerId).all();
+
+    // Get order items for each order (only this seller's items)
+    const ordersWithItems = await Promise.all(
+      orders.results.map(async (order: any) => {
+        const items = await DB.prepare(`
+          SELECT oi.*, p.name as product_name, p.image_url
+          FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = ? AND oi.seller_id = ?
+        `).bind(order.id, auth.sellerId).all();
+
+        return {
+          ...order,
+          items: items.results
+        };
+      })
+    );
+
+    return c.json({ success: true, data: ordersWithItems });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update order status (Seller only)
+app.patch('/api/seller/orders/:orderNo/status', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const orderNo = c.req.param('orderNo');
+    const { status } = await c.req.json();
+
+    // Validate status
+    const validStatuses = ['PAY_COMPLETE', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: 'Invalid status' }, 400);
+    }
+
+    // Verify this order contains seller's products
+    const order = await DB.prepare('SELECT id FROM orders WHERE order_no = ?').bind(orderNo).first();
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    const sellerItem = await DB.prepare(
+      'SELECT id FROM order_items WHERE order_id = ? AND seller_id = ?'
+    ).bind(order.id, auth.sellerId).first();
+
+    if (!sellerItem) {
+      return c.json({ success: false, error: 'Unauthorized' }, 403);
+    }
+
+    // Update order status
+    await DB.prepare(
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
+    ).bind(status, orderNo).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Request refund (Customer)
+app.post('/api/orders/:orderNo/refund', async (c) => {
+  const { DB } = c.env;
+  const orderNo = c.req.param('orderNo');
+  const { reason } = await c.req.json();
+
+  try {
+    const order = await DB.prepare('SELECT * FROM orders WHERE order_no = ?').bind(orderNo).first();
+
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    // Check if order can be refunded
+    if (!['PAY_COMPLETE', 'PREPARING'].includes(order.status)) {
+      return c.json({ success: false, error: 'This order cannot be refunded' }, 400);
+    }
+
+    // Update status to cancelled/refund requested
+    await DB.prepare(
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
+    ).bind('REFUND_REQUESTED', orderNo).run();
+
+    // TODO: Call Toss Pay refund API
+
+    return c.json({ success: true, message: 'Refund request submitted' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get all orders (Admin only)
+app.get('/api/admin/orders', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const orders = await DB.prepare(`
+      SELECT o.*, u.name as user_name, u.email as user_email
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      ORDER BY o.created_at DESC
+    `).all();
+
+    return c.json({ success: true, data: orders.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Toss Bridge API
 // =================================
 
@@ -3450,6 +3663,244 @@ app.get('/seller', (c) => {
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/seller.js?v=${Date.now()}"></script>
+    </body>
+    </html>
+  `);
+});
+
+// 고객 주문 목록 페이지
+app.get('/my-orders', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>내 주문 내역 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            :root {
+                --toss-blue: #3182F6;
+                --toss-gray-900: #191F28;
+                --toss-gray-600: #6B7684;
+                --toss-gray-200: #E5E8EB;
+                --toss-gray-100: #F2F4F6;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+                background: var(--toss-gray-100);
+            }
+            
+            .order-card {
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .status-badge {
+                display: inline-block;
+                padding: 6px 12px;
+                border-radius: 12px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            
+            .status-PAY_COMPLETE { background: #E3F2FD; color: #1976D2; }
+            .status-PREPARING { background: #FFF3E0; color: #F57C00; }
+            .status-SHIPPING { background: #E8F5E9; color: #388E3C; }
+            .status-DELIVERED { background: var(--toss-gray-200); color: var(--toss-gray-600); }
+            .status-CANCELLED { background: #FFEBEE; color: #D32F2F; }
+            
+            .product-item {
+                display: flex;
+                gap: 16px;
+                padding: 16px 0;
+                border-bottom: 1px solid var(--toss-gray-200);
+            }
+            
+            .product-item:last-child {
+                border-bottom: none;
+            }
+            
+            .product-image {
+                width: 80px;
+                height: 80px;
+                border-radius: 8px;
+                object-fit: cover;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                border: none;
+                font-size: 14px;
+            }
+            
+            .btn-primary {
+                background: var(--toss-blue);
+                color: white;
+            }
+            
+            .btn-secondary {
+                background: var(--toss-gray-200);
+                color: var(--toss-gray-900);
+            }
+        </style>
+    </head>
+    <body>
+        <div style="max-width: 800px; margin: 0 auto; padding: 32px 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px;">
+                <h1 style="font-size: 24px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                    <i class="fas fa-receipt"></i> 내 주문 내역
+                </h1>
+                <button onclick="goBack()" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 뒤로
+                </button>
+            </div>
+            
+            <div id="ordersList">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--toss-gray-600);"></i>
+                    <p style="margin-top: 16px; color: var(--toss-gray-600);">로딩 중...</p>
+                </div>
+            </div>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const API_BASE = '/api';
+            const userId = 1; // TODO: Get from session/Toss Bridge
+            
+            function goBack() {
+                window.history.back();
+            }
+            
+            function formatPrice(price) {
+                return new Intl.NumberFormat('ko-KR').format(price);
+            }
+            
+            function formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            
+            function getStatusText(status) {
+                const statusMap = {
+                    'PAY_COMPLETE': '결제완료',
+                    'PREPARING': '상품준비중',
+                    'SHIPPING': '배송중',
+                    'DELIVERED': '배송완료',
+                    'CANCELLED': '취소/환불'
+                };
+                return statusMap[status] || status;
+            }
+            
+            function viewOrderDetail(orderNo) {
+                window.location.href = \`/orders/\${orderNo}\`;
+            }
+            
+            async function loadOrders() {
+                try {
+                    const response = await axios.get(\`\${API_BASE}/orders/user/\${userId}\`);
+                    
+                    if (response.data.success) {
+                        renderOrders(response.data.data);
+                    }
+                } catch (error) {
+                    console.error('Failed to load orders:', error);
+                    document.getElementById('ordersList').innerHTML = \`
+                        <div style="text-align: center; padding: 40px; color: #ef4444;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                            <p style="margin-top: 16px;">주문 내역을 불러올 수 없습니다.</p>
+                        </div>
+                    \`;
+                }
+            }
+            
+            function renderOrders(orders) {
+                const container = document.getElementById('ordersList');
+                
+                if (orders.length === 0) {
+                    container.innerHTML = \`
+                        <div style="text-align: center; padding: 60px;">
+                            <i class="fas fa-shopping-bag" style="font-size: 48px; color: var(--toss-gray-600); opacity: 0.5;"></i>
+                            <p style="margin-top: 16px; font-size: 16px; color: var(--toss-gray-900);">주문 내역이 없습니다</p>
+                            <p style="margin-top: 8px; font-size: 14px; color: var(--toss-gray-600);">라이브 방송에서 상품을 구매해보세요!</p>
+                            <button onclick="window.location.href='/live/1'" class="btn btn-primary" style="margin-top: 24px;">
+                                라이브 보러 가기
+                            </button>
+                        </div>
+                    \`;
+                    return;
+                }
+                
+                container.innerHTML = orders.map(order => \`
+                    <div class="order-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                            <div>
+                                <span class="status-badge status-\${order.status}">
+                                    \${getStatusText(order.status)}
+                                </span>
+                                <span style="margin-left: 12px; font-size: 14px; color: var(--toss-gray-600);">
+                                    \${formatDate(order.created_at)}
+                                </span>
+                            </div>
+                            <span style="font-size: 14px; color: var(--toss-gray-600);">
+                                주문번호: \${order.order_no}
+                            </span>
+                        </div>
+                        
+                        <div>
+                            \${order.items.map(item => \`
+                                <div class="product-item">
+                                    <img src="\${item.image_url || 'https://picsum.photos/80/80?random=' + item.product_id}" 
+                                         alt="\${item.product_name}" 
+                                         class="product-image">
+                                    <div style="flex: 1;">
+                                        <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 4px;">
+                                            \${item.product_name || '상품명'}
+                                        </h3>
+                                        <p style="font-size: 14px; color: var(--toss-gray-600); margin-bottom: 8px;">
+                                            수량: \${item.quantity}개
+                                        </p>
+                                        <p style="font-size: 16px; font-weight: 700; color: var(--toss-gray-900);">
+                                            \${formatPrice(item.price * item.quantity)}원
+                                        </p>
+                                    </div>
+                                </div>
+                            \`).join('')}
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--toss-gray-200);">
+                            <div>
+                                <span style="font-size: 14px; color: var(--toss-gray-600);">총 결제금액</span>
+                                <strong style="font-size: 20px; font-weight: 700; color: var(--toss-blue); margin-left: 12px;">
+                                    \${formatPrice(order.total_amount)}원
+                                </strong>
+                            </div>
+                            <button onclick="viewOrderDetail('\${order.order_no}')" class="btn btn-primary">
+                                상세보기
+                            </button>
+                        </div>
+                    </div>
+                \`).join('');
+            }
+            
+            // Initialize
+            loadOrders();
+        </script>
     </body>
     </html>
   `);
