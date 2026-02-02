@@ -516,6 +516,10 @@ app.get('/live/:streamId', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <link href="/static/style.css" rel="stylesheet">
+        
+        <!-- Firebase SDK -->
+        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
         <style>
           :root {
             --toss-blue: #3182F6;
@@ -634,6 +638,118 @@ app.get('/live/:streamId', (c) => {
           .toast-message.show {
             opacity: 1;
           }
+          /* 실시간 채팅 영역 */
+          .chat-container {
+            position: fixed;
+            left: 16px;
+            bottom: 140px;
+            width: calc(100% - 32px);
+            max-width: 400px;
+            height: 50vh;
+            max-height: 500px;
+            z-index: 100;
+            pointer-events: none;
+          }
+          .chat-messages {
+            height: 100%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            /* 상단 그라디언트 마스크 - 자연스러운 페이드 아웃 */
+            -webkit-mask-image: linear-gradient(to top, black 70%, transparent 100%);
+            mask-image: linear-gradient(to top, black 70%, transparent 100%);
+          }
+          /* 스크롤바 숨기기 */
+          .chat-messages::-webkit-scrollbar {
+            display: none;
+          }
+          .chat-messages {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .chat-bubble {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+            max-width: 80%;
+            word-wrap: break-word;
+            pointer-events: auto;
+            /* 텍스트 그림자 - 가독성 향상 */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            /* 슬라이드인 애니메이션 */
+            animation: slideInLeft 0.3s ease-out;
+          }
+          @keyframes slideInLeft {
+            from {
+              opacity: 0;
+              transform: translateX(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+          .chat-bubble .username {
+            font-weight: 700;
+            color: #3182F6;
+            margin-right: 6px;
+          }
+          .chat-bubble.purchase {
+            background: rgba(49, 130, 246, 0.7);
+            font-weight: 600;
+          }
+          /* 채팅 입력 영역 */
+          .chat-input-area {
+            position: fixed;
+            left: 16px;
+            right: 16px;
+            bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+            z-index: 150;
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+          }
+          .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 24px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #191F28;
+            outline: none;
+            transition: all 0.2s;
+          }
+          .chat-input:focus {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          }
+          .chat-send-button {
+            background: #3182F6;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .chat-send-button:hover {
+            background: #2563EB;
+            transform: scale(1.05);
+          }
+          .chat-send-button:active {
+            transform: scale(0.95);
+          }
           /* 모바일 최적화 */
           @media (max-width: 768px) {
             .product-sheet {
@@ -643,6 +759,9 @@ app.get('/live/:streamId', (c) => {
               width: 100vw;
               height: 56.25vw; /* 16:9 → 모바일은 세로 전체 */
               min-height: 100vh;
+            }
+            .chat-container {
+              max-width: none;
             }
           }
         </style>
@@ -678,6 +797,27 @@ app.get('/live/:streamId', (c) => {
             </div>
         </div>
 
+        <!-- 실시간 채팅 영역 -->
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages">
+                <!-- 채팅 메시지가 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+
+        <!-- 채팅 입력 영역 -->
+        <div class="chat-input-area">
+            <input 
+                type="text" 
+                id="chat-input" 
+                class="chat-input" 
+                placeholder="메시지를 입력하세요" 
+                maxlength="200"
+            />
+            <button id="chat-send-button" class="chat-send-button">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        
         <!-- 하단 컨트롤 바 -->
         <div class="bottom-controls">
             <button id="my-orders-button" class="my-orders-button">
@@ -697,6 +837,7 @@ app.get('/live/:streamId', (c) => {
         <script>
           const STREAM_ID = '${streamId}';
         </script>
+        <script src="/static/firebase-config.js"></script>
         <script src="/static/live.js"></script>
     </body>
     </html>

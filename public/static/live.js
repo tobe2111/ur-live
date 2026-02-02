@@ -368,4 +368,183 @@
       }, 3000);
     }
   }
+
+  // ===================================
+  // 실시간 채팅 기능 (Firebase RTDB)
+  // ===================================
+
+  let chatUnsubscribe = null;
+  let currentUsername = '토스 사용자'; // 기본값
+
+  // Firebase 초기화 및 채팅 시작
+  function initializeChat() {
+    console.log('🔥 Firebase 채팅 초기화 시작...');
+    
+    // Firebase 초기화
+    if (window.FirebaseChat && window.FirebaseChat.initialize()) {
+      console.log('✅ Firebase 초기화 완료');
+      
+      // 토스 브릿지에서 유저 정보 가져오기 (향후 구현)
+      getTossUserInfo().then(userInfo => {
+        currentUsername = userInfo.name || '토스 사용자';
+        console.log(`👤 유저 이름: ${currentUsername}`);
+      });
+      
+      // 메시지 수신 시작
+      chatUnsubscribe = window.FirebaseChat.listenToMessages(
+        state.streamId,
+        (message) => {
+          addChatMessage(message.username, message.text, false);
+        }
+      );
+      
+      // 채팅 입력 이벤트 바인딩
+      bindChatEvents();
+      
+      // 오래된 메시지 정리 (5분마다)
+      setInterval(() => {
+        window.FirebaseChat.cleanupOldMessages(state.streamId);
+      }, 5 * 60 * 1000);
+      
+      console.log('✅ 채팅 기능 활성화');
+    } else {
+      console.warn('⚠️ Firebase 초기화 실패 - 채팅 비활성화');
+    }
+  }
+
+  // 토스 브릿지에서 유저 정보 가져오기
+  async function getTossUserInfo() {
+    try {
+      // TODO: 실제 토스 브릿지 API 호출
+      // 예시:
+      // const response = await fetch('/api/toss/user-info');
+      // const data = await response.json();
+      // return data;
+      
+      // 임시: 더미 데이터 반환
+      return {
+        name: '토스 사용자',
+        userId: 'toss_user_001'
+      };
+    } catch (error) {
+      console.error('토스 유저 정보 가져오기 실패:', error);
+      return {
+        name: '토스 사용자',
+        userId: 'anonymous'
+      };
+    }
+  }
+
+  // 채팅 이벤트 바인딩
+  function bindChatEvents() {
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('chat-send-button');
+    
+    if (!chatInput || !sendButton) return;
+    
+    // 전송 버튼 클릭
+    sendButton.addEventListener('click', () => {
+      sendChatMessage();
+    });
+    
+    // 엔터 키 입력
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendChatMessage();
+      }
+    });
+  }
+
+  // 채팅 메시지 전송
+  function sendChatMessage() {
+    const chatInput = document.getElementById('chat-input');
+    if (!chatInput) return;
+    
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    // Firebase로 메시지 전송
+    if (window.FirebaseChat) {
+      window.FirebaseChat.sendMessage(
+        state.streamId,
+        currentUsername,
+        message
+      );
+      
+      // 입력창 초기화
+      chatInput.value = '';
+      
+      console.log(`💬 메시지 전송: ${message}`);
+    }
+  }
+
+  // 채팅 메시지 UI 추가
+  function addChatMessage(username, text, isPurchase = false) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+    
+    // 메시지 버블 생성
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble${isPurchase ? ' purchase' : ''}`;
+    
+    // 유저명과 메시지
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'username';
+    usernameSpan.textContent = username;
+    
+    const textNode = document.createTextNode(text);
+    
+    bubble.appendChild(usernameSpan);
+    bubble.appendChild(textNode);
+    
+    // 채팅창에 추가
+    chatMessages.appendChild(bubble);
+    
+    // 자동 스크롤 (하단으로)
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // 메시지가 50개를 초과하면 오래된 메시지 제거
+    const messages = chatMessages.querySelectorAll('.chat-bubble');
+    if (messages.length > 50) {
+      messages[0].remove();
+    }
+  }
+
+  // 구매 메시지 자동 전송 (기존 quickBuy에서 호출)
+  function sendPurchaseMessage(productName) {
+    if (window.FirebaseChat) {
+      const message = `${productName} 구매 감사합니다♡`;
+      window.FirebaseChat.sendMessage(
+        state.streamId,
+        currentUsername,
+        message
+      );
+    }
+  }
+
+  // 기존 quickBuy 함수 수정
+  const originalQuickBuy = window.quickBuy;
+  window.quickBuy = async function() {
+    // 기존 구매 로직 실행
+    const result = await originalQuickBuy.call(this);
+    
+    // 구매 성공 시 채팅 메시지 전송
+    if (result && state.currentProduct) {
+      sendPurchaseMessage(state.currentProduct.name);
+    }
+    
+    return result;
+  };
+
+  // 앱 초기화 시 채팅도 초기화
+  const originalInitApp = initApp;
+  function initApp() {
+    originalInitApp();
+    
+    // Firebase 채팅 초기화
+    setTimeout(() => {
+      initializeChat();
+    }, 1000);
+  }
+
 })();
