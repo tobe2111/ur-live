@@ -959,6 +959,120 @@ app.get('/live/:streamId', (c) => {
   `);
 });
 
+// ==================== 토스페이 결제 API ====================
+
+// 토스페이 결제 생성
+app.post('/api/tosspay/create-payment', async (c) => {
+  const TOSSPAY_BASE_URL = 'https://pay-apps-in-toss-api.toss.im';
+  
+  try {
+    const body = await c.req.json();
+    const { userKey, orderNo, productDesc, amount, amountTaxFree, isTestPayment } = body;
+
+    if (!userKey || !orderNo || !productDesc || typeof amount !== 'number') {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Missing required parameters',
+      }, 400);
+    }
+
+    // 토스페이 API 호출
+    const response = await fetch(`${TOSSPAY_BASE_URL}/api-partner/v1/apps-in-toss/pay/make-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-toss-user-key': userKey,
+      },
+      body: JSON.stringify({
+        orderNo,
+        productDesc,
+        amount,
+        amountTaxFree: amountTaxFree || 0,
+        isTestPayment: isTestPayment !== false, // 기본값 true (샌드박스)
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.resultType === 'SUCCESS') {
+      return c.json<ApiResponse<{ payToken: string }>>({
+        success: true,
+        data: {
+          payToken: data.success.payToken,
+        },
+      });
+    } else {
+      return c.json<ApiResponse>({
+        success: false,
+        error: data.fail?.msg || 'Payment creation failed',
+      }, 400);
+    }
+  } catch (err) {
+    console.error('Error creating payment:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 토스페이 결제 실행
+app.post('/api/tosspay/execute-payment', async (c) => {
+  const TOSSPAY_BASE_URL = 'https://pay-apps-in-toss-api.toss.im';
+  const { DB } = c.env;
+
+  try {
+    const body = await c.req.json();
+    const { userKey, payToken, orderNo, isTestPayment } = body;
+
+    if (!userKey || !payToken) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Missing required parameters',
+      }, 400);
+    }
+
+    // 토스페이 승인 API 호출
+    const response = await fetch(`${TOSSPAY_BASE_URL}/api-partner/v1/apps-in-toss/pay/execute-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-toss-user-key': userKey,
+      },
+      body: JSON.stringify({
+        payToken,
+        orderNo,
+        isTestPayment: isTestPayment !== false,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.resultType === 'SUCCESS') {
+      const paymentData = data.success;
+
+      // 주문 정보 DB에 저장 (orders 테이블 필요)
+      // TODO: 주문 정보 저장 로직 추가
+
+      return c.json<ApiResponse<any>>({
+        success: true,
+        data: paymentData,
+      });
+    } else {
+      return c.json<ApiResponse>({
+        success: false,
+        error: data.fail?.msg || 'Payment execution failed',
+      }, 400);
+    }
+  } catch (err) {
+    console.error('Error executing payment:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // 장바구니 페이지
 app.get('/cart', (c) => {
   return c.html(`
