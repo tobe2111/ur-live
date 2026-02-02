@@ -404,10 +404,10 @@
       // 채팅 입력 이벤트 바인딩
       bindChatEvents();
       
-      // 오래된 메시지 정리 (5분마다)
+      // 오래된 메시지 정리 (1분마다 5개만 유지)
       setInterval(() => {
-        window.FirebaseChat.cleanupOldMessages(state.streamId);
-      }, 5 * 60 * 1000);
+        window.FirebaseChat.cleanupOldMessages(state.streamId, 5);
+      }, 1 * 60 * 1000); // 1분마다 실행
       
       console.log('✅ 채팅 기능 활성화');
     } else {
@@ -506,7 +506,7 @@
     usernameSpan.className = 'username';
     usernameSpan.textContent = username;
     
-    const textNode = document.createTextNode(text);
+    const textNode = document.createTextNode(': ' + text);
     
     bubble.appendChild(usernameSpan);
     bubble.appendChild(textNode);
@@ -517,10 +517,18 @@
     // 자동 스크롤 (하단으로)
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
-    // 메시지가 50개를 초과하면 오래된 메시지 제거
+    // UI에서 메시지가 5개를 초과하면 오래된 메시지 제거
     const messages = chatMessages.querySelectorAll('.chat-bubble');
-    if (messages.length > 50) {
-      messages[0].remove();
+    if (messages.length > 5) {
+      // 가장 오래된 메시지부터 제거
+      for (let i = 0; i < messages.length - 5; i++) {
+        messages[i].remove();
+      }
+    }
+    
+    // Firebase에서도 5개 초과 시 자동 정리
+    if (messages.length >= 5 && window.FirebaseChat) {
+      window.FirebaseChat.cleanupOldMessages(state.streamId, 5);
     }
   }
 

@@ -636,28 +636,29 @@ app.get('/live/:streamId', (c) => {
           .toast-message.show {
             opacity: 1;
           }
-          /* 실시간 채팅 영역 */
+          /* 실시간 채팅 영역 - 토스 디자인 적용 */
           .chat-container {
             position: fixed;
             left: 16px;
-            bottom: 140px;
-            width: calc(100% - 32px);
+            bottom: 140px; /* 입력창(44px) + 버튼바(60px) + 여유(36px) */
+            width: 70%; /* 화면 왼쪽에 배치 */
             max-width: 400px;
-            height: 50vh;
-            max-height: 500px;
+            max-height: 180px; /* 약 5줄 정도 */
             z-index: 100;
             pointer-events: none;
           }
           .chat-messages {
             height: 100%;
             overflow-y: auto;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 12px;
+            justify-content: flex-end; /* 채팅이 아래서부터 쌓이도록 */
+            gap: 6px;
+            padding: 0;
             /* 상단 그라디언트 마스크 - 자연스러운 페이드 아웃 */
-            -webkit-mask-image: linear-gradient(to top, black 70%, transparent 100%);
-            mask-image: linear-gradient(to top, black 70%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to top, black 85%, transparent 100%);
+            mask-image: linear-gradient(to top, black 85%, transparent 100%);
           }
           /* 스크롤바 숨기기 */
           .chat-messages::-webkit-scrollbar {
@@ -668,25 +669,29 @@ app.get('/live/:streamId', (c) => {
             scrollbar-width: none;
           }
           .chat-bubble {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            color: white;
-            padding: 10px 14px;
-            border-radius: 20px;
-            font-size: 14px;
-            line-height: 1.4;
-            max-width: 80%;
+            background: rgba(25, 31, 40, 0.85); /* Toss Gray 900 with transparency */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: #FFFFFF;
+            padding: 8px 12px;
+            border-radius: 16px; /* Toss 디자인 radius */
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 85%;
             word-wrap: break-word;
             pointer-events: auto;
             /* 텍스트 그림자 - 가독성 향상 */
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+            /* Toss 스타일 그림자 */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             /* 슬라이드인 애니메이션 */
-            animation: slideInLeft 0.3s ease-out;
+            animation: slideInLeft 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           }
           @keyframes slideInLeft {
             from {
               opacity: 0;
-              transform: translateX(-20px);
+              transform: translateX(-16px);
             }
             to {
               opacity: 1;
@@ -694,15 +699,17 @@ app.get('/live/:streamId', (c) => {
             }
           }
           .chat-bubble .username {
-            font-weight: 700;
-            color: #3182F6;
-            margin-right: 6px;
+            font-weight: 600; /* Toss Medium */
+            color: #3182F6; /* Toss Blue 500 */
+            margin-right: 4px;
+            font-size: 13px;
           }
           .chat-bubble.purchase {
-            background: rgba(49, 130, 246, 0.7);
+            background: rgba(49, 130, 246, 0.9); /* Toss Blue with transparency */
             font-weight: 600;
+            box-shadow: 0 2px 12px rgba(49, 130, 246, 0.3);
           }
-          /* 채팅 입력 영역 */
+          /* 채팅 입력 영역 - 토스 디자인 */
           .chat-input-area {
             position: fixed;
             left: 16px;
@@ -715,38 +722,46 @@ app.get('/live/:streamId', (c) => {
           }
           .chat-input {
             flex: 1;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(242, 244, 246, 0.8); /* Toss Gray 100 */
+            border-radius: 12px; /* Toss 디자인 radius */
             padding: 12px 16px;
             font-size: 14px;
-            color: #191F28;
+            color: #191F28; /* Toss Gray 900 */
             outline: none;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           }
           .chat-input:focus {
-            background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            background: #FFFFFF;
+            border-color: #3182F6; /* Toss Blue 500 */
+            box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1);
+          }
+          .chat-input::placeholder {
+            color: #B0B8C1; /* Toss Gray 500 */
           }
           .chat-send-button {
-            background: #3182F6;
+            background: #3182F6; /* Toss Blue 500 */
             color: white;
             border: none;
-            border-radius: 50%;
+            border-radius: 12px; /* Toss 디자인 radius */
             width: 44px;
             height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(49, 130, 246, 0.25);
           }
           .chat-send-button:hover {
-            background: #2563EB;
-            transform: scale(1.05);
+            background: #1B64DA; /* Toss Blue 600 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(49, 130, 246, 0.35);
           }
           .chat-send-button:active {
-            transform: scale(0.95);
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(49, 130, 246, 0.3);
           }
           /* 모바일 최적화 */
           @media (max-width: 768px) {

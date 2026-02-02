@@ -71,7 +71,7 @@ function sendMessage(streamId, username, text) {
   });
 }
 
-// 메시지 수신 (최신 50개만)
+// 메시지 수신 (최신 5개만)
 function listenToMessages(streamId, callback) {
   if (!database) {
     console.error('Firebase가 초기화되지 않았습니다.');
@@ -79,7 +79,7 @@ function listenToMessages(streamId, callback) {
   }
 
   const chatRef = database.ref(`chats/stream${streamId}`);
-  const recentMessagesQuery = chatRef.limitToLast(50);
+  const recentMessagesQuery = chatRef.limitToLast(5); // 최신 5개만
 
   // 새 메시지 추가 이벤트
   recentMessagesQuery.on('child_added', (snapshot) => {
@@ -98,8 +98,8 @@ function listenToMessages(streamId, callback) {
   };
 }
 
-// 오래된 메시지 자동 삭제 (최신 50개만 유지)
-function cleanupOldMessages(streamId) {
+// 오래된 메시지 자동 삭제 (지정된 개수만 유지)
+function cleanupOldMessages(streamId, maxMessages = 5) {
   if (!database) return;
 
   const chatRef = database.ref(`chats/stream${streamId}`);
@@ -113,18 +113,18 @@ function cleanupOldMessages(streamId) {
       });
     });
 
-    // 메시지가 50개 초과하면 오래된 것 삭제
-    if (messages.length > 50) {
+    // 메시지가 maxMessages 개수 초과하면 오래된 것 삭제
+    if (messages.length > maxMessages) {
       // 타임스탬프 기준 정렬
       messages.sort((a, b) => a.timestamp - b.timestamp);
       
-      // 가장 오래된 것부터 삭제 (50개만 남기기)
-      const toDelete = messages.slice(0, messages.length - 50);
+      // 가장 오래된 것부터 삭제 (maxMessages개만 남기기)
+      const toDelete = messages.slice(0, messages.length - maxMessages);
       toDelete.forEach((msg) => {
         chatRef.child(msg.key).remove();
       });
       
-      console.log(`🗑️ 오래된 메시지 ${toDelete.length}개 삭제`);
+      console.log(`🗑️ 오래된 메시지 ${toDelete.length}개 삭제 (${maxMessages}개만 유지)`);
     }
   });
 }
