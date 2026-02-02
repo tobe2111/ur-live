@@ -1328,12 +1328,7 @@ app.get('/live/:streamId', (c) => {
             
             // Pulse animation for LIVE badge
             const style = document.createElement('style');
-            style.textContent = "
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.5; }
-                }
-            ";
+            style.textContent = '@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }';
             document.head.appendChild(style);
         </script>
     </body>
