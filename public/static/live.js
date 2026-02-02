@@ -677,9 +677,6 @@
   // 실시간 채팅 기능 (Firebase RTDB)
   // ===================================
 
-  let chatUnsubscribe = null;
-  let currentUsername = '토스 사용자'; // 기본값
-
   // Firebase 초기화 및 채팅 시작
   function initializeChat() {
     console.log('🔥 Firebase 채팅 초기화 시작...');
