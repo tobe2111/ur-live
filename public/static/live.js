@@ -16,6 +16,8 @@
   };
 
   let appInitialized = false;
+  let currentUsername = '게스트'; // 초기값 설정
+  let chatUnsubscribe = null; // 초기값 설정
 
   // YouTube Player API 로드 완료 시 호출
   window.onYouTubeIframeAPIReady = function() {
