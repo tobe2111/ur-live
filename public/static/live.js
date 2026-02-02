@@ -305,24 +305,25 @@
 
     const { product } = state.currentProduct;
     
-    console.log('🛒 구매 시도:', {
+    const requestData = {
       userId: state.userId,
       productId: product.id,
-      productName: product.name
-    });
+      optionId: null,
+      quantity: 1,
+      priceSnapshot: product.price,
+      liveStreamId: state.streamId,
+    };
+    
+    console.log('🛒 구매 시도:', requestData);
+    console.log('📍 API URL:', `${API_BASE}/cart`);
     
     try {
       // 장바구니에 자동 담기 (옵션 없이)
-      const response = await axios.post(`${API_BASE}/cart`, {
-        userId: state.userId,
-        productId: product.id,
-        optionId: null,
-        quantity: 1,
-        priceSnapshot: product.price,
-        liveStreamId: state.streamId,
-      });
+      const response = await axios.post(`${API_BASE}/cart`, requestData);
 
-      console.log('📦 구매 응답:', response.data);
+      console.log('📦 구매 응답:', response);
+      console.log('📦 응답 데이터:', response.data);
+      console.log('📦 응답 상태:', response.status);
 
       if (response.data.success) {
         // 구매 성공 시 채팅 메시지 전송
@@ -340,10 +341,14 @@
       console.error('❌ Failed to quick buy:', error);
       console.error('Error details:', {
         message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
+        response: error.response,
+        responseData: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
       });
-      alert('구매에 실패했습니다: ' + (error.response?.data?.error || error.message));
+      
+      const errorMsg = error.response?.data?.error || error.message || '알 수 없는 오류';
+      alert('구매에 실패했습니다: ' + errorMsg);
       return false;
     }
   }
