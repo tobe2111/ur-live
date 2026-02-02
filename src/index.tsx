@@ -3451,6 +3451,78 @@ app.get('/seller', (c) => {
                 color: white;
             }
             
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            
+            .live-stream-card {
+                background: #fef2f2;
+                border: 2px solid #ef4444;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 16px;
+            }
+            
+            .product-selector {
+                background: white;
+                border-radius: 8px;
+                padding: 16px;
+                margin-top: 16px;
+            }
+            
+            .product-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 12px;
+                margin-top: 12px;
+            }
+            
+            .product-item {
+                background: #f9fafb;
+                border: 2px solid transparent;
+                border-radius: 8px;
+                padding: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-align: center;
+            }
+            
+            .product-item:hover {
+                border-color: var(--seller-pink);
+                transform: translateY(-2px);
+            }
+            
+            .product-item.current {
+                background: #fef2f2;
+                border-color: #ef4444;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+            }
+            
+            .product-item img {
+                width: 100%;
+                height: 120px;
+                object-fit: cover;
+                border-radius: 6px;
+                margin-bottom: 8px;
+            }
+            
+            .product-item .name {
+                font-weight: 600;
+                font-size: 13px;
+                color: var(--toss-gray-900);
+                margin-bottom: 4px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .product-item .price {
+                color: var(--seller-pink);
+                font-weight: 700;
+                font-size: 14px;
+            }
+            
             .modal {
                 display: none;
                 position: fixed;
@@ -3675,6 +3747,30 @@ app.get('/seller', (c) => {
                     <i class="fas fa-won-sign" style="font-size: 24px; color: #8b5cf6;"></i>
                     <div class="stat-value" id="statRevenue">0원</div>
                     <div class="stat-label">총 매출</div>
+                </div>
+            </div>
+            
+            <!-- Live Stream Management Section -->
+            <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 32px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                    <h2 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                        <i class="fas fa-broadcast-tower" style="color: #ef4444;"></i> 라이브 방송 관리
+                    </h2>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="liveStatusBadge" style="display: none; background: #ef4444; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                            <i class="fas fa-circle" style="font-size: 8px; animation: pulse 1.5s infinite;"></i> LIVE
+                        </span>
+                        <button onclick="refreshLiveStreams()" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> 새로고침
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="liveStreamsList">
+                    <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                        <p style="margin-top: 16px;">라이브 방송 정보를 불러오는 중...</p>
+                    </div>
                 </div>
             </div>
             

@@ -2,6 +2,8 @@
 const API_BASE = '/api';
 let sessionToken = localStorage.getItem('sessionToken');
 let currentProducts = [];
+let currentLiveStreams = [];
+let liveStreamPollingInterval = null;
 
 // Check authentication
 async function checkAuth() {
@@ -306,5 +308,194 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     if (authenticated) {
         loadStats();
         loadProducts();
+        loadLiveStreams();
+        // Start polling live streams every 5 seconds
+        liveStreamPollingInterval = setInterval(loadLiveStreams, 5000);
     }
 })();
+
+// ===============================
+// Live Stream Management Functions
+// ===============================
+
+// Load live streams
+async function loadLiveStreams() {
+    try {
+        const response = await axios.get(`${API_BASE}/streams`);
+        
+        if (response.data.success) {
+            currentLiveStreams = response.data.data;
+            renderLiveStreams(currentLiveStreams);
+        }
+    } catch (error) {
+        console.error('Failed to load live streams:', error);
+        document.getElementById('liveStreamsList').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                <p style="margin-top: 16px;">라이브 방송을 불러올 수 없습니다.</p>
+            </div>
+        `;
+    }
+}
+
+// Render live streams
+function renderLiveStreams(streams) {
+    const container = document.getElementById('liveStreamsList');
+    const liveStreams = streams.filter(s => s.status === 'live');
+    
+    // Update LIVE badge
+    const liveBadge = document.getElementById('liveStatusBadge');
+    if (liveStreams.length > 0) {
+        liveBadge.style.display = 'inline-block';
+    } else {
+        liveBadge.style.display = 'none';
+    }
+    
+    if (liveStreams.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                <i class="fas fa-video-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                <p style="font-size: 16px;">현재 진행 중인 라이브 방송이 없습니다.</p>
+                <p style="font-size: 14px; margin-top: 8px; color: var(--toss-gray-600);">관리자 대시보드에서 라이브 방송을 시작하세요.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = liveStreams.map(stream => `
+        <div class="live-stream-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0 0 8px 0;">
+                        <i class="fas fa-broadcast-tower" style="color: #ef4444;"></i>
+                        ${stream.title}
+                    </h3>
+                    <p style="font-size: 14px; color: var(--toss-gray-600); margin: 0;">
+                        ${stream.description || '설명 없음'}
+                    </p>
+                </div>
+                <a href="/live/${stream.id}" target="_blank" class="btn btn-secondary" style="white-space: nowrap;">
+                    <i class="fas fa-external-link-alt"></i> 라이브 보기
+                </a>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px; background: white; border-radius: 8px;">
+                <div style="flex: 1;">
+                    <div style="font-size: 13px; color: var(--toss-gray-600); margin-bottom: 4px;">현재 소개 중인 상품</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900);" id="current-product-${stream.id}">
+                        ${stream.product_name || '선택된 상품 없음'}
+                    </div>
+                    ${stream.price ? `
+                        <div style="font-size: 14px; color: var(--seller-pink); font-weight: 600; margin-top: 4px;">
+                            ${formatPrice(stream.price)}원
+                        </div>
+                    ` : ''}
+                </div>
+                <div style="font-size: 24px; color: var(--toss-gray-600);">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </div>
+            
+            <div class="product-selector" id="product-selector-${stream.id}">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <h4 style="font-size: 14px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                        상품 선택 (클릭하여 변경)
+                    </h4>
+                    <span style="font-size: 12px; color: var(--toss-gray-600);">
+                        <i class="fas fa-info-circle"></i> 현재 상품은 강조 표시됩니다
+                    </span>
+                </div>
+                <div class="product-grid" id="products-grid-${stream.id}">
+                    <div style="text-align: center; padding: 20px; color: var(--toss-gray-600); grid-column: 1 / -1;">
+                        <i class="fas fa-spinner fa-spin"></i> 상품 불러오는 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Load products for each live stream
+    liveStreams.forEach(stream => {
+        loadProductsForStream(stream.id, stream.current_product_id);
+    });
+}
+
+// Load products for a specific stream
+async function loadProductsForStream(streamId, currentProductId) {
+    try {
+        const response = await axios.get(`${API_BASE}/seller/products`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
+        
+        if (response.data.success) {
+            const products = response.data.data.filter(p => p.is_active);
+            renderProductsForStream(streamId, products, currentProductId);
+        }
+    } catch (error) {
+        console.error('Failed to load products for stream:', error);
+        document.getElementById(`products-grid-${streamId}`).innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #ef4444; grid-column: 1 / -1;">
+                상품을 불러올 수 없습니다.
+            </div>
+        `;
+    }
+}
+
+// Render products for stream
+function renderProductsForStream(streamId, products, currentProductId) {
+    const container = document.getElementById(`products-grid-${streamId}`);
+    
+    if (products.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--toss-gray-600); grid-column: 1 / -1;">
+                <i class="fas fa-box-open" style="font-size: 24px; margin-bottom: 8px;"></i>
+                <p>판매 가능한 상품이 없습니다.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = products.map(product => `
+        <div class="product-item ${product.id === currentProductId ? 'current' : ''}" 
+             onclick="changeProduct(${streamId}, ${product.id})">
+            <img src="${product.image_url || 'https://picsum.photos/200/200?random=' + product.id}" 
+                 alt="${product.name}"
+                 onerror="this.src='https://picsum.photos/200/200?random=${product.id}'">
+            <div class="name">${product.name}</div>
+            <div class="price">${formatPrice(product.price)}원</div>
+            ${product.id === currentProductId ? `
+                <div style="background: #ef4444; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-top: 4px;">
+                    <i class="fas fa-check-circle"></i> 현재 소개 중
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+// Change product for stream
+async function changeProduct(streamId, productId) {
+    if (!confirm('이 상품으로 변경하시겠습니까?\n\n라이브 방송에서 즉시 반영됩니다.')) return;
+    
+    try {
+        const response = await axios.post(`${API_BASE}/admin/streams/${streamId}/change-product`, 
+            { product_id: productId },
+            { headers: { 'X-Session-Token': sessionToken } }
+        );
+        
+        if (response.data.success) {
+            alert('상품이 변경되었습니다! 🎉');
+            // Reload live streams to reflect changes
+            loadLiveStreams();
+        } else {
+            throw new Error(response.data.error || '상품 변경 실패');
+        }
+    } catch (error) {
+        console.error('Failed to change product:', error);
+        alert('상품 변경에 실패했습니다: ' + (error.response?.data?.error || error.message));
+    }
+}
+
+// Refresh live streams manually
+function refreshLiveStreams() {
+    loadLiveStreams();
+}
