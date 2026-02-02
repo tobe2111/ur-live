@@ -1060,6 +1060,63 @@ app.get('/live/:streamId', (c) => {
             font-size: 12px; 
             color: #8b95a1; 
         }
+        .cart-item-controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            margin-top: 8px; 
+        }
+        .quantity-controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            background: #f0f2f5; 
+            border-radius: 8px; 
+            padding: 4px 8px; 
+        }
+        .qty-btn { 
+            width: 24px; 
+            height: 24px; 
+            background: white; 
+            border: 1px solid #e5e8eb; 
+            border-radius: 4px; 
+            color: #191f28; 
+            font-size: 14px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s; 
+        }
+        .qty-btn:active { 
+            background: #e5e8eb; 
+        }
+        .qty-btn:disabled { 
+            opacity: 0.3; 
+            cursor: not-allowed; 
+        }
+        .qty-number { 
+            min-width: 24px; 
+            text-align: center; 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #191f28; 
+        }
+        .delete-btn { 
+            margin-left: auto; 
+            background: none; 
+            border: none; 
+            color: #ff4444; 
+            font-size: 18px; 
+            cursor: pointer; 
+            padding: 4px; 
+            transition: all 0.2s; 
+        }
+        .delete-btn:active { 
+            transform: scale(0.9); 
+            color: #cc0000; 
+        }
         
         .cart-summary { 
             padding: 16px 0; 
@@ -1426,13 +1483,68 @@ app.get('/live/:streamId', (c) => {
                 return;
             }
             
-            container.innerHTML = cartItems.map(item => {
+            container.innerHTML = cartItems.map((item, index) => {
                 const itemTotal = item.price * item.quantity;
-                return '<div class="cart-item"><img class="cart-item-image" src="' + (item.image_url || 'https://via.placeholder.com/70') + '" alt="' + item.name + '"><div class="cart-item-info"><div class="cart-item-name">' + item.name + '</div><div class="cart-item-price">' + item.price.toLocaleString() + '원</div><div class="cart-item-quantity">수량: ' + item.quantity + '개 | 합계: ' + itemTotal.toLocaleString() + '원</div></div></div>';
+                const imageUrl = item.image_url || 'https://via.placeholder.com/70';
+                const decreaseDisabled = item.quantity <= 1 ? 'disabled' : '';
+                
+                return '<div class="cart-item">' +
+                    '<img class="cart-item-image" src="' + imageUrl + '" alt="' + item.name + '">' +
+                    '<div class="cart-item-info">' +
+                        '<div class="cart-item-name">' + item.name + '</div>' +
+                        '<div class="cart-item-price">' + item.price.toLocaleString() + '원</div>' +
+                        '<div class="cart-item-controls">' +
+                            '<div class="quantity-controls">' +
+                                '<button class="qty-btn" onclick="decreaseQuantity(' + index + ')" ' + decreaseDisabled + '>−</button>' +
+                                '<span class="qty-number">' + item.quantity + '</span>' +
+                                '<button class="qty-btn" onclick="increaseQuantity(' + index + ')">+</button>' +
+                            '</div>' +
+                            '<span class="cart-item-quantity">합계: ' + itemTotal.toLocaleString() + '원</span>' +
+                            '<button class="delete-btn" onclick="removeFromCart(' + index + ')" title="삭제">' +
+                                '<i class="fas fa-trash-alt"></i>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
             }).join('');
             
             document.getElementById('summary-subtotal').textContent = subtotal.toLocaleString() + '원';
             document.getElementById('summary-total').textContent = subtotal.toLocaleString() + '원';
+        }
+        
+        // 수량 증가
+        function increaseQuantity(index) {
+            if (cartItems[index]) {
+                cartItems[index].quantity += 1;
+                renderCartItems();
+                updateCartUI();
+            }
+        }
+        
+        // 수량 감소
+        function decreaseQuantity(index) {
+            if (cartItems[index] && cartItems[index].quantity > 1) {
+                cartItems[index].quantity -= 1;
+                renderCartItems();
+                updateCartUI();
+            }
+        }
+        
+        // 장바구니에서 삭제
+        function removeFromCart(index) {
+            if (cartItems[index]) {
+                const itemName = cartItems[index].name;
+                cartItems.splice(index, 1);
+                renderCartItems();
+                updateCartUI();
+                
+                // 장바구니가 비었으면 자동으로 닫기
+                if (cartItems.length === 0) {
+                    setTimeout(() => {
+                        closeBottomSheet();
+                    }, 500);
+                }
+            }
         }
         
         // 이벤트 리스너 설정
