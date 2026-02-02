@@ -642,8 +642,6 @@ app.get('/live/:streamId', (c) => {
     <title>토스 라이브 커머스</title>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { 
@@ -891,6 +889,77 @@ app.get('/live/:streamId', (c) => {
             text-align: center; 
         }
         
+        /* 채팅 입력창 - 하단에서 슬라이드업 */
+        .chat-input-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            z-index: 2000; 
+            display: none; 
+            opacity: 0; 
+            transition: opacity 0.3s; 
+        }
+        .chat-input-overlay.active { 
+            display: block; 
+            opacity: 1; 
+        }
+        
+        .chat-input-panel { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            background: white; 
+            padding: 16px; 
+            padding-bottom: calc(16px + env(safe-area-inset-bottom)); 
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.2); 
+            transform: translateY(100%); 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 2001; 
+        }
+        .chat-input-panel.active { 
+            transform: translateY(0); 
+        }
+        
+        .chat-input-row { 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+        }
+        .chat-input { 
+            flex: 1; 
+            border: 2px solid #e5e8eb; 
+            border-radius: 20px; 
+            padding: 12px 16px; 
+            font-size: 15px; 
+            outline: none; 
+            transition: border-color 0.2s; 
+        }
+        .chat-input:focus { 
+            border-color: #0064FF; 
+        }
+        .send-btn { 
+            width: 44px; 
+            height: 44px; 
+            background: #0064FF; 
+            border: none; 
+            border-radius: 50%; 
+            color: white; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s; 
+            flex-shrink: 0; 
+        }
+        .send-btn:active { 
+            transform: scale(0.95); 
+            background: #0052CC; 
+        }
+        
         /* Bottom Sheet (장바구니) - Slide-up */
         .bottom-sheet-overlay { 
             position: fixed; 
@@ -1063,9 +1132,8 @@ app.get('/live/:streamId', (c) => {
         
         <!-- 우측 퀵 아이콘 -->
         <div class="side-icons">
-            <button class="icon-btn" id="like-btn" title="좋아요">
-                <i class="fas fa-heart"></i>
-                <span class="badge" id="like-count" style="display: none;">0</span>
+            <button class="icon-btn" id="chat-btn" title="채팅">
+                <i class="fas fa-comment"></i>
             </button>
             <button class="icon-btn" id="share-btn" title="공유">
                 <i class="fas fa-share-alt"></i>
@@ -1089,6 +1157,17 @@ app.get('/live/:streamId', (c) => {
             <i class="fas fa-shopping-bag"></i>
             <span class="badge" id="cart-count" style="display: none;">0</span>
         </button>
+    </div>
+
+    <!-- 채팅 입력 패널 -->
+    <div class="chat-input-overlay" id="chat-input-overlay" onclick="closeChatInput()"></div>
+    <div class="chat-input-panel" id="chat-input-panel">
+        <div class="chat-input-row">
+            <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" autocomplete="off">
+            <button class="send-btn" id="send-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
     </div>
 
     <!-- Bottom Sheet (장바구니) -->
@@ -1132,34 +1211,17 @@ app.get('/live/:streamId', (c) => {
         let chatMessages = [];
         const MAX_CHAT_MESSAGES = 5;
         let cartItems = [];
-        let likeCount = 0;
-        let liked = false;
-        
-        // Firebase 초기화 - 실제 동작하는 설정으로 변경 필요
-        let firebaseInitialized = false;
-        
-        function initFirebase() {
-            try {
-                // Firebase 설정이 없으면 로컬 모드로 동작
-                console.log('Firebase: Local mode (no config)');
-                firebaseInitialized = false;
-            } catch (error) {
-                console.log('Firebase: Local mode');
-                firebaseInitialized = false;
-            }
-        }
         
         // 초기화
         document.addEventListener('DOMContentLoaded', async () => {
             await loadStreamData();
-            initFirebase();
             startProductPolling();
             setupEventListeners();
             loadSampleChats();
             updateCartUI();
         });
         
-        // 스트림 데이터 로드
+        // 스트림 데이터 로드 - 수정된 파싱
         async function loadStreamData() {
             try {
                 const response = await axios.get(API_BASE + '/streams/' + STREAM_ID);
@@ -1167,8 +1229,18 @@ app.get('/live/:streamId', (c) => {
                     const stream = response.data.data;
                     initYouTubePlayer(stream.youtube_video_id);
                     document.getElementById('viewer-count').textContent = stream.viewer_count || 0;
-                    if (stream.current_product) {
-                        updateProductInfo(stream.current_product);
+                    
+                    // 상품 정보 파싱 - API 구조에 맞게 수정
+                    if (stream.product_name) {
+                        const product = {
+                            id: stream.current_product_id || 1,
+                            name: stream.product_name,
+                            price: stream.price,
+                            original_price: stream.original_price,
+                            image_url: stream.image_url,
+                            stock: stream.stock
+                        };
+                        updateProductInfo(product);
                     }
                 }
             } catch (error) {
@@ -1217,13 +1289,22 @@ app.get('/live/:streamId', (c) => {
             }
         }
         
-        // 실시간 상품 폴링
+        // 실시간 상품 폴링 - 수정된 파싱
         function startProductPolling() {
             setInterval(async () => {
                 try {
                     const response = await axios.get(API_BASE + '/streams/' + STREAM_ID);
-                    if (response.data.success && response.data.data.current_product) {
-                        const newProduct = response.data.data.current_product;
+                    if (response.data.success && response.data.data.product_name) {
+                        const stream = response.data.data;
+                        const newProduct = {
+                            id: stream.current_product_id || 1,
+                            name: stream.product_name,
+                            price: stream.price,
+                            original_price: stream.original_price,
+                            image_url: stream.image_url,
+                            stock: stream.stock
+                        };
+                        
                         if (!currentProduct || currentProduct.id !== newProduct.id) {
                             updateProductInfo(newProduct);
                         }
@@ -1286,6 +1367,29 @@ app.get('/live/:streamId', (c) => {
         // 시스템 메시지 추가 (로컬)
         function sendSystemMessage(message) {
             addChatMessage('', message, true);
+        }
+        
+        // 채팅 입력창 열기/닫기
+        function openChatInput() {
+            const overlay = document.getElementById('chat-input-overlay');
+            const panel = document.getElementById('chat-input-panel');
+            const input = document.getElementById('chat-input');
+            
+            overlay.classList.add('active');
+            panel.classList.add('active');
+            
+            // 약간의 딜레이 후 키보드 포커스
+            setTimeout(() => {
+                input.focus();
+            }, 300);
+        }
+        
+        function closeChatInput() {
+            const overlay = document.getElementById('chat-input-overlay');
+            const panel = document.getElementById('chat-input-panel');
+            
+            overlay.classList.remove('active');
+            panel.classList.remove('active');
         }
         
         // Bottom Sheet 열기/닫기
@@ -1371,6 +1475,27 @@ app.get('/live/:streamId', (c) => {
                 }, 1000);
             });
             
+            // 채팅 버튼 (하트 대신)
+            document.getElementById('chat-btn').addEventListener('click', () => {
+                openChatInput();
+            });
+            
+            // 채팅 전송
+            const sendMessage = () => {
+                const input = document.getElementById('chat-input');
+                const message = input.value.trim();
+                if (message) {
+                    addChatMessage('나', message);
+                    input.value = '';
+                    closeChatInput();
+                }
+            };
+            
+            document.getElementById('send-btn').addEventListener('click', sendMessage);
+            document.getElementById('chat-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
             // 결제하기 버튼
             document.getElementById('checkout-btn').addEventListener('click', () => {
                 if (cartItems.length === 0) {
@@ -1388,28 +1513,6 @@ app.get('/live/:streamId', (c) => {
                 }
                 
                 alert('토스페이 결제 기능은 곧 추가될 예정입니다.\\n\\n총 ' + cartItems.reduce((sum, item) => sum + item.quantity, 0) + '개 상품, ' + cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString() + '원');
-            });
-            
-            // 좋아요 버튼
-            document.getElementById('like-btn').addEventListener('click', () => {
-                liked = !liked;
-                const btn = document.getElementById('like-btn');
-                const badge = document.getElementById('like-count');
-                
-                if (liked) {
-                    likeCount++;
-                    btn.innerHTML = '<i class="fas fa-heart" style="color: #ff0000;"></i>';
-                    badge.textContent = likeCount;
-                    badge.style.display = 'block';
-                } else {
-                    if (likeCount > 0) likeCount--;
-                    btn.innerHTML = '<i class="fas fa-heart"></i>';
-                    if (likeCount === 0) {
-                        badge.style.display = 'none';
-                    } else {
-                        badge.textContent = likeCount;
-                    }
-                }
             });
             
             // 공유 버튼
