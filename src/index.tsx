@@ -869,7 +869,7 @@ app.get('/live/:streamId', (c) => {
           const STREAM_ID = '${streamId}';
         </script>
         <script src="/static/firebase-config.js"></script>
-        <script src="/static/live.js"></script>
+        <script src="/static/live.js?v=${Date.now()}"></script>
     </body>
     </html>
   `);
