@@ -550,15 +550,4 @@
     return result;
   };
 
-  // 앱 초기화 시 채팅도 초기화
-  const originalInitApp = initApp;
-  function initApp() {
-    originalInitApp();
-    
-    // Firebase 채팅 초기화
-    setTimeout(() => {
-      initializeChat();
-    }, 1000);
-  }
-
 })();
