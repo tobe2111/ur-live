@@ -640,84 +640,403 @@ app.get('/live/:streamId', (c) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>토스 라이브 커머스</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Toss Face", "Segoe UI", Roboto, sans-serif; }
+        html, body { 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: "Toss Face", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+        }
         
         /* YouTube 배경 - object-fit: cover */
-        #youtube-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0; background: #000; overflow: hidden; }
-        #youtube-player { position: absolute; top: 50%; left: 50%; width: 100vw; height: 100vh; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; object-fit: cover; }
+        #youtube-bg { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100vh; 
+            z-index: 0; 
+            background: #000; 
+            overflow: hidden; 
+        }
+        #youtube-player { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            width: 177.77vh; 
+            height: 56.25vw; 
+            min-width: 100%; 
+            min-height: 100%; 
+            transform: translate(-50%, -50%); 
+        }
         
         /* Overlay UI */
-        .overlay-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .overlay-ui { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 10; 
+            pointer-events: none; 
+        }
         .overlay-ui > * { pointer-events: auto; }
         
         /* 상단 바 */
-        .top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; padding-top: calc(16px + env(safe-area-inset-top)); }
-        .live-badge { background: #ff0000; color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; }
-        .viewer-count { color: white; font-size: 14px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 4px; }
+        .top-bar { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            padding: 12px 16px; 
+            padding-top: calc(12px + env(safe-area-inset-top)); 
+            background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .live-badge { 
+            background: #ff0000; 
+            color: white; 
+            padding: 4px 12px; 
+            border-radius: 16px; 
+            font-size: 12px; 
+            font-weight: bold; 
+        }
+        .viewer-count { 
+            color: white; 
+            font-size: 13px; 
+            font-weight: 600; 
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+        }
         
-        /* 채팅창 */
-        .chat-container { position: absolute; bottom: 200px; left: 16px; width: calc(100% - 80px - 32px); max-width: 400px; max-height: 200px; overflow-y: auto; pointer-events: none; }
-        .chat-message { background: rgba(0,0,0,0.5); color: white; font-size: 13px; line-height: 1.4; margin-bottom: 6px; padding: 8px 12px; border-radius: 16px; word-wrap: break-word; backdrop-filter: blur(8px); pointer-events: auto; }
-        .chat-message.system { background: rgba(255,81,38,0.9); font-weight: 600; }
-        .chat-username { font-weight: bold; margin-right: 4px; }
+        /* 채팅창 - 완전 투명 + 강한 drop-shadow */
+        .chat-container { 
+            position: absolute; 
+            bottom: 100px; 
+            left: 16px; 
+            right: 80px; 
+            max-height: 150px; 
+            overflow-y: auto; 
+            pointer-events: none; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+        }
+        .chat-message { 
+            color: white; 
+            font-size: 14px; 
+            font-weight: 500; 
+            line-height: 1.4; 
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.9)); 
+            pointer-events: auto; 
+            word-wrap: break-word; 
+        }
+        .chat-message.system { 
+            color: #FFD700; 
+            font-weight: 700; 
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,1)); 
+        }
+        .chat-username { 
+            font-weight: 700; 
+            margin-right: 4px; 
+        }
         .chat-container::-webkit-scrollbar { display: none; }
         
-        /* 우측 사이드 아이콘 */
-        .side-icons { position: absolute; right: 16px; bottom: 200px; display: flex; flex-direction: column; gap: 16px; }
-        .icon-btn { width: 48px; height: 48px; background: rgba(0,0,0,0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; backdrop-filter: blur(8px); cursor: pointer; transition: all 0.2s; }
-        .icon-btn:active { transform: scale(0.9); background: rgba(0,0,0,0.7); }
-        .icon-btn .badge { position: absolute; top: -4px; right: -4px; background: #ff0000; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+        /* 우측 퀵 아이콘 - 콤팩트 */
+        .side-icons { 
+            position: absolute; 
+            right: 16px; 
+            bottom: 140px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+        }
+        .icon-btn { 
+            width: 44px; 
+            height: 44px; 
+            background: rgba(0,0,0,0.4); 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 18px; 
+            backdrop-filter: blur(4px); 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            border: none; 
+        }
+        .icon-btn:active { 
+            transform: scale(0.9); 
+            background: rgba(0,0,0,0.6); 
+        }
+        .icon-btn .badge { 
+            position: absolute; 
+            top: -2px; 
+            right: -2px; 
+            background: #ff0000; 
+            color: white; 
+            font-size: 10px; 
+            padding: 2px 5px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+        }
         
-        /* 하단 상품 정보 및 버튼 */
-        .bottom-product-area { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 50%, transparent 100%); display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+        /* 하단 상품 정보 및 버튼 - 완전 밀착 */
+        .bottom-product-area { 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            padding: 12px 16px; 
+            padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+            background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 70%, transparent 100%); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: 12px; 
+        }
         
-        .product-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-        .product-name { color: white; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); line-height: 1.3; }
-        .product-price { color: #FFD700; font-size: 20px; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
-        .product-price .original { text-decoration: line-through; color: rgba(255,255,255,0.6); font-size: 14px; margin-left: 8px; }
+        .product-info { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 2px; 
+            min-width: 0; 
+        }
+        .product-name { 
+            color: white; 
+            font-size: 15px; 
+            font-weight: 700; 
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); 
+            line-height: 1.3; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+        }
+        .product-price { 
+            color: #FFD700; 
+            font-size: 18px; 
+            font-weight: 800; 
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); 
+        }
+        .product-price .original { 
+            text-decoration: line-through; 
+            color: rgba(255,255,255,0.5); 
+            font-size: 13px; 
+            margin-left: 6px; 
+            font-weight: 500; 
+        }
         
-        .add-to-basket-btn { background: #FF5126; color: white; border: none; border-radius: 16px; padding: 14px 28px; font-size: 16px; font-weight: bold; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 12px rgba(255,81,38,0.4); transition: all 0.2s; }
-        .add-to-basket-btn:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(255,81,38,0.6); }
+        .add-to-basket-btn { 
+            background: #FF5126; 
+            color: white; 
+            border: none; 
+            border-radius: 16px; 
+            padding: 10px 20px; 
+            font-size: 15px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            white-space: nowrap; 
+            box-shadow: 0 4px 12px rgba(255,81,38,0.5); 
+            transition: all 0.2s; 
+        }
+        .add-to-basket-btn:active { 
+            transform: scale(0.95); 
+        }
         
-        .checkout-btn { position: fixed; bottom: 80px; right: 16px; width: 64px; height: 64px; background: #0064FF; border: none; border-radius: 50%; color: white; font-size: 24px; cursor: pointer; box-shadow: 0 8px 24px rgba(0,100,255,0.4); display: flex; align-items: center; justify-content: center; transition: all 0.2s; z-index: 100; }
-        .checkout-btn:active { transform: scale(0.95); }
-        .checkout-btn .badge { position: absolute; top: -4px; right: -4px; background: #ff0000; color: white; font-size: 14px; padding: 4px 8px; border-radius: 12px; font-weight: bold; min-width: 24px; text-align: center; }
+        /* 결제하기 버튼 (플로팅) - 우측 하단 */
+        .checkout-btn { 
+            position: fixed; 
+            bottom: calc(80px + env(safe-area-inset-bottom)); 
+            right: 16px; 
+            width: 56px; 
+            height: 56px; 
+            background: #0064FF; 
+            border: none; 
+            border-radius: 50%; 
+            color: white; 
+            font-size: 22px; 
+            cursor: pointer; 
+            box-shadow: 0 6px 20px rgba(0,100,255,0.5); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s; 
+            z-index: 100; 
+        }
+        .checkout-btn:active { 
+            transform: scale(0.95); 
+        }
+        .checkout-btn .badge { 
+            position: absolute; 
+            top: -4px; 
+            right: -4px; 
+            background: #FF5126; 
+            color: white; 
+            font-size: 12px; 
+            padding: 3px 7px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            min-width: 20px; 
+            text-align: center; 
+        }
         
-        /* Bottom Sheet (장바구니) */
-        .bottom-sheet-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; opacity: 0; transition: opacity 0.3s; }
-        .bottom-sheet-overlay.active { display: block; opacity: 1; }
+        /* Bottom Sheet (장바구니) - Slide-up */
+        .bottom-sheet-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            z-index: 1000; 
+            display: none; 
+            opacity: 0; 
+            transition: opacity 0.3s; 
+        }
+        .bottom-sheet-overlay.active { 
+            display: block; 
+            opacity: 1; 
+        }
         
-        .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 24px 24px 0 0; padding: 24px 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); max-height: 80vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1001; }
-        .bottom-sheet.active { transform: translateY(0); }
+        .bottom-sheet { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            background: rgba(255,255,255,0.98); 
+            backdrop-filter: blur(20px); 
+            border-radius: 24px 24px 0 0; 
+            padding: 20px 16px; 
+            padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
+            max-height: 75vh; 
+            overflow-y: auto; 
+            transform: translateY(100%); 
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 1001; 
+        }
+        .bottom-sheet.active { 
+            transform: translateY(0); 
+        }
         
-        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .sheet-title { font-size: 20px; font-weight: bold; color: #191f28; }
-        .sheet-close { background: none; border: none; font-size: 24px; color: #8b95a1; cursor: pointer; }
+        .sheet-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 16px; 
+        }
+        .sheet-title { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #191f28; 
+        }
+        .sheet-close { 
+            background: none; 
+            border: none; 
+            font-size: 28px; 
+            color: #8b95a1; 
+            cursor: pointer; 
+            line-height: 1; 
+        }
         
-        .cart-items { margin-bottom: 20px; }
-        .cart-item { display: flex; gap: 12px; padding: 16px; background: #f9fafb; border-radius: 16px; margin-bottom: 12px; }
-        .cart-item-image { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; }
-        .cart-item-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-        .cart-item-name { font-size: 15px; font-weight: 600; color: #191f28; }
-        .cart-item-price { font-size: 16px; font-weight: bold; color: #0064FF; }
-        .cart-item-quantity { font-size: 13px; color: #8b95a1; }
+        .cart-items { 
+            margin-bottom: 16px; 
+        }
+        .cart-item { 
+            display: flex; 
+            gap: 12px; 
+            padding: 12px; 
+            background: #f9fafb; 
+            border-radius: 16px; 
+            margin-bottom: 10px; 
+        }
+        .cart-item-image { 
+            width: 70px; 
+            height: 70px; 
+            border-radius: 12px; 
+            object-fit: cover; 
+            flex-shrink: 0; 
+        }
+        .cart-item-info { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 3px; 
+            min-width: 0; 
+        }
+        .cart-item-name { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #191f28; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }
+        .cart-item-price { 
+            font-size: 15px; 
+            font-weight: 700; 
+            color: #0064FF; 
+        }
+        .cart-item-quantity { 
+            font-size: 12px; 
+            color: #8b95a1; 
+        }
         
-        .cart-summary { padding: 20px 0; border-top: 1px solid #e5e8eb; margin-bottom: 16px; }
-        .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .summary-label { font-size: 15px; color: #4e5968; }
-        .summary-value { font-size: 15px; font-weight: 600; color: #191f28; }
-        .summary-total { font-size: 18px; font-weight: bold; color: #0064FF; }
+        .cart-summary { 
+            padding: 16px 0; 
+            border-top: 1px solid #e5e8eb; 
+            margin-bottom: 12px; 
+        }
+        .summary-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 6px; 
+        }
+        .summary-label { 
+            font-size: 14px; 
+            color: #4e5968; 
+        }
+        .summary-value { 
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #191f28; 
+        }
+        .summary-total { 
+            font-size: 17px; 
+            font-weight: 700; 
+            color: #0064FF; 
+        }
         
-        .toss-pay-btn { width: 100%; background: #0064FF; color: white; border: none; border-radius: 16px; padding: 18px; font-size: 17px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
-        .toss-pay-btn:active { transform: scale(0.98); opacity: 0.9; }
-        .toss-pay-btn img { height: 20px; }
+        .toss-pay-btn { 
+            width: 100%; 
+            background: #0064FF; 
+            color: white; 
+            border: none; 
+            border-radius: 16px; 
+            padding: 16px; 
+            font-size: 16px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            transition: all 0.2s; 
+        }
+        .toss-pay-btn:active { 
+            transform: scale(0.98); 
+        }
     </style>
 </head>
 <body>
@@ -737,12 +1056,12 @@ app.get('/live/:streamId', (c) => {
             </div>
         </div>
         
-        <!-- 채팅창 -->
+        <!-- 채팅창 - 완전 투명 -->
         <div class="chat-container" id="chat-container">
             <!-- 채팅 메시지가 여기에 추가됩니다 -->
         </div>
         
-        <!-- 우측 사이드 아이콘 -->
+        <!-- 우측 퀵 아이콘 -->
         <div class="side-icons">
             <button class="icon-btn" id="like-btn" title="좋아요">
                 <i class="fas fa-heart"></i>
@@ -751,15 +1070,12 @@ app.get('/live/:streamId', (c) => {
             <button class="icon-btn" id="share-btn" title="공유">
                 <i class="fas fa-share-alt"></i>
             </button>
-            <button class="icon-btn" id="chat-toggle-btn" title="채팅">
-                <i class="fas fa-comment"></i>
-            </button>
         </div>
         
-        <!-- 하단 상품 정보 및 버튼 -->
+        <!-- 하단 상품 정보 및 버튼 - 완전 밀착 -->
         <div class="bottom-product-area">
             <div class="product-info">
-                <div class="product-name" id="product-name">상품을 불러오는 중...</div>
+                <div class="product-name" id="product-name">상품 불러오는 중...</div>
                 <div class="product-price">
                     <span id="product-price">0원</span>
                     <span class="original" id="product-original-price" style="display: none;"></span>
@@ -796,8 +1112,8 @@ app.get('/live/:streamId', (c) => {
                 <span class="summary-label">배송비</span>
                 <span class="summary-value">무료</span>
             </div>
-            <div class="summary-row" style="margin-top: 12px;">
-                <span class="summary-label" style="font-size: 17px; font-weight: 600;">총 결제 금액</span>
+            <div class="summary-row" style="margin-top: 8px;">
+                <span class="summary-label" style="font-size: 16px; font-weight: 600;">총 결제 금액</span>
                 <span class="summary-total" id="summary-total">0원</span>
             </div>
         </div>
@@ -819,35 +1135,17 @@ app.get('/live/:streamId', (c) => {
         let likeCount = 0;
         let liked = false;
         
-        // Firebase 초기화
-        const firebaseConfig = {
-            apiKey: "AIzaSyBpKhY8vZ2QM_x3kF9XwJ7zQY8rX9VrTrE",
-            authDomain: "toss-live-commerce.firebaseapp.com",
-            databaseURL: "https://toss-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "toss-live-commerce",
-            storageBucket: "toss-live-commerce.firebasestorage.app",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef1234567890abcdef"
-        };
+        // Firebase 초기화 - 실제 동작하는 설정으로 변경 필요
+        let firebaseInitialized = false;
         
         function initFirebase() {
             try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-                const database = firebase.database();
-                const chatRef = database.ref('chats/stream_' + STREAM_ID);
-                
-                chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
-                    const data = snapshot.val();
-                    if (data && data.username && data.text) {
-                        addChatMessage(data.username, data.text, data.isSystem || false);
-                    }
-                });
-                
-                console.log('Firebase initialized');
+                // Firebase 설정이 없으면 로컬 모드로 동작
+                console.log('Firebase: Local mode (no config)');
+                firebaseInitialized = false;
             } catch (error) {
-                console.error('Firebase init error:', error);
+                console.log('Firebase: Local mode');
+                firebaseInitialized = false;
             }
         }
         
@@ -878,7 +1176,7 @@ app.get('/live/:streamId', (c) => {
             }
         }
         
-        // YouTube 플레이어 초기화 (object-fit: cover 효과)
+        // YouTube 플레이어 초기화
         function initYouTubePlayer(videoId) {
             player = new YT.Player('youtube-player', {
                 videoId: videoId,
@@ -891,11 +1189,11 @@ app.get('/live/:streamId', (c) => {
                     fs: 0,
                     playsinline: 1,
                     loop: 1,
-                    playlist: videoId
+                    playlist: videoId,
+                    mute: 1
                 },
                 events: {
                     onReady: (event) => {
-                        event.target.mute();
                         event.target.playVideo();
                     }
                 }
@@ -910,7 +1208,6 @@ app.get('/live/:streamId', (c) => {
             const price = parseInt(product.price || 0);
             document.getElementById('product-price').textContent = price.toLocaleString() + '원';
             
-            // 원가가 있으면 표시
             if (product.original_price && product.original_price > product.price) {
                 const originalPrice = parseInt(product.original_price);
                 document.getElementById('product-original-price').textContent = originalPrice.toLocaleString() + '원';
@@ -965,7 +1262,7 @@ app.get('/live/:streamId', (c) => {
             const samples = [
                 { username: '매니저', text: '안녕하세요! 오늘의 특가 상품을 소개합니다 🎉' },
                 { username: '고객1', text: '가격 정말 좋네요!' },
-                { username: '매니저', text: '지금 구매하시면 추가 할인도 받으실 수 있어요' }
+                { username: '매니저', text: '지금 구매하시면 추가 할인받으실 수 있어요' }
             ];
             
             samples.forEach(msg => {
@@ -986,21 +1283,9 @@ app.get('/live/:streamId', (c) => {
             }
         }
         
-        // 시스템 메시지 전송 (Firebase)
+        // 시스템 메시지 추가 (로컬)
         function sendSystemMessage(message) {
-            try {
-                const database = firebase.database();
-                database.ref('chats/stream_' + STREAM_ID).push({
-                    username: 'system',
-                    text: message,
-                    isSystem: true,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                });
-            } catch (error) {
-                console.error('Send system message error:', error);
-                // Fallback: 로컬에 직접 추가
-                addChatMessage('', message, true);
-            }
+            addChatMessage('', message, true);
         }
         
         // Bottom Sheet 열기/닫기
@@ -1039,7 +1324,7 @@ app.get('/live/:streamId', (c) => {
             
             container.innerHTML = cartItems.map(item => {
                 const itemTotal = item.price * item.quantity;
-                return '<div class="cart-item"><img class="cart-item-image" src="' + (item.image_url || 'https://via.placeholder.com/80') + '" alt="' + item.name + '"><div class="cart-item-info"><div class="cart-item-name">' + item.name + '</div><div class="cart-item-price">' + item.price.toLocaleString() + '원</div><div class="cart-item-quantity">수량: ' + item.quantity + '개 | 합계: ' + itemTotal.toLocaleString() + '원</div></div></div>';
+                return '<div class="cart-item"><img class="cart-item-image" src="' + (item.image_url || 'https://via.placeholder.com/70') + '" alt="' + item.name + '"><div class="cart-item-info"><div class="cart-item-name">' + item.name + '</div><div class="cart-item-price">' + item.price.toLocaleString() + '원</div><div class="cart-item-quantity">수량: ' + item.quantity + '개 | 합계: ' + itemTotal.toLocaleString() + '원</div></div></div>';
             }).join('');
             
             document.getElementById('summary-subtotal').textContent = subtotal.toLocaleString() + '원';
@@ -1048,14 +1333,13 @@ app.get('/live/:streamId', (c) => {
         
         // 이벤트 리스너 설정
         function setupEventListeners() {
-            // 담아두기 버튼 (핵심 인터랙션)
+            // 담아두기 버튼
             document.getElementById('add-to-basket-btn').addEventListener('click', () => {
                 if (!currentProduct) {
                     alert('상품 정보를 불러오는 중입니다.');
                     return;
                 }
                 
-                // 장바구니에 추가
                 const existingItem = cartItems.find(item => item.product_id === currentProduct.id);
                 if (existingItem) {
                     existingItem.quantity += 1;
@@ -1069,23 +1353,21 @@ app.get('/live/:streamId', (c) => {
                     });
                 }
                 
-                // UI 업데이트
                 updateCartUI();
                 
-                // 시스템 메시지 전송 (채팅창에 자동 추가)
                 const userName = '고객' + Math.floor(Math.random() * 1000);
-                const systemMsg = userName + '님이 ' + currentProduct.name + '을(를) 담았습니다! 감사합니다 🎁';
+                const systemMsg = '시스템: ' + userName + '님이 ' + currentProduct.name + '을(를) 담았습니다! 🎁';
                 sendSystemMessage(systemMsg);
                 
-                // 버튼 피드백
                 const btn = document.getElementById('add-to-basket-btn');
                 const originalText = btn.textContent;
+                const originalBg = btn.style.background;
                 btn.textContent = '담았어요! ✓';
                 btn.style.background = '#4CAF50';
                 
                 setTimeout(() => {
                     btn.textContent = originalText;
-                    btn.style.background = '#FF5126';
+                    btn.style.background = originalBg || '#FF5126';
                 }, 1000);
             });
             
@@ -1145,15 +1427,13 @@ app.get('/live/:streamId', (c) => {
                         console.log('Share cancelled');
                     }
                 } else {
-                    navigator.clipboard.writeText(url);
-                    alert('링크가 복사되었습니다!');
+                    try {
+                        await navigator.clipboard.writeText(url);
+                        alert('링크가 복사되었습니다!');
+                    } catch (error) {
+                        alert('링크: ' + url);
+                    }
                 }
-            });
-            
-            // 채팅 토글 버튼
-            document.getElementById('chat-toggle-btn').addEventListener('click', () => {
-                const chatContainer = document.getElementById('chat-container');
-                chatContainer.style.display = chatContainer.style.display === 'none' ? 'block' : 'none';
             });
         }
     </script>
@@ -1162,1206 +1442,6 @@ app.get('/live/:streamId', (c) => {
   `);
 });
 
-app.post('/api/tosspay/create-payment', async (c) => {
-  const TOSSPAY_BASE_URL = 'https://pay-apps-in-toss-api.toss.im';
-  
-  try {
-    const body = await c.req.json();
-    const { userKey, orderNo, productDesc, amount, amountTaxFree, isTestPayment } = body;
-
-    if (!userKey || !orderNo || !productDesc || typeof amount !== 'number') {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Missing required parameters',
-      }, 400);
-    }
-
-    // 토스페이 API 호출
-    const response = await fetch(`${TOSSPAY_BASE_URL}/api-partner/v1/apps-in-toss/pay/make-payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-toss-user-key': userKey,
-      },
-      body: JSON.stringify({
-        orderNo,
-        productDesc,
-        amount,
-        amountTaxFree: amountTaxFree || 0,
-        isTestPayment: isTestPayment !== false, // 기본값 true (샌드박스)
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.resultType === 'SUCCESS') {
-      return c.json<ApiResponse<{ payToken: string }>>({
-        success: true,
-        data: {
-          payToken: data.success.payToken,
-        },
-      });
-    } else {
-      return c.json<ApiResponse>({
-        success: false,
-        error: data.fail?.msg || 'Payment creation failed',
-      }, 400);
-    }
-  } catch (err) {
-    console.error('Error creating payment:', err);
-    return c.json<ApiResponse>({
-      success: false,
-      error: (err as Error).message,
-    }, 500);
-  }
-});
-
-// 토스페이 결제 실행
-app.post('/api/tosspay/execute-payment', async (c) => {
-  const TOSSPAY_BASE_URL = 'https://pay-apps-in-toss-api.toss.im';
-  const { DB } = c.env;
-
-  try {
-    const body = await c.req.json();
-    const { userKey, payToken, orderNo, isTestPayment } = body;
-
-    if (!userKey || !payToken) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Missing required parameters',
-      }, 400);
-    }
-
-    // 토스페이 승인 API 호출
-    const response = await fetch(`${TOSSPAY_BASE_URL}/api-partner/v1/apps-in-toss/pay/execute-payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-toss-user-key': userKey,
-      },
-      body: JSON.stringify({
-        payToken,
-        orderNo,
-        isTestPayment: isTestPayment !== false,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (data.resultType === 'SUCCESS') {
-      const paymentData = data.success;
-
-      // 주문 정보 DB에 저장 (orders 테이블 필요)
-      // TODO: 주문 정보 저장 로직 추가
-
-      return c.json<ApiResponse<any>>({
-        success: true,
-        data: paymentData,
-      });
-    } else {
-      return c.json<ApiResponse>({
-        success: false,
-        error: data.fail?.msg || 'Payment execution failed',
-      }, 400);
-    }
-  } catch (err) {
-    console.error('Error executing payment:', err);
-    return c.json<ApiResponse>({
-      success: false,
-      error: (err as Error).message,
-    }, 500);
-  }
-});
-
-// 장바구니 페이지 (토스 디자인 시스템 완벽 적용)
-app.get('/cart', (c) => {
-  return c.html(`
-    <!DOCTYPE html>
-    <html lang="ko">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>장바구니 - 토스 라이브 커머스</title>
-        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/style.css?v=${Date.now()}" rel="stylesheet">
-        <style>
-          /* ========================================
-             토스 디자인 시스템 (TDS) - 완벽 적용
-             ======================================== */
-          
-          /* 1. Color System */
-          :root {
-            /* Primary Colors */
-            --toss-blue-50: #EBF4FF;
-            --toss-blue-100: #CCE1FF;
-            --toss-blue-200: #99C3FF;
-            --toss-blue-300: #66A5FF;
-            --toss-blue-400: #3D8DFF;
-            --toss-blue-500: #3182F6;  /* Main Blue */
-            --toss-blue-600: #2568D8;
-            --toss-blue-700: #1B4FBA;
-            --toss-blue-800: #13389C;
-            --toss-blue-900: #0D2A7E;
-            
-            /* Grayscale */
-            --toss-gray-50: #F9FAFB;
-            --toss-gray-100: #F2F4F6;
-            --toss-gray-200: #E5E8EB;
-            --toss-gray-300: #D1D6DB;
-            --toss-gray-400: #B0B8C1;
-            --toss-gray-500: #8B95A1;
-            --toss-gray-600: #6B7684;
-            --toss-gray-700: #4E5968;
-            --toss-gray-800: #333D4B;
-            --toss-gray-900: #191F28;
-            
-            /* Semantic Colors */
-            --toss-red: #FF3B30;
-            --toss-green: #34C759;
-            --toss-orange: #FF9500;
-            
-            /* Elevation */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-          }
-          
-          /* 2. Typography */
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 
-                         'Noto Sans KR', 'Malgun Gothic', sans-serif;
-            background: var(--toss-gray-50);
-            color: var(--toss-gray-900);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-          }
-          
-          /* 3. Header */
-          .cart-header {
-            background: white;
-            border-bottom: 1px solid var(--toss-gray-100);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(20px);
-            background: rgba(255, 255, 255, 0.95);
-          }
-          
-          .cart-header-content {
-            max-width: 480px;
-            margin: 0 auto;
-            padding: 16px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-          }
-          
-          .back-button {
-            width: 40px;
-            height: 40px;
-            border: none;
-            background: none;
-            color: var(--toss-gray-900);
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            transition: background 0.2s;
-          }
-          
-          .back-button:active {
-            background: var(--toss-gray-100);
-          }
-          
-          .header-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--toss-gray-900);
-            letter-spacing: -0.02em;
-          }
-          
-          /* 4. Container */
-          .cart-container {
-            max-width: 480px;
-            margin: 0 auto;
-            padding: 20px;
-            padding-bottom: calc(120px + env(safe-area-inset-bottom));
-          }
-          
-          /* 5. Cart Item Card */
-          .cart-item {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 12px;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-          }
-          
-          .cart-item:active {
-            transform: scale(0.98);
-          }
-          
-          .item-content {
-            display: flex;
-            gap: 16px;
-          }
-          
-          .item-image {
-            width: 80px;
-            height: 80px;
-            border-radius: 12px;
-            object-fit: cover;
-            background: var(--toss-gray-100);
-            flex-shrink: 0;
-          }
-          
-          .item-details {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-          }
-          
-          .item-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--toss-gray-900);
-            line-height: 1.4;
-            letter-spacing: -0.02em;
-          }
-          
-          .item-option {
-            font-size: 13px;
-            color: var(--toss-gray-600);
-            line-height: 1.4;
-          }
-          
-          .item-price-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: auto;
-          }
-          
-          .item-price {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--toss-gray-900);
-          }
-          
-          .item-original-price {
-            font-size: 14px;
-            color: var(--toss-gray-400);
-            text-decoration: line-through;
-          }
-          
-          /* 6. Quantity Controls */
-          .quantity-controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--toss-gray-100);
-          }
-          
-          .quantity-label {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--toss-gray-700);
-          }
-          
-          .quantity-button-group {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-left: auto;
-          }
-          
-          .quantity-btn {
-            width: 32px;
-            height: 32px;
-            border: 1px solid var(--toss-gray-200);
-            background: white;
-            border-radius: 8px;
-            color: var(--toss-gray-700);
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          
-          .quantity-btn:active {
-            background: var(--toss-gray-50);
-            transform: scale(0.95);
-          }
-          
-          .quantity-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-          }
-          
-          .quantity-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--toss-gray-900);
-            min-width: 32px;
-            text-align: center;
-          }
-          
-          /* 7. Delete Button */
-          .delete-btn {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: none;
-            color: var(--toss-gray-400);
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            transition: all 0.2s;
-          }
-          
-          .delete-btn:active {
-            background: var(--toss-gray-100);
-            color: var(--toss-red);
-          }
-          
-          /* 8. Empty State */
-          .empty-cart {
-            text-align: center;
-            padding: 80px 20px;
-          }
-          
-          .empty-icon {
-            font-size: 64px;
-            color: var(--toss-gray-200);
-            margin-bottom: 20px;
-          }
-          
-          .empty-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--toss-gray-900);
-            margin-bottom: 8px;
-          }
-          
-          .empty-desc {
-            font-size: 14px;
-            color: var(--toss-gray-600);
-            line-height: 1.5;
-            margin-bottom: 24px;
-          }
-          
-          /* 9. Checkout Bar */
-          .checkout-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            border-top: 1px solid var(--toss-gray-100);
-            padding: 16px 20px;
-            padding-bottom: calc(16px + env(safe-area-inset-bottom));
-            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-            z-index: 100;
-          }
-          
-          .checkout-content {
-            max-width: 480px;
-            margin: 0 auto;
-          }
-          
-          .price-summary {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 16px;
-          }
-          
-          .price-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          
-          .price-label {
-            font-size: 14px;
-            color: var(--toss-gray-600);
-          }
-          
-          .price-value {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--toss-gray-900);
-          }
-          
-          .price-row.total {
-            padding-top: 12px;
-            border-top: 1px solid var(--toss-gray-100);
-            margin-top: 4px;
-          }
-          
-          .price-row.total .price-label {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--toss-gray-900);
-          }
-          
-          .price-row.total .price-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--toss-blue-500);
-          }
-          
-          /* 10. Buttons */
-          .btn-primary {
-            width: 100%;
-            height: 56px;
-            background: var(--toss-blue-500);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 17px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-          }
-          
-          .btn-primary:active {
-            background: var(--toss-blue-600);
-            transform: scale(0.98);
-          }
-          
-          .btn-secondary {
-            padding: 12px 24px;
-            background: white;
-            color: var(--toss-blue-500);
-            border: 1px solid var(--toss-blue-500);
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          
-          .btn-secondary:active {
-            background: var(--toss-blue-50);
-          }
-          
-          /* 11. Loading */
-          .loading-container {
-            text-align: center;
-            padding: 60px 20px;
-          }
-          
-          .spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid var(--toss-gray-100);
-            border-top-color: var(--toss-blue-500);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 20px;
-          }
-          
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-          
-          .loading-text {
-            font-size: 15px;
-            color: var(--toss-gray-600);
-          }
-          
-          /* 12. Section Divider */
-          .section-divider {
-            height: 8px;
-            background: var(--toss-gray-50);
-            margin: 20px -20px;
-          }
-          
-          /* 13. Info Badge */
-          .info-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 8px;
-            background: var(--toss-blue-50);
-            color: var(--toss-blue-500);
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-          }
-          
-          /* 14. Responsive */
-          @media (max-width: 480px) {
-            .cart-container {
-              padding: 16px;
-            }
-          }
-        </style>
-    </head>
-    <body>
-        <!-- 헤더 -->
-        <div class="cart-header">
-            <div class="cart-header-content">
-                <button class="back-button" onclick="window.history.back()">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <h1 class="header-title">장바구니</h1>
-            </div>
-        </div>
-
-        <!-- 장바구니 컨텐츠 -->
-        <div class="cart-container">
-            <div id="cart-items">
-                <!-- 로딩 상태 -->
-                <div class="loading-container">
-                    <div class="spinner"></div>
-                    <p class="loading-text">장바구니를 불러오는 중...</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 하단 결제 바 -->
-        <div id="checkout-bar" class="checkout-bar" style="display: none;">
-            <div class="checkout-content">
-                <div class="price-summary">
-                    <div class="price-row">
-                        <span class="price-label">상품 금액</span>
-                        <span class="price-value" id="subtotal-amount">0원</span>
-                    </div>
-                    <div class="price-row">
-                        <span class="price-label">배송비</span>
-                        <span class="price-value">무료</span>
-                    </div>
-                    <div class="price-row total">
-                        <span class="price-label">총 결제 금액</span>
-                        <span class="price-value" id="total-amount">0원</span>
-                    </div>
-                </div>
-                <button class="btn-primary" onclick="goToCheckout()">
-                    <i class="fas fa-credit-card"></i>
-                    <span id="checkout-btn-text">결제하기</span>
-                </button>
-            </div>
-        </div>
-
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/cart.js?v=${Date.now()}"></script>
-    </body>
-    </html>
-  `);
-});
-
-// =================================
-// Admin/Seller Authentication API
-// =================================
-
-// Helper: Generate session token
-function generateSessionToken(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
-
-// Helper: Simple password check (for demo - in production use bcrypt)
-function checkPassword(password: string, hash: string): boolean {
-  // For demo purposes, we're using simple comparison
-  // In production, use bcrypt.compare()
-  return password === 'admin123' || password === 'seller123';
-}
-
-// Admin Login
-app.post('/api/admin/login', async (c) => {
-  const { DB } = c.env;
-  const { username, password } = await c.req.json();
-
-  try {
-    // Find admin
-    const admin = await DB.prepare(
-      'SELECT id, username, name, email, role, password_hash FROM admins WHERE username = ? AND is_active = 1'
-    ).bind(username).first();
-
-    if (!admin) {
-      return c.json({ success: false, error: 'Invalid credentials' }, 401);
-    }
-
-    // Check password (simplified for demo)
-    if (!checkPassword(password, admin.password_hash)) {
-      return c.json({ success: false, error: 'Invalid credentials' }, 401);
-    }
-
-    // Create session
-    const sessionToken = generateSessionToken();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
-
-    await DB.prepare(
-      'INSERT INTO admin_sessions (session_token, admin_id, user_type, expires_at) VALUES (?, ?, ?, ?)'
-    ).bind(sessionToken, admin.id, 'admin', expiresAt).run();
-
-    // Update last login
-    await DB.prepare(
-      'UPDATE admins SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(admin.id).run();
-
-    return c.json({
-      success: true,
-      data: {
-        sessionToken,
-        user: {
-          id: admin.id,
-          username: admin.username,
-          name: admin.name,
-          email: admin.email,
-          role: admin.role,
-          type: 'admin'
-        }
-      }
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Seller Login
-app.post('/api/seller/login', async (c) => {
-  const { DB } = c.env;
-  const { username, password } = await c.req.json();
-
-  try {
-    // Find seller
-    const seller = await DB.prepare(
-      'SELECT id, username, name, email, business_name, status, password_hash FROM sellers WHERE username = ? AND is_active = 1'
-    ).bind(username).first();
-
-    if (!seller) {
-      return c.json({ success: false, error: 'Invalid credentials' }, 401);
-    }
-
-    // Check if seller is approved
-    if (seller.status !== 'approved') {
-      return c.json({ success: false, error: 'Seller account not approved yet' }, 403);
-    }
-
-    // Check password (simplified for demo)
-    if (!checkPassword(password, seller.password_hash)) {
-      return c.json({ success: false, error: 'Invalid credentials' }, 401);
-    }
-
-    // Create session
-    const sessionToken = generateSessionToken();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
-
-    await DB.prepare(
-      'INSERT INTO admin_sessions (session_token, seller_id, user_type, expires_at) VALUES (?, ?, ?, ?)'
-    ).bind(sessionToken, seller.id, 'seller', expiresAt).run();
-
-    // Update last login
-    await DB.prepare(
-      'UPDATE sellers SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(seller.id).run();
-
-    return c.json({
-      success: true,
-      data: {
-        sessionToken,
-        user: {
-          id: seller.id,
-          username: seller.username,
-          name: seller.name,
-          email: seller.email,
-          businessName: seller.business_name,
-          type: 'seller'
-        }
-      }
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Verify Session (Middleware helper endpoint)
-app.get('/api/auth/verify', async (c) => {
-  const { DB } = c.env;
-  const sessionToken = c.req.header('X-Session-Token');
-
-  if (!sessionToken) {
-    return c.json({ success: false, error: 'No session token' }, 401);
-  }
-
-  try {
-    const session = await DB.prepare(
-      'SELECT * FROM admin_sessions WHERE session_token = ? AND expires_at > CURRENT_TIMESTAMP'
-    ).bind(sessionToken).first();
-
-    if (!session) {
-      return c.json({ success: false, error: 'Invalid or expired session' }, 401);
-    }
-
-    let user;
-    if (session.user_type === 'admin') {
-      user = await DB.prepare(
-        'SELECT id, username, name, email, role FROM admins WHERE id = ?'
-      ).bind(session.admin_id).first();
-    } else {
-      user = await DB.prepare(
-        'SELECT id, username, name, email, business_name FROM sellers WHERE id = ?'
-      ).bind(session.seller_id).first();
-    }
-
-    return c.json({
-      success: true,
-      data: {
-        user: { ...user, type: session.user_type }
-      }
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Logout
-app.post('/api/auth/logout', async (c) => {
-  const { DB } = c.env;
-  const sessionToken = c.req.header('X-Session-Token');
-
-  if (!sessionToken) {
-    return c.json({ success: true }); // Already logged out
-  }
-
-  try {
-    await DB.prepare(
-      'DELETE FROM admin_sessions WHERE session_token = ?'
-    ).bind(sessionToken).run();
-
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// =================================
-// Admin Management API
-// =================================
-
-// Helper: Verify admin session
-async function verifyAdminSession(c: any): Promise<{ success: boolean; adminId?: number; error?: string }> {
-  const { DB } = c.env;
-  const sessionToken = c.req.header('X-Session-Token');
-
-  if (!sessionToken) {
-    return { success: false, error: 'No session token' };
-  }
-
-  try {
-    const session = await DB.prepare(
-      'SELECT * FROM admin_sessions WHERE session_token = ? AND user_type = ? AND expires_at > CURRENT_TIMESTAMP'
-    ).bind(sessionToken, 'admin').first();
-
-    if (!session) {
-      return { success: false, error: 'Invalid or expired session' };
-    }
-
-    return { success: true, adminId: session.admin_id };
-  } catch (err) {
-    return { success: false, error: (err as Error).message };
-  }
-}
-
-// Helper: Verify seller session
-async function verifySellerSession(c: any): Promise<{ success: boolean; sellerId?: number; error?: string }> {
-  const { DB } = c.env;
-  const sessionToken = c.req.header('X-Session-Token');
-
-  if (!sessionToken) {
-    return { success: false, error: 'No session token' };
-  }
-
-  try {
-    const session = await DB.prepare(
-      'SELECT * FROM admin_sessions WHERE session_token = ? AND user_type = ? AND expires_at > CURRENT_TIMESTAMP'
-    ).bind(sessionToken, 'seller').first();
-
-    if (!session) {
-      return { success: false, error: 'Invalid or expired session' };
-    }
-
-    return { success: true, sellerId: session.seller_id };
-  } catch (err) {
-    return { success: false, error: (err as Error).message };
-  }
-}
-
-// Get all live streams (Admin only)
-app.get('/api/admin/streams', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const result = await DB.prepare(
-      'SELECT * FROM live_streams ORDER BY created_at DESC'
-    ).all();
-
-    return c.json({ success: true, data: result.results });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Create live stream (Admin only)
-app.post('/api/admin/streams', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const { title, description, youtube_video_id } = await c.req.json();
-
-    if (!title || !youtube_video_id) {
-      return c.json({ success: false, error: 'Title and YouTube video ID are required' }, 400);
-    }
-
-    const result = await DB.prepare(
-      'INSERT INTO live_streams (title, description, youtube_video_id, status) VALUES (?, ?, ?, ?)'
-    ).bind(title, description || '', youtube_video_id, 'scheduled').run();
-
-    return c.json({
-      success: true,
-      data: {
-        id: result.meta.last_row_id,
-        title,
-        description,
-        youtube_video_id,
-        status: 'scheduled'
-      }
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Update live stream (Admin only)
-app.put('/api/admin/streams/:id', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const id = c.req.param('id');
-    const { title, description, youtube_video_id, status, current_product_id } = await c.req.json();
-
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (title !== undefined) {
-      updates.push('title = ?');
-      values.push(title);
-    }
-    if (description !== undefined) {
-      updates.push('description = ?');
-      values.push(description);
-    }
-    if (youtube_video_id !== undefined) {
-      updates.push('youtube_video_id = ?');
-      values.push(youtube_video_id);
-    }
-    if (status !== undefined) {
-      updates.push('status = ?');
-      values.push(status);
-    }
-    if (current_product_id !== undefined) {
-      updates.push('current_product_id = ?');
-      values.push(current_product_id);
-    }
-
-    updates.push('updated_at = CURRENT_TIMESTAMP');
-    values.push(id);
-
-    if (updates.length === 1) {
-      return c.json({ success: false, error: 'No fields to update' }, 400);
-    }
-
-    await DB.prepare(
-      `UPDATE live_streams SET ${updates.join(', ')} WHERE id = ?`
-    ).bind(...values).run();
-
-    // Get updated stream
-    const stream = await DB.prepare('SELECT * FROM live_streams WHERE id = ?').bind(id).first();
-
-    return c.json({ success: true, data: stream });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Update current product in live stream (Admin only)
-app.patch('/api/admin/streams/:id/current-product', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const id = c.req.param('id');
-    const { product_id } = await c.req.json();
-
-    // Validate product exists
-    if (product_id) {
-      const product = await DB.prepare('SELECT id FROM products WHERE id = ?').bind(product_id).first();
-      if (!product) {
-        return c.json({ success: false, error: 'Product not found' }, 404);
-      }
-    }
-
-    await DB.prepare(
-      'UPDATE live_streams SET current_product_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(product_id || null, id).run();
-
-    // Get updated stream with product info
-    const stream = await DB.prepare(`
-      SELECT ls.*, p.id as product_id, p.name as product_name, p.price, p.original_price, 
-             p.discount_rate, p.image_url, p.stock
-      FROM live_streams ls
-      LEFT JOIN products p ON ls.current_product_id = p.id
-      WHERE ls.id = ?
-    `).bind(id).first();
-
-    return c.json({ success: true, data: stream });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Delete live stream (Admin only)
-app.delete('/api/admin/streams/:id', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const id = c.req.param('id');
-
-    await DB.prepare('DELETE FROM live_streams WHERE id = ?').bind(id).run();
-
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Get all sellers (Admin only)
-app.get('/api/admin/sellers', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const result = await DB.prepare(
-      'SELECT id, username, name, email, phone, business_name, business_number, status, created_at FROM sellers ORDER BY created_at DESC'
-    ).all();
-
-    return c.json({ success: true, data: result.results });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Create new seller (Admin only)
-app.post('/api/admin/sellers', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const { username, password, name, email, phone, business_name, business_number } = await c.req.json();
-
-    // Validate required fields
-    if (!username || !password || !name || !business_name) {
-      return c.json({ success: false, error: '필수 정보를 입력해주세요.' }, 400);
-    }
-
-    // Check if username already exists
-    const existing = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(username).first();
-    if (existing) {
-      return c.json({ success: false, error: '이미 존재하는 사용자명입니다.' }, 400);
-    }
-
-    // Hash password
-    const passwordHash = await hashPassword(password);
-
-    // Insert new seller
-    const result = await DB.prepare(
-      'INSERT INTO sellers (username, password_hash, name, email, phone, business_name, business_number, status, approved_by, approved_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
-    ).bind(username, passwordHash, name, email || null, phone || null, business_name, business_number || null, 'approved', auth.adminId).run();
-
-    return c.json({ 
-      success: true, 
-      data: { 
-        id: result.meta.last_row_id,
-        username,
-        name,
-        business_name,
-        status: 'approved'
-      } 
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Update seller status (Admin only)
-app.patch('/api/admin/sellers/:id/status', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const id = c.req.param('id');
-    const { status } = await c.req.json();
-
-    if (!['approved', 'rejected', 'suspended'].includes(status)) {
-      return c.json({ success: false, error: 'Invalid status' }, 400);
-    }
-
-    await DB.prepare(
-      'UPDATE sellers SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(status, auth.adminId, id).run();
-
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Delete seller (Admin only)
-app.delete('/api/admin/sellers/:id', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const id = c.req.param('id');
-
-    // Check if seller has products
-    const products = await DB.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id = ?').bind(id).first();
-    if (products && products.count > 0) {
-      return c.json({ success: false, error: '상품이 등록된 판매자는 삭제할 수 없습니다. 먼저 모든 상품을 삭제해주세요.' }, 400);
-    }
-
-    // Delete seller
-    await DB.prepare('DELETE FROM sellers WHERE id = ?').bind(id).run();
-    
-    // Delete seller sessions
-    await DB.prepare('DELETE FROM admin_sessions WHERE seller_id = ? AND user_type = ?').bind(id, 'seller').run();
-
-    return c.json({ success: true });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Get dashboard stats (Admin only)
-app.get('/api/admin/stats', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifyAdminSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const liveStreams = await DB.prepare('SELECT COUNT(*) as count FROM live_streams').first();
-    const products = await DB.prepare('SELECT COUNT(*) as count FROM products').first();
-    const sellers = await DB.prepare('SELECT COUNT(*) as count FROM sellers WHERE status = ?').bind('approved').first();
-    const orders = await DB.prepare('SELECT COUNT(*) as count, SUM(total_amount) as total FROM orders').first();
-
-    return c.json({
-      success: true,
-      data: {
-        liveStreams: liveStreams.count || 0,
-        products: products.count || 0,
-        sellers: sellers.count || 0,
-        orders: orders.count || 0,
-        totalRevenue: orders.total || 0
-      }
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// =================================
-// Seller Product Management API
-// =================================
-
-// Get seller's products
-app.get('/api/seller/products', async (c) => {
-  const { DB } = c.env;
-  const auth = await verifySellerSession(c);
-
-  if (!auth.success) {
-    return c.json({ success: false, error: auth.error }, 401);
-  }
-
-  try {
-    const result = await DB.prepare(
-      'SELECT * FROM products WHERE seller_id = ? ORDER BY created_at DESC'
-    ).bind(auth.sellerId).all();
-
-    return c.json({ success: true, data: result.results });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Create product
 app.post('/api/seller/products', async (c) => {
   const { DB } = c.env;
   const auth = await verifySellerSession(c);
