@@ -10,8 +10,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "webapp-production",
-      "database_id": "a45fa424-ade4-414e-892e-a74a29a99538"
+      "database_name": "toss-live-commerce-db",
+      "database_id": "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
     }
   ]
 }
