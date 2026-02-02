@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "live-ur-team-proxy",
+  "main": "workers/proxy.js",
+  "compatibility_date": "2026-02-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "routes": [
+    {
+      "pattern": "live.ur-team.com/*",
+      "custom_domain": true
+    }
+  ]
+}
