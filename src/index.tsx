@@ -1460,7 +1460,7 @@ app.get('/live/:streamId', (c) => {
                 updateCartUI();
                 
                 const userName = '고객' + Math.floor(Math.random() * 1000);
-                const systemMsg = '시스템: ' + userName + '님이 ' + currentProduct.name + '을(를) 담았습니다! 🎁';
+                const systemMsg = '시스템: ' + userName + '님이 ' + currentProduct.name + ' 구매했습니다! 🎁';
                 sendSystemMessage(systemMsg);
                 
                 const btn = document.getElementById('add-to-basket-btn');
