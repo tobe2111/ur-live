@@ -638,25 +638,16 @@ app.get('/live/:streamId', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-        <title>토스 라이브 커머스 - 실시간 방송</title>
+        <title>토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        
-        <!-- Firebase SDK -->
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-        
         <style>
             * {
                 margin: 0;
                 padding: 0;
                 box-sizing: border-box;
-            }
-            
-            :root {
-                --toss-blue: #3182F6;
-                --toss-gray-900: #191F28;
-                --toss-gray-700: #4E5968;
-                --toss-gray-600: #6B7684;
             }
             
             body {
@@ -668,15 +659,13 @@ app.get('/live/:streamId', (c) => {
                 background: #000;
             }
             
-            /* YouTube Background - Full Screen */
             #youtube-container {
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                z-index: 1;
-                background: #000;
+                z-index: 0;
             }
             
             #youtube-player {
@@ -684,19 +673,169 @@ app.get('/live/:streamId', (c) => {
                 height: 100%;
             }
             
-            /* Gradient Overlay for readability */
-            .gradient-overlay {
+            .overlay-ui {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 10;
+                pointer-events: none;
+            }
+            
+            .overlay-ui > * {
+                pointer-events: auto;
+            }
+            
+            .chat-container {
+                position: fixed;
+                bottom: 160px;
+                left: 16px;
+                width: 65%;
+                max-height: 200px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .chat-message {
+                color: white;
+                font-size: 14px;
+                line-height: 1.4;
+                text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+                animation: fadeIn 0.3s ease-in;
+            }
+            
+            .chat-username {
+                font-weight: 700;
+                margin-right: 4px;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .product-card {
+                position: fixed;
+                bottom: 160px;
+                right: 16px;
+                background: white;
+                border-radius: 16px;
+                padding: 12px;
+                width: 140px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            
+            .product-card img {
+                width: 100%;
+                height: 116px;
+                object-fit: cover;
+                border-radius: 8px;
+                margin-bottom: 8px;
+            }
+            
+            .product-card .name {
+                font-size: 13px;
+                font-weight: 600;
+                color: #191F28;
+                margin-bottom: 4px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .product-card .price {
+                font-size: 15px;
+                font-weight: 700;
+                color: #0064FF;
+                margin-bottom: 8px;
+            }
+            
+            .product-card .add-btn {
+                width: 100%;
+                background: #0064FF;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            
+            .product-card .add-btn:active {
+                background: #0052CC;
+            }
+            
+            .bottom-bar {
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                height: 60%;
-                background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
-                z-index: 2;
-                pointer-events: none;
+                background: white;
+                padding: 12px 16px;
+                padding-bottom: calc(12px + env(safe-area-inset-bottom));
+                z-index: 20;
             }
             
-            /* Top Header */
+            .chat-input-wrapper {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
+                align-items: center;
+            }
+            
+            .chat-input {
+                flex: 1;
+                background: #F2F4F6;
+                border: none;
+                border-radius: 20px;
+                padding: 10px 16px;
+                font-size: 14px;
+                outline: none;
+            }
+            
+            .send-btn {
+                width: 40px;
+                height: 40px;
+                background: #0064FF;
+                border: none;
+                border-radius: 50%;
+                color: white;
+                font-size: 16px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .action-buttons {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .action-buttons button {
+                flex: 1;
+                padding: 12px;
+                border: none;
+                border-radius: 8px;
+                font-size: 15px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            
+            .orders-btn {
+                background: #F2F4F6;
+                color: #191F28;
+            }
+            
+            .buy-btn {
+                background: #0064FF;
+                color: white;
+            }
+            
             .top-header {
                 position: fixed;
                 top: 0;
@@ -707,16 +846,15 @@ app.get('/live/:streamId', (c) => {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                z-index: 100;
-                background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+                z-index: 15;
             }
             
             .live-badge {
-                background: #ff4757;
+                background: #FF4757;
                 color: white;
                 padding: 6px 12px;
                 border-radius: 4px;
-                font-size: 13px;
+                font-size: 12px;
                 font-weight: 700;
                 display: flex;
                 align-items: center;
@@ -728,361 +866,71 @@ app.get('/live/:streamId', (c) => {
                 color: white;
                 padding: 6px 12px;
                 border-radius: 16px;
-                font-size: 13px;
+                font-size: 12px;
                 display: flex;
                 align-items: center;
-                gap: 6px;
-                backdrop-filter: blur(10px);
+                gap: 4px;
             }
             
             .close-btn {
                 background: rgba(0,0,0,0.6);
                 color: white;
                 border: none;
-                width: 36px;
-                height: 36px;
+                width: 32px;
+                height: 32px;
                 border-radius: 50%;
-                font-size: 18px;
-                cursor: pointer;
-                backdrop-filter: blur(10px);
-            }
-            
-            /* Chat Section - Bottom Left */
-            .chat-container {
-                position: fixed;
-                bottom: 200px;
-                left: 16px;
-                width: calc(100% - 80px);
-                max-width: 350px;
-                max-height: 200px;
-                z-index: 50;
-                pointer-events: none;
-            }
-            
-            .chat-message {
-                background: rgba(0,0,0,0.5);
-                backdrop-filter: blur(10px);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 16px;
-                margin-bottom: 8px;
-                font-size: 13px;
-                line-height: 1.4;
-                animation: fadeIn 0.3s ease-in;
-                word-wrap: break-word;
-            }
-            
-            .chat-username {
-                font-weight: 700;
-                margin-right: 6px;
-                color: #ffd93d;
-            }
-            
-            .system-message {
-                background: rgba(49, 130, 246, 0.9);
-                color: white;
-                font-weight: 600;
-            }
-            
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-            
-            /* Product Card - Bottom Center (Toss Floating Style) */
-            .product-card {
-                position: fixed;
-                bottom: 80px;
-                bottom: calc(80px + env(safe-area-inset-bottom));
-                left: 16px;
-                right: 16px;
-                background: white;
-                border-radius: 20px;
-                padding: 16px;
-                box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-                z-index: 60;
-                display: none;
-                animation: slideUp 0.3s ease-out;
-            }
-            
-            .product-card.show {
-                display: block;
-            }
-            
-            @keyframes slideUp {
-                from {
-                    transform: translateY(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateY(0);
-                    opacity: 1;
-                }
-            }
-            
-            .product-main {
-                display: flex;
-                gap: 12px;
-                margin-bottom: 12px;
-            }
-            
-            .product-image {
-                width: 80px;
-                height: 80px;
-                border-radius: 12px;
-                object-fit: cover;
-                flex-shrink: 0;
-            }
-            
-            .product-info {
-                flex: 1;
-                min-width: 0;
-            }
-            
-            .product-name {
-                font-size: 15px;
-                font-weight: 700;
-                color: var(--toss-gray-900);
-                margin-bottom: 6px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                display: -webkit-box;
-                -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical;
-            }
-            
-            .product-price {
-                display: flex;
-                align-items: baseline;
-                gap: 6px;
-                margin-bottom: 4px;
-            }
-            
-            .discount-rate {
-                color: #ff4757;
-                font-size: 18px;
-                font-weight: 700;
-            }
-            
-            .current-price {
-                color: var(--toss-gray-900);
-                font-size: 18px;
-                font-weight: 700;
-            }
-            
-            .original-price {
-                color: var(--toss-gray-600);
-                font-size: 13px;
-                text-decoration: line-through;
-            }
-            
-            .product-stock {
-                font-size: 12px;
-                color: var(--toss-gray-600);
-            }
-            
-            .add-to-cart-btn {
-                width: 100%;
-                background: var(--toss-blue);
-                color: white;
-                border: none;
-                border-radius: 12px;
-                padding: 14px;
                 font-size: 16px;
-                font-weight: 700;
                 cursor: pointer;
-                transition: all 0.2s;
-            }
-            
-            .add-to-cart-btn:active {
-                transform: scale(0.98);
-            }
-            
-            /* Right Side Buttons (Like/Share) */
-            .right-actions {
-                position: fixed;
-                right: 16px;
-                bottom: 300px;
-                bottom: calc(300px + env(safe-area-inset-bottom));
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                z-index: 50;
-            }
-            
-            .action-btn {
-                width: 48px;
-                height: 48px;
-                border-radius: 50%;
-                background: rgba(0,0,0,0.5);
-                backdrop-filter: blur(10px);
-                border: none;
-                color: white;
-                font-size: 20px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-direction: column;
-                transition: all 0.2s;
-            }
-            
-            .action-btn:active {
-                transform: scale(0.9);
-            }
-            
-            .action-count {
-                font-size: 11px;
-                font-weight: 600;
-                margin-top: 2px;
-            }
-            
-            .liked {
-                color: #ff4757;
-            }
-            
-            /* No Product Message */
-            .no-product {
-                position: fixed;
-                bottom: 100px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(0,0,0,0.7);
-                backdrop-filter: blur(10px);
-                color: white;
-                padding: 12px 24px;
-                border-radius: 24px;
-                font-size: 14px;
-                z-index: 60;
-                display: none;
-            }
-            
-            .no-product.show {
-                display: block;
-            }
-            
-            /* Loading */
-            .loading {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: white;
-                font-size: 16px;
-                z-index: 200;
-            }
-            
-            /* Mobile Responsive */
-            @media (max-width: 480px) {
-                .chat-container {
-                    max-width: calc(100% - 96px);
-                }
-                
-                .product-card {
-                    left: 12px;
-                    right: 12px;
-                }
-                
-                .product-main {
-                    gap: 10px;
-                }
-                
-                .product-image {
-                    width: 70px;
-                    height: 70px;
-                }
-                
-                .product-name {
-                    font-size: 14px;
-                }
-                
-                .right-actions {
-                    bottom: 280px;
-                }
-                
-                .action-btn {
-                    width: 44px;
-                    height: 44px;
-                    font-size: 18px;
-                }
             }
         </style>
     </head>
     <body>
-        <!-- YouTube Player Background -->
         <div id="youtube-container">
             <div id="youtube-player"></div>
         </div>
         
-        <!-- Gradient Overlay -->
-        <div class="gradient-overlay"></div>
-        
-        <!-- Top Header -->
-        <div class="top-header">
-            <div style="display: flex; gap: 12px; align-items: center;">
+        <div class="overlay-ui">
+            <div class="top-header">
                 <div class="live-badge">
-                    <i class="fas fa-circle" style="font-size: 8px; animation: pulse 2s ease-in-out infinite;"></i>
+                    <i class="fas fa-circle" style="font-size: 8px; animation: pulse 1.5s infinite;"></i>
                     LIVE
                 </div>
                 <div class="viewer-count">
                     <i class="fas fa-eye"></i>
-                    <span id="viewer-count">0</span>
+                    <span id="viewer-count">15,510</span>
                 </div>
+                <button class="close-btn" onclick="window.history.back()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button class="close-btn" onclick="window.location.href='/'">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <!-- Chat Container (Bottom Left) -->
-        <div class="chat-container" id="chat-container">
-            <!-- Chat messages will be dynamically added here -->
-        </div>
-        
-        <!-- Right Side Actions -->
-        <div class="right-actions">
-            <button class="action-btn" id="like-btn">
-                <i class="fas fa-heart"></i>
-                <span class="action-count" id="like-count">0</span>
-            </button>
-            <button class="action-btn" id="share-btn">
-                <i class="fas fa-share-alt"></i>
-            </button>
-        </div>
-        
-        <!-- Product Card (Bottom Center - Toss Style) -->
-        <div class="product-card" id="product-card">
-            <div class="product-main">
-                <img id="product-image" class="product-image" src="" alt="">
-                <div class="product-info">
-                    <div class="product-name" id="product-name"></div>
-                    <div class="product-price">
-                        <span class="discount-rate" id="discount-rate"></span>
-                        <span class="current-price" id="current-price"></span>
-                        <span class="original-price" id="original-price"></span>
-                    </div>
-                    <div class="product-stock" id="product-stock"></div>
-                </div>
+            
+            <div class="chat-container" id="chat-container">
+                <!-- Chat messages will be inserted here -->
             </div>
-            <button class="add-to-cart-btn" id="add-to-cart-btn">
-                <i class="fas fa-shopping-bag"></i> 담기
-            </button>
+            
+            <div class="product-card" id="product-card" style="display: none;">
+                <img id="product-img" src="" alt="">
+                <div class="name" id="product-name"></div>
+                <div class="price" id="product-price"></div>
+                <button class="add-btn" id="add-to-cart-btn">담기</button>
+            </div>
         </div>
         
-        <!-- No Product Message -->
-        <div class="no-product" id="no-product">
-            상품 준비 중입니다...
-        </div>
-        
-        <!-- Loading -->
-        <div class="loading" id="loading">
-            <i class="fas fa-spinner fa-spin"></i> 로딩 중...
+        <div class="bottom-bar">
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" placeholder="메시지를 입력하세요" id="chat-input">
+                <button class="send-btn" id="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="action-buttons">
+                <button class="orders-btn" onclick="window.location.href='/my-orders'">
+                    <i class="fas fa-shopping-bag"></i> 내 주문
+                </button>
+                <button class="buy-btn" id="checkout-btn">
+                    <i class="fas fa-credit-card"></i> 결제하기
+                </button>
+            </div>
         </div>
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -1091,19 +939,195 @@ app.get('/live/:streamId', (c) => {
             const STREAM_ID = '${streamId}';
             const API_BASE = '/api';
             let currentProduct = null;
-            let likeCount = 0;
-            let liked = false;
             let player = null;
             let chatMessages = [];
             const MAX_CHAT_MESSAGES = 5;
             
-            // Initialize
             document.addEventListener('DOMContentLoaded', async () => {
                 await loadStreamData();
                 initFirebase();
                 startProductPolling();
                 setupEventListeners();
             });
+            
+            async function loadStreamData() {
+                try {
+                    const response = await axios.get(API_BASE + '/streams/' + STREAM_ID);
+                    if (response.data.success) {
+                        const stream = response.data.data;
+                        initYouTubePlayer(stream.youtube_video_id);
+                        updateProduct(stream);
+                    }
+                } catch (error) {
+                    console.error('Failed to load stream:', error);
+                }
+            }
+            
+            function initYouTubePlayer(videoId) {
+                player = new YT.Player('youtube-player', {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        modestbranding: 1,
+                        rel: 0,
+                        showinfo: 0,
+                        mute: 1
+                    },
+                    events: {
+                        onReady: (event) => {
+                            event.target.playVideo();
+                        }
+                    }
+                });
+            }
+            
+            function updateProduct(stream) {
+                if (stream.current_product_id && stream.product_name) {
+                    currentProduct = {
+                        id: stream.current_product_id,
+                        name: stream.product_name,
+                        price: stream.price,
+                        original_price: stream.original_price,
+                        discount_rate: stream.discount_rate,
+                        image_url: stream.image_url,
+                        stock: stream.stock
+                    };
+                    
+                    document.getElementById('product-card').style.display = 'block';
+                    document.getElementById('product-img').src = currentProduct.image_url || 'https://picsum.photos/200/200';
+                    document.getElementById('product-name').textContent = currentProduct.name;
+                    document.getElementById('product-price').textContent = formatPrice(currentProduct.price) + '원';
+                } else {
+                    document.getElementById('product-card').style.display = 'none';
+                }
+            }
+            
+            function startProductPolling() {
+                setInterval(async () => {
+                    try {
+                        const response = await axios.get(API_BASE + '/streams/' + STREAM_ID);
+                        if (response.data.success) {
+                            updateProduct(response.data.data);
+                        }
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                    }
+                }, 3000);
+            }
+            
+            function initFirebase() {
+                try {
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+                        authDomain: "urteam-live-commerce.firebaseapp.com",
+                        databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+                        projectId: "urteam-live-commerce",
+                        storageBucket: "urteam-live-commerce.firebasestorage.app",
+                        messagingSenderId: "1098157020294",
+                        appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
+                    };
+                    
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                    }
+                    
+                    const database = firebase.database();
+                    const chatRef = database.ref('chats/stream_' + STREAM_ID);
+                    
+                    chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
+                        const message = snapshot.val();
+                        addChatMessage(message.username, message.message || message.text);
+                    });
+                    
+                    addSampleChats();
+                    console.log('Firebase initialized successfully');
+                } catch (err) {
+                    console.error('Firebase init failed:', err);
+                    addSampleChats();
+                }
+            }
+            
+            function addSampleChats() {
+                const samples = [
+                    { username: '매니저', message: '🎉 라이브 시작합니다!' },
+                    { username: '토스유저123', message: '오늘 특가 뭐예요?' },
+                    { username: '매니저', message: '김** 님이 구매 감사합니다 💙' },
+                    { username: '쇼핑러버', message: '혜택 미쳤다 ㄷㄷ' },
+                    { username: '매니저', message: '이** 님이 구매 감사합니다 💙' }
+                ];
+                
+                samples.forEach(chat => {
+                    addChatMessage(chat.username, chat.message);
+                });
+            }
+            
+            function addChatMessage(username, message) {
+                const container = document.getElementById('chat-container');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'chat-message';
+                messageEl.innerHTML = '<span class="chat-username">' + username + ':</span>' + message;
+                
+                container.appendChild(messageEl);
+                
+                chatMessages.push(messageEl);
+                if (chatMessages.length > MAX_CHAT_MESSAGES) {
+                    const oldMessage = chatMessages.shift();
+                    oldMessage.remove();
+                }
+            }
+            
+            function setupEventListeners() {
+                document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
+                    if (!currentProduct) return;
+                    
+                    try {
+                        const userId = 'test_user_001';
+                        
+                        await axios.post(API_BASE + '/cart', {
+                            user_id: userId,
+                            product_id: currentProduct.id,
+                            quantity: 1,
+                            live_stream_id: parseInt(STREAM_ID)
+                        });
+                        
+                        alert('장바구니에 담았습니다! 💙');
+                        addChatMessage('시스템', '상품이 장바구니에 담겼습니다.');
+                    } catch (error) {
+                        console.error('Failed to add to cart:', error);
+                        alert('장바구니 담기 실패. 다시 시도해주세요.');
+                    }
+                });
+                
+                document.getElementById('checkout-btn').addEventListener('click', () => {
+                    window.location.href = '/my-orders';
+                });
+                
+                document.getElementById('send-btn').addEventListener('click', sendChat);
+                document.getElementById('chat-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendChat();
+                });
+            }
+            
+            function sendChat() {
+                const input = document.getElementById('chat-input');
+                const message = input.value.trim();
+                if (!message) return;
+                
+                addChatMessage('나', message);
+                input.value = '';
+            }
+            
+            function formatPrice(price) {
+                return new Intl.NumberFormat('ko-KR').format(price);
+            }
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+
             
             // Load stream and product data
             async function loadStreamData() {
@@ -1341,17 +1365,6 @@ app.get('/live/:streamId', (c) => {
                 return new Intl.NumberFormat('ko-KR').format(price);
             }
             
-            // Pulse animation for LIVE badge
-            const style = document.createElement('style');
-            style.textContent = '@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }';
-            document.head.appendChild(style);
-        </script>
-    </body>
-    </html>
-    
-  `);
-});
-
 // ==================== 토스페이 결제 API ====================
 
 // 토스페이 결제 생성
