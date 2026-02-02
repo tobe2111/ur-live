@@ -305,6 +305,60 @@ app.delete('/api/cart/:cartItemId', async (c) => {
   }
 });
 
+// 장바구니 아이템 수량 변경
+app.put('/api/cart/:cartItemId', async (c) => {
+  const { DB } = c.env;
+  const cartItemId = c.req.param('cartItemId');
+
+  try {
+    const body = await c.req.json();
+    const { quantity } = body;
+
+    if (!quantity || quantity < 1) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Invalid quantity',
+      }, 400);
+    }
+
+    // 재고 확인
+    const cartItem = await DB.prepare(`
+      SELECT ci.product_id, p.stock
+      FROM cart_items ci
+      JOIN products p ON ci.product_id = p.id
+      WHERE ci.id = ?
+    `).bind(cartItemId).first();
+
+    if (!cartItem) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Cart item not found',
+      }, 404);
+    }
+
+    if ((cartItem.stock as number) < quantity) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Insufficient stock',
+      }, 400);
+    }
+
+    // 수량 업데이트
+    await DB.prepare(
+      'UPDATE cart_items SET quantity = ? WHERE id = ?'
+    ).bind(quantity, cartItemId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // Order API
 app.post('/api/orders', async (c) => {
   const { DB } = c.env;
@@ -1073,62 +1127,497 @@ app.post('/api/tosspay/execute-payment', async (c) => {
   }
 });
 
-// 장바구니 페이지
+// 장바구니 페이지 (토스 디자인 시스템 완벽 적용)
 app.get('/cart', (c) => {
   return c.html(`
     <!DOCTYPE html>
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>장바구니 - 토스 라이브 커머스</title>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <link href="/static/style.css?v=${Date.now()}" rel="stylesheet">
         <style>
+          /* ========================================
+             토스 디자인 시스템 (TDS) - 완벽 적용
+             ======================================== */
+          
+          /* 1. Color System */
           :root {
-            --toss-blue: #3182F6;
-            --toss-gray: #191F28;
-            --toss-light-gray: #F2F4F6;
+            /* Primary Colors */
+            --toss-blue-50: #EBF4FF;
+            --toss-blue-100: #CCE1FF;
+            --toss-blue-200: #99C3FF;
+            --toss-blue-300: #66A5FF;
+            --toss-blue-400: #3D8DFF;
+            --toss-blue-500: #3182F6;  /* Main Blue */
+            --toss-blue-600: #2568D8;
+            --toss-blue-700: #1B4FBA;
+            --toss-blue-800: #13389C;
+            --toss-blue-900: #0D2A7E;
+            
+            /* Grayscale */
+            --toss-gray-50: #F9FAFB;
+            --toss-gray-100: #F2F4F6;
+            --toss-gray-200: #E5E8EB;
+            --toss-gray-300: #D1D6DB;
+            --toss-gray-400: #B0B8C1;
+            --toss-gray-500: #8B95A1;
+            --toss-gray-600: #6B7684;
+            --toss-gray-700: #4E5968;
+            --toss-gray-800: #333D4B;
+            --toss-gray-900: #191F28;
+            
+            /* Semantic Colors */
+            --toss-red: #FF3B30;
+            --toss-green: #34C759;
+            --toss-orange: #FF9500;
+            
+            /* Elevation */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
           }
+          
+          /* 2. Typography */
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 
+                         'Noto Sans KR', 'Malgun Gothic', sans-serif;
+            background: var(--toss-gray-50);
+            color: var(--toss-gray-900);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
           }
-          .toss-primary {
-            background-color: var(--toss-blue);
+          
+          /* 3. Header */
+          .cart-header {
+            background: white;
+            border-bottom: 1px solid var(--toss-gray-100);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95);
+          }
+          
+          .cart-header-content {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          
+          .back-button {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: none;
+            color: var(--toss-gray-900);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            transition: background 0.2s;
+          }
+          
+          .back-button:active {
+            background: var(--toss-gray-100);
+          }
+          
+          .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--toss-gray-900);
+            letter-spacing: -0.02em;
+          }
+          
+          /* 4. Container */
+          .cart-container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: calc(120px + env(safe-area-inset-bottom));
+          }
+          
+          /* 5. Cart Item Card */
+          .cart-item {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+          
+          .cart-item:active {
+            transform: scale(0.98);
+          }
+          
+          .item-content {
+            display: flex;
+            gap: 16px;
+          }
+          
+          .item-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: var(--toss-gray-100);
+            flex-shrink: 0;
+          }
+          
+          .item-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+          
+          .item-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--toss-gray-900);
+            line-height: 1.4;
+            letter-spacing: -0.02em;
+          }
+          
+          .item-option {
+            font-size: 13px;
+            color: var(--toss-gray-600);
+            line-height: 1.4;
+          }
+          
+          .item-price-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: auto;
+          }
+          
+          .item-price {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--toss-gray-900);
+          }
+          
+          .item-original-price {
+            font-size: 14px;
+            color: var(--toss-gray-400);
+            text-decoration: line-through;
+          }
+          
+          /* 6. Quantity Controls */
+          .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--toss-gray-100);
+          }
+          
+          .quantity-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--toss-gray-700);
+          }
+          
+          .quantity-button-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: auto;
+          }
+          
+          .quantity-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--toss-gray-200);
+            background: white;
+            border-radius: 8px;
+            color: var(--toss-gray-700);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          
+          .quantity-btn:active {
+            background: var(--toss-gray-50);
+            transform: scale(0.95);
+          }
+          
+          .quantity-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+          
+          .quantity-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--toss-gray-900);
+            min-width: 32px;
+            text-align: center;
+          }
+          
+          /* 7. Delete Button */
+          .delete-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            color: var(--toss-gray-400);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+          }
+          
+          .delete-btn:active {
+            background: var(--toss-gray-100);
+            color: var(--toss-red);
+          }
+          
+          /* 8. Empty State */
+          .empty-cart {
+            text-align: center;
+            padding: 80px 20px;
+          }
+          
+          .empty-icon {
+            font-size: 64px;
+            color: var(--toss-gray-200);
+            margin-bottom: 20px;
+          }
+          
+          .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--toss-gray-900);
+            margin-bottom: 8px;
+          }
+          
+          .empty-desc {
+            font-size: 14px;
+            color: var(--toss-gray-600);
+            line-height: 1.5;
+            margin-bottom: 24px;
+          }
+          
+          /* 9. Checkout Bar */
+          .checkout-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid var(--toss-gray-100);
+            padding: 16px 20px;
+            padding-bottom: calc(16px + env(safe-area-inset-bottom));
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+          }
+          
+          .checkout-content {
+            max-width: 480px;
+            margin: 0 auto;
+          }
+          
+          .price-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+          }
+          
+          .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          .price-label {
+            font-size: 14px;
+            color: var(--toss-gray-600);
+          }
+          
+          .price-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--toss-gray-900);
+          }
+          
+          .price-row.total {
+            padding-top: 12px;
+            border-top: 1px solid var(--toss-gray-100);
+            margin-top: 4px;
+          }
+          
+          .price-row.total .price-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--toss-gray-900);
+          }
+          
+          .price-row.total .price-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--toss-blue-500);
+          }
+          
+          /* 10. Buttons */
+          .btn-primary {
+            width: 100%;
+            height: 56px;
+            background: var(--toss-blue-500);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          }
+          
+          .btn-primary:active {
+            background: var(--toss-blue-600);
+            transform: scale(0.98);
+          }
+          
+          .btn-secondary {
+            padding: 12px 24px;
+            background: white;
+            color: var(--toss-blue-500);
+            border: 1px solid var(--toss-blue-500);
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          
+          .btn-secondary:active {
+            background: var(--toss-blue-50);
+          }
+          
+          /* 11. Loading */
+          .loading-container {
+            text-align: center;
+            padding: 60px 20px;
+          }
+          
+          .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--toss-gray-100);
+            border-top-color: var(--toss-blue-500);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+          }
+          
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          
+          .loading-text {
+            font-size: 15px;
+            color: var(--toss-gray-600);
+          }
+          
+          /* 12. Section Divider */
+          .section-divider {
+            height: 8px;
+            background: var(--toss-gray-50);
+            margin: 20px -20px;
+          }
+          
+          /* 13. Info Badge */
+          .info-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: var(--toss-blue-50);
+            color: var(--toss-blue-500);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          
+          /* 14. Responsive */
+          @media (max-width: 480px) {
+            .cart-container {
+              padding: 16px;
+            }
           }
         </style>
     </head>
-    <body class="bg-gray-50">
+    <body>
         <!-- 헤더 -->
-        <div class="bg-white border-b sticky top-0 z-50">
-            <div class="max-w-2xl mx-auto px-4 py-4 flex items-center">
-                <button onclick="window.history.back()" class="mr-4">
-                    <i class="fas fa-arrow-left text-xl text-gray-700"></i>
+        <div class="cart-header">
+            <div class="cart-header-content">
+                <button class="back-button" onclick="window.history.back()">
+                    <i class="fas fa-arrow-left"></i>
                 </button>
-                <h1 class="text-xl font-bold text-gray-800">장바구니</h1>
+                <h1 class="header-title">장바구니</h1>
             </div>
         </div>
 
         <!-- 장바구니 컨텐츠 -->
-        <div class="max-w-2xl mx-auto px-4 py-6">
+        <div class="cart-container">
             <div id="cart-items">
                 <!-- 로딩 상태 -->
-                <div class="text-center py-12">
-                    <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
-                    <p class="text-gray-500">장바구니를 불러오는 중...</p>
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p class="loading-text">장바구니를 불러오는 중...</p>
                 </div>
             </div>
         </div>
 
         <!-- 하단 결제 바 -->
-        <div id="checkout-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg" style="display: none;">
-            <div class="max-w-2xl mx-auto px-4 py-4">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-gray-600">총 상품 금액</span>
-                    <span id="total-amount" class="text-2xl font-bold text-gray-900">0원</span>
+        <div id="checkout-bar" class="checkout-bar" style="display: none;">
+            <div class="checkout-content">
+                <div class="price-summary">
+                    <div class="price-row">
+                        <span class="price-label">상품 금액</span>
+                        <span class="price-value" id="subtotal-amount">0원</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">배송비</span>
+                        <span class="price-value">무료</span>
+                    </div>
+                    <div class="price-row total">
+                        <span class="price-label">총 결제 금액</span>
+                        <span class="price-value" id="total-amount">0원</span>
+                    </div>
                 </div>
-                <button onclick="goToCheckout()" class="w-full toss-primary text-white font-bold py-4 rounded-lg hover:opacity-90 transition">
-                    <i class="fas fa-credit-card mr-2"></i>
-                    결제하기
+                <button class="btn-primary" onclick="goToCheckout()">
+                    <i class="fas fa-credit-card"></i>
+                    <span id="checkout-btn-text">결제하기</span>
                 </button>
             </div>
         </div>
@@ -1140,6 +1629,12 @@ app.get('/cart', (c) => {
           
           let cartData = [];
 
+          // 페이지 로드 시 장바구니 불러오기
+          document.addEventListener('DOMContentLoaded', () => {
+            loadCart();
+          });
+
+          // 장바구니 불러오기
           async function loadCart() {
             try {
               const response = await axios.get(\`\${API_BASE}/cart/\${userId}\`);
@@ -1150,9 +1645,154 @@ app.get('/cart', (c) => {
             } catch (error) {
               console.error('Failed to load cart:', error);
               document.getElementById('cart-items').innerHTML = \`
-                <div class="text-center py-12">
-                  <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-4"></i>
-                  <p class="text-gray-500">장바구니를 불러올 수 없습니다</p>
+                <div class="empty-cart">
+                  <div class="empty-icon"><i class="fas fa-exclamation-circle"></i></div>
+                  <div class="empty-title">장바구니를 불러올 수 없습니다</div>
+                  <div class="empty-desc">잠시 후 다시 시도해주세요</div>
+                  <button class="btn-secondary" onclick="loadCart()">다시 시도</button>
+                </div>
+              \`;
+            }
+          }
+
+          // 장바구니 렌더링
+          function renderCart() {
+            const container = document.getElementById('cart-items');
+            
+            if (cartData.length === 0) {
+              container.innerHTML = \`
+                <div class="empty-cart">
+                  <div class="empty-icon"><i class="fas fa-shopping-cart"></i></div>
+                  <div class="empty-title">장바구니가 비어있습니다</div>
+                  <div class="empty-desc">라이브 방송에서 마음에 드는 상품을<br>담아보세요</div>
+                  <button class="btn-secondary" onclick="window.location.href='/live/1'">
+                    라이브 보러 가기
+                  </button>
+                </div>
+              \`;
+              document.getElementById('checkout-bar').style.display = 'none';
+              return;
+            }
+
+            // 장바구니 아이템 렌더링
+            container.innerHTML = cartData.map((item, index) => {
+              const discount = item.original_price ? Math.round(((item.original_price - item.price_snapshot) / item.original_price) * 100) : 0;
+              const optionText = item.option_name ? \`\${item.option_name}: \${item.option_value}\` : '';
+              
+              return \`
+                <div class="cart-item">
+                  <div class="item-content">
+                    <img src="\${item.image_url || 'https://picsum.photos/80/80?random=' + item.product_id}" 
+                         alt="\${item.product_name}" 
+                         class="item-image"
+                         onerror="this.src='https://picsum.photos/80/80?random=\${item.product_id}'">
+                    
+                    <div class="item-details">
+                      <div class="item-name">\${item.product_name}</div>
+                      \${optionText ? \`<div class="item-option">\${optionText}</div>\` : ''}
+                      <div class="item-price-row">
+                        \${discount > 0 ? \`<span class="info-badge">\${discount}%</span>\` : ''}
+                        <span class="item-price">\${formatPrice(item.price_snapshot * item.quantity)}원</span>
+                        \${item.original_price && discount > 0 ? \`<span class="item-original-price">\${formatPrice(item.original_price * item.quantity)}원</span>\` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="quantity-controls">
+                    <span class="quantity-label">수량</span>
+                    <div class="quantity-button-group">
+                      <button class="quantity-btn" onclick="updateQuantity(\${index}, -1)" \${item.quantity <= 1 ? 'disabled' : ''}>
+                        <i class="fas fa-minus"></i>
+                      </button>
+                      <span class="quantity-value">\${item.quantity}</span>
+                      <button class="quantity-btn" onclick="updateQuantity(\${index}, 1)">
+                        <i class="fas fa-plus"></i>
+                      </button>
+                      <button class="delete-btn" onclick="removeItem(\${index})">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              \`;
+            }).join('');
+
+            // 총 금액 계산 및 표시
+            updateTotalPrice();
+            document.getElementById('checkout-bar').style.display = 'block';
+          }
+
+          // 수량 변경
+          async function updateQuantity(index, change) {
+            const item = cartData[index];
+            const newQuantity = item.quantity + change;
+            
+            if (newQuantity < 1) return;
+            
+            try {
+              // API 호출하여 수량 업데이트
+              const response = await axios.put(\`\${API_BASE}/cart/\${item.id}\`, {
+                quantity: newQuantity
+              });
+              
+              if (response.data.success) {
+                item.quantity = newQuantity;
+                renderCart();
+              }
+            } catch (error) {
+              console.error('Failed to update quantity:', error);
+              alert('수량 변경에 실패했습니다');
+            }
+          }
+
+          // 아이템 삭제
+          async function removeItem(index) {
+            const item = cartData[index];
+            
+            if (!confirm(\`\${item.product_name}을(를) 장바구니에서 삭제하시겠습니까?\`)) {
+              return;
+            }
+            
+            try {
+              const response = await axios.delete(\`\${API_BASE}/cart/\${item.id}\`);
+              
+              if (response.data.success) {
+                cartData.splice(index, 1);
+                renderCart();
+              }
+            } catch (error) {
+              console.error('Failed to remove item:', error);
+              alert('상품 삭제에 실패했습니다');
+            }
+          }
+
+          // 총 금액 계산
+          function updateTotalPrice() {
+            const total = cartData.reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
+            document.getElementById('subtotal-amount').textContent = formatPrice(total) + '원';
+            document.getElementById('total-amount').textContent = formatPrice(total) + '원';
+            document.getElementById('checkout-btn-text').textContent = \`\${formatPrice(total)}원 결제하기\`;
+          }
+
+          // 가격 포맷 (천 단위 콤마)
+          function formatPrice(price) {
+            return price.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+          }
+
+          // 결제하기
+          function goToCheckout() {
+            if (cartData.length === 0) {
+              alert('장바구니가 비어있습니다');
+              return;
+            }
+            
+            // TODO: 토스페이 결제 플로우
+            alert('결제 기능은 곧 추가됩니다!');
+          }
+        </script>
+    </body>
+    </html>
+  \`);
                 </div>
               \`;
             }

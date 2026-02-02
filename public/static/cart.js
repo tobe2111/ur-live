@@ -1,276 +1,253 @@
-// 토스페이먼츠 결제 위젯 JavaScript
-(function() {
-  'use strict';
+// 장바구니 페이지 스크립트
+const API_BASE = '/api';
 
-  const API_BASE = '/api';
+// 토스 브릿지에서 유저 정보 가져오기
+async function getTossUserInfo() {
+  try {
+    const response = await axios.get(`${API_BASE}/toss/user-info`);
+    if (response.data.success) {
+      return response.data.data;
+    }
+  } catch (error) {
+    console.error('❌ 토스 유저 정보 가져오기 실패:', error);
+  }
   
-  // 토스페이먼츠 설정 (실제 사용 시 환경 변수로 관리)
-  const TOSS_CLIENT_KEY = 'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'; // 테스트용 키
-  
-  // 앱 상태
-  const state = {
-    userId: 'toss_user_001',
-    cart: [],
-    selectedItems: [],
-    shippingInfo: {
-      name: '',
-      phone: '',
-      address: '',
-    },
+  // 실패 시 게스트 유저 생성
+  const guestUserId = `web_user_${Date.now()}`;
+  console.log('🎯 게스트 유저 생성:', guestUserId);
+  return {
+    userId: guestUserId,
+    name: '게스트',
+    isGuest: true
   };
+}
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    await initCart();
-  });
+let currentUser = null;
+let cartData = [];
 
-  async function initCart() {
-    await loadCart();
-    renderCart();
-    setupUIEvents();
-  }
+// 페이지 로드 시 장바구니 불러오기
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. 토스 유저 정보 가져오기
+  currentUser = await getTossUserInfo();
+  console.log('👤 현재 유저:', currentUser);
+  
+  // 2. 장바구니 불러오기
+  await loadCart();
+});
 
-  async function loadCart() {
-    try {
-      const response = await axios.get(`${API_BASE}/cart/${state.userId}`);
-      if (response.data.success) {
-        state.cart = response.data.data;
-        state.selectedItems = state.cart.map(item => item.id);
-      }
-    } catch (error) {
-      console.error('Failed to load cart:', error);
+// 장바구니 불러오기
+async function loadCart() {
+  try {
+    const response = await axios.get(`${API_BASE}/cart/${currentUser.userId}`);
+    if (response.data.success) {
+      cartData = response.data.data;
+      renderCart();
     }
-  }
-
-  function renderCart() {
-    const container = document.getElementById('cart-container');
-    
-    if (state.cart.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-16">
-          <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
-          <p class="text-xl text-gray-600 mb-4">장바구니가 비어있습니다</p>
-          <a href="/" class="inline-block toss-primary text-white px-6 py-3 rounded-lg font-semibold">
-            쇼핑 계속하기
-          </a>
-        </div>
-      `;
-      return;
-    }
-
-    const totalAmount = calculateTotalAmount();
-    
-    container.innerHTML = `
-      <div class="space-y-4">
-        ${state.cart.map(item => renderCartItem(item)).join('')}
+  } catch (error) {
+    console.error('❌ 장바구니 불러오기 실패:', error);
+    document.getElementById('cart-items').innerHTML = `
+      <div class="empty-cart">
+        <div class="empty-icon"><i class="fas fa-exclamation-circle"></i></div>
+        <div class="empty-title">장바구니를 불러올 수 없습니다</div>
+        <div class="empty-desc">잠시 후 다시 시도해주세요</div>
+        <button class="btn-secondary" onclick="loadCart()">다시 시도</button>
       </div>
-
-      <!-- 총 금액 -->
-      <div class="mt-8 bg-white rounded-lg shadow p-6">
-        <div class="space-y-3">
-          <div class="flex justify-between text-lg">
-            <span>상품 금액</span>
-            <span>${formatPrice(totalAmount)}원</span>
-          </div>
-          <div class="flex justify-between text-lg">
-            <span>배송비</span>
-            <span class="text-green-600">무료</span>
-          </div>
-          <hr>
-          <div class="flex justify-between text-2xl font-bold">
-            <span>총 결제 금액</span>
-            <span class="toss-text-primary">${formatPrice(totalAmount)}원</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 배송 정보 입력 -->
-      <div class="mt-8 bg-white rounded-lg shadow p-6">
-        <h3 class="text-xl font-bold mb-4">배송 정보</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">받는 사람</label>
-            <input type="text" id="shipping-name" placeholder="이름을 입력하세요" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg">
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">연락처</label>
-            <input type="tel" id="shipping-phone" placeholder="010-0000-0000" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg">
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">배송 주소</label>
-            <input type="text" id="shipping-address" placeholder="배송 받을 주소를 입력하세요" 
-                   class="w-full px-4 py-3 border border-gray-300 rounded-lg">
-          </div>
-        </div>
-      </div>
-
-      <!-- 주문 버튼 -->
-      <button onclick="proceedToPayment()" 
-              class="w-full mt-8 toss-primary text-white font-bold py-4 rounded-lg text-xl hover:opacity-90 transition">
-        <i class="fas fa-check-circle mr-2"></i>
-        ${formatPrice(totalAmount)}원 결제하기
-      </button>
     `;
   }
+}
 
-  function renderCartItem(item) {
-    const isSelected = state.selectedItems.includes(item.id);
+// 장바구니 렌더링
+function renderCart() {
+  const container = document.getElementById('cart-items');
+  
+  if (cartData.length === 0) {
+    container.innerHTML = `
+      <div class="empty-cart">
+        <div class="empty-icon"><i class="fas fa-shopping-cart"></i></div>
+        <div class="empty-title">장바구니가 비어있습니다</div>
+        <div class="empty-desc">라이브 방송에서 마음에 드는 상품을<br>담아보세요</div>
+        <button class="btn-secondary" onclick="window.location.href='/live/1'">
+          <i class="fas fa-broadcast-tower"></i>
+          라이브 보러 가기
+        </button>
+      </div>
+    `;
+    document.getElementById('checkout-bar').style.display = 'none';
+    return;
+  }
+
+  // 장바구니 아이템 렌더링
+  container.innerHTML = cartData.map((item, index) => {
+    const optionText = item.option_value ? `옵션: ${item.option_value}` : '';
     
     return `
-      <div class="bg-white rounded-lg shadow p-4">
-        <div class="flex gap-4">
-          <input type="checkbox" 
-                 class="w-5 h-5 mt-1"
-                 ${isSelected ? 'checked' : ''}
-                 onchange="toggleItemSelection(${item.id})">
-          
-          <img src="${item.product_image || 'https://via.placeholder.com/100'}" 
+      <div class="cart-item">
+        <div class="item-content">
+          <img src="${item.image_url || 'https://picsum.photos/80/80?random=' + item.product_id}" 
                alt="${item.product_name}" 
-               class="w-24 h-24 object-cover rounded">
+               class="item-image"
+               onerror="this.src='https://picsum.photos/80/80?random=${item.product_id}'">
           
-          <div class="flex-1">
-            <h3 class="font-bold text-gray-800">${item.product_name}</h3>
-            ${item.option_info ? `<p class="text-sm text-gray-600 mt-1">${item.option_info}</p>` : ''}
-            <p class="text-lg font-bold mt-2">${formatPrice(item.price_snapshot)}원</p>
-            <div class="flex items-center gap-2 mt-2">
-              <span class="text-sm text-gray-600">수량:</span>
-              <button onclick="updateQuantity(${item.id}, ${item.quantity - 1})" 
-                      class="w-8 h-8 border rounded hover:bg-gray-100">-</button>
-              <span class="w-12 text-center">${item.quantity}</span>
-              <button onclick="updateQuantity(${item.id}, ${item.quantity + 1})" 
-                      class="w-8 h-8 border rounded hover:bg-gray-100">+</button>
+          <div class="item-details">
+            <div class="item-name">${item.product_name}</div>
+            ${optionText ? `<div class="item-option">${optionText}</div>` : ''}
+            <div class="item-price-row">
+              <span class="item-price">${formatPrice(item.price_snapshot)}원</span>
             </div>
           </div>
-          
-          <button onclick="removeFromCart(${item.id})" 
-                  class="text-gray-400 hover:text-red-500">
-            <i class="fas fa-times text-xl"></i>
-          </button>
+        </div>
+        
+        <div class="quantity-controls">
+          <span class="quantity-label">수량</span>
+          <div class="quantity-button-group">
+            <button class="quantity-btn" onclick="updateQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>
+              <i class="fas fa-minus"></i>
+            </button>
+            <span class="quantity-value">${item.quantity}</span>
+            <button class="quantity-btn" onclick="updateQuantity(${index}, 1)">
+              <i class="fas fa-plus"></i>
+            </button>
+            <button class="delete-btn" onclick="removeItem(${index})">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
         </div>
       </div>
     `;
-  }
+  }).join('');
 
-  window.toggleItemSelection = function(itemId) {
-    const index = state.selectedItems.indexOf(itemId);
-    if (index > -1) {
-      state.selectedItems.splice(index, 1);
-    } else {
-      state.selectedItems.push(itemId);
-    }
-    renderCart();
-  };
+  // 총 금액 계산 및 표시
+  updateTotalPrice();
+  document.getElementById('checkout-bar').style.display = 'block';
+}
 
-  window.updateQuantity = async function(itemId, newQuantity) {
-    if (newQuantity < 1) return;
+// 수량 변경
+async function updateQuantity(index, change) {
+  const item = cartData[index];
+  const newQuantity = item.quantity + change;
+  
+  if (newQuantity < 1) return;
+  
+  try {
+    console.log(`🔄 수량 변경: ${item.product_name} ${item.quantity} → ${newQuantity}`);
     
-    // 실제로는 서버에 PATCH 요청을 보내야 함
-    const item = state.cart.find(i => i.id === itemId);
-    if (item) {
+    // API 호출하여 수량 업데이트
+    const response = await axios.put(`${API_BASE}/cart/${item.id}`, {
+      quantity: newQuantity
+    });
+    
+    if (response.data.success) {
       item.quantity = newQuantity;
       renderCart();
+      console.log('✅ 수량 변경 완료');
     }
-  };
+  } catch (error) {
+    console.error('❌ 수량 변경 실패:', error);
+    alert('수량 변경에 실패했습니다');
+  }
+}
 
-  window.removeFromCart = async function(itemId) {
-    if (!confirm('이 상품을 장바구니에서 삭제하시겠습니까?')) return;
+// 아이템 삭제
+async function removeItem(index) {
+  const item = cartData[index];
+  
+  if (!confirm(`${item.product_name}을(를) 장바구니에서 삭제하시겠습니까?`)) {
+    return;
+  }
+  
+  try {
+    console.log(`🗑️ 삭제: ${item.product_name}`);
     
-    try {
-      await axios.delete(`${API_BASE}/cart/${itemId}`);
-      state.cart = state.cart.filter(item => item.id !== itemId);
-      state.selectedItems = state.selectedItems.filter(id => id !== itemId);
+    const response = await axios.delete(`${API_BASE}/cart/${item.id}`);
+    
+    if (response.data.success) {
+      cartData.splice(index, 1);
       renderCart();
-      showToast('장바구니에서 삭제되었습니다.');
-    } catch (error) {
-      console.error('Failed to remove from cart:', error);
-      alert('삭제에 실패했습니다.');
+      console.log('✅ 삭제 완료');
     }
-  };
-
-  window.proceedToPayment = async function() {
-    // 배송 정보 검증
-    const name = document.getElementById('shipping-name').value.trim();
-    const phone = document.getElementById('shipping-phone').value.trim();
-    const address = document.getElementById('shipping-address').value.trim();
-
-    if (!name || !phone || !address) {
-      alert('배송 정보를 모두 입력해주세요.');
-      return;
-    }
-
-    if (state.selectedItems.length === 0) {
-      alert('결제할 상품을 선택해주세요.');
-      return;
-    }
-
-    state.shippingInfo = { name, phone, address };
-
-    try {
-      // 주문 생성
-      const response = await axios.post(`${API_BASE}/orders`, {
-        userId: state.userId,
-        cartItemIds: state.selectedItems,
-        shippingInfo: state.shippingInfo,
-      });
-
-      if (response.data.success) {
-        const { orderId, orderNumber, totalAmount } = response.data.data;
-        
-        // 토스페이먼츠 결제 위젯 초기화 및 결제 요청
-        await initiateTossPayment(orderNumber, totalAmount);
-      }
-    } catch (error) {
-      console.error('Failed to create order:', error);
-      alert('주문 생성에 실패했습니다.');
-    }
-  };
-
-  async function initiateTossPayment(orderNumber, amount) {
-    // 토스페이먼츠 결제 위젯 SDK 로드 확인
-    if (typeof TossPayments === 'undefined') {
-      alert('결제 모듈을 로드하는 중입니다. 잠시 후 다시 시도해주세요.');
-      return;
-    }
-
-    try {
-      // 토스페이먼츠 객체 생성
-      const tossPayments = TossPayments(TOSS_CLIENT_KEY);
-      
-      // 결제창 호출
-      await tossPayments.requestPayment('카드', {
-        amount: amount,
-        orderId: orderNumber,
-        orderName: `토스 라이브 커머스 주문 (${orderNumber})`,
-        customerName: state.shippingInfo.name,
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`,
-      });
-    } catch (error) {
-      console.error('Payment initiation failed:', error);
-      alert('결제 요청에 실패했습니다.');
-    }
+  } catch (error) {
+    console.error('❌ 삭제 실패:', error);
+    alert('상품 삭제에 실패했습니다');
   }
+}
 
-  function calculateTotalAmount() {
-    return state.cart
-      .filter(item => state.selectedItems.includes(item.id))
-      .reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
-  }
+// 총 금액 계산
+function updateTotalPrice() {
+  const total = cartData.reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
+  document.getElementById('subtotal-amount').textContent = formatPrice(total) + '원';
+  document.getElementById('total-amount').textContent = formatPrice(total) + '원';
+  document.getElementById('checkout-btn-text').textContent = `${formatPrice(total)}원 결제하기`;
+}
 
-  function setupUIEvents() {
-    // 추가 이벤트 핸들러 설정
-  }
+// 가격 포맷 (천 단위 콤마)
+function formatPrice(price) {
+  return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
 
-  function formatPrice(price) {
-    return price.toLocaleString('ko-KR');
+// 결제하기
+async function goToCheckout() {
+  if (cartData.length === 0) {
+    alert('장바구니가 비어있습니다');
+    return;
   }
-
-  function showToast(message) {
-    const toast = document.createElement('div');
-    toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
+  
+  console.log('💳 결제 시작');
+  console.log('👤 유저:', currentUser);
+  console.log('🛒 장바구니:', cartData);
+  
+  try {
+    // 1. 결제 생성 요청
+    const totalAmount = cartData.reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
+    const orderNo = `ORDER-${Date.now()}`;
+    const productDesc = cartData.length === 1 
+      ? cartData[0].product_name 
+      : `${cartData[0].product_name} 외 ${cartData.length - 1}건`;
+    
+    console.log('📝 결제 정보:', {
+      orderNo,
+      productDesc,
+      amount: totalAmount,
+      userKey: currentUser.userId
+    });
+    
+    const createResponse = await axios.post(`${API_BASE}/tosspay/create-payment`, {
+      userKey: currentUser.userId,
+      orderNo,
+      productDesc,
+      amount: totalAmount,
+      amountTaxFree: 0,
+      isTestPayment: true // 테스트 모드
+    });
+    
+    if (!createResponse.data.success) {
+      throw new Error('결제 생성 실패: ' + (createResponse.data.error || '알 수 없는 오류'));
+    }
+    
+    const { payToken } = createResponse.data.data;
+    console.log('✅ 결제 생성 완료, payToken:', payToken);
+    
+    // 2. 토스 브릿지 checkoutPayment 호출
+    console.log('🔵 토스페이 결제창 호출...');
+    
+    // TODO: 실제 토스 브릿지 연동
+    // const result = await window.TossBridge.checkoutPayment({ payToken });
+    
+    // 임시: 결제 성공 시뮬레이션
+    alert(`결제 기능 준비 중입니다!\n\n주문번호: ${orderNo}\n결제 토큰: ${payToken}\n총 금액: ${formatPrice(totalAmount)}원`);
+    
+    // 3. 결제 승인 요청
+    // const executeResponse = await axios.post(`${API_BASE}/tosspay/execute-payment`, {
+    //   userKey: currentUser.userId,
+    //   payToken,
+    //   orderNo,
+    //   isTestPayment: true
+    // });
+    
+    // 4. 주문 완료 페이지로 이동
+    // window.location.href = `/orders/${orderNo}`;
+    
+  } catch (error) {
+    console.error('❌ 결제 실패:', error);
+    alert('결제에 실패했습니다: ' + (error.response?.data?.error || error.message));
   }
-})();
+}
