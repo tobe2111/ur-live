@@ -1627,7 +1627,51 @@ app.get('/live/:streamId', (c) => {
                     return;
                 }
                 
-                alert('토스페이 결제 기능은 곧 추가될 예정입니다.\\n\\n총 ' + cartItems.reduce((sum, item) => sum + item.quantity, 0) + '개 상품, ' + cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString() + '원');
+                try {
+                    // 버튼 비활성화
+                    const btn = document.getElementById('toss-pay-btn');
+                    btn.disabled = true;
+                    btn.textContent = '결제 준비 중...';
+                    
+                    // 총액 계산
+                    const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    
+                    // 결제 생성 API 호출
+                    const response = await fetch(API_BASE + '/toss-pay/payments/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: 1, // 임시 사용자 ID (실제로는 로그인 세션에서 가져와야 함)
+                            cartItems: cartItems.map(item => ({
+                                product_id: item.id,
+                                option_id: null,
+                                quantity: item.quantity,
+                                price_snapshot: item.price,
+                                name: item.name,
+                                option_info: null
+                            })),
+                            totalAmount: totalAmount
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success && result.data.checkoutPage) {
+                        // 토스페이 결제 페이지로 이동
+                        window.location.href = result.data.checkoutPage;
+                    } else {
+                        throw new Error(result.error || '결제 생성에 실패했습니다');
+                    }
+                    
+                } catch (error) {
+                    console.error('결제 오류:', error);
+                    alert('결제 요청 중 오류가 발생했습니다: ' + error.message);
+                    
+                    // 버튼 복원
+                    const btn = document.getElementById('toss-pay-btn');
+                    btn.disabled = false;
+                    btn.textContent = '토스페이로 결제하기';
+                }
             });
             
             // 공유 버튼
@@ -3100,6 +3144,198 @@ app.get('/admin', (c) => {
   `);
 });
 
+// =================================
+// Toss Pay API
+// =================================
+
+// 토스페이 결제 생성
+app.post('/api/toss-pay/payments/create', async (c) => {
+  const { DB } = c.env;
+  const TOSS_PAY_API_KEY = 'sk_live_Rk5xZE4K8zRk5nJ5aG2z';
+  
+  try {
+    const { userId, cartItems, totalAmount } = await c.req.json();
+    
+    // 주문번호 생성 (타임스탬프 + 랜덤)
+    const orderNo = `ORDER_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`;
+    
+    // 주문 생성
+    const orderResult = await DB.prepare(`
+      INSERT INTO orders (order_number, user_id, total_amount, payment_status, created_at)
+      VALUES (?, ?, ?, 'pending', datetime('now'))
+    `).bind(orderNo, userId, totalAmount).run();
+    
+    const orderId = orderResult.meta.last_row_id;
+    
+    // 주문 상품 저장
+    for (const item of cartItems) {
+      await DB.prepare(`
+        INSERT INTO order_items (order_id, product_id, option_id, quantity, price, product_name, option_info)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        orderId,
+        item.product_id,
+        item.option_id || null,
+        item.quantity,
+        item.price_snapshot,
+        item.name,
+        item.option_info || null
+      ).run();
+    }
+    
+    // 상품명 생성
+    const productDesc = cartItems.length === 1 
+      ? cartItems[0].name 
+      : `${cartItems[0].name} 외 ${cartItems.length - 1}건`;
+    
+    // 토스페이 결제 생성 요청
+    const tossPayPayload = {
+      orderNo: orderNo,
+      amount: totalAmount,
+      amountTaxFree: 0,
+      productDesc: productDesc,
+      apiKey: TOSS_PAY_API_KEY,
+      retUrl: `${new URL(c.req.url).origin}/payment/success`,
+      retCancelUrl: `${new URL(c.req.url).origin}/payment/cancel`,
+      autoExecute: true,
+      resultCallback: `${new URL(c.req.url).origin}/api/toss-pay/callback`,
+      callbackVersion: 'V2'
+    };
+    
+    const tossPayResponse = await fetch('https://pay.toss.im/api/v2/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(tossPayPayload)
+    });
+    
+    if (!tossPayResponse.ok) {
+      const errorData = await tossPayResponse.json();
+      throw new Error(`토스페이 API 오류: ${JSON.stringify(errorData)}`);
+    }
+    
+    const tossPayData = await tossPayResponse.json();
+    
+    // payment_key 저장
+    if (tossPayData.payToken) {
+      await DB.prepare(`
+        UPDATE orders SET payment_key = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(tossPayData.payToken, orderId).run();
+    }
+    
+    return c.json({
+      success: true,
+      data: {
+        orderNo: orderNo,
+        orderId: orderId,
+        checkoutPage: tossPayData.checkoutPage,
+        payToken: tossPayData.payToken
+      }
+    });
+    
+  } catch (err) {
+    console.error('토스페이 결제 생성 오류:', err);
+    return c.json({
+      success: false,
+      error: (err as Error).message
+    }, 500);
+  }
+});
+
+// 토스페이 결제 결과 Callback
+app.post('/api/toss-pay/callback', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const callbackData = await c.req.json();
+    
+    console.log('토스페이 Callback 수신:', JSON.stringify(callbackData, null, 2));
+    
+    const { orderNo, status, payToken } = callbackData;
+    
+    if (!orderNo) {
+      return c.json({ success: false, error: 'orderNo 누락' }, 400);
+    }
+    
+    // 주문 조회
+    const order = await DB.prepare(`
+      SELECT * FROM orders WHERE order_number = ?
+    `).bind(orderNo).first();
+    
+    if (!order) {
+      return c.json({ success: false, error: '주문을 찾을 수 없음' }, 404);
+    }
+    
+    // 결제 상태 업데이트
+    let paymentStatus = 'pending';
+    
+    if (status === 'PAY_COMPLETE' || status === 'DONE') {
+      paymentStatus = 'approved';
+      
+      // 장바구니 비우기
+      await DB.prepare(`
+        DELETE FROM cart_items WHERE user_id = ?
+      `).bind(order.user_id).run();
+      
+    } else if (status === 'PAY_CANCEL' || status === 'CANCEL') {
+      paymentStatus = 'cancelled';
+    } else if (status === 'PAY_FAIL' || status === 'FAILED') {
+      paymentStatus = 'failed';
+    }
+    
+    await DB.prepare(`
+      UPDATE orders 
+      SET payment_status = ?, payment_key = ?, updated_at = datetime('now')
+      WHERE order_number = ?
+    `).bind(paymentStatus, payToken || order.payment_key, orderNo).run();
+    
+    return c.json({ success: true });
+    
+  } catch (err) {
+    console.error('토스페이 Callback 처리 오류:', err);
+    return c.json({
+      success: false,
+      error: (err as Error).message
+    }, 500);
+  }
+});
+
+// 주문 조회 API
+app.get('/api/orders/:orderNo', async (c) => {
+  const { DB } = c.env;
+  const orderNo = c.req.param('orderNo');
+  
+  try {
+    const order = await DB.prepare(`
+      SELECT * FROM orders WHERE order_number = ?
+    `).bind(orderNo).first();
+    
+    if (!order) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+    }
+    
+    const items = await DB.prepare(`
+      SELECT * FROM order_items WHERE order_id = ?
+    `).bind(order.id).all();
+    
+    return c.json({
+      success: true,
+      data: {
+        order,
+        items: items.results
+      }
+    });
+    
+  } catch (err) {
+    return c.json({
+      success: false,
+      error: (err as Error).message
+    }, 500);
+  }
+});
+
 // 판매자 대시보드
 app.get('/seller', (c) => {
   return c.html(`
@@ -3769,6 +4005,298 @@ app.get('/my-orders', (c) => {
             // Initialize
             loadOrders();
         </script>
+    </body>
+    </html>
+  `);
+});
+
+// =================================
+// Payment Pages
+// =================================
+
+// 결제 성공 페이지
+app.get('/payment/success', (c) => {
+  const orderNo = c.req.query('orderNo') || '';
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>결제 완료 - 토스 라이브 커머스</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+                background: #f2f4f6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                max-width: 480px;
+                width: 100%;
+                padding: 48px 32px;
+                text-align: center;
+            }
+            .icon {
+                width: 80px;
+                height: 80px;
+                background: #0064FF;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 24px;
+            }
+            .icon svg {
+                width: 40px;
+                height: 40px;
+                fill: white;
+            }
+            h1 {
+                font-size: 24px;
+                font-weight: 700;
+                color: #191f28;
+                margin-bottom: 12px;
+            }
+            .order-no {
+                font-size: 14px;
+                color: #6b7684;
+                margin-bottom: 32px;
+            }
+            .info {
+                background: #f2f4f6;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 24px;
+                text-align: left;
+            }
+            .info-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 12px;
+            }
+            .info-row:last-child {
+                margin-bottom: 0;
+            }
+            .info-label {
+                font-size: 14px;
+                color: #6b7684;
+            }
+            .info-value {
+                font-size: 14px;
+                font-weight: 600;
+                color: #191f28;
+            }
+            .btn {
+                width: 100%;
+                padding: 16px;
+                border: none;
+                border-radius: 12px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                margin-bottom: 12px;
+            }
+            .btn-primary {
+                background: #0064FF;
+                color: white;
+            }
+            .btn-secondary {
+                background: white;
+                color: #191f28;
+                border: 1px solid #e5e8eb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                </svg>
+            </div>
+            
+            <h1>결제가 완료되었습니다!</h1>
+            <div class="order-no">주문번호: <span id="orderNo">${orderNo}</span></div>
+            
+            <div class="info" id="orderInfo">
+                <div class="info-row">
+                    <span class="info-label">결제 상태</span>
+                    <span class="info-value">확인 중...</span>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="window.location.href='/my-orders'">
+                주문 내역 확인
+            </button>
+            <button class="btn btn-secondary" onclick="window.location.href='/'">
+                홈으로 돌아가기
+            </button>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const orderNo = '${orderNo}';
+            
+            async function checkPaymentStatus() {
+                if (!orderNo) {
+                    document.getElementById('orderInfo').innerHTML = '<p>주문 정보를 찾을 수 없습니다.</p>';
+                    return;
+                }
+                
+                try {
+                    const response = await axios.get('/api/orders/' + orderNo);
+                    if (response.data.success) {
+                        const order = response.data.data.order;
+                        const items = response.data.data.items;
+                        
+                        let statusText = '확인 중';
+                        if (order.payment_status === 'approved') statusText = '결제 완료';
+                        else if (order.payment_status === 'pending') statusText = '결제 대기';
+                        else if (order.payment_status === 'failed') statusText = '결제 실패';
+                        else if (order.payment_status === 'cancelled') statusText = '결제 취소';
+                        
+                        document.getElementById('orderInfo').innerHTML = \`
+                            <div class="info-row">
+                                <span class="info-label">결제 상태</span>
+                                <span class="info-value">\${statusText}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">결제 금액</span>
+                                <span class="info-value">\${order.total_amount.toLocaleString()}원</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">상품 수</span>
+                                <span class="info-value">\${items.length}개</span>
+                            </div>
+                        \`;
+                    }
+                } catch (err) {
+                    console.error('주문 조회 오류:', err);
+                }
+            }
+            
+            // 페이지 로드 시 상태 확인
+            checkPaymentStatus();
+            
+            // 5초마다 상태 확인 (최대 30초)
+            let checkCount = 0;
+            const interval = setInterval(() => {
+                checkCount++;
+                checkPaymentStatus();
+                if (checkCount >= 6) clearInterval(interval);
+            }, 5000);
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// 결제 취소 페이지
+app.get('/payment/cancel', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>결제 취소 - 토스 라이브 커머스</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+                background: #f2f4f6;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                max-width: 480px;
+                width: 100%;
+                padding: 48px 32px;
+                text-align: center;
+            }
+            .icon {
+                width: 80px;
+                height: 80px;
+                background: #f0f2f5;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 24px;
+            }
+            .icon svg {
+                width: 40px;
+                height: 40px;
+                fill: #6b7684;
+            }
+            h1 {
+                font-size: 24px;
+                font-weight: 700;
+                color: #191f28;
+                margin-bottom: 12px;
+            }
+            .message {
+                font-size: 16px;
+                color: #6b7684;
+                margin-bottom: 32px;
+            }
+            .btn {
+                width: 100%;
+                padding: 16px;
+                border: none;
+                border-radius: 12px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                margin-bottom: 12px;
+            }
+            .btn-primary {
+                background: #0064FF;
+                color: white;
+            }
+            .btn-secondary {
+                background: white;
+                color: #191f28;
+                border: 1px solid #e5e8eb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                </svg>
+            </div>
+            
+            <h1>결제가 취소되었습니다</h1>
+            <div class="message">
+                결제를 취소하셨습니다.<br>
+                다시 시도하시려면 장바구니를 확인해주세요.
+            </div>
+            
+            <button class="btn btn-primary" onclick="window.history.back()">
+                다시 시도하기
+            </button>
+            <button class="btn btn-secondary" onclick="window.location.href='/'">
+                홈으로 돌아가기
+            </button>
+        </div>
     </body>
     </html>
   `);
