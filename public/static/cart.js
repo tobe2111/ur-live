@@ -192,62 +192,23 @@ async function goToCheckout() {
   }
   
   console.log('💳 결제 시작');
-  console.log('👤 유저:', currentUser);
-  console.log('🛒 장바구니:', cartData);
   
-  try {
-    // 1. 결제 생성 요청
-    const totalAmount = cartData.reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
-    const orderNo = `ORDER-${Date.now()}`;
-    const productDesc = cartData.length === 1 
-      ? cartData[0].product_name 
-      : `${cartData[0].product_name} 외 ${cartData.length - 1}건`;
-    
-    console.log('📝 결제 정보:', {
-      orderNo,
-      productDesc,
-      amount: totalAmount,
-      userKey: currentUser.userId
-    });
-    
-    const createResponse = await axios.post(`${API_BASE}/tosspay/create-payment`, {
-      userKey: currentUser.userId,
-      orderNo,
-      productDesc,
-      amount: totalAmount,
-      amountTaxFree: 0,
-      isTestPayment: true // 테스트 모드
-    });
-    
-    if (!createResponse.data.success) {
-      throw new Error('결제 생성 실패: ' + (createResponse.data.error || '알 수 없는 오류'));
-    }
-    
-    const { payToken } = createResponse.data.data;
-    console.log('✅ 결제 생성 완료, payToken:', payToken);
-    
-    // 2. 토스 브릿지 checkoutPayment 호출
-    console.log('🔵 토스페이 결제창 호출...');
-    
-    // TODO: 실제 토스 브릿지 연동
-    // const result = await window.TossBridge.checkoutPayment({ payToken });
-    
-    // 임시: 결제 성공 시뮬레이션
-    alert(`결제 기능 준비 중입니다!\n\n주문번호: ${orderNo}\n결제 토큰: ${payToken}\n총 금액: ${formatPrice(totalAmount)}원`);
-    
-    // 3. 결제 승인 요청
-    // const executeResponse = await axios.post(`${API_BASE}/tosspay/execute-payment`, {
-    //   userKey: currentUser.userId,
-    //   payToken,
-    //   orderNo,
-    //   isTestPayment: true
-    // });
-    
-    // 4. 주문 완료 페이지로 이동
-    // window.location.href = `/orders/${orderNo}`;
-    
-  } catch (error) {
-    console.error('❌ 결제 실패:', error);
-    alert('결제에 실패했습니다: ' + (error.response?.data?.error || error.message));
+  const totalAmount = cartData.reduce((sum, item) => sum + (item.price_snapshot * item.quantity), 0);
+  const orderNo = `ORDER-${Date.now()}`;
+  
+  // 임시: 결제 시뮬레이션
+  const confirmed = confirm(
+    `[테스트 모드 결제]\n\n총 금액: ${formatPrice(totalAmount)}원\n상품: ${cartData.length}건\n\n결제를 진행하시겠습니까?`
+  );
+  
+  if (!confirmed) {
+    console.log('❌ 사용자가 결제를 취소했습니다');
+    return;
   }
+  
+  console.log('✅ 결제 완료 (시뮬레이션)');
+  alert(`주문이 완료되었습니다!\n\n주문번호: ${orderNo}\n결제금액: ${formatPrice(totalAmount)}원\n\n※ 실제 토스페이 연동 시 결제가 진행됩니다.`);
+  
+  // 장바구니 페이지로 돌아가기
+  window.location.reload();
 }
