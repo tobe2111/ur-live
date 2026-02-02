@@ -2,6 +2,7 @@
 const API_BASE = '/api';
 let sessionToken = localStorage.getItem('sessionToken');
 let currentStreams = [];
+let currentSellers = [];
 
 // Check authentication
 async function checkAuth() {
@@ -280,11 +281,192 @@ document.getElementById('streamForm').addEventListener('submit', async (e) => {
     }
 });
 
+// ==========================================
+// Seller Management Functions
+// ==========================================
+
+// Load sellers
+async function loadSellers() {
+    try {
+        const response = await axios.get(`${API_BASE}/admin/sellers`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
+
+        if (response.data.success) {
+            currentSellers = response.data.data;
+            renderSellers(currentSellers);
+        }
+    } catch (error) {
+        console.error('Failed to load sellers:', error);
+        document.getElementById('sellersList').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                <p style="margin-top: 16px;">판매자를 불러올 수 없습니다.</p>
+            </div>
+        `;
+    }
+}
+
+// Render sellers
+function renderSellers(sellers) {
+    const container = document.getElementById('sellersList');
+
+    if (sellers.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                <i class="fas fa-store-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                <p style="font-size: 16px;">등록된 판매자가 없습니다.</p>
+                <p style="font-size: 14px; margin-top: 8px;">새 판매자 등록 버튼을 클릭하여 시작하세요.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = sellers.map(seller => `
+        <div class="stream-card">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <h3 style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                            ${seller.business_name}
+                        </h3>
+                        <span class="status-badge status-${seller.status}">
+                            ${getSellerStatusText(seller.status)}
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600); margin-bottom: 8px;">
+                        <span><i class="fas fa-user"></i> ${seller.name} (${seller.username})</span>
+                        ${seller.email ? `<span><i class="fas fa-envelope"></i> ${seller.email}</span>` : ''}
+                        ${seller.phone ? `<span><i class="fas fa-phone"></i> ${seller.phone}</span>` : ''}
+                    </div>
+                    
+                    <div style="font-size: 13px; color: var(--toss-gray-600);">
+                        ${seller.business_number ? `<span><i class="fas fa-building"></i> 사업자번호: ${seller.business_number}</span>` : ''}
+                        <span style="margin-left: 16px;"><i class="fas fa-calendar"></i> 가입: ${formatDate(seller.created_at)}</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                    ${seller.status !== 'suspended' ? `
+                        <button onclick="changeSellerStatus(${seller.id}, 'suspended')" 
+                                class="btn btn-secondary" 
+                                style="padding: 8px 16px; font-size: 13px;">
+                            <i class="fas fa-ban"></i> 정지
+                        </button>
+                    ` : `
+                        <button onclick="changeSellerStatus(${seller.id}, 'approved')" 
+                                class="btn btn-primary" 
+                                style="padding: 8px 16px; font-size: 13px;">
+                            <i class="fas fa-check"></i> 승인
+                        </button>
+                    `}
+                    <button onclick="deleteSeller(${seller.id})" 
+                            class="btn btn-danger" 
+                            style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-trash"></i> 삭제
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Get seller status text
+function getSellerStatusText(status) {
+    const statusMap = {
+        'pending': '대기중',
+        'approved': '승인',
+        'rejected': '거절',
+        'suspended': '정지'
+    };
+    return statusMap[status] || status;
+}
+
+// Open seller create modal
+function openSellerCreateModal() {
+    document.getElementById('sellerForm').reset();
+    document.getElementById('sellerModal').classList.add('show');
+}
+
+// Close seller modal
+function closeSellerModal() {
+    document.getElementById('sellerModal').classList.remove('show');
+}
+
+// Change seller status
+async function changeSellerStatus(id, newStatus) {
+    const statusText = getSellerStatusText(newStatus);
+    
+    if (!confirm(`판매자 상태를 "${statusText}"(으)로 변경하시겠습니까?`)) return;
+
+    try {
+        await axios.patch(`${API_BASE}/admin/sellers/${id}/status`, 
+            { status: newStatus },
+            { headers: { 'X-Session-Token': sessionToken } }
+        );
+
+        alert('판매자 상태가 변경되었습니다.');
+        loadSellers();
+        loadStats();
+    } catch (error) {
+        console.error('Failed to change seller status:', error);
+        alert(error.response?.data?.error || '상태 변경에 실패했습니다.');
+    }
+}
+
+// Delete seller
+async function deleteSeller(id) {
+    if (!confirm('정말 이 판매자를 삭제하시겠습니까?\n판매자의 상품이 있으면 삭제할 수 없습니다.')) return;
+
+    try {
+        await axios.delete(`${API_BASE}/admin/sellers/${id}`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
+
+        alert('판매자가 삭제되었습니다.');
+        loadSellers();
+        loadStats();
+    } catch (error) {
+        console.error('Failed to delete seller:', error);
+        alert(error.response?.data?.error || '삭제에 실패했습니다.');
+    }
+}
+
+// Handle seller form submit
+document.getElementById('sellerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById('sellerUsername').value;
+    const password = document.getElementById('sellerPassword').value;
+    const name = document.getElementById('sellerName').value;
+    const business_name = document.getElementById('sellerBusinessName').value;
+    const email = document.getElementById('sellerEmail').value;
+    const phone = document.getElementById('sellerPhone').value;
+    const business_number = document.getElementById('sellerBusinessNumber').value;
+
+    try {
+        await axios.post(`${API_BASE}/admin/sellers`, 
+            { username, password, name, business_name, email, phone, business_number },
+            { headers: { 'X-Session-Token': sessionToken } }
+        );
+        
+        alert(`판매자가 등록되었습니다.\n\n로그인 정보:\n- 사용자명: ${username}\n- 비밀번호: ${password}\n\n판매자에게 로그인 정보를 전달해주세요.`);
+        closeSellerModal();
+        loadSellers();
+        loadStats();
+    } catch (error) {
+        console.error('Failed to create seller:', error);
+        alert(error.response?.data?.error || '판매자 등록에 실패했습니다.');
+    }
+});
+
 // Initialize
 (async () => {
     const authenticated = await checkAuth();
     if (authenticated) {
         loadStats();
         loadStreams();
+        loadSellers();
     }
 })();

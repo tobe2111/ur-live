@@ -2018,6 +2018,52 @@ app.get('/api/admin/sellers', async (c) => {
   }
 });
 
+// Create new seller (Admin only)
+app.post('/api/admin/sellers', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { username, password, name, email, phone, business_name, business_number } = await c.req.json();
+
+    // Validate required fields
+    if (!username || !password || !name || !business_name) {
+      return c.json({ success: false, error: '필수 정보를 입력해주세요.' }, 400);
+    }
+
+    // Check if username already exists
+    const existing = await DB.prepare('SELECT id FROM sellers WHERE username = ?').bind(username).first();
+    if (existing) {
+      return c.json({ success: false, error: '이미 존재하는 사용자명입니다.' }, 400);
+    }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
+
+    // Insert new seller
+    const result = await DB.prepare(
+      'INSERT INTO sellers (username, password_hash, name, email, phone, business_name, business_number, status, approved_by, approved_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+    ).bind(username, passwordHash, name, email || null, phone || null, business_name, business_number || null, 'approved', auth.adminId).run();
+
+    return c.json({ 
+      success: true, 
+      data: { 
+        id: result.meta.last_row_id,
+        username,
+        name,
+        business_name,
+        status: 'approved'
+      } 
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Update seller status (Admin only)
 app.patch('/api/admin/sellers/:id/status', async (c) => {
   const { DB } = c.env;
@@ -2038,6 +2084,36 @@ app.patch('/api/admin/sellers/:id/status', async (c) => {
     await DB.prepare(
       'UPDATE sellers SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?'
     ).bind(status, auth.adminId, id).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete seller (Admin only)
+app.delete('/api/admin/sellers/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+
+    // Check if seller has products
+    const products = await DB.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id = ?').bind(id).first();
+    if (products && products.count > 0) {
+      return c.json({ success: false, error: '상품이 등록된 판매자는 삭제할 수 없습니다. 먼저 모든 상품을 삭제해주세요.' }, 400);
+    }
+
+    // Delete seller
+    await DB.prepare('DELETE FROM sellers WHERE id = ?').bind(id).run();
+    
+    // Delete seller sessions
+    await DB.prepare('DELETE FROM admin_sessions WHERE seller_id = ? AND user_type = ?').bind(id, 'seller').run();
 
     return c.json({ success: true });
   } catch (err) {
@@ -3318,9 +3394,28 @@ app.get('/admin', (c) => {
                     </div>
                 </div>
             </div>
+            
+            <!-- Sellers Section -->
+            <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 24px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                    <h2 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                        <i class="fas fa-store"></i> 판매자 관리
+                    </h2>
+                    <button onclick="openSellerCreateModal()" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 새 판매자 등록
+                    </button>
+                </div>
+                
+                <div id="sellersList">
+                    <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                        <p style="margin-top: 16px;">로딩 중...</p>
+                    </div>
+                </div>
+            </div>
         </div>
         
-        <!-- Create/Edit Modal -->
+        <!-- Create/Edit Stream Modal -->
         <div id="streamModal" class="modal">
             <div class="modal-content">
                 <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">
@@ -3351,6 +3446,57 @@ app.get('/admin', (c) => {
                     <div style="display: flex; gap: 12px; margin-top: 24px;">
                         <button type="submit" class="btn btn-primary" style="flex: 1;">저장</button>
                         <button type="button" onclick="closeModal()" class="btn btn-secondary">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Create Seller Modal -->
+        <div id="sellerModal" class="modal">
+            <div class="modal-content">
+                <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">
+                    새 판매자 등록
+                </h3>
+                
+                <form id="sellerForm">
+                    <div class="form-group">
+                        <label class="form-label" for="sellerUsername">사용자명 (로그인 ID) *</label>
+                        <input type="text" id="sellerUsername" class="form-input" placeholder="영문, 숫자 조합" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sellerPassword">비밀번호 *</label>
+                        <input type="password" id="sellerPassword" class="form-input" placeholder="8자 이상" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sellerName">담당자 이름 *</label>
+                        <input type="text" id="sellerName" class="form-input" placeholder="홍길동" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sellerBusinessName">사업자명 *</label>
+                        <input type="text" id="sellerBusinessName" class="form-input" placeholder="주식회사 토스" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sellerEmail">이메일</label>
+                        <input type="email" id="sellerEmail" class="form-input" placeholder="seller@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sellerPhone">연락처</label>
+                        <input type="tel" id="sellerPhone" class="form-input" placeholder="010-1234-5678">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="sellerBusinessNumber">사업자등록번호</label>
+                        <input type="text" id="sellerBusinessNumber" class="form-input" placeholder="123-45-67890">
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">등록</button>
+                        <button type="button" onclick="closeSellerModal()" class="btn btn-secondary">취소</button>
                     </div>
                 </form>
             </div>
