@@ -136,11 +136,11 @@
           state.player = null;
         }
         
-        // 컨테이너 내용 지우기
-        playerContainer.innerHTML = '';
+        // 컨테이너 초기화
+        playerContainer.innerHTML = '<div id="youtube-player-inner"></div>';
         
         // 새 플레이어 생성
-        state.player = new YT.Player('youtube-player', {
+        state.player = new YT.Player('youtube-player-inner', {
           height: '100%',
           width: '100%',
           videoId: stream.youtube_video_id,
