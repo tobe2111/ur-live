@@ -19,13 +19,13 @@
 
 // Firebase SDK 초기화
 const firebaseConfig = {
-  apiKey: "AIzaSyA8Lsro09gRjMARI-mWaFGrciRs9z2CH7s",
+  apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
   authDomain: "urteam-live-commerce.firebaseapp.com",
   databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "urteam-live-commerce",
   storageBucket: "urteam-live-commerce.firebasestorage.app",
-  messagingSenderId: "109815702029",
-  appId: "1:109815702029:web:5f527d8e3e9f941cedad07",
+  messagingSenderId: "1098157020294",
+  appId: "1:1098157020294:web:5f527d8e3e9f941cedad07",
   measurementId: "G-B1ST2L37CM"
 };
 
