@@ -647,45 +647,77 @@ app.get('/live/:streamId', (c) => {
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Toss Face", "Segoe UI", Roboto, sans-serif; }
         
-        /* YouTube 배경 */
-        #youtube-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: #000; }
-        #youtube-player { width: 100%; height: 100%; }
+        /* YouTube 배경 - object-fit: cover */
+        #youtube-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0; background: #000; overflow: hidden; }
+        #youtube-player { position: absolute; top: 50%; left: 50%; width: 100vw; height: 100vh; transform: translate(-50%, -50%); min-width: 100%; min-height: 100%; object-fit: cover; }
         
         /* Overlay UI */
         .overlay-ui { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .overlay-ui > * { pointer-events: auto; }
         
         /* 상단 바 */
-        .top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 12px 16px; background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; }
-        .live-badge { background: #ff0000; color: white; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .viewer-count { color: white; font-size: 14px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
+        .top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 16px; background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%); display: flex; justify-content: space-between; align-items: center; padding-top: calc(16px + env(safe-area-inset-top)); }
+        .live-badge { background: #ff0000; color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+        .viewer-count { color: white; font-size: 14px; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 4px; }
         
-        /* 채팅창 (Left Bottom) */
-        .chat-container { position: absolute; bottom: 160px; left: 16px; width: 65%; max-width: 400px; max-height: 150px; overflow-y: auto; }
-        .chat-message { background: transparent; color: white; font-size: 13px; line-height: 1.4; margin-bottom: 4px; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); word-wrap: break-word; }
+        /* 채팅창 */
+        .chat-container { position: absolute; bottom: 200px; left: 16px; width: calc(100% - 80px - 32px); max-width: 400px; max-height: 200px; overflow-y: auto; pointer-events: none; }
+        .chat-message { background: rgba(0,0,0,0.5); color: white; font-size: 13px; line-height: 1.4; margin-bottom: 6px; padding: 8px 12px; border-radius: 16px; word-wrap: break-word; backdrop-filter: blur(8px); pointer-events: auto; }
+        .chat-message.system { background: rgba(255,81,38,0.9); font-weight: 600; }
         .chat-username { font-weight: bold; margin-right: 4px; }
         .chat-container::-webkit-scrollbar { display: none; }
         
-        /* 상품 카드 (Right Bottom - Compact) */
-        .product-card { position: absolute; bottom: 160px; right: 16px; width: 140px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px; }
-        .product-thumbnail { width: 100%; height: 116px; border-radius: 8px; object-fit: cover; margin-bottom: 8px; }
-        .product-name { font-size: 12px; font-weight: 600; color: #191f28; margin-bottom: 4px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .product-price { font-size: 14px; font-weight: bold; color: #0064FF; margin-bottom: 8px; }
-        .add-to-cart-btn { width: 100%; background: #0064FF; color: white; border: none; border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .add-to-cart-btn:active { opacity: 0.8; }
+        /* 우측 사이드 아이콘 */
+        .side-icons { position: absolute; right: 16px; bottom: 200px; display: flex; flex-direction: column; gap: 16px; }
+        .icon-btn { width: 48px; height: 48px; background: rgba(0,0,0,0.5); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; backdrop-filter: blur(8px); cursor: pointer; transition: all 0.2s; }
+        .icon-btn:active { transform: scale(0.9); background: rgba(0,0,0,0.7); }
+        .icon-btn .badge { position: absolute; top: -4px; right: -4px; background: #ff0000; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: bold; }
         
-        /* 하단 바 */
-        .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 12px 16px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -2px 8px rgba(0,0,0,0.1); }
-        .chat-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
-        .chat-input { flex: 1; border: 1px solid #e5e8eb; border-radius: 20px; padding: 10px 16px; font-size: 14px; outline: none; }
-        .send-btn { width: 40px; height: 40px; background: #0064FF; border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .send-btn:active { opacity: 0.8; }
-        .action-buttons { display: flex; gap: 8px; }
-        .action-btn { flex: 1; border: 1px solid #e5e8eb; background: white; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 600; color: #191f28; cursor: pointer; }
-        .action-btn.primary { background: #0064FF; color: white; border: none; }
-        .action-btn:active { opacity: 0.8; }
+        /* 하단 상품 정보 및 버튼 */
+        .bottom-product-area { position: absolute; bottom: 0; left: 0; right: 0; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 50%, transparent 100%); display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+        
+        .product-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .product-name { color: white; font-size: 16px; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); line-height: 1.3; }
+        .product-price { color: #FFD700; font-size: 20px; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+        .product-price .original { text-decoration: line-through; color: rgba(255,255,255,0.6); font-size: 14px; margin-left: 8px; }
+        
+        .add-to-basket-btn { background: #FF5126; color: white; border: none; border-radius: 16px; padding: 14px 28px; font-size: 16px; font-weight: bold; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 12px rgba(255,81,38,0.4); transition: all 0.2s; }
+        .add-to-basket-btn:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(255,81,38,0.6); }
+        
+        .checkout-btn { position: fixed; bottom: 80px; right: 16px; width: 64px; height: 64px; background: #0064FF; border: none; border-radius: 50%; color: white; font-size: 24px; cursor: pointer; box-shadow: 0 8px 24px rgba(0,100,255,0.4); display: flex; align-items: center; justify-content: center; transition: all 0.2s; z-index: 100; }
+        .checkout-btn:active { transform: scale(0.95); }
+        .checkout-btn .badge { position: absolute; top: -4px; right: -4px; background: #ff0000; color: white; font-size: 14px; padding: 4px 8px; border-radius: 12px; font-weight: bold; min-width: 24px; text-align: center; }
+        
+        /* Bottom Sheet (장바구니) */
+        .bottom-sheet-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; opacity: 0; transition: opacity 0.3s; }
+        .bottom-sheet-overlay.active { display: block; opacity: 1; }
+        
+        .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-radius: 24px 24px 0 0; padding: 24px 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); max-height: 80vh; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1001; }
+        .bottom-sheet.active { transform: translateY(0); }
+        
+        .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .sheet-title { font-size: 20px; font-weight: bold; color: #191f28; }
+        .sheet-close { background: none; border: none; font-size: 24px; color: #8b95a1; cursor: pointer; }
+        
+        .cart-items { margin-bottom: 20px; }
+        .cart-item { display: flex; gap: 12px; padding: 16px; background: #f9fafb; border-radius: 16px; margin-bottom: 12px; }
+        .cart-item-image { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; }
+        .cart-item-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .cart-item-name { font-size: 15px; font-weight: 600; color: #191f28; }
+        .cart-item-price { font-size: 16px; font-weight: bold; color: #0064FF; }
+        .cart-item-quantity { font-size: 13px; color: #8b95a1; }
+        
+        .cart-summary { padding: 20px 0; border-top: 1px solid #e5e8eb; margin-bottom: 16px; }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .summary-label { font-size: 15px; color: #4e5968; }
+        .summary-value { font-size: 15px; font-weight: 600; color: #191f28; }
+        .summary-total { font-size: 18px; font-weight: bold; color: #0064FF; }
+        
+        .toss-pay-btn { width: 100%; background: #0064FF; color: white; border: none; border-radius: 16px; padding: 18px; font-size: 17px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .toss-pay-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .toss-pay-btn img { height: 20px; }
     </style>
 </head>
 <body>
@@ -699,35 +731,80 @@ app.get('/live/:streamId', (c) => {
         <!-- 상단 바 -->
         <div class="top-bar">
             <div class="live-badge">LIVE</div>
-            <div class="viewer-count"><i class="fas fa-eye"></i> <span id="viewer-count">0</span></div>
+            <div class="viewer-count">
+                <i class="fas fa-eye"></i>
+                <span id="viewer-count">0</span>
+            </div>
         </div>
         
-        <!-- 채팅창 (Left Bottom) -->
+        <!-- 채팅창 -->
         <div class="chat-container" id="chat-container">
             <!-- 채팅 메시지가 여기에 추가됩니다 -->
         </div>
         
-        <!-- 상품 카드 (Right Bottom - Compact) -->
-        <div class="product-card" id="product-card" style="display: none;">
-            <img id="product-thumbnail" class="product-thumbnail" src="" alt="상품">
-            <div class="product-name" id="product-name"></div>
-            <div class="product-price" id="product-price"></div>
-            <button class="add-to-cart-btn" id="add-to-cart-btn">담기</button>
+        <!-- 우측 사이드 아이콘 -->
+        <div class="side-icons">
+            <button class="icon-btn" id="like-btn" title="좋아요">
+                <i class="fas fa-heart"></i>
+                <span class="badge" id="like-count" style="display: none;">0</span>
+            </button>
+            <button class="icon-btn" id="share-btn" title="공유">
+                <i class="fas fa-share-alt"></i>
+            </button>
+            <button class="icon-btn" id="chat-toggle-btn" title="채팅">
+                <i class="fas fa-comment"></i>
+            </button>
         </div>
         
-        <!-- 하단 바 -->
-        <div class="bottom-bar">
-            <div class="chat-input-row">
-                <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요">
-                <button class="send-btn" id="send-btn">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
+        <!-- 하단 상품 정보 및 버튼 -->
+        <div class="bottom-product-area">
+            <div class="product-info">
+                <div class="product-name" id="product-name">상품을 불러오는 중...</div>
+                <div class="product-price">
+                    <span id="product-price">0원</span>
+                    <span class="original" id="product-original-price" style="display: none;"></span>
+                </div>
             </div>
-            <div class="action-buttons">
-                <button class="action-btn" id="my-orders-btn">내 주문</button>
-                <button class="action-btn primary" id="purchase-btn">구매하기</button>
+            <button class="add-to-basket-btn" id="add-to-basket-btn">담아두기</button>
+        </div>
+        
+        <!-- 결제하기 버튼 (플로팅) -->
+        <button class="checkout-btn" id="checkout-btn">
+            <i class="fas fa-shopping-bag"></i>
+            <span class="badge" id="cart-count" style="display: none;">0</span>
+        </button>
+    </div>
+
+    <!-- Bottom Sheet (장바구니) -->
+    <div class="bottom-sheet-overlay" id="sheet-overlay" onclick="closeBottomSheet()"></div>
+    <div class="bottom-sheet" id="bottom-sheet">
+        <div class="sheet-header">
+            <div class="sheet-title">장바구니 (<span id="sheet-cart-count">0</span>)</div>
+            <button class="sheet-close" onclick="closeBottomSheet()">×</button>
+        </div>
+        
+        <div class="cart-items" id="cart-items-list">
+            <!-- 장바구니 아이템이 여기에 추가됩니다 -->
+        </div>
+        
+        <div class="cart-summary">
+            <div class="summary-row">
+                <span class="summary-label">상품 금액</span>
+                <span class="summary-value" id="summary-subtotal">0원</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">배송비</span>
+                <span class="summary-value">무료</span>
+            </div>
+            <div class="summary-row" style="margin-top: 12px;">
+                <span class="summary-label" style="font-size: 17px; font-weight: 600;">총 결제 금액</span>
+                <span class="summary-total" id="summary-total">0원</span>
             </div>
         </div>
+        
+        <button class="toss-pay-btn" id="toss-pay-btn">
+            <span>토스페이로 결제하기</span>
+        </button>
     </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -739,6 +816,8 @@ app.get('/live/:streamId', (c) => {
         let chatMessages = [];
         const MAX_CHAT_MESSAGES = 5;
         let cartItems = [];
+        let likeCount = 0;
+        let liked = false;
         
         // Firebase 초기화
         const firebaseConfig = {
@@ -762,7 +841,7 @@ app.get('/live/:streamId', (c) => {
                 chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
                     const data = snapshot.val();
                     if (data && data.username && data.text) {
-                        addChatMessage(data.username, data.text);
+                        addChatMessage(data.username, data.text, data.isSystem || false);
                     }
                 });
                 
@@ -779,6 +858,7 @@ app.get('/live/:streamId', (c) => {
             startProductPolling();
             setupEventListeners();
             loadSampleChats();
+            updateCartUI();
         });
         
         // 스트림 데이터 로드
@@ -790,7 +870,7 @@ app.get('/live/:streamId', (c) => {
                     initYouTubePlayer(stream.youtube_video_id);
                     document.getElementById('viewer-count').textContent = stream.viewer_count || 0;
                     if (stream.current_product) {
-                        updateProductCard(stream.current_product);
+                        updateProductInfo(stream.current_product);
                     }
                 }
             } catch (error) {
@@ -798,12 +878,7 @@ app.get('/live/:streamId', (c) => {
             }
         }
         
-        // YouTube 플레이어 초기화
-        let playerReady = false;
-        function onYouTubeIframeAPIReady() {
-            // 전역 함수로 노출
-        }
-        
+        // YouTube 플레이어 초기화 (object-fit: cover 효과)
         function initYouTubePlayer(videoId) {
             player = new YT.Player('youtube-player', {
                 videoId: videoId,
@@ -814,11 +889,12 @@ app.get('/live/:streamId', (c) => {
                     rel: 0,
                     showinfo: 0,
                     fs: 0,
-                    playsinline: 1
+                    playsinline: 1,
+                    loop: 1,
+                    playlist: videoId
                 },
                 events: {
                     onReady: (event) => {
-                        playerReady = true;
                         event.target.mute();
                         event.target.playVideo();
                     }
@@ -826,14 +902,22 @@ app.get('/live/:streamId', (c) => {
             });
         }
         
-        // 상품 카드 업데이트
-        function updateProductCard(product) {
+        // 상품 정보 업데이트
+        function updateProductInfo(product) {
             currentProduct = product;
-            document.getElementById('product-thumbnail').src = product.image_url || 'https://via.placeholder.com/116';
             document.getElementById('product-name').textContent = product.name;
+            
             const price = parseInt(product.price || 0);
             document.getElementById('product-price').textContent = price.toLocaleString() + '원';
-            document.getElementById('product-card').style.display = 'block';
+            
+            // 원가가 있으면 표시
+            if (product.original_price && product.original_price > product.price) {
+                const originalPrice = parseInt(product.original_price);
+                document.getElementById('product-original-price').textContent = originalPrice.toLocaleString() + '원';
+                document.getElementById('product-original-price').style.display = 'inline';
+            } else {
+                document.getElementById('product-original-price').style.display = 'none';
+            }
         }
         
         // 실시간 상품 폴링
@@ -844,7 +928,7 @@ app.get('/live/:streamId', (c) => {
                     if (response.data.success && response.data.data.current_product) {
                         const newProduct = response.data.data.current_product;
                         if (!currentProduct || currentProduct.id !== newProduct.id) {
-                            updateProductCard(newProduct);
+                            updateProductInfo(newProduct);
                         }
                     }
                 } catch (error) {
@@ -854,10 +938,15 @@ app.get('/live/:streamId', (c) => {
         }
         
         // 채팅 메시지 추가
-        function addChatMessage(username, message) {
+        function addChatMessage(username, message, isSystem = false) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = 'chat-message';
-            messageDiv.innerHTML = '<span class="chat-username">' + username + ':</span>' + message;
+            messageDiv.className = 'chat-message' + (isSystem ? ' system' : '');
+            
+            if (isSystem) {
+                messageDiv.textContent = message;
+            } else {
+                messageDiv.innerHTML = '<span class="chat-username">' + username + ':</span>' + message;
+            }
             
             const container = document.getElementById('chat-container');
             container.appendChild(messageDiv);
@@ -876,9 +965,7 @@ app.get('/live/:streamId', (c) => {
             const samples = [
                 { username: '매니저', text: '안녕하세요! 오늘의 특가 상품을 소개합니다 🎉' },
                 { username: '고객1', text: '가격 정말 좋네요!' },
-                { username: '매니저', text: '지금 구매하시면 추가 할인도 받으실 수 있어요' },
-                { username: '고객2', text: '배송은 얼마나 걸리나요?' },
-                { username: '매니저', text: '서울/경기는 내일 도착 가능합니다 📦' }
+                { username: '매니저', text: '지금 구매하시면 추가 할인도 받으실 수 있어요' }
             ];
             
             samples.forEach(msg => {
@@ -886,71 +973,187 @@ app.get('/live/:streamId', (c) => {
             });
         }
         
+        // 장바구니 UI 업데이트
+        function updateCartUI() {
+            const count = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+            const badge = document.getElementById('cart-count');
+            
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+        
+        // 시스템 메시지 전송 (Firebase)
+        function sendSystemMessage(message) {
+            try {
+                const database = firebase.database();
+                database.ref('chats/stream_' + STREAM_ID).push({
+                    username: 'system',
+                    text: message,
+                    isSystem: true,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+            } catch (error) {
+                console.error('Send system message error:', error);
+                // Fallback: 로컬에 직접 추가
+                addChatMessage('', message, true);
+            }
+        }
+        
+        // Bottom Sheet 열기/닫기
+        function openBottomSheet() {
+            const overlay = document.getElementById('sheet-overlay');
+            const sheet = document.getElementById('bottom-sheet');
+            
+            overlay.classList.add('active');
+            sheet.classList.add('active');
+            
+            renderCartItems();
+        }
+        
+        function closeBottomSheet() {
+            const overlay = document.getElementById('sheet-overlay');
+            const sheet = document.getElementById('bottom-sheet');
+            
+            overlay.classList.remove('active');
+            sheet.classList.remove('active');
+        }
+        
+        // 장바구니 아이템 렌더링
+        function renderCartItems() {
+            const container = document.getElementById('cart-items-list');
+            const count = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+            const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            document.getElementById('sheet-cart-count').textContent = count;
+            
+            if (cartItems.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #8b95a1;">장바구니가 비어있습니다</div>';
+                document.getElementById('summary-subtotal').textContent = '0원';
+                document.getElementById('summary-total').textContent = '0원';
+                return;
+            }
+            
+            container.innerHTML = cartItems.map(item => {
+                const itemTotal = item.price * item.quantity;
+                return '<div class="cart-item"><img class="cart-item-image" src="' + (item.image_url || 'https://via.placeholder.com/80') + '" alt="' + item.name + '"><div class="cart-item-info"><div class="cart-item-name">' + item.name + '</div><div class="cart-item-price">' + item.price.toLocaleString() + '원</div><div class="cart-item-quantity">수량: ' + item.quantity + '개 | 합계: ' + itemTotal.toLocaleString() + '원</div></div></div>';
+            }).join('');
+            
+            document.getElementById('summary-subtotal').textContent = subtotal.toLocaleString() + '원';
+            document.getElementById('summary-total').textContent = subtotal.toLocaleString() + '원';
+        }
+        
         // 이벤트 리스너 설정
         function setupEventListeners() {
-            // 담기 버튼
-            document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
-                if (!currentProduct) return;
+            // 담아두기 버튼 (핵심 인터랙션)
+            document.getElementById('add-to-basket-btn').addEventListener('click', () => {
+                if (!currentProduct) {
+                    alert('상품 정보를 불러오는 중입니다.');
+                    return;
+                }
                 
-                try {
-                    // 로컬 장바구니에 추가
-                    const existingItem = cartItems.find(item => item.product_id === currentProduct.id);
-                    if (existingItem) {
-                        existingItem.quantity += 1;
-                    } else {
-                        cartItems.push({
-                            product_id: currentProduct.id,
-                            name: currentProduct.name,
-                            price: currentProduct.price,
-                            image_url: currentProduct.image_url,
-                            quantity: 1
-                        });
-                    }
-                    
-                    alert('장바구니에 담았습니다! (' + cartItems.length + '개 상품)');
-                } catch (error) {
-                    console.error('Add to cart error:', error);
-                    alert('장바구니 추가 실패');
+                // 장바구니에 추가
+                const existingItem = cartItems.find(item => item.product_id === currentProduct.id);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    cartItems.push({
+                        product_id: currentProduct.id,
+                        name: currentProduct.name,
+                        price: parseInt(currentProduct.price || 0),
+                        image_url: currentProduct.image_url,
+                        quantity: 1
+                    });
                 }
+                
+                // UI 업데이트
+                updateCartUI();
+                
+                // 시스템 메시지 전송 (채팅창에 자동 추가)
+                const userName = '고객' + Math.floor(Math.random() * 1000);
+                const systemMsg = userName + '님이 ' + currentProduct.name + '을(를) 담았습니다! 감사합니다 🎁';
+                sendSystemMessage(systemMsg);
+                
+                // 버튼 피드백
+                const btn = document.getElementById('add-to-basket-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '담았어요! ✓';
+                btn.style.background = '#4CAF50';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '#FF5126';
+                }, 1000);
             });
             
-            // 채팅 전송
-            const sendMessage = () => {
-                const input = document.getElementById('chat-input');
-                const message = input.value.trim();
-                if (message) {
-                    try {
-                        const database = firebase.database();
-                        database.ref('chats/stream_' + STREAM_ID).push({
-                            username: '나',
-                            text: message,
-                            timestamp: firebase.database.ServerValue.TIMESTAMP
-                        });
-                        input.value = '';
-                    } catch (error) {
-                        console.error('Send message error:', error);
-                    }
-                }
-            };
-            
-            document.getElementById('send-btn').addEventListener('click', sendMessage);
-            document.getElementById('chat-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendMessage();
-            });
-            
-            // 내 주문
-            document.getElementById('my-orders-btn').addEventListener('click', () => {
-                window.location.href = '/my-orders.html';
-            });
-            
-            // 구매하기
-            document.getElementById('purchase-btn').addEventListener('click', () => {
+            // 결제하기 버튼
+            document.getElementById('checkout-btn').addEventListener('click', () => {
                 if (cartItems.length === 0) {
                     alert('장바구니에 상품을 담아주세요');
                     return;
                 }
+                openBottomSheet();
+            });
+            
+            // 토스페이 결제 버튼
+            document.getElementById('toss-pay-btn').addEventListener('click', async () => {
+                if (cartItems.length === 0) {
+                    alert('장바구니가 비어있습니다');
+                    return;
+                }
                 
-                alert('장바구니에 ' + cartItems.length + '개 상품이 담겨있습니다.\\n\\n결제 기능은 곧 추가될 예정입니다.');
+                alert('토스페이 결제 기능은 곧 추가될 예정입니다.\\n\\n총 ' + cartItems.reduce((sum, item) => sum + item.quantity, 0) + '개 상품, ' + cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString() + '원');
+            });
+            
+            // 좋아요 버튼
+            document.getElementById('like-btn').addEventListener('click', () => {
+                liked = !liked;
+                const btn = document.getElementById('like-btn');
+                const badge = document.getElementById('like-count');
+                
+                if (liked) {
+                    likeCount++;
+                    btn.innerHTML = '<i class="fas fa-heart" style="color: #ff0000;"></i>';
+                    badge.textContent = likeCount;
+                    badge.style.display = 'block';
+                } else {
+                    if (likeCount > 0) likeCount--;
+                    btn.innerHTML = '<i class="fas fa-heart"></i>';
+                    if (likeCount === 0) {
+                        badge.style.display = 'none';
+                    } else {
+                        badge.textContent = likeCount;
+                    }
+                }
+            });
+            
+            // 공유 버튼
+            document.getElementById('share-btn').addEventListener('click', async () => {
+                const url = window.location.href;
+                
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: '토스 라이브 커머스',
+                            text: '실시간 라이브 쇼핑을 시청하세요!',
+                            url: url
+                        });
+                    } catch (error) {
+                        console.log('Share cancelled');
+                    }
+                } else {
+                    navigator.clipboard.writeText(url);
+                    alert('링크가 복사되었습니다!');
+                }
+            });
+            
+            // 채팅 토글 버튼
+            document.getElementById('chat-toggle-btn').addEventListener('click', () => {
+                const chatContainer = document.getElementById('chat-container');
+                chatContainer.style.display = chatContainer.style.display === 'none' ? 'block' : 'none';
             });
         }
     </script>
@@ -959,248 +1162,6 @@ app.get('/live/:streamId', (c) => {
   `);
 });
 
-
-
-            
-            // Load stream and product data
-            async function loadStreamData() {
-                try {
-                    const response = await axios.get(API_BASE + "/streams/" + STREAM_ID);
-                    if (response.data.success) {
-                        const stream = response.data.data;
-                        
-                        // Initialize YouTube player
-                        initYouTubePlayer(stream.youtube_video_id);
-                        
-                        // Load current product
-                        updateProduct(stream);
-                        
-                        document.getElementById('loading').style.display = 'none';
-                    }
-                } catch (error) {
-                    console.error('Failed to load stream:', error);
-                    alert('라이브 스트림을 불러올 수 없습니다.');
-                }
-            }
-            
-            // Initialize YouTube Player
-            function initYouTubePlayer(videoId) {
-                player = new YT.Player('youtube-player', {
-                    videoId: videoId,
-                    playerVars: {
-                        autoplay: 1,
-                        controls: 1,
-                        modestbranding: 1,
-                        rel: 0,
-                        showinfo: 0,
-                        fs: 1,
-                        playsinline: 1
-                    },
-                    events: {
-                        onReady: (event) => {
-                            event.target.playVideo();
-                        }
-                    }
-                });
-            }
-            
-            // Update product display
-            function updateProduct(stream) {
-                const productCard = document.getElementById('product-card');
-                const noProduct = document.getElementById('no-product');
-                
-                if (stream.current_product_id && stream.product_name) {
-                    currentProduct = {
-                        id: stream.current_product_id,
-                        name: stream.product_name,
-                        price: stream.price,
-                        original_price: stream.original_price,
-                        discount_rate: stream.discount_rate,
-                        image_url: stream.image_url,
-                        stock: stream.stock
-                    };
-                    
-                    document.getElementById('product-image').src = currentProduct.image_url || 'https://via.placeholder.com/80';
-                    document.getElementById('product-name').textContent = currentProduct.name;
-                    document.getElementById('discount-rate').textContent = currentProduct.discount_rate ? currentProduct.discount_rate + "%" : '';
-                    document.getElementById('current-price').textContent = formatPrice(currentProduct.price) + '원';
-                    document.getElementById('original-price').textContent = currentProduct.original_price ? formatPrice(currentProduct.original_price) + '원' : '';
-                    document.getElementById('product-stock').textContent = "재고 " + currentProduct.stock + "개";
-                    
-                    productCard.classList.add('show');
-                    noProduct.classList.remove('show');
-                } else {
-                    currentProduct = null;
-                    productCard.classList.remove('show');
-                    noProduct.classList.add('show');
-                }
-            }
-            
-            // Poll for product updates (every 3 seconds)
-            function startProductPolling() {
-                setInterval(async () => {
-                    try {
-                        const response = await axios.get(API_BASE + "/streams/" + STREAM_ID);
-                        if (response.data.success) {
-                            const stream = response.data.data;
-                            const newProductId = stream.current_product_id;
-                            
-                            // Check if product changed
-                            if (currentProduct?.id !== newProductId) {
-                                updateProduct(stream);
-                                
-                                // Show system message
-                                if (newProductId) {
-                                    addSystemMessage("새 상품: " + stream.product_name);
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Failed to poll product:', error);
-                    }
-                }, 3000);
-            }
-            
-            // Initialize Firebase for chat
-            function initFirebase() {
-                try {
-                    // Firebase 설정
-                    const firebaseConfig = {
-                        apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
-                        authDomain: "urteam-live-commerce.firebaseapp.com",
-                        databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
-                        projectId: "urteam-live-commerce",
-                        storageBucket: "urteam-live-commerce.firebasestorage.app",
-                        messagingSenderId: "1098157020294",
-                        appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
-                    };
-                    
-                    // Firebase 초기화
-                    if (!firebase.apps.length) {
-                        firebase.initializeApp(firebaseConfig);
-                    }
-                    
-                    const database = firebase.database();
-                    const chatRef = database.ref("chats/stream_" + STREAM_ID);
-                    
-                    chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
-                        const message = snapshot.val();
-                        addChatMessage(message.username, message.message || message.text);
-                    });
-                    
-                    console.log('✅ Firebase initialized successfully');
-                } catch (err) {
-                    console.error('Firebase init failed:', err);
-                }
-            }
-            
-            // Add chat message
-            function addChatMessage(username, message) {
-                const container = document.getElementById('chat-container');
-                const messageEl = document.createElement('div');
-                messageEl.className = 'chat-message';
-                messageEl.innerHTML = "<span class='chat-username'>" + username + "</span>" + message;
-                
-                container.appendChild(messageEl);
-                
-                // Keep only last 5 messages
-                chatMessages.push(messageEl);
-                if (chatMessages.length > MAX_CHAT_MESSAGES) {
-                    const oldMessage = chatMessages.shift();
-                    oldMessage.remove();
-                }
-            }
-            
-            // Add system message
-            function addSystemMessage(message) {
-                const container = document.getElementById('chat-container');
-                const messageEl = document.createElement('div');
-                messageEl.className = 'chat-message system-message';
-                messageEl.textContent = message;
-                
-                container.appendChild(messageEl);
-                
-                chatMessages.push(messageEl);
-                if (chatMessages.length > MAX_CHAT_MESSAGES) {
-                    const oldMessage = chatMessages.shift();
-                    oldMessage.remove();
-                }
-            }
-            
-            // Setup event listeners
-            function setupEventListeners() {
-                // Add to cart
-                document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
-                    if (!currentProduct) return;
-                    
-                    try {
-                        // Get Toss user info
-                        const userResponse = await axios.get(API_BASE + "/toss/user-info");
-                        const userId = userResponse.data.data?.userId || 'test_user_001';
-                        
-                        // Add to cart
-                        await axios.post(API_BASE + "/cart", {
-                            user_id: userId,
-                            product_id: currentProduct.id,
-                            quantity: 1,
-                            live_stream_id: parseInt(STREAM_ID)
-                        });
-                        
-                        alert('장바구니에 추가되었습니다!');
-                        addSystemMessage(currentProduct.name + " 상품이 담겼습니다!");
-                    } catch (error) {
-                        console.error('Failed to add to cart:', error);
-                        alert('장바구니 추가에 실패했습니다.');
-                    }
-                });
-                
-                // Like button
-                document.getElementById('like-btn').addEventListener('click', () => {
-                    liked = !liked;
-                    const btn = document.getElementById('like-btn');
-                    const icon = btn.querySelector('i');
-                    
-                    if (liked) {
-                        icon.classList.remove('far');
-                        icon.classList.add('fas', 'liked');
-                        likeCount++;
-                    } else {
-                        icon.classList.remove('liked');
-                        likeCount--;
-                    }
-                    
-                    document.getElementById('like-count').textContent = likeCount > 0 ? likeCount : '';
-                });
-                
-                // Share button
-                document.getElementById('share-btn').addEventListener('click', async () => {
-                    const url = window.location.href;
-                    if (navigator.share) {
-                        try {
-                            await navigator.share({
-                                title: '토스 라이브 커머스',
-                                text: '실시간 라이브 방송을 시청하세요!',
-                                url: url
-                            });
-                        } catch (error) {
-                            console.log('Share cancelled');
-                        }
-                    } else {
-                        // Fallback: copy to clipboard
-                        navigator.clipboard.writeText(url);
-                        alert('링크가 복사되었습니다!');
-                    }
-                });
-            }
-            
-            // Format price
-            function formatPrice(price) {
-                return new Intl.NumberFormat('ko-KR').format(price);
-            }
-            
-// ==================== 토스페이 결제 API ====================
-
-// 토스페이 결제 생성
 app.post('/api/tosspay/create-payment', async (c) => {
   const TOSSPAY_BASE_URL = 'https://pay-apps-in-toss-api.toss.im';
   
