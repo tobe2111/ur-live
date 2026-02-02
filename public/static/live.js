@@ -317,14 +317,22 @@
       });
 
       if (response.data.success) {
+        // 구매 성공 시 채팅 메시지 전송
+        sendPurchaseMessage(product.name);
+        
         alert(`${product.name}\n장바구니에 담았습니다! 🛒`);
         console.log('✅ Quick buy success');
+        return true;
       }
     } catch (error) {
       console.error('Failed to quick buy:', error);
       alert('구매에 실패했습니다');
+      return false;
     }
   }
+  
+  // 구매하기 버튼에 연결
+  window.quickBuy = quickBuy;
 
   function showError(message) {
     alert(message);
@@ -532,30 +540,17 @@
     }
   }
 
-  // 구매 메시지 자동 전송 (기존 quickBuy에서 호출)
+  // 구매 메시지 자동 전송
   function sendPurchaseMessage(productName) {
-    if (window.FirebaseChat) {
+    if (window.FirebaseChat && currentUsername) {
       const message = `${productName} 구매 감사합니다♡`;
       window.FirebaseChat.sendMessage(
         state.streamId,
         currentUsername,
         message
       );
+      console.log(`💬 구매 메시지 전송: ${message}`);
     }
   }
-
-  // 기존 quickBuy 함수 수정
-  const originalQuickBuy = window.quickBuy;
-  window.quickBuy = async function() {
-    // 기존 구매 로직 실행
-    const result = await originalQuickBuy.call(this);
-    
-    // 구매 성공 시 채팅 메시지 전송
-    if (result && state.currentProduct) {
-      sendPurchaseMessage(state.currentProduct.name);
-    }
-    
-    return result;
-  };
 
 })();
