@@ -1,228 +1,290 @@
-// 관리자 대시보드 JavaScript
-(function() {
-  'use strict';
+// Admin Dashboard JavaScript
+const API_BASE = '/api';
+let sessionToken = localStorage.getItem('sessionToken');
+let currentStreams = [];
 
-  const API_BASE = '/api';
-  
-  // 앱 상태
-  const state = {
-    currentStream: null,
-    products: [],
-    selectedProductId: null,
-  };
-
-  // 페이지 로드 시 초기화
-  document.addEventListener('DOMContentLoaded', async () => {
-    await initAdmin();
-  });
-
-  async function initAdmin() {
-    try {
-      await loadCurrentStream();
-      await loadProducts();
-      renderUI();
-    } catch (error) {
-      console.error('Failed to initialize admin:', error);
-      showError('관리자 페이지를 로드할 수 없습니다.');
+// Check authentication
+async function checkAuth() {
+    if (!sessionToken) {
+        window.location.href = '/admin/login';
+        return false;
     }
-  }
-
-  async function loadCurrentStream() {
-    try {
-      const response = await axios.get(`${API_BASE}/streams`);
-      if (response.data.success && response.data.data.length > 0) {
-        state.currentStream = response.data.data[0]; // 첫 번째 라이브 스트림
-      }
-    } catch (error) {
-      console.error('Failed to load current stream:', error);
-      throw error;
-    }
-  }
-
-  async function loadProducts() {
-    if (!state.currentStream) return;
 
     try {
-      const response = await axios.get(`${API_BASE}/streams/${state.currentStream.id}/products`);
-      if (response.data.success) {
-        state.products = response.data.data;
-      }
+        const response = await axios.get(`${API_BASE}/auth/verify`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
+
+        if (response.data.success && response.data.data.user.type === 'admin') {
+            document.getElementById('adminName').textContent = response.data.data.user.name;
+            return true;
+        } else {
+            localStorage.removeItem('sessionToken');
+            window.location.href = '/admin/login';
+            return false;
+        }
     } catch (error) {
-      console.error('Failed to load products:', error);
-      throw error;
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('sessionToken');
+        window.location.href = '/admin/login';
+        return false;
     }
-  }
+}
 
-  function renderUI() {
-    renderCurrentStream();
-    renderProducts();
-  }
+// Logout
+function logout() {
+    axios.post(`${API_BASE}/auth/logout`, {}, {
+        headers: { 'X-Session-Token': sessionToken }
+    }).finally(() => {
+        localStorage.removeItem('sessionToken');
+        localStorage.removeItem('userType');
+        localStorage.removeItem('userName');
+        window.location.href = '/admin/login';
+    });
+}
 
-  function renderCurrentStream() {
-    const container = document.getElementById('current-stream');
-    
-    if (!state.currentStream) {
-      container.innerHTML = `
-        <div class="text-center py-8 text-gray-500">
-          <i class="fas fa-video-slash text-3xl mb-2"></i>
-          <p>진행 중인 라이브가 없습니다</p>
-        </div>
-      `;
-      return;
+// Load dashboard stats
+async function loadStats() {
+    try {
+        const response = await axios.get(`${API_BASE}/admin/stats`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
+
+        if (response.data.success) {
+            const stats = response.data.data;
+            document.getElementById('statLiveStreams').textContent = stats.liveStreams;
+            document.getElementById('statProducts').textContent = stats.products;
+            document.getElementById('statSellers').textContent = stats.sellers;
+            document.getElementById('statRevenue').textContent = formatPrice(stats.totalRevenue) + '원';
+        }
+    } catch (error) {
+        console.error('Failed to load stats:', error);
     }
+}
 
-    const stream = state.currentStream;
-    container.innerHTML = `
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span class="font-semibold text-red-500">LIVE</span>
-          </div>
-          <a href="/live/${stream.id}" target="_blank" class="text-blue-500 hover:underline">
-            <i class="fas fa-external-link-alt mr-1"></i>
-            보기
-          </a>
-        </div>
-        
-        <div>
-          <h3 class="text-lg font-bold text-gray-800">${stream.title}</h3>
-          <p class="text-sm text-gray-600">${stream.description || ''}</p>
-        </div>
+// Load streams
+async function loadStreams() {
+    try {
+        const response = await axios.get(`${API_BASE}/admin/streams`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
 
-        <div class="bg-gray-50 p-3 rounded">
-          <div class="text-sm text-gray-600">YouTube Video ID</div>
-          <div class="font-mono text-sm">${stream.youtube_video_id}</div>
-        </div>
-
-        ${stream.current_product_id ? `
-          <div class="bg-blue-50 border border-blue-200 p-3 rounded">
-            <div class="text-sm text-blue-600 font-semibold">현재 소개 중인 상품</div>
-            <div class="text-sm">상품 ID: ${stream.current_product_id}</div>
-          </div>
-        ` : `
-          <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
-            <div class="text-sm text-yellow-600">소개 중인 상품이 없습니다</div>
-          </div>
-        `}
-      </div>
-    `;
-  }
-
-  function renderProducts() {
-    const container = document.getElementById('product-list');
-    
-    if (state.products.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-8 text-gray-500">
-          <i class="fas fa-box-open text-3xl mb-2"></i>
-          <p>등록된 상품이 없습니다</p>
-        </div>
-      `;
-      return;
-    }
-
-    container.innerHTML = state.products.map(product => `
-      <div class="border rounded-lg p-4 hover:shadow-md transition ${
-        state.currentStream?.current_product_id === product.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-      }">
-        <div class="flex gap-4">
-          <img src="${product.image_url || 'https://via.placeholder.com/100'}" 
-               alt="${product.name}" 
-               class="w-20 h-20 object-cover rounded">
-          
-          <div class="flex-1">
-            <div class="flex items-start justify-between">
-              <div>
-                <h3 class="font-bold text-gray-800">${product.name}</h3>
-                <p class="text-sm text-gray-600 mt-1">${formatPrice(product.price)}원</p>
-                ${product.discount_rate > 0 ? `
-                  <span class="inline-block bg-red-100 text-red-600 text-xs px-2 py-1 rounded mt-1">
-                    ${product.discount_rate}% 할인
-                  </span>
-                ` : ''}
-              </div>
-              
-              ${state.currentStream?.current_product_id === product.id ? `
-                <span class="bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                  소개 중
-                </span>
-              ` : ''}
+        if (response.data.success) {
+            currentStreams = response.data.data;
+            renderStreams(currentStreams);
+        }
+    } catch (error) {
+        console.error('Failed to load streams:', error);
+        document.getElementById('streamsList').innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #ef4444;">
+                <i class="fas fa-exclamation-circle" style="font-size: 24px;"></i>
+                <p style="margin-top: 16px;">라이브 스트림을 불러올 수 없습니다.</p>
             </div>
-            
-            <div class="flex items-center gap-2 mt-2 text-xs text-gray-500">
-              <span><i class="fas fa-box mr-1"></i>재고: ${product.stock}</span>
-              <span><i class="fas fa-tag mr-1"></i>${product.category || '미분류'}</span>
+        `;
+    }
+}
+
+// Render streams
+function renderStreams(streams) {
+    const container = document.getElementById('streamsList');
+
+    if (streams.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                <i class="fas fa-video-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                <p style="font-size: 16px;">등록된 라이브 스트림이 없습니다.</p>
+                <p style="font-size: 14px; margin-top: 8px;">새 라이브 생성 버튼을 클릭하여 시작하세요.</p>
             </div>
-            
-            ${state.currentStream?.current_product_id !== product.id ? `
-              <button 
-                onclick="changeProduct(${product.id})" 
-                class="mt-3 w-full toss-primary text-white py-2 rounded hover:opacity-90 transition text-sm font-semibold"
-              >
-                <i class="fas fa-exchange-alt mr-1"></i>
-                이 상품으로 전환
-              </button>
-            ` : `
-              <div class="mt-3 w-full bg-gray-200 text-gray-500 py-2 rounded text-center text-sm">
-                현재 소개 중
-              </div>
-            `}
-          </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = streams.map(stream => `
+        <div class="stream-card">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <h3 style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                            ${stream.title}
+                        </h3>
+                        <span class="status-badge status-${stream.status}">
+                            ${getStatusText(stream.status)}
+                        </span>
+                    </div>
+                    
+                    <p style="font-size: 14px; color: var(--toss-gray-600); margin-bottom: 12px;">
+                        ${stream.description || '설명 없음'}
+                    </p>
+                    
+                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600);">
+                        <span>
+                            <i class="fab fa-youtube"></i> ${stream.youtube_video_id}
+                        </span>
+                        <span>
+                            <i class="fas fa-calendar"></i> ${formatDate(stream.created_at)}
+                        </span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="changeStatus(${stream.id}, '${stream.status}')" 
+                            class="btn btn-secondary" 
+                            style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-sync-alt"></i> 상태 변경
+                    </button>
+                    <button onclick="editStream(${stream.id})" 
+                            class="btn btn-primary" 
+                            style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-edit"></i> 수정
+                    </button>
+                    <button onclick="deleteStream(${stream.id})" 
+                            class="btn btn-danger" 
+                            style="padding: 8px 16px; font-size: 13px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
     `).join('');
-  }
+}
 
-  window.changeProduct = async function(productId) {
-    if (!state.currentStream) {
-      alert('진행 중인 라이브가 없습니다.');
-      return;
-    }
+// Get status text
+function getStatusText(status) {
+    const statusMap = {
+        'scheduled': '예정',
+        'live': '진행중',
+        'ended': '종료'
+    };
+    return statusMap[status] || status;
+}
 
-    if (!confirm('상품을 전환하시겠습니까?\n모든 시청자에게 새로운 상품이 표시됩니다.')) {
-      return;
-    }
+// Format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Format price
+function formatPrice(price) {
+    return new Intl.NumberFormat('ko-KR').format(price);
+}
+
+// Open create modal
+function openCreateModal() {
+    document.getElementById('modalTitle').textContent = '새 라이브 생성';
+    document.getElementById('streamForm').reset();
+    document.getElementById('streamId').value = '';
+    document.getElementById('streamModal').classList.add('show');
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('streamModal').classList.remove('show');
+}
+
+// Edit stream
+function editStream(id) {
+    const stream = currentStreams.find(s => s.id === id);
+    if (!stream) return;
+
+    document.getElementById('modalTitle').textContent = '라이브 수정';
+    document.getElementById('streamId').value = stream.id;
+    document.getElementById('streamTitle').value = stream.title;
+    document.getElementById('streamDescription').value = stream.description || '';
+    document.getElementById('youtubeVideoId').value = stream.youtube_video_id;
+    document.getElementById('streamModal').classList.add('show');
+}
+
+// Change status
+async function changeStatus(id, currentStatus) {
+    const statusOptions = ['scheduled', 'live', 'ended'];
+    const statusLabels = ['예정', '진행중', '종료'];
+    
+    const currentIndex = statusOptions.indexOf(currentStatus);
+    const nextIndex = (currentIndex + 1) % statusOptions.length;
+    const nextStatus = statusOptions[nextIndex];
+    const nextLabel = statusLabels[nextIndex];
+    
+    if (!confirm(`상태를 "${nextLabel}"(으)로 변경하시겠습니까?`)) return;
 
     try {
-      const response = await axios.post(
-        `${API_BASE}/admin/streams/${state.currentStream.id}/change-product`,
-        { productId }
-      );
+        await axios.put(`${API_BASE}/admin/streams/${id}`, 
+            { status: nextStatus },
+            { headers: { 'X-Session-Token': sessionToken } }
+        );
 
-      if (response.data.success) {
-        showToast('상품이 전환되었습니다!');
-        
-        // 현재 스트림 정보 업데이트
-        state.currentStream.current_product_id = productId;
-        
-        // UI 다시 렌더링
-        renderUI();
-      }
+        alert('상태가 변경되었습니다.');
+        loadStreams();
     } catch (error) {
-      console.error('Failed to change product:', error);
-      alert('상품 전환에 실패했습니다.');
+        console.error('Failed to change status:', error);
+        alert('상태 변경에 실패했습니다.');
     }
-  };
+}
 
-  function formatPrice(price) {
-    return price.toLocaleString('ko-KR');
-  }
+// Delete stream
+async function deleteStream(id) {
+    if (!confirm('정말 이 라이브 스트림을 삭제하시겠습니까?')) return;
 
-  function showToast(message) {
-    const toast = document.createElement('div');
-    toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transition-opacity';
-    toast.textContent = message;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      setTimeout(() => toast.remove(), 300);
-    }, 2000);
-  }
+    try {
+        await axios.delete(`${API_BASE}/admin/streams/${id}`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
 
-  function showError(message) {
-    alert(message);
-  }
+        alert('라이브 스트림이 삭제되었습니다.');
+        loadStreams();
+        loadStats();
+    } catch (error) {
+        console.error('Failed to delete stream:', error);
+        alert('삭제에 실패했습니다.');
+    }
+}
+
+// Handle stream form submit
+document.getElementById('streamForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const id = document.getElementById('streamId').value;
+    const title = document.getElementById('streamTitle').value;
+    const description = document.getElementById('streamDescription').value;
+    const youtube_video_id = document.getElementById('youtubeVideoId').value;
+
+    try {
+        if (id) {
+            // Update
+            await axios.put(`${API_BASE}/admin/streams/${id}`, 
+                { title, description, youtube_video_id },
+                { headers: { 'X-Session-Token': sessionToken } }
+            );
+            alert('라이브 스트림이 수정되었습니다.');
+        } else {
+            // Create
+            await axios.post(`${API_BASE}/admin/streams`, 
+                { title, description, youtube_video_id },
+                { headers: { 'X-Session-Token': sessionToken } }
+            );
+            alert('라이브 스트림이 생성되었습니다.');
+        }
+
+        closeModal();
+        loadStreams();
+        loadStats();
+    } catch (error) {
+        console.error('Failed to save stream:', error);
+        alert(error.response?.data?.error || '저장에 실패했습니다.');
+    }
+});
+
+// Initialize
+(async () => {
+    const authenticated = await checkAuth();
+    if (authenticated) {
+        loadStats();
+        loadStreams();
+    }
 })();

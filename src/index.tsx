@@ -1815,6 +1815,267 @@ app.post('/api/auth/logout', async (c) => {
 });
 
 // =================================
+// Admin Management API
+// =================================
+
+// Helper: Verify admin session
+async function verifyAdminSession(c: any): Promise<{ success: boolean; adminId?: number; error?: string }> {
+  const { DB } = c.env;
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return { success: false, error: 'No session token' };
+  }
+
+  try {
+    const session = await DB.prepare(
+      'SELECT * FROM admin_sessions WHERE session_token = ? AND user_type = ? AND expires_at > CURRENT_TIMESTAMP'
+    ).bind(sessionToken, 'admin').first();
+
+    if (!session) {
+      return { success: false, error: 'Invalid or expired session' };
+    }
+
+    return { success: true, adminId: session.admin_id };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// Helper: Verify seller session
+async function verifySellerSession(c: any): Promise<{ success: boolean; sellerId?: number; error?: string }> {
+  const { DB } = c.env;
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return { success: false, error: 'No session token' };
+  }
+
+  try {
+    const session = await DB.prepare(
+      'SELECT * FROM admin_sessions WHERE session_token = ? AND user_type = ? AND expires_at > CURRENT_TIMESTAMP'
+    ).bind(sessionToken, 'seller').first();
+
+    if (!session) {
+      return { success: false, error: 'Invalid or expired session' };
+    }
+
+    return { success: true, sellerId: session.seller_id };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// Get all live streams (Admin only)
+app.get('/api/admin/streams', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const result = await DB.prepare(
+      'SELECT * FROM live_streams ORDER BY created_at DESC'
+    ).all();
+
+    return c.json({ success: true, data: result.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Create live stream (Admin only)
+app.post('/api/admin/streams', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { title, description, youtube_video_id } = await c.req.json();
+
+    if (!title || !youtube_video_id) {
+      return c.json({ success: false, error: 'Title and YouTube video ID are required' }, 400);
+    }
+
+    const result = await DB.prepare(
+      'INSERT INTO live_streams (title, description, youtube_video_id, status) VALUES (?, ?, ?, ?)'
+    ).bind(title, description || '', youtube_video_id, 'scheduled').run();
+
+    return c.json({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        title,
+        description,
+        youtube_video_id,
+        status: 'scheduled'
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update live stream (Admin only)
+app.put('/api/admin/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+    const { title, description, youtube_video_id, status, current_product_id } = await c.req.json();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (title !== undefined) {
+      updates.push('title = ?');
+      values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
+    }
+    if (youtube_video_id !== undefined) {
+      updates.push('youtube_video_id = ?');
+      values.push(youtube_video_id);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    if (current_product_id !== undefined) {
+      updates.push('current_product_id = ?');
+      values.push(current_product_id);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    if (updates.length === 1) {
+      return c.json({ success: false, error: 'No fields to update' }, 400);
+    }
+
+    await DB.prepare(
+      `UPDATE live_streams SET ${updates.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+
+    // Get updated stream
+    const stream = await DB.prepare('SELECT * FROM live_streams WHERE id = ?').bind(id).first();
+
+    return c.json({ success: true, data: stream });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete live stream (Admin only)
+app.delete('/api/admin/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+
+    await DB.prepare('DELETE FROM live_streams WHERE id = ?').bind(id).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get all sellers (Admin only)
+app.get('/api/admin/sellers', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const result = await DB.prepare(
+      'SELECT id, username, name, email, phone, business_name, business_number, status, created_at FROM sellers ORDER BY created_at DESC'
+    ).all();
+
+    return c.json({ success: true, data: result.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update seller status (Admin only)
+app.patch('/api/admin/sellers/:id/status', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+    const { status } = await c.req.json();
+
+    if (!['approved', 'rejected', 'suspended'].includes(status)) {
+      return c.json({ success: false, error: 'Invalid status' }, 400);
+    }
+
+    await DB.prepare(
+      'UPDATE sellers SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(status, auth.adminId, id).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get dashboard stats (Admin only)
+app.get('/api/admin/stats', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const liveStreams = await DB.prepare('SELECT COUNT(*) as count FROM live_streams').first();
+    const products = await DB.prepare('SELECT COUNT(*) as count FROM products').first();
+    const sellers = await DB.prepare('SELECT COUNT(*) as count FROM sellers WHERE status = ?').bind('approved').first();
+    const orders = await DB.prepare('SELECT COUNT(*) as count, SUM(total_amount) as total FROM orders').first();
+
+    return c.json({
+      success: true,
+      data: {
+        liveStreams: liveStreams.count || 0,
+        products: products.count || 0,
+        sellers: sellers.count || 0,
+        orders: orders.count || 0,
+        totalRevenue: orders.total || 0
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Toss Bridge API
 // =================================
 
@@ -2310,46 +2571,260 @@ app.get('/admin', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>토스 라이브 커머스 - 관리자</title>
+        <title>관리자 대시보드 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
-          :root {
-            --toss-blue: #3182F6;
-            --toss-gray: #191F28;
-            --toss-light-gray: #F2F4F6;
-          }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          }
-          .toss-primary {
-            background-color: var(--toss-blue);
-          }
+            :root {
+                --toss-blue: #3182F6;
+                --toss-gray-900: #191F28;
+                --toss-gray-700: #4E5968;
+                --toss-gray-600: #6B7684;
+                --toss-gray-200: #E5E8EB;
+                --toss-gray-100: #F2F4F6;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+                background: var(--toss-gray-100);
+            }
+            
+            .stat-card {
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .stat-value {
+                font-size: 32px;
+                font-weight: 700;
+                color: var(--toss-gray-900);
+            }
+            
+            .stat-label {
+                font-size: 14px;
+                color: var(--toss-gray-600);
+                margin-top: 8px;
+            }
+            
+            .stream-card {
+                background: white;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                transition: all 0.2s;
+            }
+            
+            .stream-card:hover {
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            
+            .status-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            
+            .status-scheduled {
+                background: #FFF3E0;
+                color: #F57C00;
+            }
+            
+            .status-live {
+                background: #E8F5E9;
+                color: #388E3C;
+            }
+            
+            .status-ended {
+                background: var(--toss-gray-200);
+                color: var(--toss-gray-600);
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: none;
+                font-size: 14px;
+            }
+            
+            .btn-primary {
+                background: var(--toss-blue);
+                color: white;
+            }
+            
+            .btn-primary:hover {
+                background: #2563eb;
+            }
+            
+            .btn-secondary {
+                background: var(--toss-gray-200);
+                color: var(--toss-gray-900);
+            }
+            
+            .btn-danger {
+                background: #ef4444;
+                color: white;
+            }
+            
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .modal.show {
+                display: flex;
+            }
+            
+            .modal-content {
+                background: white;
+                border-radius: 16px;
+                padding: 32px;
+                max-width: 500px;
+                width: 90%;
+            }
+            
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            .form-label {
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--toss-gray-900);
+                margin-bottom: 8px;
+            }
+            
+            .form-input {
+                width: 100%;
+                padding: 12px 16px;
+                border: 1px solid var(--toss-gray-200);
+                border-radius: 8px;
+                font-size: 14px;
+            }
+            
+            .form-input:focus {
+                outline: none;
+                border-color: var(--toss-blue);
+            }
         </style>
     </head>
-    <body class="bg-gray-50">
-        <div class="max-w-7xl mx-auto p-6">
-            <h1 class="text-3xl font-bold text-gray-800 mb-8">
-                <i class="fas fa-tv mr-2"></i>
-                라이브 커머스 관리자
-            </h1>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- 라이브 스트림 관리 -->
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h2 class="text-xl font-bold mb-4">진행 중인 라이브</h2>
-                    <div id="current-stream"></div>
+    <body>
+        <!-- Header -->
+        <div style="background: white; border-bottom: 1px solid var(--toss-gray-200); padding: 16px 32px; position: sticky; top: 0; z-index: 100;">
+            <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h1 style="font-size: 20px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                        <i class="fas fa-user-shield" style="color: var(--toss-blue);"></i>
+                        관리자 대시보드
+                    </h1>
+                    <span id="adminName" style="font-size: 14px; color: var(--toss-gray-600);"></span>
                 </div>
-
-                <!-- 상품 목록 -->
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h2 class="text-xl font-bold mb-4">상품 전환</h2>
-                    <div id="product-list" class="space-y-3"></div>
+                <button onclick="logout()" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> 로그아웃
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="max-width: 1400px; margin: 0 auto; padding: 32px;">
+            <!-- Stats -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
+                <div class="stat-card">
+                    <i class="fas fa-broadcast-tower" style="font-size: 24px; color: var(--toss-blue);"></i>
+                    <div class="stat-value" id="statLiveStreams">0</div>
+                    <div class="stat-label">라이브 스트림</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-box" style="font-size: 24px; color: #10b981;"></i>
+                    <div class="stat-value" id="statProducts">0</div>
+                    <div class="stat-label">등록 상품</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-store" style="font-size: 24px; color: #f59e0b;"></i>
+                    <div class="stat-value" id="statSellers">0</div>
+                    <div class="stat-label">승인된 판매자</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-won-sign" style="font-size: 24px; color: #8b5cf6;"></i>
+                    <div class="stat-value" id="statRevenue">0원</div>
+                    <div class="stat-label">총 매출</div>
+                </div>
+            </div>
+            
+            <!-- Live Streams Section -->
+            <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                    <h2 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                        <i class="fas fa-video"></i> 라이브 스트림 관리
+                    </h2>
+                    <button onclick="openCreateModal()" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 새 라이브 생성
+                    </button>
+                </div>
+                
+                <div id="streamsList">
+                    <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                        <p style="margin-top: 16px;">로딩 중...</p>
+                    </div>
                 </div>
             </div>
         </div>
-
+        
+        <!-- Create/Edit Modal -->
+        <div id="streamModal" class="modal">
+            <div class="modal-content">
+                <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">
+                    <span id="modalTitle">새 라이브 생성</span>
+                </h3>
+                
+                <form id="streamForm">
+                    <input type="hidden" id="streamId">
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="streamTitle">제목</label>
+                        <input type="text" id="streamTitle" class="form-input" placeholder="라이브 제목을 입력하세요" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="streamDescription">설명</label>
+                        <textarea id="streamDescription" class="form-input" rows="3" placeholder="라이브 설명을 입력하세요"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="youtubeVideoId">YouTube 영상 ID</label>
+                        <input type="text" id="youtubeVideoId" class="form-input" placeholder="dQw4w9WgXcQ" required>
+                        <small style="color: var(--toss-gray-600); font-size: 12px;">
+                            YouTube URL에서 v= 뒤의 ID를 입력하세요
+                        </small>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">저장</button>
+                        <button type="button" onclick="closeModal()" class="btn btn-secondary">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="/static/admin.js"></script>
+        <script src="/static/admin.js?v=${Date.now()}"></script>
     </body>
     </html>
   `);
