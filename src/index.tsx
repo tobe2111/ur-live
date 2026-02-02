@@ -1319,10 +1319,12 @@ app.get('/live/:streamId', (c) => {
                     playsinline: 1,
                     loop: 1,
                     playlist: videoId,
-                    mute: 1
+                    mute: 0
                 },
                 events: {
                     onReady: (event) => {
+                        event.target.unMute();
+                        event.target.setVolume(100);
                         event.target.playVideo();
                     }
                 }
