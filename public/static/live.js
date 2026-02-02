@@ -305,6 +305,12 @@
 
     const { product } = state.currentProduct;
     
+    console.log('🛒 구매 시도:', {
+      userId: state.userId,
+      productId: product.id,
+      productName: product.name
+    });
+    
     try {
       // 장바구니에 자동 담기 (옵션 없이)
       const response = await axios.post(`${API_BASE}/cart`, {
@@ -316,6 +322,8 @@
         liveStreamId: state.streamId,
       });
 
+      console.log('📦 구매 응답:', response.data);
+
       if (response.data.success) {
         // 구매 성공 시 채팅 메시지 전송
         sendPurchaseMessage(product.name);
@@ -323,10 +331,19 @@
         alert(`${product.name}\n장바구니에 담았습니다! 🛒`);
         console.log('✅ Quick buy success');
         return true;
+      } else {
+        console.error('❌ 구매 실패:', response.data.error);
+        alert('구매에 실패했습니다: ' + (response.data.error || '알 수 없는 오류'));
+        return false;
       }
     } catch (error) {
-      console.error('Failed to quick buy:', error);
-      alert('구매에 실패했습니다');
+      console.error('❌ Failed to quick buy:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      alert('구매에 실패했습니다: ' + (error.response?.data?.error || error.message));
       return false;
     }
   }
