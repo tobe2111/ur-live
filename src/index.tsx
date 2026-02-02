@@ -167,6 +167,56 @@ app.get('/api/cart/:userId', async (c) => {
   }
 });
 
+// 사용자 생성 (게스트 유저 자동 생성용)
+app.post('/api/users', async (c) => {
+  const { DB } = c.env;
+
+  try {
+    const body = await c.req.json();
+    const { tossUserId, name, email, phone } = body;
+
+    if (!tossUserId || !name) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'tossUserId and name are required',
+      }, 400);
+    }
+
+    // 이미 존재하는 사용자인지 확인
+    const existingUser = await DB.prepare(
+      'SELECT id FROM users WHERE toss_user_id = ?'
+    ).bind(tossUserId).first();
+
+    if (existingUser) {
+      return c.json<ApiResponse<{ id: number }>>({
+        success: true,
+        data: { id: existingUser.id as number },
+      });
+    }
+
+    // 새 사용자 생성
+    const result = await DB.prepare(
+      'INSERT INTO users (toss_user_id, name, email, phone) VALUES (?, ?, ?, ?)'
+    ).bind(
+      tossUserId,
+      name,
+      email || null,
+      phone || null
+    ).run();
+
+    return c.json<ApiResponse<{ id: number }>>({
+      success: true,
+      data: { id: result.meta.last_row_id },
+    });
+  } catch (err) {
+    console.error('Error creating user:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 app.post('/api/cart', async (c) => {
   const { DB } = c.env;
 
@@ -862,6 +912,40 @@ app.get('/live/:streamId', (c) => {
         
         <!-- 토스트 메시지 -->
         <div id="toast-message" class="toast-message"></div>
+
+        <!-- 상품 리스트 모달 -->
+        <div id="product-list-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2 class="modal-title">판매상품 <span id="product-count" class="product-count">0</span></h2>
+                    <button id="close-product-list" class="modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="product-list" class="product-list">
+                        <!-- 상품 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상품 상세 모달 -->
+        <div id="product-detail-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <button id="back-to-list" class="modal-back">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button id="close-product-detail" class="modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body" id="product-detail-content">
+                    <!-- 상품 상세 정보가 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+        </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://www.youtube.com/iframe_api"></script>
