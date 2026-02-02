@@ -637,384 +637,708 @@ app.get('/live/:streamId', (c) => {
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <title>토스 라이브 커머스 - 실시간 방송</title>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/style.css?v=${Date.now()}" rel="stylesheet">
         
         <!-- Firebase SDK -->
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+        
         <style>
-          :root {
-            --toss-blue: #3182F6;
-            --toss-gray: #191F28;
-            --toss-light-gray: #F2F4F6;
-          }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            overflow-x: hidden;
-          }
-          .toss-primary {
-            background-color: var(--toss-blue);
-          }
-          .toss-text-primary {
-            color: var(--toss-blue);
-          }
-          /* YouTube 플레이어 컨테이너 - 전체 화면 배경 */
-          .video-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            z-index: 1;
-            background: #000;
-          }
-          .video-container iframe {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100vw;
-            height: 100vh;
-            transform: translate(-50%, -50%);
-            pointer-events: auto; /* 클릭 가능하게 변경 */
-          }
-          /* 그라디언트 오버레이 - 하단 가독성 확보 */
-          .video-overlay {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
-            z-index: 2;
-            pointer-events: none;
-          }
-
-          /* 하단 컨트롤 바 */
-          .bottom-controls {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 12px 16px;
-            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            z-index: 200;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-          }
-
-          .buy-button {
-            background: #FF4785;
-            color: white;
-            border: none;
-            border-radius: 24px;
-            padding: 12px 24px;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-          }
-          .buy-button:hover {
-            background: #E63C6F;
-            transform: scale(1.05);
-          }
-          .my-orders-button {
-            background: rgba(255, 255, 255, 0.9);
-            color: #191F28;
-            border: none;
-            border-radius: 24px;
-            padding: 12px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-          }
-          .my-orders-button:hover {
-            background: white;
-            transform: scale(1.05);
-          }
-          /* 토스트 메시지 */
-          .toast-message {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            z-index: 9999;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-          }
-          .toast-message.show {
-            opacity: 1;
-          }
-          /* 실시간 채팅 영역 - 토스 디자인 적용 */
-          .chat-container {
-            position: fixed;
-            left: 16px;
-            bottom: 140px; /* 입력창(44px) + 버튼바(60px) + 여유(36px) */
-            width: 70%; /* 화면 왼쪽에 배치 */
-            max-width: 400px;
-            max-height: 180px; /* 약 5줄 정도 */
-            z-index: 100;
-            pointer-events: none;
-          }
-          .chat-messages {
-            height: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end; /* 채팅이 아래서부터 쌓이도록 */
-            gap: 6px;
-            padding: 0;
-            /* 상단 그라디언트 마스크 - 자연스러운 페이드 아웃 */
-            -webkit-mask-image: linear-gradient(to top, black 85%, transparent 100%);
-            mask-image: linear-gradient(to top, black 85%, transparent 100%);
-          }
-          /* 스크롤바 숨기기 */
-          .chat-messages::-webkit-scrollbar {
-            display: none;
-          }
-          .chat-messages {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-          .chat-bubble {
-            background: rgba(25, 31, 40, 0.85); /* Toss Gray 900 with transparency */
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            color: #FFFFFF;
-            padding: 8px 12px;
-            border-radius: 16px; /* Toss 디자인 radius */
-            font-size: 13px;
-            line-height: 1.5;
-            max-width: 85%;
-            word-wrap: break-word;
-            pointer-events: auto;
-            /* 텍스트 그림자 - 가독성 향상 */
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-            /* Toss 스타일 그림자 */
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            /* 슬라이드인 애니메이션 */
-            animation: slideInLeft 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          }
-          @keyframes slideInLeft {
-            from {
-              opacity: 0;
-              transform: translateX(-16px);
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
             }
-            to {
-              opacity: 1;
-              transform: translateX(0);
+            
+            :root {
+                --toss-blue: #3182F6;
+                --toss-gray-900: #191F28;
+                --toss-gray-700: #4E5968;
+                --toss-gray-600: #6B7684;
             }
-          }
-          .chat-bubble .username {
-            font-weight: 600; /* Toss Medium */
-            color: #3182F6; /* Toss Blue 500 */
-            margin-right: 4px;
-            font-size: 13px;
-          }
-          .chat-bubble.purchase {
-            background: rgba(49, 130, 246, 0.9); /* Toss Blue with transparency */
-            font-weight: 600;
-            box-shadow: 0 2px 12px rgba(49, 130, 246, 0.3);
-          }
-          /* 채팅 입력 영역 - 토스 디자인 */
-          .chat-input-area {
-            position: fixed;
-            left: 16px;
-            right: 16px;
-            bottom: calc(68px + env(safe-area-inset-bottom, 0px));
-            z-index: 150;
-            display: flex;
-            gap: 8px;
-            pointer-events: auto;
-          }
-          .chat-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(242, 244, 246, 0.8); /* Toss Gray 100 */
-            border-radius: 12px; /* Toss 디자인 radius */
-            padding: 12px 16px;
-            font-size: 14px;
-            color: #191F28; /* Toss Gray 900 */
-            outline: none;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          }
-          .chat-input:focus {
-            background: #FFFFFF;
-            border-color: #3182F6; /* Toss Blue 500 */
-            box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1);
-          }
-          .chat-input::placeholder {
-            color: #B0B8C1; /* Toss Gray 500 */
-          }
-          .chat-send-button {
-            background: #3182F6; /* Toss Blue 500 */
-            color: white;
-            border: none;
-            border-radius: 12px; /* Toss 디자인 radius */
-            width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px rgba(49, 130, 246, 0.25);
-          }
-          .chat-send-button:hover {
-            background: #1B64DA; /* Toss Blue 600 */
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(49, 130, 246, 0.35);
-          }
-          .chat-send-button:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 6px rgba(49, 130, 246, 0.3);
-          }
-          /* 모바일 최적화 */
-          @media (max-width: 768px) {
-            .product-sheet {
-              transform: translateY(calc(100% - 140px));
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+                background: #000;
             }
-            .video-container iframe {
-              width: 100vw;
-              height: 56.25vw; /* 16:9 → 모바일은 세로 전체 */
-              min-height: 100vh;
+            
+            /* YouTube Background - Full Screen */
+            #youtube-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 1;
+                background: #000;
             }
+            
+            #youtube-player {
+                width: 100%;
+                height: 100%;
+            }
+            
+            /* Gradient Overlay for readability */
+            .gradient-overlay {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 60%;
+                background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+                z-index: 2;
+                pointer-events: none;
+            }
+            
+            /* Top Header */
+            .top-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                padding: 12px 16px;
+                padding-top: calc(12px + env(safe-area-inset-top));
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                z-index: 100;
+                background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+            }
+            
+            .live-badge {
+                background: #ff4757;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            
+            .viewer-count {
+                background: rgba(0,0,0,0.6);
+                color: white;
+                padding: 6px 12px;
+                border-radius: 16px;
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                backdrop-filter: blur(10px);
+            }
+            
+            .close-btn {
+                background: rgba(0,0,0,0.6);
+                color: white;
+                border: none;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                font-size: 18px;
+                cursor: pointer;
+                backdrop-filter: blur(10px);
+            }
+            
+            /* Chat Section - Bottom Left */
             .chat-container {
-              max-width: none;
+                position: fixed;
+                bottom: 200px;
+                left: 16px;
+                width: calc(100% - 80px);
+                max-width: 350px;
+                max-height: 200px;
+                z-index: 50;
+                pointer-events: none;
             }
-          }
+            
+            .chat-message {
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(10px);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 16px;
+                margin-bottom: 8px;
+                font-size: 13px;
+                line-height: 1.4;
+                animation: fadeIn 0.3s ease-in;
+                word-wrap: break-word;
+            }
+            
+            .chat-username {
+                font-weight: 700;
+                margin-right: 6px;
+                color: #ffd93d;
+            }
+            
+            .system-message {
+                background: rgba(49, 130, 246, 0.9);
+                color: white;
+                font-weight: 600;
+            }
+            
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            /* Product Card - Bottom Center (Toss Floating Style) */
+            .product-card {
+                position: fixed;
+                bottom: 80px;
+                bottom: calc(80px + env(safe-area-inset-bottom));
+                left: 16px;
+                right: 16px;
+                background: white;
+                border-radius: 20px;
+                padding: 16px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+                z-index: 60;
+                display: none;
+                animation: slideUp 0.3s ease-out;
+            }
+            
+            .product-card.show {
+                display: block;
+            }
+            
+            @keyframes slideUp {
+                from {
+                    transform: translateY(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            
+            .product-main {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            
+            .product-image {
+                width: 80px;
+                height: 80px;
+                border-radius: 12px;
+                object-fit: cover;
+                flex-shrink: 0;
+            }
+            
+            .product-info {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .product-name {
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--toss-gray-900);
+                margin-bottom: 6px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+            }
+            
+            .product-price {
+                display: flex;
+                align-items: baseline;
+                gap: 6px;
+                margin-bottom: 4px;
+            }
+            
+            .discount-rate {
+                color: #ff4757;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            
+            .current-price {
+                color: var(--toss-gray-900);
+                font-size: 18px;
+                font-weight: 700;
+            }
+            
+            .original-price {
+                color: var(--toss-gray-600);
+                font-size: 13px;
+                text-decoration: line-through;
+            }
+            
+            .product-stock {
+                font-size: 12px;
+                color: var(--toss-gray-600);
+            }
+            
+            .add-to-cart-btn {
+                width: 100%;
+                background: var(--toss-blue);
+                color: white;
+                border: none;
+                border-radius: 12px;
+                padding: 14px;
+                font-size: 16px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .add-to-cart-btn:active {
+                transform: scale(0.98);
+            }
+            
+            /* Right Side Buttons (Like/Share) */
+            .right-actions {
+                position: fixed;
+                right: 16px;
+                bottom: 300px;
+                bottom: calc(300px + env(safe-area-inset-bottom));
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                z-index: 50;
+            }
+            
+            .action-btn {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(10px);
+                border: none;
+                color: white;
+                font-size: 20px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                transition: all 0.2s;
+            }
+            
+            .action-btn:active {
+                transform: scale(0.9);
+            }
+            
+            .action-count {
+                font-size: 11px;
+                font-weight: 600;
+                margin-top: 2px;
+            }
+            
+            .liked {
+                color: #ff4757;
+            }
+            
+            /* No Product Message */
+            .no-product {
+                position: fixed;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.7);
+                backdrop-filter: blur(10px);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 24px;
+                font-size: 14px;
+                z-index: 60;
+                display: none;
+            }
+            
+            .no-product.show {
+                display: block;
+            }
+            
+            /* Loading */
+            .loading {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: white;
+                font-size: 16px;
+                z-index: 200;
+            }
+            
+            /* Mobile Responsive */
+            @media (max-width: 480px) {
+                .chat-container {
+                    max-width: calc(100% - 96px);
+                }
+                
+                .product-card {
+                    left: 12px;
+                    right: 12px;
+                }
+                
+                .product-main {
+                    gap: 10px;
+                }
+                
+                .product-image {
+                    width: 70px;
+                    height: 70px;
+                }
+                
+                .product-name {
+                    font-size: 14px;
+                }
+                
+                .right-actions {
+                    bottom: 280px;
+                }
+                
+                .action-btn {
+                    width: 44px;
+                    height: 44px;
+                    font-size: 18px;
+                }
+            }
         </style>
     </head>
-    <body class="bg-black overflow-hidden">
-        <!-- YouTube 전체 화면 배경 -->
-        <div class="video-container">
+    <body>
+        <!-- YouTube Player Background -->
+        <div id="youtube-container">
             <div id="youtube-player"></div>
         </div>
         
-        <!-- 그라디언트 오버레이 -->
-        <div class="video-overlay"></div>
-
-        <!-- 상단 헤더 정보 -->
-        <div class="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
-            <!-- 라이브 타이틀 -->
-            <div class="text-white text-lg font-bold flex items-center max-w-[60%]">
-                <i class="fas fa-tv mr-2 flex-shrink-0"></i>
-                <span id="stream-title" class="truncate">토스 라이브 커머스</span>
-            </div>
-            
-            <div class="flex items-center gap-2">
-                <!-- 음소거 토글 버튼 (아이콘만) -->
-                <button id="unmute-button" onclick="toggleMute()" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white w-10 h-10 rounded-full flex items-center justify-center transition hidden" title="음소거 토글">
-                    <i id="mute-icon" class="fas fa-volume-mute text-lg"></i>
-                </button>
-                
-                <!-- LIVE 뱃지 -->
-                <div class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center">
-                    <i class="fas fa-circle mr-1 animate-pulse"></i>
+        <!-- Gradient Overlay -->
+        <div class="gradient-overlay"></div>
+        
+        <!-- Top Header -->
+        <div class="top-header">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div class="live-badge">
+                    <i class="fas fa-circle" style="font-size: 8px; animation: pulse 2s ease-in-out infinite;"></i>
                     LIVE
                 </div>
-            </div>
-        </div>
-
-        <!-- 실시간 채팅 영역 -->
-        <div class="chat-container">
-            <div id="chat-messages" class="chat-messages">
-                <!-- 채팅 메시지가 여기에 동적으로 추가됩니다 -->
-            </div>
-        </div>
-
-        <!-- 채팅 입력 영역 -->
-        <div class="chat-input-area">
-            <input 
-                type="text" 
-                id="chat-input" 
-                class="chat-input" 
-                placeholder="메시지를 입력하세요" 
-                maxlength="200"
-            />
-            <button id="chat-send-button" class="chat-send-button">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
-        
-        <!-- 하단 컨트롤 바 -->
-        <div class="bottom-controls">
-            <button id="my-orders-button" class="my-orders-button">
-                <i class="fas fa-shopping-bag"></i>
-                <span>내 주문</span>
-            </button>
-            <button id="buy-button" class="buy-button">
-                구매하기
-            </button>
-        </div>
-        
-        <!-- 토스트 메시지 -->
-        <div id="toast-message" class="toast-message"></div>
-
-        <!-- 상품 리스트 모달 -->
-        <div id="product-list-modal" class="modal-overlay" style="display: none;">
-            <div class="modal-container">
-                <div class="modal-header">
-                    <h2 class="modal-title">판매상품 <span id="product-count" class="product-count">0</span></h2>
-                    <button id="close-product-list" class="modal-close">
-                        <i class="fas fa-times"></i>
-                    </button>
+                <div class="viewer-count">
+                    <i class="fas fa-eye"></i>
+                    <span id="viewer-count">0</span>
                 </div>
-                <div class="modal-body">
-                    <div id="product-list" class="product-list">
-                        <!-- 상품 목록이 여기에 동적으로 추가됩니다 -->
+            </div>
+            <button class="close-btn" onclick="window.location.href='/'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Chat Container (Bottom Left) -->
+        <div class="chat-container" id="chat-container">
+            <!-- Chat messages will be dynamically added here -->
+        </div>
+        
+        <!-- Right Side Actions -->
+        <div class="right-actions">
+            <button class="action-btn" id="like-btn">
+                <i class="fas fa-heart"></i>
+                <span class="action-count" id="like-count">0</span>
+            </button>
+            <button class="action-btn" id="share-btn">
+                <i class="fas fa-share-alt"></i>
+            </button>
+        </div>
+        
+        <!-- Product Card (Bottom Center - Toss Style) -->
+        <div class="product-card" id="product-card">
+            <div class="product-main">
+                <img id="product-image" class="product-image" src="" alt="">
+                <div class="product-info">
+                    <div class="product-name" id="product-name"></div>
+                    <div class="product-price">
+                        <span class="discount-rate" id="discount-rate"></span>
+                        <span class="current-price" id="current-price"></span>
+                        <span class="original-price" id="original-price"></span>
                     </div>
+                    <div class="product-stock" id="product-stock"></div>
                 </div>
             </div>
+            <button class="add-to-cart-btn" id="add-to-cart-btn">
+                <i class="fas fa-shopping-bag"></i> 담기
+            </button>
         </div>
-
-        <!-- 상품 상세 모달 -->
-        <div id="product-detail-modal" class="modal-overlay" style="display: none;">
-            <div class="modal-container">
-                <div class="modal-header">
-                    <button id="back-to-list" class="modal-back">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <button id="close-product-detail" class="modal-close">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="modal-body" id="product-detail-content">
-                    <!-- 상품 상세 정보가 여기에 동적으로 추가됩니다 -->
-                </div>
-            </div>
+        
+        <!-- No Product Message -->
+        <div class="no-product" id="no-product">
+            상품 준비 중입니다...
         </div>
-
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner fa-spin"></i> 로딩 중...
+        </div>
+        
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://www.youtube.com/iframe_api"></script>
         <script>
-          const STREAM_ID = '${streamId}';
+            const STREAM_ID = '${streamId}';
+            const API_BASE = '/api';
+            let currentProduct = null;
+            let likeCount = 0;
+            let liked = false;
+            let player = null;
+            let chatMessages = [];
+            const MAX_CHAT_MESSAGES = 5;
+            
+            // Initialize
+            document.addEventListener('DOMContentLoaded', async () => {
+                await loadStreamData();
+                initFirebase();
+                startProductPolling();
+                setupEventListeners();
+            });
+            
+            // Load stream and product data
+            async function loadStreamData() {
+                try {
+                    const response = await axios.get(API_BASE + "/streams/" + STREAM_ID);
+                    if (response.data.success) {
+                        const stream = response.data.data;
+                        
+                        // Initialize YouTube player
+                        initYouTubePlayer(stream.youtube_video_id);
+                        
+                        // Load current product
+                        updateProduct(stream);
+                        
+                        document.getElementById('loading').style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Failed to load stream:', error);
+                    alert('라이브 스트림을 불러올 수 없습니다.');
+                }
+            }
+            
+            // Initialize YouTube Player
+            function initYouTubePlayer(videoId) {
+                player = new YT.Player('youtube-player', {
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 1,
+                        modestbranding: 1,
+                        rel: 0,
+                        showinfo: 0,
+                        fs: 1,
+                        playsinline: 1
+                    },
+                    events: {
+                        onReady: (event) => {
+                            event.target.playVideo();
+                        }
+                    }
+                });
+            }
+            
+            // Update product display
+            function updateProduct(stream) {
+                const productCard = document.getElementById('product-card');
+                const noProduct = document.getElementById('no-product');
+                
+                if (stream.current_product_id && stream.product_name) {
+                    currentProduct = {
+                        id: stream.current_product_id,
+                        name: stream.product_name,
+                        price: stream.price,
+                        original_price: stream.original_price,
+                        discount_rate: stream.discount_rate,
+                        image_url: stream.image_url,
+                        stock: stream.stock
+                    };
+                    
+                    document.getElementById('product-image').src = currentProduct.image_url || 'https://via.placeholder.com/80';
+                    document.getElementById('product-name').textContent = currentProduct.name;
+                    document.getElementById('discount-rate').textContent = currentProduct.discount_rate ? currentProduct.discount_rate + "%" : '';
+                    document.getElementById('current-price').textContent = formatPrice(currentProduct.price) + '원';
+                    document.getElementById('original-price').textContent = currentProduct.original_price ? formatPrice(currentProduct.original_price) + '원' : '';
+                    document.getElementById('product-stock').textContent = "재고 " + currentProduct.stock + "개";
+                    
+                    productCard.classList.add('show');
+                    noProduct.classList.remove('show');
+                } else {
+                    currentProduct = null;
+                    productCard.classList.remove('show');
+                    noProduct.classList.add('show');
+                }
+            }
+            
+            // Poll for product updates (every 3 seconds)
+            function startProductPolling() {
+                setInterval(async () => {
+                    try {
+                        const response = await axios.get(API_BASE + "/streams/" + STREAM_ID);
+                        if (response.data.success) {
+                            const stream = response.data.data;
+                            const newProductId = stream.current_product_id;
+                            
+                            // Check if product changed
+                            if (currentProduct?.id !== newProductId) {
+                                updateProduct(stream);
+                                
+                                // Show system message
+                                if (newProductId) {
+                                    addSystemMessage("새 상품: " + stream.product_name);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to poll product:', error);
+                    }
+                }, 3000);
+            }
+            
+            // Initialize Firebase for chat
+            function initFirebase() {
+                fetch('/static/firebase-config.js')
+                    .then(r => r.text())
+                    .then(configText => {
+                        eval(configText);
+                        
+                        const database = firebase.database();
+                        const chatRef = database.ref("chats/stream_" + STREAM_ID);
+                        
+                        chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
+                            const message = snapshot.val();
+                            addChatMessage(message.username, message.message);
+                        });
+                    })
+                    .catch(err => console.error('Firebase init failed:', err));
+            }
+            
+            // Add chat message
+            function addChatMessage(username, message) {
+                const container = document.getElementById('chat-container');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'chat-message';
+                messageEl.innerHTML = "<span class="chat-username">" + username + "</span>" + message;
+                
+                container.appendChild(messageEl);
+                
+                // Keep only last 5 messages
+                chatMessages.push(messageEl);
+                if (chatMessages.length > MAX_CHAT_MESSAGES) {
+                    const oldMessage = chatMessages.shift();
+                    oldMessage.remove();
+                }
+            }
+            
+            // Add system message
+            function addSystemMessage(message) {
+                const container = document.getElementById('chat-container');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'chat-message system-message';
+                messageEl.textContent = message;
+                
+                container.appendChild(messageEl);
+                
+                chatMessages.push(messageEl);
+                if (chatMessages.length > MAX_CHAT_MESSAGES) {
+                    const oldMessage = chatMessages.shift();
+                    oldMessage.remove();
+                }
+            }
+            
+            // Setup event listeners
+            function setupEventListeners() {
+                // Add to cart
+                document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
+                    if (!currentProduct) return;
+                    
+                    try {
+                        // Get Toss user info
+                        const userResponse = await axios.get(API_BASE + ");
+                        const userId = userResponse.data.data?.userId || 'test_user_001';
+                        
+                        // Add to cart
+                        await axios.post(API_BASE + "/cart", {
+                            user_id: userId,
+                            product_id: currentProduct.id,
+                            quantity: 1,
+                            live_stream_id: parseInt(STREAM_ID)
+                        });
+                        
+                        alert('장바구니에 추가되었습니다!');
+                        addSystemMessage(currentProduct.name + " 상품이 담겼습니다!");
+                    } catch (error) {
+                        console.error('Failed to add to cart:', error);
+                        alert('장바구니 추가에 실패했습니다.');
+                    }
+                });
+                
+                // Like button
+                document.getElementById('like-btn').addEventListener('click', () => {
+                    liked = !liked;
+                    const btn = document.getElementById('like-btn');
+                    const icon = btn.querySelector('i');
+                    
+                    if (liked) {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas', 'liked');
+                        likeCount++;
+                    } else {
+                        icon.classList.remove('liked');
+                        likeCount--;
+                    }
+                    
+                    document.getElementById('like-count').textContent = likeCount > 0 ? likeCount : '';
+                });
+                
+                // Share button
+                document.getElementById('share-btn').addEventListener('click', async () => {
+                    const url = window.location.href;
+                    if (navigator.share) {
+                        try {
+                            await navigator.share({
+                                title: '토스 라이브 커머스',
+                                text: '실시간 라이브 방송을 시청하세요!',
+                                url: url
+                            });
+                        } catch (error) {
+                            console.log('Share cancelled');
+                        }
+                    } else {
+                        // Fallback: copy to clipboard
+                        navigator.clipboard.writeText(url);
+                        alert('링크가 복사되었습니다!');
+                    }
+                });
+            }
+            
+            // Format price
+            function formatPrice(price) {
+                return new Intl.NumberFormat('ko-KR').format(price);
+            }
+            
+            // Pulse animation for LIVE badge
+            const style = document.createElement('style');
+            style.textContent = "
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                }
+            ";
+            document.head.appendChild(style);
         </script>
-        <script src="/static/firebase-config.js?v=${Date.now()}"></script>
-        <script src="/static/live.js?v=${Date.now()}"></script>
     </body>
     </html>
+    
   `);
 });
 
@@ -4242,7 +4566,7 @@ app.get('/my-orders', (c) => {
             
             async function loadOrders() {
                 try {
-                    const response = await axios.get(\`\${API_BASE}/orders/user/\${userId}\`);
+                    const response = await axios.get(\API_BASE + ");
                     
                     if (response.data.success) {
                         renderOrders(response.data.data);
