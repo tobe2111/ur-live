@@ -1319,7 +1319,8 @@ app.get('/live/:streamId', (c) => {
                     playsinline: 1,
                     loop: 1,
                     playlist: videoId,
-                    mute: 0
+                    mute: 0,
+                    origin: window.location.origin
                 },
                 events: {
                     onReady: (event) => {
