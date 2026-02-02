@@ -1,0 +1,20 @@
+#!/bin/bash
+# Firebase 설정 완료 후 실행할 스크립트
+
+echo "🔥 Firebase 설정 완료 확인"
+echo ""
+echo "다음 정보가 준비되었는지 확인하세요:"
+echo ""
+echo "✅ Firebase 구성 정보:"
+echo "   - apiKey: AIza..."
+echo "   - authDomain: your-project.firebaseapp.com"
+echo "   - databaseURL: https://your-project-default-rtdb.region.firebasedatabase.app"
+echo "   - projectId: your-project"
+echo "   - storageBucket: your-project.appspot.com"
+echo "   - messagingSenderId: 123456789"
+echo "   - appId: 1:123456789:web:abc123"
+echo ""
+echo "📝 다음 단계:"
+echo "1. public/static/firebase-config.js 파일 열기"
+echo "2. firebaseConfig 객체 수정"
+echo "3. 이 스크립트 실행: bash scripts/firebase-deploy.sh"
