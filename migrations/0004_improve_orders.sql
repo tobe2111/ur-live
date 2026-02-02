@@ -2,11 +2,15 @@
 -- 실행: npx wrangler d1 migrations apply toss-live-commerce-db --local
 -- 프로덕션: npx wrangler d1 migrations apply toss-live-commerce-db --remote
 
--- 1. orders 테이블에 필드 추가
+-- 1. orders 테이블에 필드 추가 (프로덕션에는 이미 shipping_name, phone, address 존재)
+-- 로컬에만 적용
 ALTER TABLE orders ADD COLUMN shipping_name TEXT;
 ALTER TABLE orders ADD COLUMN shipping_phone TEXT;
 ALTER TABLE orders ADD COLUMN shipping_address TEXT;
 ALTER TABLE orders ADD COLUMN shipping_memo TEXT;
+
+-- 프로덕션에는 shipping_memo만 추가
+-- ALTER TABLE orders ADD COLUMN shipping_memo TEXT;
 
 -- 2. order_items 테이블에 상품 정보 스냅샷 추가
 ALTER TABLE order_items ADD COLUMN product_name TEXT NOT NULL DEFAULT '';
@@ -17,7 +21,8 @@ ALTER TABLE order_items ADD COLUMN seller_id INTEGER;
 -- 3. 인덱스 추가
 CREATE INDEX IF NOT EXISTS idx_order_items_seller_id ON order_items(seller_id);
 
--- 4. 테스트 주문 데이터 추가
+-- 4. 테스트 주문 데이터 추가 (프로덕션에서는 order_number 사용)
+-- 로컬용 (order_no)
 INSERT OR IGNORE INTO orders (id, user_id, order_no, total_amount, status, payment_method, shipping_name, shipping_phone, shipping_address) 
 VALUES 
   (1, 1, 'ORDER-20260202-001', 89000, 'PAY_COMPLETE', 'CARD', '김토스', '010-1234-5678', '서울시 강남구 테헤란로 1234'),
