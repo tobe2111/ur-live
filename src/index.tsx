@@ -19,23 +19,30 @@ app.use('/static/*', serveStatic({ root: './public' }));
 // Authentication APIs
 // =================================
 
-// 세션 저장소 (메모리 기반 - 프로덕션에서는 KV나 D1 사용 권장)
-const sessions = new Map();
-
-// 세션 생성
-function createSession(userId: number, userType: 'admin' | 'seller', userData: any) {
+// 세션 생성 (D1에 저장)
+async function createSession(DB: any, userId: number, userType: 'admin' | 'seller', userData: any) {
   const sessionToken = `${userType}_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  sessions.set(sessionToken, {
-    userId,
-    userType,
-    userData,
-    createdAt: Date.now()
-  });
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24시간 후
+  
+  await DB.prepare(`
+    INSERT INTO admin_sessions (session_token, ${userType}_id, user_type, expires_at)
+    VALUES (?, ?, ?, ?)
+  `).bind(sessionToken, userId, userType, expiresAt).run();
+  
   return sessionToken;
 }
 
+// 세션 조회 및 검증
+async function getSession(DB: any, sessionToken: string) {
+  const session = await DB.prepare(`
+    SELECT * FROM admin_sessions WHERE session_token = ? AND expires_at > datetime('now')
+  `).bind(sessionToken).first();
+  
+  return session;
+}
+
 // 관리자 로그인 API
-app.post('/api/auth/login', async (c) => {
+app.post('/api/auth/login', cors(), async (c) => {
   const { DB } = c.env;
   
   try {
@@ -74,8 +81,8 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ success: false, error: '승인 대기 중인 계정입니다' }, 403);
     }
     
-    // 세션 생성
-    const sessionToken = createSession(user.id, userType, {
+    // 세션 생성 (D1에 저장)
+    const sessionToken = await createSession(DB, user.id, userType, {
       username: user.username,
       name: user.name,
       email: user.email,
@@ -109,12 +116,15 @@ app.post('/api/auth/login', async (c) => {
 });
 
 // 로그아웃 API
-app.post('/api/auth/logout', async (c) => {
+app.post('/api/auth/logout', cors(), async (c) => {
+  const { DB } = c.env;
+  
   try {
     const sessionToken = c.req.header('X-Session-Token');
     
     if (sessionToken) {
-      sessions.delete(sessionToken);
+      // D1에서 세션 삭제
+      await DB.prepare('DELETE FROM admin_sessions WHERE session_token = ?').bind(sessionToken).run();
     }
     
     return c.json({ success: true });
@@ -124,7 +134,9 @@ app.post('/api/auth/logout', async (c) => {
 });
 
 // 세션 검증 API
-app.get('/api/auth/verify', async (c) => {
+app.get('/api/auth/verify', cors(), async (c) => {
+  const { DB } = c.env;
+  
   try {
     const sessionToken = c.req.header('X-Session-Token');
     
@@ -132,25 +144,33 @@ app.get('/api/auth/verify', async (c) => {
       return c.json({ success: false, error: '인증 토큰이 없습니다' }, 401);
     }
     
-    const session = sessions.get(sessionToken);
+    const session = await getSession(DB, sessionToken);
     
     if (!session) {
       return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
     }
     
-    // 세션 만료 체크 (24시간)
-    if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
-      sessions.delete(sessionToken);
-      return c.json({ success: false, error: '세션이 만료되었습니다' }, 401);
+    // 사용자 정보 조회
+    const table = session.user_type === 'admin' ? 'admins' : 'sellers';
+    const userId = session.user_type === 'admin' ? session.admin_id : session.seller_id;
+    
+    const user = await DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(userId).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
     }
     
     return c.json({
       success: true,
       data: {
         user: {
-          id: session.userId,
-          type: session.userType,
-          ...session.userData
+          id: user.id,
+          type: session.user_type,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+          businessName: user.business_name,
+          role: user.role
         }
       }
     });
@@ -162,45 +182,37 @@ app.get('/api/auth/verify', async (c) => {
 
 // 세션 검증 헬퍼 함수
 async function verifyAdminSession(c: any) {
+  const { DB } = c.env;
   const sessionToken = c.req.header('X-Session-Token');
   
   if (!sessionToken) {
     return { success: false, error: '인증 토큰이 없습니다' };
   }
   
-  const session = sessions.get(sessionToken);
+  const session = await getSession(DB, sessionToken);
   
-  if (!session || session.userType !== 'admin') {
+  if (!session || session.user_type !== 'admin') {
     return { success: false, error: '관리자 권한이 필요합니다' };
   }
   
-  if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
-    sessions.delete(sessionToken);
-    return { success: false, error: '세션이 만료되었습니다' };
-  }
-  
-  return { success: true, adminId: session.userId, userData: session.userData };
+  return { success: true, adminId: session.admin_id, userData: session };
 }
 
 async function verifySellerSession(c: any) {
+  const { DB } = c.env;
   const sessionToken = c.req.header('X-Session-Token');
   
   if (!sessionToken) {
     return { success: false, error: '인증 토큰이 없습니다' };
   }
   
-  const session = sessions.get(sessionToken);
+  const session = await getSession(DB, sessionToken);
   
-  if (!session || session.userType !== 'seller') {
+  if (!session || session.user_type !== 'seller') {
     return { success: false, error: '판매자 권한이 필요합니다' };
   }
   
-  if (Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
-    sessions.delete(sessionToken);
-    return { success: false, error: '세션이 만료되었습니다' };
-  }
-  
-  return { success: true, sellerId: session.userId, userData: session.userData };
+  return { success: true, sellerId: session.seller_id, userData: session };
 }
 
 // =================================
