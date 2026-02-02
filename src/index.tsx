@@ -2076,6 +2076,326 @@ app.get('/api/admin/stats', async (c) => {
 });
 
 // =================================
+// Seller Product Management API
+// =================================
+
+// Get seller's products
+app.get('/api/seller/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const result = await DB.prepare(
+      'SELECT * FROM products WHERE seller_id = ? ORDER BY created_at DESC'
+    ).bind(auth.sellerId).all();
+
+    return c.json({ success: true, data: result.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Create product
+app.post('/api/seller/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { name, description, price, original_price, image_url, stock, category, live_stream_id } = await c.req.json();
+
+    if (!name || !price || !stock) {
+      return c.json({ success: false, error: 'Name, price, and stock are required' }, 400);
+    }
+
+    // Calculate discount rate
+    const discount_rate = original_price ? Math.round(((original_price - price) / original_price) * 100) : 0;
+
+    const result = await DB.prepare(
+      'INSERT INTO products (name, description, price, original_price, discount_rate, image_url, stock, category, live_stream_id, seller_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)'
+    ).bind(name, description || '', price, original_price || null, discount_rate, image_url || null, stock, category || '기타', live_stream_id || null, auth.sellerId).run();
+
+    return c.json({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        name,
+        description,
+        price,
+        original_price,
+        discount_rate,
+        image_url,
+        stock,
+        category,
+        seller_id: auth.sellerId
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update product
+app.put('/api/seller/products/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+    
+    // Verify ownership
+    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    const { name, description, price, original_price, image_url, stock, category, is_active } = await c.req.json();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
+    }
+    if (price !== undefined) {
+      updates.push('price = ?');
+      values.push(price);
+    }
+    if (original_price !== undefined) {
+      updates.push('original_price = ?');
+      values.push(original_price);
+      
+      // Recalculate discount rate
+      if (price !== undefined && original_price) {
+        const discount_rate = Math.round(((original_price - price) / original_price) * 100);
+        updates.push('discount_rate = ?');
+        values.push(discount_rate);
+      }
+    }
+    if (image_url !== undefined) {
+      updates.push('image_url = ?');
+      values.push(image_url);
+    }
+    if (stock !== undefined) {
+      updates.push('stock = ?');
+      values.push(stock);
+    }
+    if (category !== undefined) {
+      updates.push('category = ?');
+      values.push(category);
+    }
+    if (is_active !== undefined) {
+      updates.push('is_active = ?');
+      values.push(is_active ? 1 : 0);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id, auth.sellerId);
+
+    if (updates.length === 1) {
+      return c.json({ success: false, error: 'No fields to update' }, 400);
+    }
+
+    await DB.prepare(
+      `UPDATE products SET ${updates.join(', ')} WHERE id = ? AND seller_id = ?`
+    ).bind(...values).run();
+
+    // Get updated product
+    const updatedProduct = await DB.prepare('SELECT * FROM products WHERE id = ?').bind(id).first();
+
+    return c.json({ success: true, data: updatedProduct });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete product
+app.delete('/api/seller/products/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+
+    // Verify ownership
+    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    await DB.prepare('DELETE FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get product options
+app.get('/api/seller/products/:id/options', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+
+    // Verify ownership
+    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    const result = await DB.prepare(
+      'SELECT * FROM product_options WHERE product_id = ? ORDER BY id'
+    ).bind(id).all();
+
+    return c.json({ success: true, data: result.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Add product option
+app.post('/api/seller/products/:id/options', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const product_id = c.req.param('id');
+
+    // Verify ownership
+    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(product_id, auth.sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    const { option_type, option_value, price_adjustment, stock } = await c.req.json();
+
+    if (!option_type || !option_value) {
+      return c.json({ success: false, error: 'Option type and value are required' }, 400);
+    }
+
+    const result = await DB.prepare(
+      'INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock) VALUES (?, ?, ?, ?, ?)'
+    ).bind(product_id, option_type, option_value, price_adjustment || 0, stock || 0).run();
+
+    return c.json({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        product_id,
+        option_type,
+        option_value,
+        price_adjustment: price_adjustment || 0,
+        stock: stock || 0
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete product option
+app.delete('/api/seller/products/:productId/options/:optionId', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('productId');
+    const optionId = c.req.param('optionId');
+
+    // Verify ownership
+    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(productId, auth.sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    await DB.prepare('DELETE FROM product_options WHERE id = ? AND product_id = ?').bind(optionId, productId).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get seller stats
+app.get('/api/seller/stats', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const products = await DB.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id = ?').bind(auth.sellerId).first();
+    
+    const activeProducts = await DB.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id = ? AND is_active = 1').bind(auth.sellerId).first();
+    
+    const totalStock = await DB.prepare('SELECT SUM(stock) as total FROM products WHERE seller_id = ?').bind(auth.sellerId).first();
+    
+    // Get orders for this seller's products
+    const orders = await DB.prepare(`
+      SELECT COUNT(DISTINCT o.id) as count, SUM(oi.price * oi.quantity) as total
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      JOIN products p ON oi.product_id = p.id
+      WHERE p.seller_id = ?
+    `).bind(auth.sellerId).first();
+
+    return c.json({
+      success: true,
+      data: {
+        totalProducts: products.count || 0,
+        activeProducts: activeProducts.count || 0,
+        totalStock: totalStock.total || 0,
+        totalOrders: orders.count || 0,
+        totalRevenue: orders.total || 0
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Toss Bridge API
 // =================================
 
@@ -2825,6 +3145,311 @@ app.get('/admin', (c) => {
         
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="/static/admin.js?v=${Date.now()}"></script>
+    </body>
+    </html>
+  `);
+});
+
+// 판매자 대시보드
+app.get('/seller', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>판매자 대시보드 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            :root {
+                --seller-pink: #f5576c;
+                --toss-gray-900: #191F28;
+                --toss-gray-700: #4E5968;
+                --toss-gray-600: #6B7684;
+                --toss-gray-200: #E5E8EB;
+                --toss-gray-100: #F2F4F6;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+                background: var(--toss-gray-100);
+            }
+            
+            .stat-card {
+                background: white;
+                border-radius: 12px;
+                padding: 24px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .stat-value {
+                font-size: 32px;
+                font-weight: 700;
+                color: var(--toss-gray-900);
+            }
+            
+            .stat-label {
+                font-size: 14px;
+                color: var(--toss-gray-600);
+                margin-top: 8px;
+            }
+            
+            .product-card {
+                background: white;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                transition: all 0.2s;
+                display: flex;
+                gap: 20px;
+            }
+            
+            .product-card:hover {
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            
+            .product-image {
+                width: 120px;
+                height: 120px;
+                border-radius: 8px;
+                object-fit: cover;
+                background: var(--toss-gray-100);
+            }
+            
+            .status-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+            
+            .status-active {
+                background: #E8F5E9;
+                color: #388E3C;
+            }
+            
+            .status-inactive {
+                background: var(--toss-gray-200);
+                color: var(--toss-gray-600);
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: none;
+                font-size: 14px;
+            }
+            
+            .btn-primary {
+                background: var(--seller-pink);
+                color: white;
+            }
+            
+            .btn-primary:hover {
+                background: #f31942;
+            }
+            
+            .btn-secondary {
+                background: var(--toss-gray-200);
+                color: var(--toss-gray-900);
+            }
+            
+            .btn-danger {
+                background: #ef4444;
+                color: white;
+            }
+            
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .modal.show {
+                display: flex;
+            }
+            
+            .modal-content {
+                background: white;
+                border-radius: 16px;
+                padding: 32px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            .form-label {
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--toss-gray-900);
+                margin-bottom: 8px;
+            }
+            
+            .form-input {
+                width: 100%;
+                padding: 12px 16px;
+                border: 1px solid var(--toss-gray-200);
+                border-radius: 8px;
+                font-size: 14px;
+            }
+            
+            .form-input:focus {
+                outline: none;
+                border-color: var(--seller-pink);
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Header -->
+        <div style="background: white; border-bottom: 1px solid var(--toss-gray-200); padding: 16px 32px; position: sticky; top: 0; z-index: 100;">
+            <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1400px; margin: 0 auto;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h1 style="font-size: 20px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                        <i class="fas fa-store" style="color: var(--seller-pink);"></i>
+                        판매자 대시보드
+                    </h1>
+                    <span id="sellerName" style="font-size: 14px; color: var(--toss-gray-600);"></span>
+                </div>
+                <button onclick="logout()" class="btn btn-secondary">
+                    <i class="fas fa-sign-out-alt"></i> 로그아웃
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="max-width: 1400px; margin: 0 auto; padding: 32px;">
+            <!-- Stats -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 32px;">
+                <div class="stat-card">
+                    <i class="fas fa-box" style="font-size: 24px; color: var(--seller-pink);"></i>
+                    <div class="stat-value" id="statTotalProducts">0</div>
+                    <div class="stat-label">총 상품</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-check-circle" style="font-size: 24px; color: #10b981;"></i>
+                    <div class="stat-value" id="statActiveProducts">0</div>
+                    <div class="stat-label">판매 중</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-warehouse" style="font-size: 24px; color: #f59e0b;"></i>
+                    <div class="stat-value" id="statTotalStock">0</div>
+                    <div class="stat-label">총 재고</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-won-sign" style="font-size: 24px; color: #8b5cf6;"></i>
+                    <div class="stat-value" id="statRevenue">0원</div>
+                    <div class="stat-label">총 매출</div>
+                </div>
+            </div>
+            
+            <!-- Products Section -->
+            <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                    <h2 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                        <i class="fas fa-shopping-bag"></i> 상품 관리
+                    </h2>
+                    <button onclick="openCreateModal()" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 새 상품 등록
+                    </button>
+                </div>
+                
+                <div id="productsList">
+                    <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                        <p style="margin-top: 16px;">로딩 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Create/Edit Modal -->
+        <div id="productModal" class="modal">
+            <div class="modal-content">
+                <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">
+                    <span id="modalTitle">새 상품 등록</span>
+                </h3>
+                
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="productName">상품명</label>
+                        <input type="text" id="productName" class="form-input" placeholder="상품명을 입력하세요" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="productDescription">상품 설명</label>
+                        <textarea id="productDescription" class="form-input" rows="3" placeholder="상품 설명을 입력하세요"></textarea>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="productPrice">판매가</label>
+                            <input type="number" id="productPrice" class="form-input" placeholder="0" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="productOriginalPrice">정가 (선택)</label>
+                            <input type="number" id="productOriginalPrice" class="form-input" placeholder="0">
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="productStock">재고</label>
+                            <input type="number" id="productStock" class="form-input" placeholder="0" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="productCategory">카테고리</label>
+                            <select id="productCategory" class="form-input">
+                                <option value="패션">패션</option>
+                                <option value="전자기기">전자기기</option>
+                                <option value="식품">식품</option>
+                                <option value="뷰티">뷰티</option>
+                                <option value="생활용품">생활용품</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="productImageUrl">이미지 URL</label>
+                        <input type="text" id="productImageUrl" class="form-input" placeholder="https://...">
+                        <small style="color: var(--toss-gray-600); font-size: 12px;">
+                            이미지 URL을 입력하세요 (미입력 시 기본 이미지 사용)
+                        </small>
+                    </div>
+                    
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">저장</button>
+                        <button type="button" onclick="closeModal()" class="btn btn-secondary">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/seller.js?v=${Date.now()}"></script>
     </body>
     </html>
   `);
