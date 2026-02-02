@@ -58,13 +58,22 @@ pm2 start ecosystem.config.cjs
 - ✅ 상품 삭제
 - ✅ 총 금액 자동 계산
 
-#### 4. 관리자 대시보드
+#### 4. 실시간 채팅 (Firebase RTDB)
+- ✅ 실시간 메시지 송수신
+- ✅ 투명 배경 + 그라디언트 마스크
+- ✅ 최신 50개 메시지만 유지 (비용 $0 최적화)
+- ✅ 구매 시 자동 채팅 메시지
+- ✅ 토스 유저 정보 연동
+- ✅ 슬라이드인 애니메이션
+- ✅ Safe Area 지원
+
+#### 5. 관리자 대시보드
 - ✅ 진행 중인 라이브 스트림 관리
 - ✅ 원클릭 상품 전환 기능
 - ✅ 실시간 상품 목록 및 재고 확인
 - ✅ 현재 소개 중인 상품 강조
 
-#### 5. 데이터베이스 (Cloudflare D1)
+#### 6. 데이터베이스 (Cloudflare D1)
 - ✅ 라이브 스트림 관리
 - ✅ 상품 및 옵션 관리
 - ✅ 사용자 및 장바구니
@@ -72,7 +81,7 @@ pm2 start ecosystem.config.cjs
 
 ### 🚧 구현 예정 기능
 
-#### 6. 토스 브릿지 API 결제 연동
+#### 7. 토스 브릿지 API 결제 연동
 - ⏳ 토스페이 간편결제 연동
 - ⏳ 주문서 페이지
 - ⏳ 결제 승인 및 실패 처리
@@ -87,17 +96,21 @@ Frontend:
 ├── HTML5 + Tailwind CSS (ClickMate 스타일)
 ├── Vanilla JavaScript (ES6+)
 ├── YouTube IFrame API
+├── Firebase Realtime Database (실시간 채팅)
 └── 폴링 기반 실시간 업데이트 (3초)
 
 Backend:
 ├── Hono (Cloudflare Workers 프레임워크)
 ├── Cloudflare D1 (SQLite 기반 관계형 DB)
+├── Firebase RTDB (실시간 채팅)
+├── Toss Bridge API (유저 정보)
 ├── TypeScript
 └── RESTful API
 
 Infrastructure:
 ├── Cloudflare Pages (배포 플랫폼)
-└── Cloudflare Workers (Edge Computing)
+├── Cloudflare Workers (Edge Computing)
+└── Firebase Realtime Database (실시간 데이터)
 ```
 
 ### 데이터 흐름도

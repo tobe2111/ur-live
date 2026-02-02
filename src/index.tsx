@@ -1031,6 +1031,81 @@ app.get('/cart', (c) => {
   `);
 });
 
+// =================================
+// Toss Bridge API
+// =================================
+
+// 토스 앱에서 유저 정보 가져오기
+app.get('/api/toss/user-info', async (c) => {
+  try {
+    // 토스 브릿지를 통해 유저 정보 가져오기
+    // 실제로는 토스 앱의 JavaScript Bridge를 통해 전달받음
+    
+    // 예시: 토스 앱에서 전달하는 헤더 정보
+    const tossUserId = c.req.header('X-Toss-User-Id');
+    const tossUserName = c.req.header('X-Toss-User-Name');
+    
+    if (!tossUserId) {
+      // 토스 브릿지가 없는 경우 (웹 브라우저 직접 접속)
+      return c.json({
+        success: true,
+        data: {
+          userId: 'web_user_' + Date.now(),
+          name: '게스트',
+          isGuest: true
+        }
+      });
+    }
+    
+    // 토스 유저 정보 반환
+    return c.json({
+      success: true,
+      data: {
+        userId: tossUserId,
+        name: tossUserName || '토스 사용자',
+        isGuest: false
+      }
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 토스페이 결제 준비 (향후 구현)
+app.post('/api/toss/payment/prepare', async (c) => {
+  try {
+    const { orderId, amount, orderName } = await c.req.json();
+    
+    // TODO: 토스페이먼츠 API 연동
+    // https://docs.tosspayments.com/guides/payment-widget/integration
+    
+    return c.json({
+      success: true,
+      data: {
+        orderId,
+        amount,
+        orderName,
+        // 실제로는 토스페이먼츠에서 받은 결제 정보
+        clientKey: 'test_client_key',
+        successUrl: `${c.req.url.split('/api')[0]}/payment/success`,
+        failUrl: `${c.req.url.split('/api')[0]}/payment/fail`,
+      }
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// =================================
+// Page Routes
+// =================================
+
 // 관리자 대시보드
 app.get('/admin', (c) => {
   return c.html(`

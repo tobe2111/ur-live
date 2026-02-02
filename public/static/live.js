@@ -413,24 +413,35 @@
   }
 
   // 토스 브릿지에서 유저 정보 가져오기
+  // 토스 브릿지에서 유저 정보 가져오기
   async function getTossUserInfo() {
     try {
-      // TODO: 실제 토스 브릿지 API 호출
-      // 예시:
-      // const response = await fetch('/api/toss/user-info');
-      // const data = await response.json();
-      // return data;
+      // 실제 토스 브릿지 API 호출
+      const response = await axios.get(`${API_BASE}/toss/user-info`);
       
-      // 임시: 더미 데이터 반환
-      return {
-        name: '토스 사용자',
-        userId: 'toss_user_001'
-      };
+      if (response.data.success) {
+        const userInfo = response.data.data;
+        console.log('✅ 토스 유저 정보:', userInfo);
+        
+        // 유저 ID도 상태에 저장
+        state.userId = userInfo.userId;
+        
+        return {
+          name: userInfo.name,
+          userId: userInfo.userId,
+          isGuest: userInfo.isGuest || false
+        };
+      } else {
+        throw new Error('유저 정보 가져오기 실패');
+      }
     } catch (error) {
-      console.error('토스 유저 정보 가져오기 실패:', error);
+      console.error('⚠️ 토스 유저 정보 가져오기 실패:', error);
+      
+      // 실패 시 게스트로 처리
       return {
-        name: '토스 사용자',
-        userId: 'anonymous'
+        name: '게스트',
+        userId: 'guest_' + Date.now(),
+        isGuest: true
       };
     }
   }
