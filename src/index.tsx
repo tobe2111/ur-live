@@ -40,9 +40,14 @@ app.get('/api/streams/:id', async (c) => {
   const id = c.req.param('id');
 
   try {
-    const stream = await DB.prepare(
-      'SELECT * FROM live_streams WHERE id = ?'
-    ).bind(id).first();
+    const stream = await DB.prepare(`
+      SELECT ls.*, 
+             p.id as current_product_id, p.name as product_name, p.price, p.original_price, 
+             p.discount_rate, p.image_url, p.stock, p.category, p.description as product_description
+      FROM live_streams ls
+      LEFT JOIN products p ON ls.current_product_id = p.id
+      WHERE ls.id = ?
+    `).bind(id).first();
 
     if (!stream) {
       return c.json<ApiResponse>({
@@ -1971,6 +1976,46 @@ app.put('/api/admin/streams/:id', async (c) => {
 
     // Get updated stream
     const stream = await DB.prepare('SELECT * FROM live_streams WHERE id = ?').bind(id).first();
+
+    return c.json({ success: true, data: stream });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update current product in live stream (Admin only)
+app.patch('/api/admin/streams/:id/current-product', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+    const { product_id } = await c.req.json();
+
+    // Validate product exists
+    if (product_id) {
+      const product = await DB.prepare('SELECT id FROM products WHERE id = ?').bind(product_id).first();
+      if (!product) {
+        return c.json({ success: false, error: 'Product not found' }, 404);
+      }
+    }
+
+    await DB.prepare(
+      'UPDATE live_streams SET current_product_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(product_id || null, id).run();
+
+    // Get updated stream with product info
+    const stream = await DB.prepare(`
+      SELECT ls.*, p.id as product_id, p.name as product_name, p.price, p.original_price, 
+             p.discount_rate, p.image_url, p.stock
+      FROM live_streams ls
+      LEFT JOIN products p ON ls.current_product_id = p.id
+      WHERE ls.id = ?
+    `).bind(id).first();
 
     return c.json({ success: true, data: stream });
   } catch (err) {

@@ -117,7 +117,7 @@ function renderStreams(streams) {
                         ${stream.description || '설명 없음'}
                     </p>
                     
-                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600);">
+                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600); margin-bottom: 12px;">
                         <span>
                             <i class="fab fa-youtube"></i> ${stream.youtube_video_id}
                         </span>
@@ -125,9 +125,31 @@ function renderStreams(streams) {
                             <i class="fas fa-calendar"></i> ${formatDate(stream.created_at)}
                         </span>
                     </div>
+                    
+                    ${stream.current_product_id ? `
+                        <div style="background: #f0f9ff; border-radius: 8px; padding: 12px; font-size: 13px;">
+                            <div style="color: #0369a1; font-weight: 600; margin-bottom: 4px;">
+                                <i class="fas fa-shopping-bag"></i> 현재 노출 상품
+                            </div>
+                            <div style="color: var(--toss-gray-700);">
+                                ID: ${stream.current_product_id}
+                            </div>
+                        </div>
+                    ` : `
+                        <div style="background: #fef3c7; border-radius: 8px; padding: 12px; font-size: 13px; color: #92400e;">
+                            <i class="fas fa-exclamation-triangle"></i> 노출 상품이 설정되지 않았습니다
+                        </div>
+                    `}
                 </div>
                 
                 <div style="display: flex; gap: 8px;">
+                    ${stream.status === 'live' ? `
+                        <button onclick="changeCurrentProduct(${stream.id})" 
+                                class="btn btn-primary" 
+                                style="padding: 8px 16px; font-size: 13px; background: #10b981;">
+                            <i class="fas fa-shopping-bag"></i> 상품 변경
+                        </button>
+                    ` : ''}
                     <button onclick="changeStatus(${stream.id}, '${stream.status}')" 
                             class="btn btn-secondary" 
                             style="padding: 8px 16px; font-size: 13px;">
@@ -280,6 +302,71 @@ document.getElementById('streamForm').addEventListener('submit', async (e) => {
         alert(error.response?.data?.error || '저장에 실패했습니다.');
     }
 });
+
+// Change current product in live stream
+async function changeCurrentProduct(streamId) {
+    try {
+        // Get all active products
+        const response = await axios.get(`${API_BASE}/streams/${streamId}/products`, {
+            headers: { 'X-Session-Token': sessionToken }
+        });
+
+        if (!response.data.success) {
+            alert('상품 목록을 불러올 수 없습니다.');
+            return;
+        }
+
+        const products = response.data.data;
+        if (products.length === 0) {
+            alert('등록된 상품이 없습니다.');
+            return;
+        }
+
+        // Create product selection dialog
+        const productOptions = products.map(p => 
+            `<option value="${p.id}">${p.name} - ${formatPrice(p.price)}원 (재고: ${p.stock})</option>`
+        ).join('');
+
+        const productId = prompt(
+            '노출할 상품을 선택하세요:\n\n' + 
+            products.map((p, i) => `${i + 1}. ${p.name} - ${formatPrice(p.price)}원`).join('\n') +
+            '\n\n상품 ID를 입력하세요 (취소하려면 빈 값):'
+        );
+
+        if (productId === null) return; // 취소
+
+        const selectedProduct = products.find(p => p.id === parseInt(productId));
+        if (!productId) {
+            // Clear current product
+            if (confirm('현재 노출 상품을 제거하시겠습니까?')) {
+                await updateCurrentProduct(streamId, null);
+            }
+        } else if (!selectedProduct) {
+            alert('올바른 상품 ID를 입력해주세요.');
+        } else {
+            await updateCurrentProduct(streamId, productId);
+        }
+    } catch (error) {
+        console.error('Failed to change product:', error);
+        alert('상품 변경에 실패했습니다.');
+    }
+}
+
+// Update current product API call
+async function updateCurrentProduct(streamId, productId) {
+    try {
+        await axios.patch(`${API_BASE}/admin/streams/${streamId}/current-product`, 
+            { product_id: productId ? parseInt(productId) : null },
+            { headers: { 'X-Session-Token': sessionToken } }
+        );
+
+        alert(productId ? '노출 상품이 변경되었습니다!' : '노출 상품이 제거되었습니다.');
+        loadStreams();
+    } catch (error) {
+        console.error('Failed to update current product:', error);
+        alert(error.response?.data?.error || '상품 변경에 실패했습니다.');
+    }
+}
 
 // ==========================================
 // Seller Management Functions
