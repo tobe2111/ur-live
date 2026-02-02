@@ -3305,6 +3305,113 @@ app.get('/admin', (c) => {
                 padding: 32px;
                 max-width: 500px;
                 width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            /* Mobile Responsive Styles */
+            @media (max-width: 768px) {
+                body {
+                    font-size: 14px;
+                }
+                
+                .header {
+                    padding: 12px 16px !important;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                }
+                
+                .header h1 {
+                    font-size: 18px !important;
+                    width: 100%;
+                }
+                
+                .header-info {
+                    width: 100%;
+                    justify-content: space-between;
+                }
+                
+                /* Stats Grid - 2 columns on mobile */
+                [style*="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))"] {
+                    grid-template-columns: repeat(2, 1fr) !important;
+                    gap: 12px !important;
+                }
+                
+                .stat-card {
+                    padding: 16px !important;
+                }
+                
+                .stat-value {
+                    font-size: 24px !important;
+                }
+                
+                .stat-label {
+                    font-size: 12px !important;
+                }
+                
+                /* Stream/Seller Cards */
+                .stream-card {
+                    padding: 16px !important;
+                }
+                
+                .stream-card > div {
+                    flex-direction: column !important;
+                    gap: 12px !important;
+                }
+                
+                .stream-card h3 {
+                    font-size: 14px !important;
+                }
+                
+                .stream-card > div > div:last-child {
+                    width: 100%;
+                    justify-content: flex-start !important;
+                    flex-wrap: wrap;
+                }
+                
+                /* Buttons on mobile */
+                .btn {
+                    padding: 8px 12px !important;
+                    font-size: 12px !important;
+                }
+                
+                /* Section Headers */
+                [style*="font-size: 18px"] {
+                    font-size: 16px !important;
+                }
+                
+                /* Modal on mobile */
+                .modal-content {
+                    padding: 20px !important;
+                    width: 95% !important;
+                    max-height: 85vh !important;
+                }
+                
+                .form-group {
+                    margin-bottom: 16px !important;
+                }
+                
+                .form-input {
+                    font-size: 14px !important;
+                }
+                
+                /* Hide icons on very small screens */
+                @media (max-width: 480px) {
+                    .fas, .fab {
+                        display: none;
+                    }
+                    
+                    .btn {
+                        padding: 8px !important;
+                    }
+                }
+            }
+            
+            /* Tablet Styles */
+            @media (min-width: 769px) and (max-width: 1024px) {
+                [style*="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))"] {
+                    grid-template-columns: repeat(3, 1fr) !important;
+                }
             }
             
             .form-group {
@@ -3674,6 +3781,137 @@ app.get('/seller', (c) => {
             .form-input:focus {
                 outline: none;
                 border-color: var(--seller-pink);
+            }
+            
+            /* Mobile Responsive Styles */
+            @media (max-width: 768px) {
+                body {
+                    font-size: 14px;
+                }
+                
+                /* Header */
+                [style*="padding: 16px 32px"] {
+                    padding: 12px 16px !important;
+                }
+                
+                [style*="font-size: 20px"] h1 {
+                    font-size: 18px !important;
+                }
+                
+                /* Main content padding */
+                [style*="padding: 32px"] {
+                    padding: 16px !important;
+                }
+                
+                /* Stats Grid - 2 columns on mobile */
+                [style*="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))"] {
+                    grid-template-columns: repeat(2, 1fr) !important;
+                    gap: 12px !important;
+                }
+                
+                .stat-card {
+                    padding: 16px !important;
+                }
+                
+                .stat-value {
+                    font-size: 24px !important;
+                }
+                
+                .stat-label {
+                    font-size: 12px !important;
+                }
+                
+                /* Product Cards */
+                .product-card {
+                    padding: 16px !important;
+                    flex-direction: column !important;
+                    gap: 12px !important;
+                }
+                
+                .product-image {
+                    width: 100% !important;
+                    height: 200px !important;
+                }
+                
+                .product-card h3 {
+                    font-size: 14px !important;
+                }
+                
+                /* Buttons */
+                .btn {
+                    padding: 8px 12px !important;
+                    font-size: 12px !important;
+                }
+                
+                /* Product info section */
+                .product-card > div {
+                    width: 100% !important;
+                }
+                
+                .product-card > div > div:last-child {
+                    flex-wrap: wrap !important;
+                    gap: 8px !important;
+                }
+                
+                /* Section Headers */
+                [style*="font-size: 18px"] {
+                    font-size: 16px !important;
+                }
+                
+                /* Modal on mobile */
+                .modal-content {
+                    padding: 20px !important;
+                    width: 95% !important;
+                    max-height: 85vh !important;
+                }
+                
+                .form-group {
+                    margin-bottom: 16px !important;
+                }
+                
+                .form-input {
+                    font-size: 14px !important;
+                }
+                
+                /* Option chips */
+                [style*="display: flex; gap: 8px; flex-wrap: wrap"] {
+                    gap: 6px !important;
+                }
+                
+                .option-chip {
+                    font-size: 11px !important;
+                    padding: 4px 8px !important;
+                }
+                
+                /* Hide icons on very small screens */
+                @media (max-width: 480px) {
+                    .fas, .fab {
+                        display: none;
+                    }
+                    
+                    .btn {
+                        padding: 8px !important;
+                    }
+                    
+                    /* Stack header vertically */
+                    [style*="display: flex; align-items: center; justify-content: space-between"] {
+                        flex-direction: column !important;
+                        align-items: flex-start !important;
+                        gap: 12px !important;
+                    }
+                }
+            }
+            
+            /* Tablet Styles */
+            @media (min-width: 769px) and (max-width: 1024px) {
+                [style*="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr))"] {
+                    grid-template-columns: repeat(3, 1fr) !important;
+                }
+                
+                .product-image {
+                    width: 100px !important;
+                    height: 100px !important;
+                }
             }
         </style>
     </head>
