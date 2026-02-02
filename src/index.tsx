@@ -1630,8 +1630,189 @@ app.get('/cart', (c) => {
 });
 
 // =================================
-// Toss Bridge API
+// Admin/Seller Authentication API
 // =================================
+
+// Helper: Generate session token
+function generateSessionToken(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+// Helper: Simple password check (for demo - in production use bcrypt)
+function checkPassword(password: string, hash: string): boolean {
+  // For demo purposes, we're using simple comparison
+  // In production, use bcrypt.compare()
+  return password === 'admin123' || password === 'seller123';
+}
+
+// Admin Login
+app.post('/api/admin/login', async (c) => {
+  const { DB } = c.env;
+  const { username, password } = await c.req.json();
+
+  try {
+    // Find admin
+    const admin = await DB.prepare(
+      'SELECT id, username, name, email, role, password_hash FROM admins WHERE username = ? AND is_active = 1'
+    ).bind(username).first();
+
+    if (!admin) {
+      return c.json({ success: false, error: 'Invalid credentials' }, 401);
+    }
+
+    // Check password (simplified for demo)
+    if (!checkPassword(password, admin.password_hash)) {
+      return c.json({ success: false, error: 'Invalid credentials' }, 401);
+    }
+
+    // Create session
+    const sessionToken = generateSessionToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
+    await DB.prepare(
+      'INSERT INTO admin_sessions (session_token, admin_id, user_type, expires_at) VALUES (?, ?, ?, ?)'
+    ).bind(sessionToken, admin.id, 'admin', expiresAt).run();
+
+    // Update last login
+    await DB.prepare(
+      'UPDATE admins SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(admin.id).run();
+
+    return c.json({
+      success: true,
+      data: {
+        sessionToken,
+        user: {
+          id: admin.id,
+          username: admin.username,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          type: 'admin'
+        }
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Seller Login
+app.post('/api/seller/login', async (c) => {
+  const { DB } = c.env;
+  const { username, password } = await c.req.json();
+
+  try {
+    // Find seller
+    const seller = await DB.prepare(
+      'SELECT id, username, name, email, business_name, status, password_hash FROM sellers WHERE username = ? AND is_active = 1'
+    ).bind(username).first();
+
+    if (!seller) {
+      return c.json({ success: false, error: 'Invalid credentials' }, 401);
+    }
+
+    // Check if seller is approved
+    if (seller.status !== 'approved') {
+      return c.json({ success: false, error: 'Seller account not approved yet' }, 403);
+    }
+
+    // Check password (simplified for demo)
+    if (!checkPassword(password, seller.password_hash)) {
+      return c.json({ success: false, error: 'Invalid credentials' }, 401);
+    }
+
+    // Create session
+    const sessionToken = generateSessionToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
+    await DB.prepare(
+      'INSERT INTO admin_sessions (session_token, seller_id, user_type, expires_at) VALUES (?, ?, ?, ?)'
+    ).bind(sessionToken, seller.id, 'seller', expiresAt).run();
+
+    // Update last login
+    await DB.prepare(
+      'UPDATE sellers SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(seller.id).run();
+
+    return c.json({
+      success: true,
+      data: {
+        sessionToken,
+        user: {
+          id: seller.id,
+          username: seller.username,
+          name: seller.name,
+          email: seller.email,
+          businessName: seller.business_name,
+          type: 'seller'
+        }
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Verify Session (Middleware helper endpoint)
+app.get('/api/auth/verify', async (c) => {
+  const { DB } = c.env;
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return c.json({ success: false, error: 'No session token' }, 401);
+  }
+
+  try {
+    const session = await DB.prepare(
+      'SELECT * FROM admin_sessions WHERE session_token = ? AND expires_at > CURRENT_TIMESTAMP'
+    ).bind(sessionToken).first();
+
+    if (!session) {
+      return c.json({ success: false, error: 'Invalid or expired session' }, 401);
+    }
+
+    let user;
+    if (session.user_type === 'admin') {
+      user = await DB.prepare(
+        'SELECT id, username, name, email, role FROM admins WHERE id = ?'
+      ).bind(session.admin_id).first();
+    } else {
+      user = await DB.prepare(
+        'SELECT id, username, name, email, business_name FROM sellers WHERE id = ?'
+      ).bind(session.seller_id).first();
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        user: { ...user, type: session.user_type }
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Logout
+app.post('/api/auth/logout', async (c) => {
+  const { DB } = c.env;
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return c.json({ success: true }); // Already logged out
+  }
+
+  try {
+    await DB.prepare(
+      'DELETE FROM admin_sessions WHERE session_token = ?'
+    ).bind(sessionToken).run();
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
 
 // =================================
 // Toss Bridge API
@@ -1707,6 +1888,419 @@ app.post('/api/toss/payment/prepare', async (c) => {
 // =================================
 // Page Routes
 // =================================
+
+// 어드민 로그인 페이지
+app.get('/admin/login', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>어드민 로그인 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            :root {
+                --toss-blue: #3182F6;
+                --toss-gray-900: #191F28;
+                --toss-gray-700: #4E5968;
+                --toss-gray-600: #6B7684;
+                --toss-gray-200: #E5E8EB;
+                --toss-gray-100: #F2F4F6;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .login-container {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                padding: 48px;
+                width: 100%;
+                max-width: 420px;
+            }
+            
+            .logo {
+                text-align: center;
+                margin-bottom: 32px;
+            }
+            
+            .logo-icon {
+                width: 64px;
+                height: 64px;
+                background: var(--toss-blue);
+                border-radius: 16px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 32px;
+                margin-bottom: 16px;
+            }
+            
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            .form-label {
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--toss-gray-900);
+                margin-bottom: 8px;
+            }
+            
+            .form-input {
+                width: 100%;
+                padding: 14px 16px;
+                border: 1px solid var(--toss-gray-200);
+                border-radius: 8px;
+                font-size: 16px;
+                transition: all 0.2s;
+            }
+            
+            .form-input:focus {
+                outline: none;
+                border-color: var(--toss-blue);
+                box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.1);
+            }
+            
+            .btn-login {
+                width: 100%;
+                padding: 16px;
+                background: var(--toss-blue);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .btn-login:hover {
+                background: #2563eb;
+                transform: translateY(-1px);
+            }
+            
+            .btn-login:active {
+                transform: translateY(0);
+            }
+            
+            .error-message {
+                color: #ef4444;
+                font-size: 14px;
+                margin-top: 8px;
+                display: none;
+            }
+            
+            .error-message.show {
+                display: block;
+            }
+            
+            .link-seller {
+                text-align: center;
+                margin-top: 24px;
+                font-size: 14px;
+                color: var(--toss-gray-600);
+            }
+            
+            .link-seller a {
+                color: var(--toss-blue);
+                text-decoration: none;
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-container">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <h1 style="font-size: 24px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">어드민 로그인</h1>
+                <p style="font-size: 14px; color: var(--toss-gray-600); margin-top: 8px;">토스 라이브 커머스 관리자</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="username">아이디</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="아이디를 입력하세요" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">비밀번호</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="비밀번호를 입력하세요" required>
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                
+                <button type="submit" class="btn-login">로그인</button>
+            </form>
+            
+            <div class="link-seller">
+                판매자이신가요? <a href="/seller/login">판매자 로그인</a>
+            </div>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const loginForm = document.getElementById('loginForm');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                try {
+                    const response = await axios.post('/api/admin/login', {
+                        username,
+                        password
+                    });
+                    
+                    if (response.data.success) {
+                        // Store session token
+                        localStorage.setItem('sessionToken', response.data.data.sessionToken);
+                        localStorage.setItem('userType', 'admin');
+                        localStorage.setItem('userName', response.data.data.user.name);
+                        
+                        // Redirect to admin dashboard
+                        window.location.href = '/admin';
+                    }
+                } catch (error) {
+                    errorMessage.textContent = error.response?.data?.error || '로그인에 실패했습니다.';
+                    errorMessage.classList.add('show');
+                    
+                    setTimeout(() => {
+                        errorMessage.classList.remove('show');
+                    }, 3000);
+                }
+            });
+            
+            // Test credentials hint
+            console.log('Test Admin: username=admin, password=admin123');
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// 판매자 로그인 페이지
+app.get('/seller/login', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>판매자 로그인 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            :root {
+                --toss-blue: #3182F6;
+                --toss-gray-900: #191F28;
+                --toss-gray-700: #4E5968;
+                --toss-gray-600: #6B7684;
+                --toss-gray-200: #E5E8EB;
+                --toss-gray-100: #F2F4F6;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .login-container {
+                background: white;
+                border-radius: 16px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                padding: 48px;
+                width: 100%;
+                max-width: 420px;
+            }
+            
+            .logo {
+                text-align: center;
+                margin-bottom: 32px;
+            }
+            
+            .logo-icon {
+                width: 64px;
+                height: 64px;
+                background: #f5576c;
+                border-radius: 16px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 32px;
+                margin-bottom: 16px;
+            }
+            
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            .form-label {
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--toss-gray-900);
+                margin-bottom: 8px;
+            }
+            
+            .form-input {
+                width: 100%;
+                padding: 14px 16px;
+                border: 1px solid var(--toss-gray-200);
+                border-radius: 8px;
+                font-size: 16px;
+                transition: all 0.2s;
+            }
+            
+            .form-input:focus {
+                outline: none;
+                border-color: #f5576c;
+                box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+            }
+            
+            .btn-login {
+                width: 100%;
+                padding: 16px;
+                background: #f5576c;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .btn-login:hover {
+                background: #f31942;
+                transform: translateY(-1px);
+            }
+            
+            .btn-login:active {
+                transform: translateY(0);
+            }
+            
+            .error-message {
+                color: #ef4444;
+                font-size: 14px;
+                margin-top: 8px;
+                display: none;
+            }
+            
+            .error-message.show {
+                display: block;
+            }
+            
+            .link-admin {
+                text-align: center;
+                margin-top: 24px;
+                font-size: 14px;
+                color: var(--toss-gray-600);
+            }
+            
+            .link-admin a {
+                color: #f5576c;
+                text-decoration: none;
+                font-weight: 600;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-container">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-store"></i>
+                </div>
+                <h1 style="font-size: 24px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">판매자 로그인</h1>
+                <p style="font-size: 14px; color: var(--toss-gray-600); margin-top: 8px;">토스 라이브 커머스 판매자</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="username">아이디</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="아이디를 입력하세요" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">비밀번호</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="비밀번호를 입력하세요" required>
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                
+                <button type="submit" class="btn-login">로그인</button>
+            </form>
+            
+            <div class="link-admin">
+                관리자이신가요? <a href="/admin/login">어드민 로그인</a>
+            </div>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const loginForm = document.getElementById('loginForm');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                
+                try {
+                    const response = await axios.post('/api/seller/login', {
+                        username,
+                        password
+                    });
+                    
+                    if (response.data.success) {
+                        // Store session token
+                        localStorage.setItem('sessionToken', response.data.data.sessionToken);
+                        localStorage.setItem('userType', 'seller');
+                        localStorage.setItem('userName', response.data.data.user.name);
+                        
+                        // Redirect to seller dashboard
+                        window.location.href = '/seller';
+                    }
+                } catch (error) {
+                    errorMessage.textContent = error.response?.data?.error || '로그인에 실패했습니다.';
+                    errorMessage.classList.add('show');
+                    
+                    setTimeout(() => {
+                        errorMessage.classList.remove('show');
+                    }, 3000);
+                }
+            });
+            
+            // Test credentials hint
+            console.log('Test Seller 1: username=seller1, password=seller123');
+            console.log('Test Seller 2: username=seller2, password=seller123');
+        </script>
+    </body>
+    </html>
+  `);
+});
 
 // 관리자 대시보드
 app.get('/admin', (c) => {

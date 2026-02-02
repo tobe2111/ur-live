@@ -1,5 +1,5 @@
 -- 주문 테이블
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   order_no TEXT UNIQUE NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE orders (
 );
 
 -- 주문 아이템 테이블
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   order_id INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE order_items (
 );
 
 -- 인덱스 생성
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-CREATE INDEX idx_orders_order_no ON orders(order_no);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_order_no ON orders(order_no);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
