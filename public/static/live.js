@@ -79,6 +79,9 @@
       // UI 이벤트 바인딩
       setupUIEvents();
       
+      // Firebase 채팅 초기화
+      initializeChat();
+      
       // 페이지 가시성 변경 감지
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && state.player && typeof state.player.playVideo === 'function') {
