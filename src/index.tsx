@@ -1623,19 +1623,23 @@ app.get('/cart', (c) => {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script>
-          const API_BASE = '/api';
-          const userId = 'toss_user_001'; // 실제로는 토스 로그인에서 받아옴
-          
-          let cartData = [];
+        <script src="/static/cart.js?v=${Date.now()}"></script>
+    </body>
+    </html>
+  `);
+});
 
-          // 페이지 로드 시 장바구니 불러오기
-          document.addEventListener('DOMContentLoaded', () => {
-            loadCart();
-          });
+// =================================
+// Toss Bridge API
+// =================================
 
-          // 장바구니 불러오기
-          async function loadCart() {
+// =================================
+// Toss Bridge API
+// =================================
+
+// 토스 앱에서 유저 정보 가져오기
+app.get('/api/toss/user-info', async (c) => {
+  try {
             try {
               const response = await axios.get(\`\${API_BASE}/cart/\${userId}\`);
               if (response.data.success) {
