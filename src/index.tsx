@@ -532,7 +532,7 @@ app.get('/', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>토스 라이브 커머스</title>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/style.css" rel="stylesheet">
+        <link href="/static/style.css?v=${Date.now()}" rel="stylesheet">
         <style>
           /* 토스 브랜드 컬러 */
           :root {
@@ -581,7 +581,7 @@ app.get('/live/:streamId', (c) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>토스 라이브 커머스 - 실시간 방송</title>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/style.css" rel="stylesheet">
+        <link href="/static/style.css?v=${Date.now()}" rel="stylesheet">
         
         <!-- Firebase SDK -->
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -952,7 +952,7 @@ app.get('/live/:streamId', (c) => {
         <script>
           const STREAM_ID = '${streamId}';
         </script>
-        <script src="/static/firebase-config.js"></script>
+        <script src="/static/firebase-config.js?v=${Date.now()}"></script>
         <script src="/static/live.js?v=${Date.now()}"></script>
     </body>
     </html>
