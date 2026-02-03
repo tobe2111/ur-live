@@ -2213,6 +2213,11 @@ app.get('/mock-payment', (c) => {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
           }
+          .payment-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+          }
           .btn-success {
             background: #10b981;
             color: white;
@@ -2225,6 +2230,23 @@ app.get('/mock-payment', (c) => {
             background: #ef4444;
             color: white;
           }
+          .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+          }
+          .loading-spinner.active {
+            display: block;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
         </style>
     </head>
     <body>
@@ -2235,7 +2257,9 @@ app.get('/mock-payment', (c) => {
                 <p class="text-gray-500 text-sm">실제 결제는 발생하지 않습니다</p>
             </div>
             
-            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+            <div id="loading-area" class="loading-spinner"></div>
+            
+            <div id="payment-content" class="bg-gray-50 p-4 rounded-lg mb-6">
                 <div class="flex justify-between mb-2">
                     <span class="text-gray-600">상품명</span>
                     <span class="font-medium">${decodeURIComponent(productDesc)}</span>
@@ -2273,6 +2297,7 @@ app.get('/mock-payment', (c) => {
                     라이브 페이지로 돌아가기
                 </a>
             </div>
+            </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -2281,11 +2306,13 @@ app.get('/mock-payment', (c) => {
             
             async function processPayment(result) {
                 try {
+                    // 로딩 표시
+                    document.getElementById('loading-area').classList.add('active');
+                    document.getElementById('payment-content').style.display = 'none';
+                    
                     // 버튼 비활성화
                     document.querySelectorAll('.payment-btn').forEach(btn => {
                         btn.disabled = true;
-                        btn.style.opacity = '0.5';
-                        btn.style.cursor = 'not-allowed';
                     });
                     
                     // Callback API 호출
@@ -2301,20 +2328,16 @@ app.get('/mock-payment', (c) => {
                     });
                     
                     if (response.data.success) {
-                        // 결과에 따라 리다이렉트
+                        // 결과에 따라 리다이렉트 (알림 제거하고 페이지로 바로 이동)
                         if (result === 'success') {
-                            alert('결제가 성공적으로 완료되었습니다! ✅');
-                            window.location.href = '/orders';
+                            window.location.href = '/payment/success?orderNo=' + orderNo;
                         } else if (result === 'cancel') {
-                            alert('결제가 취소되었습니다.');
-                            window.location.href = '/live/1';
+                            window.location.href = '/payment/cancel';
                         } else {
-                            alert('결제에 실패했습니다.');
-                            window.location.href = '/live/1';
+                            window.location.href = '/payment/failed?reason=' + encodeURIComponent('결제 처리에 실패했습니다');
                         }
                     } else {
-                        alert('처리 중 오류가 발생했습니다.');
-                        location.reload();
+                        window.location.href = '/payment/failed?reason=' + encodeURIComponent(response.data.error || '처리 중 오류가 발생했습니다');
                     }
                 } catch (error) {
                     console.error('결제 처리 오류:', error);
@@ -2323,6 +2346,342 @@ app.get('/mock-payment', (c) => {
                 }
             }
         </script>
+    </body>
+    </html>
+  `);
+});
+
+// 결제 성공 페이지
+app.get('/payment/success', async (c) => {
+  const { DB } = c.env;
+  const orderNo = c.req.query('orderNo');
+  
+  if (!orderNo) {
+    return c.redirect('/orders');
+  }
+  
+  // 주문 정보 조회
+  const order = await DB.prepare(`
+    SELECT * FROM orders WHERE order_number = ?
+  `).bind(orderNo).first();
+  
+  if (!order) {
+    return c.redirect('/orders');
+  }
+  
+  // 주문 상품 조회
+  const items = await DB.prepare(`
+    SELECT oi.*, p.name as product_name, p.image_url 
+    FROM order_items oi
+    LEFT JOIN products p ON oi.product_id = p.id
+    WHERE oi.order_id = ?
+  `).bind(order.id).all();
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>결제 완료 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .success-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          }
+          .success-header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 48px 24px;
+            text-align: center;
+            color: white;
+          }
+          .checkmark {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            animation: scaleIn 0.5s ease-out;
+          }
+          @keyframes scaleIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+          }
+          .order-item {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 16px 0;
+          }
+          .order-item:last-child {
+            border-bottom: none;
+          }
+          .btn-primary {
+            background: linear-gradient(135deg, #0064FF 0%, #0052CC 100%);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+          }
+          .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,100,255,0.3);
+          }
+          .btn-secondary {
+            background: white;
+            color: #6b7280;
+            padding: 16px 32px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            margin-left: 12px;
+          }
+        </style>
+    </head>
+    <body>
+        <div class="success-container">
+            <div class="success-header">
+                <div class="checkmark">
+                    <i class="fas fa-check text-green-500 text-4xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold mb-2">결제가 완료되었습니다!</h1>
+                <p class="text-green-100">주문이 정상적으로 접수되었습니다</p>
+            </div>
+            
+            <div class="p-6">
+                <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-600">주문번호</span>
+                        <span class="font-mono text-sm font-medium">${order.order_number}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-600">주문일시</span>
+                        <span class="font-medium">${new Date(order.created_at).toLocaleString('ko-KR')}</span>
+                    </div>
+                    <div class="flex justify-between text-lg font-bold mt-4 pt-4 border-t">
+                        <span>결제 금액</span>
+                        <span class="text-green-600">${order.total_amount.toLocaleString()}원</span>
+                    </div>
+                </div>
+                
+                <h3 class="font-bold text-lg mb-3">주문 상품</h3>
+                <div class="space-y-2 mb-6">
+                    ${items.results.map(item => `
+                        <div class="order-item flex items-center">
+                            ${item.image_url ? `<img src="${item.image_url}" alt="${item.product_name}" class="w-16 h-16 object-cover rounded-lg mr-4">` : ''}
+                            <div class="flex-1">
+                                <div class="font-medium">${item.product_name || item.name}</div>
+                                <div class="text-sm text-gray-500">${item.quantity}개</div>
+                            </div>
+                            <div class="font-bold">${item.price.toLocaleString()}원</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="flex justify-center gap-3 pt-4">
+                    <a href="/orders" class="btn-primary">
+                        <i class="fas fa-list mr-2"></i>
+                        주문 내역 보기
+                    </a>
+                    <a href="/live/1" class="btn-secondary">
+                        <i class="fas fa-home mr-2"></i>
+                        홈으로
+                    </a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// 결제 실패 페이지
+app.get('/payment/failed', (c) => {
+  const reason = c.req.query('reason') || '알 수 없는 오류';
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>결제 실패 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+          }
+          .error-card {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            padding: 48px 32px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          }
+          .error-icon {
+            width: 80px;
+            height: 80px;
+            background: #fee2e2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+          }
+          .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            margin: 8px;
+          }
+          .btn-primary {
+            background: linear-gradient(135deg, #0064FF 0%, #0052CC 100%);
+            color: white;
+          }
+          .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,100,255,0.3);
+          }
+        </style>
+    </head>
+    <body>
+        <div class="error-card">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-triangle text-red-500 text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold mb-3 text-gray-800">결제에 실패했습니다</h1>
+            <p class="text-gray-600 mb-6">${decodeURIComponent(reason)}</p>
+            
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left">
+                <h3 class="font-bold text-sm mb-2 text-red-800">해결 방법</h3>
+                <ul class="text-sm text-gray-700 space-y-1">
+                    <li>• 카드 정보를 다시 확인해주세요</li>
+                    <li>• 한도가 충분한지 확인해주세요</li>
+                    <li>• 문제가 계속되면 고객센터로 문의해주세요</li>
+                </ul>
+            </div>
+            
+            <a href="/live/1" class="btn btn-primary">
+                <i class="fas fa-redo mr-2"></i>
+                다시 시도하기
+            </a>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// 결제 취소 페이지
+app.get('/payment/cancel', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>결제 취소 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+          }
+          .cancel-card {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            padding: 48px 32px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+          }
+          .cancel-icon {
+            width: 80px;
+            height: 80px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+          }
+          .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            margin: 8px;
+          }
+          .btn-primary {
+            background: linear-gradient(135deg, #0064FF 0%, #0052CC 100%);
+            color: white;
+          }
+          .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,100,255,0.3);
+          }
+        </style>
+    </head>
+    <body>
+        <div class="cancel-card">
+            <div class="cancel-icon">
+                <i class="fas fa-times-circle text-amber-500 text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold mb-3 text-gray-800">결제가 취소되었습니다</h1>
+            <p class="text-gray-600 mb-6">사용자가 결제를 취소했습니다</p>
+            
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+                <p class="text-sm text-gray-700">
+                    장바구니에 담긴 상품은 그대로 유지됩니다.<br>
+                    언제든지 다시 결제하실 수 있습니다.
+                </p>
+            </div>
+            
+            <a href="/live/1" class="btn btn-primary">
+                <i class="fas fa-arrow-left mr-2"></i>
+                라이브 페이지로 돌아가기
+            </a>
+        </div>
     </body>
     </html>
   `);
