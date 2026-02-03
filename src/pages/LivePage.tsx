@@ -178,20 +178,19 @@ export default function LivePage() {
     }
   }
 
+  const [showNotification, setShowNotification] = useState(false)
+  const [notificationText, setNotificationText] = useState('')
+
   function handleAddToCart() {
     if (!currentProduct?.product) return
 
     setCartCount(prev => prev + 1)
     setCartItems(prev => [...prev, currentProduct.product])
 
-    const systemMessage: ChatMessage = {
-      id: Date.now().toString(),
-      username: '나',
-      message: `${currentProduct.product.name}을(를) 담았습니다! 감사합니다.`,
-      timestamp: Date.now(),
-      isSystem: true,
-    }
-    setMessages(prev => [...prev, systemMessage])
+    // Show notification banner
+    setNotificationText(`${currentProduct.product.name}을(를) 담았습니다!`)
+    setShowNotification(true)
+    setTimeout(() => setShowNotification(false), 2000)
   }
 
   function handleSendMessage(e: React.FormEvent) {
@@ -268,76 +267,119 @@ export default function LivePage() {
           }}
         />
         
-        {/* Bottom Gradient */}
+        {/* Subtle Bottom Gradient */}
         <div 
           className="absolute inset-x-0 bottom-0 pointer-events-none"
           style={{
-            height: '50%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.3) 40%, transparent 100%)',
+            height: '40%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 30%, transparent 100%)',
           }}
         />
       </div>
 
-      {/* All UI Elements */}
-      <div className="relative z-10 h-full flex flex-col">
-        {/* Top Bar */}
-        <div className="flex-shrink-0 px-4 pt-4 pb-2 safe-top">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm"
-            >
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff3b30]">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                <span className="text-white text-[12px] font-bold">LIVE</span>
-              </div>
-              {stream.viewer_count && (
-                <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
-                  <span className="text-white text-[12px] font-semibold">
-                    {stream.viewer_count.toLocaleString()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <button className="flex items-center justify-center w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm">
-              <span className="text-[20px]">{muted ? '🔇' : '🔊'}</span>
-            </button>
+      {/* Notification Banner */}
+      {showNotification && (
+        <div 
+          className="fixed top-20 left-4 right-4 z-50 animate-fade-in"
+          style={{
+            animation: 'fadeIn 0.3s ease-in-out',
+          }}
+        >
+          <div className="bg-[#34c759]/95 backdrop-blur-sm px-4 py-2 rounded-full text-center">
+            <span className="text-white text-[13px] font-semibold" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+              ✓ {notificationText}
+            </span>
           </div>
         </div>
+      )}
 
-        {/* Middle - Spacer */}
-        <div className="flex-1" />
+      {/* Top Bar */}
+      <div className="fixed top-0 left-0 right-0 z-40 px-4 pt-4 pb-2 safe-top">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
 
-        {/* Bottom Content Area */}
-        <div className="flex-shrink-0 px-4 pb-4 safe-bottom">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff3b30]/90">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-[12px] font-bold">LIVE</span>
+            </div>
+            {stream.viewer_count && (
+              <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-sm">
+                <span className="text-white text-[12px] font-semibold">
+                  {stream.viewer_count.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <button className="flex items-center justify-center w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm">
+            <span className="text-[20px]">{muted ? '🔇' : '🔊'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Right Side Mini Icons */}
+      <div className="fixed right-3 bottom-32 z-30 flex flex-col gap-3">
+        <button onClick={handleLike} className="flex flex-col items-center gap-0.5">
+          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <Heart className={`w-5 h-5 ${liked ? 'fill-[#ff3b30] text-[#ff3b30]' : 'text-white'}`} />
+          </div>
+          <span className="text-white text-[10px] font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+            {likes > 1000 ? `${(likes / 1000).toFixed(1)}K` : likes}
+          </span>
+        </button>
+
+        <button className="flex flex-col items-center gap-0.5">
+          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <Share2 className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-white text-[10px] font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+            공유
+          </span>
+        </button>
+
+        <button className="flex flex-col items-center gap-0.5">
+          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-white text-[10px] font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+            {messages.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Bottom Content Area - 30% of screen */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 pb-4 safe-bottom" style={{ height: '30vh' }}>
+        <div className="h-full flex flex-col justify-end px-4 space-y-3">
           {/* Stream Info */}
-          <div className="mb-3">
-            <h1 className="text-white text-[20px] font-bold mb-1" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+          <div>
+            <h1 className="text-white text-[18px] font-bold mb-0.5 leading-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
               {stream.title}
             </h1>
-            <p className="text-white/80 text-[14px]" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+            <p className="text-white/90 text-[13px] leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9)' }}>
               {stream.description}
             </p>
           </div>
 
-          {/* Chat Messages */}
-          <div className="mb-3 space-y-2 max-h-48 overflow-y-auto">
-            {messages.slice(-4).map((msg) => (
-              <div
-                key={msg.id}
-                className={`inline-block px-3 py-2 rounded-2xl backdrop-blur-sm max-w-[80%] ${
-                  msg.isSystem ? 'bg-[#34c759]/90' : 'bg-black/40'
-                }`}
-              >
-                <span className="text-white text-[13px] font-semibold" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-                  {msg.username}:{' '}
+          {/* Chat Messages - Clean & Minimal */}
+          <div className="space-y-1.5 max-h-20 overflow-y-auto">
+            {messages.slice(-3).map((msg) => (
+              <div key={msg.id} className="flex items-start gap-1.5">
+                <span 
+                  className="text-white text-[13px] font-semibold leading-tight" 
+                  style={{ textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}
+                >
+                  {msg.username}
                 </span>
-                <span className="text-white text-[13px]" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                <span 
+                  className="text-white text-[13px] leading-tight" 
+                  style={{ textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}
+                >
                   {msg.message}
                 </span>
               </div>
@@ -345,33 +387,33 @@ export default function LivePage() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Product Card */}
+          {/* Slim Product Card - Horizontal Bar */}
           {currentProduct?.product && (
-            <div className="mb-3 bg-white rounded-2xl p-3 shadow-2xl">
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-3 py-2.5 shadow-lg">
               <div className="flex items-center gap-3">
                 <img
-                  src={currentProduct.product.image_url || 'https://via.placeholder.com/60'}
+                  src={currentProduct.product.image_url || 'https://via.placeholder.com/48'}
                   alt={currentProduct.product.name}
-                  className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-semibold text-[#1d1d1f] line-clamp-1">
+                  <p className="text-[12px] font-semibold text-[#1d1d1f] line-clamp-1 leading-tight">
                     {currentProduct.product.name}
                   </p>
-                  <div className="flex items-baseline gap-1.5">
+                  <div className="flex items-baseline gap-1">
                     {currentProduct.product.discount_rate > 0 && (
-                      <span className="text-[#ff3b30] text-[13px] font-bold">
+                      <span className="text-[#ff3b30] text-[11px] font-bold">
                         {currentProduct.product.discount_rate}%
                       </span>
                     )}
-                    <span className="text-[#1d1d1f] text-[15px] font-bold">
+                    <span className="text-[#1d1d1f] text-[14px] font-bold">
                       {discountedPrice.toLocaleString()}원
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={handleAddToCart}
-                  className="flex-shrink-0 bg-[#007aff] text-white px-4 py-2 rounded-full text-[13px] font-semibold"
+                  className="flex-shrink-0 bg-[#FF5126] text-white px-4 py-1.5 rounded-full text-[12px] font-bold"
                 >
                   담기
                 </button>
@@ -379,77 +421,37 @@ export default function LivePage() {
             </div>
           )}
 
-          {/* Chat Input */}
-          <form onSubmit={handleSendMessage} className="mb-3 flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="메시지를 입력하세요..."
-              className="flex-1 bg-black/40 backdrop-blur-sm border-0 rounded-full px-4 py-2.5 text-[14px] text-white placeholder:text-white/60"
-            />
-            <button
-              type="submit"
-              disabled={!newMessage.trim()}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#007aff] disabled:bg-white/20"
-            >
-              <Send className="w-4 h-4 text-white" />
-            </button>
-          </form>
+          {/* Bottom Action Bar */}
+          <div className="flex items-center gap-2">
+            {/* Chat Input - Outline Only */}
+            <form onSubmit={handleSendMessage} className="flex-1 flex items-center gap-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="메시지 입력..."
+                className="flex-1 bg-transparent border border-white/40 rounded-full px-4 py-2.5 text-[13px] text-white placeholder:text-white/60"
+                style={{ 
+                  backdropFilter: 'blur(8px)',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                }}
+              />
+            </form>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/my-orders')}
-              className="flex items-center justify-center gap-2 bg-white/90 backdrop-blur-sm text-[#1d1d1f] px-5 py-3 rounded-full text-[15px] font-semibold"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              <span>내 주문</span>
-            </button>
-
+            {/* Large Payment Button - Circle */}
             <button
               onClick={() => setShowCart(true)}
-              className="relative flex-1 flex items-center justify-center gap-2 bg-[#007aff] text-white px-6 py-3 rounded-full text-[15px] font-semibold"
+              className="relative flex items-center justify-center w-14 h-14 rounded-full bg-[#0064FF] shadow-lg flex-shrink-0"
             >
-              <span>결제하기</span>
+              <ShoppingBag className="w-6 h-6 text-white" />
               {cartCount > 0 && (
-                <div className="absolute -top-1 -right-1 min-w-[24px] h-6 bg-[#ff3b30] rounded-full flex items-center justify-center px-2">
-                  <span className="text-white text-[12px] font-bold">{cartCount}</span>
+                <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-[#ff3b30] rounded-full flex items-center justify-center px-1.5">
+                  <span className="text-white text-[11px] font-bold">{cartCount}</span>
                 </div>
               )}
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Right Side Icons */}
-      <div className="fixed right-4 bottom-36 z-20 flex flex-col gap-4">
-        <button onClick={handleLike} className="flex flex-col items-center gap-1">
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <Heart className={`w-6 h-6 ${liked ? 'fill-[#ff3b30] text-[#ff3b30]' : 'text-white'}`} />
-          </div>
-          <span className="text-white text-[11px] font-medium" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-            {likes.toLocaleString()}
-          </span>
-        </button>
-
-        <button className="flex flex-col items-center gap-1">
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <Share2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-[11px] font-medium" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-            공유
-          </span>
-        </button>
-
-        <button className="flex flex-col items-center gap-1">
-          <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-            <MessageCircle className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-[11px] font-medium" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-            {messages.length}
-          </span>
-        </button>
       </div>
 
       {/* Cart Bottom Sheet */}
@@ -519,7 +521,7 @@ export default function LivePage() {
                 </div>
                 <button
                   onClick={() => navigate('/checkout')}
-                  className="w-full bg-[#007aff] text-white py-4 rounded-2xl text-[17px] font-semibold"
+                  className="w-full bg-[#0064FF] text-white py-4 rounded-2xl text-[17px] font-semibold"
                 >
                   결제하기
                 </button>
