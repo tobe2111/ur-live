@@ -3,14 +3,11 @@
 -- 프로덕션: npx wrangler d1 migrations apply toss-live-commerce-db --remote
 
 -- 1. orders 테이블에 필드 추가 (프로덕션에는 이미 shipping_name, phone, address 존재)
--- 로컬에만 적용
-ALTER TABLE orders ADD COLUMN shipping_name TEXT;
-ALTER TABLE orders ADD COLUMN shipping_phone TEXT;
-ALTER TABLE orders ADD COLUMN shipping_address TEXT;
+-- 로컬에만 적용 - 주석 처리 (프로덕션에서는 이미 존재)
+-- ALTER TABLE orders ADD COLUMN shipping_name TEXT;
+-- ALTER TABLE orders ADD COLUMN shipping_phone TEXT;
+-- ALTER TABLE orders ADD COLUMN shipping_address TEXT;
 ALTER TABLE orders ADD COLUMN shipping_memo TEXT;
-
--- 프로덕션에는 shipping_memo만 추가
--- ALTER TABLE orders ADD COLUMN shipping_memo TEXT;
 
 -- 2. order_items 테이블에 상품 정보 스냅샷 추가
 ALTER TABLE order_items ADD COLUMN product_name TEXT NOT NULL DEFAULT '';

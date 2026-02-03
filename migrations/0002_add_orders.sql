@@ -23,8 +23,6 @@ CREATE TABLE IF NOT EXISTS order_items (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 인덱스 생성
+-- 인덱스 생성 (이미 존재할 수 있으므로 무시)
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
-CREATE INDEX IF NOT EXISTS idx_orders_order_no ON orders(order_no);
-CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);

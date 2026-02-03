@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS sellers (
   FOREIGN KEY (approved_by) REFERENCES admins(id)
 );
 
--- 3. products 테이블에 seller_id 추가
-ALTER TABLE products ADD COLUMN seller_id INTEGER REFERENCES sellers(id);
+-- 3. products 테이블에 seller_id 추가 (이미 존재하면 무시)
+-- ALTER TABLE products ADD COLUMN seller_id INTEGER REFERENCES sellers(id);
 
 -- 4. 세션 테이블 (로그인 세션 관리)
 CREATE TABLE IF NOT EXISTS admin_sessions (
