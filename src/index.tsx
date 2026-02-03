@@ -712,27 +712,6 @@ app.post('/api/orders', async (c) => {
   }
 });
 
-app.get('/api/orders/:userId', async (c) => {
-  const { DB } = c.env;
-  const userId = c.req.param('userId');
-
-  try {
-    const result = await DB.prepare(
-      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
-    ).bind(userId).all();
-
-    return c.json<ApiResponse>({
-      success: true,
-      data: result.results,
-    });
-  } catch (err) {
-    return c.json<ApiResponse>({
-      success: false,
-      error: (err as Error).message,
-    }, 500);
-  }
-});
-
 // 현재 상품 조회 API (폴링용)
 app.get('/api/streams/:streamId/current-product', async (c) => {
   const { DB } = c.env;
@@ -2374,7 +2353,7 @@ app.get('/orders', (c) => {
             // 주문 내역 로드
             async function loadOrders() {
                 try {
-                    const response = await axios.get(\`\${API_BASE}/orders/\${userId}\`);
+                    const response = await axios.get(\`\${API_BASE}/orders/user/\${userId}\`);
                     if (response.data.success) {
                         allOrders = response.data.data || [];
                         renderOrders();
@@ -2422,6 +2401,15 @@ app.get('/orders', (c) => {
                     const status = statusMap[order.payment_status] || { label: order.payment_status, class: 'status-pending' };
                     const orderDate = new Date(order.created_at).toLocaleDateString('ko-KR');
                     
+                    // 주문 상품 요약
+                    const itemsCount = order.items?.length || 0;
+                    const firstItem = order.items?.[0];
+                    const productSummary = itemsCount > 0 
+                        ? (itemsCount === 1 
+                            ? firstItem.product_name 
+                            : \`\${firstItem.product_name} 외 \${itemsCount - 1}건\`)
+                        : '상품 정보 없음';
+                    
                     return \`
                         <div class="order-card">
                             <div class="flex justify-between items-start mb-3">
@@ -2430,6 +2418,9 @@ app.get('/orders', (c) => {
                                     <div class="text-xs text-gray-400">\${order.order_number}</div>
                                 </div>
                                 <span class="status-badge \${status.class}">\${status.label}</span>
+                            </div>
+                            <div class="mb-3">
+                                <div class="text-base font-medium text-gray-700">\${productSummary}</div>
                             </div>
                             <div class="border-t pt-3">
                                 <div class="flex justify-between items-center">
@@ -2452,6 +2443,245 @@ app.get('/orders', (c) => {
             
             // 초기화
             loadOrders();
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// 주문 상세 페이지
+app.get('/order/:orderNo', (c) => {
+  const orderNo = c.req.param('orderNo');
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>주문 상세 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+          }
+          .info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          .product-item {
+            display: flex;
+            gap: 12px;
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .product-item:last-child {
+            border-bottom: none;
+          }
+          .product-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #f3f4f6;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+          }
+          .status-pending { background: #fef3c7; color: #92400e; }
+          .status-approved { background: #d1fae5; color: #065f46; }
+          .status-cancelled { background: #fee2e2; color: #991b1b; }
+          .status-failed { background: #fee2e2; color: #991b1b; }
+        </style>
+    </head>
+    <body>
+        <div class="max-w-2xl mx-auto p-4">
+            <!-- 헤더 -->
+            <div class="flex items-center gap-3 mb-6">
+                <button onclick="history.back()" class="text-gray-600">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </button>
+                <h1 class="text-2xl font-bold">주문 상세</h1>
+            </div>
+
+            <!-- 로딩 -->
+            <div id="loading" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+                <p class="mt-4 text-gray-500">주문 정보를 불러오는 중...</p>
+            </div>
+
+            <!-- 주문 정보 -->
+            <div id="order-detail" style="display: none;">
+                <!-- 주문 상태 -->
+                <div class="info-card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold">주문 상태</h2>
+                        <span id="status-badge" class="status-badge"></span>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">주문번호</span>
+                            <span class="font-mono text-xs" id="order-number"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">주문일시</span>
+                            <span id="order-date"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- 결제 대기 상태일 때 취소 버튼 -->
+                    <div id="cancel-section" style="display: none;">
+                        <button onclick="cancelOrder()" 
+                                class="w-full mt-4 px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">
+                            <i class="fas fa-times-circle mr-2"></i>
+                            주문 취소
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 상품 정보 -->
+                <div class="info-card">
+                    <h2 class="text-lg font-bold mb-4">주문 상품</h2>
+                    <div id="product-list"></div>
+                </div>
+
+                <!-- 결제 정보 -->
+                <div class="info-card">
+                    <h2 class="text-lg font-bold mb-4">결제 정보</h2>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">상품 금액</span>
+                            <span id="total-amount"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">배송비</span>
+                            <span>무료</span>
+                        </div>
+                        <div class="border-t pt-3 mt-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-bold">총 결제금액</span>
+                                <span class="text-xl font-bold text-blue-600" id="final-amount"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 에러 메시지 -->
+            <div id="error-message" style="display: none;" class="info-card text-center text-red-500">
+                <i class="fas fa-exclamation-circle text-3xl mb-3"></i>
+                <p>주문 정보를 불러올 수 없습니다.</p>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const API_BASE = '/api';
+            const orderNo = '${orderNo}';
+            let orderData = null;
+            
+            // 주문 상세 로드
+            async function loadOrderDetail() {
+                try {
+                    const response = await axios.get(\`\${API_BASE}/orders/\${orderNo}\`);
+                    
+                    if (!response.data.success) {
+                        throw new Error('주문을 찾을 수 없습니다');
+                    }
+                    
+                    orderData = response.data.data;
+                    renderOrderDetail();
+                    
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('order-detail').style.display = 'block';
+                } catch (error) {
+                    console.error('주문 상세 로드 실패:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error-message').style.display = 'block';
+                }
+            }
+            
+            // 주문 상세 렌더링
+            function renderOrderDetail() {
+                const statusMap = {
+                    pending: { label: '결제대기', class: 'status-pending' },
+                    approved: { label: '결제완료', class: 'status-approved' },
+                    cancelled: { label: '취소', class: 'status-cancelled' },
+                    failed: { label: '결제실패', class: 'status-failed' }
+                };
+                
+                const status = statusMap[orderData.payment_status] || { label: orderData.payment_status, class: 'status-pending' };
+                
+                // 주문 상태
+                document.getElementById('status-badge').textContent = status.label;
+                document.getElementById('status-badge').className = 'status-badge ' + status.class;
+                
+                // 주문 정보
+                document.getElementById('order-number').textContent = orderData.order_number;
+                document.getElementById('order-date').textContent = new Date(orderData.created_at).toLocaleString('ko-KR');
+                
+                // 취소 버튼 표시 (결제대기 상태만)
+                if (orderData.payment_status === 'pending') {
+                    document.getElementById('cancel-section').style.display = 'block';
+                }
+                
+                // 상품 목록
+                document.getElementById('product-list').innerHTML = orderData.items.map(item => \`
+                    <div class="product-item">
+                        <img src="\${item.image_url || 'https://picsum.photos/80/80?random=' + item.product_id}" 
+                             alt="\${item.product_name}"
+                             class="product-image">
+                        <div class="flex-1">
+                            <div class="font-medium mb-1">\${item.product_name}</div>
+                            <div class="text-sm text-gray-500">수량: \${item.quantity}개</div>
+                            <div class="text-sm font-medium mt-2">\${(item.price * item.quantity).toLocaleString()}원</div>
+                        </div>
+                    </div>
+                \`).join('');
+                
+                // 결제 금액
+                const totalAmount = orderData.total_amount.toLocaleString() + '원';
+                document.getElementById('total-amount').textContent = totalAmount;
+                document.getElementById('final-amount').textContent = totalAmount;
+            }
+            
+            // 주문 취소
+            async function cancelOrder() {
+                if (!confirm('주문을 취소하시겠습니까?')) {
+                    return;
+                }
+                
+                try {
+                    // 결제 취소 Callback 호출
+                    const response = await axios.post(\`\${API_BASE}/toss-pay/callback\`, {
+                        orderNo: orderData.order_number,
+                        status: 'PAY_CANCEL',
+                        payToken: orderData.payment_key
+                    });
+                    
+                    if (response.data.success) {
+                        alert('주문이 취소되었습니다.');
+                        location.reload();
+                    } else {
+                        alert('주문 취소에 실패했습니다.');
+                    }
+                } catch (error) {
+                    console.error('주문 취소 오류:', error);
+                    alert('주문 취소 중 오류가 발생했습니다.');
+                }
+            }
+            
+            // 초기화
+            loadOrderDetail();
         </script>
     </body>
     </html>
@@ -2756,7 +2986,7 @@ app.get('/api/orders/:orderNo', async (c) => {
 
   try {
     const order = await DB.prepare(
-      'SELECT * FROM orders WHERE order_no = ?'
+      'SELECT * FROM orders WHERE order_number = ?'
     ).bind(orderNo).first();
 
     if (!order) {
@@ -4305,39 +4535,6 @@ app.post('/api/toss-pay/callback', async (c) => {
 });
 
 // 주문 조회 API
-app.get('/api/orders/:orderNo', async (c) => {
-  const { DB } = c.env;
-  const orderNo = c.req.param('orderNo');
-  
-  try {
-    const order = await DB.prepare(`
-      SELECT * FROM orders WHERE order_number = ?
-    `).bind(orderNo).first();
-    
-    if (!order) {
-      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
-    }
-    
-    const items = await DB.prepare(`
-      SELECT * FROM order_items WHERE order_id = ?
-    `).bind(order.id).all();
-    
-    return c.json({
-      success: true,
-      data: {
-        order,
-        items: items.results
-      }
-    });
-    
-  } catch (err) {
-    return c.json({
-      success: false,
-      error: (err as Error).message
-    }, 500);
-  }
-});
-
 // 판매자 대시보드
 app.get('/seller', (c) => {
   return c.html(`
