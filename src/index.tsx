@@ -1158,6 +1158,50 @@ app.get('/live/:streamId', (c) => {
         .add-to-basket-btn:active { 
             transform: scale(0.95); 
         }
+        .add-to-basket-btn.sold-out {
+            background: #cccccc !important;
+            color: #666666 !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            opacity: 0.7;
+        }
+        .add-to-basket-btn.low-stock {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+            box-shadow: 0 4px 12px rgba(255,107,107,0.5);
+            animation: pulse-button 1.5s infinite;
+        }
+        @keyframes pulse-button {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        /* 재고 배지 */
+        .stock-badge-container {
+            margin-top: 4px;
+        }
+        .sold-out-badge {
+            display: inline-block;
+            background: #999999;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .low-stock-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse-badge 1.5s infinite;
+        }
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
         
         /* 결제하기 버튼 (플로팅) - 우측 하단 */
         .checkout-btn { 
@@ -1512,6 +1556,7 @@ app.get('/live/:streamId', (c) => {
                     <span id="product-price">0원</span>
                     <span class="original" id="product-original-price" style="display: none;"></span>
                 </div>
+                <div id="stock-badge" class="stock-badge-container"></div>
             </div>
             <button class="add-to-basket-btn" id="add-to-basket-btn">담아두기</button>
         </div>
@@ -1867,19 +1912,28 @@ app.get('/live/:streamId', (c) => {
             try {
                 const response = await axios.get(\`\${API_BASE}/products/\${currentProduct.id}/stock\`);
                 if (response.data.success) {
-                    const { stock, available } = response.data.data;
+                    const { stock } = response.data.data;
                     const btn = document.getElementById('add-to-basket-btn');
+                    const stockBadge = document.getElementById('stock-badge');
                     
-                    if (!available || stock <= 0) {
-                        btn.textContent = '품절';
+                    if (stock === 0) {
+                        // 품절
+                        if (stockBadge) stockBadge.innerHTML = '<span class="sold-out-badge">품절</span>';
+                        btn.textContent = '품절된 상품입니다';
                         btn.disabled = true;
-                        btn.style.background = '#cccccc';
-                        btn.style.cursor = 'not-allowed';
-                    } else {
+                        btn.className = 'add-to-basket-btn sold-out';
+                    } else if (stock <= 10) {
+                        // 품절 임박
+                        if (stockBadge) stockBadge.innerHTML = '<span class="low-stock-badge">🔥 ' + stock + '개 남음</span>';
                         btn.textContent = '담아두기';
                         btn.disabled = false;
-                        btn.style.background = '#FF5126';
-                        btn.style.cursor = 'pointer';
+                        btn.className = 'add-to-basket-btn low-stock';
+                    } else {
+                        // 재고 충분
+                        if (stockBadge) stockBadge.innerHTML = '';
+                        btn.textContent = '담아두기';
+                        btn.disabled = false;
+                        btn.className = 'add-to-basket-btn';
                     }
                 }
             } catch (error) {
@@ -1899,13 +1953,18 @@ app.get('/live/:streamId', (c) => {
                 // 재고 확인
                 try {
                     const stockResponse = await axios.get(\`\${API_BASE}/products/\${currentProduct.id}/stock\`);
-                    if (!stockResponse.data.success || !stockResponse.data.data.available) {
-                        alert('죄송합니다. 품절된 상품입니다.');
-                        checkStock(); // 버튼 상태 업데이트
+                    if (!stockResponse.data.success) {
+                        alert('재고 확인에 실패했습니다.');
+                        checkStock();
                         return;
                     }
                     
                     const stock = stockResponse.data.data.stock;
+                    if (stock === 0) {
+                        alert('😢 죄송합니다. 품절된 상품입니다.');
+                        checkStock();
+                        return;
+                    }
                     const existingItem = cartItems.find(item => item.product_id === currentProduct.id);
                     const currentQuantity = existingItem ? existingItem.quantity : 0;
                     
