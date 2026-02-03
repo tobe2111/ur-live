@@ -4364,6 +4364,15 @@ app.post('/api/toss-pay/payments/create', async (c) => {
         throw new Error(`재고 부족: ${item.name}`);
       }
       
+      // 가격 결정: price_snapshot 우선, 없으면 price, 둘 다 없으면 products 테이블에서 가져오기
+      let finalPrice = item.price_snapshot || item.price;
+      if (!finalPrice) {
+        const productPrice = await DB.prepare(`
+          SELECT price FROM products WHERE id = ?
+        `).bind(item.product_id).first();
+        finalPrice = productPrice?.price || 0;
+      }
+      
       // 주문 아이템 저장
       await DB.prepare(`
         INSERT INTO order_items (order_id, product_id, option_id, quantity, price, product_name, option_info)
@@ -4373,7 +4382,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
         item.product_id,
         item.option_id || null,
         item.quantity,
-        item.price || item.price_snapshot,
+        finalPrice,
         item.name,
         item.option_info || null
       ).run();
