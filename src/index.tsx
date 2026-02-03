@@ -1254,121 +1254,241 @@ app.get('/', (c) => {
           .hero-gradient {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           }
-          .feature-card {
+          .live-card {
             transition: all 0.3s ease;
+            cursor: pointer;
           }
-          .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+          .live-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+          }
+          .live-badge {
+            animation: pulse 2s infinite;
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+          .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+          }
+          @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
           }
         </style>
     </head>
     <body class="bg-gray-50">
-        <!-- Hero Section -->
-        <div class="hero-gradient text-white py-20">
-            <div class="max-w-6xl mx-auto px-4 text-center">
-                <h1 class="text-5xl font-bold mb-4">
-                    <i class="fas fa-broadcast-tower mr-3"></i>
-                    토스 라이브 커머스
-                </h1>
-                <p class="text-xl mb-8 opacity-90">실시간 라이브 스트리밍과 원클릭 구매의 만남</p>
-                <div class="flex gap-4 justify-center">
-                    <a href="/live/1" class="bg-white text-purple-600 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition">
-                        <i class="fas fa-play-circle mr-2"></i>
-                        라이브 보러가기
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-broadcast-tower text-3xl text-purple-600"></i>
+                    <h1 class="text-2xl font-bold text-gray-800">토스 라이브 커머스</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="/my-orders" class="text-gray-600 hover:text-purple-600 transition">
+                        <i class="fas fa-shopping-bag text-xl"></i>
                     </a>
-                    <a href="/seller-login" class="bg-purple-800 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-purple-900 transition">
+                    <a href="/seller-login" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
                         <i class="fas fa-store mr-2"></i>
-                        셀러 로그인
+                        셀러
                     </a>
                 </div>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <div class="hero-gradient text-white py-16">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                    실시간 라이브 쇼핑
+                </h2>
+                <p class="text-xl opacity-90 mb-6">
+                    지금 진행 중인 라이브를 만나보세요
+                </p>
+            </div>
+        </div>
+
+        <!-- Live Streams Section -->
+        <div class="max-w-7xl mx-auto px-4 py-12">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-fire text-red-500 mr-2"></i>
+                    진행 중인 라이브
+                </h2>
+                <button onclick="loadLiveStreams()" class="text-purple-600 hover:text-purple-700 transition">
+                    <i class="fas fa-sync-alt mr-2"></i>
+                    새로고침
+                </button>
+            </div>
+            
+            <!-- Loading Skeleton -->
+            <div id="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="skeleton rounded-xl h-80"></div>
+                <div class="skeleton rounded-xl h-80"></div>
+                <div class="skeleton rounded-xl h-80"></div>
+            </div>
+
+            <!-- Live Stream List -->
+            <div id="live-streams" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 동적으로 로드됨 -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-20">
+                <i class="fas fa-video-slash text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-600 mb-2">현재 진행 중인 라이브가 없습니다</h3>
+                <p class="text-gray-500 mb-8">곧 새로운 라이브가 시작될 예정입니다</p>
+                <a href="/seller-login" class="inline-block bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition">
+                    <i class="fas fa-video mr-2"></i>
+                    셀러로 라이브 시작하기
+                </a>
             </div>
         </div>
 
         <!-- Features Section -->
-        <div class="max-w-6xl mx-auto px-4 py-16">
-            <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">주요 기능</h2>
-            
-            <div class="grid md:grid-cols-3 gap-8">
-                <!-- Feature 1 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
-                    <div class="text-5xl mb-4 text-blue-500">
-                        <i class="fas fa-video"></i>
+        <div class="bg-white py-16">
+            <div class="max-w-7xl mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">왜 토스 라이브 커머스인가요?</h2>
+                
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="text-center">
+                        <div class="text-5xl mb-4 text-blue-500">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">초고속 구매</h3>
+                        <p class="text-gray-600">원클릭으로 장바구니 담기, 복잡한 절차 없이 빠르게</p>
                     </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">실시간 라이브</h3>
-                    <p class="text-gray-600">YouTube 라이브 스트리밍으로 실시간 소통하며 쇼핑하세요</p>
-                </div>
 
-                <!-- Feature 2 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
-                    <div class="text-5xl mb-4 text-green-500">
-                        <i class="fas fa-shopping-cart"></i>
+                    <div class="text-center">
+                        <div class="text-5xl mb-4 text-green-500">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">안전한 결제</h3>
+                        <p class="text-gray-600">나이스페이먼츠로 안전하고 믿을 수 있는 결제</p>
                     </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">원클릭 구매</h3>
-                    <p class="text-gray-600">복잡한 절차 없이 한 번의 클릭으로 장바구니에 담기</p>
-                </div>
 
-                <!-- Feature 3 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
-                    <div class="text-5xl mb-4 text-purple-500">
-                        <i class="fas fa-credit-card"></i>
+                    <div class="text-center">
+                        <div class="text-5xl mb-4 text-purple-500">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">실시간 소통</h3>
+                        <p class="text-gray-600">채팅으로 다른 구매자들과 실시간 소통</p>
                     </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">간편 결제</h3>
-                    <p class="text-gray-600">카카오 로그인과 나이스페이먼츠로 안전하고 빠른 결제</p>
                 </div>
-
-                <!-- Feature 4 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
-                    <div class="text-5xl mb-4 text-red-500">
-                        <i class="fas fa-comments"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">실시간 채팅</h3>
-                    <p class="text-gray-600">다른 시청자들과 실시간으로 소통하며 쇼핑</p>
-                </div>
-
-                <!-- Feature 5 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
-                    <div class="text-5xl mb-4 text-yellow-500">
-                        <i class="fas fa-truck"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">배송 관리</h3>
-                    <p class="text-gray-600">배송지를 저장하고 관리하여 빠른 주문</p>
-                </div>
-
-                <!-- Feature 6 -->
-                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
-                    <div class="text-5xl mb-4 text-indigo-500">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">셀러 대시보드</h3>
-                    <p class="text-gray-600">매출 통계와 정산 관리를 한눈에</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- CTA Section -->
-        <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-16">
-            <div class="max-w-4xl mx-auto px-4 text-center">
-                <h2 class="text-3xl font-bold mb-4">지금 바로 시작하세요!</h2>
-                <p class="text-xl mb-8 opacity-90">새로운 쇼핑 경험을 만나보세요</p>
-                <a href="/live/1" class="inline-block bg-white text-blue-600 px-12 py-4 rounded-full font-bold text-xl hover:bg-gray-100 transition">
-                    <i class="fas fa-rocket mr-2"></i>
-                    라이브 입장하기
-                </a>
             </div>
         </div>
 
         <!-- Footer -->
         <footer class="bg-gray-800 text-white py-8">
-            <div class="max-w-6xl mx-auto px-4 text-center">
-                <p class="text-gray-400">© 2026 토스 라이브 커머스. All rights reserved.</p>
-                <div class="mt-4 space-x-4">
-                    <a href="/admin" class="text-gray-400 hover:text-white transition">관리자</a>
-                    <a href="/seller-login" class="text-gray-400 hover:text-white transition">셀러</a>
-                    <a href="/my-orders" class="text-gray-400 hover:text-white transition">내 주문</a>
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <p class="text-gray-400">© 2026 토스 라이브 커머스. All rights reserved.</p>
+                    </div>
+                    <div class="flex gap-6">
+                        <a href="/admin" class="text-gray-400 hover:text-white transition">관리자</a>
+                        <a href="/seller-login" class="text-gray-400 hover:text-white transition">셀러</a>
+                        <a href="/my-orders" class="text-gray-400 hover:text-white transition">내 주문</a>
+                    </div>
                 </div>
             </div>
         </footer>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+          const API_BASE = '/api';
+          let liveStreams = [];
+
+          // 페이지 로드 시 라이브 스트림 로드
+          document.addEventListener('DOMContentLoaded', () => {
+            loadLiveStreams();
+          });
+
+          async function loadLiveStreams() {
+            const loadingEl = document.getElementById('loading');
+            const streamsEl = document.getElementById('live-streams');
+            const emptyEl = document.getElementById('empty-state');
+
+            // 로딩 표시
+            loadingEl.classList.remove('hidden');
+            streamsEl.classList.add('hidden');
+            emptyEl.classList.add('hidden');
+
+            try {
+              const response = await axios.get(\`\${API_BASE}/streams\`);
+              
+              if (response.data.success && response.data.data) {
+                liveStreams = response.data.data;
+                
+                if (liveStreams.length === 0) {
+                  // 라이브가 없을 때
+                  loadingEl.classList.add('hidden');
+                  emptyEl.classList.remove('hidden');
+                } else {
+                  // 라이브 목록 렌더링
+                  renderStreams();
+                  loadingEl.classList.add('hidden');
+                  streamsEl.classList.remove('hidden');
+                }
+              }
+            } catch (error) {
+              console.error('Failed to load streams:', error);
+              loadingEl.classList.add('hidden');
+              emptyEl.classList.remove('hidden');
+            }
+          }
+
+          function renderStreams() {
+            const streamsEl = document.getElementById('live-streams');
+            
+            streamsEl.innerHTML = liveStreams.map(stream => \`
+              <div class="live-card bg-white rounded-xl shadow-lg overflow-hidden" onclick="location.href='/live/\${stream.id}'">
+                <div class="relative">
+                  <img src="https://img.youtube.com/vi/\${stream.youtube_video_id}/maxresdefault.jpg" 
+                       alt="\${stream.title}" 
+                       class="w-full h-56 object-cover"
+                       onerror="this.src='https://via.placeholder.com/1280x720/667eea/ffffff?text=Live+Stream'">
+                  <div class="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center live-badge">
+                    <i class="fas fa-circle mr-2 text-xs"></i>
+                    LIVE
+                  </div>
+                  \${stream.viewer_count ? \`
+                    <div class="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm">
+                      <i class="fas fa-eye mr-1"></i>
+                      \${stream.viewer_count.toLocaleString()}
+                    </div>
+                  \` : ''}
+                </div>
+                <div class="p-6">
+                  <h3 class="text-xl font-bold text-gray-800 mb-2 line-clamp-2">\${stream.title}</h3>
+                  <p class="text-gray-600 text-sm mb-4 line-clamp-2">\${stream.description || '실시간 라이브 쇼핑을 즐겨보세요!'}</p>
+                  
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      \${stream.seller_name ? \`
+                        <img src="\${stream.seller_profile_image || 'https://via.placeholder.com/40'}" 
+                             alt="\${stream.seller_name}" 
+                             class="w-8 h-8 rounded-full"
+                             onerror="this.src='https://via.placeholder.com/40'">
+                        <span class="text-sm text-gray-600">\${stream.seller_name}</span>
+                      \` : \`
+                        <span class="text-sm text-gray-600">토스 라이브</span>
+                      \`}
+                    </div>
+                    <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-semibold">
+                      입장하기
+                      <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            \`).join('');
+          }
+        </script>
     </body>
     </html>
   `);
