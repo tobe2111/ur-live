@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage'
 import LivePage from './pages/LivePage'
 import CheckoutPage from './pages/CheckoutPage'
 import SellerPage from './pages/SellerPage'
+import SellerLoginPage from './pages/SellerLoginPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 
 function App() {
@@ -13,9 +14,8 @@ function App() {
         <Route path="/live/:streamId" element={<LivePage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/seller" element={<SellerPage />} />
-        <Route path="/seller-login" element={<SellerPage />} />
+        <Route path="/seller/login" element={<SellerLoginPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
-        <Route path="/admin" element={<SellerPage />} />
       </Routes>
     </BrowserRouter>
   )

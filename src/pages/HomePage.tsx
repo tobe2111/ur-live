@@ -71,7 +71,7 @@ export default function HomePage() {
             <div className="flex items-center space-x-2">
               {/* Desktop CTA */}
               <Button className="hidden md:flex apple-button h-9 border-0 shadow-none text-[14px] px-4" asChild>
-                <Link to="/seller">판매 시작하기</Link>
+                <Link to="/seller/login">판매 시작하기</Link>
               </Button>
               
               {/* Mobile Menu Button */}
@@ -118,7 +118,7 @@ export default function HomePage() {
               >
                 라이브 보러가기
               </button>
-              <Link to="/seller" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
+                <Link to="/seller/login" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
                 판매자 알아보기
                 <ChevronRight className="inline-block ml-1 h-4 w-4" />
               </Link>
@@ -310,9 +310,9 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
             <Button className="apple-button w-full sm:w-auto text-[15px] sm:text-[17px] py-3 sm:py-3" asChild>
-              <Link to="/seller">무료로 시작하기</Link>
+              <Link to="/seller/login">무료로 시작하기</Link>
             </Button>
-            <Link to="/seller" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
+            <Link to="/seller/login" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
               자세히 알아보기
               <ChevronRight className="inline-block ml-1 h-4 w-4" />
             </Link>
