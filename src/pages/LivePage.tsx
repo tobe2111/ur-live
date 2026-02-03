@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { ArrowLeft, Heart, Share2, MessageCircle, ShoppingBag, Send, X } from 'lucide-react'
+import { ArrowLeft, Heart, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube } from 'lucide-react'
 
 interface Product {
   id: number
@@ -20,6 +20,9 @@ interface Stream {
   seller_name: string
   seller_profile_image?: string
   viewer_count?: number
+  seller_instagram?: string
+  seller_facebook?: string
+  seller_youtube?: string
 }
 
 interface CurrentProduct {
@@ -49,9 +52,15 @@ export default function LivePage() {
   const [likes, setLikes] = useState(1234)
   const [liked, setLiked] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // Check login status
+    const token = localStorage.getItem('access_token')
+    const userId = localStorage.getItem('user_id')
+    setIsLoggedIn(!!(token && userId))
+    
     loadStreamData()
     loadCurrentProduct()
     loadDemoMessages()
@@ -201,6 +210,41 @@ export default function LivePage() {
     setTimeout(() => setShowNotification(false), 2000)
   }
 
+  function handleCheckout() {
+    if (!isLoggedIn) {
+      // Redirect to Kakao login
+      const currentUrl = window.location.href
+      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=aa88264eac0ae190a132205063753960&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/kakao/callback')}&response_type=code&state=${encodeURIComponent(currentUrl)}`
+      window.location.href = kakaoAuthUrl
+      return
+    }
+    
+    setShowCart(true)
+  }
+
+  function handleSNSFollow(platform: 'instagram' | 'facebook' | 'youtube') {
+    if (!stream) return
+    
+    let url = ''
+    if (platform === 'instagram' && stream.seller_instagram) {
+      url = stream.seller_instagram.startsWith('http') 
+        ? stream.seller_instagram 
+        : `https://instagram.com/${stream.seller_instagram}`
+    } else if (platform === 'facebook' && stream.seller_facebook) {
+      url = stream.seller_facebook.startsWith('http') 
+        ? stream.seller_facebook 
+        : `https://facebook.com/${stream.seller_facebook}`
+    } else if (platform === 'youtube' && stream.seller_youtube) {
+      url = stream.seller_youtube.startsWith('http') 
+        ? stream.seller_youtube 
+        : `https://youtube.com/${stream.seller_youtube}`
+    }
+    
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
   function handleSendMessage(e: React.FormEvent) {
     e.preventDefault()
     if (!newMessage.trim()) return
@@ -325,9 +369,38 @@ export default function LivePage() {
             )}
           </div>
 
-          <button className="flex items-center justify-center w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm">
-            <span className="text-[20px]">{muted ? '🔇' : '🔊'}</span>
-          </button>
+          {/* SNS Follow Buttons */}
+          <div className="flex items-center gap-2">
+            {stream.seller_instagram && (
+              <button 
+                onClick={() => handleSNSFollow('instagram')}
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-pink-500 backdrop-blur-sm"
+              >
+                <Instagram className="w-5 h-5 text-white" />
+              </button>
+            )}
+            {stream.seller_youtube && (
+              <button 
+                onClick={() => handleSNSFollow('youtube')}
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#ff0000] backdrop-blur-sm"
+              >
+                <Youtube className="w-5 h-5 text-white" />
+              </button>
+            )}
+            {stream.seller_facebook && (
+              <button 
+                onClick={() => handleSNSFollow('facebook')}
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#1877f2] backdrop-blur-sm"
+              >
+                <Facebook className="w-5 h-5 text-white" />
+              </button>
+            )}
+            {!stream.seller_instagram && !stream.seller_youtube && !stream.seller_facebook && (
+              <button className="flex items-center justify-center w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm">
+                <span className="text-[20px]">{muted ? '🔇' : '🔊'}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -448,7 +521,7 @@ export default function LivePage() {
 
             {/* Large Payment Button - Circle */}
             <button
-              onClick={() => setShowCart(true)}
+              onClick={handleCheckout}
               className="relative flex items-center justify-center w-14 h-14 rounded-full bg-[#0064FF] shadow-lg flex-shrink-0"
             >
               <ShoppingBag className="w-6 h-6 text-white" />

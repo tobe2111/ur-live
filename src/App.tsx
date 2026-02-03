@@ -5,6 +5,7 @@ import CheckoutPage from './pages/CheckoutPage'
 import SellerPage from './pages/SellerPage'
 import SellerLoginPage from './pages/SellerLoginPage'
 import MyOrdersPage from './pages/MyOrdersPage'
+import KakaoCallbackPage from './pages/KakaoCallbackPage'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/seller" element={<SellerPage />} />
         <Route path="/seller/login" element={<SellerLoginPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
+        <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
       </Routes>
     </BrowserRouter>
   )
