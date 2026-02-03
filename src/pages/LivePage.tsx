@@ -67,66 +67,74 @@ export default function LivePage() {
   useEffect(() => {
     if (!stream?.youtube_video_id) return
 
-    // Load YouTube IFrame API
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    tag.async = true
-    const firstScriptTag = document.getElementsByTagName('script')[0]
-    firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag)
+    let player: any = null
 
-    // @ts-ignore
-    window.onYouTubeIframeAPIReady = () => {
-      // @ts-ignore
-      new window.YT.Player('youtube-player', {
-        height: '100%',
-        width: '100%',
-        videoId: stream.youtube_video_id,
-        playerVars: {
-          autoplay: 1,
-          mute: 1,
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-          iv_load_policy: 3,
-          playsinline: 1,
-          loop: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            event.target.playVideo()
-            setPlayerReady(true)
+    const initializePlayer = () => {
+      try {
+        // @ts-ignore
+        if (!window.YT || !window.YT.Player) return
+
+        const playerElement = document.getElementById('youtube-player')
+        if (!playerElement) return
+
+        // Clear any existing content
+        playerElement.innerHTML = ''
+
+        // @ts-ignore
+        player = new window.YT.Player('youtube-player', {
+          height: '100%',
+          width: '100%',
+          videoId: stream.youtube_video_id,
+          playerVars: {
+            autoplay: 1,
+            mute: 1,
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            iv_load_policy: 3,
+            playsinline: 1,
+            loop: 1,
+            enablejsapi: 1,
+            origin: window.location.origin,
           },
-        },
-      })
+          events: {
+            onReady: (event: any) => {
+              event.target.playVideo()
+              setPlayerReady(true)
+            },
+            onError: (event: any) => {
+              console.warn('YouTube player error:', event.data)
+            },
+          },
+        })
+      } catch (error) {
+        console.error('Failed to initialize YouTube player:', error)
+      }
     }
 
-    // If API already loaded
+    // Load YouTube IFrame API if not already loaded
     // @ts-ignore
     if (window.YT && window.YT.Player) {
+      initializePlayer()
+    } else {
+      const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]')
+      if (!existingScript) {
+        const tag = document.createElement('script')
+        tag.src = 'https://www.youtube.com/iframe_api'
+        tag.async = true
+        const firstScriptTag = document.getElementsByTagName('script')[0]
+        firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag)
+      }
+
       // @ts-ignore
-      new window.YT.Player('youtube-player', {
-        height: '100%',
-        width: '100%',
-        videoId: stream.youtube_video_id,
-        playerVars: {
-          autoplay: 1,
-          mute: 1,
-          controls: 0,
-          modestbranding: 1,
-          rel: 0,
-          showinfo: 0,
-          iv_load_policy: 3,
-          playsinline: 1,
-          loop: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            event.target.playVideo()
-            setPlayerReady(true)
-          },
-        },
-      })
+      window.onYouTubeIframeAPIReady = initializePlayer
+    }
+
+    return () => {
+      if (player && typeof player.destroy === 'function') {
+        player.destroy()
+      }
     }
   }, [stream])
 
