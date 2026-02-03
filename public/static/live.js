@@ -9,7 +9,7 @@
     streamId: STREAM_ID,
     currentProductId: null,
     currentProduct: null,
-    userId: 'toss_user_001', // 실제로는 토스 로그인에서 받아옴
+    userId: 'toss_user_001', // 실제로는 유어 로그인에서 받아옴
     player: null,
     pollingInterval: null,
     initAttempts: 0,
@@ -685,9 +685,9 @@
     if (window.FirebaseChat && window.FirebaseChat.initialize()) {
       console.log('✅ Firebase 초기화 완료');
       
-      // 토스 브릿지에서 유저 정보 가져오기 (향후 구현)
+      // 유어 브릿지에서 유저 정보 가져오기 (향후 구현)
       getTossUserInfo().then(userInfo => {
-        currentUsername = userInfo.name || '토스 사용자';
+        currentUsername = userInfo.name || '유어 사용자';
         console.log(`👤 유저 이름: ${currentUsername}`);
       });
       
@@ -713,16 +713,16 @@
     }
   }
 
-  // 토스 브릿지에서 유저 정보 가져오기
-  // 토스 브릿지에서 유저 정보 가져오기
+  // 유어 브릿지에서 유저 정보 가져오기
+  // 유어 브릿지에서 유저 정보 가져오기
   async function getTossUserInfo() {
     try {
-      // 실제 토스 브릿지 API 호출
+      // 실제 유어 브릿지 API 호출
       const response = await axios.get(`${API_BASE}/toss/user-info`);
       
       if (response.data.success) {
         const userInfo = response.data.data;
-        console.log('✅ 토스 유저 정보:', userInfo);
+        console.log('✅ 유어 유저 정보:', userInfo);
         
         // 유저 ID도 상태에 저장
         state.userId = userInfo.userId;
@@ -736,7 +736,7 @@
         throw new Error('유저 정보 가져오기 실패');
       }
     } catch (error) {
-      console.error('⚠️ 토스 유저 정보 가져오기 실패:', error);
+      console.error('⚠️ 유어 유저 정보 가져오기 실패:', error);
       
       // 실패 시 게스트로 처리
       return {

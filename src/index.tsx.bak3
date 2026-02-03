@@ -1238,12 +1238,12 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>유어 라이브 - 지금 당장 만나는 라이브 쇼핑</title>
+        <title>토스 라이브 - 지금 당장 만나는 라이브 쇼핑</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="preconnect" href="https://cdn.jsdelivr.net">
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
-          /* 유어 브랜드 컬러 */
+          /* 토스 브랜드 컬러 */
           :root {
             --toss-blue: #3182F6;
             --toss-gray: #191F28;
@@ -1287,7 +1287,7 @@ app.get('/', (c) => {
             <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <i class="fas fa-broadcast-tower text-3xl text-purple-600"></i>
-                    <h1 class="text-2xl font-bold text-gray-800">유어 라이브 커머스</h1>
+                    <h1 class="text-2xl font-bold text-gray-800">토스 라이브 커머스</h1>
                 </div>
                 <div class="flex items-center gap-4">
                     <a href="/my-orders" class="text-gray-600 hover:text-purple-600 transition">
@@ -1353,7 +1353,7 @@ app.get('/', (c) => {
         <!-- Features Section -->
         <div class="bg-white py-16">
             <div class="max-w-7xl mx-auto px-4">
-                <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">왜 유어 라이브 커머스인가요?</h2>
+                <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">왜 토스 라이브 커머스인가요?</h2>
                 
                 <div class="grid md:grid-cols-3 gap-8">
                     <div class="text-center">
@@ -1388,7 +1388,7 @@ app.get('/', (c) => {
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex flex-col md:flex-row justify-between items-center">
                     <div class="mb-4 md:mb-0">
-                        <p class="text-gray-400">© 2026 유어 라이브 커머스. All rights reserved.</p>
+                        <p class="text-gray-400">© 2026 토스 라이브 커머스. All rights reserved.</p>
                     </div>
                     <div class="flex gap-6">
                         <a href="/admin" class="text-gray-400 hover:text-white transition">관리자</a>
@@ -1477,7 +1477,7 @@ app.get('/', (c) => {
                              onerror="this.src='https://via.placeholder.com/40'">
                         <span class="text-sm text-gray-600">\${stream.seller_name}</span>
                       \` : \`
-                        <span class="text-sm text-gray-600">유어 라이브</span>
+                        <span class="text-sm text-gray-600">토스 라이브</span>
                       \`}
                     </div>
                     <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-semibold">
@@ -1505,7 +1505,7 @@ app.get('/live/:streamId', (c) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>유어 라이브 커머스</title>
+    <title>토스 라이브 커머스</title>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <style>
@@ -2174,7 +2174,7 @@ app.get('/live/:streamId', (c) => {
         </div>
         
         <button class="toss-pay-btn" id="toss-pay-btn">
-            <span>유어페이로 결제하기</span>
+            <span>토스페이로 결제하기</span>
         </button>
     </div>
 
@@ -2657,7 +2657,7 @@ app.get('/live/:streamId', (c) => {
                 window.location.href = '/checkout';
             });
             
-            // 유어페이 결제 버튼
+            // 토스페이 결제 버튼
             document.getElementById('toss-pay-btn').addEventListener('click', async () => {
                 if (cartItems.length === 0) {
                     alert('장바구니가 비어있습니다');
@@ -2678,7 +2678,7 @@ app.get('/live/:streamId', (c) => {
                     if (!userId) {
                         alert('로그인이 필요합니다.');
                         btn.disabled = false;
-                        btn.textContent = '유어페이 결제';
+                        btn.textContent = '토스페이 결제';
                         return;
                     }
                     
@@ -2703,7 +2703,7 @@ app.get('/live/:streamId', (c) => {
                     const result = await response.json();
                     
                     if (result.success && result.data.checkoutPage) {
-                        // 유어페이 결제 페이지로 이동
+                        // 토스페이 결제 페이지로 이동
                         window.location.href = result.data.checkoutPage;
                     } else {
                         throw new Error(result.error || '결제 생성에 실패했습니다');
@@ -2716,7 +2716,7 @@ app.get('/live/:streamId', (c) => {
                     // 버튼 복원
                     const btn = document.getElementById('toss-pay-btn');
                     btn.disabled = false;
-                    btn.textContent = '유어페이로 결제하기';
+                    btn.textContent = '토스페이로 결제하기';
                 }
             });
             
@@ -2727,7 +2727,7 @@ app.get('/live/:streamId', (c) => {
                 if (navigator.share) {
                     try {
                         await navigator.share({
-                            title: '유어 라이브 커머스',
+                            title: '토스 라이브 커머스',
                             text: '실시간 라이브 쇼핑을 시청하세요!',
                             url: url
                         });
@@ -3009,7 +3009,7 @@ app.get('/payment/success', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>결제 완료 - 유어 라이브 커머스</title>
+        <title>결제 완료 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -3151,7 +3151,7 @@ app.get('/payment/failed', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>결제 실패 - 유어 라이브 커머스</title>
+        <title>결제 실패 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -3237,7 +3237,7 @@ app.get('/payment/cancel', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>결제 취소 - 유어 라이브 커머스</title>
+        <title>결제 취소 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -3329,7 +3329,7 @@ app.get('/login', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>로그인 - 유어 라이브 커머스</title>
+        <title>로그인 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
           body {
@@ -3374,7 +3374,7 @@ app.get('/login', (c) => {
     </head>
     <body>
         <div class="login-card">
-            <h1 class="text-3xl font-bold mb-2">유어 라이브 커머스</h1>
+            <h1 class="text-3xl font-bold mb-2">토스 라이브 커머스</h1>
             <p class="text-gray-600 mb-8">간편하게 로그인하고 쇼핑을 시작하세요</p>
             
             <a href="${kakaoAuthUrl}" class="kakao-btn">
@@ -3636,7 +3636,7 @@ app.get('/mypage', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>마이페이지 - 유어 라이브 커머스</title>
+        <title>마이페이지 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -3956,7 +3956,7 @@ app.get('/s/:username', async (c) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${seller.display_name || seller.username} - 유어 라이브 커머스</title>
+    <title>${seller.display_name || seller.username} - 토스 라이브 커머스</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -4539,7 +4539,7 @@ app.get('/checkout', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>주문서 작성 - 유어 라이브 커머스</title>
+        <title>주문서 작성 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
@@ -5273,7 +5273,7 @@ app.get('/orders', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>주문 내역 - 유어 라이브 커머스</title>
+        <title>주문 내역 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -5343,7 +5343,7 @@ app.get('/orders', (c) => {
             let allOrders = [];
             let currentFilter = 'all';
             
-            // 임시 userId (실제로는 유어 로그인에서 받아야 함)
+            // 임시 userId (실제로는 토스 로그인에서 받아야 함)
             const userId = localStorage.getItem('userId') || 1;
             
             // 주문 내역 로드
@@ -5455,7 +5455,7 @@ app.get('/order/:orderNo', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>주문 상세 - 유어 라이브 커머스</title>
+        <title>주문 상세 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -6359,18 +6359,18 @@ app.post('/api/admin/sellers/:id/reset-password', async (c) => {
 // Toss Bridge API
 // =================================
 
-// 유어 앱에서 유저 정보 가져오기
+// 토스 앱에서 유저 정보 가져오기
 app.get('/api/toss/user-info', async (c) => {
   try {
-    // 유어 브릿지를 통해 유저 정보 가져오기
-    // 실제로는 유어 앱의 JavaScript Bridge를 통해 전달받음
+    // 토스 브릿지를 통해 유저 정보 가져오기
+    // 실제로는 토스 앱의 JavaScript Bridge를 통해 전달받음
     
-    // 예시: 유어 앱에서 전달하는 헤더 정보
+    // 예시: 토스 앱에서 전달하는 헤더 정보
     const tossUserId = c.req.header('X-Toss-User-Id');
     const tossUserName = c.req.header('X-Toss-User-Name');
     
     if (!tossUserId) {
-      // 유어 브릿지가 없는 경우 (웹 브라우저 직접 접속)
+      // 토스 브릿지가 없는 경우 (웹 브라우저 직접 접속)
       return c.json({
         success: true,
         data: {
@@ -6381,12 +6381,12 @@ app.get('/api/toss/user-info', async (c) => {
       });
     }
     
-    // 유어 유저 정보 반환
+    // 토스 유저 정보 반환
     return c.json({
       success: true,
       data: {
         userId: tossUserId,
-        name: tossUserName || '유어 사용자',
+        name: tossUserName || '토스 사용자',
         isGuest: false
       }
     });
@@ -6398,12 +6398,12 @@ app.get('/api/toss/user-info', async (c) => {
   }
 });
 
-// 유어페이 결제 준비 (향후 구현)
+// 토스페이 결제 준비 (향후 구현)
 app.post('/api/toss/payment/prepare', async (c) => {
   try {
     const { orderId, amount, orderName } = await c.req.json();
     
-    // TODO: 유어페이먼츠 API 연동
+    // TODO: 토스페이먼츠 API 연동
     // https://docs.tosspayments.com/guides/payment-widget/integration
     
     return c.json({
@@ -6412,7 +6412,7 @@ app.post('/api/toss/payment/prepare', async (c) => {
         orderId,
         amount,
         orderName,
-        // 실제로는 유어페이먼츠에서 받은 결제 정보
+        // 실제로는 토스페이먼츠에서 받은 결제 정보
         clientKey: 'test_client_key',
         successUrl: `${c.req.url.split('/api')[0]}/payment/success`,
         failUrl: `${c.req.url.split('/api')[0]}/payment/fail`,
@@ -6438,7 +6438,7 @@ app.get('/admin/login', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>어드민 로그인 - 유어 라이브 커머스</title>
+        <title>어드민 로그인 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -6568,7 +6568,7 @@ app.get('/admin/login', (c) => {
                     <i class="fas fa-user-shield"></i>
                 </div>
                 <h1 style="font-size: 24px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">어드민 로그인</h1>
-                <p style="font-size: 14px; color: var(--toss-gray-600); margin-top: 8px;">유어 라이브 커머스 관리자</p>
+                <p style="font-size: 14px; color: var(--toss-gray-600); margin-top: 8px;">토스 라이브 커머스 관리자</p>
             </div>
             
             <form id="loginForm">
@@ -6645,7 +6645,7 @@ app.get('/seller/login', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>판매자 로그인 - 유어 라이브 커머스</title>
+        <title>판매자 로그인 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -6775,7 +6775,7 @@ app.get('/seller/login', (c) => {
                     <i class="fas fa-store"></i>
                 </div>
                 <h1 style="font-size: 24px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">판매자 로그인</h1>
-                <p style="font-size: 14px; color: var(--toss-gray-600); margin-top: 8px;">유어 라이브 커머스 판매자</p>
+                <p style="font-size: 14px; color: var(--toss-gray-600); margin-top: 8px;">토스 라이브 커머스 판매자</p>
             </div>
             
             <form id="loginForm">
@@ -6853,7 +6853,7 @@ app.get('/admin', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>관리자 대시보드 - 유어 라이브 커머스</title>
+        <title>관리자 대시보드 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -7256,7 +7256,7 @@ app.get('/admin', (c) => {
                     
                     <div class="form-group">
                         <label class="form-label" for="sellerBusinessName">사업자명 *</label>
-                        <input type="text" id="sellerBusinessName" class="form-input" placeholder="주식회사 유어" required>
+                        <input type="text" id="sellerBusinessName" class="form-input" placeholder="주식회사 토스" required>
                     </div>
                     
                     <div class="form-group">
@@ -7546,7 +7546,7 @@ app.get('/payment/nicepay/return', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>결제 완료 - 유어 라이브 커머스</title>
+        <title>결제 완료 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -7622,12 +7622,12 @@ app.get('/payment/nicepay/return', async (c) => {
 // Toss Pay API
 // =================================
 
-// 유어페이 결제 생성
+// 토스페이 결제 생성
 app.post('/api/toss-pay/payments/create', async (c) => {
   const { DB } = c.env;
   const TOSS_PAY_API_KEY = 'sk_live_Rk5xZE4K8zRk5nJ5aG2z';
   
-  // 테스트 모드: true로 설정하면 실제 유어페이 API 호출 없이 Mock 데이터 반환
+  // 테스트 모드: true로 설정하면 실제 토스페이 API 호출 없이 Mock 데이터 반환
   const TEST_MODE = true;
   
   try {
@@ -7678,7 +7678,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
         // 사용자가 없으면 생성
         const userResult = await DB.prepare(`
           INSERT INTO users (toss_user_id, name, email, created_at)
-          VALUES (?, '유어유저', 'user@toss.im', datetime('now'))
+          VALUES (?, '토스유저', 'user@toss.im', datetime('now'))
         `).bind(`toss_user_${userId}`).run();
         finalUserId = userResult.meta.last_row_id;
       }
@@ -7787,10 +7787,10 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     }
     
     // ========================================
-    // 실제 유어페이 API 호출 (TEST_MODE = false)
+    // 실제 토스페이 API 호출 (TEST_MODE = false)
     // ========================================
     
-    // 유어페이 결제 생성 요청
+    // 토스페이 결제 생성 요청
     const tossPayPayload = {
       orderNo: orderNo,
       amount: totalAmount,
@@ -7814,7 +7814,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     
     if (!tossPayResponse.ok) {
       const errorData = await tossPayResponse.json();
-      throw new Error(`유어페이 API 오류: ${JSON.stringify(errorData)}`);
+      throw new Error(`토스페이 API 오류: ${JSON.stringify(errorData)}`);
     }
     
     const tossPayData = await tossPayResponse.json();
@@ -7838,7 +7838,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     });
     
   } catch (err) {
-    console.error('유어페이 결제 생성 오류:', err);
+    console.error('토스페이 결제 생성 오류:', err);
     return c.json({
       success: false,
       error: (err as Error).message
@@ -7846,14 +7846,14 @@ app.post('/api/toss-pay/payments/create', async (c) => {
   }
 });
 
-// 유어페이 결제 결과 Callback
+// 토스페이 결제 결과 Callback
 app.post('/api/toss-pay/callback', async (c) => {
   const { DB } = c.env;
   
   try {
     const callbackData = await c.req.json();
     
-    console.log('유어페이 Callback 수신:', JSON.stringify(callbackData, null, 2));
+    console.log('토스페이 Callback 수신:', JSON.stringify(callbackData, null, 2));
     
     const { orderNo, status, payToken } = callbackData;
     
@@ -7896,7 +7896,7 @@ app.post('/api/toss-pay/callback', async (c) => {
     return c.json({ success: true });
     
   } catch (err) {
-    console.error('유어페이 Callback 처리 오류:', err);
+    console.error('토스페이 Callback 처리 오류:', err);
     return c.json({
       success: false,
       error: (err as Error).message
@@ -7913,7 +7913,7 @@ app.get('/seller', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>판매자 대시보드 - 유어 라이브 커머스</title>
+        <title>판매자 대시보드 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -8445,7 +8445,7 @@ app.get('/my-orders', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>내 주문 내역 - 유어 라이브 커머스</title>
+        <title>내 주문 내역 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
@@ -8689,7 +8689,7 @@ app.get('/payment/success', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>결제 완료 - 유어 라이브 커머스</title>
+        <title>결제 완료 - 토스 라이브 커머스</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -8873,7 +8873,7 @@ app.get('/payment/cancel', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>결제 취소 - 유어 라이브 커머스</title>
+        <title>결제 취소 - 토스 라이브 커머스</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -9131,7 +9131,7 @@ app.get('/seller', async (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>셀러 대시보드 - 유어 라이브 커머스</title>
+        <title>셀러 대시보드 - 토스 라이브 커머스</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>

@@ -1,7 +1,7 @@
 // 장바구니 페이지 스크립트
 const API_BASE = '/api';
 
-// 토스 브릿지에서 유저 정보 가져오기
+// 유어 브릿지에서 유저 정보 가져오기
 async function getTossUserInfo() {
   try {
     const response = await axios.get(`${API_BASE}/toss/user-info`);
@@ -9,7 +9,7 @@ async function getTossUserInfo() {
       return response.data.data;
     }
   } catch (error) {
-    console.error('❌ 토스 유저 정보 가져오기 실패:', error);
+    console.error('❌ 유어 유저 정보 가져오기 실패:', error);
   }
   
   // 실패 시 게스트 유저 생성
@@ -27,7 +27,7 @@ let cartData = [];
 
 // 페이지 로드 시 장바구니 불러오기
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. 토스 유저 정보 가져오기
+  // 1. 유어 유저 정보 가져오기
   currentUser = await getTossUserInfo();
   console.log('👤 현재 유저:', currentUser);
   
@@ -207,7 +207,7 @@ async function goToCheckout() {
   }
   
   console.log('✅ 결제 완료 (시뮬레이션)');
-  alert(`주문이 완료되었습니다!\n\n주문번호: ${orderNo}\n결제금액: ${formatPrice(totalAmount)}원\n\n※ 실제 토스페이 연동 시 결제가 진행됩니다.`);
+  alert(`주문이 완료되었습니다!\n\n주문번호: ${orderNo}\n결제금액: ${formatPrice(totalAmount)}원\n\n※ 실제 유어페이 연동 시 결제가 진행됩니다.`);
   
   // 장바구니 페이지로 돌아가기
   window.location.reload();

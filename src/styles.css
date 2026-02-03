@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 토스 브랜드 컬러 */
+/* 유어 브랜드 컬러 */
 :root {
   --toss-blue: #3182F6;
   --toss-gray: #191F28;
