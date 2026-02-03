@@ -70,8 +70,8 @@ export default function HomePage() {
             {/* Right side buttons */}
             <div className="flex items-center space-x-2">
               {/* Desktop CTA */}
-              <Button className="hidden md:flex apple-button h-9 border-0 shadow-none text-[14px] px-4">
-                판매 시작하기
+              <Button className="hidden md:flex apple-button h-9 border-0 shadow-none text-[14px] px-4" asChild>
+                <Link to="/seller">판매 시작하기</Link>
               </Button>
               
               {/* Mobile Menu Button */}
@@ -109,10 +109,16 @@ export default function HomePage() {
 
             {/* CTA Buttons - Mobile Optimized */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
-              <button className="apple-button w-full sm:w-auto text-[15px] sm:text-[17px] py-3 sm:py-3">
+              <button 
+                onClick={() => {
+                  const liveSection = document.getElementById('live-streams-section')
+                  liveSection?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="apple-button w-full sm:w-auto text-[15px] sm:text-[17px] py-3 sm:py-3"
+              >
                 라이브 보러가기
               </button>
-              <Link to="/seller-login" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
+              <Link to="/seller" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
                 판매자 알아보기
                 <ChevronRight className="inline-block ml-1 h-4 w-4" />
               </Link>
@@ -122,7 +128,7 @@ export default function HomePage() {
       </section>
 
       {/* Content Section - Mobile Optimized */}
-      <section className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
+      <section id="live-streams-section" className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
         <div className="mx-auto max-w-[980px] px-4 sm:px-6">
           {/* Section Header - Responsive */}
           <div className="mb-6 sm:mb-8 md:mb-10">
@@ -303,10 +309,10 @@ export default function HomePage() {
             간편한 시작으로 성공적인 판매를 경험하세요.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4 sm:px-0">
-            <button className="apple-button w-full sm:w-auto text-[15px] sm:text-[17px] py-3 sm:py-3">
-              무료로 시작하기
-            </button>
-            <Link to="/learn-more" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
+            <Button className="apple-button w-full sm:w-auto text-[15px] sm:text-[17px] py-3 sm:py-3" asChild>
+              <Link to="/seller">무료로 시작하기</Link>
+            </Button>
+            <Link to="/seller" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
               자세히 알아보기
               <ChevronRight className="inline-block ml-1 h-4 w-4" />
             </Link>
