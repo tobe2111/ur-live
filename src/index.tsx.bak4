@@ -1237,390 +1237,164 @@ app.get('/', (c) => {
     <html lang="ko">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>유어 라이브 - 지금 당장 만나는 라이브 쇼핑</title>
         <script src="https://cdn.tailwindcss.com"></script>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+        <link rel="preconnect" href="https://cdn.jsdelivr.net">
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <style>
-          * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-          }
-          
-          body {
-            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            background: #FAFAFA;
-          }
-          
           /* 유어 브랜드 컬러 */
           :root {
             --toss-blue: #3182F6;
-            --toss-black: #191F28;
-            --toss-gray-900: #333D4B;
-            --toss-gray-700: #6B7684;
-            --toss-gray-400: #B0B8C1;
-            --toss-gray-200: #E5E8EB;
-            --toss-gray-50: #F9FAFB;
+            --toss-gray: #191F28;
+            --toss-light-gray: #F2F4F6;
           }
-          
-          /* 유어 타이포그래피 */
-          .toss-h1 {
-            font-size: 64px;
-            font-weight: 900;
-            line-height: 1.2;
-            letter-spacing: -0.04em;
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           }
-          
-          .toss-h2 {
-            font-size: 48px;
-            font-weight: 800;
-            line-height: 1.3;
-            letter-spacing: -0.03em;
+          .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           }
-          
-          .toss-h3 {
-            font-size: 32px;
-            font-weight: 700;
-            line-height: 1.4;
-            letter-spacing: -0.02em;
-          }
-          
-          .toss-body-1 {
-            font-size: 18px;
-            font-weight: 500;
-            line-height: 1.6;
-          }
-          
-          .toss-body-2 {
-            font-size: 16px;
-            font-weight: 400;
-            line-height: 1.6;
-          }
-          
-          /* 유어 버튼 스타일 */
-          .toss-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px 24px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 17px;
-            transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+          .live-card {
+            transition: all 0.3s ease;
             cursor: pointer;
-            border: none;
-            text-decoration: none;
           }
-          
-          .toss-btn-primary {
-            background: var(--toss-blue);
-            color: white;
+          .live-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
           }
-          
-          .toss-btn-primary:hover {
-            background: #2272EB;
-            transform: translateY(-2px);
-            box-shadow: 0 12px 28px rgba(49, 130, 246, 0.3);
-          }
-          
-          .toss-btn-secondary {
-            background: white;
-            color: var(--toss-gray-900);
-            border: 2px solid var(--toss-gray-200);
-          }
-          
-          .toss-btn-secondary:hover {
-            border-color: var(--toss-gray-400);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-          }
-          
-          /* 유어 카드 스타일 - 유리 효과 */
-          .toss-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 24px;
-            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-            cursor: pointer;
-            overflow: hidden;
-          }
-          
-          .toss-card:hover {
-            transform: translateY(-12px);
-            box-shadow: 0 32px 64px rgba(0, 0, 0, 0.12);
-            border-color: rgba(49, 130, 246, 0.2);
-          }
-          
-          /* 라이브 배지 애니메이션 */
           .live-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            background: #FF3B30;
-            color: white;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 14px;
-            animation: live-pulse 2s ease-in-out infinite;
+            animation: pulse 2s infinite;
           }
-          
-          @keyframes live-pulse {
-            0%, 100% {
-              box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
-            }
-            50% {
-              box-shadow: 0 0 0 10px rgba(255, 59, 48, 0);
-            }
-          }
-          
-          .live-dot {
-            width: 8px;
-            height: 8px;
-            background: white;
-            border-radius: 50%;
-            animation: blink 1.5s ease-in-out infinite;
-          }
-          
-          @keyframes blink {
+          @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            50% { opacity: 0.7; }
           }
-          
-          /* 스켈레톤 로딩 */
           .skeleton {
-            background: linear-gradient(
-              90deg,
-              #F0F0F0 25%,
-              #E0E0E0 50%,
-              #F0F0F0 75%
-            );
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
-            animation: skeleton-loading 1.5s ease-in-out infinite;
-            border-radius: 24px;
+            animation: loading 1.5s infinite;
           }
-          
-          @keyframes skeleton-loading {
+          @keyframes loading {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
           }
-          
-          /* Hero 섹션 애니메이션 */
-          .hero-content {
-            animation: fade-in-up 0.8s ease-out;
-          }
-          
-          @keyframes fade-in-up {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          
-          /* 네비게이션 블러 효과 */
-          .nav-blur {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-          }
-          
-          /* 반응형 타이포그래피 */
-          @media (max-width: 768px) {
-            .toss-h1 { font-size: 48px; }
-            .toss-h2 { font-size: 36px; }
-            .toss-h3 { font-size: 24px; }
-          }
         </style>
     </head>
-    <body>
-        <!-- 네비게이션 -->
-        <nav class="nav-blur sticky top-0 z-50 border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <body class="bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div style="width: 36px; height: 36px; background: var(--toss-blue); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-tv text-white text-lg"></i>
-                    </div>
-                    <span style="font-size: 20px; font-weight: 800; color: var(--toss-black); letter-spacing: -0.02em;">유어 라이브</span>
+                    <i class="fas fa-broadcast-tower text-3xl text-purple-600"></i>
+                    <h1 class="text-2xl font-bold text-gray-800">유어 라이브 커머스</h1>
                 </div>
                 <div class="flex items-center gap-4">
-                    <a href="/my-orders" style="color: var(--toss-gray-700); font-size: 15px; font-weight: 600; text-decoration: none; transition: color 0.2s;">
-                        <i class="fas fa-shopping-bag mr-1"></i>
-                        주문내역
+                    <a href="/my-orders" class="text-gray-600 hover:text-purple-600 transition">
+                        <i class="fas fa-shopping-bag text-xl"></i>
                     </a>
-                    <a href="/seller-login" class="toss-btn toss-btn-primary" style="padding: 10px 20px; font-size: 15px;">
+                    <a href="/seller-login" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
                         <i class="fas fa-store mr-2"></i>
-                        셀러 시작하기
+                        셀러
                     </a>
                 </div>
             </div>
-        </nav>
+        </header>
 
-        <!-- Hero 섹션 -->
-        <section style="padding: 80px 24px; text-align: center; background: linear-gradient(180deg, #FAFAFA 0%, #FFFFFF 100%);">
-            <div class="hero-content" style="max-width: 900px; margin: 0 auto;">
-                <div style="display: inline-block; padding: 8px 20px; background: rgba(49, 130, 246, 0.1); border-radius: 20px; margin-bottom: 24px;">
-                    <span style="color: var(--toss-blue); font-weight: 700; font-size: 15px;">🔥 지금 라이브 중</span>
-                </div>
-                <h1 class="toss-h1" style="color: var(--toss-black); margin-bottom: 24px;">
-                    보는 순간<br/>바로 산다
-                </h1>
-                <p class="toss-body-1" style="color: var(--toss-gray-700); margin-bottom: 48px; max-width: 600px; margin-left: auto; margin-right: auto;">
-                    실시간 라이브 쇼핑으로 빠르고 재미있게 쇼핑하세요
+        <!-- Hero Section -->
+        <div class="hero-gradient text-white py-16">
+            <div class="max-w-7xl mx-auto px-4 text-center">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                    실시간 라이브 쇼핑
+                </h2>
+                <p class="text-xl opacity-90 mb-6">
+                    지금 진행 중인 라이브를 만나보세요
                 </p>
-                <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                    <button onclick="document.getElementById('live-streams-section').scrollIntoView({behavior: 'smooth'})" class="toss-btn toss-btn-primary" style="padding: 18px 32px; font-size: 18px;">
-                        <i class="fas fa-play-circle mr-2"></i>
-                        라이브 보러가기
-                    </button>
-                    <a href="/seller-login" class="toss-btn toss-btn-secondary" style="padding: 18px 32px; font-size: 18px;">
-                        <i class="fas fa-user-plus mr-2"></i>
-                        판매자 가입하기
-                    </a>
-                </div>
             </div>
-        </section>
+        </div>
 
-        <!-- 라이브 스트림 섹션 -->
-        <section id="live-streams-section" style="padding: 80px 24px; max-width: 1280px; margin: 0 auto;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px;">
-                <div>
-                    <h2 class="toss-h2" style="color: var(--toss-black); margin-bottom: 12px;">
-                        지금 라이브 중 🔥
-                    </h2>
-                    <p class="toss-body-2" style="color: var(--toss-gray-700);">
-                        실시간으로 진행되는 라이브 쇼핑
-                    </p>
-                </div>
-                <button onclick="loadLiveStreams()" class="toss-btn toss-btn-secondary" style="padding: 12px 20px;">
+        <!-- Live Streams Section -->
+        <div class="max-w-7xl mx-auto px-4 py-12">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-fire text-red-500 mr-2"></i>
+                    진행 중인 라이브
+                </h2>
+                <button onclick="loadLiveStreams()" class="text-purple-600 hover:text-purple-700 transition">
                     <i class="fas fa-sync-alt mr-2"></i>
                     새로고침
                 </button>
             </div>
             
-            <!-- 로딩 스켈레톤 -->
+            <!-- Loading Skeleton -->
             <div id="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="skeleton" style="height: 420px;"></div>
-                <div class="skeleton" style="height: 420px;"></div>
-                <div class="skeleton" style="height: 420px;"></div>
+                <div class="skeleton rounded-xl h-80"></div>
+                <div class="skeleton rounded-xl h-80"></div>
+                <div class="skeleton rounded-xl h-80"></div>
             </div>
 
-            <!-- 라이브 스트림 목록 -->
+            <!-- Live Stream List -->
             <div id="live-streams" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- 동적으로 로드됨 -->
             </div>
 
             <!-- Empty State -->
-            <div id="empty-state" class="hidden" style="text-align: center; padding: 100px 24px;">
-                <div style="width: 120px; height: 120px; background: var(--toss-gray-50); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 32px;">
-                    <i class="fas fa-video-slash" style="font-size: 48px; color: var(--toss-gray-400);"></i>
-                </div>
-                <h3 class="toss-h3" style="color: var(--toss-gray-900); margin-bottom: 16px;">
-                    현재 진행 중인 라이브가 없어요
-                </h3>
-                <p class="toss-body-1" style="color: var(--toss-gray-700); margin-bottom: 40px;">
-                    곧 새로운 라이브가 시작될 예정입니다
-                </p>
-                <a href="/seller-login" class="toss-btn toss-btn-primary" style="padding: 18px 32px; font-size: 18px;">
+            <div id="empty-state" class="hidden text-center py-20">
+                <i class="fas fa-video-slash text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-600 mb-2">현재 진행 중인 라이브가 없습니다</h3>
+                <p class="text-gray-500 mb-8">곧 새로운 라이브가 시작될 예정입니다</p>
+                <a href="/seller-login" class="inline-block bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition">
                     <i class="fas fa-video mr-2"></i>
                     셀러로 라이브 시작하기
                 </a>
             </div>
-        </section>
+        </div>
 
-        <!-- Features 섹션 -->
-        <section style="padding: 100px 24px; background: white;">
-            <div style="max-width: 1280px; margin: 0 auto;">
-                <div style="text-align: center; margin-bottom: 80px;">
-                    <h2 class="toss-h2" style="color: var(--toss-black); margin-bottom: 20px;">
-                        더 쉽고 빠르게
-                    </h2>
-                    <p class="toss-body-1" style="color: var(--toss-gray-700);">
-                        유어 라이브만의 특별한 경험
-                    </p>
-                </div>
+        <!-- Features Section -->
+        <div class="bg-white py-16">
+            <div class="max-w-7xl mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">왜 유어 라이브 커머스인가요?</h2>
                 
-                <div class="grid md:grid-cols-3 gap-12">
-                    <div style="text-align: center;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);">
-                            <i class="fas fa-bolt" style="font-size: 36px; color: white;"></i>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="text-center">
+                        <div class="text-5xl mb-4 text-blue-500">
+                            <i class="fas fa-bolt"></i>
                         </div>
-                        <h3 class="toss-h3" style="color: var(--toss-gray-900); margin-bottom: 16px; font-size: 24px;">
-                            원클릭 구매
-                        </h3>
-                        <p class="toss-body-2" style="color: var(--toss-gray-700); line-height: 1.8;">
-                            복잡한 절차 없이 클릭 한 번으로<br/>장바구니 담고 바로 결제
-                        </p>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">초고속 구매</h3>
+                        <p class="text-gray-600">원클릭으로 장바구니 담기, 복잡한 절차 없이 빠르게</p>
                     </div>
 
-                    <div style="text-align: center;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 20px 40px rgba(240, 147, 251, 0.3);">
-                            <i class="fas fa-shield-alt" style="font-size: 36px; color: white;"></i>
+                    <div class="text-center">
+                        <div class="text-5xl mb-4 text-green-500">
+                            <i class="fas fa-shield-alt"></i>
                         </div>
-                        <h3 class="toss-h3" style="color: var(--toss-gray-900); margin-bottom: 16px; font-size: 24px;">
-                            안전한 결제
-                        </h3>
-                        <p class="toss-body-2" style="color: var(--toss-gray-700); line-height: 1.8;">
-                            나이스페이먼츠 연동으로<br/>안전하고 편리한 결제 경험
-                        </p>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">안전한 결제</h3>
+                        <p class="text-gray-600">나이스페이먼츠로 안전하고 믿을 수 있는 결제</p>
                     </div>
 
-                    <div style="text-align: center;">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; box-shadow: 0 20px 40px rgba(79, 172, 254, 0.3);">
-                            <i class="fas fa-comments" style="font-size: 36px; color: white;"></i>
+                    <div class="text-center">
+                        <div class="text-5xl mb-4 text-purple-500">
+                            <i class="fas fa-users"></i>
                         </div>
-                        <h3 class="toss-h3" style="color: var(--toss-gray-900); margin-bottom: 16px; font-size: 24px;">
-                            실시간 소통
-                        </h3>
-                        <p class="toss-body-2" style="color: var(--toss-gray-700); line-height: 1.8;">
-                            채팅으로 다른 구매자들과<br/>실시간으로 소통하며 쇼핑
-                        </p>
+                        <h3 class="text-xl font-bold mb-3 text-gray-800">실시간 소통</h3>
+                        <p class="text-gray-600">채팅으로 다른 구매자들과 실시간 소통</p>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
 
         <!-- Footer -->
-        <footer style="background: var(--toss-black); padding: 60px 24px; color: white;">
-            <div style="max-width: 1280px; margin: 0 auto;">
-                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 48px; margin-bottom: 40px;">
-                    <div>
-                        <div style="font-size: 24px; font-weight: 800; margin-bottom: 12px;">유어 라이브</div>
-                        <p style="color: var(--toss-gray-400); font-size: 15px;">
-                            실시간 라이브 쇼핑의 새로운 경험
-                        </p>
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <p class="text-gray-400">© 2026 유어 라이브 커머스. All rights reserved.</p>
                     </div>
-                    <div style="display: flex; gap: 48px;">
-                        <div>
-                            <div style="font-weight: 700; margin-bottom: 16px; font-size: 15px;">서비스</div>
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <a href="/live/1" style="color: var(--toss-gray-400); text-decoration: none; font-size: 14px; transition: color 0.2s;">라이브 보기</a>
-                                <a href="/my-orders" style="color: var(--toss-gray-400); text-decoration: none; font-size: 14px; transition: color 0.2s;">주문 내역</a>
-                            </div>
-                        </div>
-                        <div>
-                            <div style="font-weight: 700; margin-bottom: 16px; font-size: 15px;">판매자</div>
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <a href="/seller-login" style="color: var(--toss-gray-400); text-decoration: none; font-size: 14px; transition: color 0.2s;">셀러 로그인</a>
-                                <a href="/seller" style="color: var(--toss-gray-400); text-decoration: none; font-size: 14px; transition: color 0.2s;">대시보드</a>
-                                <a href="/admin" style="color: var(--toss-gray-400); text-decoration: none; font-size: 14px; transition: color 0.2s;">관리자</a>
-                            </div>
-                        </div>
+                    <div class="flex gap-6">
+                        <a href="/admin" class="text-gray-400 hover:text-white transition">관리자</a>
+                        <a href="/seller-login" class="text-gray-400 hover:text-white transition">셀러</a>
+                        <a href="/my-orders" class="text-gray-400 hover:text-white transition">내 주문</a>
                     </div>
-                </div>
-                <div style="padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-                    <p style="color: var(--toss-gray-400); font-size: 13px; text-align: center;">
-                        © 2026 유어 라이브 커머스. All rights reserved.
-                    </p>
                 </div>
             </div>
         </footer>
@@ -1673,47 +1447,43 @@ app.get('/', (c) => {
             const streamsEl = document.getElementById('live-streams');
             
             streamsEl.innerHTML = liveStreams.map(stream => \`
-              <div class="toss-card" onclick="location.href='/live/\${stream.id}'" style="height: auto;">
-                <div style="position: relative; overflow: hidden; border-radius: 24px 24px 0 0;">
+              <div class="live-card bg-white rounded-xl shadow-lg overflow-hidden" onclick="location.href='/live/\${stream.id}'">
+                <div class="relative">
                   <img src="https://img.youtube.com/vi/\${stream.youtube_video_id}/maxresdefault.jpg" 
                        alt="\${stream.title}" 
-                       style="width: 100%; height: 240px; object-fit: cover;"
-                       onerror="this.src='https://via.placeholder.com/1280x720/667eea/ffffff?text=Your+Live'">
-                  <div class="live-badge" style="position: absolute; top: 16px; left: 16px;">
-                    <div class="live-dot"></div>
+                       class="w-full h-56 object-cover"
+                       onerror="this.src='https://via.placeholder.com/1280x720/667eea/ffffff?text=Live+Stream'">
+                  <div class="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center live-badge">
+                    <i class="fas fa-circle mr-2 text-xs"></i>
                     LIVE
                   </div>
                   \${stream.viewer_count ? \`
-                    <div style="position: absolute; top: 16px; right: 16px; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 20px; color: white; font-size: 13px; font-weight: 600;">
-                      <i class="fas fa-eye" style="margin-right: 4px;"></i>
+                    <div class="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm">
+                      <i class="fas fa-eye mr-1"></i>
                       \${stream.viewer_count.toLocaleString()}
                     </div>
                   \` : ''}
                 </div>
-                <div style="padding: 24px;">
-                  <h3 style="font-size: 20px; font-weight: 700; color: var(--toss-black); margin-bottom: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                    \${stream.title}
-                  </h3>
-                  <p style="font-size: 14px; color: var(--toss-gray-700); margin-bottom: 20px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                    \${stream.description || '실시간 라이브 쇼핑을 즐겨보세요!'}
-                  </p>
+                <div class="p-6">
+                  <h3 class="text-xl font-bold text-gray-800 mb-2 line-clamp-2">\${stream.title}</h3>
+                  <p class="text-gray-600 text-sm mb-4 line-clamp-2">\${stream.description || '실시간 라이브 쇼핑을 즐겨보세요!'}</p>
                   
-                  <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
                       \${stream.seller_name ? \`
                         <img src="\${stream.seller_profile_image || 'https://via.placeholder.com/40'}" 
                              alt="\${stream.seller_name}" 
-                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                             class="w-8 h-8 rounded-full"
                              onerror="this.src='https://via.placeholder.com/40'">
-                        <span style="font-size: 14px; font-weight: 600; color: var(--toss-gray-900);">\${stream.seller_name}</span>
+                        <span class="text-sm text-gray-600">\${stream.seller_name}</span>
                       \` : \`
-                        <span style="font-size: 14px; font-weight: 600; color: var(--toss-gray-900);">유어 라이브</span>
+                        <span class="text-sm text-gray-600">유어 라이브</span>
                       \`}
                     </div>
-                    <div style="display: flex; align-items: center; gap: 4px; color: var(--toss-blue); font-size: 14px; font-weight: 700;">
+                    <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-semibold">
                       입장하기
-                      <i class="fas fa-arrow-right" style="font-size: 12px;"></i>
-                    </div>
+                      <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
                   </div>
                 </div>
               </div>
