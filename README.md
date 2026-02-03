@@ -2,9 +2,9 @@
 
 ## 🎯 프로젝트 개요
 
-**ClickMate 스타일의 실시간 라이브 스트리밍 쇼핑 플랫폼**
+**토스 디자인 시스템 적용 실시간 라이브 쇼핑 플랫폼**
 
-YouTube 라이브 스트리밍과 원클릭 구매 기능을 결합한 간결하고 몰입감 있는 라이브 커머스 시스템입니다. 방송자가 실시간으로 상품을 변경하면 시청자의 화면에 즉시 반영되며, 원클릭으로 장바구니에 담을 수 있습니다.
+YouTube 라이브 스트리밍과 원클릭 구매 기능을 결합한 세련되고 현대적인 라이브 커머스 시스템입니다. 토스의 깔끔하고 가벼운 디자인 철학을 반영하여 사용자 경험을 극대화했습니다.
 
 ## 📦 백업 파일 다운로드
 
@@ -29,12 +29,52 @@ pm2 start ecosystem.config.cjs
 
 ## 🌐 공개 URL
 
-- **데모 사이트**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai
-- **라이브 스트림**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/live/1
-- **셀러 전용 링크**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/s/seller1
-- **주문서 페이지**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/checkout
-- **셀러 대시보드**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/seller
-- **관리자 대시보드**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/admin
+### 프로덕션
+- **메인 사이트**: https://live.ur-team.com
+- **최신 배포**: https://1c30be85.toss-live-commerce.pages.dev
+- **라이브 페이지**: https://live.ur-team.com/live/1
+- **주문서**: https://live.ur-team.com/checkout
+- **셀러 대시보드**: https://live.ur-team.com/seller
+
+### 샌드박스 (개발)
+- **샌드박스 메인**: https://3000-idza9aonokj4y1prq2vkt-cc2fbc16.sandbox.novita.ai
+- **라이브 스트림**: https://3000-idza9aonokj4y1prq2vkt-cc2fbc16.sandbox.novita.ai/live/1
+
+## 🎨 토스 디자인 시스템
+
+### 적용된 디자인 요소
+
+#### 1. **브랜드 컬러**
+```css
+--toss-blue: #3182F6      /* Primary */
+--toss-black: #191F28     /* Text */
+--toss-gray-900: #333D4B  /* Heading */
+--toss-gray-700: #6B7684  /* Body */
+--toss-gray-400: #B0B8C1  /* Border */
+--toss-gray-200: #E5E8EB  /* Background */
+```
+
+#### 2. **타이포그래피**
+- **H1**: 64px, 900 weight, -0.04em letter-spacing
+- **H2**: 48px, 800 weight, -0.03em letter-spacing
+- **H3**: 32px, 700 weight, -0.02em letter-spacing
+- **폰트**: Noto Sans KR (Google Fonts)
+
+#### 3. **UI 패턴**
+- ✨ **Glass-morphism** - 유리 효과 카드 (blur + saturation)
+- 🎭 **Live Badge Animation** - 맥박 애니메이션 + 점멸 효과
+- 🌊 **Navigation Blur** - 상단 네비게이션 블러 효과
+- 💫 **Skeleton Loading** - 부드러운 로딩 애니메이션
+- 🎯 **Hover Effects** - translateY(-12px) + shadow
+
+#### 4. **애니메이션**
+```css
+transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+```
+- Hero 섹션 fade-in-up
+- 카드 호버 lift-up
+- 버튼 hover shadow
+- 라이브 배지 pulse
 
 ## ✨ 주요 기능
 
