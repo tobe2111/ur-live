@@ -316,6 +316,40 @@ app.get('/api/products/:id', async (c) => {
   }
 });
 
+// 실시간 재고 확인 API
+app.get('/api/products/:id/stock', async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+
+  try {
+    const product = await DB.prepare(
+      'SELECT id, name, stock FROM products WHERE id = ? AND is_active = 1'
+    ).bind(id).first();
+
+    if (!product) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Product not found',
+      }, 404);
+    }
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        productId: product.id,
+        productName: product.name,
+        stock: product.stock,
+        available: product.stock > 0,
+      },
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 app.get('/api/streams/:streamId/products', async (c) => {
   const { DB } = c.env;
   const streamId = c.req.param('streamId');
@@ -1662,6 +1696,9 @@ app.get('/live/:streamId', (c) => {
                         if (!currentProduct || currentProduct.id !== newProduct.id) {
                             updateProductInfo(newProduct);
                         }
+                        
+                        // 재고 확인
+                        checkStock();
                     }
                 } catch (error) {
                     console.error('Polling error:', error);
@@ -1844,12 +1881,62 @@ app.get('/live/:streamId', (c) => {
             }
         }
         
+        // 재고 확인 및 버튼 업데이트
+        async function checkStock() {
+            if (!currentProduct || !currentProduct.id) return;
+            
+            try {
+                const response = await axios.get(\`\${API_BASE}/products/\${currentProduct.id}/stock\`);
+                if (response.data.success) {
+                    const { stock, available } = response.data.data;
+                    const btn = document.getElementById('add-to-basket-btn');
+                    
+                    if (!available || stock <= 0) {
+                        btn.textContent = '품절';
+                        btn.disabled = true;
+                        btn.style.background = '#cccccc';
+                        btn.style.cursor = 'not-allowed';
+                    } else {
+                        btn.textContent = '담아두기';
+                        btn.disabled = false;
+                        btn.style.background = '#FF5126';
+                        btn.style.cursor = 'pointer';
+                    }
+                }
+            } catch (error) {
+                console.error('재고 확인 오류:', error);
+            }
+        }
+        
         // 이벤트 리스너 설정
         function setupEventListeners() {
             // 담아두기 버튼
-            document.getElementById('add-to-basket-btn').addEventListener('click', () => {
+            document.getElementById('add-to-basket-btn').addEventListener('click', async () => {
                 if (!currentProduct) {
                     alert('상품 정보를 불러오는 중입니다.');
+                    return;
+                }
+                
+                // 재고 확인
+                try {
+                    const stockResponse = await axios.get(\`\${API_BASE}/products/\${currentProduct.id}/stock\`);
+                    if (!stockResponse.data.success || !stockResponse.data.data.available) {
+                        alert('죄송합니다. 품절된 상품입니다.');
+                        checkStock(); // 버튼 상태 업데이트
+                        return;
+                    }
+                    
+                    const stock = stockResponse.data.data.stock;
+                    const existingItem = cartItems.find(item => item.product_id === currentProduct.id);
+                    const currentQuantity = existingItem ? existingItem.quantity : 0;
+                    
+                    if (currentQuantity + 1 > stock) {
+                        alert(\`죄송합니다. 재고가 부족합니다.\\n(남은 재고: \${stock}개)\`);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('재고 확인 오류:', error);
+                    alert('재고 확인 중 오류가 발생했습니다.');
                     return;
                 }
                 
@@ -1881,6 +1968,7 @@ app.get('/live/:streamId', (c) => {
                 setTimeout(() => {
                     btn.textContent = originalText;
                     btn.style.background = originalBg || '#FF5126';
+                    checkStock(); // 재고 다시 확인
                 }, 1000);
             });
             
@@ -2038,6 +2126,174 @@ app.post('/api/seller/products', async (c) => {
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
+});
+
+// 주문 내역 페이지
+app.get('/orders', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>주문 내역 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+          }
+          .order-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          .status-pending { background: #fef3c7; color: #92400e; }
+          .status-approved { background: #d1fae5; color: #065f46; }
+          .status-cancelled { background: #fee2e2; color: #991b1b; }
+          .status-failed { background: #fee2e2; color: #991b1b; }
+        </style>
+    </head>
+    <body>
+        <div class="max-w-2xl mx-auto p-4">
+            <!-- 헤더 -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <button onclick="history.back()" class="text-gray-600">
+                        <i class="fas fa-arrow-left text-xl"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold">주문 내역</h1>
+                </div>
+            </div>
+
+            <!-- 필터 -->
+            <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <button onclick="filterOrders('all')" id="filter-all" class="px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium whitespace-nowrap">
+                    전체
+                </button>
+                <button onclick="filterOrders('pending')" id="filter-pending" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap">
+                    결제대기
+                </button>
+                <button onclick="filterOrders('approved')" id="filter-approved" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap">
+                    결제완료
+                </button>
+                <button onclick="filterOrders('cancelled')" id="filter-cancelled" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap">
+                    취소
+                </button>
+            </div>
+
+            <!-- 주문 목록 -->
+            <div id="orders-list">
+                <div class="text-center py-12 text-gray-500">
+                    로딩 중...
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script>
+            const API_BASE = '/api';
+            let allOrders = [];
+            let currentFilter = 'all';
+            
+            // 임시 userId (실제로는 토스 로그인에서 받아야 함)
+            const userId = localStorage.getItem('userId') || 1;
+            
+            // 주문 내역 로드
+            async function loadOrders() {
+                try {
+                    const response = await axios.get(\`\${API_BASE}/orders/\${userId}\`);
+                    if (response.data.success) {
+                        allOrders = response.data.data || [];
+                        renderOrders();
+                    }
+                } catch (error) {
+                    console.error('주문 내역 로드 실패:', error);
+                    document.getElementById('orders-list').innerHTML = 
+                        '<div class="text-center py-12 text-red-500">주문 내역을 불러올 수 없습니다.</div>';
+                }
+            }
+            
+            // 주문 필터링
+            function filterOrders(status) {
+                currentFilter = status;
+                
+                // 필터 버튼 스타일 업데이트
+                document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+                    btn.className = 'px-4 py-2 rounded-full bg-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap';
+                });
+                document.getElementById(\`filter-\${status}\`).className = 
+                    'px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium whitespace-nowrap';
+                
+                renderOrders();
+            }
+            
+            // 주문 렌더링
+            function renderOrders() {
+                const filtered = currentFilter === 'all' 
+                    ? allOrders 
+                    : allOrders.filter(order => order.payment_status === currentFilter);
+                
+                if (filtered.length === 0) {
+                    document.getElementById('orders-list').innerHTML = 
+                        '<div class="text-center py-12 text-gray-500">주문 내역이 없습니다.</div>';
+                    return;
+                }
+                
+                document.getElementById('orders-list').innerHTML = filtered.map(order => {
+                    const statusMap = {
+                        pending: { label: '결제대기', class: 'status-pending' },
+                        approved: { label: '결제완료', class: 'status-approved' },
+                        cancelled: { label: '취소', class: 'status-cancelled' },
+                        failed: { label: '결제실패', class: 'status-failed' }
+                    };
+                    const status = statusMap[order.payment_status] || { label: order.payment_status, class: 'status-pending' };
+                    const orderDate = new Date(order.created_at).toLocaleDateString('ko-KR');
+                    
+                    return \`
+                        <div class="order-card">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <div class="text-sm text-gray-500 mb-1">\${orderDate}</div>
+                                    <div class="text-xs text-gray-400">\${order.order_number}</div>
+                                </div>
+                                <span class="status-badge \${status.class}">\${status.label}</span>
+                            </div>
+                            <div class="border-t pt-3">
+                                <div class="flex justify-between items-center">
+                                    <div class="text-lg font-bold">\${order.total_amount.toLocaleString()}원</div>
+                                    <button onclick="viewOrderDetail('\${order.order_number}')" 
+                                            class="text-blue-600 text-sm font-medium">
+                                        상세보기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                }).join('');
+            }
+            
+            // 주문 상세 보기
+            function viewOrderDetail(orderNo) {
+                window.location.href = \`/order/\${orderNo}\`;
+            }
+            
+            // 초기화
+            loadOrders();
+        </script>
+    </body>
+    </html>
+  `);
 });
 
 // Update product
@@ -3657,6 +3913,40 @@ app.post('/api/toss-pay/payments/create', async (c) => {
   try {
     const { userId, cartItems, totalAmount } = await c.req.json();
     
+    // userId가 없으면 임시 사용자 생성 또는 기존 사용자 찾기
+    let finalUserId = userId;
+    if (!userId || userId === 'toss_user_temp') {
+      // 임시 사용자가 있는지 확인
+      const existingUser = await DB.prepare(`
+        SELECT id FROM users WHERE toss_user_id = 'toss_user_temp' LIMIT 1
+      `).first();
+      
+      if (existingUser) {
+        finalUserId = existingUser.id;
+      } else {
+        // 임시 사용자 생성
+        const userResult = await DB.prepare(`
+          INSERT INTO users (toss_user_id, name, email, created_at)
+          VALUES ('toss_user_temp', '게스트', 'guest@temp.com', datetime('now'))
+        `).run();
+        finalUserId = userResult.meta.last_row_id;
+      }
+    } else {
+      // userId가 제공된 경우, users 테이블에 있는지 확인
+      const existingUser = await DB.prepare(`
+        SELECT id FROM users WHERE id = ? LIMIT 1
+      `).bind(userId).first();
+      
+      if (!existingUser) {
+        // 사용자가 없으면 생성
+        const userResult = await DB.prepare(`
+          INSERT INTO users (toss_user_id, name, email, created_at)
+          VALUES (?, '토스유저', 'user@toss.im', datetime('now'))
+        `).bind(`toss_user_${userId}`).run();
+        finalUserId = userResult.meta.last_row_id;
+      }
+    }
+    
     // 주문번호 생성 (타임스탬프 + 랜덤)
     const orderNo = `ORDER_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`;
     
@@ -3664,12 +3954,22 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     const orderResult = await DB.prepare(`
       INSERT INTO orders (order_number, user_id, total_amount, payment_status, created_at)
       VALUES (?, ?, ?, 'pending', datetime('now'))
-    `).bind(orderNo, userId, totalAmount).run();
+    `).bind(orderNo, finalUserId, totalAmount).run();
     
     const orderId = orderResult.meta.last_row_id;
     
-    // 주문 상품 저장
+    // 주문 상품 저장 (재고 차감 포함)
     for (const item of cartItems) {
+      // 재고 확인
+      const product = await DB.prepare(`
+        SELECT stock FROM products WHERE id = ?
+      `).bind(item.product_id).first();
+      
+      if (!product || product.stock < item.quantity) {
+        throw new Error(`재고 부족: ${item.name}`);
+      }
+      
+      // 주문 아이템 저장
       await DB.prepare(`
         INSERT INTO order_items (order_id, product_id, option_id, quantity, price, product_name, option_info)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -3678,10 +3978,16 @@ app.post('/api/toss-pay/payments/create', async (c) => {
         item.product_id,
         item.option_id || null,
         item.quantity,
-        item.price_snapshot,
+        item.price || item.price_snapshot,
         item.name,
         item.option_info || null
       ).run();
+      
+      // 재고 차감
+      await DB.prepare(`
+        UPDATE products SET stock = stock - ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(item.quantity, item.product_id).run();
     }
     
     // 상품명 생성
