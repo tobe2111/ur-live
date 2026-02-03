@@ -186,6 +186,348 @@ app.get('/api/auth/verify', cors(), async (c) => {
   }
 });
 
+// =================================
+// Kakao Login APIs (일반 사용자)
+// =================================
+
+// 카카오 로그인 페이지로 리다이렉트
+app.get('/auth/kakao', async (c) => {
+  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
+  const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  
+  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code`;
+  
+  return c.redirect(kakaoAuthUrl);
+});
+
+// 카카오 로그인 콜백 처리
+app.get('/auth/kakao/callback', async (c) => {
+  const { DB } = c.env;
+  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
+  const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  
+  try {
+    const code = c.req.query('code');
+    
+    if (!code) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <title>로그인 실패</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+            <div class="bg-white p-8 rounded-lg shadow-lg text-center">
+                <div class="text-red-500 text-5xl mb-4">❌</div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-4">로그인 실패</h1>
+                <p class="text-gray-600 mb-6">인증 코드가 없습니다.</p>
+                <a href="/live/1" class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600">
+                    홈으로 돌아가기
+                </a>
+            </div>
+        </body>
+        </html>
+      `);
+    }
+    
+    // 카카오 토큰 받기
+    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_API_KEY,
+        redirect_uri: KAKAO_REDIRECT_URI,
+        code: code
+      })
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      throw new Error('액세스 토큰을 받지 못했습니다');
+    }
+    
+    // 카카오 사용자 정보 가져오기
+    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`
+      }
+    });
+    
+    const kakaoUser = await userResponse.json();
+    
+    // 기존 사용자 확인
+    let user = await DB.prepare(`
+      SELECT * FROM users WHERE kakao_id = ?
+    `).bind(kakaoUser.id.toString()).first();
+    
+    // 신규 사용자면 등록
+    if (!user) {
+      const result = await DB.prepare(`
+        INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(
+        `kakao_${kakaoUser.id}`,
+        kakaoUser.id.toString(),
+        kakaoUser.properties?.nickname || '익명',
+        kakaoUser.kakao_account?.email || '',
+        kakaoUser.properties?.profile_image || ''
+      ).run();
+      
+      const userId = result.meta.last_row_id;
+      
+      user = await DB.prepare(`SELECT * FROM users WHERE id = ?`).bind(userId).first();
+    }
+    
+    // 세션 생성 (쿠키 방식)
+    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24시간 후
+    
+    await DB.prepare(`
+      INSERT INTO admin_sessions (session_token, user_type, expires_at)
+      VALUES (?, ?, ?)
+    `).bind(sessionToken, 'user', expiresAt).run();
+    
+    // 로그인 성공 페이지로 리다이렉트 (세션 토큰 전달)
+    return c.html(`
+      <!DOCTYPE html>
+      <html lang="ko">
+      <head>
+          <meta charset="UTF-8">
+          <title>로그인 성공</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body class="bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center min-h-screen">
+          <div class="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
+              <div class="animate-bounce text-yellow-500 text-6xl mb-4">✓</div>
+              <h1 class="text-3xl font-bold text-gray-800 mb-4">로그인 성공!</h1>
+              <p class="text-gray-600 mb-2">환영합니다, <strong>${user.name}</strong>님!</p>
+              <p class="text-sm text-gray-500 mb-6">잠시 후 라이브 페이지로 이동합니다...</p>
+              
+              <div class="bg-yellow-50 p-4 rounded-lg mb-6">
+                  <img src="${user.profile_image || '/static/default-avatar.png'}" alt="프로필" 
+                       class="w-16 h-16 rounded-full mx-auto mb-2 object-cover"
+                       onerror="this.src='/static/default-avatar.png'">
+                  <p class="text-sm text-gray-700">${user.email || '이메일 정보 없음'}</p>
+              </div>
+              
+              <button onclick="goToLive()" class="w-full bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 font-bold">
+                  라이브 보러가기
+              </button>
+          </div>
+          
+          <script>
+              // 세션 토큰 저장
+              localStorage.setItem('user_session_token', '${sessionToken}');
+              localStorage.setItem('user_id', '${user.id}');
+              localStorage.setItem('user_name', '${user.name}');
+              localStorage.setItem('user_email', '${user.email || ''}');
+              localStorage.setItem('user_profile_image', '${user.profile_image || ''}');
+              
+              function goToLive() {
+                  window.location.href = '/live/1';
+              }
+              
+              // 3초 후 자동 이동
+              setTimeout(goToLive, 3000);
+          </script>
+      </body>
+      </html>
+    `);
+    
+  } catch (err) {
+    console.error('Kakao login error:', err);
+    return c.html(`
+      <!DOCTYPE html>
+      <html lang="ko">
+      <head>
+          <meta charset="UTF-8">
+          <title>로그인 오류</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+          <div class="bg-white p-8 rounded-lg shadow-lg text-center">
+              <div class="text-red-500 text-5xl mb-4">⚠️</div>
+              <h1 class="text-2xl font-bold text-gray-800 mb-4">로그인 오류</h1>
+              <p class="text-gray-600 mb-2">${(err as Error).message}</p>
+              <p class="text-sm text-gray-500 mb-6">다시 시도해주세요.</p>
+              <a href="/auth/kakao" class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600">
+                  다시 로그인하기
+              </a>
+          </div>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// 카카오 로그아웃
+app.post('/api/auth/kakao/logout', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token') || '';
+    
+    if (sessionToken) {
+      // 세션 삭제
+      await DB.prepare('DELETE FROM admin_sessions WHERE session_token = ?').bind(sessionToken).run();
+    }
+    
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 사용자 세션 검증 API
+app.get('/api/auth/user/verify', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    
+    if (!sessionToken) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다' }, 401);
+    }
+    
+    const session = await getSession(DB, sessionToken);
+    
+    if (!session || session.user_type !== 'user') {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
+    }
+    
+    // 사용자 정보 조회 (session에서 user_id 추출)
+    const userId = parseInt(sessionToken.split('_')[1]); // user_{id}_{timestamp}_{random} 형식
+    const user = await DB.prepare(`SELECT * FROM users WHERE id = ?`).bind(userId).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+    }
+    
+    return c.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profileImage: user.profile_image,
+          phone: user.phone
+        }
+      }
+    });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// Shipping Address APIs
+// =================================
+
+// 배송지 목록 조회
+app.get('/api/shipping-addresses/:userId', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const userId = c.req.param('userId');
+    
+    const addresses = await DB.prepare(`
+      SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC
+    `).bind(userId).all();
+    
+    return c.json({
+      success: true,
+      data: addresses.results || []
+    });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 배송지 추가
+app.post('/api/shipping-addresses', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
+    
+    if (!userId || !recipientName || !phone || !address) {
+      return c.json({ success: false, error: '필수 정보를 입력해주세요' }, 400);
+    }
+    
+    // 기본 배송지로 설정하는 경우, 기존 기본 배송지 해제
+    if (isDefault) {
+      await DB.prepare(`UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?`).bind(userId).run();
+    }
+    
+    const result = await DB.prepare(`
+      INSERT INTO shipping_addresses (user_id, recipient_name, phone, postal_code, address, address_detail, is_default, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(userId, recipientName, phone, postalCode || '', address, addressDetail || '', isDefault ? 1 : 0).run();
+    
+    return c.json({
+      success: true,
+      data: { id: result.meta.last_row_id }
+    });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 배송지 수정
+app.put('/api/shipping-addresses/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const id = c.req.param('id');
+    const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
+    
+    // 기본 배송지로 설정하는 경우, 기존 기본 배송지 해제
+    if (isDefault) {
+      await DB.prepare(`UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?`).bind(userId).run();
+    }
+    
+    await DB.prepare(`
+      UPDATE shipping_addresses
+      SET recipient_name = ?, phone = ?, postal_code = ?, address = ?, address_detail = ?, is_default = ?, updated_at = datetime('now')
+      WHERE id = ? AND user_id = ?
+    `).bind(recipientName, phone, postalCode || '', address, addressDetail || '', isDefault ? 1 : 0, id, userId).run();
+    
+    return c.json({ success: true });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 배송지 삭제
+app.delete('/api/shipping-addresses/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const id = c.req.param('id');
+    const userId = c.req.query('userId');
+    
+    await DB.prepare(`
+      DELETE FROM shipping_addresses WHERE id = ? AND user_id = ?
+    `).bind(id, userId).run();
+    
+    return c.json({ success: true });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // 세션 검증 헬퍼 함수
 async function verifyAdminSession(c: any) {
   const { DB } = c.env;
@@ -1527,9 +1869,17 @@ app.get('/live/:streamId', (c) => {
         <!-- 상단 바 -->
         <div class="top-bar">
             <div class="live-badge">LIVE</div>
-            <div class="viewer-count">
-                <i class="fas fa-eye"></i>
-                <span id="viewer-count">0</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="viewer-count">
+                    <i class="fas fa-eye"></i>
+                    <span id="viewer-count">0</span>
+                </div>
+                <button id="user-profile-btn" style="display: none; background: rgba(255,255,255,0.2); border: none; border-radius: 20px; padding: 4px 12px; color: white; font-size: 12px; cursor: pointer; backdrop-filter: blur(10px);">
+                    <i class="fas fa-user"></i> <span id="user-name-display"></span>
+                </button>
+                <button id="kakao-login-btn" style="background: #FEE500; border: none; border-radius: 20px; padding: 4px 12px; color: #000; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-comment"></i> 카카오 로그인
+                </button>
             </div>
         </div>
         
@@ -1623,12 +1973,33 @@ app.get('/live/:streamId', (c) => {
         
         // 초기화
         document.addEventListener('DOMContentLoaded', async () => {
+            checkUserLogin(); // 로그인 상태 확인
             await loadStreamData();
             startProductPolling();
             setupEventListeners();
             loadSampleChats();
             updateCartUI();
         });
+        
+        // 사용자 로그인 상태 확인
+        async function checkUserLogin() {
+            const userName = localStorage.getItem('user_name');
+            const userProfileImage = localStorage.getItem('user_profile_image');
+            const kakaoLoginBtn = document.getElementById('kakao-login-btn');
+            const userProfileBtn = document.getElementById('user-profile-btn');
+            const userNameDisplay = document.getElementById('user-name-display');
+            
+            if (userName) {
+                // 로그인 상태
+                kakaoLoginBtn.style.display = 'none';
+                userProfileBtn.style.display = 'flex';
+                userNameDisplay.textContent = userName;
+            } else {
+                // 비로그인 상태
+                kakaoLoginBtn.style.display = 'flex';
+                userProfileBtn.style.display = 'none';
+            }
+        }
         
         // 스트림 데이터 로드 - 수정된 파싱
         async function loadStreamData() {
@@ -2010,6 +2381,23 @@ app.get('/live/:streamId', (c) => {
                 }, 1000);
             });
             
+            // 카카오 로그인 버튼
+            document.getElementById('kakao-login-btn').addEventListener('click', () => {
+                window.location.href = '/auth/kakao';
+            });
+            
+            // 사용자 프로필 버튼
+            document.getElementById('user-profile-btn').addEventListener('click', () => {
+                if (confirm('로그아웃 하시겠습니까?')) {
+                    localStorage.removeItem('user_session_token');
+                    localStorage.removeItem('user_id');
+                    localStorage.removeItem('user_name');
+                    localStorage.removeItem('user_email');
+                    localStorage.removeItem('user_profile_image');
+                    window.location.reload();
+                }
+            });
+            
             // 채팅 버튼 (하트 대신)
             document.getElementById('chat-btn').addEventListener('click', () => {
                 openChatInput();
@@ -2056,12 +2444,21 @@ app.get('/live/:streamId', (c) => {
                     // 총액 계산
                     const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                     
+                    // 로그인 확인
+                    const userId = localStorage.getItem('user_id');
+                    if (!userId) {
+                        alert('로그인이 필요합니다.');
+                        btn.disabled = false;
+                        btn.textContent = '토스페이 결제';
+                        return;
+                    }
+                    
                     // 결제 생성 API 호출
                     const response = await fetch(API_BASE + '/toss-pay/payments/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            userId: 1, // 임시 사용자 ID (실제로는 로그인 세션에서 가져와야 함)
+                            userId: parseInt(userId),
                             cartItems: cartItems.map(item => ({
                                 product_id: item.id,
                                 option_id: null,
@@ -2682,6 +3079,568 @@ app.get('/payment/cancel', (c) => {
                 라이브 페이지로 돌아가기
             </a>
         </div>
+    </body>
+    </html>
+  `);
+});
+
+// ============================================
+// 카카오 로그인 (Kakao OAuth 2.0)
+// ============================================
+
+// 카카오 로그인 페이지
+app.get('/login', (c) => {
+  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || 'your_kakao_rest_api_key';
+  const REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
+  
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>로그인 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+          body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          }
+          .login-card {
+            background: white;
+            border-radius: 24px;
+            padding: 48px 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+          }
+          .kakao-btn {
+            background: #FEE500;
+            color: #000000 85%;
+            padding: 16px 24px;
+            border-radius: 12px;
+            border: none;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s;
+          }
+          .kakao-btn:hover {
+            background: #FDD835;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          }
+        </style>
+    </head>
+    <body>
+        <div class="login-card">
+            <h1 class="text-3xl font-bold mb-2">토스 라이브 커머스</h1>
+            <p class="text-gray-600 mb-8">간편하게 로그인하고 쇼핑을 시작하세요</p>
+            
+            <a href="${kakaoAuthUrl}" class="kakao-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.794 1.877 5.246 4.675 6.656-.198.73-.747 2.783-.854 3.198-.128.498.184.49.387.357.162-.106 2.623-1.75 3.043-2.043.574.078 1.165.12 1.749.12 5.523 0 10-3.477 10-7.8S17.523 3 12 3z" fill="currentColor"/>
+                </svg>
+                카카오 로그인
+            </a>
+            
+            <p class="text-xs text-gray-500 mt-6">
+                로그인 시 <a href="#" class="text-blue-600">이용약관</a> 및 <a href="#" class="text-blue-600">개인정보처리방침</a>에 동의하게 됩니다.
+            </p>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// 카카오 OAuth 콜백
+app.get('/auth/kakao/callback', async (c) => {
+  const { DB } = c.env;
+  const code = c.req.query('code');
+  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || 'your_kakao_rest_api_key';
+  const REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  
+  if (!code) {
+    return c.redirect('/login?error=no_code');
+  }
+  
+  try {
+    // 1. 액세스 토큰 발급
+    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_API_KEY,
+        redirect_uri: REDIRECT_URI,
+        code: code,
+      }),
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      console.error('Token error:', tokenData);
+      return c.redirect('/login?error=token_failed');
+    }
+    
+    // 2. 사용자 정보 가져오기
+    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+    });
+    
+    const kakaoUser = await userResponse.json();
+    
+    if (!kakaoUser.id) {
+      console.error('User info error:', kakaoUser);
+      return c.redirect('/login?error=user_info_failed');
+    }
+    
+    // 3. DB에서 사용자 찾기 또는 생성
+    let user = await DB.prepare(`
+      SELECT * FROM users WHERE kakao_id = ?
+    `).bind(String(kakaoUser.id)).first();
+    
+    if (!user) {
+      // 신규 사용자 생성
+      const nickname = kakaoUser.kakao_account?.profile?.nickname || '사용자';
+      const email = kakaoUser.kakao_account?.email || null;
+      const profileImage = kakaoUser.kakao_account?.profile?.profile_image_url || null;
+      
+      const result = await DB.prepare(`
+        INSERT INTO users (kakao_id, name, email, profile_image, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+      `).bind(String(kakaoUser.id), nickname, email, profileImage).run();
+      
+      const userId = result.meta.last_row_id;
+      
+      user = await DB.prepare(`
+        SELECT * FROM users WHERE id = ?
+      `).bind(userId).first();
+    }
+    
+    // 4. 세션 생성 (간단한 JWT 또는 쿠키)
+    // 여기서는 간단하게 쿠키에 user_id 저장
+    const sessionToken = Buffer.from(JSON.stringify({ 
+      userId: user.id, 
+      kakaoId: user.kakao_id,
+      name: user.name 
+    })).toString('base64');
+    
+    // 5. 쿠키 설정 후 리다이렉트
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>로그인 중...</title>
+      </head>
+      <body>
+          <script>
+            // 세션 정보를 localStorage에 저장
+            localStorage.setItem('user_session', '${sessionToken}');
+            localStorage.setItem('user_id', '${user.id}');
+            localStorage.setItem('user_name', '${user.name}');
+            
+            // 원래 페이지로 돌아가기 (또는 홈으로)
+            const returnUrl = sessionStorage.getItem('return_url') || '/';
+            sessionStorage.removeItem('return_url');
+            window.location.href = returnUrl;
+          </script>
+      </body>
+      </html>
+    `);
+    
+  } catch (error) {
+    console.error('Kakao login error:', error);
+    return c.redirect('/login?error=server_error');
+  }
+});
+
+// 로그아웃
+app.get('/logout', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html>
+    <body>
+        <script>
+          localStorage.removeItem('user_session');
+          localStorage.removeItem('user_id');
+          localStorage.removeItem('user_name');
+          window.location.href = '/';
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// ============================================
+// 배송지 관리 API
+// ============================================
+
+// 배송지 목록 조회
+app.get('/api/shipping-addresses/:userId', async (c) => {
+  const { DB } = c.env;
+  const userId = c.req.param('userId');
+  
+  try {
+    const addresses = await DB.prepare(`
+      SELECT * FROM shipping_addresses 
+      WHERE user_id = ? 
+      ORDER BY is_default DESC, created_at DESC
+    `).bind(userId).all();
+    
+    return c.json({
+      success: true,
+      data: addresses.results
+    });
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: (error as Error).message
+    }, 500);
+  }
+});
+
+// 배송지 추가
+app.post('/api/shipping-addresses', async (c) => {
+  const { DB } = c.env;
+  const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
+  
+  try {
+    // 기본 배송지로 설정 시 기존 기본 배송지 해제
+    if (isDefault) {
+      await DB.prepare(`
+        UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?
+      `).bind(userId).run();
+    }
+    
+    const result = await DB.prepare(`
+      INSERT INTO shipping_addresses (
+        user_id, recipient_name, phone, postal_code, 
+        address, address_detail, is_default, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(userId, recipientName, phone, postalCode, address, addressDetail, isDefault ? 1 : 0).run();
+    
+    return c.json({
+      success: true,
+      data: { id: result.meta.last_row_id }
+    });
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: (error as Error).message
+    }, 500);
+  }
+});
+
+// 배송지 수정
+app.put('/api/shipping-addresses/:id', async (c) => {
+  const { DB } = c.env;
+  const addressId = c.req.param('id');
+  const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
+  
+  try {
+    // 기본 배송지로 설정 시 기존 기본 배송지 해제
+    if (isDefault) {
+      await DB.prepare(`
+        UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?
+      `).bind(userId).run();
+    }
+    
+    await DB.prepare(`
+      UPDATE shipping_addresses 
+      SET recipient_name = ?, phone = ?, postal_code = ?, 
+          address = ?, address_detail = ?, is_default = ?, 
+          updated_at = datetime('now')
+      WHERE id = ? AND user_id = ?
+    `).bind(recipientName, phone, postalCode, address, addressDetail, isDefault ? 1 : 0, addressId, userId).run();
+    
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: (error as Error).message
+    }, 500);
+  }
+});
+
+// 배송지 삭제
+app.delete('/api/shipping-addresses/:id', async (c) => {
+  const { DB } = c.env;
+  const addressId = c.req.param('id');
+  const userId = c.req.query('userId');
+  
+  try {
+    await DB.prepare(`
+      DELETE FROM shipping_addresses WHERE id = ? AND user_id = ?
+    `).bind(addressId, userId).run();
+    
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: (error as Error).message
+    }, 500);
+  }
+});
+
+// 마이페이지 (프로필 + 배송지 관리)
+app.get('/mypage', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>마이페이지 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    </head>
+    <body class="bg-gray-50">
+        <div class="max-w-4xl mx-auto p-6">
+            <!-- 헤더 -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <img id="profile-image" src="" alt="프로필" class="w-16 h-16 rounded-full">
+                        <div>
+                            <h1 class="text-2xl font-bold" id="user-name">로딩 중...</h1>
+                            <p class="text-gray-600" id="user-email"></p>
+                        </div>
+                    </div>
+                    <a href="/logout" class="text-red-600 hover:underline">로그아웃</a>
+                </div>
+            </div>
+            
+            <!-- 배송지 관리 -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">배송지 관리</h2>
+                    <button onclick="openAddressModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>새 배송지 추가
+                    </button>
+                </div>
+                
+                <div id="address-list" class="space-y-4">
+                    <!-- 배송지 목록이 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 배송지 추가/수정 모달 -->
+        <div id="address-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 class="text-xl font-bold mb-4" id="modal-title">새 배송지 추가</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">받는 사람 *</label>
+                        <input type="text" id="recipient-name" class="w-full border rounded-lg px-4 py-2" placeholder="이름">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">연락처 *</label>
+                        <input type="tel" id="phone" class="w-full border rounded-lg px-4 py-2" placeholder="010-0000-0000">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">우편번호</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="postal-code" class="flex-1 border rounded-lg px-4 py-2" placeholder="12345" readonly>
+                            <button onclick="searchAddress()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+                                검색
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">주소 *</label>
+                        <input type="text" id="address" class="w-full border rounded-lg px-4 py-2" placeholder="주소" readonly>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">상세 주소</label>
+                        <input type="text" id="address-detail" class="w-full border rounded-lg px-4 py-2" placeholder="상세 주소 입력">
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" id="is-default" class="mr-2">
+                        <label for="is-default">기본 배송지로 설정</label>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 mt-6">
+                    <button onclick="closeAddressModal()" class="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300">
+                        취소
+                    </button>
+                    <button onclick="saveAddress()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        저장
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+        <script>
+            const userId = localStorage.getItem('user_id');
+            const userName = localStorage.getItem('user_name');
+            let editingAddressId = null;
+            
+            if (!userId) {
+                sessionStorage.setItem('return_url', window.location.pathname);
+                window.location.href = '/login';
+            }
+            
+            // 프로필 표시
+            document.getElementById('user-name').textContent = userName;
+            
+            // 배송지 목록 로드
+            async function loadAddresses() {
+                try {
+                    const response = await axios.get(\`/api/shipping-addresses/\${userId}\`);
+                    const addresses = response.data.data;
+                    
+                    const listHTML = addresses.map(addr => \`
+                        <div class="border rounded-lg p-4 \${addr.is_default ? 'border-blue-500 bg-blue-50' : ''}">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    \${addr.is_default ? '<span class="text-xs bg-blue-600 text-white px-2 py-1 rounded mb-2 inline-block">기본 배송지</span>' : ''}
+                                    <div class="font-bold">\${addr.recipient_name} | \${addr.phone}</div>
+                                    <div class="text-gray-600 mt-1">
+                                        [\${addr.postal_code || ''}] \${addr.address}<br>
+                                        \${addr.address_detail || ''}
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="editAddress(\${addr.id})" class="text-blue-600 hover:underline text-sm">수정</button>
+                                    <button onclick="deleteAddress(\${addr.id})" class="text-red-600 hover:underline text-sm">삭제</button>
+                                </div>
+                            </div>
+                        </div>
+                    \`).join('');
+                    
+                    document.getElementById('address-list').innerHTML = listHTML || '<p class="text-gray-500 text-center py-8">등록된 배송지가 없습니다.</p>';
+                } catch (error) {
+                    console.error('배송지 로드 오류:', error);
+                }
+            }
+            
+            // 주소 검색 (Daum Postcode API)
+            function searchAddress() {
+                new daum.Postcode({
+                    oncomplete: function(data) {
+                        document.getElementById('postal-code').value = data.zonecode;
+                        document.getElementById('address').value = data.address;
+                        document.getElementById('address-detail').focus();
+                    }
+                }).open();
+            }
+            
+            // 모달 열기
+            function openAddressModal() {
+                editingAddressId = null;
+                document.getElementById('modal-title').textContent = '새 배송지 추가';
+                document.getElementById('recipient-name').value = '';
+                document.getElementById('phone').value = '';
+                document.getElementById('postal-code').value = '';
+                document.getElementById('address').value = '';
+                document.getElementById('address-detail').value = '';
+                document.getElementById('is-default').checked = false;
+                document.getElementById('address-modal').classList.remove('hidden');
+                document.getElementById('address-modal').classList.add('flex');
+            }
+            
+            // 모달 닫기
+            function closeAddressModal() {
+                document.getElementById('address-modal').classList.add('hidden');
+                document.getElementById('address-modal').classList.remove('flex');
+            }
+            
+            // 배송지 저장
+            async function saveAddress() {
+                const data = {
+                    userId: parseInt(userId),
+                    recipientName: document.getElementById('recipient-name').value,
+                    phone: document.getElementById('phone').value,
+                    postalCode: document.getElementById('postal-code').value,
+                    address: document.getElementById('address').value,
+                    addressDetail: document.getElementById('address-detail').value,
+                    isDefault: document.getElementById('is-default').checked
+                };
+                
+                if (!data.recipientName || !data.phone || !data.address) {
+                    alert('필수 항목을 입력해주세요.');
+                    return;
+                }
+                
+                try {
+                    if (editingAddressId) {
+                        await axios.put(\`/api/shipping-addresses/\${editingAddressId}\`, data);
+                    } else {
+                        await axios.post('/api/shipping-addresses', data);
+                    }
+                    
+                    closeAddressModal();
+                    loadAddresses();
+                    alert('저장되었습니다.');
+                } catch (error) {
+                    console.error('저장 오류:', error);
+                    alert('저장에 실패했습니다.');
+                }
+            }
+            
+            // 배송지 수정
+            async function editAddress(id) {
+                const response = await axios.get(\`/api/shipping-addresses/\${userId}\`);
+                const address = response.data.data.find(a => a.id === id);
+                
+                if (address) {
+                    editingAddressId = id;
+                    document.getElementById('modal-title').textContent = '배송지 수정';
+                    document.getElementById('recipient-name').value = address.recipient_name;
+                    document.getElementById('phone').value = address.phone;
+                    document.getElementById('postal-code').value = address.postal_code || '';
+                    document.getElementById('address').value = address.address;
+                    document.getElementById('address-detail').value = address.address_detail || '';
+                    document.getElementById('is-default').checked = address.is_default === 1;
+                    document.getElementById('address-modal').classList.remove('hidden');
+                    document.getElementById('address-modal').classList.add('flex');
+                }
+            }
+            
+            // 배송지 삭제
+            async function deleteAddress(id) {
+                if (!confirm('이 배송지를 삭제하시겠습니까?')) return;
+                
+                try {
+                    await axios.delete(\`/api/shipping-addresses/\${id}?userId=\${userId}\`);
+                    loadAddresses();
+                    alert('삭제되었습니다.');
+                } catch (error) {
+                    console.error('삭제 오류:', error);
+                    alert('삭제에 실패했습니다.');
+                }
+            }
+            
+            // 초기 로드
+            loadAddresses();
+        </script>
     </body>
     </html>
   `);
