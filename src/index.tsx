@@ -201,10 +201,89 @@ app.get('/auth/kakao', async (c) => {
 });
 
 // 카카오 로그인 콜백 처리
-
-// Kakao OAuth callback - redirect to React SPA
 app.get('/auth/kakao/callback', async (c) => {
-  return c.redirect('/');
+  const { DB } = c.env;
+  const code = c.req.query('code');
+  
+  if (!code) {
+    return c.redirect('/?error=no_code');
+  }
+  
+  try {
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
+    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+    
+    // 1. Access Token 요청
+    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_API_KEY,
+        redirect_uri: KAKAO_REDIRECT_URI,
+        code: code,
+      }),
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      return c.redirect('/?error=token_failed');
+    }
+    
+    // 2. 사용자 정보 요청
+    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+      },
+    });
+    
+    const userData = await userResponse.json();
+    
+    // 3. 사용자 정보 저장/업데이트
+    const kakaoId = userData.id.toString();
+    const nickname = userData.properties?.nickname || 'Kakao User';
+    const email = userData.kakao_account?.email || '';
+    const profileImage = userData.properties?.profile_image || '';
+    
+    // 기존 사용자 확인
+    const existingUser = await DB.prepare(
+      'SELECT * FROM users WHERE kakao_id = ?'
+    ).bind(kakaoId).first();
+    
+    let userId;
+    
+    if (existingUser) {
+      // 기존 사용자 업데이트
+      userId = existingUser.id;
+      await DB.prepare(
+        'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).bind(nickname, email, profileImage, userId).run();
+    } else {
+      // 신규 사용자 생성
+      const result = await DB.prepare(
+        'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
+      ).bind(nickname, email, kakaoId, profileImage).run();
+      userId = result.meta.last_row_id;
+    }
+    
+    // 4. 세션 생성 (24시간)
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    
+    await DB.prepare(
+      'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
+    ).bind(sessionToken, 'user', expiresAt).run();
+    
+    // 5. 세션 정보를 쿼리 파라미터로 전달하여 React에서 localStorage에 저장
+    return c.redirect(`/?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`);
+    
+  } catch (error) {
+    console.error('Kakao login error:', error);
+    return c.redirect('/?error=login_failed');
+  }
 });
 // 카카오 로그아웃
 app.post('/api/auth/kakao/logout', cors(), async (c) => {

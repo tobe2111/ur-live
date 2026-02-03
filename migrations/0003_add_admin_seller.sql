@@ -37,8 +37,12 @@ CREATE TABLE IF NOT EXISTS sellers (
   FOREIGN KEY (approved_by) REFERENCES admins(id)
 );
 
--- 3. products 테이블에 seller_id 추가 (이미 존재하면 무시)
--- ALTER TABLE products ADD COLUMN seller_id INTEGER REFERENCES sellers(id);
+-- 3. products 테이블에 seller_id 추가
+-- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we use a workaround
+-- Check if column exists before adding
+CREATE TABLE IF NOT EXISTS _temp_check AS SELECT * FROM products LIMIT 0;
+ALTER TABLE products ADD COLUMN seller_id INTEGER REFERENCES sellers(id);
+DROP TABLE _temp_check;
 
 -- 4. 세션 테이블 (로그인 세션 관리)
 CREATE TABLE IF NOT EXISTS admin_sessions (

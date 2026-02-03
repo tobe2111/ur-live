@@ -1,44 +1,52 @@
--- 테스트 라이브 스트림 데이터
--- Video ID Options (임베드 가능한 테스트 영상):
--- 1. dQw4w9WgXcQ: Rick Astley - Never Gonna Give You Up (임베드 허용 ⭐)
--- 2. c0KYU2j0TM4: Big Buck Bunny (공개 테스트 영상)
--- 참고: 실제 사용 시 본인의 YouTube 영상을 사용하고 임베드를 허용해야 합니다
-INSERT OR IGNORE INTO live_streams (id, title, description, youtube_video_id, status, created_at) VALUES 
-  (1, '토스 라이브 커머스 - 겨울 특집', '겨울 시즌 인기 상품 라이브 방송', 'dQw4w9WgXcQ', 'live', datetime('now')),
-  (2, '토스 라이브 커머스 - 봄맞이 세일', '봄 시즌 특가 상품 방송', 'jNQXAC9IVRw', 'scheduled', datetime('now'));
+-- 테스트 데이터 시드
 
--- 테스트 상품 데이터
-INSERT OR IGNORE INTO products (id, name, description, price, original_price, discount_rate, image_url, stock, category, live_stream_id, is_active) VALUES 
-  (1, '프리미엄 겨울 패딩', '따뜻하고 가벼운 겨울 필수 아이템', 89000, 150000, 40, 'https://picsum.photos/400/400?random=1', 50, '패션', 1, 1),
-  (2, '스마트워치 프로', '건강 관리와 편의를 한번에', 249000, 350000, 28, 'https://picsum.photos/400/400?random=2', 30, '전자기기', 1, 1),
-  (3, '프리미엄 커피 세트', '엄선된 원두로 만든 프리미엄 커피', 45000, 60000, 25, 'https://picsum.photos/400/400?random=3', 100, '식품', 1, 1),
-  (4, '무선 이어폰 X', '뛰어난 음질과 노이즈 캔슬링', 129000, 180000, 28, 'https://picsum.photos/400/400?random=4', 80, '전자기기', 1, 1),
-  (5, '유기농 스킨케어 세트', '자연 그대로의 건강한 피부 관리', 65000, 90000, 27, 'https://picsum.photos/400/400?random=5', 60, '뷰티', 2, 1);
+-- 1. 사용자 추가
+INSERT OR IGNORE INTO users (id, name, email, phone, created_at) VALUES
+  (1, '김토스', 'test@example.com', '010-1234-5678', CURRENT_TIMESTAMP),
+  (2, '이라이브', 'live@example.com', '010-2345-6789', CURRENT_TIMESTAMP);
 
--- 테스트 상품 옵션
-INSERT OR IGNORE INTO product_options (product_id, option_type, option_value, price_adjustment, stock) VALUES 
-  (1, 'color', '블랙', 0, 20),
-  (1, 'color', '네이비', 0, 15),
-  (1, 'color', '베이지', 0, 15),
-  (1, 'size', 'S', 0, 10),
-  (1, 'size', 'M', 0, 20),
-  (1, 'size', 'L', 0, 15),
-  (1, 'size', 'XL', 0, 5),
-  (2, 'color', '실버', 0, 15),
-  (2, 'color', '골드', 5000, 10),
-  (2, 'color', '블랙', 0, 5),
-  (4, 'color', '화이트', 0, 40),
-  (4, 'color', '블랙', 0, 40);
+-- Note: sellers는 0003 마이그레이션에서 이미 추가됨 (seller1, seller2)
 
--- 테스트 사용자
-INSERT OR IGNORE INTO users (id, toss_user_id, name, email, phone) VALUES 
-  (1, 'toss_user_001', '김토스', 'kim@example.com', '010-1234-5678'),
-  (2, 'toss_user_002', '이페이', 'lee@example.com', '010-2345-6789');
+-- 2. 라이브 스트림 추가
+INSERT OR IGNORE INTO live_streams (id, title, description, status, youtube_video_id, seller_id, seller_instagram, seller_youtube, created_at) VALUES
+  (1, '🔥 겨울 패션 특가 라이브!', '프리미엄 겨울 의류 최대 50% 할인', 'active', 'dQw4w9WgXcQ', 1, 'https://instagram.com/seller1', 'https://youtube.com/@seller1', CURRENT_TIMESTAMP),
+  (2, '⚡ 스마트 전자기기 대방출', '최신 스마트워치, 이어폰 특가', 'scheduled', 'dQw4w9WgXcQ', 2, 'https://instagram.com/seller2', 'https://youtube.com/@seller2', CURRENT_TIMESTAMP),
+  (3, '🎁 뷰티 & 헬스케어', '겨울 피부관리 필수템', 'ended', 'dQw4w9WgXcQ', 1, '', '', CURRENT_TIMESTAMP),
+  (4, '🛍️ 홈 데코 & 리빙', '새해 맞이 인테리어 특가', 'active', 'jNQXAC9IVRw', 2, '', '', CURRENT_TIMESTAMP);
 
--- 테스트 장바구니
-INSERT OR IGNORE INTO cart_items (user_id, product_id, option_id, quantity, price_snapshot, live_stream_id) VALUES 
-  (1, 1, 1, 1, 89000, 1),
-  (1, 2, 8, 1, 249000, 1);
+-- 3. 상품 추가
+INSERT OR IGNORE INTO products (id, name, description, price, discount_rate, stock, image_url, live_stream_id, seller_id, is_active, created_at) VALUES
+  -- 라이브 1 상품
+  (1, '프리미엄 겨울 패딩', '고급 구스다운 충전재, 방수 기능', 189000, 20, 50, 'https://picsum.photos/400/400?random=11', 1, 1, 1, CURRENT_TIMESTAMP),
+  (2, '캐시미어 니트', '100% 순수 캐시미어', 129000, 15, 30, 'https://picsum.photos/400/400?random=12', 1, 1, 1, CURRENT_TIMESTAMP),
+  (3, '울 코트', '이탈리아 울 100%', 259000, 25, 20, 'https://picsum.photos/400/400?random=13', 1, 1, 1, CURRENT_TIMESTAMP),
+  -- 라이브 2 상품
+  (4, '스마트워치 프로', '건강 모니터링 + GPS', 349000, 30, 100, 'https://picsum.photos/400/400?random=21', 2, 2, 1, CURRENT_TIMESTAMP),
+  (5, '무선 이어폰', '노이즈 캔슬링 ANC', 89000, 20, 150, 'https://picsum.photos/400/400?random=22', 2, 2, 1, CURRENT_TIMESTAMP),
+  (6, '태블릿 10인치', '고성능 프로세서', 449000, 15, 50, 'https://picsum.photos/400/400?random=23', 2, 2, 1, CURRENT_TIMESTAMP),
+  -- 라이브 3 상품
+  (7, '프리미엄 스킨케어 세트', '보습+탄력 케어', 79000, 30, 80, 'https://picsum.photos/400/400?random=31', 3, 1, 1, CURRENT_TIMESTAMP),
+  (8, '비타민 C 세럼', '피부 톤 개선', 45000, 25, 120, 'https://picsum.photos/400/400?random=32', 3, 1, 1, CURRENT_TIMESTAMP),
+  -- 라이브 4 상품
+  (9, '모던 테이블 램프', 'LED 터치 조명', 39000, 20, 60, 'https://picsum.photos/400/400?random=41', 4, 2, 1, CURRENT_TIMESTAMP),
+  (10, '감성 쿠션 세트', '프리미엄 벨벳 소재', 29000, 15, 100, 'https://picsum.photos/400/400?random=42', 4, 2, 1, CURRENT_TIMESTAMP);
 
--- 라이브 스트림의 현재 상품 업데이트
-UPDATE live_streams SET current_product_id = 1 WHERE id = 1;
+-- 4. 현재 노출 상품 설정 (라이브 스트림별 메인 상품)
+UPDATE products SET is_active = 1 WHERE live_stream_id = 1 AND id = 1;
+UPDATE products SET is_active = 1 WHERE live_stream_id = 2 AND id = 4;
+UPDATE products SET is_active = 1 WHERE live_stream_id = 3 AND id = 7;
+UPDATE products SET is_active = 1 WHERE live_stream_id = 4 AND id = 9;
+
+-- 5. 상품 옵션 추가 (일부 상품만)
+INSERT OR IGNORE INTO product_options (id, product_id, name, additional_price, stock, created_at) VALUES
+  -- 패딩 옵션
+  (1, 1, '블랙 / S', 0, 10, CURRENT_TIMESTAMP),
+  (2, 1, '블랙 / M', 0, 15, CURRENT_TIMESTAMP),
+  (3, 1, '블랙 / L', 0, 15, CURRENT_TIMESTAMP),
+  (4, 1, '네이비 / M', 0, 10, CURRENT_TIMESTAMP),
+  -- 스마트워치 옵션
+  (5, 4, '블랙 / GPS', 0, 50, CURRENT_TIMESTAMP),
+  (6, 4, '실버 / GPS+LTE', 50000, 50, CURRENT_TIMESTAMP);
+
+-- 6. 완료
+SELECT '✅ Seed data inserted successfully' as result;

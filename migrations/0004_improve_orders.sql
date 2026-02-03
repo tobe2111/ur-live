@@ -10,7 +10,8 @@
 ALTER TABLE orders ADD COLUMN shipping_memo TEXT;
 
 -- 2. order_items 테이블에 상품 정보 스냅샷 추가
-ALTER TABLE order_items ADD COLUMN product_name TEXT NOT NULL DEFAULT '';
+-- product_name은 0001에 이미 존재하므로 스킵
+-- ALTER TABLE order_items ADD COLUMN product_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE order_items ADD COLUMN product_image TEXT;
 ALTER TABLE order_items ADD COLUMN option_name TEXT;
 ALTER TABLE order_items ADD COLUMN seller_id INTEGER;
@@ -18,15 +19,7 @@ ALTER TABLE order_items ADD COLUMN seller_id INTEGER;
 -- 3. 인덱스 추가
 CREATE INDEX IF NOT EXISTS idx_order_items_seller_id ON order_items(seller_id);
 
--- 4. 테스트 주문 데이터 추가 (프로덕션에서는 order_number 사용)
--- 로컬용 (order_no)
-INSERT OR IGNORE INTO orders (id, user_id, order_no, total_amount, status, payment_method, shipping_name, shipping_phone, shipping_address) 
-VALUES 
-  (1, 1, 'ORDER-20260202-001', 89000, 'PAY_COMPLETE', 'CARD', '김토스', '010-1234-5678', '서울시 강남구 테헤란로 1234'),
-  (2, 1, 'ORDER-20260202-002', 249000, 'SHIPPING', 'CARD', '김토스', '010-1234-5678', '서울시 강남구 테헤란로 1234');
+-- 4. 테스트 주문 데이터 추가는 seed.sql에서 처리
+-- user_id=1이 존재하지 않을 수 있으므로 주석 처리
 
--- 5. 테스트 주문 상품 추가
-INSERT OR IGNORE INTO order_items (id, order_id, product_id, quantity, price, product_name, product_image, seller_id) 
-VALUES 
-  (1, 1, 1, 1, 89000, '프리미엄 겨울 패딩', 'https://picsum.photos/400/400?random=1', 1),
-  (2, 2, 4, 1, 249000, '스마트워치 프로', 'https://picsum.photos/400/400?random=2', 2);
+-- 5. 테스트 주문 상품 추가는 seed.sql에서 처리
