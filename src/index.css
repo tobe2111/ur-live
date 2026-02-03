@@ -4,52 +4,66 @@
 
 @layer base {
   :root {
-    /* Kakao Design System Colors */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9.8%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9.8%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9.8%;
-    
-    /* Kakao Yellow Primary */
-    --primary: 58 100% 50%;
-    --primary-foreground: 0 0% 9.8%;
-    
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9.8%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9.8%;
+    /* Kakao Developers Dark Theme */
+    --background: 222 12% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 222 10% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 222 10% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 198 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 10% 18%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 222 10% 18%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 198 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 58 100% 50%;
-    --radius: 0.75rem;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 198 100% 50%;
+
+    --radius: 0.25rem;
   }
 
   .dark {
-    --background: 0 0% 9.8%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 9.8%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 9.8%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 58 100% 50%;
-    --primary-foreground: 0 0% 9.8%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 222 12% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 222 10% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 222 10% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 198 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 10% 18%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 222 10% 18%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 198 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 58 100% 50%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 198 100% 50%;
   }
 }
 
@@ -59,14 +73,21 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', helvetica, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    letter-spacing: -0.02em;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-    letter-spacing: -0.03em;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      system-ui,
+      Roboto,
+      "Helvetica Neue",
+      "Segoe UI",
+      "Apple SD Gothic Neo",
+      "Noto Sans KR",
+      "Malgun Gothic",
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol",
+      sans-serif;
+    letter-spacing: -0.01em;
   }
 }
