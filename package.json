@@ -4,7 +4,9 @@
   "scripts": {
     "dev": "vite",
     "dev:wrangler": "npm run build && wrangler pages dev dist --d1=toss-live-commerce-db --local --ip 0.0.0.0 --port 3000",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.worker.config.ts",
+    "build:client": "vite build",
+    "build:worker": "vite build --config vite.worker.config.ts",
     "preview": "npm run build && wrangler pages dev dist --d1=toss-live-commerce-db --local --ip 0.0.0.0 --port 3000",
     "deploy": "npm run build && wrangler pages deploy dist",
     "deploy:prod": "npm run build && wrangler pages deploy dist --project-name toss-live-commerce",
