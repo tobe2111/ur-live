@@ -4,66 +4,67 @@
 
 @layer base {
   :root {
-    /* Kakao Developers Dark Theme */
-    --background: 222 12% 8%;
-    --foreground: 0 0% 95%;
+    /* Grip-inspired Design System */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
 
-    --card: 222 10% 12%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 222 10% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    --primary: 198 100% 50%;
+    /* Magenta/Pink Primary Color */
+    --primary: 330 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 10% 18%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 222 10% 18%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 198 100% 50%;
+    --accent: 330 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 198 100% 50%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 330 100% 50%;
 
-    --radius: 0.25rem;
+    --radius: 1.5rem;
   }
 
   .dark {
-    --background: 222 12% 8%;
-    --foreground: 0 0% 95%;
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 10% 12%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 10% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 198 100% 50%;
+    --primary: 330 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 10% 18%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 222 10% 18%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 198 100% 50%;
+    --accent: 330 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 198 100% 50%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 330 100% 50%;
   }
 }
 
@@ -77,6 +78,8 @@
     font-family:
       -apple-system,
       BlinkMacSystemFont,
+      "Pretendard Variable",
+      Pretendard,
       system-ui,
       Roboto,
       "Helvetica Neue",
@@ -84,10 +87,47 @@
       "Apple SD Gothic Neo",
       "Noto Sans KR",
       "Malgun Gothic",
-      "Apple Color Emoji",
-      "Segoe UI Emoji",
-      "Segoe UI Symbol",
       sans-serif;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
+}
+
+/* Grip-style animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(255, 0, 128, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Mobile-first gradient backgrounds */
+.gradient-pink {
+  background: linear-gradient(135deg, #FF0080 0%, #FF6B9D 100%);
+}
+
+.gradient-purple {
+  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+}
+
+.gradient-overlay {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
 }
