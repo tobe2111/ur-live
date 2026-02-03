@@ -1,17 +1,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
-import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
-
 const app = new Hono<{ Bindings: Bindings }>();
-
-// CORS 설정
 app.use('/api/*', cors());
-
-// 정적 파일 서빙
 app.use('/static/*', serveStatic({ root: './public' }));
-
-// =================================
 // API Routes
 // =================================
 
@@ -20,6 +13,7 @@ app.use('/static/*', serveStatic({ root: './public' }));
 // =================================
 
 // 세션 생성 (D1에 저장)
+async function createSession(DB: any, userId: number, userType: 'admin' | 'seller', userData: any) {
 async function createSession(DB: any, userId: number, userType: 'admin' | 'seller', userData: any) {
   const sessionToken = `${userType}_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24시간 후
@@ -33,6 +27,7 @@ async function createSession(DB: any, userId: number, userType: 'admin' | 'selle
 }
 
 // 세션 조회 및 검증
+async function getSession(DB: any, sessionToken: string) {
 async function getSession(DB: any, sessionToken: string) {
   const session = await DB.prepare(`
     SELECT * FROM admin_sessions WHERE session_token = ? AND expires_at > datetime('now')
@@ -1414,6 +1409,112 @@ app.get('/payment/success', async (c) => {
 // Removed route: /login (handled by React SPA)
 
 // 카카오 OAuth 콜백
+app.get('/auth/kakao/callback', async (c) => {
+  const { DB } = c.env;
+  const code = c.req.query('code');
+  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || 'your_kakao_rest_api_key';
+  const REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  
+  if (!code) {
+    return c.redirect('/login?error=no_code');
+  }
+  
+  try {
+    // 1. 액세스 토큰 발급
+    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_API_KEY,
+        redirect_uri: REDIRECT_URI,
+        code: code,
+      }),
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      console.error('Token error:', tokenData);
+      return c.redirect('/login?error=token_failed');
+    }
+    
+    // 2. 사용자 정보 가져오기
+    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+    });
+    
+    const kakaoUser = await userResponse.json();
+    
+    if (!kakaoUser.id) {
+      console.error('User info error:', kakaoUser);
+      return c.redirect('/login?error=user_info_failed');
+    }
+    
+    // 3. DB에서 사용자 찾기 또는 생성
+    let user = await DB.prepare(`
+      SELECT * FROM users WHERE kakao_id = ?
+    `).bind(String(kakaoUser.id)).first();
+    
+    if (!user) {
+      // 신규 사용자 생성
+      const nickname = kakaoUser.kakao_account?.profile?.nickname || '사용자';
+      const email = kakaoUser.kakao_account?.email || null;
+      const profileImage = kakaoUser.kakao_account?.profile?.profile_image_url || null;
+      
+      const result = await DB.prepare(`
+        INSERT INTO users (kakao_id, name, email, profile_image, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+      `).bind(String(kakaoUser.id), nickname, email, profileImage).run();
+      
+      const userId = result.meta.last_row_id;
+      
+      user = await DB.prepare(`
+        SELECT * FROM users WHERE id = ?
+      `).bind(userId).first();
+    }
+    
+    // 4. 세션 생성 (간단한 JWT 또는 쿠키)
+    // 여기서는 간단하게 쿠키에 user_id 저장
+    const sessionToken = Buffer.from(JSON.stringify({ 
+      userId: user.id, 
+      kakaoId: user.kakao_id,
+      name: user.name 
+    })).toString('base64');
+    
+    // 5. 쿠키 설정 후 리다이렉트
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>로그인 중...</title>
+      </head>
+      <body>
+          <script>
+            // 세션 정보를 localStorage에 저장
+            localStorage.setItem('user_session', '${sessionToken}');
+            localStorage.setItem('user_id', '${user.id}');
+            localStorage.setItem('user_name', '${user.name}');
+            
+            // 원래 페이지로 돌아가기 (또는 홈으로)
+            const returnUrl = sessionStorage.getItem('return_url') || '/';
+            sessionStorage.removeItem('return_url');
+            window.location.href = returnUrl;
+          </script>
+      </body>
+      </html>
+    `);
+    
+  } catch (error) {
+    console.error('Kakao login error:', error);
+    return c.redirect('/login?error=server_error');
+  }
+});
+
 // 로그아웃
 // Removed route: /logout (handled by React SPA)
 
@@ -3994,17 +4095,6 @@ app.get('/seller', async (c) => {
     </body>
     </html>
   `);
-});
-
-// SPA Fallback - catch all routes not matched above
-app.notFound(async (c) => {
-  // For paths starting with /api, return JSON 404
-  if (c.req.path.startsWith('/api/')) {
-    return c.json({ error: 'Not found' }, 404);
-  }
-  
-  // For all other paths, redirect to React SPA
-  return c.redirect('/');
 });
 
 export default app;
