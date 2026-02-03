@@ -319,182 +319,182 @@ export default function LivePage() {
           }}
         />
         
-        {/* Subtle Bottom Gradient */}
+        {/* Enhanced Bottom Gradient for Readability */}
         <div 
           className="absolute inset-x-0 bottom-0 pointer-events-none"
           style={{
-            height: '40%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 30%, transparent 100%)',
+            height: '35%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 30%, transparent 100%)',
           }}
         />
       </div>
 
-      {/* Notification Banner */}
+      {/* Notification Banner - Minimal */}
       {showNotification && (
         <div 
-          className="fixed top-20 left-4 right-4 z-50 animate-fade-in"
+          className="fixed top-24 left-6 right-6 z-50 animate-fade-in"
           style={{
             animation: 'fadeIn 0.3s ease-in-out',
           }}
         >
-          <div className="bg-[#34c759]/95 backdrop-blur-sm px-4 py-2 rounded-full text-center">
-            <span className="text-white text-[13px] font-semibold" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+          <div className="bg-[#34c759]/90 backdrop-blur-lg px-5 py-2.5 rounded-full text-center shadow-lg border border-white/10">
+            <span className="text-white text-[11px] font-semibold tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
               ✓ {notificationText}
             </span>
           </div>
         </div>
       )}
 
-      {/* Top Bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 px-4 pt-4 pb-2 safe-top">
+      {/* Top Bar - Minimalist & Spacious */}
+      <div className="fixed top-0 left-0 right-0 z-40 px-6 pt-8 pb-3 safe-top">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all active:scale-95"
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ArrowLeft className="w-4 h-4 text-white" />
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff3b30]/90">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              <span className="text-white text-[12px] font-bold">LIVE</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ff3b30]/85 backdrop-blur-sm">
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-[10px] font-semibold tracking-wide">LIVE</span>
             </div>
             {stream.viewer_count && (
-              <div className="px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-sm">
-                <span className="text-white text-[12px] font-semibold">
+              <div className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15">
+                <span className="text-white text-[10px] font-medium">
                   {stream.viewer_count.toLocaleString()}
                 </span>
               </div>
             )}
           </div>
 
-          {/* SNS Follow Buttons */}
+          {/* SNS Follow Buttons - Minimal Circles */}
           <div className="flex items-center gap-2">
             {stream.seller_instagram && (
               <button 
                 onClick={() => handleSNSFollow('instagram')}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-pink-500 backdrop-blur-sm"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all active:scale-95"
               >
-                <Instagram className="w-5 h-5 text-white" />
+                <Instagram className="w-3.5 h-3.5 text-white" />
               </button>
             )}
             {stream.seller_youtube && (
               <button 
                 onClick={() => handleSNSFollow('youtube')}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#ff0000] backdrop-blur-sm"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all active:scale-95"
               >
-                <Youtube className="w-5 h-5 text-white" />
+                <Youtube className="w-3.5 h-3.5 text-white" />
               </button>
             )}
             {stream.seller_facebook && (
               <button 
                 onClick={() => handleSNSFollow('facebook')}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#1877f2] backdrop-blur-sm"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all active:scale-95"
               >
-                <Facebook className="w-5 h-5 text-white" />
-              </button>
-            )}
-            {!stream.seller_instagram && !stream.seller_youtube && !stream.seller_facebook && (
-              <button className="flex items-center justify-center w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm">
-                <span className="text-[20px]">{muted ? '🔇' : '🔊'}</span>
+                <Facebook className="w-3.5 h-3.5 text-white" />
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Right Side Mini Icons */}
-      <div className="fixed right-3 bottom-32 z-30 flex flex-col gap-3">
-        <button onClick={handleLike} className="flex flex-col items-center gap-0.5">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Heart className={`w-5 h-5 ${liked ? 'fill-[#ff3b30] text-[#ff3b30]' : 'text-white'}`} />
+      {/* Right Side Mini Icons - Ultra Compact */}
+      <div className="fixed right-4 bottom-36 z-30 flex flex-col gap-4">
+        <button onClick={handleLike} className="flex flex-col items-center gap-1 transition-all active:scale-95">
+          <div className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center">
+            <Heart className={`w-4 h-4 ${liked ? 'fill-[#ff3b30] text-[#ff3b30]' : 'text-white'}`} />
           </div>
-          <span className="text-white text-[10px] font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+          <span className="text-white text-[9px] font-medium" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             {likes > 1000 ? `${(likes / 1000).toFixed(1)}K` : likes}
           </span>
         </button>
 
-        <button className="flex flex-col items-center gap-0.5">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <Share2 className="w-5 h-5 text-white" />
+        <button className="flex flex-col items-center gap-1 transition-all active:scale-95">
+          <div className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center">
+            <Share2 className="w-4 h-4 text-white" />
           </div>
-          <span className="text-white text-[10px] font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+          <span className="text-white text-[9px] font-medium" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             공유
           </span>
         </button>
 
-        <button className="flex flex-col items-center gap-0.5">
-          <div className="w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-            <MessageCircle className="w-5 h-5 text-white" />
+        <button className="flex flex-col items-center gap-1 transition-all active:scale-95">
+          <div className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center">
+            <MessageCircle className="w-4 h-4 text-white" />
           </div>
-          <span className="text-white text-[10px] font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+          <span className="text-white text-[9px] font-medium" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             {messages.length}
           </span>
         </button>
       </div>
 
-      {/* Bottom Content Area - 30% of screen */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 pb-4 safe-bottom" style={{ height: '30vh' }}>
-        <div className="h-full flex flex-col justify-end px-4 space-y-3">
-          {/* Stream Info */}
-          <div>
-            <h1 className="text-white text-[18px] font-bold mb-0.5 leading-tight" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
-              {stream.title}
-            </h1>
-            <p className="text-white/90 text-[13px] leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.9)' }}>
-              {stream.description}
-            </p>
+      {/* Bottom Content Area - Floating & Spacious */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 pb-6 safe-bottom">
+        <div className="flex flex-col justify-end px-6 space-y-4">
+          {/* Chat Messages - Ultra Clean with Gradient Scrim */}
+          <div className="relative">
+            <div 
+              className="absolute inset-x-0 bottom-0 h-16 pointer-events-none"
+              style={{
+                background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)'
+              }}
+            />
+            <div className="space-y-2 max-h-24 overflow-y-auto pb-2">
+              {messages.slice(-3).map((msg) => (
+                <div key={msg.id} className="flex items-start gap-2">
+                  <span 
+                    className="text-white text-[12px] font-semibold shrink-0" 
+                    style={{ 
+                      textShadow: '0 2px 8px rgba(0,0,0,1)',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif'
+                    }}
+                  >
+                    {msg.username}
+                  </span>
+                  <span 
+                    className="text-white/95 text-[12px]" 
+                    style={{ 
+                      textShadow: '0 2px 8px rgba(0,0,0,1)',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif'
+                    }}
+                  >
+                    {msg.message}
+                  </span>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
           </div>
 
-          {/* Chat Messages - Clean & Minimal */}
-          <div className="space-y-1.5 max-h-20 overflow-y-auto">
-            {messages.slice(-3).map((msg) => (
-              <div key={msg.id} className="flex items-start gap-1.5">
-                <span 
-                  className="text-white text-[13px] font-semibold leading-tight" 
-                  style={{ textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}
-                >
-                  {msg.username}
-                </span>
-                <span 
-                  className="text-white text-[13px] leading-tight" 
-                  style={{ textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}
-                >
-                  {msg.message}
-                </span>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Slim Product Card - Horizontal Bar */}
+          {/* Compact Floating Product Card */}
           {currentProduct?.product && (
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-3 py-2.5 shadow-lg">
+            <div className="w-[85%] mx-auto bg-white/90 backdrop-blur-xl rounded-3xl p-3 shadow-2xl border border-white/20">
               <div className="flex items-center gap-3">
                 <img
-                  src={currentProduct.product.image_url || 'https://via.placeholder.com/48'}
+                  src={currentProduct.product.image_url || 'https://via.placeholder.com/56'}
                   alt={currentProduct.product.name}
-                  className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                  className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-semibold text-[#1d1d1f] line-clamp-1 leading-tight">
+                  <p className="text-[11px] font-semibold text-[#1d1d1f] line-clamp-1 mb-0.5" 
+                     style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif' }}>
                     {currentProduct.product.name}
                   </p>
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-1.5">
                     {currentProduct.product.discount_rate > 0 && (
-                      <span className="text-[#ff3b30] text-[11px] font-bold">
+                      <span className="text-[#ff3b30] text-[11px] font-extrabold">
                         {currentProduct.product.discount_rate}%
                       </span>
                     )}
-                    <span className="text-[#1d1d1f] text-[14px] font-bold">
+                    <span className="text-[#1d1d1f] text-[13px] font-bold">
                       {discountedPrice.toLocaleString()}원
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={handleAddToCart}
-                  className="flex-shrink-0 bg-[#FF5126] text-white px-4 py-1.5 rounded-full text-[12px] font-bold"
+                  className="flex-shrink-0 bg-[#FF5126] text-white px-3.5 py-1.5 rounded-full text-[11px] font-bold shadow-md transition-all active:scale-95"
                 >
                   담기
                 </button>
@@ -502,32 +502,32 @@ export default function LivePage() {
             </div>
           )}
 
-          {/* Bottom Action Bar */}
-          <div className="flex items-center gap-2">
-            {/* Chat Input - Outline Only */}
-            <form onSubmit={handleSendMessage} className="flex-1 flex items-center gap-2">
+          {/* Bottom Input Bar - Floating Style */}
+          <div className="flex items-center gap-3 px-2">
+            {/* Chat Input - Minimal Floating */}
+            <form onSubmit={handleSendMessage} className="flex-1">
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="메시지 입력..."
-                className="flex-1 bg-transparent border border-white/40 rounded-full px-4 py-2.5 text-[13px] text-white placeholder:text-white/60"
+                placeholder="메시지..."
+                className="w-full h-11 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full px-5 text-[12px] text-white placeholder:text-white/50 transition-all focus:bg-white/15 focus:border-white/30"
                 style={{ 
-                  backdropFilter: 'blur(8px)',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                  textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif'
                 }}
               />
             </form>
 
-            {/* Large Payment Button - Circle */}
+            {/* Payment Button - Prominent Circle */}
             <button
               onClick={handleCheckout}
-              className="relative flex items-center justify-center w-14 h-14 rounded-full bg-[#0064FF] shadow-lg flex-shrink-0"
+              className="relative flex items-center justify-center w-12 h-12 rounded-full bg-[#0064FF] shadow-xl flex-shrink-0 transition-all active:scale-95"
             >
-              <ShoppingBag className="w-6 h-6 text-white" />
+              <ShoppingBag className="w-5 h-5 text-white" />
               {cartCount > 0 && (
-                <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-[#ff3b30] rounded-full flex items-center justify-center px-1.5">
-                  <span className="text-white text-[11px] font-bold">{cartCount}</span>
+                <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] bg-[#ff3b30] rounded-full flex items-center justify-center px-1.5 shadow-lg">
+                  <span className="text-white text-[10px] font-bold">{cartCount}</span>
                 </div>
               )}
             </button>
