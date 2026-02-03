@@ -9610,4 +9610,7 @@ app.get('/seller', async (c) => {
   `);
 });
 
+// SPA Fallback - Serve index.html for all non-API routes
+app.get('*', serveStatic({ path: '/index.html' }));
+
 export default app;
