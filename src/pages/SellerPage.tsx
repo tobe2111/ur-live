@@ -1,27 +1,494 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { 
+  ArrowLeft, 
+  TrendingUp,
+  Package,
+  DollarSign,
+  Users,
+  Play,
+  Pause,
+  Settings,
+  BarChart3,
+  ShoppingBag,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  Calendar,
+  ChevronRight
+} from 'lucide-react'
+
+interface DashboardStats {
+  totalRevenue: number
+  totalOrders: number
+  activeStreams: number
+  totalViewers: number
+}
+
+interface LiveStream {
+  id: number
+  title: string
+  description: string
+  youtube_video_id: string
+  status: 'scheduled' | 'live' | 'ended'
+  viewer_count: number
+  created_at: string
+}
+
+interface Product {
+  id: number
+  name: string
+  price: number
+  stock: number
+  image_url: string
+  is_active: boolean
+}
 
 export default function SellerPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8">
-        <Button variant="ghost" asChild className="mb-4">
-          <Link to="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            홈으로 돌아가기
-          </Link>
-        </Button>
-        <div className="rounded-lg border bg-card p-8 text-center">
-          <h1 className="mb-4 text-3xl font-bold">셀러 대시보드</h1>
-          <p className="mb-6 text-muted-foreground">
-            셀러 대시보드가 곧 shadcn/ui로 구현됩니다
-          </p>
-          <Button asChild>
-            <Link to="/">홈으로</Link>
-          </Button>
+  const navigate = useNavigate()
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRevenue: 0,
+    totalOrders: 0,
+    activeStreams: 0,
+    totalViewers: 0
+  })
+  const [streams, setStreams] = useState<LiveStream[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Mock seller info (in production, get from session)
+  const sellerName = '유어 라이브 셀러'
+  const sellerEmail = 'seller@yourlive.com'
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+
+  async function loadDashboardData() {
+    try {
+      // Mock data for demo (in production, call real APIs)
+      setStats({
+        totalRevenue: 12450000,
+        totalOrders: 342,
+        activeStreams: 2,
+        totalViewers: 1523
+      })
+
+      // Load streams
+      const streamsResponse = await axios.get('/api/streams')
+      if (streamsResponse.data.success) {
+        setStreams(streamsResponse.data.data || [])
+      }
+
+      // Mock products for demo
+      setProducts([
+        {
+          id: 1,
+          name: '프리미엄 무선 이어폰',
+          price: 129000,
+          stock: 45,
+          image_url: 'https://via.placeholder.com/80',
+          is_active: true
+        },
+        {
+          id: 2,
+          name: '스마트 워치 밴드',
+          price: 29000,
+          stock: 8,
+          image_url: 'https://via.placeholder.com/80',
+          is_active: true
+        },
+        {
+          id: 3,
+          name: 'USB-C 충전 케이블',
+          price: 15000,
+          stock: 0,
+          image_url: 'https://via.placeholder.com/80',
+          is_active: false
+        }
+      ])
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff] mx-auto mb-4"></div>
+          <p className="text-[17px] text-[#6e6e73]">대시보드 로딩 중...</p>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#fbfbfd]">
+      {/* Header */}
+      <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
+          <div className="flex h-[52px] items-center justify-between">
+            <Link 
+              to="/"
+              className="flex items-center space-x-2 text-[#1d1d1f] hover:opacity-60 transition-opacity"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span className="text-[14px] font-normal hidden sm:inline">홈으로</span>
+            </Link>
+            <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
+              셀러 대시보드
+            </h1>
+            <button className="text-[#1d1d1f] hover:opacity-60 transition-opacity">
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-[28px] sm:text-[32px] font-bold text-[#1d1d1f] mb-2">
+            안녕하세요, {sellerName}님! 👋
+          </h2>
+          <p className="text-[15px] sm:text-[17px] text-[#6e6e73]">
+            오늘도 성공적인 라이브 쇼핑을 시작해보세요
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          <div className="apple-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-[#34c759]" />
+              </div>
+              <TrendingUp className="h-4 w-4 text-[#34c759]" />
+            </div>
+            <p className="text-[13px] text-[#6e6e73] mb-1">총 매출</p>
+            <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
+              {stats.totalRevenue.toLocaleString()}원
+            </p>
+          </div>
+
+          <div className="apple-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-[#007aff]/10 rounded-full flex items-center justify-center">
+                <ShoppingBag className="h-5 w-5 text-[#007aff]" />
+              </div>
+              <TrendingUp className="h-4 w-4 text-[#007aff]" />
+            </div>
+            <p className="text-[13px] text-[#6e6e73] mb-1">총 주문</p>
+            <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
+              {stats.totalOrders}건
+            </p>
+          </div>
+
+          <div className="apple-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-[#ff3b30]/10 rounded-full flex items-center justify-center">
+                <Play className="h-5 w-5 text-[#ff3b30]" />
+              </div>
+              <Badge className="bg-[#ff3b30] text-white border-0 px-2 py-0.5">
+                <span className="text-[11px] font-semibold">LIVE</span>
+              </Badge>
+            </div>
+            <p className="text-[13px] text-[#6e6e73] mb-1">활성 라이브</p>
+            <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
+              {stats.activeStreams}개
+            </p>
+          </div>
+
+          <div className="apple-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-[#ff9500]/10 rounded-full flex items-center justify-center">
+                <Users className="h-5 w-5 text-[#ff9500]" />
+              </div>
+              <Eye className="h-4 w-4 text-[#ff9500]" />
+            </div>
+            <p className="text-[13px] text-[#6e6e73] mb-1">총 시청자</p>
+            <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
+              {stats.totalViewers.toLocaleString()}명
+            </p>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Live Streams Section */}
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
+                내 라이브 스트림
+              </h3>
+              <button className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity">
+                + 새 라이브
+              </button>
+            </div>
+
+            {streams.length === 0 ? (
+              <div className="apple-card p-12 text-center">
+                <div className="w-16 h-16 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Play className="h-8 w-8 text-[#6e6e73]" />
+                </div>
+                <p className="text-[15px] text-[#6e6e73] mb-4">
+                  라이브가 없습니다
+                </p>
+                <button className="apple-button px-6 py-2.5">
+                  라이브 시작하기
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {streams.slice(0, 3).map(stream => (
+                  <div key={stream.id} className="apple-card p-4 hover:shadow-lg transition-shadow">
+                    <div className="flex gap-4">
+                      <img
+                        src={`https://img.youtube.com/vi/${stream.youtube_video_id}/mqdefault.jpg`}
+                        alt={stream.title}
+                        className="w-24 h-24 rounded-xl object-cover flex-shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/96'
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="text-[15px] font-semibold text-[#1d1d1f] line-clamp-1">
+                            {stream.title}
+                          </h4>
+                          <Badge 
+                            className={`
+                              border-0 px-2 py-0.5 ml-2 flex-shrink-0
+                              ${stream.status === 'live' 
+                                ? 'bg-[#ff3b30] text-white' 
+                                : stream.status === 'scheduled'
+                                ? 'bg-[#ff9500] text-white'
+                                : 'bg-[#8e8e93] text-white'
+                              }
+                            `}
+                          >
+                            <span className="text-[11px] font-semibold">
+                              {stream.status === 'live' 
+                                ? 'LIVE' 
+                                : stream.status === 'scheduled'
+                                ? '예정'
+                                : '종료'
+                              }
+                            </span>
+                          </Badge>
+                        </div>
+                        <p className="text-[13px] text-[#6e6e73] mb-2 line-clamp-1">
+                          {stream.description || '설명 없음'}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-[13px] text-[#6e6e73]">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-3.5 w-3.5" />
+                              {stream.viewer_count?.toLocaleString() || 0}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              {new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                            </div>
+                          </div>
+                          <button className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center">
+                            관리
+                            <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Products Section */}
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
+                상품 관리
+              </h3>
+              <button className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity">
+                + 상품 추가
+              </button>
+            </div>
+
+            {products.length === 0 ? (
+              <div className="apple-card p-12 text-center">
+                <div className="w-16 h-16 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Package className="h-8 w-8 text-[#6e6e73]" />
+                </div>
+                <p className="text-[15px] text-[#6e6e73] mb-4">
+                  등록된 상품이 없습니다
+                </p>
+                <button className="apple-button px-6 py-2.5">
+                  상품 추가하기
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {products.map(product => (
+                  <div key={product.id} className="apple-card p-4 hover:shadow-lg transition-shadow">
+                    <div className="flex gap-4">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80'
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="text-[15px] font-semibold text-[#1d1d1f] line-clamp-1">
+                            {product.name}
+                          </h4>
+                          {product.is_active ? (
+                            <Badge className="bg-[#34c759] text-white border-0 px-2 py-0.5 ml-2 flex-shrink-0">
+                              <span className="text-[11px] font-semibold">판매중</span>
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-[#8e8e93] text-white border-0 px-2 py-0.5 ml-2 flex-shrink-0">
+                              <span className="text-[11px] font-semibold">품절</span>
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[17px] font-bold text-[#1d1d1f] mb-2">
+                          {product.price.toLocaleString()}원
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className={`
+                            text-[13px] font-medium
+                            ${product.stock > 10 
+                              ? 'text-[#34c759]' 
+                              : product.stock > 0 
+                              ? 'text-[#ff9500]' 
+                              : 'text-[#ff3b30]'
+                            }
+                          `}>
+                            {product.stock > 0 
+                              ? `재고 ${product.stock}개` 
+                              : '품절'
+                            }
+                          </div>
+                          <button className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center">
+                            수정
+                            <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+            <div className="w-12 h-12 bg-[#007aff]/10 rounded-full flex items-center justify-center mb-4">
+              <BarChart3 className="h-6 w-6 text-[#007aff]" />
+            </div>
+            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
+              매출 분석
+            </h4>
+            <p className="text-[13px] text-[#6e6e73]">
+              상세한 매출 리포트 확인
+            </p>
+          </button>
+
+          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+            <div className="w-12 h-12 bg-[#34c759]/10 rounded-full flex items-center justify-center mb-4">
+              <Calendar className="h-6 w-6 text-[#34c759]" />
+            </div>
+            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
+              라이브 예약
+            </h4>
+            <p className="text-[13px] text-[#6e6e73]">
+              새로운 라이브 일정 등록
+            </p>
+          </button>
+
+          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+            <div className="w-12 h-12 bg-[#ff9500]/10 rounded-full flex items-center justify-center mb-4">
+              <Package className="h-6 w-6 text-[#ff9500]" />
+            </div>
+            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
+              재고 관리
+            </h4>
+            <p className="text-[13px] text-[#6e6e73]">
+              상품 재고 현황 확인
+            </p>
+          </button>
+
+          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+            <div className="w-12 h-12 bg-[#ff3b30]/10 rounded-full flex items-center justify-center mb-4">
+              <Settings className="h-6 w-6 text-[#ff3b30]" />
+            </div>
+            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
+              설정
+            </h4>
+            <p className="text-[13px] text-[#6e6e73]">
+              계정 및 알림 설정
+            </p>
+          </button>
+        </div>
+
+        {/* Recent Activity */}
+        <section className="mt-8">
+          <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-6">
+            최근 활동
+          </h3>
+          <div className="apple-card divide-y divide-[#e5e5ea]">
+            <div className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="h-5 w-5 text-[#34c759]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] text-[#1d1d1f]">
+                  <span className="font-semibold">신규 주문</span> 3건이 접수되었습니다
+                </p>
+                <p className="text-[13px] text-[#6e6e73]">2시간 전</p>
+              </div>
+            </div>
+
+            <div className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 bg-[#007aff]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <Play className="h-5 w-5 text-[#007aff]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] text-[#1d1d1f]">
+                  <span className="font-semibold">라이브 스트림</span>이 시작되었습니다
+                </p>
+                <p className="text-[13px] text-[#6e6e73]">5시간 전</p>
+              </div>
+            </div>
+
+            <div className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 bg-[#ff9500]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-[#ff9500]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] text-[#1d1d1f]">
+                  <span className="font-semibold">재고 부족</span> 상품이 3개 있습니다
+                </p>
+                <p className="text-[13px] text-[#6e6e73]">어제</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   )
 }
