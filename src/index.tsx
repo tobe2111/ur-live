@@ -2425,7 +2425,19 @@ app.get('/live/:streamId', (c) => {
                     alert('장바구니에 상품을 담아주세요');
                     return;
                 }
-                openBottomSheet();
+                
+                // 로그인 확인
+                const userId = localStorage.getItem('user_id');
+                if (!userId) {
+                    alert('로그인이 필요합니다.');
+                    return;
+                }
+                
+                // 장바구니 데이터 저장
+                localStorage.setItem('cart', JSON.stringify(cartItems));
+                
+                // 주문서 페이지로 이동
+                window.location.href = '/checkout';
             });
             
             // 토스페이 결제 버튼
@@ -3640,6 +3652,688 @@ app.get('/mypage', (c) => {
             
             // 초기 로드
             loadAddresses();
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// 주문서 페이지 (Checkout)
+app.get('/checkout', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>주문서 작성 - 토스 라이브 커머스</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+            padding-bottom: 100px;
+          }
+          .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #333;
+          }
+          .product-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+          }
+          .product-item:last-child {
+            border-bottom: none;
+          }
+          .product-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f0f0f0;
+          }
+          .address-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+          }
+          .address-card.selected {
+            border-color: #0064FF;
+            background: #f0f7ff;
+          }
+          .address-card.default-badge::before {
+            content: '기본';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #0064FF;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 12px;
+          }
+          .input-field:focus {
+            outline: none;
+            border-color: #0064FF;
+          }
+          .btn-primary {
+            background: #0064FF;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+          }
+          .btn-primary:hover {
+            background: #0052CC;
+          }
+          .btn-secondary {
+            background: white;
+            color: #333;
+            padding: 10px 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .btn-secondary:hover {
+            background: #f8f9fa;
+          }
+          .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+          }
+          .modal.active {
+            display: flex;
+          }
+          .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 24px;
+          }
+          .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 16px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+          }
+          .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+          }
+          .total-price {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0064FF;
+          }
+        </style>
+    </head>
+    <body>
+        <!-- 헤더 -->
+        <div class="bg-white border-b sticky top-0 z-50">
+            <div class="max-w-2xl mx-auto px-4 py-3 flex items-center">
+                <button onclick="history.back()" class="text-gray-700 mr-4">
+                    <i class="fas fa-arrow-left text-xl"></i>
+                </button>
+                <h1 class="text-lg font-bold">주문서 작성</h1>
+            </div>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <div class="max-w-2xl mx-auto px-4 py-4">
+            <!-- 주문 상품 -->
+            <div class="section-card">
+                <div class="section-title">주문 상품</div>
+                <div id="order-items-container">
+                    <!-- 주문 상품 목록이 여기에 들어갑니다 -->
+                </div>
+            </div>
+
+            <!-- 주문자 정보 -->
+            <div class="section-card">
+                <div class="section-title">주문자 정보</div>
+                <div class="text-sm text-gray-600 mb-2">이름</div>
+                <div class="font-medium mb-3" id="orderer-name">-</div>
+                <div class="text-sm text-gray-600 mb-2">이메일</div>
+                <div class="font-medium" id="orderer-email">-</div>
+            </div>
+
+            <!-- 배송지 정보 -->
+            <div class="section-card">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="section-title" style="margin-bottom: 0;">배송지 정보</div>
+                    <button onclick="openAddressModal()" class="btn-secondary">
+                        <i class="fas fa-edit mr-1"></i> 변경
+                    </button>
+                </div>
+                
+                <div id="selected-address-display">
+                    <div class="text-gray-500 text-center py-8">
+                        <i class="fas fa-map-marker-alt text-4xl mb-2"></i>
+                        <p>배송지를 선택해주세요</p>
+                        <button onclick="openAddressModal()" class="btn-primary mt-4">
+                            배송지 선택하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 결제 금액 -->
+            <div class="section-card">
+                <div class="section-title">결제 금액</div>
+                <div class="price-row">
+                    <span class="text-gray-600">상품 금액</span>
+                    <span id="product-amount">0원</span>
+                </div>
+                <div class="price-row">
+                    <span class="text-gray-600">배송비</span>
+                    <span>무료</span>
+                </div>
+                <div class="border-t pt-3 mt-3">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold">총 결제 금액</span>
+                        <span class="total-price" id="total-amount">0원</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 결제 바 -->
+        <div class="bottom-bar">
+            <div class="max-w-2xl mx-auto flex items-center justify-between">
+                <div>
+                    <div class="text-xs text-gray-500">총 결제금액</div>
+                    <div class="text-xl font-bold text-blue-600" id="bottom-total-amount">0원</div>
+                </div>
+                <button onclick="processPayment()" class="btn-primary px-8 py-3 text-lg">
+                    결제하기
+                </button>
+            </div>
+        </div>
+
+        <!-- 배송지 관리 모달 -->
+        <div id="address-modal" class="modal">
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">배송지 관리</h2>
+                    <button onclick="closeAddressModal()" class="text-gray-500 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- 배송지 목록 -->
+                <div id="address-list" class="mb-4">
+                    <!-- 배송지 목록이 여기에 들어갑니다 -->
+                </div>
+
+                <!-- 새 배송지 추가 버튼 -->
+                <button onclick="showAddAddressForm()" class="btn-secondary w-full mb-4">
+                    <i class="fas fa-plus mr-2"></i> 새 배송지 추가
+                </button>
+
+                <!-- 새 배송지 입력 폼 -->
+                <div id="add-address-form" style="display: none;">
+                    <div class="border-t pt-4">
+                        <h3 class="font-bold mb-3">새 배송지 입력</h3>
+                        <input type="text" id="new-recipient-name" placeholder="받는 사람" class="input-field">
+                        <input type="tel" id="new-phone" placeholder="전화번호" class="input-field">
+                        <input type="text" id="new-postal-code" placeholder="우편번호 (선택)" class="input-field">
+                        <input type="text" id="new-address" placeholder="주소" class="input-field">
+                        <input type="text" id="new-address-detail" placeholder="상세주소" class="input-field">
+                        
+                        <label class="flex items-center mb-4">
+                            <input type="checkbox" id="new-is-default" class="mr-2">
+                            <span class="text-sm">기본 배송지로 설정</span>
+                        </label>
+
+                        <div class="flex gap-2">
+                            <button onclick="hideAddAddressForm()" class="btn-secondary flex-1">취소</button>
+                            <button onclick="saveNewAddress()" class="btn-primary flex-1">저장</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 선택 완료 버튼 -->
+                <button onclick="confirmAddressSelection()" class="btn-primary w-full" id="confirm-address-btn">
+                    선택 완료
+                </button>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE = 'http://localhost:3000/api';
+            let cartItems = [];
+            let addresses = [];
+            let selectedAddressId = null;
+            let userId = null;
+
+            // 페이지 로드 시 실행
+            document.addEventListener('DOMContentLoaded', async () => {
+                // 로그인 확인
+                userId = localStorage.getItem('user_id');
+                if (!userId) {
+                    alert('로그인이 필요합니다.');
+                    window.location.href = '/live/1';
+                    return;
+                }
+
+                // 장바구니 정보 가져오기
+                const cartData = localStorage.getItem('cart');
+                if (!cartData) {
+                    alert('장바구니가 비어있습니다.');
+                    window.location.href = '/live/1';
+                    return;
+                }
+
+                cartItems = JSON.parse(cartData);
+                if (cartItems.length === 0) {
+                    alert('장바구니가 비어있습니다.');
+                    window.location.href = '/live/1';
+                    return;
+                }
+
+                // 주문자 정보 표시
+                displayOrdererInfo();
+
+                // 주문 상품 표시
+                displayOrderItems();
+
+                // 배송지 목록 로드
+                await loadAddresses();
+
+                // 금액 계산
+                calculateTotal();
+            });
+
+            // 주문자 정보 표시
+            function displayOrdererInfo() {
+                const userName = localStorage.getItem('user_name') || '익명';
+                const userEmail = localStorage.getItem('user_email') || '이메일 없음';
+                
+                document.getElementById('orderer-name').textContent = userName;
+                document.getElementById('orderer-email').textContent = userEmail;
+            }
+
+            // 주문 상품 표시
+            function displayOrderItems() {
+                const container = document.getElementById('order-items-container');
+                container.innerHTML = cartItems.map(item => \`
+                    <div class="product-item">
+                        <img src="\${item.image_url || '/static/default-product.png'}" 
+                             alt="\${item.name}" 
+                             class="product-image"
+                             onerror="this.src='/static/default-product.png'">
+                        <div class="flex-1">
+                            <div class="font-medium mb-1">\${item.name}</div>
+                            <div class="text-sm text-gray-500 mb-2">수량: \${item.quantity}개</div>
+                            <div class="font-bold text-blue-600">\${(item.price * item.quantity).toLocaleString()}원</div>
+                        </div>
+                    </div>
+                \`).join('');
+            }
+
+            // 배송지 목록 로드
+            async function loadAddresses() {
+                try {
+                    const response = await axios.get(\`\${API_BASE}/shipping-addresses/\${userId}\`);
+                    if (response.data.success) {
+                        addresses = response.data.data;
+                        
+                        // 기본 배송지 자동 선택
+                        const defaultAddress = addresses.find(addr => addr.is_default === 1);
+                        if (defaultAddress) {
+                            selectedAddressId = defaultAddress.id;
+                            displaySelectedAddress(defaultAddress);
+                        }
+                        
+                        displayAddressList();
+                    }
+                } catch (error) {
+                    console.error('배송지 로드 실패:', error);
+                }
+            }
+
+            // 배송지 목록 표시
+            function displayAddressList() {
+                const container = document.getElementById('address-list');
+                
+                if (addresses.length === 0) {
+                    container.innerHTML = \`
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                            <p>등록된 배송지가 없습니다</p>
+                        </div>
+                    \`;
+                    return;
+                }
+
+                container.innerHTML = addresses.map(addr => \`
+                    <div class="address-card \${addr.id === selectedAddressId ? 'selected' : ''} \${addr.is_default ? 'default-badge' : ''}"
+                         onclick="selectAddress(\${addr.id})">
+                        <div class="font-bold mb-2">\${addr.recipient_name}</div>
+                        <div class="text-sm text-gray-600 mb-1">\${addr.phone}</div>
+                        <div class="text-sm text-gray-600">
+                            \${addr.postal_code ? '[' + addr.postal_code + '] ' : ''}\${addr.address}
+                            \${addr.address_detail ? ' ' + addr.address_detail : ''}
+                        </div>
+                        <div class="mt-2 flex gap-2">
+                            <button onclick="event.stopPropagation(); editAddress(\${addr.id})" 
+                                    class="text-xs text-blue-600 hover:underline">
+                                수정
+                            </button>
+                            <button onclick="event.stopPropagation(); deleteAddress(\${addr.id})" 
+                                    class="text-xs text-red-600 hover:underline">
+                                삭제
+                            </button>
+                            \${!addr.is_default ? \`
+                                <button onclick="event.stopPropagation(); setDefaultAddress(\${addr.id})" 
+                                        class="text-xs text-gray-600 hover:underline">
+                                    기본 배송지로 설정
+                                </button>
+                            \` : ''}
+                        </div>
+                    </div>
+                \`).join('');
+            }
+
+            // 배송지 선택
+            function selectAddress(addressId) {
+                selectedAddressId = addressId;
+                displayAddressList();
+            }
+
+            // 선택된 배송지 표시
+            function displaySelectedAddress(address) {
+                const container = document.getElementById('selected-address-display');
+                container.innerHTML = \`
+                    <div class="border-l-4 border-blue-600 pl-4">
+                        <div class="font-bold mb-2">\${address.recipient_name} <span class="text-sm text-gray-500">\${address.phone}</span></div>
+                        <div class="text-sm text-gray-600">
+                            \${address.postal_code ? '[' + address.postal_code + '] ' : ''}\${address.address}
+                            \${address.address_detail ? ' ' + address.address_detail : ''}
+                        </div>
+                    </div>
+                \`;
+            }
+
+            // 배송지 모달 열기
+            function openAddressModal() {
+                document.getElementById('address-modal').classList.add('active');
+            }
+
+            // 배송지 모달 닫기
+            function closeAddressModal() {
+                document.getElementById('address-modal').classList.remove('active');
+                hideAddAddressForm();
+            }
+
+            // 배송지 선택 확인
+            function confirmAddressSelection() {
+                if (!selectedAddressId) {
+                    alert('배송지를 선택해주세요');
+                    return;
+                }
+
+                const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+                if (selectedAddress) {
+                    displaySelectedAddress(selectedAddress);
+                    closeAddressModal();
+                }
+            }
+
+            // 새 배송지 입력 폼 표시
+            function showAddAddressForm() {
+                document.getElementById('add-address-form').style.display = 'block';
+            }
+
+            // 새 배송지 입력 폼 숨기기
+            function hideAddAddressForm() {
+                document.getElementById('add-address-form').style.display = 'none';
+                // 입력 필드 초기화
+                document.getElementById('new-recipient-name').value = '';
+                document.getElementById('new-phone').value = '';
+                document.getElementById('new-postal-code').value = '';
+                document.getElementById('new-address').value = '';
+                document.getElementById('new-address-detail').value = '';
+                document.getElementById('new-is-default').checked = false;
+            }
+
+            // 새 배송지 저장
+            async function saveNewAddress() {
+                const recipientName = document.getElementById('new-recipient-name').value.trim();
+                const phone = document.getElementById('new-phone').value.trim();
+                const postalCode = document.getElementById('new-postal-code').value.trim();
+                const address = document.getElementById('new-address').value.trim();
+                const addressDetail = document.getElementById('new-address-detail').value.trim();
+                const isDefault = document.getElementById('new-is-default').checked;
+
+                if (!recipientName || !phone || !address) {
+                    alert('받는 사람, 전화번호, 주소는 필수 입력 항목입니다.');
+                    return;
+                }
+
+                try {
+                    const response = await axios.post(\`\${API_BASE}/shipping-addresses\`, {
+                        userId: userId,
+                        recipientName,
+                        phone,
+                        postalCode,
+                        address,
+                        addressDetail,
+                        isDefault
+                    });
+
+                    if (response.data.success) {
+                        alert('배송지가 추가되었습니다.');
+                        await loadAddresses();
+                        hideAddAddressForm();
+                        
+                        // 방금 추가한 배송지를 선택
+                        selectedAddressId = response.data.data.id;
+                        displayAddressList();
+                    }
+                } catch (error) {
+                    console.error('배송지 추가 실패:', error);
+                    alert('배송지 추가에 실패했습니다.');
+                }
+            }
+
+            // 배송지 수정
+            async function editAddress(addressId) {
+                const address = addresses.find(addr => addr.id === addressId);
+                if (!address) return;
+
+                const recipientName = prompt('받는 사람', address.recipient_name);
+                if (!recipientName) return;
+
+                const phone = prompt('전화번호', address.phone);
+                if (!phone) return;
+
+                const newAddress = prompt('주소', address.address);
+                if (!newAddress) return;
+
+                const addressDetail = prompt('상세주소', address.address_detail || '');
+
+                try {
+                    const response = await axios.put(\`\${API_BASE}/shipping-addresses/\${addressId}\`, {
+                        userId: userId,
+                        recipientName,
+                        phone,
+                        postalCode: address.postal_code || '',
+                        address: newAddress,
+                        addressDetail,
+                        isDefault: address.is_default
+                    });
+
+                    if (response.data.success) {
+                        alert('배송지가 수정되었습니다.');
+                        await loadAddresses();
+                    }
+                } catch (error) {
+                    console.error('배송지 수정 실패:', error);
+                    alert('배송지 수정에 실패했습니다.');
+                }
+            }
+
+            // 배송지 삭제
+            async function deleteAddress(addressId) {
+                if (!confirm('이 배송지를 삭제하시겠습니까?')) return;
+
+                try {
+                    const response = await axios.delete(\`\${API_BASE}/shipping-addresses/\${addressId}?userId=\${userId}\`);
+
+                    if (response.data.success) {
+                        alert('배송지가 삭제되었습니다.');
+                        
+                        // 선택된 배송지가 삭제된 경우
+                        if (selectedAddressId === addressId) {
+                            selectedAddressId = null;
+                            document.getElementById('selected-address-display').innerHTML = \`
+                                <div class="text-gray-500 text-center py-8">
+                                    <i class="fas fa-map-marker-alt text-4xl mb-2"></i>
+                                    <p>배송지를 선택해주세요</p>
+                                    <button onclick="openAddressModal()" class="btn-primary mt-4">
+                                        배송지 선택하기
+                                    </button>
+                                </div>
+                            \`;
+                        }
+                        
+                        await loadAddresses();
+                    }
+                } catch (error) {
+                    console.error('배송지 삭제 실패:', error);
+                    alert('배송지 삭제에 실패했습니다.');
+                }
+            }
+
+            // 기본 배송지 설정
+            async function setDefaultAddress(addressId) {
+                try {
+                    const address = addresses.find(addr => addr.id === addressId);
+                    if (!address) return;
+
+                    const response = await axios.put(\`\${API_BASE}/shipping-addresses/\${addressId}\`, {
+                        userId: userId,
+                        recipientName: address.recipient_name,
+                        phone: address.phone,
+                        postalCode: address.postal_code || '',
+                        address: address.address,
+                        addressDetail: address.address_detail || '',
+                        isDefault: true
+                    });
+
+                    if (response.data.success) {
+                        alert('기본 배송지로 설정되었습니다.');
+                        await loadAddresses();
+                    }
+                } catch (error) {
+                    console.error('기본 배송지 설정 실패:', error);
+                    alert('기본 배송지 설정에 실패했습니다.');
+                }
+            }
+
+            // 총 금액 계산
+            function calculateTotal() {
+                const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const formatted = total.toLocaleString() + '원';
+                
+                document.getElementById('product-amount').textContent = formatted;
+                document.getElementById('total-amount').textContent = formatted;
+                document.getElementById('bottom-total-amount').textContent = formatted;
+            }
+
+            // 결제 처리
+            async function processPayment() {
+                if (!selectedAddressId) {
+                    alert('배송지를 선택해주세요');
+                    openAddressModal();
+                    return;
+                }
+
+                if (!confirm('결제를 진행하시겠습니까?')) return;
+
+                try {
+                    const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                    const response = await fetch(API_BASE + '/toss-pay/payments/create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: parseInt(userId),
+                            shippingAddressId: selectedAddressId,
+                            cartItems: cartItems.map(item => ({
+                                product_id: item.product_id,
+                                option_id: null,
+                                quantity: item.quantity,
+                                price_snapshot: item.price,
+                                name: item.name,
+                                option_info: null
+                            })),
+                            totalAmount: totalAmount
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success && data.checkoutPage) {
+                        // 결제 페이지로 이동
+                        window.location.href = data.checkoutPage;
+                    } else {
+                        throw new Error(data.error || '결제 생성 실패');
+                    }
+                } catch (error) {
+                    console.error('결제 오류:', error);
+                    alert('결제 처리 중 오류가 발생했습니다: ' + error.message);
+                }
+            }
         </script>
     </body>
     </html>
@@ -5683,7 +6377,19 @@ app.post('/api/toss-pay/payments/create', async (c) => {
   const TEST_MODE = true;
   
   try {
-    const { userId, cartItems, totalAmount } = await c.req.json();
+    const { userId, cartItems, totalAmount, shippingAddressId } = await c.req.json();
+    
+    // 배송지 정보 조회
+    let shippingInfo = null;
+    if (shippingAddressId) {
+      shippingInfo = await DB.prepare(`
+        SELECT * FROM shipping_addresses WHERE id = ? AND user_id = ?
+      `).bind(shippingAddressId, userId).first();
+      
+      if (!shippingInfo) {
+        return c.json({ success: false, error: '배송지 정보를 찾을 수 없습니다' }, 400);
+      }
+    }
     
     // userId가 없으면 임시 사용자 생성 또는 기존 사용자 찾기
     let finalUserId = userId;
@@ -5722,11 +6428,24 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     // 주문번호 생성 (타임스탬프 + 랜덤)
     const orderNo = `ORDER_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`;
     
-    // 주문 생성
+    // 주문 생성 (배송지 정보 포함)
     const orderResult = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, total_amount, payment_status, created_at)
-      VALUES (?, ?, ?, 'pending', datetime('now'))
-    `).bind(orderNo, finalUserId, totalAmount).run();
+      INSERT INTO orders (
+        order_number, user_id, total_amount, payment_status, 
+        shipping_address_id, shipping_name, shipping_phone, shipping_address, shipping_postal_code,
+        created_at
+      )
+      VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, datetime('now'))
+    `).bind(
+      orderNo, 
+      finalUserId, 
+      totalAmount,
+      shippingInfo ? shippingInfo.id : null,
+      shippingInfo ? shippingInfo.recipient_name : null,
+      shippingInfo ? shippingInfo.phone : null,
+      shippingInfo ? `${shippingInfo.address} ${shippingInfo.address_detail || ''}`.trim() : null,
+      shippingInfo ? shippingInfo.postal_code : null
+    ).run();
     
     const orderId = orderResult.meta.last_row_id;
     
