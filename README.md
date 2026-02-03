@@ -29,10 +29,12 @@ pm2 start ecosystem.config.cjs
 
 ## 🌐 공개 URL
 
-- **데모 사이트**: https://3000-idza9aonokj4y1prq2vkt-b32ec7bb.sandbox.novita.ai
-- **라이브 스트림**: https://3000-idza9aonokj4y1prq2vkt-b32ec7bb.sandbox.novita.ai/live/1
-- **장바구니**: https://3000-idza9aonokj4y1prq2vkt-b32ec7bb.sandbox.novita.ai/cart
-- **관리자 대시보드**: https://3000-idza9aonokj4y1prq2vkt-b32ec7bb.sandbox.novita.ai/admin
+- **데모 사이트**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai
+- **라이브 스트림**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/live/1
+- **셀러 전용 링크**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/s/seller1
+- **주문서 페이지**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/checkout
+- **셀러 대시보드**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/seller
+- **관리자 대시보드**: https://3000-idza9aonokj4y1prq2vkt-2b54fc91.sandbox.novita.ai/admin
 
 ## ✨ 주요 기능
 
@@ -79,13 +81,38 @@ pm2 start ecosystem.config.cjs
 - ✅ 사용자 및 장바구니
 - ✅ 주문 및 결제 내역
 
+#### 7. 카카오 로그인 (OAuth2)
+- ✅ 카카오 REST API 연동
+- ✅ 로그인/로그아웃 기능
+- ✅ 사용자 프로필 자동 저장
+- ✅ 세션 관리
+
+#### 8. 배송지 관리
+- ✅ 배송지 추가/수정/삭제
+- ✅ 기본 배송지 설정
+- ✅ 배송지 선택 모달
+- ✅ 주문서 페이지 자동 로드
+
+#### 9. 셀러 전용 기능
+- ✅ 셀러 전용 링크 (/s/:username)
+- ✅ UTM 트래킹 (소스/매체/콘텐츠)
+- ✅ 셀러 매출 조회 API
+- ✅ 정산서 CSV 다운로드
+- ✅ 셀러 대시보드 (/seller)
+- ✅ 10% 수수료 자동 계산
+
+#### 10. 결제 시스템 (Mock)
+- ✅ 주문서 작성 페이지
+- ✅ 결제 API (seller_id 추적)
+- ✅ 결제 성공/실패 페이지
+- ✅ 주문 내역 조회
+
 ### 🚧 구현 예정 기능
 
-#### 7. 토스 브릿지 API 결제 연동
-- ⏳ 토스페이 간편결제 연동
-- ⏳ 주문서 페이지
-- ⏳ 결제 승인 및 실패 처리
-- ⏳ 결제 내역 조회
+#### 11. 토스페이 실제 결제 연동
+- ⏳ 토스페이 간편결제 SDK 연동
+- ⏳ 실제 결제 승인/취소 처리
+- ⏳ 결제 검증 및 웹훅 처리
 
 ## 🏗️ 시스템 아키텍처
 
@@ -170,7 +197,7 @@ Infrastructure:
 
 ```sql
 -- 라이브 스트림
-live_streams (id, title, youtube_video_id, status, current_product_id)
+live_streams (id, title, youtube_video_id, status, current_product_id, seller_id, scheduled_at)
 
 -- 상품
 products (id, name, price, discount_rate, stock, live_stream_id)
@@ -178,14 +205,25 @@ products (id, name, price, discount_rate, stock, live_stream_id)
 -- 상품 옵션
 product_options (id, product_id, option_type, option_value, stock)
 
--- 사용자
-users (id, toss_user_id, name, email)
+-- 사용자 (카카오 로그인)
+users (id, toss_user_id, name, email, kakao_id, profile_image, phone)
+
+-- 배송지
+shipping_addresses (id, user_id, recipient_name, phone, postal_code, address, address_detail, is_default)
 
 -- 장바구니
 cart_items (id, user_id, product_id, option_id, quantity, price_snapshot)
 
 -- 주문
-orders (id, order_number, user_id, total_amount, payment_status)
+orders (id, order_number, user_id, seller_id, total_amount, commission_amount, seller_amount, 
+        payment_status, shipping_address_id, shipping_name, shipping_phone, shipping_address)
+
+-- 셀러
+sellers (id, username, display_name, business_name, email, profile_image, bio, instagram_url, youtube_url)
+
+-- 정산
+settlements (id, seller_id, period_start, period_end, total_amount, commission_amount, 
+             net_amount, status)
 ```
 
 ## 🚀 API 엔드포인트
@@ -197,16 +235,34 @@ orders (id, order_number, user_id, total_amount, payment_status)
 
 ### 상품 API
 - `GET /api/products/:id` - 상품 상세 정보
+- `GET /api/products/:id/stock` - 상품 재고 조회 (실시간)
 
 ### 장바구니 API
 - `GET /api/cart/:userId` - 장바구니 조회
 - `POST /api/cart` - 장바구니 추가
 - `DELETE /api/cart/:cartItemId` - 장바구니 삭제
 
-### 주문 API
-- `POST /api/orders` - 주문 생성
+### 카카오 로그인 API
+- `GET /auth/kakao` - 카카오 OAuth 인증 시작
+- `GET /auth/kakao/callback` - 카카오 인증 콜백
+- `GET /api/auth/user/verify` - 사용자 세션 확인
+
+### 배송지 API
+- `GET /api/shipping-addresses/:userId` - 사용자 배송지 목록
+- `POST /api/shipping-addresses` - 배송지 추가
+- `PUT /api/shipping-addresses/:id` - 배송지 수정
+- `DELETE /api/shipping-addresses/:id` - 배송지 삭제
+
+### 결제 API
+- `POST /api/toss-pay/payments/create` - 결제 생성 (seller_id 추적)
+
+### 셀러 API
+- `GET /s/:username` - 셀러 전용 링크 (UTM 트래킹)
+- `GET /api/seller/sales` - 셀러 매출 조회 (세션 인증 필수)
+- `GET /api/seller/settlement-csv` - 정산서 CSV 다운로드 (세션 인증 필수)
 
 ### 관리자 API
+- `POST /api/auth/login` - 관리자/셀러 로그인
 - `POST /api/admin/streams/:streamId/change-product` - 상품 전환
 
 ## 💻 개발 환경 설정
@@ -374,21 +430,26 @@ webapp/
 
 ## 🎯 다음 단계 개발 계획
 
-### Phase 1: 토스 브릿지 API 연동 (우선순위 높음)
-- [ ] 토스 로그인 SDK 연동
-- [ ] 토스페이 간편결제 연동
-- [ ] 주문서 페이지 구현
-- [ ] 결제 승인/실패 처리
+### Phase 1: 실제 토스페이 결제 연동 (우선순위 높음)
+- [ ] 토스페이 실제 SDK 연동
+- [ ] 결제 승인/취소 처리
+- [ ] 결제 검증 및 웹훅
 - [ ] 결제 내역 조회 페이지
 
-### Phase 2: 추가 기능 (선택 사항)
+### Phase 2: 셀러 기능 고도화 (선택 사항)
+- [ ] 셀러 주문 처리 (배송 상태 변경)
+- [ ] 정산 자동화 (월별 정산서 발급)
+- [ ] 셀러 통계 대시보드
+- [ ] 정산 승인/반려 기능
+
+### Phase 3: 추가 기능 (선택 사항)
 - [ ] 상품 옵션 선택 모달
 - [ ] 찜하기 / 위시리스트
 - [ ] 주문 배송 추적
 - [ ] 프로모션 쿠폰
 - [ ] 실시간 채팅 (Cloudflare Durable Objects)
 
-### Phase 3: 고도화 (선택 사항)
+### Phase 4: 고도화 (선택 사항)
 - [ ] AI 추천 시스템
 - [ ] 라이브 리플레이
 - [ ] 통계 대시보드
@@ -434,8 +495,18 @@ npm run db:reset
 
 ---
 
-**최종 업데이트**: 2026-02-02  
-**버전**: 1.1.0  
-**상태**: 개발 완료 (토스페이 결제 연동 예정)
+**최종 업데이트**: 2026-02-03  
+**버전**: 2.0.0  
+**상태**: 셀러 기능 완료 (카카오 로그인, 배송지 관리, 셀러 대시보드, 정산 시스템)
+
+**주요 기능**:
+- ✅ 라이브 커머스 시스템 (YouTube + 원클릭 구매)
+- ✅ 카카오 로그인 (OAuth2)
+- ✅ 배송지 관리 (CRUD + 기본 배송지)
+- ✅ 주문서 작성 및 결제 (Mock)
+- ✅ 셀러 전용 링크 (UTM 트래킹)
+- ✅ 셀러 대시보드 (매출 통계 + CSV 정산서)
+- ✅ 10% 수수료 자동 계산
+- ⏳ 토스페이 실제 결제 연동 (예정)
 
 **백업 파일**: https://www.genspark.ai/api/files/s/aaMYHkss
