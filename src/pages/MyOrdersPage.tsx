@@ -451,7 +451,10 @@ export default function MyOrdersPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <button className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors">
+                    <button 
+                      onClick={() => navigate('/shipping-addresses')}
+                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors"
+                    >
                       <div className="flex items-center gap-3">
                         <MapPin className="h-5 w-5 text-[#6e6e73]" />
                         <span className="text-[15px] font-medium text-[#1d1d1f]">
@@ -461,7 +464,10 @@ export default function MyOrdersPage() {
                       <ChevronRight className="h-5 w-5 text-[#6e6e73]" />
                     </button>
 
-                    <button className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors">
+                    <button 
+                      onClick={() => navigate('/payment-methods')}
+                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors"
+                    >
                       <div className="flex items-center gap-3">
                         <CreditCard className="h-5 w-5 text-[#6e6e73]" />
                         <span className="text-[15px] font-medium text-[#1d1d1f]">
@@ -471,7 +477,10 @@ export default function MyOrdersPage() {
                       <ChevronRight className="h-5 w-5 text-[#6e6e73]" />
                     </button>
 
-                    <button className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors">
+                    <button 
+                      onClick={() => navigate('/settings')}
+                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors"
+                    >
                       <div className="flex items-center gap-3">
                         <Settings className="h-5 w-5 text-[#6e6e73]" />
                         <span className="text-[15px] font-medium text-[#1d1d1f]">

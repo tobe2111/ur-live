@@ -227,13 +227,13 @@ export default function CheckoutPage() {
       <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
         <div className="max-w-[980px] mx-auto px-4 sm:px-6">
           <div className="flex h-[52px] items-center justify-between">
-            <Link 
-              to="/my-orders"
+            <button
+              onClick={() => navigate(-1)}
               className="flex items-center space-x-2 text-[#1d1d1f] hover:opacity-60 transition-opacity"
             >
               <ArrowLeft className="h-5 w-5" />
               <span className="text-[14px] font-normal hidden sm:inline">뒤로</span>
-            </Link>
+            </button>
             <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
               주문서
             </h1>

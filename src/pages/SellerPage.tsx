@@ -145,9 +145,12 @@ export default function SellerPage() {
             <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
               셀러 대시보드
             </h1>
-            <button className="text-[#1d1d1f] hover:opacity-60 transition-opacity">
-              <Settings className="h-5 w-5" />
-            </button>
+              <button 
+                onClick={() => navigate('/seller/settings')}
+                className="text-[#1d1d1f] hover:opacity-60 transition-opacity"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
           </div>
         </div>
       </header>
@@ -228,7 +231,10 @@ export default function SellerPage() {
               <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
                 내 라이브 스트림
               </h3>
-              <button className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity">
+              <button 
+                onClick={() => navigate('/seller/streams/new')}
+                className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+              >
                 + 새 라이브
               </button>
             </div>
@@ -241,7 +247,10 @@ export default function SellerPage() {
                 <p className="text-[15px] text-[#6e6e73] mb-4">
                   라이브가 없습니다
                 </p>
-                <button className="apple-button px-6 py-2.5">
+                <button 
+                  onClick={() => navigate('/seller/streams/new')}
+                  className="apple-button px-6 py-2.5"
+                >
                   라이브 시작하기
                 </button>
               </div>
@@ -298,7 +307,10 @@ export default function SellerPage() {
                               {new Date(stream.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                             </div>
                           </div>
-                          <button className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center">
+                          <button 
+                            onClick={() => navigate(`/seller/streams/${stream.id}`)}
+                            className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center"
+                          >
                             관리
                             <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
                           </button>
@@ -317,7 +329,10 @@ export default function SellerPage() {
               <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
                 상품 관리
               </h3>
-              <button className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity">
+              <button 
+                onClick={() => navigate('/seller/products/new')}
+                className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+              >
                 + 상품 추가
               </button>
             </div>
@@ -330,7 +345,10 @@ export default function SellerPage() {
                 <p className="text-[15px] text-[#6e6e73] mb-4">
                   등록된 상품이 없습니다
                 </p>
-                <button className="apple-button px-6 py-2.5">
+                <button 
+                  onClick={() => navigate('/seller/products/new')}
+                  className="apple-button px-6 py-2.5"
+                >
                   상품 추가하기
                 </button>
               </div>
@@ -380,7 +398,10 @@ export default function SellerPage() {
                               : '품절'
                             }
                           </div>
-                          <button className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center">
+                          <button 
+                            onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                            className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center"
+                          >
                             수정
                             <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
                           </button>
@@ -396,7 +417,10 @@ export default function SellerPage() {
 
         {/* Quick Actions */}
         <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+          <button 
+            onClick={() => navigate('/seller/analytics')}
+            className="apple-card p-6 hover:shadow-lg transition-all text-left"
+          >
             <div className="w-12 h-12 bg-[#007aff]/10 rounded-full flex items-center justify-center mb-4">
               <BarChart3 className="h-6 w-6 text-[#007aff]" />
             </div>
@@ -408,7 +432,10 @@ export default function SellerPage() {
             </p>
           </button>
 
-          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+          <button 
+            onClick={() => navigate('/seller/streams/schedule')}
+            className="apple-card p-6 hover:shadow-lg transition-all text-left"
+          >
             <div className="w-12 h-12 bg-[#34c759]/10 rounded-full flex items-center justify-center mb-4">
               <Calendar className="h-6 w-6 text-[#34c759]" />
             </div>
@@ -420,7 +447,10 @@ export default function SellerPage() {
             </p>
           </button>
 
-          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+          <button 
+            onClick={() => navigate('/seller/inventory')}
+            className="apple-card p-6 hover:shadow-lg transition-all text-left"
+          >
             <div className="w-12 h-12 bg-[#ff9500]/10 rounded-full flex items-center justify-center mb-4">
               <Package className="h-6 w-6 text-[#ff9500]" />
             </div>
@@ -432,7 +462,10 @@ export default function SellerPage() {
             </p>
           </button>
 
-          <button className="apple-card p-6 hover:shadow-lg transition-all text-left">
+          <button 
+            onClick={() => navigate('/seller/settings')}
+            className="apple-card p-6 hover:shadow-lg transition-all text-left"
+          >
             <div className="w-12 h-12 bg-[#ff3b30]/10 rounded-full flex items-center justify-center mb-4">
               <Settings className="h-6 w-6 text-[#ff3b30]" />
             </div>
