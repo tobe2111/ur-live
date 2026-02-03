@@ -742,6 +742,90 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
   }
 });
 
+// Admin: Create live stream
+app.post('/api/admin/streams', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { title, description, youtube_video_id, status } = await c.req.json();
+
+    if (!title || !youtube_video_id) {
+      return c.json({ success: false, error: '제목과 YouTube 영상 ID는 필수입니다' }, 400);
+    }
+
+    const result = await DB.prepare(`
+      INSERT INTO live_streams (title, description, youtube_video_id, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(title, description || null, youtube_video_id, status || 'scheduled').run();
+
+    return c.json({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        title,
+        description,
+        youtube_video_id,
+        status: status || 'scheduled'
+      }
+    });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Admin: Update live stream
+app.put('/api/admin/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('id');
+    const { title, description, youtube_video_id, status } = await c.req.json();
+
+    await DB.prepare(`
+      UPDATE live_streams 
+      SET title = ?, description = ?, youtube_video_id = ?, status = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(title, description, youtube_video_id, status, streamId).run();
+
+    return c.json({ success: true });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Admin: Delete live stream
+app.delete('/api/admin/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('id');
+
+    await DB.prepare('DELETE FROM live_streams WHERE id = ?').bind(streamId).run();
+
+    return c.json({ success: true });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Admin: 상품 전환 API
 app.post('/api/admin/streams/:streamId/change-product', async (c) => {
   const { DB } = c.env;
