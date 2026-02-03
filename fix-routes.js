@@ -5,7 +5,7 @@ const routesPath = path.join(process.cwd(), 'dist', '_routes.json');
 
 const routes = {
   version: 1,
-  include: ['/api/*'],
+  include: ['/*'],
   exclude: ['/assets/*', '/static/*', '/favicon.svg']
 };
 
