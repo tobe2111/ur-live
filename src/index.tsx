@@ -1238,9 +1238,9 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>토스 라이브 커머스</title>
+        <title>토스 라이브 커머스 - 실시간 쇼핑의 새로운 경험</title>
+        <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-        <link href="/static/style.css?v=${Date.now()}" rel="stylesheet">
         <style>
           /* 토스 브랜드 컬러 */
           :root {
@@ -1251,28 +1251,124 @@ app.get('/', (c) => {
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           }
-          .toss-primary {
-            background-color: var(--toss-blue);
+          .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           }
-          .toss-text-primary {
-            color: var(--toss-blue);
+          .feature-card {
+            transition: all 0.3s ease;
+          }
+          .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
           }
         </style>
     </head>
     <body class="bg-gray-50">
-        <div id="app">
-            <!-- 앱 컨텐츠 로드 중 -->
-            <div class="flex items-center justify-center min-h-screen">
-                <div class="text-center">
-                    <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
-                    <p class="text-gray-600">라이브 커머스 로드 중...</p>
+        <!-- Hero Section -->
+        <div class="hero-gradient text-white py-20">
+            <div class="max-w-6xl mx-auto px-4 text-center">
+                <h1 class="text-5xl font-bold mb-4">
+                    <i class="fas fa-broadcast-tower mr-3"></i>
+                    토스 라이브 커머스
+                </h1>
+                <p class="text-xl mb-8 opacity-90">실시간 라이브 스트리밍과 원클릭 구매의 만남</p>
+                <div class="flex gap-4 justify-center">
+                    <a href="/live/1" class="bg-white text-purple-600 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition">
+                        <i class="fas fa-play-circle mr-2"></i>
+                        라이브 보러가기
+                    </a>
+                    <a href="/seller-login" class="bg-purple-800 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-purple-900 transition">
+                        <i class="fas fa-store mr-2"></i>
+                        셀러 로그인
+                    </a>
                 </div>
             </div>
         </div>
-        
-        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-        <script src="https://www.youtube.com/iframe_api"></script>
-        <script src="/static/app.js"></script>
+
+        <!-- Features Section -->
+        <div class="max-w-6xl mx-auto px-4 py-16">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">주요 기능</h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-5xl mb-4 text-blue-500">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">실시간 라이브</h3>
+                    <p class="text-gray-600">YouTube 라이브 스트리밍으로 실시간 소통하며 쇼핑하세요</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-5xl mb-4 text-green-500">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">원클릭 구매</h3>
+                    <p class="text-gray-600">복잡한 절차 없이 한 번의 클릭으로 장바구니에 담기</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-5xl mb-4 text-purple-500">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">간편 결제</h3>
+                    <p class="text-gray-600">카카오 로그인과 나이스페이먼츠로 안전하고 빠른 결제</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-5xl mb-4 text-red-500">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">실시간 채팅</h3>
+                    <p class="text-gray-600">다른 시청자들과 실시간으로 소통하며 쇼핑</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-5xl mb-4 text-yellow-500">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">배송 관리</h3>
+                    <p class="text-gray-600">배송지를 저장하고 관리하여 빠른 주문</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="feature-card bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-5xl mb-4 text-indigo-500">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">셀러 대시보드</h3>
+                    <p class="text-gray-600">매출 통계와 정산 관리를 한눈에</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-16">
+            <div class="max-w-4xl mx-auto px-4 text-center">
+                <h2 class="text-3xl font-bold mb-4">지금 바로 시작하세요!</h2>
+                <p class="text-xl mb-8 opacity-90">새로운 쇼핑 경험을 만나보세요</p>
+                <a href="/live/1" class="inline-block bg-white text-blue-600 px-12 py-4 rounded-full font-bold text-xl hover:bg-gray-100 transition">
+                    <i class="fas fa-rocket mr-2"></i>
+                    라이브 입장하기
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="max-w-6xl mx-auto px-4 text-center">
+                <p class="text-gray-400">© 2026 토스 라이브 커머스. All rights reserved.</p>
+                <div class="mt-4 space-x-4">
+                    <a href="/admin" class="text-gray-400 hover:text-white transition">관리자</a>
+                    <a href="/seller-login" class="text-gray-400 hover:text-white transition">셀러</a>
+                    <a href="/my-orders" class="text-gray-400 hover:text-white transition">내 주문</a>
+                </div>
+            </div>
+        </footer>
     </body>
     </html>
   `);
