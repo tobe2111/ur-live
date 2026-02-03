@@ -4,67 +4,68 @@
 
 @layer base {
   :root {
-    /* Grip-inspired Design System */
+    /* Apple Design System - SF Symbols & Colors */
     --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 0 0% 0%;
 
-    /* Magenta/Pink Primary Color */
-    --primary: 330 100% 50%;
+    /* Apple Blue */
+    --primary: 211 100% 50%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    --secondary-foreground: 0 0% 0%;
 
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 330 100% 50%;
+    --accent: 211 100% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 330 100% 50%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 211 100% 50%;
 
-    --radius: 1.5rem;
+    /* Apple prefers minimal radius */
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 330 100% 50%;
+    --primary: 211 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 330 100% 50%;
+    --accent: 211 100% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 330 100% 50%;
+    --ring: 211 100% 50%;
   }
 }
 
@@ -72,62 +73,127 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
       -apple-system,
       BlinkMacSystemFont,
-      "Pretendard Variable",
-      Pretendard,
-      system-ui,
-      Roboto,
+      "SF Pro Display",
+      "SF Pro Text",
       "Helvetica Neue",
-      "Segoe UI",
-      "Apple SD Gothic Neo",
-      "Noto Sans KR",
-      "Malgun Gothic",
+      Helvetica,
+      Arial,
       sans-serif;
-    letter-spacing: -0.02em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.022em;
+  }
+
+  /* Apple Typography Scale */
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.022em;
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.022em;
+  }
+
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.016em;
+  }
+
+  p {
+    font-size: 1.0625rem;
+    line-height: 1.47059;
+    font-weight: 400;
+    letter-spacing: -0.022em;
   }
 }
 
-/* Grip-style animations */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
+/* Apple-style animations - Subtle and purposeful */
+@keyframes smooth-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  50% {
-    box-shadow: 0 0 40px rgba(255, 0, 128, 0.8);
-  }
-}
-
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.float {
-  animation: float 3s ease-in-out infinite;
+.smooth-appear {
+  animation: smooth-appear 0.5s cubic-bezier(0.28, 0.11, 0.32, 1);
 }
 
-/* Mobile-first gradient backgrounds */
-.gradient-pink {
-  background: linear-gradient(135deg, #FF0080 0%, #FF6B9D 100%);
+/* Apple frosted glass effect */
+.apple-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-.gradient-purple {
-  background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+.apple-glass-dark {
+  background: rgba(29, 29, 31, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-.gradient-overlay {
-  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
+/* Apple card with subtle shadow */
+.apple-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
+}
+
+.apple-card:hover {
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1), 0 16px 32px rgba(0, 0, 0, 0.07);
+  transform: translateY(-2px);
+}
+
+/* Apple button style */
+.apple-button {
+  background: #007aff;
+  color: white;
+  border-radius: 980px;
+  padding: 12px 22px;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.022em;
+  transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
+  border: none;
+  cursor: pointer;
+}
+
+.apple-button:hover {
+  background: #0051d5;
+  transform: scale(1.02);
+}
+
+.apple-button:active {
+  transform: scale(0.98);
+}
+
+/* Apple link style */
+.apple-link {
+  color: #007aff;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.apple-link:hover {
+  color: #0051d5;
+  text-decoration: underline;
 }
