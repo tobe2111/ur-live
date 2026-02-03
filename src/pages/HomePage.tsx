@@ -41,22 +41,22 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="sticky top-0 z-50 w-full border-b bg-background">
         <div className="container flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Tv className="h-5 w-5 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary">
+              <Tv className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold">유어 라이브</span>
+            <span className="text-xl font-bold tracking-tight">유어 라이브</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild className="font-semibold">
               <Link to="/my-orders">
                 <ShoppingBag className="mr-2 h-4 w-4" />
                 주문내역
               </Link>
             </Button>
-            <Button size="sm" asChild>
+            <Button size="sm" asChild className="font-bold">
               <Link to="/seller-login">
                 <Store className="mr-2 h-4 w-4" />
                 셀러 시작하기
@@ -67,25 +67,25 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="container py-20 text-center">
-        <div className="mx-auto max-w-3xl space-y-6">
-          <Badge variant="secondary" className="px-4 py-1.5">
+      <section className="container py-24 text-center">
+        <div className="mx-auto max-w-4xl space-y-8">
+          <Badge variant="secondary" className="px-5 py-2 text-sm font-bold">
             🔥 지금 라이브 중
           </Badge>
-          <h1 className="text-5xl font-black tracking-tight lg:text-7xl">
+          <h1 className="text-6xl font-black leading-tight tracking-tighter lg:text-7xl">
             보는 순간
             <br />
-            바로 산다
+            <span className="text-primary">바로 산다</span>
           </h1>
-          <p className="text-xl text-muted-foreground">
+          <p className="text-xl font-medium text-muted-foreground">
             실시간 라이브 쇼핑으로 빠르고 재미있게 쇼핑하세요
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Button size="lg" onClick={() => document.getElementById('streams')?.scrollIntoView({ behavior: 'smooth' })}>
+          <div className="flex flex-wrap justify-center gap-4 pt-4">
+            <Button size="lg" className="h-14 px-8 text-base font-bold" onClick={() => document.getElementById('streams')?.scrollIntoView({ behavior: 'smooth' })}>
               <Play className="mr-2 h-5 w-5" />
               라이브 보러가기
             </Button>
-            <Button size="lg" variant="outline" asChild>
+            <Button size="lg" variant="outline" className="h-14 px-8 text-base font-bold" asChild>
               <Link to="/seller-login">판매자 가입하기</Link>
             </Button>
           </div>
@@ -93,13 +93,13 @@ export default function HomePage() {
       </section>
 
       {/* Live Streams Section */}
-      <section id="streams" className="container py-16">
-        <div className="mb-8 flex items-center justify-between">
+      <section id="streams" className="container py-20">
+        <div className="mb-10 flex items-end justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">지금 라이브 중 🔥</h2>
-            <p className="text-muted-foreground">실시간으로 진행되는 라이브 쇼핑</p>
+            <h2 className="mb-2 text-4xl font-black tracking-tight">지금 라이브 중 🔥</h2>
+            <p className="text-lg font-medium text-muted-foreground">실시간으로 진행되는 라이브 쇼핑</p>
           </div>
-          <Button variant="outline" onClick={loadStreams}>
+          <Button variant="outline" className="font-bold" onClick={loadStreams}>
             새로고침
           </Button>
         </div>
@@ -131,39 +131,39 @@ export default function HomePage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {streams.map((stream) => (
               <Link key={stream.id} to={`/live/${stream.id}`}>
-                <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-lg">
+                <Card className="group cursor-pointer overflow-hidden border-2 transition-all hover:border-primary hover:shadow-xl">
                   <div className="relative aspect-video overflow-hidden bg-muted">
                     <img
                       src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                       alt={stream.title}
                       className="h-full w-full object-cover transition-transform group-hover:scale-105"
                       onError={(e) => {
-                        e.currentTarget.src = 'https://via.placeholder.com/1280x720/667eea/ffffff?text=Your+Live'
+                        e.currentTarget.src = 'https://via.placeholder.com/1280x720/FEE500/191919?text=Your+Live'
                       }}
                     />
-                    <Badge className="absolute left-3 top-3 bg-red-500 hover:bg-red-500">
-                      <span className="mr-1 h-2 w-2 animate-pulse rounded-full bg-white" />
+                    <Badge className="absolute left-4 top-4 bg-red-500 px-3 py-1.5 text-xs font-bold hover:bg-red-500">
+                      <span className="mr-1.5 h-2 w-2 animate-pulse rounded-full bg-white" />
                       LIVE
                     </Badge>
                     {stream.viewer_count && (
-                      <Badge variant="secondary" className="absolute right-3 top-3 bg-black/70 text-white">
-                        <Eye className="mr-1 h-3 w-3" />
+                      <Badge variant="secondary" className="absolute right-4 top-4 bg-black/80 px-3 py-1.5 text-xs font-bold text-white">
+                        <Eye className="mr-1.5 h-3.5 w-3.5" />
                         {stream.viewer_count.toLocaleString()}
                       </Badge>
                     )}
                   </div>
-                  <CardHeader>
-                    <CardTitle className="line-clamp-2 text-lg">{stream.title}</CardTitle>
-                    <CardDescription className="line-clamp-2">
+                  <CardHeader className="space-y-3 pb-4">
+                    <CardTitle className="line-clamp-2 text-xl font-bold leading-tight">{stream.title}</CardTitle>
+                    <CardDescription className="line-clamp-2 text-base">
                       {stream.description || '실시간 라이브 쇼핑을 즐겨보세요!'}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-0">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {stream.seller_name && (
                           <>
-                            <div className="h-8 w-8 overflow-hidden rounded-full bg-muted">
+                            <div className="h-10 w-10 overflow-hidden rounded-full bg-muted ring-2 ring-border">
                               <img
                                 src={stream.seller_profile_image || 'https://via.placeholder.com/40'}
                                 alt={stream.seller_name}
@@ -173,11 +173,11 @@ export default function HomePage() {
                                 }}
                               />
                             </div>
-                            <span className="text-sm font-medium">{stream.seller_name}</span>
+                            <span className="text-sm font-bold">{stream.seller_name}</span>
                           </>
                         )}
                       </div>
-                      <Button size="sm" variant="ghost">
+                      <Button size="sm" variant="ghost" className="font-bold group-hover:text-primary">
                         입장하기 →
                       </Button>
                     </div>
@@ -190,43 +190,49 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="border-t bg-muted/50 py-20">
+      <section className="border-t bg-muted/30 py-24">
         <div className="container">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-bold tracking-tight">더 쉽고 빠르게</h2>
-            <p className="text-muted-foreground">유어 라이브만의 특별한 경험</p>
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-4xl font-black tracking-tight">더 쉽고 빠르게</h2>
+            <p className="text-lg font-medium text-muted-foreground">유어 라이브만의 특별한 경험</p>
           </div>
           <div className="grid gap-8 md:grid-cols-3">
-            <Card>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500">
-                  <Play className="h-8 w-8 text-white" />
+            <Card className="border-2 text-center transition-all hover:border-primary hover:shadow-lg">
+              <CardHeader className="space-y-4 pb-6">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-yellow-400 to-orange-500">
+                  <Play className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle>원클릭 구매</CardTitle>
-                <CardDescription>
-                  복잡한 절차 없이 클릭 한 번으로 장바구니 담고 바로 결제
+                <CardTitle className="text-2xl font-black">원클릭 구매</CardTitle>
+                <CardDescription className="text-base leading-relaxed">
+                  복잡한 절차 없이 클릭 한 번으로
+                  <br />
+                  장바구니 담고 바로 결제
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500">
-                  <ShoppingBag className="h-8 w-8 text-white" />
+            <Card className="border-2 text-center transition-all hover:border-primary hover:shadow-lg">
+              <CardHeader className="space-y-4 pb-6">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-400 to-cyan-500">
+                  <ShoppingBag className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle>안전한 결제</CardTitle>
-                <CardDescription>
-                  나이스페이먼츠 연동으로 안전하고 편리한 결제 경험
+                <CardTitle className="text-2xl font-black">안전한 결제</CardTitle>
+                <CardDescription className="text-base leading-relaxed">
+                  나이스페이먼츠 연동으로
+                  <br />
+                  안전하고 편리한 결제 경험
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500">
-                  <Tv className="h-8 w-8 text-white" />
+            <Card className="border-2 text-center transition-all hover:border-primary hover:shadow-lg">
+              <CardHeader className="space-y-4 pb-6">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-green-400 to-emerald-500">
+                  <Tv className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle>실시간 소통</CardTitle>
-                <CardDescription>
-                  채팅으로 다른 구매자들과 실시간으로 소통하며 쇼핑
+                <CardTitle className="text-2xl font-black">실시간 소통</CardTitle>
+                <CardDescription className="text-base leading-relaxed">
+                  채팅으로 다른 구매자들과
+                  <br />
+                  실시간으로 소통하며 쇼핑
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -237,20 +243,20 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t py-12">
         <div className="container">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+          <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
             <div className="text-center md:text-left">
-              <p className="text-sm text-muted-foreground">
+              <p className="font-medium text-muted-foreground">
                 © 2026 유어 라이브 커머스. All rights reserved.
               </p>
             </div>
-            <div className="flex gap-6">
-              <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground">
+            <div className="flex gap-8">
+              <Link to="/admin" className="font-semibold text-muted-foreground transition-colors hover:text-foreground">
                 관리자
               </Link>
-              <Link to="/seller-login" className="text-sm text-muted-foreground hover:text-foreground">
+              <Link to="/seller-login" className="font-semibold text-muted-foreground transition-colors hover:text-foreground">
                 셀러
               </Link>
-              <Link to="/my-orders" className="text-sm text-muted-foreground hover:text-foreground">
+              <Link to="/my-orders" className="font-semibold text-muted-foreground transition-colors hover:text-foreground">
                 내 주문
               </Link>
             </div>
