@@ -3658,6 +3658,410 @@ app.get('/mypage', (c) => {
   `);
 });
 
+// 셀러 전용 링크 페이지
+app.get('/s/:username', async (c) => {
+  const { DB } = c.env;
+  const username = c.req.param('username');
+  
+  // 날짜 포맷 헬퍼 함수
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? '오후' : '오전';
+    const displayHours = hours % 12 || 12;
+    
+    return `${month}월 ${day}일 ${ampm} ${displayHours}:${minutes.toString().padStart(2, '0')}`;
+  };
+  
+  try {
+    // UTM 파라미터 추출
+    const utmSource = c.req.query('utm_source') || '';
+    const utmMedium = c.req.query('utm_medium') || '';
+    const utmContent = c.req.query('utm_content') || '';
+    
+    // 셀러 정보 조회
+    const seller = await DB.prepare(`
+      SELECT id, username, display_name, profile_image, bio, instagram_url, youtube_url, business_name
+      FROM sellers WHERE username = ? AND is_active = 1
+    `).bind(username).first();
+    
+    if (!seller) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>셀러를 찾을 수 없습니다</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <div class="text-6xl mb-4">😢</div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">셀러를 찾을 수 없습니다</h1>
+                <p class="text-gray-600 mb-6">존재하지 않거나 비활성화된 셀러입니다.</p>
+                <a href="/" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
+                    홈으로 돌아가기
+                </a>
+            </div>
+        </body>
+        </html>
+      `);
+    }
+    
+    // 셀러의 다가오는 라이브 스트림 조회
+    const upcomingStreams = await DB.prepare(`
+      SELECT id, title, youtube_video_id, scheduled_at, status
+      FROM live_streams 
+      WHERE seller_id = ? AND (status = 'scheduled' OR status = 'live')
+      ORDER BY 
+        CASE 
+          WHEN status = 'live' THEN 0
+          WHEN status = 'scheduled' THEN 1
+          ELSE 2
+        END,
+        scheduled_at ASC
+      LIMIT 5
+    `).bind(seller.id).all();
+    
+    // 스트림 데이터에 포맷된 날짜 추가
+    const streams = upcomingStreams.results ? upcomingStreams.results.map((stream: any) => ({
+      ...stream,
+      formatted_date: stream.scheduled_at ? formatDateTime(stream.scheduled_at) : ''
+    })) : [];
+    
+    return c.html(`
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${seller.display_name || seller.username} - 토스 라이브 커머스</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css');
+        
+        * {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(180deg, #F9FAFB 0%, #FFFFFF 100%);
+            min-height: 100vh;
+        }
+        
+        .profile-section {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        
+        .profile-image {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #F1F3F5;
+        }
+        
+        .stream-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #E5E8EB;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stream-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+            border-color: #3182F6;
+        }
+        
+        .stream-card.live {
+            border: 2px solid #F04452;
+            background: linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 100%);
+        }
+        
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #F04452;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .live-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .scheduled-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #F1F3F5;
+            color: #4E5968;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #F1F3F5;
+            color: #4E5968;
+            transition: all 0.2s;
+        }
+        
+        .social-link:hover {
+            background: #3182F6;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3182F6 0%, #1B64DA 100%);
+            color: white;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(49, 130, 246, 0.4);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8B95A1;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .stream-thumbnail {
+            width: 100%;
+            height: 200px;
+            background: #F1F3F5;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            object-fit: cover;
+        }
+        
+        .time-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: #6B7684;
+        }
+        
+        .viewer-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            color: #6B7684;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-2xl mx-auto px-4 py-6">
+        <!-- 프로필 섹션 -->
+        <div class="profile-section">
+            <div class="flex items-center gap-6 mb-6">
+                <img src="${seller.profile_image || 'https://via.placeholder.com/96'}" 
+                     alt="${seller.display_name || seller.username}" 
+                     class="profile-image"
+                     onerror="this.src='https://via.placeholder.com/96'">
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">
+                        ${seller.display_name || seller.username}
+                    </h1>
+                    ${seller.bio ? `<p class="text-gray-600 text-sm mb-3">${seller.bio}</p>` : ''}
+                    ${seller.business_name ? `<p class="text-xs text-gray-500">${seller.business_name}</p>` : ''}
+                </div>
+            </div>
+            
+            <!-- 소셜 링크 -->
+            ${seller.instagram_url || seller.youtube_url ? `
+                <div class="flex gap-3 pt-4 border-t">
+                    ${seller.instagram_url ? `
+                        <a href="${seller.instagram_url}" target="_blank" class="social-link" title="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    ` : ''}
+                    ${seller.youtube_url ? `
+                        <a href="${seller.youtube_url}" target="_blank" class="social-link" title="YouTube">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    ` : ''}
+                </div>
+            ` : ''}
+        </div>
+        
+        <!-- 라이브 스트림 섹션 -->
+        <div>
+            <h2 class="text-xl font-bold text-gray-900 mb-4 px-2">
+                <i class="fas fa-video mr-2 text-blue-600"></i>
+                다가오는 라이브 방송
+            </h2>
+            
+            <div id="streams-container">
+                ${streams && streams.length > 0 ? 
+                    streams.map(stream => `
+                        <div class="stream-card ${stream.status === 'live' ? 'live' : ''}" 
+                             onclick="goToStream('${stream.id}', '${seller.id}', '${utmSource}', '${utmMedium}', '${utmContent}')">
+                            ${stream.status === 'live' ? 
+                                '<div class="live-badge">LIVE</div>' : 
+                                '<div class="scheduled-badge"><i class="far fa-clock"></i> 예정</div>'
+                            }
+                            
+                            ${stream.youtube_video_id ? `
+                                <img src="https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg" 
+                                     alt="${stream.title}" 
+                                     class="stream-thumbnail"
+                                     onerror="this.src='https://via.placeholder.com/640x360?text=Thumbnail'">
+                            ` : ''}
+                            
+                            <h3 class="font-bold text-lg text-gray-900 mb-2">${stream.title}</h3>
+                            
+                            <div class="flex items-center justify-between text-sm">
+                                ${stream.scheduled_at ? `
+                                    <div class="time-badge">
+                                        <i class="far fa-calendar"></i>
+                                        <span>${stream.formatted_date}</span>
+                                    </div>
+                                ` : '<div></div>'}
+                            </div>
+                            
+                            ${stream.status === 'live' ? `
+                                <div class="mt-4">
+                                    <button class="btn-primary w-full">
+                                        <i class="fas fa-play-circle"></i>
+                                        지금 시청하기
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('') 
+                : `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📺</div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">예정된 라이브가 없습니다</h3>
+                        <p class="text-sm text-gray-500">곧 새로운 라이브가 시작될 예정이니 조금만 기다려주세요!</p>
+                    </div>
+                `}
+            </div>
+        </div>
+        
+        <!-- UTM 트래킹 정보 (개발용 - 나중에 제거) -->
+        ${utmSource || utmMedium ? `
+            <div class="mt-6 p-4 bg-gray-100 rounded-lg text-xs text-gray-600">
+                <strong>트래킹 정보:</strong><br>
+                Source: ${utmSource || '-'} | Medium: ${utmMedium || '-'} | Content: ${utmContent || '-'}
+            </div>
+        ` : ''}
+    </div>
+    
+    <script>
+        function goToStream(streamId, sellerId, utmSource, utmMedium, utmContent) {
+            // UTM 파라미터를 포함한 URL 생성
+            let url = \`/live/\${streamId}\`;
+            const params = [];
+            
+            if (sellerId) params.push(\`seller_id=\${sellerId}\`);
+            if (utmSource) params.push(\`utm_source=\${utmSource}\`);
+            if (utmMedium) params.push(\`utm_medium=\${utmMedium}\`);
+            if (utmContent) params.push(\`utm_content=\${utmContent}\`);
+            
+            if (params.length > 0) {
+                url += '?' + params.join('&');
+            }
+            
+            // UTM 정보를 localStorage에 저장 (주문 추적용)
+            if (sellerId) {
+                localStorage.setItem('seller_id', sellerId);
+                localStorage.setItem('utm_source', utmSource || '');
+                localStorage.setItem('utm_medium', utmMedium || '');
+                localStorage.setItem('utm_content', utmContent || '');
+            }
+            
+            window.location.href = url;
+        }
+    </script>
+</body>
+</html>
+    `);
+  } catch (err) {
+    console.error('Seller page error:', err);
+    return c.html(`
+      <!DOCTYPE html>
+      <html lang="ko">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>오류 발생</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+          <div class="text-center">
+              <div class="text-6xl mb-4">⚠️</div>
+              <h1 class="text-2xl font-bold text-gray-800 mb-2">오류가 발생했습니다</h1>
+              <p class="text-gray-600 mb-6">${(err as Error).message}</p>
+              <a href="/" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700">
+                  홈으로 돌아가기
+              </a>
+          </div>
+      </body>
+      </html>
+    `);
+  }
+});
+
 // 주문서 페이지 (Checkout)
 app.get('/checkout', (c) => {
   return c.html(`
