@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, ShoppingCart, Circle, Users, Volume2, VolumeX, MessageCircle } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Circle, Users, Volume2, VolumeX, MessageCircle, Send, X } from 'lucide-react'
 
 interface Product {
   id: number
@@ -28,6 +28,14 @@ interface CurrentProduct {
   product: Product
 }
 
+interface ChatMessage {
+  id: string
+  username: string
+  message: string
+  timestamp: number
+  avatar?: string
+}
+
 export default function LivePage() {
   const { streamId } = useParams()
   const [stream, setStream] = useState<Stream | null>(null)
@@ -35,17 +43,79 @@ export default function LivePage() {
   const [loading, setLoading] = useState(true)
   const [muted, setMuted] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [newMessage, setNewMessage] = useState('')
   const playerRef = useRef<any>(null)
   const playerInstanceRef = useRef<any>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+  const messageInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadStreamData()
     loadCurrentProduct()
+    loadDemoMessages()
     
     // Poll for product changes every 3 seconds
     const interval = setInterval(loadCurrentProduct, 3000)
     return () => clearInterval(interval)
   }, [streamId])
+
+  useEffect(() => {
+    // Auto-scroll chat to bottom
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  function loadDemoMessages() {
+    // Demo messages for UI showcase
+    const demoMessages: ChatMessage[] = [
+      {
+        id: '1',
+        username: '김지수',
+        message: '와 이 제품 너무 예쁘다! 😍',
+        timestamp: Date.now() - 120000,
+        avatar: 'https://ui-avatars.com/api/?name=김지수&background=007aff&color=fff',
+      },
+      {
+        id: '2',
+        username: '박민준',
+        message: '가격이 얼마인가요?',
+        timestamp: Date.now() - 90000,
+        avatar: 'https://ui-avatars.com/api/?name=박민준&background=34c759&color=fff',
+      },
+      {
+        id: '3',
+        username: '이서연',
+        message: '재고 있나요?',
+        timestamp: Date.now() - 60000,
+        avatar: 'https://ui-avatars.com/api/?name=이서연&background=ff9500&color=fff',
+      },
+      {
+        id: '4',
+        username: '최영호',
+        message: '바로 구매했습니다! 🛒',
+        timestamp: Date.now() - 30000,
+        avatar: 'https://ui-avatars.com/api/?name=최영호&background=ff3b30&color=fff',
+      },
+    ]
+    setMessages(demoMessages)
+  }
+
+  function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newMessage.trim()) return
+
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      username: '나',
+      message: newMessage,
+      timestamp: Date.now(),
+      avatar: 'https://ui-avatars.com/api/?name=나&background=007aff&color=fff',
+    }
+
+    setMessages(prev => [...prev, message])
+    setNewMessage('')
+    messageInputRef.current?.focus()
+  }
 
   useEffect(() => {
     // Load YouTube IFrame API
@@ -311,28 +381,160 @@ export default function LivePage() {
         </div>
       </div>
 
-      {/* Mobile Chat Overlay */}
-      {chatOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setChatOpen(false)}>
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
+      {/* Desktop Chat Sidebar */}
+      <div className="hidden md:block fixed right-0 top-[52px] bottom-0 w-80 lg:w-96 apple-glass-dark border-l border-white/10 overflow-hidden">
+        <div className="flex flex-col h-full">
+          {/* Chat Header */}
+          <div className="border-b border-white/10 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[17px] font-semibold text-white">
                 실시간 채팅
               </h3>
+              <Badge className="bg-white/10 text-white border-0 px-2.5 py-1">
+                <Circle className="h-2 w-2 fill-white text-white animate-pulse mr-1.5" />
+                <span className="text-[12px] font-semibold">LIVE</span>
+              </Badge>
+            </div>
+          </div>
+
+          {/* Chat Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {messages.map((msg) => (
+              <div key={msg.id} className="smooth-appear">
+                <div className="flex items-start space-x-2">
+                  <img
+                    src={msg.avatar}
+                    alt={msg.username}
+                    className="h-7 w-7 rounded-full flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-[13px] font-semibold text-white">
+                        {msg.username}
+                      </span>
+                      <span className="text-[11px] text-white/40">
+                        {new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-white/90 leading-relaxed break-words mt-0.5">
+                      {msg.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Chat Input */}
+          <div className="border-t border-white/10 p-3">
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <input
+                ref={messageInputRef}
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="메시지 입력..."
+                className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-[14px] text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+              />
+              <button
+                type="submit"
+                disabled={!newMessage.trim()}
+                className="flex items-center justify-center h-10 w-10 rounded-full bg-[#007aff] disabled:bg-white/10 disabled:text-white/30 text-white hover:bg-[#0051d5] disabled:hover:bg-white/10 transition-colors"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Chat Overlay */}
+      {chatOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setChatOpen(false)}>
+          <div 
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Chat Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
+                  실시간 채팅
+                </h3>
+                <Badge className="bg-[#ff3b30] text-white border-0 px-2 py-0.5">
+                  <Circle className="h-1.5 w-1.5 fill-white text-white animate-pulse mr-1" />
+                  <span className="text-[11px] font-semibold">LIVE</span>
+                </Badge>
+              </div>
               <button
                 onClick={() => setChatOpen(false)}
-                className="text-[#007aff] text-[17px] font-normal"
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100 transition-colors"
               >
-                닫기
+                <X className="h-5 w-5 text-[#1d1d1f]" />
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="text-center text-[15px] text-[#6e6e73] py-8">
-                채팅 기능이 곧 추가됩니다
-              </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {messages.length > 0 ? (
+                messages.map((msg) => (
+                  <div key={msg.id} className="smooth-appear">
+                    <div className="flex items-start space-x-3">
+                      <img
+                        src={msg.avatar}
+                        alt={msg.username}
+                        className="h-8 w-8 rounded-full flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2 mb-1">
+                          <span className="text-[14px] font-semibold text-[#1d1d1f]">
+                            {msg.username}
+                          </span>
+                          <span className="text-[12px] text-[#6e6e73]">
+                            {new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-[15px] text-[#1d1d1f] leading-relaxed break-words">
+                          {msg.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-[15px] text-[#6e6e73] py-8">
+                  첫 메시지를 남겨보세요!
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Chat Input */}
+            <div className="border-t border-gray-100 p-4">
+              <form onSubmit={handleSendMessage} className="flex gap-3">
+                <input
+                  ref={messageInputRef}
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="메시지 입력..."
+                  className="flex-1 bg-[#f5f5f7] border-0 rounded-full px-4 py-3 text-[15px] text-[#1d1d1f] placeholder:text-[#6e6e73] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim()}
+                  className="flex items-center justify-center h-11 w-11 rounded-full bg-[#007aff] disabled:bg-[#e5e5ea] disabled:text-[#8e8e93] text-white hover:bg-[#0051d5] disabled:hover:bg-[#e5e5ea] transition-colors"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              </form>
             </div>
           </div>
         </div>
