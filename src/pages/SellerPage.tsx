@@ -19,7 +19,9 @@ import {
   AlertCircle,
   Eye,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  Building2,
+  FileText
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -262,6 +264,53 @@ export default function SellerPage() {
               {stats.totalViewers.toLocaleString()}명
             </p>
           </div>
+        </div>
+
+        {/* Quick Access Section */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <button
+            onClick={() => navigate('/seller/business-info')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-[#5856d6]/10 rounded-full flex items-center justify-center mb-3">
+              <Building2 className="h-5 w-5 text-[#5856d6]" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">사업자 정보</p>
+            <p className="text-[13px] text-[#6e6e73]">정보 등록 및 관리</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/seller/tax-invoices')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-[#32ade6]/10 rounded-full flex items-center justify-center mb-3">
+              <FileText className="h-5 w-5 text-[#32ade6]" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">세금계산서</p>
+            <p className="text-[13px] text-[#6e6e73]">발행 내역 조회</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/seller/orders')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-[#ff9500]/10 rounded-full flex items-center justify-center mb-3">
+              <Package className="h-5 w-5 text-[#ff9500]" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">주문 관리</p>
+            <p className="text-[13px] text-[#6e6e73]">주문 확인 및 배송</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/seller/products')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center mb-3">
+              <ShoppingBag className="h-5 w-5 text-[#34c759]" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">상품 관리</p>
+            <p className="text-[13px] text-[#6e6e73]">상품 등록 및 수정</p>
+          </button>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">

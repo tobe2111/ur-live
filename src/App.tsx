@@ -4,6 +4,8 @@ import LivePage from './pages/LivePage'
 import CheckoutPage from './pages/CheckoutPage'
 import SellerPage from './pages/SellerPage'
 import SellerLoginPage from './pages/SellerLoginPage'
+import SellerBusinessInfoPage from './pages/SellerBusinessInfoPage'
+import SellerTaxInvoicesPage from './pages/SellerTaxInvoicesPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import KakaoCallbackPage from './pages/KakaoCallbackPage'
 
@@ -16,6 +18,8 @@ function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/seller" element={<SellerPage />} />
         <Route path="/seller/login" element={<SellerLoginPage />} />
+        <Route path="/seller/business-info" element={<SellerBusinessInfoPage />} />
+        <Route path="/seller/tax-invoices" element={<SellerTaxInvoicesPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
       </Routes>

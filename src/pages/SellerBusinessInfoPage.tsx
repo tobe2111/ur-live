@@ -1,0 +1,426 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { 
+  ArrowLeft, 
+  Building2,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  FileText
+} from 'lucide-react'
+
+interface BusinessInfo {
+  id: number
+  business_number: string
+  business_name: string
+  ceo_name: string
+  business_type: string
+  business_category: string
+  postal_code: string
+  address: string
+  address_detail: string
+  phone: string
+  email: string
+  is_verified: boolean
+  verified_at: string | null
+  created_at: string
+}
+
+export default function SellerBusinessInfoPage() {
+  const navigate = useNavigate()
+  const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const [formData, setFormData] = useState({
+    business_number: '',
+    business_name: '',
+    ceo_name: '',
+    business_type: '',
+    business_category: '',
+    postal_code: '',
+    address: '',
+    address_detail: '',
+    phone: '',
+    email: ''
+  })
+
+  useEffect(() => {
+    loadBusinessInfo()
+  }, [])
+
+  async function loadBusinessInfo() {
+    try {
+      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
+      const sessionToken = session.token
+
+      if (!sessionToken) {
+        navigate('/seller/login')
+        return
+      }
+
+      const response = await axios.get('/api/seller/business-info', {
+        headers: { 'X-Session-Token': sessionToken }
+      })
+
+      if (response.data.success && response.data.data) {
+        setBusinessInfo(response.data.data)
+        setFormData({
+          business_number: response.data.data.business_number || '',
+          business_name: response.data.data.business_name || '',
+          ceo_name: response.data.data.ceo_name || '',
+          business_type: response.data.data.business_type || '',
+          business_category: response.data.data.business_category || '',
+          postal_code: response.data.data.postal_code || '',
+          address: response.data.data.address || '',
+          address_detail: response.data.data.address_detail || '',
+          phone: response.data.data.phone || '',
+          email: response.data.data.email || ''
+        })
+      }
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        // 사업자 정보가 아직 등록되지 않음
+        console.log('사업자 정보 미등록')
+      } else {
+        console.error('Failed to load business info:', error)
+        setError('사업자 정보를 불러올 수 없습니다.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    setSubmitting(true)
+
+    try {
+      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
+      const sessionToken = session.token
+
+      if (!sessionToken) {
+        navigate('/seller/login')
+        return
+      }
+
+      const response = await axios.post('/api/seller/business-info', formData, {
+        headers: { 'X-Session-Token': sessionToken }
+      })
+
+      if (response.data.success) {
+        setSuccess('사업자 정보가 저장되었습니다. 관리자 승인을 기다려주세요.')
+        setTimeout(() => {
+          loadBusinessInfo()
+        }, 1500)
+      }
+    } catch (error: any) {
+      console.error('Failed to save business info:', error)
+      setError(error.response?.data?.error || '사업자 정보 저장에 실패했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <button
+            onClick={() => navigate('/seller')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>판매자 대시보드로 돌아가기</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Title */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Building2 className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900">사업자 정보 관리</h1>
+          </div>
+          <p className="text-gray-600 mt-2">
+            세금계산서 발행을 위해 사업자 정보를 등록해주세요. 관리자 승인 후 사용 가능합니다.
+          </p>
+        </div>
+
+        {/* Status Banner */}
+        {businessInfo && (
+          <div className={`mb-6 p-4 rounded-lg border ${
+            businessInfo.is_verified
+              ? 'bg-green-50 border-green-200'
+              : 'bg-yellow-50 border-yellow-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {businessInfo.is_verified ? (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-900">승인 완료</p>
+                    <p className="text-sm text-green-700">
+                      {businessInfo.verified_at && `승인일시: ${new Date(businessInfo.verified_at).toLocaleString('ko-KR')}`}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  <div>
+                    <p className="font-medium text-yellow-900">승인 대기중</p>
+                    <p className="text-sm text-yellow-700">
+                      관리자가 사업자 정보를 검토하고 있습니다. 영업일 기준 1~2일 소요됩니다.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="w-5 h-5" />
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-700">
+              <CheckCircle2 className="w-5 h-5" />
+              <p>{success}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+          {/* 사업자등록번호 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              사업자등록번호 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="business_number"
+              value={formData.business_number}
+              onChange={handleChange}
+              placeholder="000-00-00000"
+              required
+              disabled={businessInfo?.is_verified}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            <p className="text-xs text-gray-500 mt-1">하이픈(-)을 포함하여 입력해주세요.</p>
+          </div>
+
+          {/* 상호명 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상호(법인명) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="business_name"
+              value={formData.business_name}
+              onChange={handleChange}
+              placeholder="예: (주)유어라이브"
+              required
+              disabled={businessInfo?.is_verified}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* 대표자명 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              대표자명 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="ceo_name"
+              value={formData.ceo_name}
+              onChange={handleChange}
+              placeholder="예: 홍길동"
+              required
+              disabled={businessInfo?.is_verified}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* 업태/업종 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                업태
+              </label>
+              <input
+                type="text"
+                name="business_type"
+                value={formData.business_type}
+                onChange={handleChange}
+                placeholder="예: 도소매업"
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                업종
+              </label>
+              <input
+                type="text"
+                name="business_category"
+                value={formData.business_category}
+                onChange={handleChange}
+                placeholder="예: 전자상거래업"
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* 사업장 주소 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              사업장 소재지 <span className="text-red-500">*</span>
+            </label>
+            <div className="space-y-2">
+              <input
+                type="text"
+                name="postal_code"
+                value={formData.postal_code}
+                onChange={handleChange}
+                placeholder="우편번호"
+                required
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="기본 주소"
+                required
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+              <input
+                type="text"
+                name="address_detail"
+                value={formData.address_detail}
+                onChange={handleChange}
+                placeholder="상세 주소"
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* 연락처 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                전화번호 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="02-1234-5678"
+                required
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                이메일 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="business@example.com"
+                required
+                disabled={businessInfo?.is_verified}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          {!businessInfo?.is_verified && (
+            <div className="pt-4">
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    저장 중...
+                  </span>
+                ) : businessInfo ? (
+                  '정보 수정하기'
+                ) : (
+                  '사업자 정보 등록하기'
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Help Text */}
+          <div className="pt-4 border-t">
+            <div className="flex items-start gap-2 text-sm text-gray-600">
+              <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium mb-1">안내사항</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>사업자 정보는 세금계산서 발행에 사용됩니다.</li>
+                  <li>승인 후에는 수정이 불가능합니다. 변경이 필요한 경우 고객센터로 문의해주세요.</li>
+                  <li>허위 정보 입력 시 서비스 이용이 제한될 수 있습니다.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
