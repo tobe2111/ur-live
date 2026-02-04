@@ -7,6 +7,9 @@ import SellerLoginPage from './pages/SellerLoginPage'
 import SellerBusinessInfoPage from './pages/SellerBusinessInfoPage'
 import SellerTaxInvoicesPage from './pages/SellerTaxInvoicesPage'
 import SellerOrdersPage from './pages/SellerOrdersPage'
+import SellerProductsPage from './pages/SellerProductsPage'
+import SellerProductNewPage from './pages/SellerProductNewPage'
+import SellerProductEditPage from './pages/SellerProductEditPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import KakaoCallbackPage from './pages/KakaoCallbackPage'
 
@@ -22,6 +25,9 @@ function App() {
         <Route path="/seller/business-info" element={<SellerBusinessInfoPage />} />
         <Route path="/seller/tax-invoices" element={<SellerTaxInvoicesPage />} />
         <Route path="/seller/orders" element={<SellerOrdersPage />} />
+        <Route path="/seller/products" element={<SellerProductsPage />} />
+        <Route path="/seller/products/new" element={<SellerProductNewPage />} />
+        <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
       </Routes>

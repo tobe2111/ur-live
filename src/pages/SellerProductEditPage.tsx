@@ -1,0 +1,430 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import axios from 'axios'
+import { Button } from '@/components/ui/button'
+import { 
+  ArrowLeft, 
+  Package,
+  Loader2,
+  Image as ImageIcon,
+  DollarSign,
+  Box,
+  FileText,
+  Play
+} from 'lucide-react'
+
+interface LiveStream {
+  id: number
+  title: string
+  status: string
+}
+
+interface Product {
+  id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+  image_url: string
+  live_stream_id: number | null
+  is_active: boolean
+}
+
+export default function SellerProductEditPage() {
+  const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
+  const [product, setProduct] = useState<Product | null>(null)
+
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    stock: '',
+    image_url: '',
+    live_stream_id: '',
+    is_active: true
+  })
+
+  useEffect(() => {
+    loadProduct()
+    loadLiveStreams()
+  }, [id])
+
+  async function loadProduct() {
+    try {
+      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
+      const sessionToken = session.token
+
+      if (!sessionToken) {
+        navigate('/seller/login')
+        return
+      }
+
+      const response = await axios.get(`/api/seller/products/${id}`, {
+        headers: { 'X-Session-Token': sessionToken }
+      })
+
+      if (response.data.success) {
+        const productData = response.data.data
+        setProduct(productData)
+        setFormData({
+          name: productData.name,
+          description: productData.description || '',
+          price: String(productData.price),
+          stock: String(productData.stock),
+          image_url: productData.image_url || '',
+          live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
+          is_active: productData.is_active
+        })
+      }
+    } catch (error: any) {
+      console.error('Failed to load product:', error)
+      setError('상품 정보를 불러올 수 없습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadLiveStreams() {
+    try {
+      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
+      const sessionToken = session.token
+
+      if (!sessionToken) return
+
+      const response = await axios.get('/api/seller/streams', {
+        headers: { 'X-Session-Token': sessionToken }
+      })
+
+      if (response.data.success) {
+        setLiveStreams(response.data.data)
+      }
+    } catch (error) {
+      console.error('Failed to load live streams:', error)
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+
+    try {
+      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
+      const sessionToken = session.token
+
+      if (!sessionToken) {
+        navigate('/seller/login')
+        return
+      }
+
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        price: Number(formData.price),
+        stock: Number(formData.stock),
+        image_url: formData.image_url,
+        live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
+        is_active: formData.is_active
+      }
+
+      const response = await axios.patch(`/api/seller/products/${id}`, payload, {
+        headers: { 'X-Session-Token': sessionToken }
+      })
+
+      if (response.data.success) {
+        alert('상품이 수정되었습니다.')
+        navigate('/seller/products')
+      }
+    } catch (error: any) {
+      console.error('Failed to update product:', error)
+      setError(error.response?.data?.error || '상품 수정에 실패했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    const { name, value, type } = e.target as HTMLInputElement
+    
+    if (type === 'checkbox') {
+      setFormData({
+        ...formData,
+        [name]: (e.target as HTMLInputElement).checked
+      })
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-600">상품을 찾을 수 없습니다.</p>
+          <Button
+            onClick={() => navigate('/seller/products')}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            목록으로 돌아가기
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <button
+            onClick={() => navigate('/seller/products')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>상품 목록으로 돌아가기</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Title */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Package className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900">상품 수정</h1>
+          </div>
+          <p className="text-gray-600 mt-2">
+            상품 정보를 수정하고 변경사항을 저장할 수 있습니다.
+          </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-700">
+              <Package className="w-5 h-5" />
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+          {/* Product Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상품명 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="예: 프리미엄 무선 이어폰"
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상품 설명
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="상품에 대한 자세한 설명을 입력해주세요"
+              rows={4}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Price & Stock */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                판매가격 <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="30000"
+                  required
+                  min="0"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">원 단위로 입력해주세요</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                재고 수량 <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="number"
+                  name="stock"
+                  value={formData.stock}
+                  onChange={handleChange}
+                  placeholder="100"
+                  required
+                  min="0"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">개 단위로 입력해주세요</p>
+            </div>
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상품 이미지 URL
+            </label>
+            <div className="relative">
+              <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="url"
+                name="image_url"
+                value={formData.image_url}
+                onChange={handleChange}
+                placeholder="https://example.com/image.jpg"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">상품 이미지 URL을 입력하거나 비워두세요</p>
+          </div>
+
+          {/* Image Preview */}
+          {formData.image_url && (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">이미지 미리보기</p>
+              <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden border">
+                <img
+                  src={formData.image_url}
+                  alt="상품 미리보기"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/128'
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Live Stream Selection */}
+          {liveStreams.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                라이브 스트림 연결 (선택)
+              </label>
+              <div className="relative">
+                <Play className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <select
+                  name="live_stream_id"
+                  value={formData.live_stream_id}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                >
+                  <option value="">라이브 스트림을 선택하세요 (선택사항)</option>
+                  {liveStreams.map((stream) => (
+                    <option key={stream.id} value={stream.id}>
+                      {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? '예정' : '종료'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">특정 라이브 스트림에서 판매할 상품인 경우 선택하세요</p>
+            </div>
+          )}
+
+          {/* Active Status */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="is_active"
+                checked={formData.is_active}
+                onChange={handleChange}
+                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-700">상품 활성화</p>
+                <p className="text-xs text-gray-500">체크하면 고객에게 상품이 표시됩니다</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-4 border-t">
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={() => navigate('/seller/products')}
+                className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white"
+              >
+                취소
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    저장 중...
+                  </span>
+                ) : (
+                  '변경사항 저장'
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Help Text */}
+          <div className="pt-4 border-t">
+            <div className="flex items-start gap-2 text-sm text-gray-600">
+              <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium mb-1">안내사항</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>상품명과 가격, 재고는 필수 입력 항목입니다.</li>
+                  <li>변경사항은 즉시 반영됩니다.</li>
+                  <li>비활성화 상태로 변경하면 고객에게 표시되지 않습니다.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
