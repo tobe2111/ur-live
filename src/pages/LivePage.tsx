@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { ArrowLeft, Heart, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube } from 'lucide-react'
+import { ArrowLeft, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube, Package } from 'lucide-react'
 
 interface Product {
   id: number
@@ -50,7 +50,7 @@ export default function LivePage() {
   const [showCart, setShowCart] = useState(false)
   const [cartItems, setCartItems] = useState<any[]>([])
   const [likes, setLikes] = useState(1234)
-  const [liked, setLiked] = useState(false)
+  const [videoStatus, setVideoStatus] = useState<'loading' | 'ended' | 'playing'>('loading')
   const [playerReady, setPlayerReady] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [showChatInput, setShowChatInput] = useState(false)
@@ -112,9 +112,19 @@ export default function LivePage() {
             onReady: (event: any) => {
               event.target.playVideo()
               setPlayerReady(true)
+              setVideoStatus('playing')
+            },
+            onStateChange: (event: any) => {
+              // @ts-ignore
+              if (event.data === window.YT.PlayerState.ENDED) {
+                setVideoStatus('ended')
+              } else if (event.data === window.YT.PlayerState.PLAYING) {
+                setVideoStatus('playing')
+              }
             },
             onError: (event: any) => {
               console.warn('YouTube player error:', event.data)
+              setVideoStatus('ended')
             },
           },
         })
@@ -209,6 +219,16 @@ export default function LivePage() {
     setNotificationText(`${currentProduct.product.name}을(를) 담았습니다!`)
     setShowNotification(true)
     setTimeout(() => setShowNotification(false), 2000)
+
+    // Add system message to chat
+    const systemMessage: ChatMessage = {
+      id: Date.now().toString(),
+      username: '시스템',
+      message: `${currentProduct.product.name} 주문 감사합니다 ♡`,
+      timestamp: Date.now(),
+      isSystem: true
+    }
+    setMessages(prev => [...prev, systemMessage])
   }
 
   function handleCheckout() {
@@ -262,9 +282,9 @@ export default function LivePage() {
     setShowChatInput(false)
   }
 
-  function handleLike() {
-    setLiked(!liked)
-    setLikes(prev => liked ? prev - 1 : prev + 1)
+  function handleShowProducts() {
+    // Navigate to products page or show product list
+    alert('상품 목록 보기 기능 (구현 예정)')
   }
 
   const discountedPrice = currentProduct?.product 
@@ -311,6 +331,16 @@ export default function LivePage() {
           zIndex: 0,
         }}
       >
+        {videoStatus === 'loading' && (
+          <div className="absolute inset-0 bg-black flex items-center justify-center">
+            <p className="text-white text-[17px] font-semibold">방송 준비 중입니다.</p>
+          </div>
+        )}
+        {videoStatus === 'ended' && (
+          <div className="absolute inset-0 bg-black flex items-center justify-center">
+            <p className="text-white text-[17px] font-semibold">방송이 종료되었습니다.</p>
+          </div>
+        )}
         <div 
           id="youtube-player"
           className="absolute inset-0"
@@ -318,6 +348,7 @@ export default function LivePage() {
             width: '100%',
             height: '100%',
             pointerEvents: 'none',
+            visibility: videoStatus === 'playing' ? 'visible' : 'hidden',
           }}
         />
       </div>
@@ -400,18 +431,8 @@ export default function LivePage() {
         </div>
       </div>
 
-      {/* Right Side Icons - 개선: 안쪽으로 이동, 하트→채팅, 말풍선 제거 */}
+      {/* Right Side Icons - 개선: 안쪽으로 이동, 말풍선으로 채팅 */}
       <div className="fixed right-5 bottom-40 z-30 flex flex-col gap-5">
-        {/* 좋아요 버튼 */}
-        <button onClick={handleLike} className="flex flex-col items-center gap-1.5 transition-all active:scale-95">
-          <div className="w-11 h-11 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-            <Heart className={`w-5 h-5 ${liked ? 'fill-[#ff3b30] text-[#ff3b30]' : 'text-white'}`} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
-          </div>
-          <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
-            {likes > 1000 ? `${(likes / 1000).toFixed(1)}K` : likes}
-          </span>
-        </button>
-
         {/* 공유 버튼 */}
         <button className="flex flex-col items-center gap-1.5 transition-all active:scale-95">
           <div className="w-11 h-11 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
@@ -422,7 +443,7 @@ export default function LivePage() {
           </span>
         </button>
 
-        {/* 채팅 버튼 (하트→채팅으로 변경, 말풍선 제거) */}
+        {/* 채팅 버튼 (말풍선 클릭 시 입력창) */}
         <button 
           onClick={() => setShowChatInput(!showChatInput)}
           className="flex flex-col items-center gap-1.5 transition-all active:scale-95"
@@ -439,12 +460,16 @@ export default function LivePage() {
       {/* Bottom Content - 개선: 상품 카드 하단으로, 그라데이션 제거 */}
       <div className="fixed bottom-0 left-0 right-0 z-20 pb-8">
         <div className="flex flex-col justify-end px-5 space-y-4">
-          {/* Chat Messages - 그라데이션 제거 */}
+          {/* Chat Messages - 그라데이션 제거, 시스템 메시지 노란색 */}
           <div className="space-y-2 max-h-28 overflow-y-auto">
             {messages.slice(-4).map((msg) => (
-              <div key={msg.id} className="flex items-start gap-2 px-3 py-1.5 rounded-lg bg-black/15 backdrop-blur-sm max-w-[80%]" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
+              <div key={msg.id} className={`flex items-start gap-2 px-3 py-1.5 rounded-lg backdrop-blur-sm max-w-[80%] ${
+                msg.isSystem ? 'bg-yellow-400/30' : 'bg-black/15'
+              }`} style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
                 <span 
-                  className="text-white text-[12px] font-bold shrink-0" 
+                  className={`text-[12px] font-bold shrink-0 ${
+                    msg.isSystem ? 'text-yellow-300' : 'text-white'
+                  }`}
                   style={{ 
                     textShadow: '0 1px 3px rgba(0,0,0,0.9)',
                   }}
@@ -452,7 +477,9 @@ export default function LivePage() {
                   {msg.username}
                 </span>
                 <span 
-                  className="text-white/95 text-[12px]" 
+                  className={`text-[12px] ${
+                    msg.isSystem ? 'text-yellow-200' : 'text-white/95'
+                  }`}
                   style={{ 
                     textShadow: '0 1px 3px rgba(0,0,0,0.9)',
                   }}
@@ -489,13 +516,13 @@ export default function LivePage() {
                   </div>
                 </div>
                 
-                {/* 구매 버튼 - 개선: 타원형 + 텍스트 + 주황색 */}
+                {/* 담기 버튼 - 주황색 */}
                 <button
                   onClick={handleAddToCart}
                   className="flex-shrink-0 bg-[#FF6B35] text-white px-5 py-2.5 rounded-full text-[13px] font-extrabold shadow-lg transition-all active:scale-95"
                   style={{ boxShadow: '0 4px 16px rgba(255,107,53,0.4)' }}
                 >
-                  구매하기
+                  담기
                 </button>
               </div>
             </div>
@@ -521,12 +548,23 @@ export default function LivePage() {
             </form>
           )}
 
-          {/* 장바구니 버튼 - 항상 표시 */}
+          {/* 하단 버튼 2개 - 상품 + 결제 */}
           {!showChatInput && (
-            <div className="flex justify-end">
+            <div className="flex gap-3">
+              {/* 상품 버튼 */}
+              <button
+                onClick={handleShowProducts}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30"
+                style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
+              >
+                <Package className="w-5 h-5 text-[#1d1d1f]" />
+                <span className="text-[#1d1d1f] text-[13px] font-extrabold">상품</span>
+              </button>
+
+              {/* 결제 버튼 */}
               <button
                 onClick={handleCheckout}
-                className="relative flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#0064FF] shadow-xl transition-all active:scale-95"
+                className="relative flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-[#0064FF] shadow-xl transition-all active:scale-95"
                 style={{ boxShadow: '0 4px 16px rgba(0,100,255,0.4)' }}
               >
                 <ShoppingBag className="w-5 h-5 text-white" />
