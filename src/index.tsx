@@ -2521,9 +2521,16 @@ app.post('/api/orders/create', async (c) => {
   const { DB } = c.env;
   
   try {
-    const { userId, cartItems, totalAmount, shippingAddressId, sellerId } = await c.req.json();
+    const { 
+      userId, cartItems, totalAmount, shippingAddressId, sellerId,
+      // 세금계산서 발행을 위한 사업자 정보
+      issueTaxInvoice,
+      buyerBusinessNumber,
+      buyerBusinessName,
+      buyerCeoName
+    } = await c.req.json();
     
-    console.log('주문 생성 요청:', { userId, cartItems: cartItems?.length, totalAmount, shippingAddressId, sellerId });
+    console.log('주문 생성 요청:', { userId, cartItems: cartItems?.length, totalAmount, shippingAddressId, sellerId, issueTaxInvoice });
     
     // 수수료 계산 (10%)
     const commissionRate = 10.00;
@@ -2585,8 +2592,9 @@ app.post('/api/orders/create', async (c) => {
       INSERT INTO orders (
         order_number, user_id, total_amount, payment_status,
         seller_id, commission_rate, commission_amount, seller_amount,
-        shipping_address_id, shipping_name, shipping_phone, shipping_address, shipping_postal_code
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        shipping_address_id, shipping_name, shipping_phone, shipping_address, shipping_postal_code,
+        issue_tax_invoice, buyer_business_number, buyer_business_name, buyer_ceo_name
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       orderNumber,
       finalUserId,
@@ -2600,7 +2608,11 @@ app.post('/api/orders/create', async (c) => {
       shippingInfo?.recipient_name || null,
       shippingInfo?.phone || null,
       shippingInfo?.address ? `${shippingInfo.address} ${shippingInfo.address_detail}` : null,
-      shippingInfo?.postal_code || null
+      shippingInfo?.postal_code || null,
+      issueTaxInvoice ? 1 : 0,
+      buyerBusinessNumber || null,
+      buyerBusinessName || null,
+      buyerCeoName || null
     ).run();
     
     const orderId = orderResult.meta.last_row_id;
@@ -2913,6 +2925,283 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
   } catch (error) {
     console.error('CSV download error:', error);
     return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// =================================
+// 세금계산서 발행 API
+// =================================
+
+// 세금계산서 발행
+app.post('/api/seller/tax-invoices/issue', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { order_no } = await c.req.json();
+
+    if (!order_no) {
+      return c.json({ success: false, error: '주문번호는 필수입니다.' }, 400);
+    }
+
+    // 주문 조회
+    const order = await DB.prepare(`
+      SELECT o.*, u.name as user_name, u.email as user_email
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.order_number = ?
+    `).bind(order_no).first();
+
+    if (!order) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 세금계산서 발행 요청 여부 확인
+    if (!order.issue_tax_invoice) {
+      return c.json({ success: false, error: '세금계산서 발행이 요청되지 않은 주문입니다.' }, 400);
+    }
+
+    // 사업자 정보 조회
+    const businessInfo = await DB.prepare(`
+      SELECT * FROM seller_business_info WHERE seller_id = ? AND is_verified = 1
+    `).bind(auth.sellerId).first();
+
+    if (!businessInfo) {
+      return c.json({ success: false, error: '승인된 사업자 정보가 없습니다. 관리자 승인을 기다려주세요.' }, 400);
+    }
+
+    // 주문 상품 조회
+    const orderItems = await DB.prepare(`
+      SELECT oi.*, p.name as product_name, p.image_url
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?
+    `).bind(order.id).all();
+
+    // 공급가액 계산 (부가세 별도)
+    const totalAmount = Number(order.total_amount);
+    const supplyPrice = Math.floor(totalAmount / 1.1); // 공급가액
+    const taxAmount = totalAmount - supplyPrice; // 부가세 10%
+
+    // 세금계산서 번호 생성
+    const today = new Date().toISOString().split('T')[0];
+    const invoiceNumber = `${today}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // 세금계산서 발행 (Mock - 실제 바로빌 API 연동 시 교체)
+    const taxInvoiceResult = await DB.prepare(`
+      INSERT INTO tax_invoices (
+        seller_id, order_no, invoice_type, invoice_number, issue_date,
+        supplier_business_number, supplier_business_name, supplier_ceo_name, supplier_address,
+        supplier_business_type, supplier_business_category,
+        buyer_business_number, buyer_name, buyer_ceo_name,
+        supply_price, tax_amount, total_amount,
+        status, api_provider, nts_confirm_number,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      auth.sellerId,
+      order_no,
+      'tax',
+      invoiceNumber,
+      today,
+      businessInfo.business_number,
+      businessInfo.business_name,
+      businessInfo.ceo_name,
+      businessInfo.address,
+      businessInfo.business_type,
+      businessInfo.business_category,
+      order.buyer_business_number,
+      order.buyer_business_name,
+      order.buyer_ceo_name,
+      supplyPrice,
+      taxAmount,
+      totalAmount,
+      'issued',
+      'mock', // TODO: 바로빌 연동 시 'barobill'로 변경
+      `MOCK-${Date.now()}` // TODO: 바로빌 국세청 승인번호로 변경
+    ).run();
+
+    const taxInvoiceId = taxInvoiceResult.meta.last_row_id;
+
+    // 세금계산서 품목 추가
+    for (const item of orderItems.results) {
+      const itemSupplyPrice = Math.floor(Number(item.price) * Number(item.quantity) / 1.1);
+      const itemTaxAmount = Number(item.price) * Number(item.quantity) - itemSupplyPrice;
+
+      await DB.prepare(`
+        INSERT INTO tax_invoice_items (
+          tax_invoice_id, order_item_id, product_name, quantity,
+          unit_price, supply_price, tax_amount, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        taxInvoiceId,
+        item.id,
+        item.product_name,
+        item.quantity,
+        item.price,
+        itemSupplyPrice,
+        itemTaxAmount
+      ).run();
+    }
+
+    // TODO: 실제 바로빌 API 호출 (계정 생성 후)
+    // const barobillResult = await callBarobillAPI({ ... });
+
+    return c.json({
+      success: true,
+      data: {
+        invoice_id: taxInvoiceId,
+        invoice_number: invoiceNumber,
+        issue_date: today,
+        total_amount: totalAmount,
+        supply_price: supplyPrice,
+        tax_amount: taxAmount,
+        status: 'issued',
+        nts_confirm_number: `MOCK-${Date.now()}`,
+        message: '세금계산서가 발행되었습니다. (Mock - 실제 바로빌 연동 필요)'
+      }
+    });
+  } catch (err) {
+    console.error('세금계산서 발행 오류:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 세금계산서 목록 조회
+app.get('/api/seller/tax-invoices', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { start_date, end_date, status } = c.req.query();
+
+    let query = `
+      SELECT * FROM tax_invoices
+      WHERE seller_id = ?
+    `;
+    const params = [auth.sellerId];
+
+    if (start_date) {
+      query += ` AND issue_date >= ?`;
+      params.push(start_date);
+    }
+    if (end_date) {
+      query += ` AND issue_date <= ?`;
+      params.push(end_date);
+    }
+    if (status) {
+      query += ` AND status = ?`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    const taxInvoices = await DB.prepare(query).bind(...params).all();
+
+    return c.json({
+      success: true,
+      data: taxInvoices.results || [],
+      total: taxInvoices.results?.length || 0
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 세금계산서 상세 조회
+app.get('/api/seller/tax-invoices/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+
+    // 세금계산서 조회
+    const taxInvoice = await DB.prepare(`
+      SELECT * FROM tax_invoices WHERE id = ? AND seller_id = ?
+    `).bind(id, auth.sellerId).first();
+
+    if (!taxInvoice) {
+      return c.json({ success: false, error: '세금계산서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 품목 조회
+    const items = await DB.prepare(`
+      SELECT * FROM tax_invoice_items WHERE tax_invoice_id = ?
+    `).bind(id).all();
+
+    return c.json({
+      success: true,
+      data: {
+        ...taxInvoice,
+        items: items.results || []
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 세금계산서 취소
+app.post('/api/seller/tax-invoices/:id/cancel', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+    const { reason } = await c.req.json();
+
+    // 세금계산서 조회
+    const taxInvoice = await DB.prepare(`
+      SELECT * FROM tax_invoices WHERE id = ? AND seller_id = ?
+    `).bind(id, auth.sellerId).first();
+
+    if (!taxInvoice) {
+      return c.json({ success: false, error: '세금계산서를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 발행일 익일까지만 취소 가능 (법적 요구사항)
+    const issueDate = new Date(taxInvoice.issue_date);
+    const nextDay = new Date(issueDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const now = new Date();
+
+    if (now > nextDay) {
+      return c.json({ success: false, error: '발행일 익일까지만 취소 가능합니다.' }, 400);
+    }
+
+    // TODO: 실제 바로빌 API 취소 호출
+    // await callBarobillCancelAPI({ ... });
+
+    // 취소 처리
+    await DB.prepare(`
+      UPDATE tax_invoices
+      SET status = 'cancelled', updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(id).run();
+
+    return c.json({
+      success: true,
+      message: '세금계산서가 취소되었습니다.'
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
