@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
+import { issueTaxInvoiceAuto, convertToBarobillFormat, isBarobillMockMode } from './services/barobill';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -2991,7 +2992,32 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
     const today = new Date().toISOString().split('T')[0];
     const invoiceNumber = `${today}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-    // 세금계산서 발행 (Mock - 실제 바로빌 API 연동 시 교체)
+    // 바로빌 API 데이터 준비
+    const barobillRequest = convertToBarobillFormat(businessInfo, order, orderItems.results);
+    
+    // 바로빌 API 호출 (Mock 모드 또는 실제 API 자동 선택)
+    let barobillResult;
+    let ntsConfirmNumber;
+    let apiInvoiceKey;
+    
+    try {
+      barobillResult = await issueTaxInvoiceAuto(barobillRequest);
+      ntsConfirmNumber = barobillResult.ntsConfirmNumber;
+      apiInvoiceKey = barobillResult.invoiceKey;
+      
+      console.log('바로빌 발행 성공:', {
+        ntsConfirmNumber,
+        invoiceKey: apiInvoiceKey,
+        mockMode: isBarobillMockMode(),
+      });
+    } catch (barobillError) {
+      console.error('바로빌 API 호출 실패:', barobillError);
+      // 바로빌 실패 시에도 DB에는 기록 (상태를 failed로)
+      ntsConfirmNumber = 'FAILED';
+      apiInvoiceKey = null;
+    }
+
+    // 세금계산서 DB 저장
     const taxInvoiceResult = await DB.prepare(`
       INSERT INTO tax_invoices (
         seller_id, order_no, invoice_type, invoice_number, issue_date,
@@ -2999,9 +3025,9 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
         supplier_business_type, supplier_business_category,
         buyer_business_number, buyer_name, buyer_ceo_name,
         supply_price, tax_amount, total_amount,
-        status, api_provider, nts_confirm_number,
+        status, api_provider, api_invoice_id, nts_confirm_number,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       auth.sellerId,
       order_no,
@@ -3020,9 +3046,10 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
       supplyPrice,
       taxAmount,
       totalAmount,
-      'issued',
-      'mock', // TODO: 바로빌 연동 시 'barobill'로 변경
-      `MOCK-${Date.now()}` // TODO: 바로빌 국세청 승인번호로 변경
+      ntsConfirmNumber === 'FAILED' ? 'failed' : 'issued',
+      isBarobillMockMode() ? 'mock' : 'barobill',
+      apiInvoiceKey,
+      ntsConfirmNumber
     ).run();
 
     const taxInvoiceId = taxInvoiceResult.meta.last_row_id;
@@ -3048,9 +3075,6 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
       ).run();
     }
 
-    // TODO: 실제 바로빌 API 호출 (계정 생성 후)
-    // const barobillResult = await callBarobillAPI({ ... });
-
     return c.json({
       success: true,
       data: {
@@ -3060,9 +3084,15 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
         total_amount: totalAmount,
         supply_price: supplyPrice,
         tax_amount: taxAmount,
-        status: 'issued',
-        nts_confirm_number: `MOCK-${Date.now()}`,
-        message: '세금계산서가 발행되었습니다. (Mock - 실제 바로빌 연동 필요)'
+        status: ntsConfirmNumber === 'FAILED' ? 'failed' : 'issued',
+        nts_confirm_number: ntsConfirmNumber,
+        api_invoice_key: apiInvoiceKey,
+        mock_mode: isBarobillMockMode(),
+        message: ntsConfirmNumber === 'FAILED' 
+          ? '바로빌 API 호출 실패. 나중에 다시 시도해주세요.' 
+          : isBarobillMockMode()
+            ? '세금계산서가 발행되었습니다. (Mock Mode - 실제 발행 아님)'
+            : '세금계산서가 발행되었습니다.'
       }
     });
   } catch (err) {
