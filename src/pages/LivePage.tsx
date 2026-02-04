@@ -516,16 +516,16 @@ export default function LivePage() {
           {/* 하단 버튼 - 상품 카드 + 결제 버튼 */}
           {!showChatInput && currentProduct?.product && (
             <div className="flex gap-3 items-center">
-              {/* 상품 카드 (이미지 형태) */}
+              {/* 상품 카드 (이미지 형태) - 결제 버튼과 같은 높이 */}
               <button
                 onClick={handleAddToCart}
-                className="flex-1 flex items-center gap-3 px-3 py-2 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30"
+                className="flex-1 flex items-center gap-3 px-3 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30"
                 style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
               >
                 <img
                   src={currentProduct.product.image_url || 'https://via.placeholder.com/64'}
                   alt={currentProduct.product.name}
-                  className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-md"
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 shadow-md"
                 />
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-[11px] font-bold text-[#1d1d1f] line-clamp-1 mb-0.5">
