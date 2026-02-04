@@ -1016,6 +1016,188 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
   }
 });
 
+// =================================
+// Seller Stream Management APIs
+// =================================
+
+// Seller: Create live stream (인플루언서가 직접 라이브 예약)
+app.post('/api/seller/streams', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { 
+      title, 
+      description, 
+      youtube_video_id, 
+      scheduled_at, 
+      status,
+      seller_instagram,
+      seller_youtube,
+      seller_facebook 
+    } = await c.req.json();
+
+    if (!title || !youtube_video_id) {
+      return c.json({ success: false, error: 'Title and YouTube video ID are required' }, 400);
+    }
+
+    const result = await DB.prepare(`
+      INSERT INTO live_streams (
+        title, description, youtube_video_id, status, scheduled_at,
+        seller_id, seller_instagram, seller_youtube, seller_facebook,
+        created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      title, 
+      description || null, 
+      youtube_video_id, 
+      status || 'scheduled', 
+      scheduled_at || null,
+      auth.sellerId,
+      seller_instagram || null,
+      seller_youtube || null,
+      seller_facebook || null
+    ).run();
+
+    // Get created stream
+    const stream = await DB.prepare(
+      'SELECT * FROM live_streams WHERE id = ?'
+    ).bind(result.meta.last_row_id).first();
+
+    return c.json({
+      success: true,
+      data: stream
+    });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Seller: Update own live stream
+app.put('/api/seller/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('id');
+    
+    // Verify ownership
+    const stream = await DB.prepare(
+      'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, auth.sellerId).first();
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
+    }
+
+    const { 
+      title, 
+      description, 
+      youtube_video_id, 
+      scheduled_at, 
+      status,
+      seller_instagram,
+      seller_youtube,
+      seller_facebook 
+    } = await c.req.json();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (title !== undefined) {
+      updates.push('title = ?');
+      values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description);
+    }
+    if (youtube_video_id !== undefined) {
+      updates.push('youtube_video_id = ?');
+      values.push(youtube_video_id);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    if (scheduled_at !== undefined) {
+      updates.push('scheduled_at = ?');
+      values.push(scheduled_at);
+    }
+    if (seller_instagram !== undefined) {
+      updates.push('seller_instagram = ?');
+      values.push(seller_instagram);
+    }
+    if (seller_youtube !== undefined) {
+      updates.push('seller_youtube = ?');
+      values.push(seller_youtube);
+    }
+    if (seller_facebook !== undefined) {
+      updates.push('seller_facebook = ?');
+      values.push(seller_facebook);
+    }
+
+    if (updates.length === 0) {
+      return c.json({ success: false, error: 'No fields to update' }, 400);
+    }
+
+    updates.push('updated_at = datetime(\'now\')');
+
+    await DB.prepare(`
+      UPDATE live_streams SET ${updates.join(', ')} WHERE id = ?
+    `).bind(...values, streamId).run();
+
+    return c.json({ success: true });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Seller: Delete own live stream
+app.delete('/api/seller/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('id');
+
+    // Verify ownership
+    const stream = await DB.prepare(
+      'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, auth.sellerId).first();
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
+    }
+
+    await DB.prepare('DELETE FROM live_streams WHERE id = ?').bind(streamId).run();
+
+    return c.json({ success: true });
+
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// Admin Stream Management APIs
+// =================================
+
 // Admin: Create live stream
 app.post('/api/admin/streams', async (c) => {
   const { DB } = c.env;
@@ -1305,6 +1487,104 @@ app.delete('/api/shipping-addresses/:id', async (c) => {
 
 // 주문 상세 페이지
 // Removed route: /order/:orderNo (handled by React SPA)
+
+// =================================
+// Seller Product Management APIs
+// =================================
+
+// Get seller's products (자신의 상품 목록 조회)
+app.get('/api/seller/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const products = await DB.prepare(`
+      SELECT p.*, ls.title as live_stream_title
+      FROM products p
+      LEFT JOIN live_streams ls ON p.live_stream_id = ls.id
+      WHERE p.seller_id = ?
+      ORDER BY p.created_at DESC
+    `).bind(auth.sellerId).all();
+
+    return c.json({ success: true, data: products.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Create product (상품 등록)
+app.post('/api/seller/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { 
+      name, 
+      description, 
+      price, 
+      original_price, 
+      discount_rate,
+      image_url, 
+      stock, 
+      category, 
+      live_stream_id,
+      is_active 
+    } = await c.req.json();
+
+    // Validate required fields
+    if (!name || !price || !image_url) {
+      return c.json({ success: false, error: 'Name, price, and image are required' }, 400);
+    }
+
+    // If live_stream_id provided, verify ownership
+    if (live_stream_id) {
+      const stream = await DB.prepare(
+        'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+      ).bind(live_stream_id, auth.sellerId).first();
+
+      if (!stream) {
+        return c.json({ success: false, error: 'Live stream not found or unauthorized' }, 404);
+      }
+    }
+
+    // Insert product
+    const result = await DB.prepare(`
+      INSERT INTO products (
+        name, description, price, original_price, discount_rate, 
+        image_url, stock, category, live_stream_id, seller_id, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      name,
+      description || null,
+      price,
+      original_price || null,
+      discount_rate || 0,
+      image_url,
+      stock || 0,
+      category || null,
+      live_stream_id || null,
+      auth.sellerId,
+      is_active !== undefined ? is_active : 1
+    ).run();
+
+    // Get created product
+    const product = await DB.prepare(
+      'SELECT * FROM products WHERE id = ?'
+    ).bind(result.meta.last_row_id).first();
+
+    return c.json({ success: true, data: product });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
 
 // Update product
 app.put('/api/seller/products/:id', async (c) => {
@@ -1713,6 +1993,54 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
     ).bind(status, orderNo).run();
 
     return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update order tracking (Seller only) - 송장번호 입력
+app.put('/api/seller/orders/:orderNo/tracking', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const orderNo = c.req.param('orderNo');
+    const { courier, tracking_number } = await c.req.json();
+
+    if (!courier || !tracking_number) {
+      return c.json({ success: false, error: 'Courier and tracking number are required' }, 400);
+    }
+
+    // Verify this order contains seller's products
+    const order = await DB.prepare('SELECT id FROM orders WHERE order_no = ?').bind(orderNo).first();
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    const sellerItem = await DB.prepare(
+      'SELECT id FROM order_items WHERE order_id = ? AND seller_id = ?'
+    ).bind(order.id, auth.sellerId).first();
+
+    if (!sellerItem) {
+      return c.json({ success: false, error: 'Unauthorized' }, 403);
+    }
+
+    // Update tracking info and set status to SHIPPING if not already
+    await DB.prepare(`
+      UPDATE orders 
+      SET courier = ?, 
+          tracking_number = ?, 
+          shipped_at = CASE WHEN shipped_at IS NULL THEN CURRENT_TIMESTAMP ELSE shipped_at END,
+          status = CASE WHEN status = 'PREPARING' THEN 'SHIPPING' ELSE status END,
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE order_no = ?
+    `).bind(courier, tracking_number, orderNo).run();
+
+    return c.json({ success: true, message: 'Tracking information updated' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
