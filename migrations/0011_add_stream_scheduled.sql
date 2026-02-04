@@ -1,2 +1,2 @@
--- Add scheduled_at column to live_streams
-ALTER TABLE live_streams ADD COLUMN scheduled_at DATETIME;
+-- Add scheduled_at column to live_streams (프로덕션에는 이미 존재)
+-- ALTER TABLE live_streams ADD COLUMN scheduled_at DATETIME;

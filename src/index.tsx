@@ -1840,6 +1840,200 @@ app.get('/api/seller/stats', async (c) => {
 });
 
 // =================================
+// 사업자 정보 관리 API (세금계산서)
+// =================================
+
+// 사업자 정보 등록
+app.post('/api/seller/business-info', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const {
+      business_number,
+      business_name,
+      ceo_name,
+      business_type,
+      business_category,
+      postal_code,
+      address,
+      phone,
+      email
+    } = await c.req.json();
+
+    // 필수 필드 검증
+    if (!business_number || !business_name || !ceo_name) {
+      return c.json({
+        success: false,
+        error: '사업자등록번호, 상호명, 대표자명은 필수입니다.'
+      }, 400);
+    }
+
+    // 이미 등록된 사업자 정보가 있는지 확인
+    const existing = await DB.prepare(`
+      SELECT id FROM seller_business_info WHERE seller_id = ?
+    `).bind(auth.sellerId).first();
+
+    let result;
+    if (existing) {
+      // 업데이트
+      result = await DB.prepare(`
+        UPDATE seller_business_info
+        SET business_number = ?,
+            business_name = ?,
+            ceo_name = ?,
+            business_type = ?,
+            business_category = ?,
+            postal_code = ?,
+            address = ?,
+            phone = ?,
+            email = ?,
+            is_verified = 0,
+            verified_at = NULL,
+            updated_at = datetime('now')
+        WHERE seller_id = ?
+      `).bind(
+        business_number, business_name, ceo_name,
+        business_type, business_category, postal_code,
+        address, phone, email, auth.sellerId
+      ).run();
+    } else {
+      // 신규 등록
+      result = await DB.prepare(`
+        INSERT INTO seller_business_info (
+          seller_id, business_number, business_name, ceo_name,
+          business_type, business_category, postal_code, address,
+          phone, email, is_verified, verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, datetime('now'), datetime('now'))
+      `).bind(
+        auth.sellerId, business_number, business_name, ceo_name,
+        business_type, business_category, postal_code, address,
+        phone, email
+      ).run();
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        id: existing ? existing.id : result.meta.last_row_id,
+        seller_id: auth.sellerId,
+        business_number,
+        is_verified: false,
+        message: '사업자 정보가 등록되었습니다. 관리자 승인 대기 중입니다.'
+      }
+    });
+  } catch (err) {
+    console.error('사업자 정보 등록 오류:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 사업자 정보 조회
+app.get('/api/seller/business-info', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const businessInfo = await DB.prepare(`
+      SELECT * FROM seller_business_info WHERE seller_id = ?
+    `).bind(auth.sellerId).first();
+
+    if (!businessInfo) {
+      return c.json({
+        success: false,
+        error: '등록된 사업자 정보가 없습니다.'
+      }, 404);
+    }
+
+    return c.json({
+      success: true,
+      data: businessInfo
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 관리자: 사업자 정보 승인
+app.put('/api/admin/seller-business/:id/verify', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  const id = c.req.param('id');
+  const { verified } = await c.req.json();
+
+  try {
+    if (verified) {
+      await DB.prepare(`
+        UPDATE seller_business_info
+        SET is_verified = 1, verified_at = datetime('now'), updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(id).run();
+
+      return c.json({
+        success: true,
+        message: '사업자 정보가 승인되었습니다.'
+      });
+    } else {
+      await DB.prepare(`
+        UPDATE seller_business_info
+        SET is_verified = 0, verified_at = NULL, updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(id).run();
+
+      return c.json({
+        success: true,
+        message: '사업자 정보 승인이 취소되었습니다.'
+      });
+    }
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 관리자: 모든 사업자 정보 조회
+app.get('/api/admin/seller-business', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const businesses = await DB.prepare(`
+      SELECT 
+        sbi.*,
+        s.username,
+        s.name as seller_name,
+        s.email as seller_email
+      FROM seller_business_info sbi
+      LEFT JOIN sellers s ON sbi.seller_id = s.id
+      ORDER BY sbi.created_at DESC
+    `).all();
+
+    return c.json({
+      success: true,
+      data: businesses.results || []
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Order Management API
 // =================================
 
