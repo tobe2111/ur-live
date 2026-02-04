@@ -2492,18 +2492,40 @@ app.post('/api/orders/:orderNo/refund', async (c) => {
     }
 
     // Check if order can be refunded
-    if (!['PAY_COMPLETE', 'PREPARING'].includes(order.status)) {
-      return c.json({ success: false, error: 'This order cannot be refunded' }, 400);
+    if (!['PAY_COMPLETE', 'PREPARING', 'SHIPPED', 'DELIVERED'].includes(order.status)) {
+      return c.json({ success: false, error: '환불이 불가능한 주문 상태입니다.' }, 400);
     }
 
-    // Update status to cancelled/refund requested
-    await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
-    ).bind('REFUND_REQUESTED', orderNo).run();
+    // Check if payment is approved
+    if (order.payment_status !== 'approved') {
+      return c.json({ success: false, error: '결제가 승인되지 않은 주문입니다.' }, 400);
+    }
 
-    // TODO: Call Toss Pay refund API
+    // 나이스페이먼츠 환불 API 호출
+    // TODO: 나이스페이먼츠 연동 필요
+    // 현재는 DB만 업데이트 (관리자가 수동으로 환불 처리)
+    let refundSuccess = false;
+    let refundMessage = '';
+    
+    try {
+      // 나이스페이먼츠 환불 API는 추후 연동
+      // 현재는 환불 요청 상태로만 변경
+      await DB.prepare(
+        'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
+      ).bind('REFUND_REQUESTED', orderNo).run();
 
-    return c.json({ success: true, message: 'Refund request submitted' });
+      refundSuccess = true;
+      refundMessage = '환불 요청이 접수되었습니다. 관리자 확인 후 처리됩니다.';
+    } catch (error) {
+      console.error('환불 요청 실패:', error);
+      refundMessage = `환불 요청 실패: ${(error as Error).message}`;
+    }
+
+    return c.json({ 
+      success: refundSuccess, 
+      message: refundMessage,
+      requiresManualProcessing: !refundSuccess
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -3475,8 +3497,26 @@ app.post('/api/seller/tax-invoices/:id/cancel', async (c) => {
       return c.json({ success: false, error: '발행일 익일까지만 취소 가능합니다.' }, 400);
     }
 
-    // TODO: 실제 바로빌 API 취소 호출
-    // await callBarobillCancelAPI({ ... });
+    // 실제 바로빌 API 취소 호출
+    try {
+      if (taxInvoice.api_invoice_key && !isBarobillMockMode()) {
+        // 사업자 정보 조회
+        const businessInfo = await DB.prepare(`
+          SELECT business_number FROM seller_business_info WHERE seller_id = ?
+        `).bind(auth.sellerId).first();
+
+        if (businessInfo && businessInfo.business_number) {
+          await cancelBarobillTaxInvoice(
+            businessInfo.business_number,
+            taxInvoice.api_invoice_key,
+            reason || '판매자 요청'
+          );
+        }
+      }
+    } catch (barobillError) {
+      console.error('바로빌 취소 API 호출 실패:', barobillError);
+      // 실패해도 DB는 취소 처리 (재시도 가능)
+    }
 
     // 취소 처리
     await DB.prepare(`
