@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
-import { issueTaxInvoiceAuto, convertToBarobillFormat, isBarobillMockMode } from './services/barobill';
+import { issueTaxInvoiceAuto, convertToBarobillFormat, isBarobillMockMode, cancelBarobillTaxInvoice } from './services/barobill';
+import { cancelPaymentAuto, isNicepayMockMode } from './services/nicepay';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -2502,23 +2503,51 @@ app.post('/api/orders/:orderNo/refund', async (c) => {
     }
 
     // 나이스페이먼츠 환불 API 호출
-    // TODO: 나이스페이먼츠 연동 필요
-    // 현재는 DB만 업데이트 (관리자가 수동으로 환불 처리)
     let refundSuccess = false;
     let refundMessage = '';
     
     try {
-      // 나이스페이먼츠 환불 API는 추후 연동
-      // 현재는 환불 요청 상태로만 변경
+      if (!order.payment_key) {
+        throw new Error('결제 키가 없습니다. 관리자에게 문의하세요.');
+      }
+
+      // 나이스페이먼츠 환불 API 호출
+      const nicepayResult = await cancelPaymentAuto(
+        order.payment_key, // TID
+        Number(order.total_amount),
+        reason || '구매자 요청'
+      );
+
+      if (nicepayResult.success) {
+        refundSuccess = true;
+        refundMessage = '환불이 완료되었습니다.';
+
+        // Update order status to refunded
+        await DB.prepare(
+          'UPDATE orders SET status = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
+        ).bind('REFUNDED', 'refunded', orderNo).run();
+
+        // Restore product stock
+        const orderItems = await DB.prepare(
+          'SELECT product_id, quantity FROM order_items WHERE order_id = ?'
+        ).bind(order.id).all();
+
+        for (const item of orderItems.results) {
+          await DB.prepare(
+            'UPDATE products SET stock = stock + ? WHERE id = ?'
+          ).bind(item.quantity, item.product_id).run();
+        }
+      } else {
+        throw new Error('환불 처리 중 오류가 발생했습니다.');
+      }
+    } catch (nicepayError) {
+      console.error('나이스페이먼츠 환불 실패:', nicepayError);
+      refundMessage = `환불 요청 실패: ${(nicepayError as Error).message}`;
+      
+      // Update status to refund requested (manual processing required)
       await DB.prepare(
         'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
       ).bind('REFUND_REQUESTED', orderNo).run();
-
-      refundSuccess = true;
-      refundMessage = '환불 요청이 접수되었습니다. 관리자 확인 후 처리됩니다.';
-    } catch (error) {
-      console.error('환불 요청 실패:', error);
-      refundMessage = `환불 요청 실패: ${(error as Error).message}`;
     }
 
     return c.json({ 
