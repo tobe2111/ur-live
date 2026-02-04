@@ -17,7 +17,8 @@ ALTER TABLE order_items ADD COLUMN option_name TEXT;
 -- ALTER TABLE order_items ADD COLUMN seller_id INTEGER;
 
 -- 3. 인덱스 추가
-CREATE INDEX IF NOT EXISTS idx_order_items_seller_id ON order_items(seller_id);
+-- seller_id 컬럼이 없으므로 주석 처리
+-- CREATE INDEX IF NOT EXISTS idx_order_items_seller_id ON order_items(seller_id);
 
 -- 4. 테스트 주문 데이터 추가는 seed.sql에서 처리
 -- user_id=1이 존재하지 않을 수 있으므로 주석 처리
