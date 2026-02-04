@@ -97,7 +97,7 @@ export default function LivePage() {
           videoId: stream.youtube_video_id,
           playerVars: {
             autoplay: 1,
-            mute: 0,
+            mute: 1,
             controls: 0,
             modestbranding: 1,
             rel: 0,
@@ -110,20 +110,30 @@ export default function LivePage() {
           },
           events: {
             onReady: (event: any) => {
-              event.target.playVideo()
+              console.log('YouTube player ready')
               setPlayerReady(true)
               setVideoStatus('playing')
+              event.target.playVideo()
+              // Unmute after 1 second (to bypass autoplay policy)
+              setTimeout(() => {
+                event.target.unMute()
+              }, 1000)
             },
             onStateChange: (event: any) => {
+              console.log('YouTube player state:', event.data)
               // @ts-ignore
               if (event.data === window.YT.PlayerState.ENDED) {
                 setVideoStatus('ended')
               } else if (event.data === window.YT.PlayerState.PLAYING) {
                 setVideoStatus('playing')
+              } else if (event.data === window.YT.PlayerState.BUFFERING) {
+                // Keep playing status during buffering
+                setVideoStatus('playing')
               }
             },
             onError: (event: any) => {
-              console.warn('YouTube player error:', event.data)
+              console.error('YouTube player error:', event.data)
+              // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
               setVideoStatus('ended')
             },
           },
@@ -341,16 +351,17 @@ export default function LivePage() {
             <p className="text-white text-[17px] font-semibold">방송이 종료되었습니다.</p>
           </div>
         )}
-        <div 
-          id="youtube-player"
-          className="absolute inset-0"
-          style={{
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            visibility: videoStatus === 'playing' ? 'visible' : 'hidden',
-          }}
-        />
+        {(videoStatus === 'loading' || videoStatus === 'playing') && (
+          <div 
+            id="youtube-player"
+            className="absolute inset-0"
+            style={{
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </div>
 
       {/* Notification Banner */}
