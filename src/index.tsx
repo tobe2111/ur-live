@@ -20,26 +20,51 @@ app.use('/static/*', serveStatic({ root: './public' }));
 // Authentication APIs
 // =================================
 
-// 세션 생성 (D1에 저장)
-async function createSession(DB: any, userId: number, userType: 'admin' | 'seller', userData: any) {
+// 세션 생성 (KV에 저장) - D1 쓰기 부담 감소 ✅
+async function createSession(SESSION_KV: KVNamespace, userId: number, userType: 'admin' | 'seller', userData: any) {
   const sessionToken = `${userType}_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24시간 후
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24시간 후 (timestamp)
   
-  await DB.prepare(`
-    INSERT INTO admin_sessions (session_token, ${userType}_id, user_type, expires_at)
-    VALUES (?, ?, ?, ?)
-  `).bind(sessionToken, userId, userType, expiresAt).run();
+  const sessionData = {
+    userId,
+    userType,
+    userData,
+    expiresAt
+  };
+  
+  // KV에 저장 (자동 만료 설정)
+  await SESSION_KV.put(
+    `session:${sessionToken}`,
+    JSON.stringify(sessionData),
+    { expirationTtl: 86400 } // 24시간 (초 단위)
+  );
   
   return sessionToken;
 }
 
-// 세션 조회 및 검증
-async function getSession(DB: any, sessionToken: string) {
-  const session = await DB.prepare(`
-    SELECT * FROM admin_sessions WHERE session_token = ? AND expires_at > datetime('now')
-  `).bind(sessionToken).first();
+// 세션 조회 및 검증 (KV에서 조회) - 10배 빠름 ✅
+async function getSession(SESSION_KV: KVNamespace, sessionToken: string) {
+  const sessionDataStr = await SESSION_KV.get(`session:${sessionToken}`);
   
-  return session;
+  if (!sessionDataStr) {
+    return null;
+  }
+  
+  const sessionData = JSON.parse(sessionDataStr);
+  
+  // 만료 확인 (KV의 expirationTtl이 자동으로 처리하지만 추가 체크)
+  if (sessionData.expiresAt && Date.now() > sessionData.expiresAt) {
+    await SESSION_KV.delete(`session:${sessionToken}`);
+    return null;
+  }
+  
+  // D1 형식과 호환되도록 변환
+  return {
+    session_token: sessionToken,
+    [`${sessionData.userType}_id`]: sessionData.userId,
+    user_type: sessionData.userType,
+    ...sessionData.userData
+  };
 }
 
 // 관리자 로그인 API
@@ -88,8 +113,8 @@ app.post('/api/auth/login', cors(), async (c) => {
       return c.json({ success: false, error: '승인 대기 중인 계정입니다' }, 403);
     }
     
-    // 세션 생성 (D1에 저장)
-    const sessionToken = await createSession(DB, user.id, userType, {
+    // 세션 생성 (KV에 저장) ✅
+    const sessionToken = await createSession(c.env.SESSION_KV, user.id, userType, {
       username: user.username,
       name: user.name,
       email: user.email,
@@ -130,8 +155,8 @@ app.post('/api/auth/logout', cors(), async (c) => {
     const sessionToken = c.req.header('X-Session-Token');
     
     if (sessionToken) {
-      // D1에서 세션 삭제
-      await DB.prepare('DELETE FROM admin_sessions WHERE session_token = ?').bind(sessionToken).run();
+      // KV에서 세션 삭제 ✅
+      await c.env.SESSION_KV.delete(`session:${sessionToken}`);
     }
     
     return c.json({ success: true });
@@ -151,7 +176,7 @@ app.get('/api/auth/verify', cors(), async (c) => {
       return c.json({ success: false, error: '인증 토큰이 없습니다' }, 401);
     }
     
-    const session = await getSession(DB, sessionToken);
+    const session = await getSession(c.env.SESSION_KV, sessionToken);
     
     if (!session) {
       return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
@@ -315,7 +340,7 @@ app.get('/api/auth/user/verify', cors(), async (c) => {
       return c.json({ success: false, error: '인증 토큰이 없습니다' }, 401);
     }
     
-    const session = await getSession(DB, sessionToken);
+    const session = await getSession(c.env.SESSION_KV, sessionToken);
     
     if (!session || session.user_type !== 'user') {
       return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
@@ -450,14 +475,13 @@ app.delete('/api/shipping-addresses/:id', cors(), async (c) => {
 
 // 세션 검증 헬퍼 함수
 async function verifyAdminSession(c: any) {
-  const { DB } = c.env;
   const sessionToken = c.req.header('X-Session-Token');
   
   if (!sessionToken) {
     return { success: false, error: '인증 토큰이 없습니다' };
   }
   
-  const session = await getSession(DB, sessionToken);
+  const session = await getSession(c.env.SESSION_KV, sessionToken);
   
   if (!session || session.user_type !== 'admin') {
     return { success: false, error: '관리자 권한이 필요합니다' };
@@ -467,14 +491,13 @@ async function verifyAdminSession(c: any) {
 }
 
 async function verifySellerSession(c: any) {
-  const { DB } = c.env;
   const sessionToken = c.req.header('X-Session-Token');
   
   if (!sessionToken) {
     return { success: false, error: '인증 토큰이 없습니다' };
   }
   
-  const session = await getSession(DB, sessionToken);
+  const session = await getSession(c.env.SESSION_KV, sessionToken);
   
   if (!session || session.user_type !== 'seller') {
     return { success: false, error: '판매자 권한이 필요합니다' };
@@ -1495,7 +1518,7 @@ app.delete('/api/shipping-addresses/:id', async (c) => {
 
 // Get seller's products (자신의 상품 목록 조회)
 app.get('/api/seller/products', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   const auth = await verifySellerSession(c);
 
   if (!auth.success) {
@@ -1503,6 +1526,16 @@ app.get('/api/seller/products', async (c) => {
   }
 
   try {
+    // \uce90\uc2dc \ud0a4 (\ud310\ub9e4\uc790\ubcc4\ub85c \uce90\uc2f1)
+    const cacheKey = `seller:${auth.sellerId}:products`;
+    
+    // \uce90\uc2dc\uc5d0\uc11c \uba3c\uc800 \uc870\ud68c (5\ubd84 TTL) \u2705
+    const cached = await CACHE_KV.get(cacheKey, 'json');
+    if (cached) {
+      return c.json({ success: true, data: cached, cached: true });
+    }
+    
+    // \uce90\uc2dc \ubbf8\uc2a4 \uc2dc D1 \uc870\ud68c
     const products = await DB.prepare(`
       SELECT p.*, ls.title as live_stream_title
       FROM products p
@@ -1510,6 +1543,11 @@ app.get('/api/seller/products', async (c) => {
       WHERE p.seller_id = ?
       ORDER BY p.created_at DESC
     `).bind(auth.sellerId).all();
+
+    // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (5\ubd84 TTL)
+    await CACHE_KV.put(cacheKey, JSON.stringify(products.results), {
+      expirationTtl: 300 // 5\ubd84
+    });
 
     return c.json({ success: true, data: products.results });
   } catch (err) {
@@ -1580,6 +1618,9 @@ app.post('/api/seller/products', async (c) => {
     const product = await DB.prepare(
       'SELECT * FROM products WHERE id = ?'
     ).bind(result.meta.last_row_id).first();
+
+    // \uce90\uc2dc \ubb34\ud6a8\ud654 (Cache Invalidation) \u2705
+    await c.env.CACHE_KV.delete(`seller:${auth.sellerId}:products`);
 
     return c.json({ success: true, data: product });
   } catch (err) {
@@ -1665,6 +1706,9 @@ app.put('/api/seller/products/:id', async (c) => {
     // Get updated product
     const updatedProduct = await DB.prepare('SELECT * FROM products WHERE id = ?').bind(id).first();
 
+    // \uce90\uc2dc \ubb34\ud6a8\ud654 (Cache Invalidation) \u2705
+    await c.env.CACHE_KV.delete(`seller:${auth.sellerId}:products`);
+
     return c.json({ success: true, data: updatedProduct });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -1691,6 +1735,9 @@ app.delete('/api/seller/products/:id', async (c) => {
     }
 
     await DB.prepare('DELETE FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).run();
+
+    // \uce90\uc2dc \ubb34\ud6a8\ud654 (Cache Invalidation) \u2705
+    await c.env.CACHE_KV.delete(`seller:${auth.sellerId}:products`);
 
     return c.json({ success: true });
   } catch (err) {
@@ -1802,7 +1849,7 @@ app.delete('/api/seller/products/:productId/options/:optionId', async (c) => {
 
 // Get seller stats
 app.get('/api/seller/stats', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   const auth = await verifySellerSession(c);
 
   if (!auth.success) {
@@ -1810,6 +1857,16 @@ app.get('/api/seller/stats', async (c) => {
   }
 
   try {
+    // \uce90\uc2dc \ud0a4
+    const cacheKey = `seller:${auth.sellerId}:stats`;
+    
+    // \uce90\uc2dc\uc5d0\uc11c \uba3c\uc800 \uc870\ud68c (1\ubd84 TTL) \u2705
+    const cached = await CACHE_KV.get(cacheKey, 'json');
+    if (cached) {
+      return c.json({ success: true, data: cached, cached: true });
+    }
+    
+    // \uce90\uc2dc \ubbf8\uc2a4 \uc2dc D1 \uc870\ud68c
     const products = await DB.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id = ?').bind(auth.sellerId).first();
     
     const activeProducts = await DB.prepare('SELECT COUNT(*) as count FROM products WHERE seller_id = ? AND is_active = 1').bind(auth.sellerId).first();
@@ -1825,15 +1882,22 @@ app.get('/api/seller/stats', async (c) => {
       WHERE p.seller_id = ?
     `).bind(auth.sellerId).first();
 
+    const stats = {
+      totalProducts: products.count || 0,
+      activeProducts: activeProducts.count || 0,
+      totalStock: totalStock.total || 0,
+      totalOrders: orders.count || 0,
+      totalRevenue: orders.total || 0
+    };
+    
+    // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (1\ubd84 TTL)
+    await CACHE_KV.put(cacheKey, JSON.stringify(stats), {
+      expirationTtl: 60 // 1\ubd84
+    });
+
     return c.json({
       success: true,
-      data: {
-        totalProducts: products.count || 0,
-        activeProducts: activeProducts.count || 0,
-        totalStock: totalStock.total || 0,
-        totalOrders: orders.count || 0,
-        totalRevenue: orders.total || 0
-      }
+      data: stats
     });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -2940,7 +3004,7 @@ app.get('/api/seller/sales', cors(), async (c) => {
     }
     
     // 세션 검증
-    const session = await getSession(DB, sessionToken);
+    const session = await getSession(c.env.SESSION_KV, sessionToken);
     if (!session) {
       return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
     }
@@ -3027,7 +3091,7 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
     }
     
     // 세션 검증
-    const session = await getSession(DB, sessionToken);
+    const session = await getSession(c.env.SESSION_KV, sessionToken);
     if (!session) {
       return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
     }

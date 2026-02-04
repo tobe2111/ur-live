@@ -13,5 +13,16 @@
       "database_name": "toss-live-commerce-db",
       "database_id": "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
     }
+  ],
+  // KV Namespaces for session management and caching
+  "kv_namespaces": [
+    {
+      "binding": "SESSION_KV",
+      "id": "3b522e69651f4d4f84a0cdf9430eeb72"
+    },
+    {
+      "binding": "CACHE_KV",
+      "id": "25ecc9ce2c464dd59edf5eb7d5fd1a10"
+    }
   ]
 }

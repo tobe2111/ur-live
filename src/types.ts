@@ -1,6 +1,8 @@
 // Type definitions for Cloudflare bindings
 export type Bindings = {
   DB: D1Database;
+  SESSION_KV: KVNamespace;
+  CACHE_KV: KVNamespace;
 };
 
 // Live Stream Types
