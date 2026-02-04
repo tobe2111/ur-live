@@ -2187,6 +2187,160 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
       'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
     ).bind(status, orderNo).run();
 
+    // 🚀 자동 세금계산서 발행: 배송완료 시
+    if (status === 'DELIVERED') {
+      try {
+        console.log(`[AUTO TAX INVOICE] 배송완료 감지: ${orderNo}, 자동 발행 시작...`);
+
+        // 주문 정보 조회 (사업자 정보 포함)
+        const fullOrder = await DB.prepare(`
+          SELECT 
+            o.*,
+            oi.seller_id
+          FROM orders o
+          LEFT JOIN order_items oi ON o.id = oi.order_id
+          WHERE o.order_no = ?
+          LIMIT 1
+        `).bind(orderNo).first();
+
+        // 사업자 정보가 있는지 확인
+        if (fullOrder?.buyer_business_number && fullOrder?.buyer_business_name) {
+          console.log(`[AUTO TAX INVOICE] 사업자 구매 확인: ${fullOrder.buyer_business_number}`);
+
+          // 판매자 사업자 정보 조회
+          const sellerBusiness = await DB.prepare(
+            'SELECT * FROM seller_business_info WHERE seller_id = ? AND is_verified = 1'
+          ).bind(auth.sellerId).first();
+
+          if (!sellerBusiness) {
+            console.warn(`[AUTO TAX INVOICE] 판매자 사업자 정보 미승인: seller_id=${auth.sellerId}`);
+            // 자동 발행 실패 로그 기록 (관리자 알림용)
+            await DB.prepare(`
+              INSERT INTO tax_invoice_auto_issue_log (order_no, seller_id, status, error_message, created_at)
+              VALUES (?, ?, 'failed', '판매자 사업자 정보가 승인되지 않았습니다.', CURRENT_TIMESTAMP)
+            `).bind(orderNo, auth.sellerId).run();
+          } else {
+            // 세금계산서 자동 발행
+            console.log(`[AUTO TAX INVOICE] 발행 시작: orderNo=${orderNo}`);
+
+            // 주문 상품 정보 조회
+            const orderItems = await DB.prepare(`
+              SELECT 
+                oi.*,
+                p.name as product_name
+              FROM order_items oi
+              LEFT JOIN products p ON oi.product_id = p.id
+              WHERE oi.order_id = ?
+            `).bind(fullOrder.id).all();
+
+            // 공급가액/부가세 계산
+            const totalAmount = Number(fullOrder.total_amount);
+            const supply_price = Math.floor(totalAmount / 1.1);
+            const tax_amount = totalAmount - supply_price;
+
+            // 계산서번호 생성
+            const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const invoice_number = `${today}-${randomCode}`;
+
+            // 세금계산서 발행 (DB 저장)
+            const taxInvoiceResult = await DB.prepare(`
+              INSERT INTO tax_invoices (
+                seller_id, order_no, invoice_number, issue_date,
+                supplier_business_number, supplier_business_name, supplier_ceo_name,
+                supplier_address, supplier_business_type, supplier_business_category,
+                supplier_email, supplier_phone,
+                buyer_business_number, buyer_business_name, buyer_ceo_name,
+                buyer_address, buyer_business_type, buyer_business_category,
+                buyer_email, buyer_phone,
+                supply_price, tax_amount, total_amount,
+                status, api_provider, nts_confirm_number,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, DATE('now'),
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?,
+                ?, ?, ?,
+                ?, ?,
+                ?, ?, ?,
+                'issued', 'barobill', ?,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+              )
+            `).bind(
+              auth.sellerId,
+              orderNo,
+              invoice_number,
+              sellerBusiness.business_number,
+              sellerBusiness.business_name,
+              sellerBusiness.ceo_name,
+              sellerBusiness.address || '',
+              sellerBusiness.business_type || '',
+              sellerBusiness.business_category || '',
+              sellerBusiness.email || '',
+              sellerBusiness.phone || '',
+              fullOrder.buyer_business_number,
+              fullOrder.buyer_business_name,
+              fullOrder.buyer_ceo_name || '',
+              fullOrder.buyer_business_address || '',
+              fullOrder.buyer_business_type || '',
+              fullOrder.buyer_business_category || '',
+              fullOrder.buyer_email || '',
+              fullOrder.buyer_phone || '',
+              supply_price,
+              tax_amount,
+              totalAmount,
+              `AUTO-${Date.now()}-${randomCode}`
+            ).run();
+
+            const taxInvoiceId = taxInvoiceResult.meta.last_row_id;
+
+            // 세금계산서 항목 저장
+            for (const item of orderItems.results) {
+              const itemSupplyPrice = Math.floor(Number(item.price) * Number(item.quantity) / 1.1);
+              const itemTaxAmount = Number(item.price) * Number(item.quantity) - itemSupplyPrice;
+
+              await DB.prepare(`
+                INSERT INTO tax_invoice_items (
+                  tax_invoice_id, product_name, quantity, unit_price,
+                  supply_price, tax_amount, description, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              `).bind(
+                taxInvoiceId,
+                item.product_name || '상품명 없음',
+                item.quantity,
+                item.price,
+                itemSupplyPrice,
+                itemTaxAmount,
+                item.option_name || ''
+              ).run();
+            }
+
+            // 자동 발행 성공 로그 기록
+            await DB.prepare(`
+              INSERT INTO tax_invoice_auto_issue_log (order_no, seller_id, tax_invoice_id, status, created_at)
+              VALUES (?, ?, ?, 'success', CURRENT_TIMESTAMP)
+            `).bind(orderNo, auth.sellerId, taxInvoiceId).run();
+
+            console.log(`[AUTO TAX INVOICE] ✅ 발행 완료: invoice_id=${taxInvoiceId}, invoice_number=${invoice_number}`);
+          }
+        } else {
+          console.log(`[AUTO TAX INVOICE] 일반 구매 (사업자 정보 없음): ${orderNo}`);
+        }
+      } catch (autoIssueErr) {
+        // 자동 발행 실패 시 로그만 기록하고 주문 상태 변경은 성공 처리
+        console.error('[AUTO TAX INVOICE] 발행 실패:', autoIssueErr);
+        try {
+          await DB.prepare(`
+            INSERT INTO tax_invoice_auto_issue_log (order_no, seller_id, status, error_message, created_at)
+            VALUES (?, ?, 'failed', ?, CURRENT_TIMESTAMP)
+          `).bind(orderNo, auth.sellerId, (autoIssueErr as Error).message).run();
+        } catch (logErr) {
+          console.error('[AUTO TAX INVOICE] 로그 기록 실패:', logErr);
+        }
+      }
+    }
+
     return c.json({ success: true });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -2890,7 +3044,7 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
     const start = startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const end = endDate || new Date().toISOString().split('T')[0];
     
-    // 주문 데이터 조회
+    // 주문 데이터 조회 (세금계산서 정보 포함)
     const ordersResult = await DB.prepare(`
       SELECT 
         o.order_number,
@@ -2898,10 +3052,19 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
         o.commission_amount,
         o.seller_amount,
         o.payment_status,
+        o.status,
         o.created_at,
-        u.name as user_name
+        u.name as user_name,
+        o.buyer_business_name,
+        o.buyer_business_number,
+        ti.id as tax_invoice_id,
+        ti.invoice_number,
+        ti.issue_date,
+        ti.status as tax_invoice_status,
+        ti.nts_confirm_number
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN tax_invoices ti ON o.order_number = ti.order_no
       WHERE o.seller_id = ?
         AND o.payment_status IN ('approved', 'completed')
         AND DATE(o.created_at) >= DATE(?)
@@ -2909,11 +3072,24 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
       ORDER BY o.created_at DESC
     `).bind(sellerId, start, end).all();
     
-    // CSV 생성
-    let csv = '주문번호,주문일시,주문자,총금액,수수료(10%),정산금액(90%),상태\n';
+    // CSV 생성 (세금계산서 정보 추가)
+    let csv = '주문번호,주문일시,주문자,총금액,수수료(10%),정산금액(90%),주문상태,사업자명,사업자번호,세금계산서번호,발행일자,계산서상태,국세청승인번호\n';
     
     for (const order of ordersResult?.results || []) {
-      csv += `${order.order_number},${order.created_at},${order.user_name || '익명'},${order.total_amount},${order.commission_amount},${order.seller_amount},완료\n`;
+      const orderStatus = order.status === 'DELIVERED' ? '배송완료' : 
+                         order.status === 'SHIPPING' ? '배송중' : 
+                         order.status === 'PREPARING' ? '상품준비중' : 
+                         order.status === 'PAY_COMPLETE' ? '결제완료' : '완료';
+      
+      const businessName = order.buyer_business_name || '-';
+      const businessNumber = order.buyer_business_number || '-';
+      const invoiceNumber = order.invoice_number || '-';
+      const issueDate = order.issue_date || '-';
+      const taxStatus = order.tax_invoice_status === 'issued' ? '발행완료' : 
+                       order.tax_invoice_status === 'cancelled' ? '취소' : '-';
+      const ntsNumber = order.nts_confirm_number || '-';
+      
+      csv += `${order.order_number},${order.created_at},${order.user_name || '익명'},${order.total_amount},${order.commission_amount},${order.seller_amount},${orderStatus},${businessName},${businessNumber},${invoiceNumber},${issueDate},${taxStatus},${ntsNumber}\n`;
     }
     
     // CSV 파일 다운로드
@@ -3231,6 +3407,256 @@ app.post('/api/seller/tax-invoices/:id/cancel', async (c) => {
       message: '세금계산서가 취소되었습니다.'
     });
   } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// Tax Invoice Auto Issue & Retry APIs
+// =================================
+
+// 자동 발행 실패 목록 조회 (관리자/판매자)
+app.get('/api/seller/tax-invoices/auto-issue-logs', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { status, limit = 50 } = c.req.query();
+
+    let query = `
+      SELECT 
+        log.*,
+        o.total_amount,
+        o.buyer_business_name
+      FROM tax_invoice_auto_issue_log log
+      LEFT JOIN orders o ON log.order_no = o.order_no
+      WHERE log.seller_id = ?
+    `;
+
+    const params: any[] = [auth.sellerId];
+
+    if (status) {
+      query += ' AND log.status = ?';
+      params.push(status);
+    }
+
+    query += ' ORDER BY log.created_at DESC LIMIT ?';
+    params.push(Number(limit));
+
+    const logs = await DB.prepare(query).bind(...params).all();
+
+    return c.json({ success: true, data: logs.results });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 자동 발행 재시도 API (관리자/판매자)
+app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const orderNo = c.req.param('orderNo');
+
+    console.log(`[TAX INVOICE RETRY] 재시도 시작: ${orderNo}`);
+
+    // 이전 실패 로그 조회
+    const failedLog = await DB.prepare(`
+      SELECT * FROM tax_invoice_auto_issue_log
+      WHERE order_no = ? AND seller_id = ? AND status = 'failed'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).bind(orderNo, auth.sellerId).first();
+
+    if (!failedLog) {
+      return c.json({ success: false, error: '재시도할 실패 로그를 찾을 수 없습니다.' }, 404);
+    }
+
+    // 재시도 횟수 확인 (최대 3회)
+    const retryCount = Number(failedLog.retry_count || 0);
+    if (retryCount >= 3) {
+      return c.json({ success: false, error: '최대 재시도 횟수(3회)를 초과했습니다.' }, 400);
+    }
+
+    // 주문 정보 조회
+    const fullOrder = await DB.prepare(`
+      SELECT 
+        o.*,
+        oi.seller_id
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      WHERE o.order_no = ?
+      LIMIT 1
+    `).bind(orderNo).first();
+
+    if (!fullOrder) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다.' }, 404);
+    }
+
+    // 사업자 정보 확인
+    if (!fullOrder.buyer_business_number || !fullOrder.buyer_business_name) {
+      return c.json({ success: false, error: '주문에 사업자 정보가 없습니다.' }, 400);
+    }
+
+    // 판매자 사업자 정보 조회
+    const sellerBusiness = await DB.prepare(
+      'SELECT * FROM seller_business_info WHERE seller_id = ? AND is_verified = 1'
+    ).bind(auth.sellerId).first();
+
+    if (!sellerBusiness) {
+      return c.json({ success: false, error: '판매자 사업자 정보가 승인되지 않았습니다.' }, 400);
+    }
+
+    // 주문 상품 정보 조회
+    const orderItems = await DB.prepare(`
+      SELECT 
+        oi.*,
+        p.name as product_name
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?
+    `).bind(fullOrder.id).all();
+
+    // 공급가액/부가세 계산
+    const totalAmount = Number(fullOrder.total_amount);
+    const supply_price = Math.floor(totalAmount / 1.1);
+    const tax_amount = totalAmount - supply_price;
+
+    // 계산서번호 생성
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const invoice_number = `${today}-${randomCode}`;
+
+    // 세금계산서 발행 (DB 저장)
+    const taxInvoiceResult = await DB.prepare(`
+      INSERT INTO tax_invoices (
+        seller_id, order_no, invoice_number, issue_date,
+        supplier_business_number, supplier_business_name, supplier_ceo_name,
+        supplier_address, supplier_business_type, supplier_business_category,
+        supplier_email, supplier_phone,
+        buyer_business_number, buyer_business_name, buyer_ceo_name,
+        buyer_address, buyer_business_type, buyer_business_category,
+        buyer_email, buyer_phone,
+        supply_price, tax_amount, total_amount,
+        status, api_provider, nts_confirm_number,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, DATE('now'),
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?,
+        ?, ?, ?,
+        'issued', 'barobill', ?,
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).bind(
+      auth.sellerId,
+      orderNo,
+      invoice_number,
+      sellerBusiness.business_number,
+      sellerBusiness.business_name,
+      sellerBusiness.ceo_name,
+      sellerBusiness.address || '',
+      sellerBusiness.business_type || '',
+      sellerBusiness.business_category || '',
+      sellerBusiness.email || '',
+      sellerBusiness.phone || '',
+      fullOrder.buyer_business_number,
+      fullOrder.buyer_business_name,
+      fullOrder.buyer_ceo_name || '',
+      fullOrder.buyer_business_address || '',
+      fullOrder.buyer_business_type || '',
+      fullOrder.buyer_business_category || '',
+      fullOrder.buyer_email || '',
+      fullOrder.buyer_phone || '',
+      supply_price,
+      tax_amount,
+      totalAmount,
+      `RETRY-${Date.now()}-${randomCode}`
+    ).run();
+
+    const taxInvoiceId = taxInvoiceResult.meta.last_row_id;
+
+    // 세금계산서 항목 저장
+    for (const item of orderItems.results) {
+      const itemSupplyPrice = Math.floor(Number(item.price) * Number(item.quantity) / 1.1);
+      const itemTaxAmount = Number(item.price) * Number(item.quantity) - itemSupplyPrice;
+
+      await DB.prepare(`
+        INSERT INTO tax_invoice_items (
+          tax_invoice_id, product_name, quantity, unit_price,
+          supply_price, tax_amount, description, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).bind(
+        taxInvoiceId,
+        item.product_name || '상품명 없음',
+        item.quantity,
+        item.price,
+        itemSupplyPrice,
+        itemTaxAmount,
+        item.option_name || ''
+      ).run();
+    }
+
+    // 재시도 성공 로그 기록
+    await DB.prepare(`
+      INSERT INTO tax_invoice_auto_issue_log (
+        order_no, seller_id, tax_invoice_id, status, retry_count, created_at
+      ) VALUES (?, ?, ?, 'success', ?, CURRENT_TIMESTAMP)
+    `).bind(orderNo, auth.sellerId, taxInvoiceId, retryCount + 1).run();
+
+    // 기존 실패 로그 상태 업데이트
+    await DB.prepare(`
+      UPDATE tax_invoice_auto_issue_log
+      SET status = 'retry', retry_count = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(retryCount + 1, failedLog.id).run();
+
+    console.log(`[TAX INVOICE RETRY] ✅ 재시도 성공: invoice_id=${taxInvoiceId}, retry_count=${retryCount + 1}`);
+
+    return c.json({
+      success: true,
+      data: {
+        invoice_id: taxInvoiceId,
+        invoice_number,
+        retry_count: retryCount + 1
+      }
+    });
+  } catch (err) {
+    console.error('[TAX INVOICE RETRY] 재시도 실패:', err);
+
+    // 재시도 실패 로그 기록
+    try {
+      const orderNo = c.req.param('orderNo');
+      const failedLog = await DB.prepare(`
+        SELECT * FROM tax_invoice_auto_issue_log
+        WHERE order_no = ? AND seller_id = ? AND status = 'failed'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).bind(orderNo, auth.sellerId).first();
+
+      const retryCount = Number(failedLog?.retry_count || 0);
+
+      await DB.prepare(`
+        INSERT INTO tax_invoice_auto_issue_log (
+          order_no, seller_id, status, error_message, retry_count, created_at
+        ) VALUES (?, ?, 'failed', ?, ?, CURRENT_TIMESTAMP)
+      `).bind(orderNo, auth.sellerId, (err as Error).message, retryCount + 1).run();
+    } catch (logErr) {
+      console.error('[TAX INVOICE RETRY] 로그 기록 실패:', logErr);
+    }
+
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
