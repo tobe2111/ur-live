@@ -70,13 +70,39 @@ export default function SellerPage() {
 
   async function loadDashboardData() {
     try {
-      // Mock data for demo (in production, call real APIs)
-      setStats({
-        totalRevenue: 12450000,
-        totalOrders: 342,
-        activeStreams: 2,
-        totalViewers: 1523
-      })
+      // Get session token from localStorage
+      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
+      const sessionToken = session.token
+
+      // Load real stats if session exists
+      if (sessionToken) {
+        try {
+          const statsResponse = await axios.get('/api/seller/stats', {
+            headers: { 'X-Session-Token': sessionToken }
+          })
+          
+          if (statsResponse.data.success) {
+            setStats(statsResponse.data.data)
+          }
+        } catch (error) {
+          console.error('Failed to load stats:', error)
+          // Fallback to demo data if API fails
+          setStats({
+            totalRevenue: 0,
+            totalOrders: 0,
+            activeStreams: 0,
+            totalViewers: 0
+          })
+        }
+      } else {
+        // Demo data for non-logged-in users
+        setStats({
+          totalRevenue: 12450000,
+          totalOrders: 342,
+          activeStreams: 2,
+          totalViewers: 1523
+        })
+      }
 
       // Load streams
       const streamsResponse = await axios.get('/api/streams')
@@ -84,33 +110,47 @@ export default function SellerPage() {
         setStreams(streamsResponse.data.data || [])
       }
 
-      // Mock products for demo
-      setProducts([
-        {
-          id: 1,
-          name: '프리미엄 무선 이어폰',
-          price: 129000,
-          stock: 45,
-          image_url: 'https://via.placeholder.com/80',
-          is_active: true
-        },
-        {
-          id: 2,
-          name: '스마트 워치 밴드',
-          price: 29000,
-          stock: 8,
-          image_url: 'https://via.placeholder.com/80',
-          is_active: true
-        },
-        {
-          id: 3,
-          name: 'USB-C 충전 케이블',
-          price: 15000,
-          stock: 0,
-          image_url: 'https://via.placeholder.com/80',
-          is_active: false
+      // Load real products from actual streams
+      if (streamsResponse.data.success && streamsResponse.data.data.length > 0) {
+        const firstStream = streamsResponse.data.data[0]
+        try {
+          const productsResponse = await axios.get(`/api/streams/${firstStream.id}/products`)
+          if (productsResponse.data.success) {
+            setProducts(productsResponse.data.data || [])
+          }
+        } catch (error) {
+          console.error('Failed to load products:', error)
+          setProducts([])
         }
-      ])
+      } else {
+        // Demo products if no streams
+        setProducts([
+          {
+            id: 1,
+            name: '프리미엄 무선 이어폰',
+            price: 129000,
+            stock: 45,
+            image_url: 'https://via.placeholder.com/80',
+            is_active: true
+          },
+          {
+            id: 2,
+            name: '스마트 워치 밴드',
+            price: 29000,
+            stock: 8,
+            image_url: 'https://via.placeholder.com/80',
+            is_active: true
+          },
+          {
+            id: 3,
+            name: 'USB-C 충전 케이블',
+            price: 15000,
+            stock: 0,
+            image_url: 'https://via.placeholder.com/80',
+            is_active: false
+          }
+        ])
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
