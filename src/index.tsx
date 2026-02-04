@@ -512,11 +512,30 @@ async function verifySellerSession(c: any) {
 
 // Live Stream API
 app.get('/api/streams', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   try {
+    // \uce90\uc2dc \ud0a4
+    const cacheKey = 'streams:live';
+    
+    // \uce90\uc2dc\uc5d0\uc11c \uba3c\uc800 \uc870\ud68c (10\ubd84 TTL) \u2705
+    const cached = await CACHE_KV.get(cacheKey, 'json');
+    if (cached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: cached,
+        cached: true
+      });
+    }
+    
+    // \uce90\uc2dc \ubbf8\uc2a4 \uc2dc D1 \uc870\ud68c
     const result = await DB.prepare(
       'SELECT * FROM live_streams WHERE status = ? ORDER BY created_at DESC'
     ).bind('live').all();
+
+    // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (10\ubd84 TTL)
+    await CACHE_KV.put(cacheKey, JSON.stringify(result.results), {
+      expirationTtl: 600 // 10\ubd84
+    });
 
     return c.json<ApiResponse>({
       success: true,
