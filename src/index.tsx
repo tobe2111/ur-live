@@ -513,9 +513,12 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         ).bind(nickname, email, profileImage, userId).run();
         console.log('[Kakao Sync] Updated user:', userId);
       } else {
+        // Insert new user with dummy toss_user_id (until DB migration)
+        // toss_user_id is NOT NULL in production, so use kakao_id as temporary value
+        const dummyTossId = `kakao_${kakaoId}`;
         const result = await DB.prepare(
-          'INSERT INTO users (kakao_id, name, email, profile_image) VALUES (?, ?, ?, ?)'
-        ).bind(kakaoId, nickname, email, profileImage).run();
+          'INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image) VALUES (?, ?, ?, ?, ?)'
+        ).bind(dummyTossId, kakaoId, nickname, email, profileImage).run();
         userId = result.meta.last_row_id;
         console.log('[Kakao Sync] Created user:', userId);
       }
