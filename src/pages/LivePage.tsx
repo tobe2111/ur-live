@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowLeft, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube, Package } from 'lucide-react'
 
@@ -40,6 +40,7 @@ interface ChatMessage {
 export default function LivePage() {
   const { streamId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [stream, setStream] = useState<Stream | null>(null)
   const [currentProduct, setCurrentProduct] = useState<CurrentProduct | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,6 +57,29 @@ export default function LivePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [showChatInput, setShowChatInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Handle Kakao login callback
+  useEffect(() => {
+    const loginSuccess = searchParams.get('login')
+    const sessionToken = searchParams.get('session')
+    const userId = searchParams.get('userId')
+    const userName = searchParams.get('userName')
+
+    if (loginSuccess === 'success' && sessionToken && userId) {
+      // Save login info
+      localStorage.setItem('access_token', sessionToken)
+      localStorage.setItem('user_id', userId)
+      if (userName) {
+        localStorage.setItem('user_name', decodeURIComponent(userName))
+      }
+      
+      // Update login state
+      setIsLoggedIn(true)
+      
+      // Redirect to checkout page with cart items
+      navigate('/checkout', { replace: true })
+    }
+  }, [searchParams, navigate])
 
   useEffect(() => {
     // Check login status
@@ -247,16 +271,37 @@ export default function LivePage() {
     setMessages(prev => [...prev, systemMessage])
   }
 
-  function handleCheckout() {
-    if (!isLoggedIn) {
-      // Redirect to backend Kakao login endpoint
-      const currentUrl = encodeURIComponent(window.location.href)
-      const kakaoAuthUrl = `/auth/kakao?redirect=${currentUrl}`
-      window.location.href = kakaoAuthUrl
-      return
-    }
+  async function handleCheckout() {
+    if (!currentProduct) return
     
-    setShowCart(true)
+    // Add to cart first
+    try {
+      const userId = localStorage.getItem('user_id') || 'guest'
+      
+      await axios.post('/api/cart', {
+        userId: userId,
+        productId: currentProduct.product.id,
+        quantity: 1,
+        priceSnapshot: currentProduct.product.price
+      })
+      
+      setCartCount(prev => prev + 1)
+      
+      // If not logged in, redirect to Kakao login
+      if (!isLoggedIn) {
+        const currentUrl = encodeURIComponent(window.location.href)
+        const kakaoAuthUrl = `/auth/kakao?redirect=${currentUrl}`
+        window.location.href = kakaoAuthUrl
+        return
+      }
+      
+      // If logged in, go to checkout page
+      navigate('/checkout')
+      
+    } catch (error) {
+      console.error('Failed to add to cart:', error)
+      alert('장바구니 담기에 실패했습니다.')
+    }
   }
 
   function handleSNSFollow(platform: 'instagram' | 'facebook' | 'youtube') {
