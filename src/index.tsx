@@ -851,13 +851,20 @@ app.get('/api/streams/:streamId/products', async (c) => {
 // Cart API
 app.get('/api/cart/:userId', async (c) => {
   const { DB } = c.env;
-  const tossUserId = c.req.param('userId');
+  const userIdParam = c.req.param('userId');
 
   try {
-    // 사용자 ID 조회 (toss_user_id -> user.id)
-    const user = await DB.prepare(
-      'SELECT id FROM users WHERE toss_user_id = ?'
-    ).bind(tossUserId).first();
+    // 사용자 ID 조회 - id 또는 toss_user_id로 찾기
+    let user = await DB.prepare(
+      'SELECT id FROM users WHERE id = ?'
+    ).bind(userIdParam).first();
+    
+    // id로 못 찾으면 toss_user_id로 찾기
+    if (!user) {
+      user = await DB.prepare(
+        'SELECT id FROM users WHERE toss_user_id = ?'
+      ).bind(userIdParam).first();
+    }
 
     if (!user) {
       return c.json<ApiResponse>({
@@ -960,10 +967,17 @@ app.post('/api/cart', async (c) => {
       }, 400);
     }
 
-    // 사용자 ID 조회 (toss_user_id -> user.id)
-    const user = await DB.prepare(
-      'SELECT id FROM users WHERE toss_user_id = ?'
+    // 사용자 ID 조회 - id 또는 toss_user_id로 찾기
+    let user = await DB.prepare(
+      'SELECT id FROM users WHERE id = ?'
     ).bind(userIdToUse).first();
+    
+    // id로 못 찾으면 toss_user_id로 찾기
+    if (!user) {
+      user = await DB.prepare(
+        'SELECT id FROM users WHERE toss_user_id = ?'
+      ).bind(userIdToUse).first();
+    }
 
     if (!user) {
       return c.json<ApiResponse>({
