@@ -474,13 +474,18 @@ app.get('/auth/kakao/callback', async (c) => {
     ).bind(sessionToken, 'user', expiresAt).run();
     
     // 5. 세션 정보를 쿼리 파라미터로 전달하여 React에서 localStorage에 저장
+    console.log('Kakao login success:', { userId, nickname, state });
+    
     const redirectUrl = state.includes('?') 
       ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
       : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
+    
+    console.log('Redirecting to:', redirectUrl);
     return c.redirect(redirectUrl);
     
   } catch (error) {
     console.error('Kakao login error:', error);
+    const state = c.req.query('state') || '/';
     return c.redirect(`${state}?error=login_failed`);
   }
 });

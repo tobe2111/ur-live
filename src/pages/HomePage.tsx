@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,6 +19,39 @@ interface Stream {
 export default function HomePage() {
   const [streams, setStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  // Handle Kakao login callback
+  useEffect(() => {
+    const loginSuccess = searchParams.get('login')
+    const sessionToken = searchParams.get('session')
+    const userId = searchParams.get('userId')
+    const userName = searchParams.get('userName')
+
+    if (loginSuccess === 'success' && sessionToken && userId) {
+      // Save login info
+      localStorage.setItem('access_token', sessionToken)
+      localStorage.setItem('user_id', userId)
+      if (userName) {
+        localStorage.setItem('user_name', decodeURIComponent(userName))
+      }
+      
+      // Clean URL and redirect to checkout if there are items in cart
+      const cleanUrl = window.location.pathname
+      navigate(cleanUrl, { replace: true })
+      
+      // Check if user has items in cart
+      axios.get(`/api/cart/${userId}`).then(response => {
+        if (response.data.success && response.data.data.length > 0) {
+          // Has cart items, go to checkout
+          navigate('/checkout')
+        }
+      }).catch(error => {
+        console.error('Failed to check cart:', error)
+      })
+    }
+  }, [searchParams, navigate])
 
   useEffect(() => {
     loadStreams()
