@@ -1,12 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "webapp",
+  "name": "ur-live",
   "compatibility_date": "2026-02-01",
   "pages_build_output_dir": "./dist",
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  // D1 Database for persistent storage
   "d1_databases": [
     {
       "binding": "DB",
@@ -14,7 +13,6 @@
       "database_id": "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
     }
   ],
-  // KV Namespaces for session management and caching
   "kv_namespaces": [
     {
       "binding": "SESSION_KV",
