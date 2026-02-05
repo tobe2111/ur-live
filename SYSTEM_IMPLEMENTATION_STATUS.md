@@ -17,7 +17,7 @@
 - [x] 주문 조회 (`/my-orders`)
 - [x] Kakao 로그인 (`/auth/kakao/callback`)
 
-### 2. 셀러 (Seller) 기능 - 부분 구현 ⚠️
+### 2. 셀러 (Seller) 기능 - 완전 구현 ✅
 
 #### ✅ 구현 완료
 - [x] 셀러 대시보드 (`/seller`)
@@ -26,6 +26,11 @@
 - [x] 셀러 로그인 (`/seller/login`)
   - 이메일/비밀번호 로그인
   - 세션 관리
+  - 실제 API 통합 완료
+- [x] **셀러 회원가입 (`/seller/register`) ✨ NEW**
+  - 이메일/비밀번호 등록
+  - 사업자 정보 입력
+  - 관리자 승인 대기 상태 생성
 - [x] 사업자 정보 관리 (`/seller/business-info`)
 - [x] 세금계산서 관리 (`/seller/tax-invoices`)
   - Barobill 연동
@@ -35,10 +40,13 @@
 - [x] 상품 수정 페이지 (`/seller/products/:id/edit`)
 - [x] 라이브 컨트롤 (`/seller/live-control`)
   - 실시간 상품 전환
+- [x] **라이브 스트림 생성 (`/seller/streams/new`) ✨ NEW**
+  - YouTube URL 입력
+  - 라이브 제목/설명 입력
+  - 스케줄링 기능
+  - SNS 링크 설정
 
 #### ❌ 구현 필요
-- [ ] 셀러 회원가입 페이지 (`/seller/register`)
-- [ ] 라이브 스트림 생성 페이지 (`/seller/streams/new`)
 - [ ] 라이브 스트림 수정 페이지 (`/seller/streams/:id/edit`)
 - [ ] 라이브 스트림 목록 페이지 (대시보드에 통합 필요)
 
@@ -56,6 +64,7 @@
   - `POST /api/auth/login` - 통합 로그인 (admin/seller)
   - `POST /api/auth/logout` - 로그아웃
   - `GET /api/auth/verify` - 세션 검증
+  - **`POST /api/seller/register` - 셀러 회원가입 ✨ NEW**
 - [x] 라이브 스트림 API
   - `GET /api/streams` - 라이브 목록
   - `GET /api/streams/:id` - 라이브 상세
@@ -85,25 +94,23 @@
   - `POST /api/admin/sellers/:id/approve` - 판매자 승인
 
 #### ❌ 구현 필요
-- [ ] 셀러 회원가입 API
-  - `POST /api/seller/register` - 회원가입
+- 없음 (모든 핵심 API 완성)
 
 ---
 
 ## 🚨 현재 문제점
 
-### 1. 셀러 회원가입 기능 없음 ❌
-- **문제**: 셀러가 가입할 방법이 없음
-- **필요**: `/seller/register` 페이지 + API
+### 1. ~~셀러 회원가입 기능 없음~~ ✅ 해결됨! (2026-02-05)
+- **상태**: ✅ **완료**
+- **해결**: `/seller/register` 페이지 + API 구현 완료
 
-### 2. 라이브 스트림 생성 페이지 없음 ❌
-- **문제**: `/seller/streams/new` 라우트 없음
-- **API는 존재**: `POST /api/seller/streams`
-- **필요**: 페이지 생성 + 라우트 추가
+### 2. ~~라이브 스트림 생성 페이지 없음~~ ✅ 해결됨! (2026-02-05)
+- **상태**: ✅ **완료**
+- **해결**: `/seller/streams/new` 페이지 구현 완료
 
-### 3. 셀러 인증 문제 ⚠️
+### 3. 셀러 인증 문제 ⚠️ (검토 필요)
 - **문제**: 상품 추가/수정 시 로그인 요구
-- **원인**: 세션 토큰 처리 문제
+- **원인**: 세션 토큰 처리 문제 가능성
 - **확인 필요**: SellerProductNewPage, SellerProductEditPage
 
 ---
@@ -170,4 +177,10 @@
 ---
 
 ## 📝 업데이트 로그
-- **2026-02-05**: 초기 상태 문서 작성
+- **2026-02-05 (초기)**: 초기 상태 문서 작성
+- **2026-02-05 (업데이트)**: 셀러 회원가입 및 라이브 스트림 생성 기능 완료
+  - ✅ SellerRegisterPage 추가
+  - ✅ SellerStreamNewPage 추가
+  - ✅ POST /api/seller/register API 구현
+  - ✅ SellerLoginPage 실제 API 통합
+  - ✅ 라우트 추가 완료
