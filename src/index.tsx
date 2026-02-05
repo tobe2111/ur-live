@@ -393,9 +393,18 @@ app.get('/auth/kakao/sync/callback', async (c) => {
   const { DB } = c.env;
   
   try {
+    console.log('[Kakao Sync] Callback started');
+    console.log('[Kakao Sync] DB available:', !!DB);
+    
     const code = c.req.query('code');
     const state = c.req.query('state') || '/';
     const error = c.req.query('error');
+    
+    console.log('[Kakao Sync] Query params:', { 
+      hasCode: !!code, 
+      state, 
+      error 
+    });
     
     if (error) {
       console.error('[Kakao Sync] OAuth error:', error);
@@ -417,6 +426,8 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     console.log('  - REDIRECT_URI:', KAKAO_REDIRECT_URI);
     
     // 1. Exchange code for access token
+    console.log('[Kakao Sync] Step 1: Fetching access token...');
+    
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -430,79 +441,128 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       }),
     });
     
+    console.log('[Kakao Sync] Token response status:', tokenResponse.status);
+    
     const tokenData = await tokenResponse.json();
+    console.log('[Kakao Sync] Token data received:', { 
+      hasAccessToken: !!tokenData.access_token,
+      error: tokenData.error,
+      errorDescription: tokenData.error_description
+    });
     
     if (!tokenData.access_token) {
       console.error('[Kakao Sync] Token error:', tokenData);
-      return c.redirect(`${state}?error=token_failed`);
+      return c.redirect(`${state}?error=token_failed&detail=${encodeURIComponent(tokenData.error || 'unknown')}`);
     }
     
-    console.log('[Kakao Sync] Access token obtained');
+    console.log('[Kakao Sync] Access token obtained successfully');
     
     // 2. Get user info
+    console.log('[Kakao Sync] Step 2: Fetching user info...');
+    
     const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
       },
     });
     
+    console.log('[Kakao Sync] User response status:', userResponse.status);
+    
     const userData = await userResponse.json();
+    console.log('[Kakao Sync] User data received:', { 
+      hasId: !!userData.id,
+      id: userData.id,
+      hasNickname: !!(userData.properties?.nickname || userData.kakao_account?.profile?.nickname)
+    });
     
     if (!userData.id) {
-      console.error('[Kakao Sync] Failed to get user info');
+      console.error('[Kakao Sync] Failed to get user info:', userData);
       return c.redirect(`${state}?error=user_info_failed`);
     }
     
-    console.log('[Kakao Sync] User info obtained:', userData.id);
+    console.log('[Kakao Sync] User info obtained successfully');
     
     // 3. Save/update user in database
+    console.log('[Kakao Sync] Step 3: Saving user to database...');
+    
+    if (!DB) {
+      console.error('[Kakao Sync] DB is not available!');
+      return c.redirect(`${state}?error=db_not_available`);
+    }
+    
     const kakaoId = userData.id.toString();
     const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
     const email = userData.kakao_account?.email || '';
     const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
     
-    const existingUser = await DB.prepare(
-      'SELECT * FROM users WHERE kakao_id = ?'
-    ).bind(kakaoId).first();
+    console.log('[Kakao Sync] User data:', { kakaoId, nickname, email: email ? 'exists' : 'none' });
     
-    let userId;
-    
-    if (existingUser) {
-      userId = existingUser.id;
+    try {
+      const existingUser = await DB.prepare(
+        'SELECT * FROM users WHERE kakao_id = ?'
+      ).bind(kakaoId).first();
+      
+      console.log('[Kakao Sync] Existing user check:', !!existingUser);
+      
+      let userId;
+      
+      if (existingUser) {
+        userId = existingUser.id;
+        await DB.prepare(
+          'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+        ).bind(nickname, email, profileImage, userId).run();
+        console.log('[Kakao Sync] Updated user:', userId);
+      } else {
+        const result = await DB.prepare(
+          'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
+        ).bind(nickname, email, kakaoId, profileImage).run();
+        userId = result.meta.last_row_id;
+        console.log('[Kakao Sync] Created user:', userId);
+      }
+      
+      console.log('[Kakao Sync] User saved successfully, userId:', userId);
+      
+      // 4. Create session (24 hours)
+      console.log('[Kakao Sync] Step 4: Creating session...');
+      
+      const sessionToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      
       await DB.prepare(
-        'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-      ).bind(nickname, email, profileImage, userId).run();
-      console.log('[Kakao Sync] Updated user:', userId);
-    } else {
-      const result = await DB.prepare(
-        'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
-      ).bind(nickname, email, kakaoId, profileImage).run();
-      userId = result.meta.last_row_id;
-      console.log('[Kakao Sync] Created user:', userId);
+        'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
+      ).bind(sessionToken, 'user', expiresAt).run();
+      
+      console.log('[Kakao Sync] Session created successfully');
+      
+      // 5. Redirect back with session info
+      console.log('[Kakao Sync] Step 5: Redirecting...');
+      
+      const redirectUrl = state.includes('?') 
+        ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
+        : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
+      
+      console.log('[Kakao Sync] Redirect URL:', redirectUrl);
+      return c.redirect(redirectUrl);
+      
+    } catch (dbError) {
+      console.error('[Kakao Sync] Database error:', dbError);
+      console.error('[Kakao Sync] DB error details:', {
+        message: (dbError as Error).message,
+        name: (dbError as Error).name
+      });
+      return c.redirect(`${state}?error=database_error&detail=${encodeURIComponent((dbError as Error).message)}`);
     }
-    
-    // 4. Create session (24 hours)
-    const sessionToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    
-    await DB.prepare(
-      'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
-    ).bind(sessionToken, 'user', expiresAt).run();
-    
-    console.log('[Kakao Sync] Session created');
-    
-    // 5. Redirect back with session info
-    const redirectUrl = state.includes('?') 
-      ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
-      : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
-    
-    console.log('[Kakao Sync] Redirecting to:', redirectUrl);
-    return c.redirect(redirectUrl);
     
   } catch (error) {
     console.error('[Kakao Sync] Exception:', error);
+    console.error('[Kakao Sync] Error details:', {
+      message: (error as Error).message,
+      stack: (error as Error).stack,
+      name: (error as Error).name
+    });
     const state = c.req.query('state') || '/';
-    return c.redirect(`${state}?error=kakao_sync_failed`);
+    const errorMsg = encodeURIComponent((error as Error).message || 'unknown');
+    return c.redirect(`${state}?error=kakao_sync_failed&detail=${errorMsg}`);
   }
 });
 
