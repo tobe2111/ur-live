@@ -212,6 +212,65 @@ app.post('/api/auth/logout', cors(), async (c) => {
   }
 });
 
+// 셀러 회원가입 API
+app.post('/api/seller/register', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password, name, phone, business_number, company_name } = await c.req.json();
+    
+    // 유효성 검증
+    if (!email || !password || !name || !phone) {
+      return c.json({ success: false, error: '필수 항목을 모두 입력해주세요' }, 400);
+    }
+    
+    if (password.length < 6) {
+      return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다' }, 400);
+    }
+    
+    // 이메일 중복 확인
+    const existingSeller = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first();
+    if (existingSeller) {
+      return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 400);
+    }
+    
+    // username 생성 (email의 @ 앞부분)
+    const username = email.split('@')[0];
+    
+    // 비밀번호 해시 (간단한 형태로 저장)
+    const password_hash = `placeholder_hash_for_${password}`;
+    
+    // 셀러 생성 (관리자 승인 대기 상태)
+    const result = await DB.prepare(`
+      INSERT INTO sellers (
+        username, email, password_hash, name, phone, 
+        business_number, company_name, status, is_active, 
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 1, datetime('now'), datetime('now'))
+    `).bind(
+      username,
+      email,
+      password_hash,
+      name,
+      phone,
+      business_number || null,
+      company_name || null
+    ).run();
+    
+    return c.json({
+      success: true,
+      data: {
+        sellerId: result.meta.last_row_id,
+        message: '회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.'
+      }
+    });
+    
+  } catch (err) {
+    console.error('Seller registration error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Admin login API (email-based)
 app.post('/api/admin/login', cors(), async (c) => {
   const { DB } = c.env;

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Play, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
@@ -14,22 +15,40 @@ export default function SellerLoginPage() {
     businessNumber: '',
     phoneNumber: ''
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError('')
+    setLoading(true)
     
-    if (isLogin) {
-      // Login logic
-      console.log('Login:', formData)
-      // Mock success
-      alert('로그인 성공! 셀러 대시보드로 이동합니다.')
-      navigate('/seller')
-    } else {
-      // Signup logic
-      console.log('Signup:', formData)
-      // Mock success
-      alert('가입 완료! 셀러 대시보드로 이동합니다.')
-      navigate('/seller')
+    try {
+      if (isLogin) {
+        // Login logic
+        const response = await axios.post('/api/auth/login', {
+          username: formData.email,
+          password: formData.password,
+          userType: 'seller'
+        })
+
+        if (response.data.success) {
+          localStorage.setItem('session_token', response.data.data.sessionToken)
+          localStorage.setItem('user_type', 'seller')
+          localStorage.setItem('seller_id', response.data.data.user.id)
+          alert('로그인 성공!')
+          navigate('/seller')
+        } else {
+          setError(response.data.error || '로그인 실패')
+        }
+      } else {
+        // Redirect to registration page
+        navigate('/seller/register')
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.response?.data?.message || '로그인 실패')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -108,6 +127,13 @@ export default function SellerLoginPage() {
         {/* Login/Signup Form */}
         <div className="apple-card p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-[14px]">
+                {error}
+              </div>
+            )}
+
             {/* Email */}
             <div>
               <label className="block text-[14px] font-medium text-[#1d1d1f] mb-2">
@@ -223,13 +249,13 @@ export default function SellerLoginPage() {
         {/* Toggle Login/Signup */}
         <div className="text-center mt-6">
           <p className="text-[15px] text-[#6e6e73]">
-            {isLogin ? '아직 계정이 없으신가요?' : '이미 계정이 있으신가요?'}
+            아직 계정이 없으신가요?
             {' '}
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => navigate('/seller/register')}
               className="text-[#007aff] font-medium hover:opacity-60 transition-opacity"
             >
-              {isLogin ? '가입하기' : '로그인'}
+              가입하기
             </button>
           </p>
         </div>
