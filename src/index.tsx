@@ -406,9 +406,16 @@ app.get('/auth/kakao/callback', async (c) => {
   }
   
   try {
-    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
-    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '4fd3d6ea625c446c4c445d7fb28c3759';
+    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'https://live.ur-team.com/auth/kakao/callback';
     const KAKAO_CLIENT_SECRET = c.env.KAKAO_CLIENT_SECRET || ''; // Optional
+    
+    // 디버깅 로그
+    console.log('Kakao OAuth Config:', {
+      hasRestApiKey: !!KAKAO_REST_API_KEY,
+      redirectUri: KAKAO_REDIRECT_URI,
+      hasClientSecret: !!KAKAO_CLIENT_SECRET
+    });
     
     // 1. Access Token 요청
     const tokenParams: any = {
