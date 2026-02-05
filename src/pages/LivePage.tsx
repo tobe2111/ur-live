@@ -104,9 +104,12 @@ export default function LivePage() {
             rel: 0,
             showinfo: 0,
             iv_load_policy: 3,
-            playsinline: 1,
+            playsinline: 1,  // Critical for iOS
             enablejsapi: 1,
             origin: window.location.origin,
+            // Mobile optimizations
+            fs: 1,  // Allow fullscreen
+            cc_load_policy: 0,  // Don't show captions by default
           },
           events: {
             onReady: (event: any) => {
@@ -373,7 +376,7 @@ export default function LivePage() {
           style={{
             width: '100%',
             height: '100%',
-            pointerEvents: 'none',
+            pointerEvents: muted ? 'none' : 'auto',  // Allow touch when unmuted
           }}
         />
         
