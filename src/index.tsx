@@ -125,23 +125,26 @@ app.post('/api/auth/login', cors(), async (c) => {
     let user;
     let table = userType === 'admin' ? 'admins' : 'sellers';
     
-    // 사용자 조회
-    user = await DB.prepare(`SELECT * FROM ${table} WHERE username = ?`).bind(username).first();
+    // 사용자 조회 (username 또는 email로 조회)
+    user = await DB.prepare(`SELECT * FROM ${table} WHERE username = ? OR email = ?`).bind(username, username).first();
     
     if (!user) {
       return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
     
     // 비밀번호 검증
-    // 기본 테스트 계정 (admin, seller1, seller2)
-    const isDefaultAccount = (userType === 'admin' && username === 'admin' && password === 'admin123') ||
-                            (userType === 'seller' && username === 'seller1' && password === 'seller123') ||
-                            (userType === 'seller' && username === 'seller2' && password === 'seller123');
+    // 기본 테스트 계정 (username 또는 email로 로그인 가능)
+    const isDefaultAdmin = userType === 'admin' && 
+                          (username === 'admin' || username === 'admin@example.com') && 
+                          password === 'admin123';
+    const isDefaultSeller = userType === 'seller' && 
+                           ((username === 'seller1' && password === 'seller123') ||
+                            (username === 'seller2' && password === 'seller123'));
     
     // 관리자가 생성한 계정 (password_hash에 비밀번호가 포함됨)
     const isCustomAccount = user.password_hash && user.password_hash.includes(`placeholder_hash_for_${password}`);
     
-    const validPassword = isDefaultAccount || isCustomAccount;
+    const validPassword = isDefaultAdmin || isDefaultSeller || isCustomAccount;
     
     if (!validPassword) {
       return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
