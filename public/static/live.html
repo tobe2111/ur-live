@@ -696,9 +696,8 @@
                         // Check login
                         const userId = localStorage.getItem('userId');
                         if (!userId) {
-                            if (confirm('로그인이 필요합니다. 카카오 로그인 하시겠습니까?')) {
-                                kakaoLogin();
-                            }
+                            alert('로그인이 필요합니다. 카카오 로그인 페이지로 이동합니다.');
+                            kakaoLogin();
                             return;
                         }
                         
@@ -736,9 +735,8 @@
                         // Check login
                         const userId = localStorage.getItem('userId');
                         if (!userId) {
-                            if (confirm('로그인이 필요합니다. 카카오 로그인 하시겠습니까?')) {
-                                kakaoLogin();
-                            }
+                            // 로그인 필요 - 바로 카카오 로그인 진행
+                            kakaoLogin();
                             return;
                         }
                         
