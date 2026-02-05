@@ -105,6 +105,7 @@ export default function LivePage() {
             iv_load_policy: 3,
             playsinline: 1,
             loop: 1,
+            playlist: stream.youtube_video_id,  // Required for loop to work
             enablejsapi: 1,
             origin: window.location.origin,
           },
@@ -123,7 +124,11 @@ export default function LivePage() {
               console.log('YouTube player state:', event.data)
               // @ts-ignore
               if (event.data === window.YT.PlayerState.ENDED) {
-                setVideoStatus('ended')
+                // Replay video when it ends
+                console.log('Video ended, restarting...')
+                event.target.seekTo(0)
+                event.target.playVideo()
+                setVideoStatus('playing')
               } else if (event.data === window.YT.PlayerState.PLAYING) {
                 setVideoStatus('playing')
               } else if (event.data === window.YT.PlayerState.BUFFERING) {
