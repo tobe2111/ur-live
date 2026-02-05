@@ -1381,6 +1381,62 @@ app.put('/api/admin/streams/:id', async (c) => {
   }
 });
 
+// Seller: Change current product in live stream
+app.post('/api/seller/streams/:streamId/change-product', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('streamId');
+    const { productId } = await c.req.json();
+
+    // Verify stream ownership
+    const stream = await DB.prepare(
+      'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, auth.sellerId).first();
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
+    }
+
+    // Get product info
+    const product = await DB.prepare(
+      'SELECT * FROM products WHERE id = ? AND is_active = 1 AND live_stream_id = ?'
+    ).bind(productId, streamId).first();
+
+    if (!product) {
+      return c.json({
+        success: false,
+        error: 'Product not found or not associated with this stream',
+      }, 404);
+    }
+
+    // Get product options
+    const options = await DB.prepare(
+      'SELECT * FROM product_options WHERE product_id = ?'
+    ).bind(productId).all();
+
+    // Update live stream current product
+    await DB.prepare(
+      'UPDATE live_streams SET current_product_id = ?, updated_at = datetime("now") WHERE id = ?'
+    ).bind(productId, streamId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        product,
+        options: options.results,
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Admin: Delete live stream
 app.delete('/api/admin/streams/:id', async (c) => {
   const { DB } = c.env;

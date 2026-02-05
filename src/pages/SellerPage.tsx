@@ -269,6 +269,17 @@ export default function SellerPage() {
         {/* Quick Access Section */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           <button
+            onClick={() => navigate('/seller/live-control')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left bg-gradient-to-br from-red-50 to-orange-50"
+          >
+            <div className="w-10 h-10 bg-[#ff3b30]/10 rounded-full flex items-center justify-center mb-3">
+              <Play className="h-5 w-5 text-[#ff3b30]" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">🔴 라이브 컨트롤</p>
+            <p className="text-[13px] text-[#6e6e73]">상품 실시간 전환</p>
+          </button>
+
+          <button
             onClick={() => navigate('/seller/business-info')}
             className="apple-card p-4 hover:shadow-lg transition-all text-left"
           >
