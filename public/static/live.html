@@ -529,7 +529,8 @@
                 
                 Kakao.Auth.authorize({
                     redirectUri: redirectUri,
-                    state: currentPath
+                    state: currentPath,
+                    prompts: 'login'
                 });
             }
             
@@ -731,6 +732,10 @@
                         
                         if (response.data.success) {
                             console.log('✅ 장바구니에 추가 성공!');
+                            
+                            // 장바구니에 담았다는 플래그 저장
+                            localStorage.setItem('hasCartItems', 'true');
+                            
                             alert('장바구니에 추가되었습니다!');
                             addSystemMessage(currentProduct.name + " 상품이 담겼습니다!");
                         } else {
@@ -747,10 +752,20 @@
                     console.log('🛒 결제 버튼 클릭됨!');
                     
                     try {
-                        // Check login
                         const userId = localStorage.getItem('userId');
-                        console.log('📍 userId:', userId);
+                        const hasCartItems = localStorage.getItem('hasCartItems');
                         
+                        console.log('📍 userId:', userId);
+                        console.log('📍 hasCartItems:', hasCartItems);
+                        
+                        // 1. 장바구니에 담지 않았으면 무조건 알림
+                        if (!hasCartItems || hasCartItems !== 'true') {
+                            console.log('⚠️ 장바구니에 담지 않음!');
+                            alert('상품을 먼저 담아주세요!');
+                            return;
+                        }
+                        
+                        // 2. 담았는데 로그인 안 됨 → 카카오 로그인
                         if (!userId) {
                             console.log('❌ 로그인 안 됨 - 카카오 로그인 진행');
                             alert('로그인이 필요합니다!');
@@ -758,10 +773,8 @@
                             return;
                         }
                         
+                        // 3. 담았고 로그인 됨 → 장바구니 확인 후 이동
                         console.log('✅ 로그인 완료 - 장바구니 확인 중...');
-                        console.log('🔗 API URL:', API_BASE + "/cart/" + userId);
-                        
-                        // Check cart
                         const cartResponse = await axios.get(API_BASE + "/cart/" + userId);
                         console.log('📦 Cart response:', cartResponse.data);
                         
@@ -769,17 +782,19 @@
                         console.log('📦 Cart items count:', cartItems.length);
                         
                         if (cartItems.length === 0) {
-                            console.log('⚠️ 장바구니 비어있음!');
+                            console.log('⚠️ 서버 장바구니 비어있음!');
                             alert('상품을 먼저 담아주세요!');
+                            // 플래그 제거
+                            localStorage.removeItem('hasCartItems');
                             return;
                         }
                         
                         console.log('✅ 장바구니에 상품 있음 - /cart로 이동');
-                        // Redirect to checkout page
                         window.location.href = '/cart';
+                        
                     } catch (error) {
                         console.error('❌ Failed to checkout:', error);
-                        alert('결제를 진행할 수 없습니다.\n' + (error.response?.data?.error || error.message));
+                        alert('상품을 먼저 담아주세요!');
                     }
                 });
                 
