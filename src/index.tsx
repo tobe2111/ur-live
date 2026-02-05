@@ -514,8 +514,8 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         console.log('[Kakao Sync] Updated user:', userId);
       } else {
         const result = await DB.prepare(
-          'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
-        ).bind(nickname, email, kakaoId, profileImage).run();
+          'INSERT INTO users (kakao_id, name, email, profile_image) VALUES (?, ?, ?, ?)'
+        ).bind(kakaoId, nickname, email, profileImage).run();
         userId = result.meta.last_row_id;
         console.log('[Kakao Sync] Created user:', userId);
       }
