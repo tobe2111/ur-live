@@ -4288,48 +4288,8 @@ app.get('/cart', async (c) => {
 // =================================
 // Live Stream Page Route
 // =================================
-app.get('/live/:id', async (c) => {
-  const streamId = c.req.param('id');
-  
-  // Read live.html content and inject streamId
-  // For Cloudflare Pages, we serve the HTML directly
-  try {
-    // Fetch the static live.html file
-    const response = await fetch(new URL('/static/live.html', c.req.url));
-    if (!response.ok) {
-      throw new Error('Failed to load live.html');
-    }
-    
-    let html = await response.text();
-    
-    // Replace streamId extraction logic
-    // Find: const STREAM_ID = urlParams.get('streamId') || window.location.pathname.split('/').pop();
-    // Replace with: const STREAM_ID = '${streamId}';
-    html = html.replace(
-      /const STREAM_ID = urlParams\.get\('streamId'\) \|\| window\.location\.pathname\.split\('\/'\)\.pop\(\);/,
-      `const STREAM_ID = '${streamId}';`
-    );
-    
-    return c.html(html);
-  } catch (e) {
-    console.error('Error serving live page:', e);
-    // Fallback to redirect
-    return c.html(`
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0;url=/static/live.html?streamId=${streamId}">
-    <title>라이브 스트림 ${streamId}</title>
-</head>
-<body>
-    <p>라이브 스트림으로 이동 중...</p>
-</body>
-</html>
-    `);
-  }
-});
+// /live/:id route removed - using client-side routing instead
+// Users access /static/live.html directly
 
 // 404 handler - return JSON for API routes
 // For all other routes, don't handle them - let Cloudflare Pages serve static files

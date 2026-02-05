@@ -521,7 +521,8 @@
                     return;
                 }
                 
-                const currentPath = window.location.pathname;
+                // Use full path with query params to preserve streamId
+                const currentPath = window.location.pathname + window.location.search;
                 const redirectUri = window.location.origin + '/auth/kakao/sync/callback';
                 
                 console.log('Starting Kakao login:', { currentPath, redirectUri });

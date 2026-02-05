@@ -8,7 +8,7 @@ const routesPath = path.join(process.cwd(), 'dist', '_routes.json');
 // - exclude: None - routes not matching 'include' are served as static files
 const routes = {
   version: 1,
-  include: ['/api/*', '/auth/*', '/live/*', '/cart'],
+  include: ['/api/*', '/auth/*', '/cart'],
   exclude: []
 };
 
