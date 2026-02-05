@@ -429,12 +429,21 @@ app.get('/auth/kakao/callback', async (c) => {
     const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
     const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI;
     
+    // 실제 값 로그 출력 (디버깅용)
+    console.log('[Kakao Callback] Environment check:');
+    console.log('  - REST_API_KEY:', KAKAO_REST_API_KEY ? `${KAKAO_REST_API_KEY.substring(0, 10)}...` : 'MISSING');
+    console.log('  - REDIRECT_URI:', KAKAO_REDIRECT_URI || 'MISSING');
+    
     if (!KAKAO_REST_API_KEY || !KAKAO_REDIRECT_URI) {
       console.error('[Kakao Callback] Missing environment variables');
       return c.redirect(`${state}?error=kakao_config_error`);
     }
     
     console.log('[Kakao Callback] Start token exchange');
+    console.log('[Kakao Callback] Sending to Kakao:');
+    console.log('  - client_id:', `${KAKAO_REST_API_KEY.substring(0, 10)}...`);
+    console.log('  - redirect_uri:', KAKAO_REDIRECT_URI);
+    console.log('  - code:', `${code?.substring(0, 20)}...`);
     
     // 1. Access Token 요청
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
