@@ -4,7 +4,7 @@ const API_BASE = '/api';
 // 유어 브릿지에서 유저 정보 가져오기
 async function getTossUserInfo() {
   try {
-    const response = await axios.get(`${API_BASE}/toss/user-info`);
+    const response = await axios.get(`${API_BASE}/kakao/user-info`);
     if (response.data.success) {
       return response.data.data;
     }

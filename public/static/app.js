@@ -63,7 +63,7 @@
     app.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-8">
-          <i class="fas fa-broadcast-tower mr-2 toss-text-primary"></i>
+          <i class="fas fa-broadcast-tower mr-2 ur-text-primary"></i>
           유어 라이브 커머스
         </h1>
         
@@ -95,7 +95,7 @@
     app.innerHTML = `
       <div class="flex items-center justify-center min-h-screen">
         <div class="text-center">
-          <i class="fas fa-spinner fa-spin text-4xl toss-text-primary mb-4"></i>
+          <i class="fas fa-spinner fa-spin text-4xl ur-text-primary mb-4"></i>
           <p class="text-gray-600">로드 중...</p>
         </div>
       </div>
@@ -109,7 +109,7 @@
         <div class="text-center">
           <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
           <p class="text-gray-600">${message}</p>
-          <button onclick="location.reload()" class="mt-4 toss-primary text-white px-6 py-2 rounded-lg">
+          <button onclick="location.reload()" class="mt-4 ur-primary text-white px-6 py-2 rounded-lg">
             다시 시도
           </button>
         </div>

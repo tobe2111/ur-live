@@ -9,7 +9,7 @@
     streamId: STREAM_ID,
     currentProductId: null,
     currentProduct: null,
-    userId: 'toss_user_001', // 실제로는 유어 로그인에서 받아옴
+    userId: 'kakao_guest_001', // 실제로는 카카오 로그인에서 받아옴
     player: null,
     pollingInterval: null,
     initAttempts: 0,
@@ -598,7 +598,7 @@
   async function createGuestUser() {
     try {
       const guestData = {
-        tossUserId: state.userId,
+        userId: state.userId,
         name: currentUsername,
         email: `${state.userId}@guest.com`,
         phone: ''
@@ -718,7 +718,7 @@
   async function getTossUserInfo() {
     try {
       // 실제 유어 브릿지 API 호출
-      const response = await axios.get(`${API_BASE}/toss/user-info`);
+      const response = await axios.get(`${API_BASE}/kakao/user-info`);
       
       if (response.data.success) {
         const userInfo = response.data.data;

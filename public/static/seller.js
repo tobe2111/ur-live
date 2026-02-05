@@ -93,7 +93,7 @@ function renderProducts(products) {
 
     if (products.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+            <div style="text-align: center; padding: 40px; color: var(--ur-gray-600);">
                 <i class="fas fa-box-open" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
                 <p style="font-size: 16px;">등록된 상품이 없습니다.</p>
                 <p style="font-size: 14px; margin-top: 8px;">새 상품 등록 버튼을 클릭하여 시작하세요.</p>
@@ -111,7 +111,7 @@ function renderProducts(products) {
             
             <div style="flex: 1;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                    <h3 style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                    <h3 style="font-size: 16px; font-weight: 600; color: var(--ur-gray-900); margin: 0;">
                         ${product.name}
                     </h3>
                     <span class="status-badge status-${product.is_active ? 'active' : 'inactive'}">
@@ -124,25 +124,25 @@ function renderProducts(products) {
                     ` : ''}
                 </div>
                 
-                <p style="font-size: 14px; color: var(--toss-gray-600); margin-bottom: 12px;">
+                <p style="font-size: 14px; color: var(--ur-gray-600); margin-bottom: 12px;">
                     ${product.description || '설명 없음'}
                 </p>
                 
                 <div style="display: flex; gap: 24px; font-size: 14px; margin-bottom: 12px;">
                     <div>
-                        <span style="color: var(--toss-gray-600);">판매가:</span>
+                        <span style="color: var(--ur-gray-600);">판매가:</span>
                         <strong style="color: var(--seller-pink); font-size: 18px; font-weight: 700; margin-left: 8px;">
                             ${formatPrice(product.price)}원
                         </strong>
                         ${product.original_price ? `
-                            <span style="text-decoration: line-through; color: var(--toss-gray-600); margin-left: 8px;">
+                            <span style="text-decoration: line-through; color: var(--ur-gray-600); margin-left: 8px;">
                                 ${formatPrice(product.original_price)}원
                             </span>
                         ` : ''}
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600);">
+                <div style="display: flex; gap: 16px; font-size: 13px; color: var(--ur-gray-600);">
                     <span>
                         <i class="fas fa-tag"></i> ${product.category || '기타'}
                     </span>
@@ -353,10 +353,10 @@ function renderLiveStreams(streams) {
     
     if (liveStreams.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+            <div style="text-align: center; padding: 40px; color: var(--ur-gray-600);">
                 <i class="fas fa-video-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
                 <p style="font-size: 16px;">현재 진행 중인 라이브 방송이 없습니다.</p>
-                <p style="font-size: 14px; margin-top: 8px; color: var(--toss-gray-600);">관리자 대시보드에서 라이브 방송을 시작하세요.</p>
+                <p style="font-size: 14px; margin-top: 8px; color: var(--ur-gray-600);">관리자 대시보드에서 라이브 방송을 시작하세요.</p>
             </div>
         `;
         return;
@@ -366,11 +366,11 @@ function renderLiveStreams(streams) {
         <div class="live-stream-card">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
                 <div>
-                    <h3 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0 0 8px 0;">
+                    <h3 style="font-size: 18px; font-weight: 700; color: var(--ur-gray-900); margin: 0 0 8px 0;">
                         <i class="fas fa-broadcast-tower" style="color: #ef4444;"></i>
                         ${stream.title}
                     </h3>
-                    <p style="font-size: 14px; color: var(--toss-gray-600); margin: 0;">
+                    <p style="font-size: 14px; color: var(--ur-gray-600); margin: 0;">
                         ${stream.description || '설명 없음'}
                     </p>
                 </div>
@@ -381,8 +381,8 @@ function renderLiveStreams(streams) {
             
             <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px; background: white; border-radius: 8px;">
                 <div style="flex: 1;">
-                    <div style="font-size: 13px; color: var(--toss-gray-600); margin-bottom: 4px;">현재 소개 중인 상품</div>
-                    <div style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900);" id="current-product-${stream.id}">
+                    <div style="font-size: 13px; color: var(--ur-gray-600); margin-bottom: 4px;">현재 소개 중인 상품</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--ur-gray-900);" id="current-product-${stream.id}">
                         ${stream.product_name || '선택된 상품 없음'}
                     </div>
                     ${stream.price ? `
@@ -391,22 +391,22 @@ function renderLiveStreams(streams) {
                         </div>
                     ` : ''}
                 </div>
-                <div style="font-size: 24px; color: var(--toss-gray-600);">
+                <div style="font-size: 24px; color: var(--ur-gray-600);">
                     <i class="fas fa-arrow-right"></i>
                 </div>
             </div>
             
             <div class="product-selector" id="product-selector-${stream.id}">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                    <h4 style="font-size: 14px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                    <h4 style="font-size: 14px; font-weight: 600; color: var(--ur-gray-900); margin: 0;">
                         상품 선택 (클릭하여 변경)
                     </h4>
-                    <span style="font-size: 12px; color: var(--toss-gray-600);">
+                    <span style="font-size: 12px; color: var(--ur-gray-600);">
                         <i class="fas fa-info-circle"></i> 현재 상품은 강조 표시됩니다
                     </span>
                 </div>
                 <div class="product-grid" id="products-grid-${stream.id}">
-                    <div style="text-align: center; padding: 20px; color: var(--toss-gray-600); grid-column: 1 / -1;">
+                    <div style="text-align: center; padding: 20px; color: var(--ur-gray-600); grid-column: 1 / -1;">
                         <i class="fas fa-spinner fa-spin"></i> 상품 불러오는 중...
                     </div>
                 </div>
@@ -447,7 +447,7 @@ function renderProductsForStream(streamId, products, currentProductId) {
     
     if (products.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: var(--toss-gray-600); grid-column: 1 / -1;">
+            <div style="text-align: center; padding: 20px; color: var(--ur-gray-600); grid-column: 1 / -1;">
                 <i class="fas fa-box-open" style="font-size: 24px; margin-bottom: 8px;"></i>
                 <p>판매 가능한 상품이 없습니다.</p>
             </div>

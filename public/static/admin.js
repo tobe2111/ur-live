@@ -91,7 +91,7 @@ function renderStreams(streams) {
 
     if (streams.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+            <div style="text-align: center; padding: 40px; color: var(--ur-gray-600);">
                 <i class="fas fa-video-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
                 <p style="font-size: 16px;">등록된 라이브 스트림이 없습니다.</p>
                 <p style="font-size: 14px; margin-top: 8px;">새 라이브 생성 버튼을 클릭하여 시작하세요.</p>
@@ -105,7 +105,7 @@ function renderStreams(streams) {
             <div style="display: flex; align-items: flex-start; justify-content: space-between;">
                 <div style="flex: 1;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                        <h3 style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                        <h3 style="font-size: 16px; font-weight: 600; color: var(--ur-gray-900); margin: 0;">
                             ${stream.title}
                         </h3>
                         <span class="status-badge status-${stream.status}">
@@ -113,11 +113,11 @@ function renderStreams(streams) {
                         </span>
                     </div>
                     
-                    <p style="font-size: 14px; color: var(--toss-gray-600); margin-bottom: 12px;">
+                    <p style="font-size: 14px; color: var(--ur-gray-600); margin-bottom: 12px;">
                         ${stream.description || '설명 없음'}
                     </p>
                     
-                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600); margin-bottom: 12px;">
+                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--ur-gray-600); margin-bottom: 12px;">
                         <span>
                             <i class="fab fa-youtube"></i> ${stream.youtube_video_id}
                         </span>
@@ -131,7 +131,7 @@ function renderStreams(streams) {
                             <div style="color: #0369a1; font-weight: 600; margin-bottom: 4px;">
                                 <i class="fas fa-shopping-bag"></i> 현재 노출 상품
                             </div>
-                            <div style="color: var(--toss-gray-700);">
+                            <div style="color: var(--ur-gray-700);">
                                 ID: ${stream.current_product_id}
                             </div>
                         </div>
@@ -400,7 +400,7 @@ function renderSellers(sellers) {
 
     if (sellers.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+            <div style="text-align: center; padding: 40px; color: var(--ur-gray-600);">
                 <i class="fas fa-store-slash" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
                 <p style="font-size: 16px;">등록된 판매자가 없습니다.</p>
                 <p style="font-size: 14px; margin-top: 8px;">새 판매자 등록 버튼을 클릭하여 시작하세요.</p>
@@ -414,7 +414,7 @@ function renderSellers(sellers) {
             <div style="display: flex; align-items: flex-start; justify-content: space-between;">
                 <div style="flex: 1;">
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                        <h3 style="font-size: 16px; font-weight: 600; color: var(--toss-gray-900); margin: 0;">
+                        <h3 style="font-size: 16px; font-weight: 600; color: var(--ur-gray-900); margin: 0;">
                             ${seller.business_name}
                         </h3>
                         <span class="status-badge status-${seller.status}">
@@ -422,13 +422,13 @@ function renderSellers(sellers) {
                         </span>
                     </div>
                     
-                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--toss-gray-600); margin-bottom: 8px;">
+                    <div style="display: flex; gap: 16px; font-size: 13px; color: var(--ur-gray-600); margin-bottom: 8px;">
                         <span><i class="fas fa-user"></i> ${seller.name} (${seller.username})</span>
                         ${seller.email ? `<span><i class="fas fa-envelope"></i> ${seller.email}</span>` : ''}
                         ${seller.phone ? `<span><i class="fas fa-phone"></i> ${seller.phone}</span>` : ''}
                     </div>
                     
-                    <div style="font-size: 13px; color: var(--toss-gray-600);">
+                    <div style="font-size: 13px; color: var(--ur-gray-600);">
                         ${seller.business_number ? `<span><i class="fas fa-building"></i> 사업자번호: ${seller.business_number}</span>` : ''}
                         <span style="margin-left: 16px;"><i class="fas fa-calendar"></i> 가입: ${formatDate(seller.created_at)}</span>
                     </div>
@@ -590,7 +590,7 @@ function renderSellers(sellers) {
 
     if (sellers.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--toss-gray-600);">
+            <div style="text-align: center; padding: 40px; color: var(--ur-gray-600);">
                 <i class="fas fa-store" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
                 <p style="font-size: 16px;">등록된 판매자가 없습니다.</p>
             </div>
@@ -615,7 +615,7 @@ function renderSellers(sellers) {
                     
                     <div style="flex: 1;">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            <h3 style="font-size: 18px; font-weight: 700; color: var(--toss-gray-900); margin: 0;">
+                            <h3 style="font-size: 18px; font-weight: 700; color: var(--ur-gray-900); margin: 0;">
                                 ${seller.business_name}
                             </h3>
                             <span class="status-badge" style="background: ${statusColor}20; color: ${statusColor};">
@@ -626,7 +626,7 @@ function renderSellers(sellers) {
                             </span>
                         </div>
                         
-                        <div style="display: flex; gap: 24px; font-size: 14px; color: var(--toss-gray-600); margin-bottom: 12px;">
+                        <div style="display: flex; gap: 24px; font-size: 14px; color: var(--ur-gray-600); margin-bottom: 12px;">
                             <div>
                                 <i class="fas fa-user"></i> ${seller.name} (${seller.username})
                             </div>
@@ -636,7 +636,7 @@ function renderSellers(sellers) {
                             ${seller.phone ? `<div><i class="fas fa-phone"></i> ${seller.phone}</div>` : ''}
                         </div>
                         
-                        <div style="font-size: 13px; color: var(--toss-gray-600);">
+                        <div style="font-size: 13px; color: var(--ur-gray-600);">
                             <i class="fas fa-calendar"></i> 등록일: ${formatDate(seller.created_at)}
                             ${seller.last_login_at ? ` | 마지막 로그인: ${formatDate(seller.last_login_at)}` : ''}
                         </div>
