@@ -406,17 +406,9 @@
                     <span id="viewer-count">0</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <button class="close-btn" id="login-btn" style="width: auto; padding: 0 12px; border-radius: 16px; font-size: 13px; display: none;">
-                    <i class="fas fa-sign-in-alt"></i> 로그인
-                </button>
-                <div class="close-btn" id="user-info" style="width: auto; padding: 0 12px; border-radius: 16px; font-size: 12px; display: none;">
-                    <i class="fas fa-user"></i> <span id="user-name"></span>
-                </div>
-                <button class="close-btn" onclick="window.location.href='/'">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+            <button class="close-btn" onclick="window.location.href='/'">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         
         <!-- Chat Container (Bottom Left) -->
@@ -517,50 +509,27 @@
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
                 
-                // Update login UI
-                updateLoginUI();
-                
                 await loadStreamData();
                 initFirebase();
                 startProductPolling();
                 setupEventListeners();
             });
             
-            // Check login status and update UI
-            function updateLoginUI() {
-                const userId = localStorage.getItem('userId');
-                const userName = localStorage.getItem('userName');
-                
-                const loginBtn = document.getElementById('login-btn');
-                const userInfo = document.getElementById('user-info');
-                const userNameEl = document.getElementById('user-name');
-                
-                if (userId && userName) {
-                    // Logged in
-                    loginBtn.style.display = 'none';
-                    userInfo.style.display = 'block';
-                    userNameEl.textContent = userName;
-                } else {
-                    // Not logged in
-                    loginBtn.style.display = 'block';
-                    userInfo.style.display = 'none';
-                }
-            }
-            
             // Kakao login function
             function kakaoLogin() {
                 if (!window.Kakao || !Kakao.isInitialized()) {
-                    alert('카카오 SDK가 초기화되지 않았습니다.');
+                    alert('카카오 SDK가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
                     return;
                 }
                 
-                const currentPath = window.location.pathname + window.location.search;
+                const currentPath = window.location.pathname;
                 const redirectUri = window.location.origin + '/auth/kakao/sync/callback';
+                
+                console.log('Starting Kakao login:', { currentPath, redirectUri });
                 
                 Kakao.Auth.authorize({
                     redirectUri: redirectUri,
-                    state: currentPath,
-                    prompts: 'login'
+                    state: currentPath
                 });
             }
             
@@ -716,11 +685,6 @@
             
             // Setup event listeners
             function setupEventListeners() {
-                // Login button
-                document.getElementById('login-btn').addEventListener('click', () => {
-                    kakaoLogin();
-                });
-                
                 // Add to cart
                 document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
                     if (!currentProduct) {
