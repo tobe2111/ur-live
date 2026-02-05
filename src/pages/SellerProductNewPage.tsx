@@ -35,13 +35,21 @@ export default function SellerProductNewPage() {
   })
 
   useEffect(() => {
+    // Check authentication
+    const sessionToken = localStorage.getItem('session_token')
+    const userType = localStorage.getItem('user_type')
+    
+    if (!sessionToken || userType !== 'seller') {
+      navigate('/seller/login')
+      return
+    }
+    
     loadLiveStreams()
   }, [])
 
   async function loadLiveStreams() {
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -68,8 +76,7 @@ export default function SellerProductNewPage() {
     setLoading(true)
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
 
       if (!sessionToken) {
         navigate('/seller/login')

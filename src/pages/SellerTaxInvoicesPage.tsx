@@ -66,8 +66,8 @@ export default function SellerTaxInvoicesPage() {
     setError('')
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -112,8 +112,8 @@ export default function SellerTaxInvoicesPage() {
     setError('')
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       const response = await axios.post(`/api/seller/tax-invoices/retry/${orderNo}`, {}, {
         headers: { 'X-Session-Token': sessionToken }
@@ -133,8 +133,8 @@ export default function SellerTaxInvoicesPage() {
 
   async function viewInvoiceDetail(invoiceId: number) {
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       const response = await axios.get(`/api/seller/tax-invoices/${invoiceId}`, {
         headers: { 'X-Session-Token': sessionToken }

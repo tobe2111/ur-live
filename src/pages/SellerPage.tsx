@@ -67,14 +67,23 @@ export default function SellerPage() {
   const sellerEmail = 'seller@yourlive.com'
 
   useEffect(() => {
+    // Check authentication
+    const sessionToken = localStorage.getItem('session_token')
+    const userType = localStorage.getItem('user_type')
+    
+    if (!sessionToken || userType !== 'seller') {
+      navigate('/seller/login')
+      return
+    }
+    
     loadDashboardData()
   }, [])
 
   async function loadDashboardData() {
     try {
       // Get session token from localStorage
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       // Load real stats if session exists
       if (sessionToken) {

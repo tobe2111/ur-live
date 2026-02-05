@@ -58,8 +58,8 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -90,8 +90,8 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       const response = await axios.patch(
         `/api/seller/orders/${orderNo}/status`,
@@ -121,8 +121,8 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       const response = await axios.put(
         `/api/seller/orders/${orderNo}/tracking`,

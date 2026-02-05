@@ -56,8 +56,8 @@ export default function SellerBusinessInfoPage() {
 
   async function loadBusinessInfo() {
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -103,8 +103,8 @@ export default function SellerBusinessInfoPage() {
     setSubmitting(true)
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       if (!sessionToken) {
         navigate('/seller/login')

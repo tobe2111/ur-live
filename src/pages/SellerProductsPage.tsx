@@ -45,8 +45,8 @@ export default function SellerProductsPage() {
     setError('')
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -74,8 +74,8 @@ export default function SellerProductsPage() {
     }
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       const response = await axios.patch(
         `/api/seller/products/${productId}`,
@@ -101,8 +101,8 @@ export default function SellerProductsPage() {
     setDeleting(productId)
 
     try {
-      const session = JSON.parse(localStorage.getItem('sellerSession') || '{}')
-      const sessionToken = session.token
+      const sessionToken = localStorage.getItem('session_token')
+      
 
       const response = await axios.delete(`/api/seller/products/${productId}`, {
         headers: { 'X-Session-Token': sessionToken }
