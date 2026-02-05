@@ -4289,11 +4289,32 @@ app.get('/cart', async (c) => {
 // Live Stream Page Route
 // =================================
 app.get('/live/:id', async (c) => {
+  const streamId = c.req.param('id');
+  
+  // Read live.html content and inject streamId
+  // For Cloudflare Pages, we serve the HTML directly
   try {
-    const streamId = c.req.param('id');
+    // Fetch the static live.html file
+    const response = await fetch(new URL('/static/live.html', c.req.url));
+    if (!response.ok) {
+      throw new Error('Failed to load live.html');
+    }
     
-    // Build live.html response
-    const liveHtml = `
+    let html = await response.text();
+    
+    // Replace streamId extraction logic
+    // Find: const STREAM_ID = urlParams.get('streamId') || window.location.pathname.split('/').pop();
+    // Replace with: const STREAM_ID = '${streamId}';
+    html = html.replace(
+      /const STREAM_ID = urlParams\.get\('streamId'\) \|\| window\.location\.pathname\.split\('\/'\)\.pop\(\);/,
+      `const STREAM_ID = '${streamId}';`
+    );
+    
+    return c.html(html);
+  } catch (e) {
+    console.error('Error serving live page:', e);
+    // Fallback to redirect
+    return c.html(`
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -4306,12 +4327,7 @@ app.get('/live/:id', async (c) => {
     <p>라이브 스트림으로 이동 중...</p>
 </body>
 </html>
-    `;
-    
-    return c.html(liveHtml);
-  } catch (e) {
-    console.error('Error serving live page:', e);
-    return c.html('<h1>Error loading live page</h1>', 500);
+    `);
   }
 });
 
