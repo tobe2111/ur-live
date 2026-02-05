@@ -408,25 +408,35 @@ app.get('/auth/kakao/callback', async (c) => {
   try {
     const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
     const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+    const KAKAO_CLIENT_SECRET = c.env.KAKAO_CLIENT_SECRET || ''; // Optional
     
     // 1. Access Token 요청
+    const tokenParams: any = {
+      grant_type: 'authorization_code',
+      client_id: KAKAO_REST_API_KEY,
+      redirect_uri: KAKAO_REDIRECT_URI,
+      code: code,
+    };
+    
+    // Client Secret이 있으면 추가
+    if (KAKAO_CLIENT_SECRET) {
+      tokenParams.client_secret = KAKAO_CLIENT_SECRET;
+    }
+    
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: KAKAO_REST_API_KEY,
-        redirect_uri: KAKAO_REDIRECT_URI,
-        code: code,
-      }),
+      body: new URLSearchParams(tokenParams),
     });
     
     const tokenData = await tokenResponse.json();
     
+    // 토큰 에러 로깅
     if (!tokenData.access_token) {
-      return c.redirect('/?error=token_failed');
+      console.error('Kakao token error:', tokenData);
+      return c.redirect(`${state}?error=token_failed&detail=${encodeURIComponent(tokenData.error || 'unknown')}`);
     }
     
     // 2. 사용자 정보 요청
