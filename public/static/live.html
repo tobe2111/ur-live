@@ -436,9 +436,14 @@
                     <div class="product-stock" id="product-stock"></div>
                 </div>
             </div>
-            <button class="add-to-cart-btn" id="add-to-cart-btn">
-                <i class="fas fa-shopping-bag"></i> 담기
-            </button>
+            <div style="display: flex; gap: 8px;">
+                <button class="add-to-cart-btn" id="add-to-cart-btn" style="flex: 1;">
+                    <i class="fas fa-shopping-bag"></i> 담기
+                </button>
+                <button class="add-to-cart-btn" id="checkout-btn" style="flex: 1; background: #ff4757;">
+                    <i class="fas fa-credit-card"></i> 결제
+                </button>
+            </div>
         </div>
         
         <!-- No Product Message -->
@@ -467,6 +472,32 @@
             
             // Initialize
             document.addEventListener('DOMContentLoaded', async () => {
+                // Check for login callback
+                const urlParams = new URLSearchParams(window.location.search);
+                const loginStatus = urlParams.get('login');
+                const sessionToken = urlParams.get('session');
+                const userId = urlParams.get('userId');
+                const userName = urlParams.get('userName');
+                
+                if (loginStatus === 'success' && sessionToken) {
+                    // Save session to localStorage
+                    localStorage.setItem('session', sessionToken);
+                    localStorage.setItem('userId', userId);
+                    localStorage.setItem('userName', decodeURIComponent(userName || '카카오 사용자'));
+                    
+                    console.log('✅ 로그인 성공:', {
+                        session: sessionToken,
+                        userId: userId,
+                        userName: userName
+                    });
+                    
+                    // Show success message
+                    alert('로그인 되었습니다! 환영합니다, ' + decodeURIComponent(userName || '카카오 사용자') + '님!');
+                    
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
                 await loadStreamData();
                 initFirebase();
                 startProductPolling();
@@ -627,26 +658,77 @@
             function setupEventListeners() {
                 // Add to cart
                 document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
-                    if (!currentProduct) return;
+                    if (!currentProduct) {
+                        alert('상품을 선택해주세요!');
+                        return;
+                    }
                     
                     try {
-                        // Get Toss user info
-                        const userResponse = await axios.get(API_BASE + "/kakao/user-info");
-                        const userId = userResponse.data.data?.userId || 'test_user_001';
+                        // Check login
+                        const userId = localStorage.getItem('userId');
+                        if (!userId) {
+                            alert('로그인이 필요합니다!');
+                            window.location.href = '/';
+                            return;
+                        }
                         
-                        // Add to cart
-                        await axios.post(API_BASE + "/cart", {
-                            user_id: userId,
+                        console.log('Adding to cart:', {
+                            userId: userId,
                             product_id: currentProduct.id,
                             quantity: 1,
                             live_stream_id: parseInt(STREAM_ID)
                         });
                         
-                        alert('장바구니에 추가되었습니다!');
-                        addSystemMessage(currentProduct.name + " 상품이 담겼습니다!");
+                        // Add to cart
+                        const response = await axios.post(API_BASE + "/cart", {
+                            userId: userId,
+                            productId: currentProduct.id,
+                            quantity: 1,
+                            priceSnapshot: currentProduct.price,
+                            liveStreamId: parseInt(STREAM_ID)
+                        });
+                        
+                        if (response.data.success) {
+                            alert('장바구니에 추가되었습니다!');
+                            addSystemMessage(currentProduct.name + " 상품이 담겼습니다!");
+                        } else {
+                            throw new Error(response.data.error || '장바구니 추가에 실패했습니다');
+                        }
                     } catch (error) {
                         console.error('Failed to add to cart:', error);
-                        alert('장바구니 추가에 실패했습니다.');
+                        alert('장바구니 추가에 실패했습니다.\n' + (error.response?.data?.error || error.message));
+                    }
+                });
+                
+                // Checkout button
+                document.getElementById('checkout-btn').addEventListener('click', async () => {
+                    try {
+                        // Check login
+                        const userId = localStorage.getItem('userId');
+                        if (!userId) {
+                            alert('로그인이 필요합니다!');
+                            window.location.href = '/';
+                            return;
+                        }
+                        
+                        console.log('Checking cart for userId:', userId);
+                        
+                        // Check cart
+                        const cartResponse = await axios.get(API_BASE + "/cart/" + userId);
+                        console.log('Cart response:', cartResponse.data);
+                        
+                        const cartItems = cartResponse.data.data || [];
+                        
+                        if (cartItems.length === 0) {
+                            alert('상품을 먼저 담아주세요!');
+                            return;
+                        }
+                        
+                        // Redirect to checkout page
+                        window.location.href = '/cart';
+                    } catch (error) {
+                        console.error('Failed to checkout:', error);
+                        alert('결제를 진행할 수 없습니다.\n' + (error.response?.data?.error || error.message));
                     }
                 });
                 
