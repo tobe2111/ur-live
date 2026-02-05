@@ -301,8 +301,11 @@ export default function LivePage() {
       
       setCartCount(prev => prev + 1)
       
-      // Go to checkout page
-      navigate('/checkout')
+      // Show success message and ask to go to checkout
+      const goToCheckout = confirm('장바구니에 담았습니다!\n지금 바로 결제하시겠습니까?')
+      if (goToCheckout) {
+        navigate('/checkout')
+      }
       
     } catch (error) {
       console.error('Failed to add to cart:', error)

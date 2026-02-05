@@ -386,9 +386,14 @@ app.get('/api/auth/verify', cors(), async (c) => {
 
 // 카카오 로그인 페이지로 리다이렉트
 app.get('/auth/kakao', async (c) => {
-  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
-  const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '4fd3d6ea625c446c4c445d7fb28c3759';
+  const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'https://live.ur-team.com/auth/kakao/callback';
   const redirectUrl = c.req.query('redirect') || '/';
+  
+  console.log('=== Kakao Auth Redirect ===');
+  console.log('REST_API_KEY:', KAKAO_REST_API_KEY);
+  console.log('REDIRECT_URI:', KAKAO_REDIRECT_URI);
+  console.log('Return URL:', redirectUrl);
   
   const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(redirectUrl)}`;
   
@@ -410,12 +415,13 @@ app.get('/auth/kakao/callback', async (c) => {
     const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'https://live.ur-team.com/auth/kakao/callback';
     const KAKAO_CLIENT_SECRET = c.env.KAKAO_CLIENT_SECRET || ''; // Optional
     
-    // 디버깅 로그
-    console.log('Kakao OAuth Config:', {
-      hasRestApiKey: !!KAKAO_REST_API_KEY,
-      redirectUri: KAKAO_REDIRECT_URI,
-      hasClientSecret: !!KAKAO_CLIENT_SECRET
-    });
+    // 디버깅 로그 - 실제 값 출력
+    console.log('=== Kakao OAuth Request ===');
+    console.log('REST_API_KEY:', KAKAO_REST_API_KEY);
+    console.log('REDIRECT_URI:', KAKAO_REDIRECT_URI);
+    console.log('CLIENT_SECRET exists:', !!KAKAO_CLIENT_SECRET);
+    console.log('Code:', code);
+    console.log('State:', state);
     
     // 1. Access Token 요청
     const tokenParams: any = {
@@ -442,9 +448,15 @@ app.get('/auth/kakao/callback', async (c) => {
     
     // 토큰 에러 로깅
     if (!tokenData.access_token) {
-      console.error('Kakao token error:', tokenData);
+      console.error('=== Kakao Token Error ===');
+      console.error('Full response:', JSON.stringify(tokenData));
+      console.error('Error:', tokenData.error);
+      console.error('Error description:', tokenData.error_description);
       return c.redirect(`${state}?error=token_failed&detail=${encodeURIComponent(tokenData.error || 'unknown')}`);
     }
+    
+    console.log('=== Kakao Token Success ===');
+    console.log('Access token obtained');
     
     // 2. 사용자 정보 요청
     const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
