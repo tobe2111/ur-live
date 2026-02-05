@@ -28,7 +28,23 @@ export default function HomePage() {
     const sessionToken = searchParams.get('session')
     const userId = searchParams.get('userId')
     const userName = searchParams.get('userName')
+    const error = searchParams.get('error')
+    const errorDetail = searchParams.get('detail')
 
+    // Handle error
+    if (error) {
+      console.error('[HomePage] Kakao login error:', error, errorDetail)
+      
+      // Clean URL to prevent infinite loop
+      const cleanUrl = window.location.pathname
+      window.history.replaceState({}, '', cleanUrl)
+      
+      // Show error message
+      alert(`로그인 실패: ${errorDetail || error}\n\n카카오 개발자 콘솔 설정을 확인해주세요.`)
+      return
+    }
+
+    // Handle success
     if (loginSuccess === 'success' && sessionToken && userId) {
       console.log('[HomePage] Kakao login callback detected')
       
