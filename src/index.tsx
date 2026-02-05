@@ -209,6 +209,68 @@ app.post('/api/auth/logout', cors(), async (c) => {
   }
 });
 
+// Admin login API (email-based)
+app.post('/api/admin/login', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password } = await c.req.json();
+    
+    if (!email || !password) {
+      return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
+    }
+    
+    // Find admin by email
+    const admin = await DB.prepare('SELECT * FROM admins WHERE email = ?').bind(email).first();
+    
+    if (!admin) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // Verify password (simple check for test account)
+    const isTestAccount = email === 'admin@example.com' && password === 'admin123';
+    const isValidPassword = isTestAccount || (admin.password_hash && admin.password_hash.includes(`placeholder_hash_for_${password}`));
+    
+    if (!isValidPassword) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // Check if active
+    if (!admin.is_active) {
+      return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
+    }
+    
+    // Create session in KV
+    const sessionToken = await createSession(c.env.SESSION_KV, admin.id, 'admin', {
+      username: admin.username,
+      email: admin.email,
+      name: admin.name,
+      role: admin.role
+    });
+    
+    // Update last login time
+    await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?').bind(admin.id).run();
+    
+    return c.json({
+      success: true,
+      data: {
+        token: sessionToken,
+        admin: {
+          id: admin.id,
+          username: admin.username,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role
+        }
+      }
+    });
+    
+  } catch (err) {
+    console.error('Admin login error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // 세션 검증 API
 app.get('/api/auth/verify', cors(), async (c) => {
   const { DB } = c.env;

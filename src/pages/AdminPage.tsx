@@ -41,8 +41,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     // Check admin session
-    const token = localStorage.getItem('admin_token')
-    if (!token) {
+    const token = localStorage.getItem('session_token')
+    const userType = localStorage.getItem('user_type')
+    if (!token || userType !== 'admin') {
       navigate('/admin/login')
       return
     }
@@ -52,11 +53,11 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem('session_token')
       
       // Load sellers
       const sellersRes = await axios.get('/api/admin/sellers', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 'X-Session-Token': token }
       })
       
       // Load streams
@@ -80,7 +81,8 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error('Failed to load data:', err)
       if (err.response?.status === 401) {
-        localStorage.removeItem('admin_token')
+        localStorage.removeItem('session_token')
+        localStorage.removeItem('user_type')
         navigate('/admin/login')
       }
       setLoading(false)
@@ -89,11 +91,11 @@ export default function AdminPage() {
 
   async function approveSeller(sellerId: number) {
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem('session_token')
       await axios.post(
         `/api/admin/sellers/${sellerId}/approve`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { 'X-Session-Token': token } }
       )
       alert('판매자 승인 완료!')
       loadData()
@@ -106,9 +108,9 @@ export default function AdminPage() {
     if (!confirm('정말 이 라이브를 삭제하시겠습니까?')) return
 
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem('session_token')
       await axios.delete(`/api/admin/streams/${streamId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 'X-Session-Token': token }
       })
       alert('라이브 삭제 완료!')
       loadData()
@@ -118,7 +120,9 @@ export default function AdminPage() {
   }
 
   function logout() {
-    localStorage.removeItem('admin_token')
+    localStorage.removeItem('session_token')
+    localStorage.removeItem('user_type')
+    localStorage.removeItem('admin_id')
     navigate('/admin/login')
   }
 

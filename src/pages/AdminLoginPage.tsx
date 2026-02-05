@@ -15,20 +15,22 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/admin/login', {
-        email,
-        password
+      const response = await axios.post('/api/auth/login', {
+        username: email, // API uses 'username' field
+        password,
+        userType: 'admin'
       })
 
       if (response.data.success) {
-        localStorage.setItem('admin_token', response.data.data.token)
-        localStorage.setItem('admin_id', response.data.data.admin.id)
+        localStorage.setItem('session_token', response.data.data.sessionToken)
+        localStorage.setItem('user_type', 'admin')
+        localStorage.setItem('admin_id', response.data.data.user.id)
         navigate('/admin')
       } else {
         setError(response.data.error || '로그인 실패')
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || '로그인 실패')
+      setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)
     }
