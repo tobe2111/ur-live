@@ -1,9 +1,7 @@
--- Remove Toss completely - Kakao login only
--- Recreate users table without toss_user_id
+-- Remove toss_user_id column from users table
+-- This migration removes all Toss-related columns and keeps only Kakao login
 
-PRAGMA foreign_keys=OFF;
-
--- Create new users table (Kakao only)
+-- Step 1: Create new users table without toss_user_id
 CREATE TABLE users_new (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kakao_id TEXT UNIQUE NOT NULL,
@@ -15,19 +13,18 @@ CREATE TABLE users_new (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Copy only Kakao users (skip any Toss-only users)
+-- Step 2: Copy Kakao users only (exclude Toss-only users)
 INSERT INTO users_new (id, kakao_id, name, email, phone, profile_image, created_at, updated_at)
 SELECT id, kakao_id, name, email, phone, profile_image, created_at, updated_at
 FROM users
-WHERE kakao_id IS NOT NULL AND kakao_id NOT LIKE 'toss_%';
+WHERE kakao_id IS NOT NULL;
 
--- Drop old table
+-- Step 3: Drop old table
 DROP TABLE users;
 
--- Rename new table
+-- Step 4: Rename new table
 ALTER TABLE users_new RENAME TO users;
 
--- Create index
-CREATE INDEX idx_users_kakao_id ON users(kakao_id);
-
-PRAGMA foreign_keys=ON;
+-- Step 5: Create indexes
+CREATE INDEX IF NOT EXISTS idx_users_kakao_id ON users(kakao_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

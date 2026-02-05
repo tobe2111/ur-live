@@ -49,10 +49,11 @@ export interface ProductOption {
 // User Types
 export interface User {
   id: number;
-  toss_user_id: string;
+  kakao_id: string;
   name: string;
   email: string | null;
   phone: string | null;
+  profile_image: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -514,15 +514,11 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         console.log('[Kakao Sync] Updated user:', userId);
       } else {
         // Insert new Kakao user
-        // NOTE: toss_user_id is NOT NULL in production DB, using temporary unique value
-        // TODO: Make toss_user_id nullable in future DB migration
-        const tempTossId = `KAKAO_${kakaoId}`; // Unique identifier for Kakao users
-        
         const result = await DB.prepare(
-          'INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image) VALUES (?, ?, ?, ?, ?)'
-        ).bind(tempTossId, kakaoId, nickname, email, profileImage).run();
+          'INSERT INTO users (kakao_id, name, email, profile_image) VALUES (?, ?, ?, ?)'
+        ).bind(kakaoId, nickname, email, profileImage).run();
         userId = result.meta.last_row_id;
-        console.log('[Kakao Sync] Created user:', userId, 'with temp toss_id:', tempTossId);
+        console.log('[Kakao Sync] Created user:', userId);
       }
       
       console.log('[Kakao Sync] User saved successfully, userId:', userId);
@@ -1035,15 +1031,15 @@ app.get('/api/cart/:userId', async (c) => {
   const userIdParam = c.req.param('userId');
 
   try {
-    // 사용자 ID 조회 - id 또는 toss_user_id로 찾기
+    // 사용자 ID 조회 (kakao_id 기반)
     let user = await DB.prepare(
       'SELECT id FROM users WHERE id = ?'
     ).bind(userIdParam).first();
     
-    // id로 못 찾으면 toss_user_id로 찾기
+    // id로 못 찾으면 kakao_id로 찾기
     if (!user) {
       user = await DB.prepare(
-        'SELECT id FROM users WHERE toss_user_id = ?'
+        'SELECT id FROM users WHERE kakao_id = ?'
       ).bind(userIdParam).first();
     }
 
@@ -1087,19 +1083,19 @@ app.post('/api/users', async (c) => {
 
   try {
     const body = await c.req.json();
-    const { tossUserId, name, email, phone } = body;
+    const { kakaoId, name, email, phone } = body;
 
-    if (!tossUserId || !name) {
+    if (!kakaoId || !name) {
       return c.json<ApiResponse>({
         success: false,
-        error: 'tossUserId and name are required',
+        error: 'kakaoId and name are required',
       }, 400);
     }
 
     // 이미 존재하는 사용자인지 확인
     const existingUser = await DB.prepare(
-      'SELECT id FROM users WHERE toss_user_id = ?'
-    ).bind(tossUserId).first();
+      'SELECT id FROM users WHERE kakao_id = ?'
+    ).bind(kakaoId).first();
 
     if (existingUser) {
       return c.json<ApiResponse<{ id: number }>>({
@@ -1110,9 +1106,9 @@ app.post('/api/users', async (c) => {
 
     // 새 사용자 생성
     const result = await DB.prepare(
-      'INSERT INTO users (toss_user_id, name, email, phone) VALUES (?, ?, ?, ?)'
+      'INSERT INTO users (kakao_id, name, email, phone) VALUES (?, ?, ?, ?)'
     ).bind(
-      tossUserId,
+      kakaoId,
       name,
       email || null,
       phone || null
@@ -1136,27 +1132,27 @@ app.post('/api/cart', async (c) => {
 
   try {
     const body = await c.req.json();
-    const { userId, tossUserId, productId, optionId, quantity, priceSnapshot, liveStreamId } = body;
+    const { userId, kakaoId, productId, optionId, quantity, priceSnapshot, liveStreamId } = body;
     
-    // userId 또는 tossUserId 중 하나를 사용
-    const userIdToUse = tossUserId || userId;
+    // userId 또는 kakaoId 중 하나를 사용
+    const userIdToUse = kakaoId || userId;
     
     if (!userIdToUse) {
       return c.json<ApiResponse>({
         success: false,
-        error: 'userId or tossUserId is required',
+        error: 'userId or kakaoId is required',
       }, 400);
     }
 
-    // 사용자 ID 조회 - id 또는 toss_user_id로 찾기
+    // 사용자 ID 조회 (kakao_id 기반)
     let user = await DB.prepare(
       'SELECT id FROM users WHERE id = ?'
     ).bind(userIdToUse).first();
     
-    // id로 못 찾으면 toss_user_id로 찾기
+    // id로 못 찾으면 kakao_id로 찾기
     if (!user) {
       user = await DB.prepare(
-        'SELECT id FROM users WHERE toss_user_id = ?'
+        'SELECT id FROM users WHERE kakao_id = ?'
       ).bind(userIdToUse).first();
     }
 
@@ -3295,22 +3291,15 @@ app.post('/api/orders/create', async (c) => {
       shippingInfo = addressResult;
     }
     
-    // 임시 사용자 처리
-    let finalUserId = userId;
-    if (!userId || userId === 'toss_user_temp') {
-      const tempUserResult = await DB.prepare(`
-        SELECT id FROM users WHERE email = 'temp@example.com'
-      `).first();
-      
-      if (tempUserResult) {
-        finalUserId = tempUserResult.id;
-      } else {
-        const insertResult = await DB.prepare(`
-          INSERT INTO users (name, email) VALUES (?, ?)
-        `).bind('임시 사용자', 'temp@example.com').run();
-        finalUserId = insertResult.meta.last_row_id;
-      }
+    // 임시 사용자 처리 제거 - Kakao 로그인 필수
+    if (!userId) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'User ID is required. Please login with Kakao first.',
+      }, 401);
     }
+    
+    const finalUserId = userId;
     
     // 주문번호 생성 (ORDER_timestamp_random)
     const timestamp = Date.now();
