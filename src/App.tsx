@@ -11,6 +11,8 @@ import SellerProductsPage from './pages/SellerProductsPage'
 import SellerProductNewPage from './pages/SellerProductNewPage'
 import SellerProductEditPage from './pages/SellerProductEditPage'
 import SellerLiveControlPage from './pages/SellerLiveControlPage'
+import AdminPage from './pages/AdminPage'
+import AdminLoginPage from './pages/AdminLoginPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import KakaoCallbackPage from './pages/KakaoCallbackPage'
 
@@ -30,6 +32,8 @@ function App() {
         <Route path="/seller/products/new" element={<SellerProductNewPage />} />
         <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
         <Route path="/seller/live-control" element={<SellerLiveControlPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
       </Routes>
