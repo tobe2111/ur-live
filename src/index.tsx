@@ -4259,6 +4259,36 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
   }
 });
 
+// =================================
+// Live Stream Page Route
+// =================================
+app.get('/live/:id', async (c) => {
+  try {
+    const streamId = c.req.param('id');
+    
+    // Build live.html response
+    const liveHtml = `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0;url=/static/live.html?streamId=${streamId}">
+    <title>라이브 스트림 ${streamId}</title>
+</head>
+<body>
+    <p>라이브 스트림으로 이동 중...</p>
+</body>
+</html>
+    `;
+    
+    return c.html(liveHtml);
+  } catch (e) {
+    console.error('Error serving live page:', e);
+    return c.html('<h1>Error loading live page</h1>', 500);
+  }
+});
+
 // 404 handler - return JSON for API routes
 // For all other routes, don't handle them - let Cloudflare Pages serve static files
 app.notFound((c) => {
