@@ -7,6 +7,11 @@
         <title>유어 라이브 커머스 - 실시간 방송</title>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         
+        <!-- Kakao SDK -->
+        <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" 
+                integrity="sha384-TiCUE00h+9NgDjKWnqXx+ZSbFKEBAJHaOMXzGRFgOu1tCAR23N2eZCv0qE7bDRQC" 
+                crossorigin="anonymous"></script>
+        
         <!-- Firebase SDK -->
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -401,9 +406,17 @@
                     <span id="viewer-count">0</span>
                 </div>
             </div>
-            <button class="close-btn" onclick="window.location.href='/'">
-                <i class="fas fa-times"></i>
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="close-btn" id="login-btn" style="width: auto; padding: 0 12px; border-radius: 16px; font-size: 13px; display: none;">
+                    <i class="fas fa-sign-in-alt"></i> 로그인
+                </button>
+                <div class="close-btn" id="user-info" style="width: auto; padding: 0 12px; border-radius: 16px; font-size: 12px; display: none;">
+                    <i class="fas fa-user"></i> <span id="user-name"></span>
+                </div>
+                <button class="close-btn" onclick="window.location.href='/'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
         
         <!-- Chat Container (Bottom Left) -->
@@ -459,6 +472,12 @@
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script src="https://www.youtube.com/iframe_api"></script>
         <script>
+            // Initialize Kakao SDK
+            if (window.Kakao && !Kakao.isInitialized()) {
+                Kakao.init('975a2e7f97254b08f15dba4d177a2865'); // Your Kakao App Key
+                console.log('✅ Kakao SDK initialized');
+            }
+            
             // Get stream ID from URL
             const urlParams = new URLSearchParams(window.location.search);
             const STREAM_ID = urlParams.get('streamId') || window.location.pathname.split('/').pop();
@@ -498,11 +517,52 @@
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
                 
+                // Update login UI
+                updateLoginUI();
+                
                 await loadStreamData();
                 initFirebase();
                 startProductPolling();
                 setupEventListeners();
             });
+            
+            // Check login status and update UI
+            function updateLoginUI() {
+                const userId = localStorage.getItem('userId');
+                const userName = localStorage.getItem('userName');
+                
+                const loginBtn = document.getElementById('login-btn');
+                const userInfo = document.getElementById('user-info');
+                const userNameEl = document.getElementById('user-name');
+                
+                if (userId && userName) {
+                    // Logged in
+                    loginBtn.style.display = 'none';
+                    userInfo.style.display = 'block';
+                    userNameEl.textContent = userName;
+                } else {
+                    // Not logged in
+                    loginBtn.style.display = 'block';
+                    userInfo.style.display = 'none';
+                }
+            }
+            
+            // Kakao login function
+            function kakaoLogin() {
+                if (!window.Kakao || !Kakao.isInitialized()) {
+                    alert('카카오 SDK가 초기화되지 않았습니다.');
+                    return;
+                }
+                
+                const currentPath = window.location.pathname + window.location.search;
+                const redirectUri = window.location.origin + '/auth/kakao/sync/callback';
+                
+                Kakao.Auth.authorize({
+                    redirectUri: redirectUri,
+                    state: currentPath,
+                    prompts: 'login'
+                });
+            }
             
             // Load stream and product data
             async function loadStreamData() {
@@ -656,6 +716,11 @@
             
             // Setup event listeners
             function setupEventListeners() {
+                // Login button
+                document.getElementById('login-btn').addEventListener('click', () => {
+                    kakaoLogin();
+                });
+                
                 // Add to cart
                 document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
                     if (!currentProduct) {
@@ -667,8 +732,9 @@
                         // Check login
                         const userId = localStorage.getItem('userId');
                         if (!userId) {
-                            alert('로그인이 필요합니다!');
-                            window.location.href = '/';
+                            if (confirm('로그인이 필요합니다. 카카오 로그인 하시겠습니까?')) {
+                                kakaoLogin();
+                            }
                             return;
                         }
                         
@@ -706,8 +772,9 @@
                         // Check login
                         const userId = localStorage.getItem('userId');
                         if (!userId) {
-                            alert('로그인이 필요합니다!');
-                            window.location.href = '/';
+                            if (confirm('로그인이 필요합니다. 카카오 로그인 하시겠습니까?')) {
+                                kakaoLogin();
+                            }
                             return;
                         }
                         
