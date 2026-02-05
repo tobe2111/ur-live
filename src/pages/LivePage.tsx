@@ -255,9 +255,19 @@ export default function LivePage() {
   async function handleKakaoLogin() {
     try {
       // @ts-ignore - Kakao SDK loaded from CDN
-      if (!window.Kakao || !window.Kakao.isInitialized()) {
+      if (!window.Kakao) {
+        console.error('[Kakao Sync] Kakao SDK not loaded')
         alert('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.')
         return
+      }
+
+      // Initialize if not already initialized
+      // @ts-ignore
+      if (!window.Kakao.isInitialized()) {
+        console.log('[Kakao Sync] Initializing Kakao SDK...')
+        // @ts-ignore
+        window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
+        console.log('[Kakao Sync] SDK Initialized:', window.Kakao.isInitialized())
       }
 
       console.log('[Kakao Sync] Starting login...')
