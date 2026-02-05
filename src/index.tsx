@@ -388,8 +388,9 @@ app.get('/api/auth/verify', cors(), async (c) => {
 app.get('/auth/kakao', async (c) => {
   const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
   const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'http://localhost:3000/auth/kakao/callback';
+  const redirectUrl = c.req.query('redirect') || '/';
   
-  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code`;
+  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(redirectUrl)}`;
   
   return c.redirect(kakaoAuthUrl);
 });
@@ -398,6 +399,7 @@ app.get('/auth/kakao', async (c) => {
 app.get('/auth/kakao/callback', async (c) => {
   const { DB } = c.env;
   const code = c.req.query('code');
+  const state = c.req.query('state') || '/'; // Original URL to return to
   
   if (!code) {
     return c.redirect('/?error=no_code');
@@ -472,11 +474,14 @@ app.get('/auth/kakao/callback', async (c) => {
     ).bind(sessionToken, 'user', expiresAt).run();
     
     // 5. 세션 정보를 쿼리 파라미터로 전달하여 React에서 localStorage에 저장
-    return c.redirect(`/?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`);
+    const redirectUrl = state.includes('?') 
+      ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
+      : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
+    return c.redirect(redirectUrl);
     
   } catch (error) {
     console.error('Kakao login error:', error);
-    return c.redirect('/?error=login_failed');
+    return c.redirect(`${state}?error=login_failed`);
   }
 });
 // 카카오 로그아웃

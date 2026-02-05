@@ -249,9 +249,9 @@ export default function LivePage() {
 
   function handleCheckout() {
     if (!isLoggedIn) {
-      // Redirect to Kakao login
-      const currentUrl = window.location.href
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=aa88264eac0ae190a132205063753960&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/kakao/callback')}&response_type=code&state=${encodeURIComponent(currentUrl)}`
+      // Redirect to backend Kakao login endpoint
+      const currentUrl = encodeURIComponent(window.location.href)
+      const kakaoAuthUrl = `/auth/kakao?redirect=${currentUrl}`
       window.location.href = kakaoAuthUrl
       return
     }
