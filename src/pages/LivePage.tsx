@@ -274,9 +274,23 @@ export default function LivePage() {
   async function handleCheckout() {
     if (!currentProduct) return
     
-    // Add to cart first
+    // Check login first
+    if (!isLoggedIn) {
+      // Not logged in - redirect to Kakao login
+      const currentUrl = encodeURIComponent(window.location.href)
+      const kakaoAuthUrl = `/auth/kakao?redirect=${currentUrl}`
+      window.location.href = kakaoAuthUrl
+      return
+    }
+    
+    // Add to cart
     try {
-      const userId = localStorage.getItem('user_id') || 'guest'
+      const userId = localStorage.getItem('user_id')
+      
+      if (!userId) {
+        alert('로그인이 필요합니다.')
+        return
+      }
       
       await axios.post('/api/cart', {
         userId: userId,
@@ -287,15 +301,7 @@ export default function LivePage() {
       
       setCartCount(prev => prev + 1)
       
-      // If not logged in, redirect to Kakao login
-      if (!isLoggedIn) {
-        const currentUrl = encodeURIComponent(window.location.href)
-        const kakaoAuthUrl = `/auth/kakao?redirect=${currentUrl}`
-        window.location.href = kakaoAuthUrl
-        return
-      }
-      
-      // If logged in, go to checkout page
+      // Go to checkout page
       navigate('/checkout')
       
     } catch (error) {
