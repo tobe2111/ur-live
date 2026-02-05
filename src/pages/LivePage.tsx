@@ -58,59 +58,14 @@ export default function LivePage() {
   const [showChatInput, setShowChatInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // Handle Kakao login callback
-  // Handle Kakao login callback
+  // Check login status from localStorage
   useEffect(() => {
-    const loginSuccess = searchParams.get('login')
-    const sessionToken = searchParams.get('session')
-    const userId = searchParams.get('userId')
-    const userName = searchParams.get('userName')
-    const error = searchParams.get('error')
-    const errorDetail = searchParams.get('detail')
-
-    // Handle error
-    if (error) {
-      console.error('[LivePage] Kakao login error:', error, errorDetail)
-      
-      // Clean URL to prevent infinite loop
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      
-      // Show error message
-      alert(`로그인 실패: ${errorDetail || error}\n\n카카오 개발자 콘솔 설정을 확인해주세요.`)
-      return
-    }
-
-    // Handle success
-    if (loginSuccess === 'success' && sessionToken && userId) {
-      console.log('[LivePage] Kakao login callback detected')
-      
-      // Save login info to localStorage
-      localStorage.setItem('access_token', sessionToken)
-      localStorage.setItem('user_id', userId)
-      if (userName) {
-        localStorage.setItem('user_name', decodeURIComponent(userName))
-      }
-      
-      // Update login state
-      setIsLoggedIn(true)
-      
-      console.log('[LivePage] Login info saved, user_id:', userId)
-      
-      // Clean URL parameters
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      
-      // Show success message
-      alert('로그인 되었습니다!')
-    }
-  }, [searchParams])
-
-  useEffect(() => {
-    // Check login status
     const token = localStorage.getItem('access_token')
     const userId = localStorage.getItem('user_id')
-    setIsLoggedIn(!!(token && userId))
+    
+    if (token && userId) {
+      setIsLoggedIn(true)
+    }
     
     loadStreamData()
     loadCurrentProduct()
@@ -296,15 +251,71 @@ export default function LivePage() {
     setMessages(prev => [...prev, systemMessage])
   }
 
+  // Kakao Sync Login
+  async function handleKakaoLogin() {
+    try {
+      // @ts-ignore - Kakao SDK loaded from CDN
+      if (!window.Kakao || !window.Kakao.isInitialized()) {
+        alert('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.')
+        return
+      }
+
+      console.log('[Kakao Sync] Starting login...')
+
+      // @ts-ignore
+      window.Kakao.Auth.login({
+        success: async (authObj: any) => {
+          console.log('[Kakao Sync] Login success, access token:', authObj.access_token.substring(0, 20) + '...')
+          
+          try {
+            // Send access token to backend for verification
+            const response = await axios.post('/api/auth/kakao/sync', {
+              accessToken: authObj.access_token
+            })
+
+            if (response.data.success) {
+              console.log('[Kakao Sync] Backend verification success')
+              
+              // Save to localStorage
+              localStorage.setItem('access_token', response.data.session)
+              localStorage.setItem('user_id', response.data.user.id.toString())
+              localStorage.setItem('user_name', response.data.user.name)
+              
+              // Update state
+              setIsLoggedIn(true)
+              
+              // Show success message
+              alert('로그인 되었습니다!')
+              
+              // Reload to update UI
+              window.location.reload()
+            } else {
+              console.error('[Kakao Sync] Backend verification failed:', response.data.error)
+              alert('로그인 처리 중 오류가 발생했습니다.')
+            }
+          } catch (error) {
+            console.error('[Kakao Sync] Backend API error:', error)
+            alert('로그인 처리 중 오류가 발생했습니다.')
+          }
+        },
+        fail: (err: any) => {
+          console.error('[Kakao Sync] Login failed:', err)
+          alert('카카오 로그인에 실패했습니다.')
+        }
+      })
+    } catch (error) {
+      console.error('[Kakao Sync] Exception:', error)
+      alert('로그인 중 오류가 발생했습니다.')
+    }
+  }
+
   async function handleCheckout() {
     if (!currentProduct) return
     
     // Check login first
     if (!isLoggedIn) {
-      // Not logged in - redirect to Kakao login
-      const currentUrl = encodeURIComponent(window.location.href)
-      const kakaoAuthUrl = `/auth/kakao?redirect=${currentUrl}`
-      window.location.href = kakaoAuthUrl
+      // Not logged in - trigger Kakao Sync login
+      handleKakaoLogin()
       return
     }
     

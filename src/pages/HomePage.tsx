@@ -22,59 +22,8 @@ export default function HomePage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  // Handle Kakao login callback
-  useEffect(() => {
-    const loginSuccess = searchParams.get('login')
-    const sessionToken = searchParams.get('session')
-    const userId = searchParams.get('userId')
-    const userName = searchParams.get('userName')
-    const error = searchParams.get('error')
-    const errorDetail = searchParams.get('detail')
-
-    // Handle error
-    if (error) {
-      console.error('[HomePage] Kakao login error:', error, errorDetail)
-      
-      // Clean URL to prevent infinite loop
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      
-      // Show error message
-      alert(`로그인 실패: ${errorDetail || error}\n\n카카오 개발자 콘솔 설정을 확인해주세요.`)
-      return
-    }
-
-    // Handle success
-    if (loginSuccess === 'success' && sessionToken && userId) {
-      console.log('[HomePage] Kakao login callback detected')
-      
-      // Save login info to localStorage
-      localStorage.setItem('access_token', sessionToken)
-      localStorage.setItem('user_id', userId)
-      if (userName) {
-        localStorage.setItem('user_name', decodeURIComponent(userName))
-      }
-      
-      console.log('[HomePage] Login info saved, user_id:', userId)
-      
-      // Clean URL parameters
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      
-      // Show success message
-      alert('로그인 되었습니다!')
-      
-      // Check if user has items in cart and redirect to checkout
-      axios.get(`/api/cart/${userId}`).then(response => {
-        if (response.data.success && response.data.data.length > 0) {
-          console.log('[HomePage] Cart has items, redirecting to checkout')
-          navigate('/checkout')
-        }
-      }).catch(error => {
-        console.error('[HomePage] Failed to check cart:', error)
-      })
-    }
-  }, [searchParams, navigate])
+  // No callback handling needed for Kakao Sync
+  // Authentication is handled directly in the browser
 
   useEffect(() => {
     loadStreams()

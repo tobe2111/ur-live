@@ -384,117 +384,52 @@ app.get('/api/auth/verify', cors(), async (c) => {
 // Kakao Login APIs (일반 사용자)
 // =================================
 
-// 카카오 로그인 페이지로 리다이렉트
-app.get('/auth/kakao', async (c) => {
-  try {
-    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
-    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI;
-    const returnUrl = c.req.query('redirect') || '/';
-    
-    if (!KAKAO_REST_API_KEY) {
-      console.error('KAKAO_REST_API_KEY not configured');
-      return c.redirect('/?error=kakao_config_error');
-    }
-    
-    if (!KAKAO_REDIRECT_URI) {
-      console.error('KAKAO_REDIRECT_URI not configured');
-      return c.redirect('/?error=kakao_config_error');
-    }
-    
-    console.log('[Kakao Login] Redirect to Kakao auth page');
-    console.log('[Kakao Login] Return URL:', returnUrl);
-    
-    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`;
-    
-    return c.redirect(kakaoAuthUrl);
-  } catch (error) {
-    console.error('[Kakao Login] Error:', error);
-    return c.redirect('/?error=kakao_redirect_error');
-  }
-});
+// =================================
+// 카카오 싱크 로그인 API
+// =================================
 
-// 카카오 로그인 콜백 처리
-app.get('/auth/kakao/callback', async (c) => {
+// 카카오 싱크 토큰 검증 및 로그인
+app.post('/api/auth/kakao/sync', cors(), async (c) => {
   const { DB } = c.env;
   
   try {
-    const code = c.req.query('code');
-    const state = c.req.query('state') || '/';
+    const { accessToken } = await c.req.json();
     
-    if (!code) {
-      console.error('[Kakao Callback] No code provided');
-      return c.redirect('/?error=no_code');
+    if (!accessToken) {
+      return c.json({ success: false, error: 'Access token is required' }, 400);
     }
     
-    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
-    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI;
+    console.log('[Kakao Sync] Verifying access token');
     
-    // 실제 값 로그 출력 (디버깅용)
-    console.log('[Kakao Callback] Environment check:');
-    console.log('  - REST_API_KEY:', KAKAO_REST_API_KEY ? `${KAKAO_REST_API_KEY.substring(0, 10)}...` : 'MISSING');
-    console.log('  - REDIRECT_URI:', KAKAO_REDIRECT_URI || 'MISSING');
-    
-    if (!KAKAO_REST_API_KEY || !KAKAO_REDIRECT_URI) {
-      console.error('[Kakao Callback] Missing environment variables');
-      return c.redirect(`${state}?error=kakao_config_error`);
-    }
-    
-    console.log('[Kakao Callback] Start token exchange');
-    console.log('[Kakao Callback] Sending to Kakao:');
-    console.log('  - client_id:', `${KAKAO_REST_API_KEY.substring(0, 10)}...`);
-    console.log('  - redirect_uri:', KAKAO_REDIRECT_URI);
-    console.log('  - code:', `${code?.substring(0, 20)}...`);
-    
-    // 1. Access Token 요청
-    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: KAKAO_REST_API_KEY,
-        redirect_uri: KAKAO_REDIRECT_URI,
-        code: code,
-      }),
-    });
-    
-    const tokenData = await tokenResponse.json();
-    
-    if (!tokenData.access_token) {
-      console.error('[Kakao Callback] Token error:', {
-        error: tokenData.error,
-        error_description: tokenData.error_description,
-        error_code: tokenData.error_code
-      });
-      return c.redirect(`${state}?error=token_failed&detail=${encodeURIComponent(tokenData.error || 'unknown')}`);
-    }
-    
-    console.log('[Kakao Callback] Token obtained successfully');
-    
-    // 2. 사용자 정보 요청
+    // 1. 카카오 API로 토큰 검증 및 사용자 정보 가져오기
     const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
       headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
     });
+    
+    if (!userResponse.ok) {
+      console.error('[Kakao Sync] Token verification failed');
+      return c.json({ success: false, error: 'Invalid access token' }, 401);
+    }
     
     const userData = await userResponse.json();
     
     if (!userData.id) {
-      console.error('[Kakao Callback] Failed to get user info');
-      return c.redirect(`${state}?error=user_info_failed`);
+      console.error('[Kakao Sync] Failed to get user info');
+      return c.json({ success: false, error: 'Failed to get user info' }, 500);
     }
     
-    console.log('[Kakao Callback] User info obtained:', userData.id);
+    console.log('[Kakao Sync] User authenticated:', userData.id);
     
-    // 3. 사용자 정보 저장/업데이트
+    // 2. 사용자 정보 추출
     const kakaoId = userData.id.toString();
-    const nickname = userData.properties?.nickname || 'Kakao User';
+    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
     const email = userData.kakao_account?.email || '';
-    const profileImage = userData.properties?.profile_image || '';
+    const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
     
-    // 기존 사용자 확인
+    // 3. DB에서 사용자 확인 또는 생성
     const existingUser = await DB.prepare(
       'SELECT * FROM users WHERE kakao_id = ?'
     ).bind(kakaoId).first();
@@ -506,13 +441,13 @@ app.get('/auth/kakao/callback', async (c) => {
       await DB.prepare(
         'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind(nickname, email, profileImage, userId).run();
-      console.log('[Kakao Callback] Updated existing user:', userId);
+      console.log('[Kakao Sync] Updated existing user:', userId);
     } else {
       const result = await DB.prepare(
         'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
       ).bind(nickname, email, kakaoId, profileImage).run();
       userId = result.meta.last_row_id;
-      console.log('[Kakao Callback] Created new user:', userId);
+      console.log('[Kakao Sync] Created new user:', userId);
     }
     
     // 4. 세션 생성 (24시간)
@@ -523,20 +458,26 @@ app.get('/auth/kakao/callback', async (c) => {
       'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
     ).bind(sessionToken, 'user', expiresAt).run();
     
-    console.log('[Kakao Callback] Session created');
+    console.log('[Kakao Sync] Session created');
     
-    // 5. 세션 정보를 쿼리 파라미터로 전달
-    const redirectUrl = state.includes('?') 
-      ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
-      : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
-    
-    console.log('[Kakao Callback] Redirect to:', redirectUrl);
-    return c.redirect(redirectUrl);
+    // 5. 응답 반환
+    return c.json({
+      success: true,
+      session: sessionToken,
+      user: {
+        id: userId,
+        name: nickname,
+        email: email,
+        profileImage: profileImage,
+      },
+    });
     
   } catch (error) {
-    console.error('[Kakao Callback] Exception:', error);
-    const state = c.req.query('state') || '/';
-    return c.redirect(`${state}?error=login_failed`);
+    console.error('[Kakao Sync] Error:', error);
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Login failed' 
+    }, 500);
   }
 });
 
@@ -548,13 +489,14 @@ app.post('/api/auth/kakao/logout', cors(), async (c) => {
     const sessionToken = c.req.header('X-Session-Token') || '';
     
     if (sessionToken) {
-      // 세션 삭제
       await DB.prepare('DELETE FROM admin_sessions WHERE session_token = ?').bind(sessionToken).run();
+      console.log('[Kakao Sync] Session deleted');
     }
     
     return c.json({ success: true });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
+  } catch (error) {
+    console.error('[Kakao Sync] Logout error:', error);
+    return c.json({ success: false, error: 'Logout failed' }, 500);
   }
 });
 

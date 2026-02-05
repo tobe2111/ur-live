@@ -11,6 +11,18 @@
       gtag('config', 'G-B1ST2L37CM');
     </script>
     
+    <!-- Kakao SDK -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"
+            integrity="sha384-TiCUE00h+hjjDeLkE5h2kPi8+jE1H0xf0d6sG97pYCO7lnkQ61jO9QMWQU5m5dB0"
+            crossorigin="anonymous"></script>
+    <script>
+      // Initialize Kakao SDK
+      if (window.Kakao && !window.Kakao.isInitialized()) {
+        window.Kakao.init('975a2e7f97254b08f15dba4d177a2865');
+        console.log('[Kakao SDK] Initialized:', window.Kakao.isInitialized());
+      }
+    </script>
+    
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
