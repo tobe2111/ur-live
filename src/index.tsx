@@ -7,6 +7,49 @@ import { cancelPaymentAuto, isNicepayMockMode } from './services/nicepay';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// =================================
+// Utility Functions
+// =================================
+
+/**
+ * Extract YouTube Video ID from various URL formats
+ * Supports:
+ * - https://www.youtube.com/watch?v=VIDEO_ID
+ * - https://youtu.be/VIDEO_ID
+ * - https://www.youtube.com/embed/VIDEO_ID
+ * - https://www.youtube.com/live/VIDEO_ID
+ */
+function extractYouTubeVideoId(url: string): string | null {
+  try {
+    // Direct video ID (no URL)
+    if (!/^https?:\/\//.test(url) && /^[\w-]{11}$/.test(url)) {
+      return url;
+    }
+
+    const urlObj = new URL(url);
+    
+    // youtube.com/watch?v=VIDEO_ID
+    if (urlObj.hostname.includes('youtube.com')) {
+      const videoId = urlObj.searchParams.get('v');
+      if (videoId) return videoId;
+      
+      // youtube.com/embed/VIDEO_ID or youtube.com/live/VIDEO_ID
+      const pathMatch = urlObj.pathname.match(/\/(embed|live)\/([a-zA-Z0-9_-]{11})/);
+      if (pathMatch) return pathMatch[2];
+    }
+    
+    // youtu.be/VIDEO_ID
+    if (urlObj.hostname === 'youtu.be') {
+      const videoId = urlObj.pathname.slice(1);
+      if (videoId) return videoId;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // CORS 설정
 app.use('/api/*', cors());
 
@@ -1078,6 +1121,7 @@ app.post('/api/seller/streams', async (c) => {
       title, 
       description, 
       youtube_video_id, 
+      youtube_url,  // New: Accept YouTube URL
       scheduled_at, 
       status,
       seller_instagram,
@@ -1085,8 +1129,23 @@ app.post('/api/seller/streams', async (c) => {
       seller_facebook 
     } = await c.req.json();
 
-    if (!title || !youtube_video_id) {
-      return c.json({ success: false, error: 'Title and YouTube video ID are required' }, 400);
+    // Extract video ID from URL if provided
+    let videoId = youtube_video_id;
+    if (youtube_url && !videoId) {
+      videoId = extractYouTubeVideoId(youtube_url);
+      if (!videoId) {
+        return c.json({ 
+          success: false, 
+          error: 'Invalid YouTube URL. Please provide a valid YouTube video or live stream URL.' 
+        }, 400);
+      }
+    }
+
+    if (!title || !videoId) {
+      return c.json({ 
+        success: false, 
+        error: 'Title and YouTube video ID/URL are required' 
+      }, 400);
     }
 
     const result = await DB.prepare(`
@@ -1099,7 +1158,7 @@ app.post('/api/seller/streams', async (c) => {
     `).bind(
       title, 
       description || null, 
-      youtube_video_id, 
+      videoId,  // Use extracted video ID 
       status || 'scheduled', 
       scheduled_at || null,
       auth.sellerId,
@@ -1148,6 +1207,7 @@ app.put('/api/seller/streams/:id', async (c) => {
       title, 
       description, 
       youtube_video_id, 
+      youtube_url,  // New: Accept YouTube URL
       scheduled_at, 
       status,
       seller_instagram,
@@ -1166,9 +1226,25 @@ app.put('/api/seller/streams/:id', async (c) => {
       updates.push('description = ?');
       values.push(description);
     }
-    if (youtube_video_id !== undefined) {
-      updates.push('youtube_video_id = ?');
-      values.push(youtube_video_id);
+    
+    // Handle YouTube URL or video ID
+    if (youtube_url !== undefined || youtube_video_id !== undefined) {
+      let videoId = youtube_video_id;
+      
+      if (youtube_url) {
+        videoId = extractYouTubeVideoId(youtube_url);
+        if (!videoId) {
+          return c.json({ 
+            success: false, 
+            error: 'Invalid YouTube URL. Please provide a valid YouTube video or live stream URL.' 
+          }, 400);
+        }
+      }
+      
+      if (videoId !== undefined) {
+        updates.push('youtube_video_id = ?');
+        values.push(videoId);
+      }
     }
     if (status !== undefined) {
       updates.push('status = ?');

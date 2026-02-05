@@ -98,14 +98,12 @@ export default function LivePage() {
           playerVars: {
             autoplay: 1,
             mute: 1,
-            controls: 0,
+            controls: 1,  // Show controls for live streams
             modestbranding: 1,
             rel: 0,
             showinfo: 0,
             iv_load_policy: 3,
             playsinline: 1,
-            loop: 1,
-            playlist: stream.youtube_video_id,  // Required for loop to work
             enablejsapi: 1,
             origin: window.location.origin,
           },
@@ -123,17 +121,14 @@ export default function LivePage() {
             onStateChange: (event: any) => {
               console.log('YouTube player state:', event.data)
               // @ts-ignore
-              if (event.data === window.YT.PlayerState.ENDED) {
-                // Replay video when it ends
-                console.log('Video ended, restarting...')
-                event.target.seekTo(0)
-                event.target.playVideo()
-                setVideoStatus('playing')
-              } else if (event.data === window.YT.PlayerState.PLAYING) {
+              if (event.data === window.YT.PlayerState.PLAYING) {
                 setVideoStatus('playing')
               } else if (event.data === window.YT.PlayerState.BUFFERING) {
                 // Keep playing status during buffering
                 setVideoStatus('playing')
+              } else if (event.data === window.YT.PlayerState.ENDED) {
+                // For non-live videos, mark as ended
+                setVideoStatus('ended')
               }
             },
             onError: (event: any) => {
