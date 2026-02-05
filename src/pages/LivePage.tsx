@@ -366,11 +366,22 @@ export default function LivePage() {
             <p className="text-white text-[17px] font-semibold">방송이 종료되었습니다.</p>
           </div>
         )}
+        {/* YouTube Player Container - Always render */}
+        <div 
+          id="youtube-player"
+          className="absolute inset-0"
+          style={{
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+          }}
+        />
+        
         {/* Tap to unmute overlay */}
         {muted && videoStatus === 'playing' && (
           <div 
             onClick={toggleMute}
-            className="absolute inset-0 z-5 cursor-pointer"
+            className="absolute inset-0 z-10 cursor-pointer"
             style={{ pointerEvents: 'auto' }}
           >
             <div className="absolute inset-0 bg-black/10" />
@@ -383,18 +394,6 @@ export default function LivePage() {
               </div>
             </div>
           </div>
-        )}
-        
-        {(videoStatus === 'loading' || videoStatus === 'playing') && (
-          <div 
-            id="youtube-player"
-            className="absolute inset-0"
-            style={{
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none',
-            }}
-          />
         )}
       </div>
 
