@@ -388,7 +388,125 @@ app.get('/api/auth/verify', cors(), async (c) => {
 // 카카오 싱크 로그인 API
 // =================================
 
-// 카카오 싱크 토큰 검증 및 로그인
+// 카카오 싱크 콜백 처리 (authorize 리다이렉트)
+app.get('/auth/kakao/sync/callback', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const code = c.req.query('code');
+    const state = c.req.query('state') || '/';
+    const error = c.req.query('error');
+    
+    if (error) {
+      console.error('[Kakao Sync] OAuth error:', error);
+      return c.redirect(`${state}?error=kakao_oauth_${error}`);
+    }
+    
+    if (!code) {
+      console.error('[Kakao Sync] No authorization code');
+      return c.redirect(`${state}?error=no_code`);
+    }
+    
+    console.log('[Kakao Sync] Authorization code received');
+    
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '4fd3d6ea625c446c4c445d7fb28c3759';
+    const KAKAO_REDIRECT_URI = `${new URL(c.req.url).origin}/auth/kakao/sync/callback`;
+    
+    console.log('[Kakao Sync] Exchanging code for token...');
+    console.log('  - REST_API_KEY:', KAKAO_REST_API_KEY.substring(0, 10) + '...');
+    console.log('  - REDIRECT_URI:', KAKAO_REDIRECT_URI);
+    
+    // 1. Exchange code for access token
+    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_API_KEY,
+        redirect_uri: KAKAO_REDIRECT_URI,
+        code: code,
+      }),
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenData.access_token) {
+      console.error('[Kakao Sync] Token error:', tokenData);
+      return c.redirect(`${state}?error=token_failed`);
+    }
+    
+    console.log('[Kakao Sync] Access token obtained');
+    
+    // 2. Get user info
+    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+      },
+    });
+    
+    const userData = await userResponse.json();
+    
+    if (!userData.id) {
+      console.error('[Kakao Sync] Failed to get user info');
+      return c.redirect(`${state}?error=user_info_failed`);
+    }
+    
+    console.log('[Kakao Sync] User info obtained:', userData.id);
+    
+    // 3. Save/update user in database
+    const kakaoId = userData.id.toString();
+    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
+    const email = userData.kakao_account?.email || '';
+    const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
+    
+    const existingUser = await DB.prepare(
+      'SELECT * FROM users WHERE kakao_id = ?'
+    ).bind(kakaoId).first();
+    
+    let userId;
+    
+    if (existingUser) {
+      userId = existingUser.id;
+      await DB.prepare(
+        'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).bind(nickname, email, profileImage, userId).run();
+      console.log('[Kakao Sync] Updated user:', userId);
+    } else {
+      const result = await DB.prepare(
+        'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
+      ).bind(nickname, email, kakaoId, profileImage).run();
+      userId = result.meta.last_row_id;
+      console.log('[Kakao Sync] Created user:', userId);
+    }
+    
+    // 4. Create session (24 hours)
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    
+    await DB.prepare(
+      'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
+    ).bind(sessionToken, 'user', expiresAt).run();
+    
+    console.log('[Kakao Sync] Session created');
+    
+    // 5. Redirect back with session info
+    const redirectUrl = state.includes('?') 
+      ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
+      : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
+    
+    console.log('[Kakao Sync] Redirecting to:', redirectUrl);
+    return c.redirect(redirectUrl);
+    
+  } catch (error) {
+    console.error('[Kakao Sync] Exception:', error);
+    const state = c.req.query('state') || '/';
+    return c.redirect(`${state}?error=kakao_sync_failed`);
+  }
+});
+
+// 카카오 싱크 토큰 검증 및 로그인 (Legacy - for reference)
 app.post('/api/auth/kakao/sync', cors(), async (c) => {
   const { DB } = c.env;
   

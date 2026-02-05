@@ -270,48 +270,13 @@ export default function LivePage() {
         console.log('[Kakao Sync] SDK Initialized:', window.Kakao.isInitialized())
       }
 
-      console.log('[Kakao Sync] Starting login...')
+      console.log('[Kakao Sync] Starting authorize...')
 
+      // Use Kakao.Auth.authorize() for SDK 2.x
       // @ts-ignore
-      window.Kakao.Auth.login({
-        success: async (authObj: any) => {
-          console.log('[Kakao Sync] Login success, access token:', authObj.access_token.substring(0, 20) + '...')
-          
-          try {
-            // Send access token to backend for verification
-            const response = await axios.post('/api/auth/kakao/sync', {
-              accessToken: authObj.access_token
-            })
-
-            if (response.data.success) {
-              console.log('[Kakao Sync] Backend verification success')
-              
-              // Save to localStorage
-              localStorage.setItem('access_token', response.data.session)
-              localStorage.setItem('user_id', response.data.user.id.toString())
-              localStorage.setItem('user_name', response.data.user.name)
-              
-              // Update state
-              setIsLoggedIn(true)
-              
-              // Show success message
-              alert('로그인 되었습니다!')
-              
-              // Reload to update UI
-              window.location.reload()
-            } else {
-              console.error('[Kakao Sync] Backend verification failed:', response.data.error)
-              alert('로그인 처리 중 오류가 발생했습니다.')
-            }
-          } catch (error) {
-            console.error('[Kakao Sync] Backend API error:', error)
-            alert('로그인 처리 중 오류가 발생했습니다.')
-          }
-        },
-        fail: (err: any) => {
-          console.error('[Kakao Sync] Login failed:', err)
-          alert('카카오 로그인에 실패했습니다.')
-        }
+      window.Kakao.Auth.authorize({
+        redirectUri: `${window.location.origin}/auth/kakao/sync/callback`,
+        state: window.location.pathname // Return to current page after login
       })
     } catch (error) {
       console.error('[Kakao Sync] Exception:', error)
