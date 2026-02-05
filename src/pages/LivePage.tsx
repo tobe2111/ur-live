@@ -59,6 +59,7 @@ export default function LivePage() {
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   // Handle Kakao login callback
+  // Handle Kakao login callback
   useEffect(() => {
     const loginSuccess = searchParams.get('login')
     const sessionToken = searchParams.get('session')
@@ -66,7 +67,9 @@ export default function LivePage() {
     const userName = searchParams.get('userName')
 
     if (loginSuccess === 'success' && sessionToken && userId) {
-      // Save login info
+      console.log('[LivePage] Kakao login callback detected')
+      
+      // Save login info to localStorage
       localStorage.setItem('access_token', sessionToken)
       localStorage.setItem('user_id', userId)
       if (userName) {
@@ -76,10 +79,16 @@ export default function LivePage() {
       // Update login state
       setIsLoggedIn(true)
       
-      // Redirect to checkout page with cart items
-      navigate('/checkout', { replace: true })
+      console.log('[LivePage] Login info saved, user_id:', userId)
+      
+      // Clean URL parameters
+      const cleanUrl = window.location.pathname
+      window.history.replaceState({}, '', cleanUrl)
+      
+      // Show success message
+      alert('로그인 되었습니다!')
     }
-  }, [searchParams, navigate])
+  }, [searchParams])
 
   useEffect(() => {
     // Check login status

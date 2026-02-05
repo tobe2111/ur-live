@@ -386,77 +386,82 @@ app.get('/api/auth/verify', cors(), async (c) => {
 
 // 카카오 로그인 페이지로 리다이렉트
 app.get('/auth/kakao', async (c) => {
-  const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '4fd3d6ea625c446c4c445d7fb28c3759';
-  const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'https://live.ur-team.com/auth/kakao/callback';
-  const redirectUrl = c.req.query('redirect') || '/';
-  
-  console.log('=== Kakao Auth Redirect ===');
-  console.log('REST_API_KEY:', KAKAO_REST_API_KEY);
-  console.log('REDIRECT_URI:', KAKAO_REDIRECT_URI);
-  console.log('Return URL:', redirectUrl);
-  
-  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(redirectUrl)}`;
-  
-  return c.redirect(kakaoAuthUrl);
+  try {
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
+    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI;
+    const returnUrl = c.req.query('redirect') || '/';
+    
+    if (!KAKAO_REST_API_KEY) {
+      console.error('KAKAO_REST_API_KEY not configured');
+      return c.redirect('/?error=kakao_config_error');
+    }
+    
+    if (!KAKAO_REDIRECT_URI) {
+      console.error('KAKAO_REDIRECT_URI not configured');
+      return c.redirect('/?error=kakao_config_error');
+    }
+    
+    console.log('[Kakao Login] Redirect to Kakao auth page');
+    console.log('[Kakao Login] Return URL:', returnUrl);
+    
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`;
+    
+    return c.redirect(kakaoAuthUrl);
+  } catch (error) {
+    console.error('[Kakao Login] Error:', error);
+    return c.redirect('/?error=kakao_redirect_error');
+  }
 });
 
 // 카카오 로그인 콜백 처리
 app.get('/auth/kakao/callback', async (c) => {
   const { DB } = c.env;
-  const code = c.req.query('code');
-  const state = c.req.query('state') || '/'; // Original URL to return to
-  
-  if (!code) {
-    return c.redirect('/?error=no_code');
-  }
   
   try {
-    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '4fd3d6ea625c446c4c445d7fb28c3759';
-    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI || 'https://live.ur-team.com/auth/kakao/callback';
-    const KAKAO_CLIENT_SECRET = c.env.KAKAO_CLIENT_SECRET || ''; // Optional
+    const code = c.req.query('code');
+    const state = c.req.query('state') || '/';
     
-    // 디버깅 로그 - 실제 값 출력
-    console.log('=== Kakao OAuth Request ===');
-    console.log('REST_API_KEY:', KAKAO_REST_API_KEY);
-    console.log('REDIRECT_URI:', KAKAO_REDIRECT_URI);
-    console.log('CLIENT_SECRET exists:', !!KAKAO_CLIENT_SECRET);
-    console.log('Code:', code);
-    console.log('State:', state);
-    
-    // 1. Access Token 요청
-    const tokenParams: any = {
-      grant_type: 'authorization_code',
-      client_id: KAKAO_REST_API_KEY,
-      redirect_uri: KAKAO_REDIRECT_URI,
-      code: code,
-    };
-    
-    // Client Secret이 있으면 추가
-    if (KAKAO_CLIENT_SECRET) {
-      tokenParams.client_secret = KAKAO_CLIENT_SECRET;
+    if (!code) {
+      console.error('[Kakao Callback] No code provided');
+      return c.redirect('/?error=no_code');
     }
     
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY;
+    const KAKAO_REDIRECT_URI = c.env.KAKAO_REDIRECT_URI;
+    
+    if (!KAKAO_REST_API_KEY || !KAKAO_REDIRECT_URI) {
+      console.error('[Kakao Callback] Missing environment variables');
+      return c.redirect(`${state}?error=kakao_config_error`);
+    }
+    
+    console.log('[Kakao Callback] Start token exchange');
+    
+    // 1. Access Token 요청
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams(tokenParams),
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_API_KEY,
+        redirect_uri: KAKAO_REDIRECT_URI,
+        code: code,
+      }),
     });
     
     const tokenData = await tokenResponse.json();
     
-    // 토큰 에러 로깅
     if (!tokenData.access_token) {
-      console.error('=== Kakao Token Error ===');
-      console.error('Full response:', JSON.stringify(tokenData));
-      console.error('Error:', tokenData.error);
-      console.error('Error description:', tokenData.error_description);
+      console.error('[Kakao Callback] Token error:', {
+        error: tokenData.error,
+        error_description: tokenData.error_description,
+        error_code: tokenData.error_code
+      });
       return c.redirect(`${state}?error=token_failed&detail=${encodeURIComponent(tokenData.error || 'unknown')}`);
     }
     
-    console.log('=== Kakao Token Success ===');
-    console.log('Access token obtained');
+    console.log('[Kakao Callback] Token obtained successfully');
     
     // 2. 사용자 정보 요청
     const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
@@ -466,6 +471,13 @@ app.get('/auth/kakao/callback', async (c) => {
     });
     
     const userData = await userResponse.json();
+    
+    if (!userData.id) {
+      console.error('[Kakao Callback] Failed to get user info');
+      return c.redirect(`${state}?error=user_info_failed`);
+    }
+    
+    console.log('[Kakao Callback] User info obtained:', userData.id);
     
     // 3. 사용자 정보 저장/업데이트
     const kakaoId = userData.id.toString();
@@ -481,17 +493,17 @@ app.get('/auth/kakao/callback', async (c) => {
     let userId;
     
     if (existingUser) {
-      // 기존 사용자 업데이트
       userId = existingUser.id;
       await DB.prepare(
         'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind(nickname, email, profileImage, userId).run();
+      console.log('[Kakao Callback] Updated existing user:', userId);
     } else {
-      // 신규 사용자 생성
       const result = await DB.prepare(
         'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
       ).bind(nickname, email, kakaoId, profileImage).run();
       userId = result.meta.last_row_id;
+      console.log('[Kakao Callback] Created new user:', userId);
     }
     
     // 4. 세션 생성 (24시간)
@@ -502,22 +514,23 @@ app.get('/auth/kakao/callback', async (c) => {
       'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
     ).bind(sessionToken, 'user', expiresAt).run();
     
-    // 5. 세션 정보를 쿼리 파라미터로 전달하여 React에서 localStorage에 저장
-    console.log('Kakao login success:', { userId, nickname, state });
+    console.log('[Kakao Callback] Session created');
     
+    // 5. 세션 정보를 쿼리 파라미터로 전달
     const redirectUrl = state.includes('?') 
       ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
       : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
     
-    console.log('Redirecting to:', redirectUrl);
+    console.log('[Kakao Callback] Redirect to:', redirectUrl);
     return c.redirect(redirectUrl);
     
   } catch (error) {
-    console.error('Kakao login error:', error);
+    console.error('[Kakao Callback] Exception:', error);
     const state = c.req.query('state') || '/';
     return c.redirect(`${state}?error=login_failed`);
   }
 });
+
 // 카카오 로그아웃
 app.post('/api/auth/kakao/logout', cors(), async (c) => {
   const { DB } = c.env;

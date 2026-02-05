@@ -30,25 +30,32 @@ export default function HomePage() {
     const userName = searchParams.get('userName')
 
     if (loginSuccess === 'success' && sessionToken && userId) {
-      // Save login info
+      console.log('[HomePage] Kakao login callback detected')
+      
+      // Save login info to localStorage
       localStorage.setItem('access_token', sessionToken)
       localStorage.setItem('user_id', userId)
       if (userName) {
         localStorage.setItem('user_name', decodeURIComponent(userName))
       }
       
-      // Clean URL and redirect to checkout if there are items in cart
-      const cleanUrl = window.location.pathname
-      navigate(cleanUrl, { replace: true })
+      console.log('[HomePage] Login info saved, user_id:', userId)
       
-      // Check if user has items in cart
+      // Clean URL parameters
+      const cleanUrl = window.location.pathname
+      window.history.replaceState({}, '', cleanUrl)
+      
+      // Show success message
+      alert('로그인 되었습니다!')
+      
+      // Check if user has items in cart and redirect to checkout
       axios.get(`/api/cart/${userId}`).then(response => {
         if (response.data.success && response.data.data.length > 0) {
-          // Has cart items, go to checkout
+          console.log('[HomePage] Cart has items, redirecting to checkout')
           navigate('/checkout')
         }
       }).catch(error => {
-        console.error('Failed to check cart:', error)
+        console.error('[HomePage] Failed to check cart:', error)
       })
     }
   }, [searchParams, navigate])
