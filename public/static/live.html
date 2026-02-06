@@ -124,11 +124,14 @@
             border-radius: 16px;
             padding: 16px;
             z-index: 50;
-            display: none;
         }
         
         .product-card.show {
             display: block;
+        }
+        
+        .product-card.hidden {
+            display: none;
         }
         
         .product-main {
@@ -346,10 +349,17 @@
                 if (response.data.success) {
                     currentProduct = response.data.data;
                     
+                    console.log('✅ 상품 로드 완료:', currentProduct);
+                    
                     document.getElementById('product-image').src = currentProduct.image_url || 'https://via.placeholder.com/80';
-                    document.getElementById('product-name').textContent = currentProduct.name;
-                    document.getElementById('product-price').textContent = currentProduct.price.toLocaleString() + '원';
+                    document.getElementById('product-name').textContent = currentProduct.name || '상품명';
+                    
+                    // price가 없으면 기본값 사용
+                    const price = currentProduct.price || currentProduct.current_price || 0;
+                    document.getElementById('product-price').textContent = price.toLocaleString() + '원';
+                    
                     document.getElementById('product-card').classList.add('show');
+                    console.log('✅ 상품 카드 표시됨');
                 }
             } catch (error) {
                 console.error('상품 로드 실패:', error);
