@@ -206,12 +206,13 @@ export default function SellerPage() {
             <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
               셀러 대시보드
             </h1>
-              <button 
-                onClick={() => navigate('/seller/settings')}
-                className="text-[#1d1d1f] hover:opacity-60 transition-opacity"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
+            <button 
+              onClick={() => navigate('/seller/profile')}
+              className="text-[#1d1d1f] hover:opacity-60 transition-opacity"
+              title="프로필 편집"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </header>

@@ -5483,6 +5483,180 @@ app.get('/payment-result', async (c) => {
 })
 
 // =================================
+// Seller Profile Management APIs (셀러 프로필 관리)
+// =================================
+
+// Get current seller's profile (현재 로그인한 셀러 프로필 조회)
+app.get('/api/seller/profile', async (c) => {
+  const { DB } = c.env;
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  }
+
+  try {
+    // Verify session
+    const session = await DB.prepare(`
+      SELECT seller_id 
+      FROM admin_sessions 
+      WHERE session_token = ? AND expires_at > datetime('now')
+    `).bind(sessionToken).first();
+
+    if (!session || !session.seller_id) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
+    }
+
+    // Get seller profile
+    const seller = await DB.prepare(`
+      SELECT 
+        id,
+        username,
+        name,
+        email,
+        phone,
+        business_name,
+        business_number,
+        profile_image,
+        bio,
+        sns_instagram,
+        sns_youtube,
+        sns_facebook,
+        sns_twitter,
+        website_url,
+        status,
+        created_at
+      FROM sellers 
+      WHERE id = ?
+    `).bind(session.seller_id).first();
+
+    if (!seller) {
+      return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    }
+
+    return c.json({ success: true, data: seller });
+
+  } catch (err) {
+    console.error('프로필 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update seller profile (셀러 프로필 수정)
+app.patch('/api/seller/profile', async (c) => {
+  const { DB } = c.env;
+  const sessionToken = c.req.header('X-Session-Token');
+
+  if (!sessionToken) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  }
+
+  try {
+    // Verify session
+    const session = await DB.prepare(`
+      SELECT seller_id 
+      FROM admin_sessions 
+      WHERE session_token = ? AND expires_at > datetime('now')
+    `).bind(sessionToken).first();
+
+    if (!session || !session.seller_id) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
+    }
+
+    // Get update data
+    const {
+      profile_image,
+      bio,
+      sns_instagram,
+      sns_youtube,
+      sns_facebook,
+      sns_twitter,
+      website_url
+    } = await c.req.json();
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (profile_image !== undefined) {
+      updates.push('profile_image = ?');
+      params.push(profile_image);
+    }
+    if (bio !== undefined) {
+      updates.push('bio = ?');
+      params.push(bio);
+    }
+    if (sns_instagram !== undefined) {
+      updates.push('sns_instagram = ?');
+      params.push(sns_instagram);
+    }
+    if (sns_youtube !== undefined) {
+      updates.push('sns_youtube = ?');
+      params.push(sns_youtube);
+    }
+    if (sns_facebook !== undefined) {
+      updates.push('sns_facebook = ?');
+      params.push(sns_facebook);
+    }
+    if (sns_twitter !== undefined) {
+      updates.push('sns_twitter = ?');
+      params.push(sns_twitter);
+    }
+    if (website_url !== undefined) {
+      updates.push('website_url = ?');
+      params.push(website_url);
+    }
+
+    if (updates.length === 0) {
+      return c.json({ success: false, error: '수정할 내용이 없습니다' }, 400);
+    }
+
+    updates.push('updated_at = datetime(\'now\')');
+    params.push(session.seller_id);
+
+    // Update seller profile
+    await DB.prepare(`
+      UPDATE sellers 
+      SET ${updates.join(', ')}
+      WHERE id = ?
+    `).bind(...params).run();
+
+    // Get updated profile
+    const updatedSeller = await DB.prepare(`
+      SELECT 
+        id,
+        username,
+        name,
+        email,
+        phone,
+        business_name,
+        business_number,
+        profile_image,
+        bio,
+        sns_instagram,
+        sns_youtube,
+        sns_facebook,
+        sns_twitter,
+        website_url,
+        status,
+        created_at
+      FROM sellers 
+      WHERE id = ?
+    `).bind(session.seller_id).first();
+
+    return c.json({ 
+      success: true, 
+      message: '프로필이 업데이트되었습니다',
+      data: updatedSeller 
+    });
+
+  } catch (err) {
+    console.error('프로필 업데이트 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Seller Public APIs (공개 프로필 및 콘텐츠)
 // =================================
 

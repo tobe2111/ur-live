@@ -13,6 +13,7 @@ import SellerProductNewPage from './pages/SellerProductNewPage'
 import SellerProductEditPage from './pages/SellerProductEditPage'
 import SellerLiveControlPage from './pages/SellerLiveControlPage'
 import SellerStreamNewPage from './pages/SellerStreamNewPage'
+import SellerProfileEditPage from './pages/SellerProfileEditPage'
 import AdminPage from './pages/AdminPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import AdminSettlementPage from './pages/AdminSettlementPage'
@@ -40,6 +41,7 @@ function App() {
         <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
         <Route path="/seller/live-control" element={<SellerLiveControlPage />} />
         <Route path="/seller/streams/new" element={<SellerStreamNewPage />} />
+        <Route path="/seller/profile" element={<SellerProfileEditPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/settlement" element={<AdminSettlementPage />} />
