@@ -3527,6 +3527,380 @@ app.patch('/api/admin/sellers/:id/commission', async (c) => {
 });
 
 // =================================
+// Admin Settlement Dashboard APIs
+// =================================
+
+// Get settlement statistics (전체 정산 통계)
+app.get('/api/admin/settlement/stats', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { period } = c.req.query();
+    
+    // 기간별 필터링
+    let dateFilter = '';
+    const now = new Date();
+    
+    switch (period) {
+      case 'today':
+        const today = now.toISOString().split('T')[0];
+        dateFilter = `AND DATE(o.created_at) = '${today}'`;
+        break;
+      case 'week':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        dateFilter = `AND DATE(o.created_at) >= '${weekAgo}'`;
+        break;
+      case 'month':
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        dateFilter = `AND DATE(o.created_at) >= '${monthAgo}'`;
+        break;
+      default:
+        dateFilter = '';
+    }
+
+    // 전체 통계
+    const totalStats = await DB.prepare(`
+      SELECT 
+        COUNT(*) as total_orders,
+        COALESCE(SUM(total_amount), 0) as total_sales,
+        COALESCE(SUM(commission_amount), 0) as total_commission,
+        COALESCE(SUM(seller_amount), 0) as total_seller_amount
+      FROM orders o
+      WHERE payment_status = 'completed' 
+        AND is_cancelled = 0
+        ${dateFilter}
+    `).first();
+
+    // 셀러별 통계
+    const sellerStats = await DB.prepare(`
+      SELECT 
+        s.id as seller_id,
+        s.username as seller_name,
+        s.business_name,
+        s.commission_rate,
+        COUNT(o.id) as order_count,
+        COALESCE(SUM(o.total_amount), 0) as total_sales,
+        COALESCE(SUM(o.commission_amount), 0) as commission_amount,
+        COALESCE(SUM(o.seller_amount), 0) as seller_amount,
+        SUM(CASE WHEN o.settlement_status = 'pending' THEN o.seller_amount ELSE 0 END) as pending_amount,
+        SUM(CASE WHEN o.settlement_status = 'completed' THEN o.seller_amount ELSE 0 END) as settled_amount
+      FROM sellers s
+      LEFT JOIN orders o ON s.id = o.seller_id 
+        AND o.payment_status = 'completed' 
+        AND o.is_cancelled = 0
+        ${dateFilter}
+      GROUP BY s.id
+      HAVING order_count > 0
+      ORDER BY total_sales DESC
+    `).all();
+
+    return c.json({
+      success: true,
+      data: {
+        overview: totalStats,
+        sellers: sellerStats.results,
+        period: period || 'all'
+      }
+    });
+
+  } catch (err) {
+    console.error('정산 통계 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get detailed settlement records (정산 내역 상세)
+app.get('/api/admin/settlement/records', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { seller_id, period, status } = c.req.query();
+    
+    let filters = ["payment_status = 'completed'", "is_cancelled = 0"];
+    const params: any[] = [];
+
+    if (seller_id) {
+      filters.push('o.seller_id = ?');
+      params.push(seller_id);
+    }
+
+    if (status) {
+      filters.push('o.settlement_status = ?');
+      params.push(status);
+    }
+
+    // 기간 필터
+    const now = new Date();
+    switch (period) {
+      case 'today':
+        const today = now.toISOString().split('T')[0];
+        filters.push(`DATE(o.created_at) = '${today}'`);
+        break;
+      case 'week':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        filters.push(`DATE(o.created_at) >= '${weekAgo}'`);
+        break;
+      case 'month':
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        filters.push(`DATE(o.created_at) >= '${monthAgo}'`);
+        break;
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const records = await DB.prepare(`
+      SELECT 
+        o.id,
+        o.order_number,
+        o.seller_id,
+        s.username as seller_name,
+        s.business_name,
+        o.total_amount,
+        o.commission_rate,
+        o.commission_amount,
+        o.seller_amount,
+        o.settlement_status,
+        o.settled_at,
+        o.created_at,
+        u.name as user_name
+      FROM orders o
+      LEFT JOIN sellers s ON o.seller_id = s.id
+      LEFT JOIN users u ON o.user_id = u.id
+      ${whereClause}
+      ORDER BY o.created_at DESC
+      LIMIT 100
+    `).bind(...params).all();
+
+    return c.json({
+      success: true,
+      data: records.results
+    });
+
+  } catch (err) {
+    console.error('정산 내역 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update settlement status (정산 상태 변경)
+app.patch('/api/admin/settlement/:orderId/status', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const orderId = c.req.param('orderId');
+    const { status } = await c.req.json();
+
+    if (!['pending', 'completed'].includes(status)) {
+      return c.json({ success: false, error: '유효하지 않은 정산 상태입니다' }, 400);
+    }
+
+    // 주문 확인
+    const order = await DB.prepare(`
+      SELECT id, order_number, settlement_status, seller_amount 
+      FROM orders 
+      WHERE id = ? AND payment_status = 'completed' AND is_cancelled = 0
+    `).bind(orderId).first();
+
+    if (!order) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+    }
+
+    // 정산 상태 업데이트
+    await DB.prepare(`
+      UPDATE orders 
+      SET settlement_status = ?,
+          settled_at = ${status === 'completed' ? "datetime('now')" : 'NULL'}
+      WHERE id = ?
+    `).bind(status, orderId).run();
+
+    console.log(`정산 상태 변경: 주문 ${order.order_number}, ${order.settlement_status} → ${status}`);
+
+    return c.json({
+      success: true,
+      message: `정산 상태가 '${status}'로 변경되었습니다`,
+      data: {
+        order_id: orderId,
+        order_number: order.order_number,
+        old_status: order.settlement_status,
+        new_status: status
+      }
+    });
+
+  } catch (err) {
+    console.error('정산 상태 변경 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Batch update settlement status (일괄 정산 처리)
+app.post('/api/admin/settlement/batch-complete', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { order_ids } = await c.req.json();
+
+    if (!Array.isArray(order_ids) || order_ids.length === 0) {
+      return c.json({ success: false, error: '주문 ID 배열이 필요합니다' }, 400);
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const orderId of order_ids) {
+      try {
+        await DB.prepare(`
+          UPDATE orders 
+          SET settlement_status = 'completed',
+              settled_at = datetime('now')
+          WHERE id = ? 
+            AND payment_status = 'completed' 
+            AND is_cancelled = 0
+            AND settlement_status = 'pending'
+        `).bind(orderId).run();
+        successCount++;
+      } catch (err) {
+        failCount++;
+        console.error(`주문 ${orderId} 정산 처리 실패:`, err);
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: `${successCount}건 정산 완료, ${failCount}건 실패`,
+      data: {
+        total: order_ids.length,
+        success: successCount,
+        failed: failCount
+      }
+    });
+
+  } catch (err) {
+    console.error('일괄 정산 처리 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Export settlement records as CSV (정산 내역 CSV 다운로드)
+app.get('/api/admin/settlement/export-csv', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { seller_id, period } = c.req.query();
+    
+    let filters = ["payment_status = 'completed'", "is_cancelled = 0"];
+    const params: any[] = [];
+
+    if (seller_id) {
+      filters.push('o.seller_id = ?');
+      params.push(seller_id);
+    }
+
+    // 기간 필터
+    const now = new Date();
+    switch (period) {
+      case 'today':
+        const today = now.toISOString().split('T')[0];
+        filters.push(`DATE(o.created_at) = '${today}'`);
+        break;
+      case 'week':
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        filters.push(`DATE(o.created_at) >= '${weekAgo}'`);
+        break;
+      case 'month':
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        filters.push(`DATE(o.created_at) >= '${monthAgo}'`);
+        break;
+    }
+
+    const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const records = await DB.prepare(`
+      SELECT 
+        o.order_number as '주문번호',
+        o.created_at as '주문일시',
+        s.username as '판매자ID',
+        s.business_name as '사업자명',
+        u.name as '구매자명',
+        o.total_amount as '총금액',
+        o.commission_rate as '수수료율',
+        o.commission_amount as '수수료',
+        o.seller_amount as '정산금액',
+        o.settlement_status as '정산상태',
+        o.settled_at as '정산일시'
+      FROM orders o
+      LEFT JOIN sellers s ON o.seller_id = s.id
+      LEFT JOIN users u ON o.user_id = u.id
+      ${whereClause}
+      ORDER BY o.created_at DESC
+    `).bind(...params).all();
+
+    // CSV 생성
+    const rows = records.results as any[];
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '데이터가 없습니다' }, 404);
+    }
+
+    // CSV 헤더
+    const headers = Object.keys(rows[0]);
+    let csv = headers.join(',') + '\n';
+
+    // CSV 데이터
+    rows.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header];
+        if (value === null || value === undefined) return '';
+        // CSV 이스케이프 (쉼표, 따옴표 처리)
+        const str = String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      });
+      csv += values.join(',') + '\n';
+    });
+
+    // UTF-8 BOM 추가 (Excel에서 한글 깨짐 방지)
+    const bom = '\uFEFF';
+    
+    return new Response(bom + csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="settlement_${period || 'all'}_${Date.now()}.csv"`
+      }
+    });
+
+  } catch (err) {
+    console.error('CSV 내보내기 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Page Routes
 // =================================
 

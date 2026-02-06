@@ -170,12 +170,20 @@ export default function AdminPage() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">👨‍💼 관리자 대시보드</h1>
-          <button
-            onClick={logout}
-            className="text-gray-600 hover:text-gray-900"
-          >
-            로그아웃
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/admin/settlement')}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
+            >
+              💰 정산 대시보드
+            </button>
+            <button
+              onClick={logout}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </header>
 
