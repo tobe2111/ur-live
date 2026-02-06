@@ -6,8 +6,11 @@ import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-r
 interface Seller {
   id: number
   email: string
-  company_name: string
+  username?: string
+  business_name?: string
+  company_name?: string
   status: string
+  commission_rate?: number
   created_at: string
 }
 
@@ -119,6 +122,30 @@ export default function AdminPage() {
     }
   }
 
+  async function updateCommissionRate(sellerId: number, currentRate: number) {
+    const newRate = prompt(`새로운 수수료율을 입력하세요 (0-100%, 현재: ${currentRate}%)`, currentRate.toString())
+    if (!newRate) return
+
+    const rate = parseFloat(newRate)
+    if (isNaN(rate) || rate < 0 || rate > 100) {
+      alert('수수료율은 0에서 100 사이의 값이어야 합니다')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('session_token')
+      await axios.patch(
+        `/api/admin/sellers/${sellerId}/commission`,
+        { commission_rate: rate },
+        { headers: { 'X-Session-Token': token } }
+      )
+      alert(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
+      loadData()
+    } catch (err: any) {
+      alert(`수수료율 변경 실패: ${err.response?.data?.error || err.message}`)
+    }
+  }
+
   function logout() {
     localStorage.removeItem('session_token')
     localStorage.removeItem('user_type')
@@ -201,6 +228,7 @@ export default function AdminPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이메일</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">회사명</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">수수료율</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">가입일</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">액션</th>
@@ -209,7 +237,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-gray-200">
                 {sellers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                       등록된 판매자가 없습니다
                     </td>
                   </tr>
@@ -218,7 +246,15 @@ export default function AdminPage() {
                     <tr key={seller.id}>
                       <td className="px-6 py-4 text-sm text-gray-900">{seller.id}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">{seller.email}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{seller.company_name || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => updateCommissionRate(seller.id, seller.commission_rate || 10.00)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          {(seller.commission_rate || 10.00).toFixed(2)}%
+                        </button>
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           seller.status === 'approved'
@@ -235,7 +271,7 @@ export default function AdminPage() {
                         {seller.status !== 'approved' && (
                           <button
                             onClick={() => approveSeller(seller.id)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-2"
                           >
                             승인
                           </button>

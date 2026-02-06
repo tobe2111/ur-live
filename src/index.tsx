@@ -3279,7 +3279,7 @@ app.get('/api/admin/sellers', async (c) => {
   try {
     const sellers = await DB.prepare(`
       SELECT id, username, name, email, phone, business_name, business_number, 
-             status, is_active, last_login_at, created_at
+             status, is_active, commission_rate, last_login_at, created_at
       FROM sellers
       ORDER BY created_at DESC
     `).all();
@@ -3468,6 +3468,64 @@ app.post('/api/admin/sellers/:id/reset-password', async (c) => {
   }
 });
 
+// Update seller commission rate (관리자가 수수료율 변경)
+app.patch('/api/admin/sellers/:id/commission', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+    const { commission_rate } = await c.req.json();
+
+    // 수수료율 유효성 검증 (0 ~ 100%)
+    if (commission_rate === null || commission_rate === undefined) {
+      return c.json({ success: false, error: '수수료율을 입력해주세요' }, 400);
+    }
+
+    const rate = parseFloat(commission_rate);
+    if (isNaN(rate) || rate < 0 || rate > 100) {
+      return c.json({ success: false, error: '수수료율은 0에서 100 사이의 값이어야 합니다' }, 400);
+    }
+
+    // 판매자 존재 확인
+    const seller = await DB.prepare('SELECT id, username, commission_rate FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    const oldRate = seller.commission_rate || 10.00;
+
+    // 수수료율 업데이트
+    await DB.prepare(`
+      UPDATE sellers 
+      SET commission_rate = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(rate, sellerId).run();
+
+    console.log(`수수료율 변경: 판매자 ${seller.username} (ID: ${sellerId}), ${oldRate}% → ${rate}%`);
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.username}'의 수수료율이 ${oldRate}%에서 ${rate}%로 변경되었습니다`,
+      data: {
+        seller_id: sellerId,
+        seller_username: seller.username,
+        old_commission_rate: oldRate,
+        new_commission_rate: rate
+      }
+    });
+
+  } catch (err) {
+    console.error('수수료율 변경 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // =================================
 // Page Routes
 // =================================
@@ -3501,8 +3559,20 @@ app.post('/api/orders/create', async (c) => {
     
     console.log('주문 생성 요청:', { userId, cartItems: cartItems?.length, totalAmount, shippingAddressId, sellerId, issueTaxInvoice });
     
-    // 수수료 계산 (10%)
-    const commissionRate = 10.00;
+    // 셀러별 수수료율 조회 (기본값 10%)
+    let commissionRate = 10.00;
+    if (sellerId) {
+      const seller = await DB.prepare(`
+        SELECT commission_rate FROM sellers WHERE id = ?
+      `).bind(sellerId).first();
+      
+      if (seller && seller.commission_rate !== null) {
+        commissionRate = seller.commission_rate as number;
+      }
+    }
+    
+    console.log('수수료율:', { sellerId, commissionRate });
+    
     const commissionAmount = Math.floor(totalAmount * (commissionRate / 100));
     const sellerAmount = totalAmount - commissionAmount;
     
