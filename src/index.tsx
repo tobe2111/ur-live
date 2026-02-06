@@ -3649,7 +3649,7 @@ app.get('/api/public/seller/:sellerId', async (c) => {
     const sellerId = c.req.param('sellerId');
     const cacheKey = `public:seller:${sellerId}`;
 
-    // 캐시 확인 (30초 TTL) - 응답 속도 100-500ms → 5-10ms
+    // 캐시 확인 (60초 TTL) - 응답 속도 100-500ms → 5-10ms
     const cached = await getCachedData(CACHE_KV, cacheKey);
     if (cached) {
       return c.json({ success: true, data: cached, cached: true });
@@ -3660,7 +3660,7 @@ app.get('/api/public/seller/:sellerId', async (c) => {
       SELECT 
         id, username, name, business_name,
         profile_image, bio, 
-        seller_instagram, seller_youtube, seller_facebook,
+        sns_instagram, sns_youtube, sns_facebook,
         created_at
       FROM sellers
       WHERE id = ? AND status = 'approved' AND is_active = 1
@@ -3674,7 +3674,7 @@ app.get('/api/public/seller/:sellerId', async (c) => {
     const liveStreams = await DB.prepare(`
       SELECT 
         id, title, description, youtube_video_id, 
-        status, current_product_id, scheduled_at, created_at
+        status, current_product_id, created_at
       FROM live_streams
       WHERE seller_id = ? AND status = 'live'
       ORDER BY created_at DESC
@@ -3685,10 +3685,10 @@ app.get('/api/public/seller/:sellerId', async (c) => {
     const scheduledStreams = await DB.prepare(`
       SELECT 
         id, title, description, youtube_video_id,
-        status, scheduled_at, created_at
+        status, created_at
       FROM live_streams
       WHERE seller_id = ? AND status = 'scheduled'
-      ORDER BY scheduled_at ASC
+      ORDER BY created_at ASC
       LIMIT 10
     `).bind(sellerId).all();
 
@@ -3724,8 +3724,8 @@ app.get('/api/public/seller/:sellerId', async (c) => {
       stats: stats
     };
 
-    // 캐시 저장 (30초 TTL)
-    await setCachedData(CACHE_KV, cacheKey, responseData, 30);
+    // 캐시 저장 (60초 TTL)
+    await setCachedData(CACHE_KV, cacheKey, responseData, 60);
 
     return c.json({
       success: true,
