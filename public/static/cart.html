@@ -8,6 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- NicePay SDK -->
     <script src="https://pay.nicepay.co.kr/v1/js/"></script>
+    <!-- 환경 변수 주입 -->
+    <script>
+        window.NICEPAY_CLIENT_ID = '%%NICEPAY_CLIENT_ID%%';
+        window.NICEPAY_MID = '%%NICEPAY_MID%%';
+    </script>
     <style>
         * {
             margin: 0;
@@ -579,7 +584,13 @@
         function initiateNicePayPayment(order, shippingInfo) {
             console.log('🔵 NicePay 결제 시작:', order);
             
-            const NICEPAY_CLIENT_ID = 'S2_d5ec29558e9d46419bf01eb828ca0834';  // 테스트 Client ID
+            // 실제 운영 Client ID (환경에 따라 자동 선택)
+            const isProduction = window.location.hostname === 'live.ur-team.com';
+            const NICEPAY_CLIENT_ID = isProduction 
+                ? 'R1_0de112c4de8343e4b0b37f0d093eae30'  // 실제 운영 Client ID
+                : 'S2_d5ec29558e9d46419bf01eb828ca0834';  // 테스트 Client ID
+            
+            console.log('🔑 환경:', isProduction ? '운영' : '테스트', 'Client ID:', NICEPAY_CLIENT_ID.substring(0, 10) + '...');
             
             // 상품명 생성 (첫 번째 상품명 + 외 N건)
             const goodsName = cartItems.length > 1 

@@ -4263,10 +4263,44 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
 // =================================
 // Cart Page Route
 // =================================
-// Cart Page Route - Direct redirect to static HTML
+// Cart Page Route - Inject env vars and serve static HTML
 // =================================
-app.get('/cart', (c) => {
-  return c.redirect('/static/cart.html', 302)
+app.get('/cart', async (c) => {
+  try {
+    // Cloudflare Pages에서 정적 파일 가져오기
+    const staticUrl = new URL('/static/cart.html', c.req.url)
+    const response = await fetch(staticUrl.toString())
+    let html = await response.text()
+    
+    // 환경 변수 주입 (폴백 값 포함)
+    html = html.replace('%%NICEPAY_CLIENT_ID%%', c.env.NICEPAY_CLIENT_ID || 'S2_d5ec29558e9d46419bf01eb828ca0834')
+    html = html.replace('%%NICEPAY_MID%%', c.env.NICEPAY_MID || 'nictest00m')
+    
+    return c.html(html)
+  } catch (err) {
+    console.error('Error serving cart page:', err)
+    return c.html('<h1>Error loading cart page</h1>', 500)
+  }
+})
+
+// =================================
+// Payment Result Page Route
+// =================================
+app.get('/payment-result', async (c) => {
+  try {
+    // Cloudflare Pages에서 정적 파일 가져오기
+    const staticUrl = new URL('/payment-result.html', c.req.url)
+    const response = await fetch(staticUrl.toString())
+    let html = await response.text()
+    
+    // 환경 변수 주입 (폴백 값 포함)
+    html = html.replace('%%NICEPAY_MID%%', c.env.NICEPAY_MID || 'nictest00m')
+    
+    return c.html(html)
+  } catch (err) {
+    console.error('Error serving payment result page:', err)
+    return c.html('<h1>Error loading payment result page</h1>', 500)
+  }
 })
 
 // =================================
