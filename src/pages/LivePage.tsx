@@ -58,12 +58,39 @@ export default function LivePage() {
   const [showChatInput, setShowChatInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // Handle Kakao login callback parameters
+  useEffect(() => {
+    const loginStatus = searchParams.get('login')
+    const sessionToken = searchParams.get('session')
+    const userId = searchParams.get('userId')
+    const userName = searchParams.get('userName')
+    
+    if (loginStatus === 'success' && sessionToken) {
+      // Save to localStorage
+      localStorage.setItem('session', sessionToken)
+      localStorage.setItem('user_id', userId || '')
+      localStorage.setItem('user_name', decodeURIComponent(userName || '카카오 사용자'))
+      
+      setIsLoggedIn(true)
+      
+      console.log('✅ 로그인 성공:', { userId, userName })
+      
+      // Clean URL (remove login parameters, keep streamId)
+      const cleanUrl = `/live/${streamId}`
+      window.history.replaceState({}, document.title, cleanUrl)
+      
+      // Show success message
+      alert(`환영합니다, ${decodeURIComponent(userName || '카카오 사용자')}님!`)
+    }
+  }, [searchParams, streamId])
+
   // Check login status from localStorage
   useEffect(() => {
     const token = localStorage.getItem('access_token')
+    const session = localStorage.getItem('session')
     const userId = localStorage.getItem('user_id')
     
-    if (token && userId) {
+    if ((token && userId) || (session && userId)) {
       setIsLoggedIn(true)
     }
     
@@ -228,9 +255,12 @@ export default function LivePage() {
 
   const [showNotification, setShowNotification] = useState(false)
   const [notificationText, setNotificationText] = useState('')
+  const [addingToCart, setAddingToCart] = useState(false)
+  const [checkingOut, setCheckingOut] = useState(false)
 
   async function handleAddToCart() {
     if (!currentProduct?.product) return
+    if (addingToCart) return  // Prevent double-click
 
     // Check login first
     if (!isLoggedIn) {
@@ -239,6 +269,7 @@ export default function LivePage() {
       return
     }
 
+    setAddingToCart(true)
     try {
       const userId = localStorage.getItem('user_id')
       
@@ -276,9 +307,12 @@ export default function LivePage() {
         isSystem: true
       }
       setMessages(prev => [...prev, systemMessage])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add to cart:', error)
-      alert('장바구니 추가에 실패했습니다.')
+      const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
+      alert(errorMessage)
+    } finally {
+      setAddingToCart(false)
     }
   }
 
@@ -317,6 +351,8 @@ export default function LivePage() {
   }
 
   async function handleCheckout() {
+    if (checkingOut) return  // Prevent double-click
+    
     // Check if cart has items first (before login check!)
     const hasCartItems = localStorage.getItem('hasCartItems')
     
@@ -332,6 +368,7 @@ export default function LivePage() {
       return
     }
     
+    setCheckingOut(true)
     // Verify cart on server
     try {
       const userId = localStorage.getItem('user_id')
@@ -352,9 +389,12 @@ export default function LivePage() {
       // Navigate to cart page
       navigate('/cart')
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to check cart:', error)
-      alert('장바구니 확인에 실패했습니다.')
+      const errorMessage = error.response?.data?.error || error.message || '장바구니 확인에 실패했습니다.'
+      alert(errorMessage)
+    } finally {
+      setCheckingOut(false)
     }
   }
 
@@ -665,7 +705,8 @@ export default function LivePage() {
               {/* 상품 카드 (썸네일 제거, 높이 조정) */}
               <button
                 onClick={handleAddToCart}
-                className="flex-1 flex items-center gap-2.5 px-3 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30"
+                disabled={addingToCart}
+                className="flex-1 flex items-center gap-2.5 px-3 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
               >
                 <div className="flex-1 min-w-0 text-left">
@@ -684,18 +725,19 @@ export default function LivePage() {
                   </div>
                 </div>
                 <div className="flex-shrink-0 bg-[#FF6B35] text-white px-3 py-1.5 rounded-full text-[10px] font-extrabold">
-                  담기
+                  {addingToCart ? '담는중...' : '담기'}
                 </div>
               </button>
 
               {/* 결제 버튼 */}
               <button
                 onClick={handleCheckout}
-                className="relative flex-shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-[#0064FF] shadow-xl transition-all active:scale-95"
+                disabled={checkingOut}
+                className="relative flex-shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-[#0064FF] shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ boxShadow: '0 4px 16px rgba(0,100,255,0.4)' }}
               >
                 <ShoppingBag className="w-5 h-5 text-white" />
-                <span className="text-white text-[12px] font-extrabold">결제</span>
+                <span className="text-white text-[12px] font-extrabold">{checkingOut ? '확인중...' : '결제'}</span>
                 {cartCount > 0 && (
                   <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] bg-[#ff3b30] rounded-full flex items-center justify-center px-1.5 shadow-lg">
                     <span className="text-white text-[10px] font-extrabold">{cartCount}</span>
