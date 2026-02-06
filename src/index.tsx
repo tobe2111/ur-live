@@ -1566,8 +1566,52 @@ app.post('/api/orders', async (c) => {
 
     const orderId = orderResult.meta.last_row_id;
 
-    // 주문 아이템 생성
+    // 주문 아이템 생성 및 재고 차감 (낙관적 락 적용)
     for (const item of cartItems.results) {
+      // 재고 차감 (낙관적 락 - 동시성 문제 해결)
+      const stockUpdateResult = await DB.prepare(`
+        UPDATE products 
+        SET stock = stock - ?, 
+            version = version + 1,
+            updated_at = datetime('now')
+        WHERE id = ? 
+          AND stock >= ?
+          AND is_active = 1
+      `).bind(item.quantity, item.product_id, item.quantity).run();
+
+      // 재고 차감 실패 시 (동시 주문 또는 재고 부족)
+      if (stockUpdateResult.meta.changes === 0) {
+        // 현재 재고 확인
+        const currentProduct = await DB.prepare(`
+          SELECT stock FROM products WHERE id = ?
+        `).bind(item.product_id).first();
+
+        if (!currentProduct || (currentProduct.stock as number) < (item.quantity as number)) {
+          return c.json<ApiResponse>({
+            success: false,
+            error: `재고 부족: ${item.product_name} (남은 재고: ${currentProduct?.stock || 0}개)`,
+          }, 400);
+        } else {
+          // 재시도 (버전 충돌)
+          const retryResult = await DB.prepare(`
+            UPDATE products 
+            SET stock = stock - ?, 
+                version = version + 1,
+                updated_at = datetime('now')
+            WHERE id = ? 
+              AND stock >= ?
+          `).bind(item.quantity, item.product_id, item.quantity).run();
+
+          if (retryResult.meta.changes === 0) {
+            return c.json<ApiResponse>({
+              success: false,
+              error: `주문 처리 중 오류 발생. 다시 시도해주세요.`,
+            }, 409);
+          }
+        }
+      }
+
+      // 주문 아이템 생성
       await DB.prepare(`
         INSERT INTO order_items (
           order_id, product_id, option_id, quantity, price, product_name
@@ -1580,11 +1624,6 @@ app.post('/api/orders', async (c) => {
         item.price_snapshot,
         item.product_name
       ).run();
-
-      // 재고 감소
-      await DB.prepare(
-        'UPDATE products SET stock = stock - ? WHERE id = ?'
-      ).bind(item.quantity, item.product_id).run();
     }
 
     // 장바구니에서 제거
@@ -4543,15 +4582,18 @@ app.post('/api/payments/nicepay/cancel', cors(), async (c) => {
     
     console.log('[NicePay Cancel] 주문 상태 업데이트 완료:', orderNo);
     
-    // 9. 재고 복구
+    // 9. 재고 복구 (낙관적 락 적용)
     const orderItems = await DB.prepare(`
       SELECT product_id, quantity FROM order_items WHERE order_id = ?
     `).bind(order.id).all();
     
     for (const item of orderItems.results) {
+      // 재고 복구 시에도 version 업데이트
       await DB.prepare(`
         UPDATE products 
-        SET stock = stock + ?
+        SET stock = stock + ?,
+            version = version + 1,
+            updated_at = datetime('now')
         WHERE id = ?
       `).bind(item.quantity, item.product_id).run();
       
