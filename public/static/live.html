@@ -15,6 +15,35 @@
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
         
+        <!-- Firebase Config -->
+        <script>
+            // Firebase 설정
+            const firebaseConfig = {
+              apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+              authDomain: "urteam-live-commerce.firebaseapp.com",
+              databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+              projectId: "urteam-live-commerce",
+              storageBucket: "urteam-live-commerce.firebasestorage.app",
+              messagingSenderId: "1098157020294",
+              appId: "1:1098157020294:web:5f527d8e3e9f941cedad07",
+              measurementId: "G-B1ST2L37CM"
+            };
+            
+            // Firebase 초기화
+            let firebaseApp = null;
+            let firebaseDatabase = null;
+            
+            try {
+                if (window.firebase && !firebaseApp) {
+                    firebaseApp = firebase.initializeApp(firebaseConfig);
+                    firebaseDatabase = firebase.database();
+                    console.log('✅ Firebase 초기화 완료');
+                }
+            } catch (error) {
+                console.error('❌ Firebase 초기화 실패:', error);
+            }
+        </script>
+        
         <style>
             * {
                 margin: 0;
@@ -635,20 +664,23 @@
             
             // Initialize Firebase for chat
             function initFirebase() {
-                fetch('/static/firebase-config.js')
-                    .then(r => r.text())
-                    .then(configText => {
-                        eval(configText);
-                        
-                        const database = firebase.database();
-                        const chatRef = database.ref("chats/stream_" + STREAM_ID);
-                        
-                        chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
-                            const message = snapshot.val();
-                            addChatMessage(message.username, message.message);
-                        });
-                    })
-                    .catch(err => console.error('Firebase init failed:', err));
+                try {
+                    if (!firebaseDatabase) {
+                        console.warn('⚠️ Firebase database not initialized');
+                        return;
+                    }
+                    
+                    const chatRef = firebaseDatabase.ref("chats/stream_" + STREAM_ID);
+                    
+                    chatRef.limitToLast(MAX_CHAT_MESSAGES).on('child_added', (snapshot) => {
+                        const message = snapshot.val();
+                        addChatMessage(message.username, message.message);
+                    });
+                    
+                    console.log('✅ Firebase chat listener attached');
+                } catch (err) {
+                    console.error('❌ Firebase init failed:', err);
+                }
             }
             
             // Add chat message
