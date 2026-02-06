@@ -53,8 +53,9 @@ function extractYouTubeVideoId(url: string): string | null {
 // CORS 설정
 app.use('/api/*', cors());
 
-// 정적 파일 서빙
-app.use('/static/*', serveStatic({ root: './public' }));
+// 정적 파일 서빙 - Cloudflare Pages가 처리하도록 Worker에서 제외
+// app.use('/static/*', serveStatic({ root: './public' }));
+// → _routes.json에서 /static/*을 exclude에 추가하여 Pages가 직접 서빙
 
 // =================================
 // API Routes

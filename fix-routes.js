@@ -9,7 +9,7 @@ const routesPath = path.join(process.cwd(), 'dist', '_routes.json');
 const routes = {
   version: 1,
   include: ['/api/*', '/auth/*', '/cart'],
-  exclude: []
+  exclude: ['/static/*']  // 정적 파일은 Cloudflare Pages가 직접 서빙
 };
 
 fs.writeFileSync(routesPath, JSON.stringify(routes, null, 2));
