@@ -4289,11 +4289,8 @@ app.get('/cart', async (c) => {
 // =================================
 // Live Stream Page Route
 // =================================
-// Redirect /live/:id to /static/live?streamId=:id
-app.get('/live/:id', (c) => {
-  const streamId = c.req.param('id');
-  return c.redirect(`/static/live?streamId=${streamId}`, 302);
-});
+// /live/:id is handled by React Router in the SPA
+// Don't handle it in the Worker - let Cloudflare Pages serve the SPA
 
 // 404 handler - return JSON for API routes
 // For all other routes, don't handle them - let Cloudflare Pages serve static files
