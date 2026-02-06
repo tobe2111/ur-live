@@ -3856,6 +3856,190 @@ app.post('/api/payments/nicepay/callback', async (c) => {
 // 결제 취소 페이지
 // Removed route: /payment/cancel (handled by React SPA)
 
+// =================================
+// Payment Cancellation API
+// =================================
+
+/**
+ * NicePay 결제 취소 API
+ * POST /api/payments/nicepay/cancel
+ * 
+ * Request Body:
+ * - tid: 원거래 TID
+ * - cancelAmt: 취소 금액
+ * - cancelMsg: 취소 사유
+ * - orderNo: 주문 번호
+ */
+app.post('/api/payments/nicepay/cancel', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { tid, cancelAmt, cancelMsg, orderNo } = await c.req.json();
+    
+    console.log('[NicePay Cancel] 취소 요청:', {
+      tid,
+      cancelAmt,
+      orderNo,
+      cancelMsg
+    });
+    
+    // 1. 필수 파라미터 검증
+    if (!tid || !cancelAmt || !orderNo) {
+      return c.json({
+        success: false,
+        error: '필수 파라미터가 누락되었습니다 (tid, cancelAmt, orderNo)'
+      }, 400);
+    }
+    
+    // 2. 주문 조회
+    const order = await DB.prepare(`
+      SELECT * FROM orders WHERE order_number = ?
+    `).bind(orderNo).first();
+    
+    if (!order) {
+      return c.json({
+        success: false,
+        error: '주문을 찾을 수 없습니다'
+      }, 404);
+    }
+    
+    // 3. 취소 가능 상태 확인
+    if (order.payment_status !== 'approved') {
+      return c.json({
+        success: false,
+        error: '취소 가능한 상태가 아닙니다'
+      }, 400);
+    }
+    
+    // 4. 금액 검증
+    if (parseInt(cancelAmt) > order.total_amount) {
+      return c.json({
+        success: false,
+        error: '취소 금액이 결제 금액보다 큽니다'
+      }, 400);
+    }
+    
+    // 5. 환경 변수에서 NicePay 키 가져오기
+    const NICEPAY_CLIENT_ID = c.env.NICEPAY_CLIENT_ID;
+    const NICEPAY_SECRET_KEY = c.env.NICEPAY_SECRET_KEY;
+    
+    if (!NICEPAY_CLIENT_ID || !NICEPAY_SECRET_KEY) {
+      console.error('[NicePay Cancel] 환경 변수가 설정되지 않았습니다');
+      return c.json({
+        success: false,
+        error: '결제 시스템 설정 오류'
+      }, 500);
+    }
+    
+    // 6. NicePay 취소 API 호출
+    const cancelUrl = 'https://api.nicepay.co.kr/v1/payments/cancel';
+    const authHeader = 'Basic ' + btoa(`${NICEPAY_CLIENT_ID}:${NICEPAY_SECRET_KEY}`);
+    
+    const requestBody = {
+      tid: tid,
+      amount: parseInt(cancelAmt),
+      reason: cancelMsg || '구매자 요청',
+      orderId: orderNo,
+      ediDate: getCurrentEdiDate() // YYYYMMDD 형식
+    };
+    
+    console.log('[NicePay Cancel] API 호출:', {
+      url: cancelUrl,
+      body: requestBody
+    });
+    
+    const response = await fetch(cancelUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    const result = await response.json();
+    
+    console.log('[NicePay Cancel] API 응답:', {
+      status: response.status,
+      result
+    });
+    
+    // 7. 취소 실패 처리
+    if (!response.ok || result.resultCode !== '0000') {
+      console.error('[NicePay Cancel] 취소 실패:', result);
+      return c.json({
+        success: false,
+        error: result.resultMsg || '결제 취소에 실패했습니다'
+      }, 500);
+    }
+    
+    // 8. DB 업데이트: 주문 상태 변경
+    await DB.prepare(`
+      UPDATE orders 
+      SET 
+        payment_status = 'cancelled',
+        cancelled_at = CURRENT_TIMESTAMP,
+        cancel_reason = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE order_number = ?
+    `).bind(cancelMsg || '구매자 요청', orderNo).run();
+    
+    console.log('[NicePay Cancel] 주문 상태 업데이트 완료:', orderNo);
+    
+    // 9. 재고 복구
+    const orderItems = await DB.prepare(`
+      SELECT product_id, quantity FROM order_items WHERE order_id = ?
+    `).bind(order.id).all();
+    
+    for (const item of orderItems.results) {
+      await DB.prepare(`
+        UPDATE products 
+        SET stock = stock + ?
+        WHERE id = ?
+      `).bind(item.quantity, item.product_id).run();
+      
+      console.log('[NicePay Cancel] 재고 복구:', {
+        productId: item.product_id,
+        quantity: item.quantity
+      });
+    }
+    
+    console.log('[NicePay Cancel] ✅ 취소 완료:', {
+      orderNo,
+      tid,
+      cancelAmt
+    });
+    
+    return c.json({
+      success: true,
+      message: '결제가 취소되었습니다',
+      data: {
+        orderNo: orderNo,
+        cancelAmt: parseInt(cancelAmt),
+        cancelDate: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('[NicePay Cancel] Error:', error);
+    return c.json({
+      success: false,
+      error: error.message || '결제 취소 중 오류가 발생했습니다'
+    }, 500);
+  }
+});
+
+/**
+ * ediDate 생성 헬퍼 (YYYYMMDD 형식)
+ */
+function getCurrentEdiDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
 // ==================== Seller APIs ====================
 
 // 셀러 매출 조회 API

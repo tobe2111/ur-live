@@ -301,17 +301,36 @@ document.getElementById('order-modal').addEventListener('click', (e) => {
 // 환불 요청
 // ==========================================
 async function requestRefund(orderNumber) {
-    if (!confirm('주문을 취소하시겠습니까?\n결제가 취소되고 환불 처리됩니다.')) {
+    // 취소 사유 입력 받기
+    const reason = prompt('취소 사유를 입력해주세요:', '단순 변심');
+    
+    if (!reason || reason.trim() === '') {
+        alert('취소 사유를 입력해주세요.');
+        return;
+    }
+    
+    if (!confirm(`주문을 취소하시겠습니까?\n\n취소 사유: ${reason}\n\n결제가 취소되고 환불 처리됩니다.`)) {
         return;
     }
     
     try {
-        const response = await axios.post(`${API_BASE}/orders/${orderNumber}/refund`, {
-            reason: '단순 변심'
+        console.log('🔄 주문 취소 요청:', {
+            orderNumber,
+            reason
         });
         
+        // 취소 API 호출
+        const response = await axios.post(`${API_BASE}/payments/nicepay/cancel`, {
+            orderNo: orderNumber,
+            tid: currentOrder.payment_key, // TID는 payment_key에 저장되어 있음
+            cancelAmt: currentOrder.total_amount.toString(),
+            cancelMsg: reason.trim()
+        });
+        
+        console.log('✅ 취소 응답:', response.data);
+        
         if (response.data.success) {
-            alert('주문 취소가 완료되었습니다.\n환불은 3-5일 소요될 수 있습니다.');
+            alert('주문 취소가 완료되었습니다.\n환불은 영업일 기준 3-5일 소요될 수 있습니다.');
             closeModal();
             loadOrders(); // 목록 새로고침
         } else {
@@ -320,7 +339,16 @@ async function requestRefund(orderNumber) {
         
     } catch (error) {
         console.error('❌ 환불 요청 실패:', error);
-        alert('주문 취소에 실패했습니다.\n' + (error.response?.data?.error || error.message));
+        
+        let errorMessage = '주문 취소에 실패했습니다.';
+        
+        if (error.response?.data?.error) {
+            errorMessage += '\n' + error.response.data.error;
+        } else if (error.message) {
+            errorMessage += '\n' + error.message;
+        }
+        
+        alert(errorMessage);
     }
 }
 
