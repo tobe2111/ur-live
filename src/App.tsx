@@ -16,6 +16,7 @@ import SellerStreamNewPage from './pages/SellerStreamNewPage'
 import AdminPage from './pages/AdminPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import AdminSettlementPage from './pages/AdminSettlementPage'
+import SellerPublicPage from './pages/SellerPublicPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import KakaoCallbackPage from './pages/KakaoCallbackPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -42,6 +43,7 @@ function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/settlement" element={<AdminSettlementPage />} />
+        <Route path="/s/:sellerId" element={<SellerPublicPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
         

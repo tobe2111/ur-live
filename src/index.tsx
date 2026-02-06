@@ -3527,6 +3527,119 @@ app.patch('/api/admin/sellers/:id/commission', async (c) => {
 });
 
 // =================================
+// Public Seller Profile APIs (공개 페이지)
+// =================================
+
+// Get seller public profile (셀러 공개 프로필)
+app.get('/api/public/seller/:sellerId', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sellerId = c.req.param('sellerId');
+
+    // 셀러 정보 조회
+    const seller = await DB.prepare(`
+      SELECT 
+        id, username, name, business_name,
+        profile_image, bio, 
+        seller_instagram, seller_youtube, seller_facebook,
+        created_at
+      FROM sellers
+      WHERE id = ? AND status = 'approved' AND is_active = 1
+    `).bind(sellerId).first();
+
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 진행 중인 라이브
+    const liveStreams = await DB.prepare(`
+      SELECT 
+        id, title, description, youtube_video_id, 
+        status, current_product_id, scheduled_at, created_at
+      FROM live_streams
+      WHERE seller_id = ? AND status = 'live'
+      ORDER BY created_at DESC
+      LIMIT 5
+    `).bind(sellerId).all();
+
+    // 예정된 라이브
+    const scheduledStreams = await DB.prepare(`
+      SELECT 
+        id, title, description, youtube_video_id,
+        status, scheduled_at, created_at
+      FROM live_streams
+      WHERE seller_id = ? AND status = 'scheduled'
+      ORDER BY scheduled_at ASC
+      LIMIT 10
+    `).bind(sellerId).all();
+
+    // 판매 상품
+    const products = await DB.prepare(`
+      SELECT 
+        id, name, description, price, original_price, 
+        discount_rate, image_url, stock, category
+      FROM products
+      WHERE seller_id = ? AND is_active = 1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `).bind(sellerId).all();
+
+    // 통계 정보
+    const stats = await DB.prepare(`
+      SELECT 
+        COUNT(DISTINCT ls.id) as total_streams,
+        COUNT(DISTINCT p.id) as total_products,
+        COUNT(DISTINCT o.id) as total_orders
+      FROM sellers s
+      LEFT JOIN live_streams ls ON s.id = ls.seller_id
+      LEFT JOIN products p ON s.id = p.seller_id AND p.is_active = 1
+      LEFT JOIN orders o ON s.id = o.seller_id AND o.payment_status = 'completed'
+      WHERE s.id = ?
+    `).bind(sellerId).first();
+
+    return c.json({
+      success: true,
+      data: {
+        profile: seller,
+        live_streams: liveStreams.results,
+        scheduled_streams: scheduledStreams.results,
+        products: products.results,
+        stats: stats
+      }
+    });
+
+  } catch (err) {
+    console.error('셀러 프로필 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get seller by username (사용자명으로 조회)
+app.get('/api/public/seller/username/:username', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const username = c.req.param('username');
+
+    const seller = await DB.prepare(`
+      SELECT id FROM sellers 
+      WHERE username = ? AND status = 'approved' AND is_active = 1
+    `).bind(username).first();
+
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    return c.json({ success: true, data: { seller_id: seller.id } });
+
+  } catch (err) {
+    console.error('셀러 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
 // Admin Settlement Dashboard APIs
 // =================================
 
@@ -5368,6 +5481,121 @@ app.get('/payment-result', async (c) => {
     })
   }
 })
+
+// =================================
+// Seller Public APIs (공개 프로필 및 콘텐츠)
+// =================================
+
+// Get seller public profile (셀러 공개 프로필 조회)
+app.get('/api/seller/public/:sellerId', async (c) => {
+  const { DB } = c.env;
+  const sellerId = c.req.param('sellerId');
+
+  try {
+    // 셀러 정보 조회 (공개 가능한 정보만)
+    const seller = await DB.prepare(`
+      SELECT 
+        id,
+        username,
+        name,
+        email,
+        phone,
+        business_name,
+        business_number,
+        profile_image,
+        bio,
+        sns_instagram,
+        sns_youtube,
+        sns_facebook,
+        sns_twitter,
+        website_url,
+        is_active,
+        status,
+        created_at
+      FROM sellers 
+      WHERE id = ? AND is_active = 1 AND status = 'approved'
+    `).bind(sellerId).first();
+
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    return c.json({ success: true, data: seller });
+
+  } catch (err) {
+    console.error('셀러 프로필 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get seller's live streams (셀러의 라이브 방송 목록)
+app.get('/api/seller/:sellerId/streams', async (c) => {
+  const { DB } = c.env;
+  const sellerId = c.req.param('sellerId');
+
+  try {
+    // 셀러의 라이브 방송 목록 조회 (최신순)
+    const streams = await DB.prepare(`
+      SELECT 
+        id,
+        title,
+        description,
+        youtube_video_id,
+        status,
+        viewer_count,
+        scheduled_at,
+        created_at
+      FROM live_streams 
+      WHERE seller_id = ?
+      ORDER BY 
+        CASE status
+          WHEN 'live' THEN 1
+          WHEN 'scheduled' THEN 2
+          WHEN 'ended' THEN 3
+        END,
+        created_at DESC
+      LIMIT 50
+    `).bind(sellerId).all();
+
+    return c.json({ success: true, data: streams.results });
+
+  } catch (err) {
+    console.error('라이브 목록 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get seller's public products (셀러의 공개 상품 목록)
+app.get('/api/seller/:sellerId/products-public', async (c) => {
+  const { DB } = c.env;
+  const sellerId = c.req.param('sellerId');
+
+  try {
+    // 셀러의 활성화된 상품 목록 조회
+    const products = await DB.prepare(`
+      SELECT 
+        id,
+        name,
+        price,
+        original_price,
+        discount_rate,
+        stock,
+        image_url,
+        category,
+        is_active
+      FROM products 
+      WHERE seller_id = ? AND is_active = 1
+      ORDER BY created_at DESC
+      LIMIT 100
+    `).bind(sellerId).all();
+
+    return c.json({ success: true, data: products.results });
+
+  } catch (err) {
+    console.error('상품 목록 조회 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
 
 // =================================
 // Order Complete Page Route

@@ -21,7 +21,10 @@ import {
   Calendar,
   ChevronRight,
   Building2,
-  FileText
+  FileText,
+  Copy,
+  ExternalLink,
+  CheckCheck
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -61,6 +64,8 @@ export default function SellerPage() {
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [sellerId, setSellerId] = useState<number | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   // Mock seller info (in production, get from session)
   const sellerName = '유어 라이브 셀러'
@@ -83,7 +88,12 @@ export default function SellerPage() {
     try {
       // Get session token from localStorage
       const sessionToken = localStorage.getItem('session_token')
+      const userId = localStorage.getItem('user_id')
       
+      // Load seller ID from localStorage or API
+      if (userId) {
+        setSellerId(parseInt(userId))
+      }
 
       // Load real stats if session exists
       if (sessionToken) {
@@ -213,9 +223,64 @@ export default function SellerPage() {
           <h2 className="text-[28px] sm:text-[32px] font-bold text-[#1d1d1f] mb-2">
             안녕하세요, {sellerName}님! 👋
           </h2>
-          <p className="text-[15px] sm:text-[17px] text-[#6e6e73]">
+          <p className="text-[15px] sm:text-[17px] text-[#6e6e73] mb-4">
             오늘도 성공적인 라이브 쇼핑을 시작해보세요
           </p>
+          
+          {/* 셀러 공개 페이지 링크 */}
+          {sellerId && (
+            <div className="apple-card p-4 sm:p-6 bg-gradient-to-r from-[#007aff]/5 to-[#5856d6]/5 border-2 border-[#007aff]/20">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ExternalLink className="h-5 w-5 text-[#007aff]" />
+                    <h3 className="text-[17px] font-semibold text-[#1d1d1f]">
+                      내 셀러 공개 페이지
+                    </h3>
+                  </div>
+                  <p className="text-[13px] text-[#6e6e73] mb-3">
+                    이 링크를 SNS에 공유해서 고객들을 내 페이지로 초대하세요!
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <code className="flex-1 min-w-[200px] px-3 py-2 bg-white rounded-lg text-[13px] text-[#007aff] font-mono border border-[#e5e5ea]">
+                      https://live.ur-team.com/s/{sellerId}
+                    </code>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`https://live.ur-team.com/s/${sellerId}`)
+                          setCopiedLink(true)
+                          setTimeout(() => setCopiedLink(false), 2000)
+                        }}
+                        className="px-4 py-2 bg-[#007aff] text-white rounded-lg hover:bg-[#0051d5] transition-colors flex items-center gap-2 text-[13px] font-medium"
+                      >
+                        {copiedLink ? (
+                          <>
+                            <CheckCheck className="h-4 w-4" />
+                            복사완료!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4" />
+                            링크 복사
+                          </>
+                        )}
+                      </button>
+                      <a
+                        href={`/s/${sellerId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-white text-[#007aff] border border-[#007aff] rounded-lg hover:bg-[#007aff]/5 transition-colors flex items-center gap-2 text-[13px] font-medium"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        미리보기
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Stats Grid */}
