@@ -405,7 +405,7 @@
             Kakao.Auth.authorize({
                 redirectUri: redirectUri,
                 state: currentPath,
-                prompts: 'login'
+                throughTalk: false  // 브라우저에서만 동작하도록
             });
         }
         
