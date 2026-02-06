@@ -229,26 +229,57 @@ export default function LivePage() {
   const [showNotification, setShowNotification] = useState(false)
   const [notificationText, setNotificationText] = useState('')
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (!currentProduct?.product) return
 
-    setCartCount(prev => prev + 1)
-    setCartItems(prev => [...prev, currentProduct.product])
-
-    // Show notification banner
-    setNotificationText(`${currentProduct.product.name}을(를) 담았습니다!`)
-    setShowNotification(true)
-    setTimeout(() => setShowNotification(false), 2000)
-
-    // Add system message to chat
-    const systemMessage: ChatMessage = {
-      id: Date.now().toString(),
-      username: '시스템',
-      message: `${currentProduct.product.name} 주문 감사합니다 ♡`,
-      timestamp: Date.now(),
-      isSystem: true
+    // Check login first
+    if (!isLoggedIn) {
+      alert('로그인이 필요합니다!')
+      handleKakaoLogin()
+      return
     }
-    setMessages(prev => [...prev, systemMessage])
+
+    try {
+      const userId = localStorage.getItem('user_id')
+      
+      if (!userId) {
+        alert('로그인이 필요합니다.')
+        return
+      }
+      
+      // POST to server
+      await axios.post('/api/cart', {
+        userId: userId,
+        productId: currentProduct.product.id,
+        quantity: 1,
+        priceSnapshot: currentProduct.product.price,
+        liveStreamId: streamId
+      })
+      
+      // Set flag in localStorage
+      localStorage.setItem('hasCartItems', 'true')
+      
+      setCartCount(prev => prev + 1)
+      setCartItems(prev => [...prev, currentProduct.product])
+
+      // Show notification banner
+      setNotificationText(`${currentProduct.product.name}을(를) 담았습니다!`)
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 2000)
+
+      // Add system message to chat
+      const systemMessage: ChatMessage = {
+        id: Date.now().toString(),
+        username: '시스템',
+        message: `${currentProduct.product.name} 주문 감사합니다 ♡`,
+        timestamp: Date.now(),
+        isSystem: true
+      }
+      setMessages(prev => [...prev, systemMessage])
+    } catch (error) {
+      console.error('Failed to add to cart:', error)
+      alert('장바구니 추가에 실패했습니다.')
+    }
   }
 
   // Kakao Sync Login
@@ -276,7 +307,8 @@ export default function LivePage() {
       // @ts-ignore
       window.Kakao.Auth.authorize({
         redirectUri: `${window.location.origin}/auth/kakao/sync/callback`,
-        state: window.location.pathname // Return to current page after login
+        state: window.location.pathname, // Return to current page after login
+        throughTalk: false  // Force browser login (no Intent)
       })
     } catch (error) {
       console.error('[Kakao Sync] Exception:', error)
@@ -285,16 +317,22 @@ export default function LivePage() {
   }
 
   async function handleCheckout() {
-    if (!currentProduct) return
+    // Check if cart has items first (before login check!)
+    const hasCartItems = localStorage.getItem('hasCartItems')
     
-    // Check login first
+    if (!hasCartItems || hasCartItems !== 'true') {
+      alert('상품을 먼저 담아주세요!')
+      return
+    }
+    
+    // Check login
     if (!isLoggedIn) {
-      // Not logged in - trigger Kakao Sync login
+      alert('로그인이 필요합니다!')
       handleKakaoLogin()
       return
     }
     
-    // Add to cart
+    // Verify cart on server
     try {
       const userId = localStorage.getItem('user_id')
       
@@ -303,24 +341,20 @@ export default function LivePage() {
         return
       }
       
-      await axios.post('/api/cart', {
-        userId: userId,
-        productId: currentProduct.product.id,
-        quantity: 1,
-        priceSnapshot: currentProduct.product.price
-      })
+      const response = await axios.get(`/api/cart/${userId}`)
       
-      setCartCount(prev => prev + 1)
-      
-      // Show success message and ask to go to checkout
-      const goToCheckout = confirm('장바구니에 담았습니다!\n지금 바로 결제하시겠습니까?')
-      if (goToCheckout) {
-        navigate('/checkout')
+      if (!response.data || response.data.length === 0) {
+        alert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!')
+        localStorage.removeItem('hasCartItems')
+        return
       }
       
+      // Navigate to cart page
+      navigate('/cart')
+      
     } catch (error) {
-      console.error('Failed to add to cart:', error)
-      alert('장바구니 담기에 실패했습니다.')
+      console.error('Failed to check cart:', error)
+      alert('장바구니 확인에 실패했습니다.')
     }
   }
 
