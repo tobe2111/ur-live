@@ -4263,28 +4263,11 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
 // =================================
 // Cart Page Route
 // =================================
-app.get('/cart', async (c) => {
-  try {
-    // Redirect to cart.html
-    return c.html(`
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0;url=/static/cart.html">
-    <title>장바구니</title>
-</head>
-<body>
-    <p>장바구니 페이지로 이동 중...</p>
-</body>
-</html>
-    `);
-  } catch (e) {
-    console.error('Error serving cart page:', e);
-    return c.html('<h1>Error loading cart page</h1>', 500);
-  }
-});
+// Cart Page Route - Direct redirect to static HTML
+// =================================
+app.get('/cart', (c) => {
+  return c.redirect('/static/cart.html', 302)
+})
 
 // =================================
 // Live Stream Page Route
