@@ -4277,6 +4277,13 @@ app.get('/order-complete', (c) => {
 })
 
 // =================================
+// Payment Result Page Route (NicePay callback)
+// =================================
+app.get('/payment-result', (c) => {
+  return c.redirect('/payment-result.html', 302)
+})
+
+// =================================
 // Live Stream Page Route
 // =================================
 // /live/:id is handled by React Router in the SPA
