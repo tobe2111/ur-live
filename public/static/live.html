@@ -92,6 +92,33 @@
             font-size: 18px;
         }
         
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: white;
+        }
+        
+        .user-info .user-name {
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .logout-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+        }
+        
         /* Right Actions */
         .right-actions {
             position: fixed;
@@ -211,7 +238,13 @@
     <!-- Top Header -->
     <div class="top-header">
         <div class="live-badge">🔴 LIVE</div>
-        <button class="close-btn" onclick="window.location.href='/'">✕</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="user-info" id="user-info" style="display: none;">
+                <span class="user-name" id="user-name-display"></span>
+                <button class="logout-btn" id="logout-btn">로그아웃</button>
+            </div>
+            <button class="close-btn" onclick="window.location.href='/'">✕</button>
+        </div>
     </div>
     
     <!-- Right Actions -->
@@ -292,7 +325,9 @@
         // Kakao SDK 초기화
         // ==========================================
         if (window.Kakao && !Kakao.isInitialized()) {
-            Kakao.init('975a2e7f97254b08f15dba4d177a2865');
+            // 환경 변수로 주입된 KAKAO_JS_KEY 사용 (폴백: 하드코딩 값)
+            const KAKAO_JS_KEY = window.KAKAO_JS_KEY || '975a2e7f97254b08f15dba4d177a2865';
+            Kakao.init(KAKAO_JS_KEY);
             console.log('✅ Kakao SDK 초기화 완료');
         }
         
@@ -389,6 +424,66 @@
         }
         
         // ==========================================
+        // 사용자 정보 표시
+        // ==========================================
+        function updateUserDisplay() {
+            const storedUserName = localStorage.getItem('userName');
+            const storedSession = localStorage.getItem('session');
+            
+            if (storedUserName && storedSession) {
+                document.getElementById('user-name-display').textContent = storedUserName;
+                document.getElementById('user-info').style.display = 'flex';
+            } else {
+                document.getElementById('user-info').style.display = 'none';
+            }
+        }
+        
+        // 페이지 로드 시 사용자 정보 표시
+        updateUserDisplay();
+        
+        // ==========================================
+        // 로그아웃 기능
+        // ==========================================
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            if (!confirm('로그아웃 하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                const session = localStorage.getItem('session');
+                
+                if (session) {
+                    // 서버에 로그아웃 요청
+                    await axios.post(API_BASE + '/auth/kakao/logout', {}, {
+                        headers: {
+                            'X-Session-Token': session
+                        }
+                    });
+                }
+                
+                // 로컬 스토리지 정리
+                localStorage.removeItem('session');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('hasCartItems');
+                
+                // UI 업데이트
+                updateUserDisplay();
+                
+                alert('로그아웃 되었습니다.');
+                
+            } catch (error) {
+                console.error('로그아웃 실패:', error);
+                // 에러가 발생해도 로컬 데이터는 삭제
+                localStorage.removeItem('session');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('hasCartItems');
+                updateUserDisplay();
+            }
+        });
+        
+        // ==========================================
         // Kakao 로그인
         // ==========================================
         function kakaoLogin() {
@@ -405,7 +500,7 @@
             Kakao.Auth.authorize({
                 redirectUri: redirectUri,
                 state: currentPath,
-                throughTalk: false  // 브라우저에서만 동작하도록
+                throughTalk: true  // 카카오톡 간편로그인 활성화 (모바일 UX 개선)
             });
         }
         

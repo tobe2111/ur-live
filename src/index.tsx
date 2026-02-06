@@ -483,6 +483,28 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     
     console.log('[Kakao Sync] User info obtained successfully');
     
+    // 2.5. Get service terms agreement status (카카오싱크 필수)
+    console.log('[Kakao Sync] Step 2.5: Fetching service terms...');
+    
+    const termsResponse = await fetch('https://kapi.kakao.com/v2/user/service_terms', {
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+      },
+    });
+    
+    console.log('[Kakao Sync] Terms response status:', termsResponse.status);
+    
+    let termsData = null;
+    if (termsResponse.ok) {
+      termsData = await termsResponse.json();
+      console.log('[Kakao Sync] Service terms received:', {
+        allowedServiceTerms: termsData.allowed_service_terms?.length || 0,
+        tags: termsData.allowed_service_terms?.map((t: any) => t.tag)
+      });
+    } else {
+      console.warn('[Kakao Sync] Failed to fetch service terms (non-critical)');
+    }
+    
     // 3. Save/update user in database
     console.log('[Kakao Sync] Step 3: Saving user to database...');
     
@@ -495,8 +517,16 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
     const email = userData.kakao_account?.email || '';
     const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
+    const accessToken = tokenData.access_token; // For unlink operation
+    const serviceTermsTags = termsData?.allowed_service_terms?.map((t: any) => t.tag) || [];
+    const serviceTermsJson = JSON.stringify(serviceTermsTags);
     
-    console.log('[Kakao Sync] User data:', { kakaoId, nickname, email: email ? 'exists' : 'none' });
+    console.log('[Kakao Sync] User data:', { 
+      kakaoId, 
+      nickname, 
+      email: email ? 'exists' : 'none',
+      serviceTerms: serviceTermsTags
+    });
     
     try {
       const existingUser = await DB.prepare(
@@ -509,16 +539,32 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       
       if (existingUser) {
         userId = existingUser.id;
-        await DB.prepare(
-          'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-        ).bind(nickname, email, profileImage, userId).run();
+        await DB.prepare(`
+          UPDATE users 
+          SET name = ?, 
+              email = ?, 
+              profile_image = ?,
+              access_token = ?,
+              service_terms_agreed = ?,
+              terms_agreed_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `).bind(nickname, email, profileImage, accessToken, serviceTermsJson, userId).run();
         console.log('[Kakao Sync] Updated user:', userId);
       } else {
         // Insert new Kakao user
-        // toss_user_id = kakao_id (legacy compatibility)
-        const result = await DB.prepare(
-          'INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image) VALUES (?, ?, ?, ?, ?)'
-        ).bind(kakaoId, kakaoId, nickname, email, profileImage).run();
+        const result = await DB.prepare(`
+          INSERT INTO users (
+            toss_user_id, 
+            kakao_id, 
+            name, 
+            email, 
+            profile_image,
+            access_token,
+            service_terms_agreed,
+            terms_agreed_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(kakaoId, kakaoId, nickname, email, profileImage, accessToken, serviceTermsJson).run();
         userId = result.meta.last_row_id;
         console.log('[Kakao Sync] Created user:', userId);
       }
@@ -680,6 +726,186 @@ app.post('/api/auth/kakao/logout', cors(), async (c) => {
     return c.json({ success: false, error: 'Logout failed' }, 500);
   }
 });
+
+// 카카오 연결 해제 및 회원 탈퇴
+app.post('/api/auth/kakao/unlink', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    
+    if (!sessionToken) {
+      return c.json({ 
+        success: false, 
+        error: '인증이 필요합니다' 
+      }, 401);
+    }
+    
+    console.log('[Kakao Unlink] Starting unlink process...');
+    
+    // 1. 세션에서 사용자 정보 조회
+    const session = await DB.prepare(`
+      SELECT * FROM admin_sessions WHERE session_token = ?
+    `).bind(sessionToken).first();
+    
+    if (!session) {
+      return c.json({ 
+        success: false, 
+        error: '유효하지 않은 세션입니다' 
+      }, 401);
+    }
+    
+    // 2. 사용자 정보 조회 (access_token 포함)
+    const user = await DB.prepare(`
+      SELECT * FROM users WHERE id = (
+        SELECT user_id FROM admin_sessions WHERE session_token = ?
+      )
+    `).bind(sessionToken).first();
+    
+    if (!user) {
+      return c.json({ 
+        success: false, 
+        error: '사용자를 찾을 수 없습니다' 
+      }, 404);
+    }
+    
+    console.log('[Kakao Unlink] User found:', user.id);
+    
+    // 3. Kakao 연결 해제 API 호출
+    if (user.access_token) {
+      try {
+        console.log('[Kakao Unlink] Calling Kakao unlink API...');
+        
+        const unlinkResponse = await fetch('https://kapi.kakao.com/v1/user/unlink', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user.access_token}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        });
+        
+        const unlinkData = await unlinkResponse.json();
+        
+        if (unlinkResponse.ok) {
+          console.log('[Kakao Unlink] Kakao unlink successful:', unlinkData.id);
+        } else {
+          console.warn('[Kakao Unlink] Kakao unlink failed:', unlinkData);
+          // 실패해도 계속 진행 (DB에서는 삭제)
+        }
+      } catch (unlinkError) {
+        console.error('[Kakao Unlink] Kakao API error:', unlinkError);
+        // 에러가 발생해도 계속 진행
+      }
+    } else {
+      console.warn('[Kakao Unlink] No access token found, skipping Kakao API call');
+    }
+    
+    // 4. DB에서 사용자 관련 데이터 삭제
+    console.log('[Kakao Unlink] Deleting user data from DB...');
+    
+    // 세션 삭제
+    await DB.prepare('DELETE FROM admin_sessions WHERE session_token = ?')
+      .bind(sessionToken).run();
+    console.log('[Kakao Unlink] Sessions deleted');
+    
+    // 장바구니 삭제
+    await DB.prepare('DELETE FROM cart_items WHERE user_id = ?')
+      .bind(user.id).run();
+    console.log('[Kakao Unlink] Cart items deleted');
+    
+    // 주문 정보는 유지 (법적 요구사항에 따라 조정 필요)
+    // 필요 시 아래 주석 해제
+    // await DB.prepare('DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?)')
+    //   .bind(user.id).run();
+    // await DB.prepare('DELETE FROM orders WHERE user_id = ?')
+    //   .bind(user.id).run();
+    
+    // 사용자 삭제
+    await DB.prepare('DELETE FROM users WHERE id = ?')
+      .bind(user.id).run();
+    console.log('[Kakao Unlink] User deleted');
+    
+    console.log('[Kakao Unlink] Unlink process completed successfully');
+    
+    return c.json({
+      success: true,
+      message: '회원 탈퇴가 완료되었습니다'
+    });
+    
+  } catch (error) {
+    console.error('[Kakao Unlink] Error:', error);
+    return c.json({ 
+      success: false, 
+      error: '회원 탈퇴 처리 중 오류가 발생했습니다' 
+    }, 500);
+  }
+});
+
+// =================================
+// Kakao 연결 해제 Webhook
+// =================================
+app.post('/webhooks/kakao/unlink', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const body = await c.req.json();
+    const { user_id, referrer_type } = body;
+    
+    console.log('[Kakao Webhook] Unlink notification received:', {
+      user_id,
+      referrer_type
+    });
+    
+    if (!user_id) {
+      return c.json({ 
+        success: false, 
+        error: 'user_id is required' 
+      }, 400);
+    }
+    
+    // Kakao ID로 사용자 조회
+    const user = await DB.prepare(`
+      SELECT * FROM users WHERE kakao_id = ?
+    `).bind(user_id.toString()).first();
+    
+    if (!user) {
+      console.log('[Kakao Webhook] User not found:', user_id);
+      // 이미 삭제된 경우 성공으로 응답
+      return c.json({ success: true });
+    }
+    
+    console.log('[Kakao Webhook] Deleting user data for user:', user.id);
+    
+    // 사용자 관련 데이터 삭제
+    // 1. 세션 삭제
+    await DB.prepare(`
+      DELETE FROM admin_sessions 
+      WHERE session_token IN (
+        SELECT session_token FROM admin_sessions WHERE user_type = 'user'
+      )
+    `).run();
+    
+    // 2. 장바구니 삭제
+    await DB.prepare('DELETE FROM cart_items WHERE user_id = ?')
+      .bind(user.id).run();
+    
+    // 3. 사용자 삭제
+    await DB.prepare('DELETE FROM users WHERE id = ?')
+      .bind(user.id).run();
+    
+    console.log('[Kakao Webhook] User data deleted successfully');
+    
+    return c.json({ success: true });
+    
+  } catch (error) {
+    console.error('[Kakao Webhook] Error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Webhook processing failed' 
+    }, 500);
+  }
+});
+
 
 // 사용자 세션 검증 API
 app.get('/api/auth/user/verify', cors(), async (c) => {
@@ -4381,6 +4607,46 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// =================================
+// Live Page Route
+// =================================
+app.get('/live/:id', async (c) => {
+  try {
+    // Cloudflare Pages에서 정적 파일 가져오기
+    const staticUrl = new URL('/static/live.html', c.req.url)
+    const response = await fetch(staticUrl.toString())
+    let html = await response.text()
+    
+    // 환경 변수 주입 (폴백 값 포함)
+    const KAKAO_JS_KEY = c.env.KAKAO_JS_KEY || '975a2e7f97254b08f15dba4d177a2865';
+    
+    // HTML에 환경 변수 주입을 위한 스크립트 추가
+    const envScript = `<script>window.KAKAO_JS_KEY = '${KAKAO_JS_KEY}';</script>`;
+    
+    // <script> 태그 앞에 환경 변수 스크립트 삽입
+    html = html.replace('<!-- Scripts -->', `<!-- Scripts -->\n    ${envScript}`);
+    
+    console.log('[Live Page] Environment variables injected');
+    
+    // TrustedHTML 오류 방지: Response 객체로 직접 반환
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache'
+      }
+    })
+  } catch (err) {
+    console.error('Error serving live page:', err)
+    return new Response('<h1>Error loading live page</h1>', {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8'
+      }
+    })
+  }
+})
 
 // =================================
 // Cart Page Route

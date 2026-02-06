@@ -8,9 +8,9 @@ const routesPath = path.join(process.cwd(), 'dist', '_routes.json');
 // - exclude: None - routes not matching 'include' are served as static files
 const routes = {
   version: 1,
-  include: ['/api/*', '/auth/*', '/cart', '/payment-result'],  // /live/*는 SPA가 처리
+  include: ['/api/*', '/auth/*', '/live/*', '/cart', '/payment-result'],  // Worker가 처리
   exclude: ['/static/*']  // 정적 파일은 Cloudflare Pages가 직접 서빙
 };
 
 fs.writeFileSync(routesPath, JSON.stringify(routes, null, 2));
-console.log('✅ Fixed _routes.json - Worker for API/auth/cart/payment-result, static for all others');
+console.log('✅ Fixed _routes.json - Worker for API/auth/live/cart/payment-result, static for all others');
