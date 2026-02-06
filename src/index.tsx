@@ -4270,6 +4270,13 @@ app.get('/cart', (c) => {
 })
 
 // =================================
+// Order Complete Page Route
+// =================================
+app.get('/order-complete', (c) => {
+  return c.redirect('/order-complete.html', 302)
+})
+
+// =================================
 // Live Stream Page Route
 // =================================
 // /live/:id is handled by React Router in the SPA
