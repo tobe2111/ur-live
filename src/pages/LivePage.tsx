@@ -58,6 +58,24 @@ export default function LivePage() {
   const [showChatInput, setShowChatInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // 사용자 이름 마스킹 함수 (첫 글자만 보이고 나머지는 *)
+  function maskUserName(name: string): string {
+    if (!name || name === '익명' || name.includes('시스템')) {
+      return name  // 익명이나 시스템은 그대로 표시
+    }
+    
+    if (name.length === 1) {
+      return name  // 1글자는 그대로
+    }
+    
+    if (name.length === 2) {
+      return name[0] + '*'  // 2글자: 정* 
+    }
+    
+    // 3글자 이상: 정**
+    return name[0] + '*'.repeat(name.length - 1)
+  }
+
   // Handle Kakao login callback parameters
   useEffect(() => {
     const loginStatus = searchParams.get('login')
@@ -306,19 +324,19 @@ export default function LivePage() {
     const demoMessages: ChatMessage[] = [
       {
         id: '1',
-        username: '김지수',
+        username: '김**',  // 마스킹 처리
         message: '와 이 제품 너무 예쁘다! 😍',
         timestamp: Date.now() - 120000,
       },
       {
         id: '2',
-        username: '박민준',
+        username: '박**',  // 마스킹 처리
         message: '가격이 얼마인가요?',
         timestamp: Date.now() - 90000,
       },
       {
         id: '3',
-        username: '이서연',
+        username: '이**',  // 마스킹 처리
         message: '재고 있나요?',
         timestamp: Date.now() - 60000,
       },
@@ -404,10 +422,11 @@ export default function LivePage() {
           const chatRef = database.ref(`chats/stream${streamId}`)
           
           const userName = localStorage.getItem('user_name') || '익명'
+          const maskedName = maskUserName(userName)  // 마스킹 적용!
           
           chatRef.push({
             username: '🎉 시스템',
-            text: `${userName}님이 ${currentProduct.product.name}을(를) 담았습니다!`,
+            text: `${maskedName}님이 ${currentProduct.product.name}을(를) 담았습니다!`,  // 마스킹된 이름 사용
             // @ts-ignore
             timestamp: window.firebase.database.ServerValue.TIMESTAMP,
             isSystem: true
@@ -543,10 +562,11 @@ export default function LivePage() {
         const chatRef = database.ref(`chats/stream${streamId}`)
         
         const userName = localStorage.getItem('user_name') || '익명'
+        const maskedName = maskUserName(userName)  // 마스킹 적용!
         
         // 새 메시지 추가
         chatRef.push({
-          username: userName,
+          username: maskedName,  // 마스킹된 이름 사용
           text: newMessage,
           // @ts-ignore
           timestamp: window.firebase.database.ServerValue.TIMESTAMP,
@@ -556,9 +576,12 @@ export default function LivePage() {
         console.log('✅ 메시지 전송:', newMessage)
       } else {
         // Firebase 없으면 로컬에만 추가 (폴백)
+        const userName = localStorage.getItem('user_name') || '익명'
+        const maskedName = maskUserName(userName)
+        
         const message: ChatMessage = {
           id: Date.now().toString(),
-          username: localStorage.getItem('user_name') || '익명',
+          username: maskedName,  // 마스킹된 이름 사용
           message: newMessage,
           timestamp: Date.now(),
         }
