@@ -1,11 +1,21 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { compress } from 'hono/compress';
+import { etag } from 'hono/etag';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
 import { issueTaxInvoiceAuto, convertToBarobillFormat, isBarobillMockMode, cancelBarobillTaxInvoice } from './services/barobill';
 import { cancelPaymentAuto, isNicepayMockMode } from './services/nicepay';
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// Response Compression - 전송 데이터 70% 압축 (Gzip/Brotli)
+app.use('*', compress({
+  encoding: 'gzip', // Cloudflare automatically upgrades to Brotli if supported
+}));
+
+// ETag support for 304 Not Modified responses - 대역폭 절약
+app.use('*', etag());
 
 // =================================
 // Utility Functions
