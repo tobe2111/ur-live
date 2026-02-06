@@ -14,11 +14,24 @@ interface Stream {
   seller_name: string
   seller_profile_image?: string
   viewer_count?: number
+  status: 'live' | 'scheduled' | 'ended'
+  scheduled_start_time?: string
+}
+
+interface Product {
+  id: number
+  name: string
+  current_price: number
+  image_url: string
+  sold_count?: number
 }
 
 export default function HomePage() {
   const [streams, setStreams] = useState<Stream[]>([])
+  const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
+  const [popularProducts, setPopularProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -27,6 +40,8 @@ export default function HomePage() {
 
   useEffect(() => {
     loadStreams()
+    loadScheduledStreams()
+    loadPopularProducts()
   }, [])
 
   async function loadStreams() {
@@ -34,12 +49,50 @@ export default function HomePage() {
       setLoading(true)
       const response = await axios.get('/api/streams')
       if (response.data.success) {
-        setStreams(response.data.data || [])
+        // 진행 중인 라이브만 필터링
+        const liveStreams = (response.data.data || []).filter(
+          (s: Stream) => !s.status || s.status === 'live'
+        )
+        setStreams(liveStreams)
       }
     } catch (error) {
       console.error('Failed to load streams:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadScheduledStreams() {
+    try {
+      const response = await axios.get('/api/streams?status=scheduled')
+      if (response.data.success) {
+        const scheduled = (response.data.data || [])
+          .filter((s: Stream) => s.status === 'scheduled')
+          .slice(0, 4) // 최대 4개만 표시
+        setScheduledStreams(scheduled)
+      }
+    } catch (error) {
+      console.error('Failed to load scheduled streams:', error)
+    }
+  }
+
+  async function loadPopularProducts() {
+    try {
+      const response = await axios.get('/api/products/popular')
+      if (response.data.success) {
+        setPopularProducts((response.data.data || []).slice(0, 6))
+      }
+    } catch (error) {
+      console.error('Failed to load popular products:', error)
+      // 폴백: 빈 배열
+      setPopularProducts([])
+    }
+  }
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`)
     }
   }
 
@@ -59,13 +112,28 @@ export default function HomePage() {
               </span>
             </Link>
 
+            {/* Search Bar - Desktop only */}
+            <div className="hidden md:block flex-1 max-w-[480px] mx-8">
+              <form onSubmit={handleSearch}>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="상품 또는 판매자 검색"
+                    className="w-full h-9 pl-9 pr-4 text-[14px] bg-[#f5f5f7] border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-all"
+                  />
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6e6e73]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </form>
+            </div>
+
             {/* Navigation Links - Desktop only */}
             <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
               <Link to="/" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
                 라이브
-              </Link>
-              <Link to="/categories" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
-                카테고리
               </Link>
               <Link to="/my-orders" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
                 주문내역
@@ -102,14 +170,14 @@ export default function HomePage() {
 
             {/* Large Headline - Responsive */}
             <h1 className="mb-3 sm:mb-4 text-[32px] sm:text-[40px] md:text-[48px] lg:text-[64px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] px-4 sm:px-0">
-              보는 순간,
+              <span className="bg-gradient-to-r from-[#ff3b30] to-[#ff9500] bg-clip-text text-transparent">YouTube Live</span>로
               <br />
-              바로 산다.
+              보는 순간 바로 산다.
             </h1>
 
             {/* Subheadline - Responsive */}
             <p className="mb-6 sm:mb-8 text-[17px] sm:text-[19px] md:text-[21px] lg:text-[24px] leading-[1.381] font-normal text-[#6e6e73] px-4 sm:px-0">
-              실시간 라이브 쇼핑의 새로운 경험을 만나보세요.
+              실시간 YouTube 라이브 방송과 함께하는 새로운 쇼핑 경험.
             </p>
 
             {/* CTA Buttons - Mobile Optimized */}
@@ -132,7 +200,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Content Section - Mobile Optimized */}
+      {/* Mobile Search - Mobile Only */}
+      <section className="md:hidden bg-white border-b border-black/5 py-4">
+        <div className="mx-auto max-w-[980px] px-4">
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="상품 또는 판매자 검색"
+                className="w-full h-10 pl-10 pr-4 text-[15px] bg-[#f5f5f7] border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff] transition-all"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6e6e73]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      {/* Live Streams Section - Mobile Optimized */}
       <section id="live-streams-section" className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
         <div className="mx-auto max-w-[980px] px-4 sm:px-6">
           {/* Section Header - Responsive */}
@@ -250,6 +338,130 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Scheduled Streams Section */}
+      {scheduledStreams.length > 0 && (
+        <section className="bg-white py-10 sm:py-12 md:py-16">
+          <div className="mx-auto max-w-[980px] px-4 sm:px-6">
+            <div className="mb-6 sm:mb-8 md:mb-10">
+              <h2 className="mb-2 text-[28px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-semibold leading-[1.0834933333] tracking-tight text-[#1d1d1f]">
+                곧 시작하는 라이브
+              </h2>
+              <p className="text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73]">
+                놓치지 마세요! 곧 시작됩니다.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
+              {scheduledStreams.map((stream) => (
+                <div key={stream.id} className="apple-card overflow-hidden opacity-90">
+                  <div className="relative aspect-video overflow-hidden bg-[#f5f5f7]">
+                    <img
+                      src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
+                      alt={stream.title}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement
+                        target.src = 'https://via.placeholder.com/640x360/f5f5f7/6e6e73?text=Coming+Soon'
+                      }}
+                    />
+                    
+                    {/* Scheduled Badge */}
+                    <div className="absolute left-3 sm:left-4 top-3 sm:top-4">
+                      <div className="flex items-center space-x-1.5 sm:space-x-2 rounded-full bg-[#007aff] px-2.5 py-1 sm:px-3 sm:py-1.5">
+                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-[11px] sm:text-[12px] font-semibold text-white tracking-tight">
+                          {stream.scheduled_start_time ? new Date(stream.scheduled_start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '곧 시작'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-5 md:p-6">
+                    <h3 className="mb-2 text-[17px] sm:text-[19px] md:text-[21px] font-semibold leading-[1.19048] tracking-tight text-[#1d1d1f] line-clamp-2">
+                      {stream.title}
+                    </h3>
+                    {stream.description && (
+                      <p className="mb-3 sm:mb-4 text-[13px] sm:text-[14px] leading-[1.42859] font-normal text-[#6e6e73] line-clamp-2">
+                        {stream.description}
+                      </p>
+                    )}
+                    <div className="flex items-center">
+                      <img
+                        src={stream.seller_profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(stream.seller_name)}&background=007aff&color=fff&size=64`}
+                        alt={stream.seller_name}
+                        className="h-7 w-7 sm:h-8 sm:w-8 rounded-full mr-2.5 sm:mr-3"
+                      />
+                      <span className="text-[13px] sm:text-[14px] font-normal text-[#1d1d1f]">
+                        {stream.seller_name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Popular Products Section */}
+      {popularProducts.length > 0 && (
+        <section className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
+          <div className="mx-auto max-w-[980px] px-4 sm:px-6">
+            <div className="mb-6 sm:mb-8 md:mb-10">
+              <h2 className="mb-2 text-[28px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-semibold leading-[1.0834933333] tracking-tight text-[#1d1d1f]">
+                라이브에서 인기 상품
+              </h2>
+              <p className="text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73]">
+                많은 분들이 선택한 베스트 아이템
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+              {popularProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  to={`/product/${product.id}`}
+                  className="group"
+                >
+                  <div className="apple-card overflow-hidden">
+                    <div className="relative aspect-square overflow-hidden bg-[#f5f5f7]">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          target.src = 'https://via.placeholder.com/400x400/f5f5f7/6e6e73?text=Product'
+                        }}
+                      />
+                      {product.sold_count && product.sold_count > 0 && (
+                        <div className="absolute right-2 sm:right-3 top-2 sm:top-3">
+                          <div className="rounded-full bg-black/70 backdrop-blur-md px-2 py-1 sm:px-2.5 sm:py-1">
+                            <span className="text-[10px] sm:text-[11px] font-semibold text-white">
+                              {product.sold_count}개 판매
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 sm:p-4">
+                      <h3 className="mb-1 sm:mb-2 text-[14px] sm:text-[15px] font-normal leading-[1.2] text-[#1d1d1f] line-clamp-2 group-hover:text-[#007aff] transition-colors">
+                        {product.name}
+                      </h3>
+                      <p className="text-[15px] sm:text-[17px] font-semibold text-[#1d1d1f]">
+                        {product.current_price.toLocaleString()}원
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Features Section - Mobile Optimized */}
       <section className="bg-white py-10 sm:py-12 md:py-16">
         <div className="mx-auto max-w-[980px] px-4 sm:px-6">
@@ -258,16 +470,18 @@ export default function HomePage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-7 md:gap-8">
-            {/* Feature 1 */}
+            {/* Feature 1 - YouTube Live 강조 */}
             <div className="text-center px-4 sm:px-0">
-              <div className="mx-auto mb-4 sm:mb-5 md:mb-6 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#007aff] to-[#0051d5]">
-                <Play className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
+              <div className="mx-auto mb-4 sm:mb-5 md:mb-6 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff0000] to-[#cc0000]">
+                <svg className="h-7 w-7 sm:h-8 sm:w-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
               </div>
               <h3 className="mb-2 sm:mb-3 text-[19px] sm:text-[21px] md:text-[24px] font-semibold leading-[1.16667] tracking-tight text-[#1d1d1f]">
-                실시간 소통
+                YouTube Live 연동
               </h3>
               <p className="text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73]">
-                판매자와 실시간으로 대화하며 궁금한 점을 바로 해결하세요.
+                익숙한 YouTube 라이브로 실시간 쇼핑을 즐기세요.
               </p>
             </div>
 
