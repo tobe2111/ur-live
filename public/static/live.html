@@ -533,8 +533,9 @@
                     // Show success message
                     alert('로그인 되었습니다! 환영합니다, ' + decodeURIComponent(userName || '카카오 사용자') + '님!');
                     
-                    // Clean URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                    // Clean URL - preserve streamId parameter
+                    const cleanUrl = window.location.pathname + '?streamId=' + STREAM_ID;
+                    window.history.replaceState({}, document.title, cleanUrl);
                 }
                 
                 await loadStreamData();
