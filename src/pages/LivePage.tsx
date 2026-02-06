@@ -205,6 +205,103 @@ export default function LivePage() {
     }
   }, [stream])
 
+  // Firebase 실시간 채팅 초기화
+  useEffect(() => {
+    if (!streamId) return
+
+    // Firebase SDK 로드 확인
+    const checkFirebase = () => {
+      // @ts-ignore
+      if (typeof window.firebase !== 'undefined' && window.firebase) {
+        console.log('✅ Firebase SDK loaded')
+        initializeFirebaseChat()
+      } else {
+        console.log('⏳ Waiting for Firebase SDK...')
+        setTimeout(checkFirebase, 500)
+      }
+    }
+
+    checkFirebase()
+  }, [streamId])
+
+  function initializeFirebaseChat() {
+    try {
+      // @ts-ignore
+      const firebaseConfig = {
+        apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+        authDomain: "urteam-live-commerce.firebaseapp.com",
+        databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "urteam-live-commerce",
+        storageBucket: "urteam-live-commerce.firebasestorage.app",
+        messagingSenderId: "1098157020294",
+        appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
+      }
+
+      // @ts-ignore
+      if (!window.firebase.apps.length) {
+        // @ts-ignore
+        window.firebase.initializeApp(firebaseConfig)
+      }
+
+      // @ts-ignore
+      const database = window.firebase.database()
+      const chatRef = database.ref(`chats/stream${streamId}`)
+      
+      console.log('✅ Firebase 초기화 완료')
+
+      // 최신 10개 메시지 가져오기
+      chatRef.limitToLast(10).once('value', (snapshot) => {
+        const loadedMessages: ChatMessage[] = []
+        snapshot.forEach((child) => {
+          const msg = child.val()
+          loadedMessages.push({
+            id: child.key || Date.now().toString(),
+            username: msg.username,
+            message: msg.text,
+            timestamp: msg.timestamp,
+            isSystem: msg.isSystem || false
+          })
+        })
+        
+        if (loadedMessages.length > 0) {
+          setMessages(loadedMessages)
+          console.log(`📥 ${loadedMessages.length}개 메시지 로드됨`)
+        } else {
+          // 메시지 없으면 데모 메시지 로드
+          loadDemoMessages()
+        }
+      })
+
+      // 실시간 리스너 (새 메시지만)
+      let lastMessageTime = Date.now()
+      chatRef.orderByChild('timestamp').startAt(lastMessageTime).on('child_added', (snapshot) => {
+        const msg = snapshot.val()
+        
+        // 중복 방지 (이미 로드된 메시지 제외)
+        if (msg.timestamp > lastMessageTime) {
+          const newMessage: ChatMessage = {
+            id: snapshot.key || Date.now().toString(),
+            username: msg.username,
+            message: msg.text,
+            timestamp: msg.timestamp,
+            isSystem: msg.isSystem || false
+          }
+          
+          setMessages(prev => [...prev, newMessage])
+          console.log('📩 새 메시지:', newMessage)
+        }
+      })
+
+      // Cleanup
+      return () => {
+        chatRef.off()
+      }
+    } catch (error) {
+      console.error('❌ Firebase 초기화 실패:', error)
+      loadDemoMessages()
+    }
+  }
+
   function loadDemoMessages() {
     const demoMessages: ChatMessage[] = [
       {
@@ -298,15 +395,27 @@ export default function LivePage() {
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
 
-      // Add system message to chat
-      const systemMessage: ChatMessage = {
-        id: Date.now().toString(),
-        username: '시스템',
-        message: `${currentProduct.product.name} 주문 감사합니다 ♡`,
-        timestamp: Date.now(),
-        isSystem: true
+      // Add system message to chat via Firebase
+      try {
+        // @ts-ignore
+        if (typeof window.firebase !== 'undefined' && window.firebase) {
+          // @ts-ignore
+          const database = window.firebase.database()
+          const chatRef = database.ref(`chats/stream${streamId}`)
+          
+          const userName = localStorage.getItem('user_name') || '익명'
+          
+          chatRef.push({
+            username: '🎉 시스템',
+            text: `${userName}님이 ${currentProduct.product.name}을(를) 담았습니다!`,
+            // @ts-ignore
+            timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+            isSystem: true
+          })
+        }
+      } catch (error) {
+        console.error('시스템 메시지 전송 실패:', error)
       }
-      setMessages(prev => [...prev, systemMessage])
     } catch (error: any) {
       console.error('Failed to add to cart:', error)
       const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
@@ -425,16 +534,43 @@ export default function LivePage() {
     e.preventDefault()
     if (!newMessage.trim()) return
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      username: '나',
-      message: newMessage,
-      timestamp: Date.now(),
+    // Firebase로 메시지 전송
+    try {
+      // @ts-ignore
+      if (typeof window.firebase !== 'undefined' && window.firebase) {
+        // @ts-ignore
+        const database = window.firebase.database()
+        const chatRef = database.ref(`chats/stream${streamId}`)
+        
+        const userName = localStorage.getItem('user_name') || '익명'
+        
+        // 새 메시지 추가
+        chatRef.push({
+          username: userName,
+          text: newMessage,
+          // @ts-ignore
+          timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+          isSystem: false
+        })
+        
+        console.log('✅ 메시지 전송:', newMessage)
+      } else {
+        // Firebase 없으면 로컬에만 추가 (폴백)
+        const message: ChatMessage = {
+          id: Date.now().toString(),
+          username: localStorage.getItem('user_name') || '익명',
+          message: newMessage,
+          timestamp: Date.now(),
+        }
+        setMessages(prev => [...prev, message])
+      }
+      
+      setNewMessage('')
+      setShowChatInput(false)
+    } catch (error) {
+      console.error('메시지 전송 실패:', error)
+      alert('메시지 전송에 실패했습니다.')
     }
-
-    setMessages(prev => [...prev, message])
-    setNewMessage('')
-    setShowChatInput(false)
   }
 
   function handleShowProducts() {
