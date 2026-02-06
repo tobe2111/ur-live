@@ -4398,10 +4398,22 @@ app.get('/cart', async (c) => {
     html = html.replace('%%NICEPAY_CLIENT_ID%%', c.env.NICEPAY_CLIENT_ID || 'S2_d5ec29558e9d46419bf01eb828ca0834')
     html = html.replace('%%NICEPAY_MID%%', c.env.NICEPAY_MID || 'nictest00m')
     
-    return c.html(html)
+    // TrustedHTML 오류 방지: Response 객체로 직접 반환
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache'
+      }
+    })
   } catch (err) {
     console.error('Error serving cart page:', err)
-    return c.html('<h1>Error loading cart page</h1>', 500)
+    return new Response('<h1>Error loading cart page</h1>', {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8'
+      }
+    })
   }
 })
 
@@ -4415,11 +4427,22 @@ app.get('/payment-result', async (c) => {
     const response = await fetch(staticUrl.toString())
     const html = await response.text()
     
-    // 환경 변수 주입 불필요 (프론트엔드에서 URL 파라미터 직접 읽음)
-    return c.html(html)
+    // TrustedHTML 오류 방지: Response 객체로 직접 반환
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache'
+      }
+    })
   } catch (err) {
     console.error('Error serving payment result page:', err)
-    return c.html('<h1>Error loading payment result page</h1>', 500)
+    return new Response('<h1>Error loading payment result page</h1>', {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8'
+      }
+    })
   }
 })
 
