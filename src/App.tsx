@@ -17,6 +17,8 @@ import AdminPage from './pages/AdminPage'
 import AdminLoginPage from './pages/AdminLoginPage'
 import MyOrdersPage from './pages/MyOrdersPage'
 import KakaoCallbackPage from './pages/KakaoCallbackPage'
+import NotFoundPage from './pages/NotFoundPage'
+import ServerErrorPage from './pages/ServerErrorPage'
 
 function App() {
   return (
@@ -40,6 +42,10 @@ function App() {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
         <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
+        
+        {/* Error Pages */}
+        <Route path="/500" element={<ServerErrorPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

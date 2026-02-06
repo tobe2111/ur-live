@@ -4761,12 +4761,103 @@ app.notFound((c) => {
   
   // Only handle API routes in the Worker
   if (path.startsWith('/api/')) {
-    return c.json({ error: 'Not found' }, 404);
+    return c.json({ 
+      success: false,
+      error: 'Not found',
+      message: `The requested endpoint ${path} was not found.`
+    }, 404);
   }
   
   // For non-API routes, pass through to let Pages serve static files
   // Return undefined to indicate this route should not be handled by the Worker
   return new Response(null, { status: 404 });
+});
+
+// Global error handler
+app.onError((err, c) => {
+  const path = c.req.path;
+  console.error('[Global Error Handler]', {
+    path,
+    method: c.req.method,
+    error: err.message,
+    stack: err.stack
+  });
+  
+  // API routes: return JSON error
+  if (path.startsWith('/api/')) {
+    // Determine status code based on error type
+    let status = 500;
+    let message = 'Internal Server Error';
+    
+    if (err.message.includes('Unauthorized') || err.message.includes('로그인')) {
+      status = 401;
+      message = '인증이 필요합니다. 로그인해주세요.';
+    } else if (err.message.includes('Forbidden') || err.message.includes('권한')) {
+      status = 403;
+      message = '접근 권한이 없습니다.';
+    } else if (err.message.includes('Not found') || err.message.includes('찾을 수 없')) {
+      status = 404;
+      message = '요청하신 리소스를 찾을 수 없습니다.';
+    } else if (err.message.includes('Bad request') || err.message.includes('잘못된')) {
+      status = 400;
+      message = '잘못된 요청입니다.';
+    }
+    
+    return c.json({ 
+      success: false,
+      error: err.message || message,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    }, status);
+  }
+  
+  // HTML routes: return user-friendly error page
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>오류 발생 - 유어 라이브</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-50">
+      <div class="min-h-screen flex items-center justify-center px-4">
+        <div class="max-w-md w-full text-center">
+          <div class="mb-8">
+            <svg class="mx-auto h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 class="text-3xl font-bold text-gray-900 mb-4">오류가 발생했습니다</h1>
+          <p class="text-gray-600 mb-8">
+            죄송합니다. 일시적인 오류가 발생했습니다.<br/>
+            잠시 후 다시 시도해주세요.
+          </p>
+          <div class="space-y-3">
+            <a 
+              href="/" 
+              class="inline-block w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              홈으로 돌아가기
+            </a>
+            <button 
+              onclick="window.history.back()" 
+              class="inline-block w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              이전 페이지로
+            </button>
+          </div>
+          ${process.env.NODE_ENV === 'development' ? `
+            <details class="mt-8 text-left">
+              <summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700">개발자 정보</summary>
+              <pre class="mt-2 p-4 bg-gray-100 rounded text-xs overflow-auto">${err.stack || err.message}</pre>
+            </details>
+          ` : ''}
+        </div>
+      </div>
+    </body>
+    </html>
+  `, 500);
 });
 
 export default app;
