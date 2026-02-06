@@ -35,39 +35,39 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-    <!-- 환경 변수 주입 -->
-    <script>
-        window.NICEPAY_MID = '%%NICEPAY_MID%%';
-    </script>
     <script>
         const API_BASE = '';
         
         // URL에서 결제 결과 파라미터 가져오기
         const urlParams = new URLSearchParams(window.location.search);
-        const resultCode = urlParams.get('resultCode');
-        const resultMsg = urlParams.get('resultMsg');
+        
+        // NicePay 공식 가이드 파라미터명 (camelCase)
+        const authResultCode = urlParams.get('authResultCode');
+        const authResultMsg = urlParams.get('authResultMsg');
         const tid = urlParams.get('tid');
+        const clientId = urlParams.get('clientId');
         const orderId = urlParams.get('orderId');
         const amount = urlParams.get('amount');
         const authToken = urlParams.get('authToken');
         const signature = urlParams.get('signature');
         
-        console.log('📥 NicePay 결제 결과:', {
-            resultCode,
-            resultMsg,
+        console.log('📥 NicePay 결제창 응답:', {
+            authResultCode,
+            authResultMsg,
             tid,
+            clientId: clientId?.substring(0, 10) + '...',
             orderId,
             amount
         });
         
         // 결제 결과 확인
-        if (resultCode === '0000') {
-            // 결제 성공 - 서버에 승인 요청
+        if (authResultCode === '0000') {
+            // 결제 인증 성공 - 서버에 승인 요청
             confirmPayment();
         } else {
-            // 결제 실패
-            console.error('❌ 결제 실패:', resultMsg);
-            alert('결제에 실패했습니다.\n' + resultMsg);
+            // 결제 인증 실패
+            console.error('❌ 결제 인증 실패:', authResultMsg);
+            alert('결제에 실패했습니다.\n' + authResultMsg);
             window.location.href = '/cart';
         }
         
@@ -75,16 +75,16 @@
             try {
                 console.log('🔵 서버 승인 요청 중...');
                 
-                // 서버에 결제 승인 요청
-                const response = await axios.post(`${API_BASE}/api/payments/nicepay/confirm`, {
-                    AuthResultCode: resultCode,
-                    AuthResultMsg: resultMsg,
-                    TID: tid,
-                    Amt: amount,
-                    MID: window.NICEPAY_MID || 'nictest00m',  // 환경 변수에서 로드
-                    Moid: orderId,
-                    AuthToken: authToken,
-                    Signature: signature
+                // 서버에 결제 승인 요청 (NicePay 공식 가이드 파라미터)
+                const response = await axios.post(`${API_BASE}/api/payments/nicepay/callback`, {
+                    authResultCode,
+                    authResultMsg,
+                    tid,
+                    clientId,
+                    orderId,
+                    amount,
+                    authToken,
+                    signature
                 });
                 
                 if (response.data.success) {

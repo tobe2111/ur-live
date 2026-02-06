@@ -3387,73 +3387,189 @@ app.post('/api/orders/create', async (c) => {
   }
 });
 
-// 2. 나이스페이 서버 승인 API
-app.post('/api/payments/nicepay/confirm', async (c) => {
+// =================================
+// NicePay Helper Functions
+// =================================
+
+/**
+ * Generate SHA-256 signature for NicePay
+ * Signature = hex(sha256(authToken + clientId + amount + secretKey))
+ */
+async function generateNicepaySignature(
+  authToken: string,
+  clientId: string,
+  amount: string,
+  secretKey: string
+): Promise<string> {
+  const data = authToken + clientId + amount + secretKey;
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+/**
+ * Approve NicePay payment
+ */
+async function approveNicepayPayment(
+  tid: string,
+  amount: string,
+  clientId: string,
+  secretKey: string
+): Promise<any> {
+  const NICEPAY_API_URL = 'https://api.nicepay.co.kr/v1/payments';
+  
+  // Create Basic Auth header: Base64(clientId:secretKey)
+  const credentials = `${clientId}:${secretKey}`;
+  const authHeader = btoa(credentials);
+  
+  console.log('🔐 NicePay 승인 API 호출:', {
+    url: `${NICEPAY_API_URL}/${tid}`,
+    tid,
+    amount,
+    clientId: clientId.substring(0, 10) + '...',
+  });
+  
+  const response = await fetch(`${NICEPAY_API_URL}/${tid}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Basic ${authHeader}`
+    },
+    body: JSON.stringify({
+      amount: parseInt(amount)
+    })
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok || data.resultCode !== '0000') {
+    console.error('❌ NicePay 승인 실패:', data);
+    throw new Error(data.resultMsg || '결제 승인에 실패했습니다');
+  }
+  
+  console.log('✅ NicePay 승인 성공:', {
+    tid: data.tid,
+    orderId: data.orderId,
+    amount: data.amount
+  });
+  
+  return data;
+}
+
+// 2. 나이스페이 서버 승인 API (결제창 응답 처리)
+app.post('/api/payments/nicepay/callback', async (c) => {
   const { DB } = c.env;
   
   try {
-    const { AuthResultCode, AuthResultMsg, TID, Amt, MID, Moid, AuthToken } = await c.req.json();
+    const body = await c.req.json();
+    const { 
+      authResultCode, 
+      authResultMsg, 
+      tid, 
+      clientId, 
+      orderId, 
+      amount, 
+      authToken,
+      signature 
+    } = body;
     
-    console.log('나이스페이 서버 승인 요청:', { AuthResultCode, TID, Amt, Moid });
+    console.log('📥 NicePay 결제창 응답:', {
+      authResultCode,
+      tid,
+      orderId,
+      amount,
+      clientId: clientId?.substring(0, 10) + '...'
+    });
     
     // 1. 인증 결과 확인
-    if (AuthResultCode !== '0000') {
-      console.error('나이스페이 인증 실패:', AuthResultMsg);
+    if (authResultCode !== '0000') {
+      console.error('❌ NicePay 인증 실패:', authResultMsg);
       return c.json({
         success: false,
-        error: AuthResultMsg || '결제 인증에 실패했습니다'
+        error: authResultMsg || '결제 인증에 실패했습니다'
       }, 400);
     }
     
-    // 2. 주문 조회
-    const order = await DB.prepare(`
-      SELECT * FROM orders WHERE order_number = ?
-    `).bind(Moid).first();
-    
-    if (!order) {
-      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+    // 2. 필수 파라미터 검증
+    if (!tid || !orderId || !amount || !authToken || !signature) {
+      return c.json({
+        success: false,
+        error: '필수 파라미터가 누락되었습니다'
+      }, 400);
     }
     
-    // 3. 금액 검증
-    if (parseInt(Amt) !== order.total_amount) {
+    // 3. 환경 변수에서 NicePay 키 가져오기
+    const NICEPAY_CLIENT_ID = c.env.NICEPAY_CLIENT_ID;
+    const NICEPAY_SECRET_KEY = c.env.NICEPAY_SECRET_KEY;
+    
+    if (!NICEPAY_CLIENT_ID || !NICEPAY_SECRET_KEY) {
+      console.error('❌ NicePay 환경 변수가 설정되지 않았습니다');
+      return c.json({
+        success: false,
+        error: '결제 시스템 설정 오류'
+      }, 500);
+    }
+    
+    // 4. Signature 검증
+    const expectedSignature = await generateNicepaySignature(
+      authToken,
+      clientId,
+      amount,
+      NICEPAY_SECRET_KEY
+    );
+    
+    if (signature !== expectedSignature) {
+      console.error('❌ Signature 검증 실패:', {
+        received: signature,
+        expected: expectedSignature
+      });
+      return c.json({
+        success: false,
+        error: '결제 데이터 위변조가 감지되었습니다'
+      }, 400);
+    }
+    
+    console.log('✅ Signature 검증 성공');
+    
+    // 5. 주문 조회
+    const order = await DB.prepare(`
+      SELECT * FROM orders WHERE order_number = ?
+    `).bind(orderId).first();
+    
+    if (!order) {
+      console.error('❌ 주문을 찾을 수 없습니다:', orderId);
+      return c.json({ 
+        success: false, 
+        error: '주문을 찾을 수 없습니다' 
+      }, 404);
+    }
+    
+    // 6. 금액 검증
+    if (parseInt(amount) !== order.total_amount) {
+      console.error('❌ 금액 불일치:', {
+        received: amount,
+        expected: order.total_amount
+      });
       return c.json({
         success: false,
         error: '결제 금액이 일치하지 않습니다'
       }, 400);
     }
     
-    // 4. 나이스페이 서버 승인 API 호출
-    const NICEPAY_API_URL = 'https://api.nicepay.co.kr/v1/payments/approval';
-    const NICEPAY_MID = c.env.NICEPAY_MID || 'PItobe211m';
-    const NICEPAY_KEY = c.env.NICEPAY_KEY || 'GKHsnRI/P5V3RpU7v5UA2ElK5vz0v3Nyf+wdd+T+RXvh8R/xWwZk7gzwQwKZi6kcJ2lnif1xgYYF6amQ5cRnTA==';
+    console.log('✅ 주문 및 금액 검증 완료');
     
-    // 나이스페이 승인 요청
-    const approvalResponse = await fetch(NICEPAY_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(NICEPAY_MID + ':' + NICEPAY_KEY)}`
-      },
-      body: JSON.stringify({
-        tid: TID,
-        amt: Amt,
-        ediDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
-        authToken: AuthToken
-      })
-    });
+    // 7. 나이스페이 서버 승인 API 호출
+    const approvalData = await approveNicepayPayment(
+      tid,
+      amount,
+      NICEPAY_CLIENT_ID,
+      NICEPAY_SECRET_KEY
+    );
     
-    if (!approvalResponse.ok) {
-      const errorData = await approvalResponse.json();
-      console.error('나이스페이 승인 실패:', errorData);
-      return c.json({
-        success: false,
-        error: errorData.resultMsg || '결제 승인에 실패했습니다'
-      }, 500);
-    }
-    
-    const approvalData = await approvalResponse.json();
-    
-    // 5. 주문 상태 업데이트
+    // 8. 주문 상태 업데이트
     await DB.prepare(`
       UPDATE orders 
       SET payment_status = 'approved',
@@ -3461,27 +3577,33 @@ app.post('/api/payments/nicepay/confirm', async (c) => {
           transaction_id = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE order_number = ?
-    `).bind(TID, approvalData.tid || TID, Moid).run();
+    `).bind(tid, approvalData.tid || tid, orderId).run();
     
-    // 6. 장바구니 비우기
+    // 9. 장바구니 비우기
     if (order.user_id) {
       await DB.prepare(`
         DELETE FROM cart_items WHERE user_id = ?
       `).bind(order.user_id).run();
     }
     
-    console.log('결제 승인 완료:', { orderNumber: Moid, tid: TID });
+    console.log('✅ 결제 승인 완료:', { 
+      orderNumber: orderId, 
+      tid: tid 
+    });
     
     return c.json({
       success: true,
-      orderNumber: Moid,
-      tid: TID,
-      amount: Amt
+      orderNumber: orderId,
+      tid: tid,
+      amount: amount
     });
     
   } catch (error) {
-    console.error('결제 승인 실패:', error);
-    return c.json({ success: false, error: error.message }, 500);
+    console.error('❌ 결제 승인 실패:', error);
+    return c.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, 500);
   }
 });
 
@@ -4291,11 +4413,9 @@ app.get('/payment-result', async (c) => {
     // Cloudflare Pages에서 정적 파일 가져오기
     const staticUrl = new URL('/payment-result.html', c.req.url)
     const response = await fetch(staticUrl.toString())
-    let html = await response.text()
+    const html = await response.text()
     
-    // 환경 변수 주입 (폴백 값 포함)
-    html = html.replace('%%NICEPAY_MID%%', c.env.NICEPAY_MID || 'nictest00m')
-    
+    // 환경 변수 주입 불필요 (프론트엔드에서 URL 파라미터 직접 읽음)
     return c.html(html)
   } catch (err) {
     console.error('Error serving payment result page:', err)
@@ -4308,13 +4428,6 @@ app.get('/payment-result', async (c) => {
 // =================================
 app.get('/order-complete', (c) => {
   return c.redirect('/order-complete.html', 302)
-})
-
-// =================================
-// Payment Result Page Route (NicePay callback)
-// =================================
-app.get('/payment-result', (c) => {
-  return c.redirect('/payment-result.html', 302)
 })
 
 // =================================

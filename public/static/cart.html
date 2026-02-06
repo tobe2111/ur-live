@@ -584,13 +584,10 @@
         function initiateNicePayPayment(order, shippingInfo) {
             console.log('🔵 NicePay 결제 시작:', order);
             
-            // 실제 운영 Client ID (환경에 따라 자동 선택)
-            const isProduction = window.location.hostname === 'live.ur-team.com';
-            const NICEPAY_CLIENT_ID = isProduction 
-                ? 'R1_0de112c4de8343e4b0b37f0d093eae30'  // 실제 운영 Client ID
-                : 'S2_d5ec29558e9d46419bf01eb828ca0834';  // 테스트 Client ID
+            // Client ID 설정 (Worker에서 주입된 환경 변수 사용)
+            const NICEPAY_CLIENT_ID = window.NICEPAY_CLIENT_ID || 'S2_d5ec29558e9d46419bf01eb828ca0834';  // 폴백: 테스트 Client ID
             
-            console.log('🔑 환경:', isProduction ? '운영' : '테스트', 'Client ID:', NICEPAY_CLIENT_ID.substring(0, 10) + '...');
+            console.log('🔑 NicePay Client ID:', NICEPAY_CLIENT_ID.substring(0, 10) + '...');
             
             // 상품명 생성 (첫 번째 상품명 + 외 N건)
             const goodsName = cartItems.length > 1 
