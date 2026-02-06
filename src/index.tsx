@@ -4684,6 +4684,35 @@ app.get('/cart', async (c) => {
 })
 
 // =================================
+// My Orders Page Route
+// =================================
+app.get('/my-orders', async (c) => {
+  try {
+    // Cloudflare Pages에서 정적 파일 가져오기
+    const staticUrl = new URL('/static/my-orders.html', c.req.url)
+    const response = await fetch(staticUrl.toString())
+    const html = await response.text()
+    
+    // TrustedHTML 오류 방지: Response 객체로 직접 반환
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache'
+      }
+    })
+  } catch (err) {
+    console.error('Error serving my orders page:', err)
+    return new Response('<h1>Error loading orders page</h1>', {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8'
+      }
+    })
+  }
+})
+
+// =================================
 // Payment Result Page Route
 // =================================
 app.get('/payment-result', async (c) => {
