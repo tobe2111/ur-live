@@ -126,7 +126,11 @@ export default function SellerPage() {
       }
 
       // Load streams
-      const streamsResponse = await axios.get('/api/streams')
+      const streamsResponse = await axios.get('/api/seller/streams', {
+        headers: {
+          'X-Session-Token': sessionToken
+        }
+      })
       if (streamsResponse.data.success) {
         setStreams(streamsResponse.data.data || [])
       }
