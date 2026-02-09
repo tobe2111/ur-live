@@ -381,12 +381,23 @@ export default function SellerPage() {
               <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
                 내 라이브 스트림
               </h3>
-              <button 
-                onClick={() => navigate('/seller/streams/new')}
-                className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
-              >
-                + 새 라이브
-              </button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => navigate('/seller/streams/new')}
+                  className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+                >
+                  + 새 라이브
+                </button>
+                {streams.length > 3 && (
+                  <button 
+                    onClick={() => navigate('/seller/streams')}
+                    className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center"
+                  >
+                    더보기
+                    <ChevronRight className="h-4 w-4 ml-0.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {streams.length === 0 ? (
@@ -479,12 +490,23 @@ export default function SellerPage() {
               <h3 className="text-[21px] font-semibold text-[#1d1d1f]">
                 상품 관리
               </h3>
-              <button 
-                onClick={() => navigate('/seller/products/new')}
-                className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
-              >
-                + 상품 추가
-              </button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => navigate('/seller/products/new')}
+                  className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+                >
+                  + 상품 추가
+                </button>
+                {products.length > 3 && (
+                  <button 
+                    onClick={() => navigate('/seller/products')}
+                    className="text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center"
+                  >
+                    더보기
+                    <ChevronRight className="h-4 w-4 ml-0.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {products.length === 0 ? (
@@ -504,17 +526,9 @@ export default function SellerPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {products.map(product => (
+                {products.slice(0, 3).map(product => (
                   <div key={product.id} className="apple-card p-4 hover:shadow-lg transition-shadow">
                     <div className="flex gap-4">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80'
-                        }}
-                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="text-[15px] font-semibold text-[#1d1d1f] line-clamp-1">
@@ -565,68 +579,7 @@ export default function SellerPage() {
           </section>
         </div>
 
-        {/* Quick Actions */}
-        <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button 
-            onClick={() => navigate('/seller/analytics')}
-            className="apple-card p-6 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-12 h-12 bg-[#007aff]/10 rounded-full flex items-center justify-center mb-4">
-              <BarChart3 className="h-6 w-6 text-[#007aff]" />
-            </div>
-            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
-              매출 분석
-            </h4>
-            <p className="text-[13px] text-[#6e6e73]">
-              상세한 매출 리포트 확인
-            </p>
-          </button>
 
-          <button 
-            onClick={() => navigate('/seller/streams/schedule')}
-            className="apple-card p-6 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-12 h-12 bg-[#34c759]/10 rounded-full flex items-center justify-center mb-4">
-              <Calendar className="h-6 w-6 text-[#34c759]" />
-            </div>
-            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
-              라이브 예약
-            </h4>
-            <p className="text-[13px] text-[#6e6e73]">
-              새로운 라이브 일정 등록
-            </p>
-          </button>
-
-          <button 
-            onClick={() => navigate('/seller/inventory')}
-            className="apple-card p-6 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-12 h-12 bg-[#ff9500]/10 rounded-full flex items-center justify-center mb-4">
-              <Package className="h-6 w-6 text-[#ff9500]" />
-            </div>
-            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
-              재고 관리
-            </h4>
-            <p className="text-[13px] text-[#6e6e73]">
-              상품 재고 현황 확인
-            </p>
-          </button>
-
-          <button 
-            onClick={() => navigate('/seller/settings')}
-            className="apple-card p-6 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-12 h-12 bg-[#ff3b30]/10 rounded-full flex items-center justify-center mb-4">
-              <Settings className="h-6 w-6 text-[#ff3b30]" />
-            </div>
-            <h4 className="text-[17px] font-semibold text-[#1d1d1f] mb-1">
-              설정
-            </h4>
-            <p className="text-[13px] text-[#6e6e73]">
-              계정 및 알림 설정
-            </p>
-          </button>
-        </div>
 
         {/* Recent Activity */}
         <section className="mt-8">
