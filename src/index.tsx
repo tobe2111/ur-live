@@ -976,41 +976,55 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
       'SELECT * FROM users WHERE kakao_id = ?'
     ).bind(kakaoId).first();
     
-    let userId;
+    let user;
     
     if (existingUser) {
-      userId = existingUser.id;
-      await DB.prepare(
-        'UPDATE users SET name = ?, email = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-      ).bind(nickname, email, profileImage, userId).run();
-      console.log('[Kakao Sync] Updated existing user:', userId);
+      // 기존 사용자 업데이트
+      await DB.prepare(`
+        UPDATE users 
+        SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now'), updated_at = datetime('now')
+        WHERE kakao_id = ?
+      `).bind(nickname, email || null, profileImage || null, kakaoId).run();
+      
+      user = {
+        id: existingUser.id,
+        name: nickname,
+        email: email,
+        profile_image: profileImage,
+      };
+      console.log('[Kakao Sync] Updated existing user:', user.id);
     } else {
-      const result = await DB.prepare(
-        'INSERT INTO users (name, email, kakao_id, profile_image) VALUES (?, ?, ?, ?)'
-      ).bind(nickname, email, kakaoId, profileImage).run();
-      userId = result.meta.last_row_id;
-      console.log('[Kakao Sync] Created new user:', userId);
+      // 새 사용자 생성
+      const result = await DB.prepare(`
+        INSERT INTO users (kakao_id, name, email, profile_image, created_at, last_login_at)
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(kakaoId, nickname, email || null, profileImage || null).run();
+      
+      user = {
+        id: result.meta.last_row_id,
+        name: nickname,
+        email: email,
+        profile_image: profileImage,
+      };
+      console.log('[Kakao Sync] Created new user:', user.id);
     }
     
-    // 4. 세션 생성 (24시간)
-    const sessionToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    // 4. 세션 토큰 생성
+    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     
-    await DB.prepare(
-      'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
-    ).bind(sessionToken, 'user', expiresAt).run();
-    
-    console.log('[Kakao Sync] Session created');
+    console.log('[Kakao Sync] Login successful');
     
     // 5. 응답 반환
     return c.json({
       success: true,
-      session: sessionToken,
-      user: {
-        id: userId,
-        name: nickname,
-        email: email,
-        profileImage: profileImage,
+      data: {
+        session_token: sessionToken,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profile_image: user.profile_image,
+        },
       },
     });
     

@@ -20,7 +20,6 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import AdminSettlementPage from './pages/AdminSettlementPage'
 import SellerPublicPage from './pages/SellerPublicPage'
 import MyOrdersPage from './pages/MyOrdersPage'
-import KakaoCallbackPage from './pages/KakaoCallbackPage'
 import NotFoundPage from './pages/NotFoundPage'
 import ServerErrorPage from './pages/ServerErrorPage'
 
@@ -49,7 +48,6 @@ function App() {
         <Route path="/admin/settlement" element={<AdminSettlementPage />} />
         <Route path="/s/:sellerId" element={<SellerPublicPage />} />
         <Route path="/my-orders" element={<MyOrdersPage />} />
-        <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
         
         {/* Error Pages */}
         <Route path="/500" element={<ServerErrorPage />} />
