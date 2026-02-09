@@ -541,22 +541,40 @@ export default function HomePage() {
 
       {/* Footer - Mobile Optimized */}
       <footer className="border-t border-black/5 bg-[#f5f5f7]">
-        <div className="mx-auto max-w-[980px] px-4 sm:px-6 py-6 sm:py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
-            <p className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] text-center sm:text-left">
+        <div className="mx-auto max-w-[980px] px-4 sm:px-6 py-8 sm:py-10">
+          {/* Footer Links - Mobile Optimized */}
+          <div className="flex items-center flex-wrap justify-center gap-4 sm:gap-6 mb-6">
+            <a href="/terms.html" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
+              서비스 이용약관
+            </a>
+            <a href="/privacy.html" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
+              개인정보처리방침
+            </a>
+            <a href="http://pf.kakao.com/_AITdn/chat" target="_blank" rel="noopener noreferrer" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
+              고객센터
+            </a>
+          </div>
+
+          {/* Company Information */}
+          <div className="text-center text-[11px] sm:text-[12px] leading-[1.6] text-[#6e6e73] space-y-2 mb-4">
+            <div>
+              <span className="font-medium">서비스명:</span> 유어 라이브 | 
+              <span className="font-medium"> 대표자:</span> 정지원
+            </div>
+            <div>
+              <span className="font-medium">사업자등록번호:</span> 479-09-02930 | 
+              <span className="font-medium"> 통신판매업신고:</span> 2025-부산금정-0540
+            </div>
+            <div>
+              <span className="font-medium">이메일:</span> <a href="mailto:jiwon@ur-team.com" className="hover:text-[#1d1d1f] transition-colors">jiwon@ur-team.com</a>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="text-center">
+            <p className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73]">
               © 2026 유어 라이브. All rights reserved.
             </p>
-            <div className="flex items-center flex-wrap justify-center gap-4 sm:gap-6">
-              <Link to="/privacy" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
-                개인정보 처리방침
-              </Link>
-              <Link to="/terms" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
-                이용 약관
-              </Link>
-              <a href="http://pf.kakao.com/_AITdn/chat" target="_blank" rel="noopener noreferrer" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
-                고객센터
-              </a>
-            </div>
           </div>
         </div>
       </footer>
