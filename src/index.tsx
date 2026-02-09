@@ -1932,7 +1932,7 @@ app.post('/api/orders', async (c) => {
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
           order_number, user_id, total_amount, payment_status,
-          shipping_address, shipping_name, shipping_phone, delivery_memo
+          shipping_address, shipping_name, shipping_phone, shipping_memo
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         orderNo,
