@@ -118,52 +118,23 @@
           titleEl.textContent = stream.title;
         }
         
-        // YouTube Player 초기화
-        console.log('Creating YouTube Player with video ID:', stream.youtube_video_id);
-        
         const playerContainer = document.getElementById('youtube-player');
         if (!playerContainer) {
-          console.error('YouTube player container not found!');
+          console.error('Player container not found!');
           throw new Error('Player container not found');
         }
         
-        // 기존 플레이어 파괴
-        if (state.player && typeof state.player.destroy === 'function') {
-          console.log('Destroying existing player...');
-          try {
-            state.player.destroy();
-          } catch (e) {
-            console.warn('Failed to destroy player:', e);
-          }
-          state.player = null;
+        // 플랫폼별 플레이어 초기화
+        const platform = stream.platform || 'youtube';
+        console.log(`Initializing ${platform} player...`);
+        
+        if (platform === 'tiktok') {
+          // TikTok 플레이어 초기화
+          initializeTikTokPlayer(stream.tiktok_username, playerContainer);
+        } else {
+          // YouTube 플레이어 초기화
+          initializeYouTubePlayer(stream.youtube_video_id, playerContainer);
         }
-        
-        // 컨테이너 초기화
-        playerContainer.innerHTML = '<div id="youtube-player-inner"></div>';
-        
-        // 새 플레이어 생성
-        state.player = new YT.Player('youtube-player-inner', {
-          height: '100%',
-          width: '100%',
-          videoId: stream.youtube_video_id,
-          playerVars: {
-            autoplay: 1,
-            mute: 1,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0,
-            fs: 1,
-            playsinline: 1,
-            enablejsapi: 1,
-          },
-          events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange,
-            'onError': onPlayerError
-          }
-        });
-
-        console.log('YouTube Player created');
 
         // 현재 상품 로드
         if (stream.current_product_id) {
@@ -177,6 +148,71 @@
       console.error('Failed to load stream info:', error);
       throw error;
     }
+  }
+
+  // YouTube 플레이어 초기화
+  function initializeYouTubePlayer(youtube_video_id, playerContainer) {
+    console.log('Creating YouTube Player with video ID:', youtube_video_id);
+    
+    // 기존 플레이어 파괴
+    if (state.player && typeof state.player.destroy === 'function') {
+      console.log('Destroying existing player...');
+      try {
+        state.player.destroy();
+      } catch (e) {
+        console.warn('Failed to destroy player:', e);
+      }
+      state.player = null;
+    }
+    
+    // 컨테이너 초기화
+    playerContainer.innerHTML = '<div id="youtube-player-inner"></div>';
+    
+    // 새 플레이어 생성
+    state.player = new YT.Player('youtube-player-inner', {
+      height: '100%',
+      width: '100%',
+      videoId: youtube_video_id,
+      playerVars: {
+        autoplay: 1,
+        mute: 1,
+        controls: 1,
+        modestbranding: 1,
+        rel: 0,
+        fs: 1,
+        playsinline: 1,
+        enablejsapi: 1,
+      },
+      events: {
+        'onReady': onPlayerReady,
+        'onStateChange': onPlayerStateChange,
+        'onError': onPlayerError
+      }
+    });
+
+    console.log('YouTube Player created');
+  }
+
+  // TikTok 플레이어 초기화
+  function initializeTikTokPlayer(tiktok_username, playerContainer) {
+    console.log('Creating TikTok Player for username:', tiktok_username);
+    
+    // 기존 컨텐츠 제거
+    playerContainer.innerHTML = '';
+    
+    // TikTok iframe 생성
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.tiktok.com/@${tiktok_username}/live`;
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+    iframe.allowFullscreen = true;
+    
+    playerContainer.appendChild(iframe);
+    state.player = { type: 'tiktok', iframe }; // 참조 저장
+    
+    console.log('TikTok Player created');
   }
 
   function onPlayerReady(event) {

@@ -7,12 +7,15 @@ export type Bindings = {
 
 // Live Stream Types
 export type LiveStreamStatus = 'scheduled' | 'live' | 'ended';
+export type LiveStreamPlatform = 'youtube' | 'tiktok';
 
 export interface LiveStream {
   id: number;
   title: string;
   description: string | null;
   youtube_video_id: string;
+  platform: LiveStreamPlatform;
+  tiktok_username: string | null;
   status: LiveStreamStatus;
   current_product_id: number | null;
   created_at: string;

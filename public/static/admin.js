@@ -4,6 +4,27 @@ let sessionToken = localStorage.getItem('sessionToken');
 let currentStreams = [];
 let currentSellers = [];
 
+// Toggle platform-specific fields
+function togglePlatformFields() {
+    const platform = document.getElementById('platform')?.value || 'youtube';
+    const youtubeFields = document.getElementById('youtubeFields');
+    const tiktokFields = document.getElementById('tiktokFields');
+    
+    if (youtubeFields && tiktokFields) {
+        if (platform === 'youtube') {
+            youtubeFields.style.display = 'block';
+            tiktokFields.style.display = 'none';
+            document.getElementById('youtubeVideoId').required = true;
+            document.getElementById('tiktokUsername').required = false;
+        } else {
+            youtubeFields.style.display = 'none';
+            tiktokFields.style.display = 'block';
+            document.getElementById('youtubeVideoId').required = false;
+            document.getElementById('tiktokUsername').required = true;
+        }
+    }
+}
+
 // Check authentication
 async function checkAuth() {
     if (!sessionToken) {
@@ -220,7 +241,10 @@ function editStream(id) {
     document.getElementById('streamId').value = stream.id;
     document.getElementById('streamTitle').value = stream.title;
     document.getElementById('streamDescription').value = stream.description || '';
-    document.getElementById('youtubeVideoId').value = stream.youtube_video_id;
+    document.getElementById('platform').value = stream.platform || 'youtube';
+    document.getElementById('youtubeVideoId').value = stream.youtube_video_id || '';
+    document.getElementById('tiktokUsername').value = stream.tiktok_username || '';
+    togglePlatformFields(); // Show/hide fields based on platform
     document.getElementById('streamModal').classList.add('show');
 }
 
@@ -275,20 +299,22 @@ document.getElementById('streamForm').addEventListener('submit', async (e) => {
     const id = document.getElementById('streamId').value;
     const title = document.getElementById('streamTitle').value;
     const description = document.getElementById('streamDescription').value;
+    const platform = document.getElementById('platform')?.value || 'youtube';
     const youtube_video_id = document.getElementById('youtubeVideoId').value;
+    const tiktok_username = document.getElementById('tiktokUsername')?.value || null;
 
     try {
         if (id) {
             // Update
             await axios.put(`${API_BASE}/admin/streams/${id}`, 
-                { title, description, youtube_video_id },
+                { title, description, platform, youtube_video_id, tiktok_username },
                 { headers: { 'X-Session-Token': sessionToken } }
             );
             alert('라이브 스트림이 수정되었습니다.');
         } else {
             // Create
             await axios.post(`${API_BASE}/admin/streams`, 
-                { title, description, youtube_video_id },
+                { title, description, platform, youtube_video_id, tiktok_username },
                 { headers: { 'X-Session-Token': sessionToken } }
             );
             alert('라이브 스트림이 생성되었습니다.');

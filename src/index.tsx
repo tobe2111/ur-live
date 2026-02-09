@@ -1997,16 +1997,36 @@ app.post('/api/admin/streams', async (c) => {
   }
 
   try {
-    const { title, description, youtube_video_id, status } = await c.req.json();
+    const { title, description, youtube_video_id, platform, tiktok_username, status } = await c.req.json();
 
-    if (!title || !youtube_video_id) {
-      return c.json({ success: false, error: '제목과 YouTube 영상 ID는 필수입니다' }, 400);
+    if (!title) {
+      return c.json({ success: false, error: '제목은 필수입니다' }, 400);
+    }
+
+    // Validate platform-specific fields
+    const streamPlatform = platform || 'youtube';
+    if (streamPlatform === 'youtube' && !youtube_video_id) {
+      return c.json({ success: false, error: 'YouTube 플랫폼은 영상 ID가 필수입니다' }, 400);
+    }
+    if (streamPlatform === 'tiktok' && !tiktok_username) {
+      return c.json({ success: false, error: 'TikTok 플랫폼은 사용자명이 필수입니다' }, 400);
     }
 
     const result = await DB.prepare(`
-      INSERT INTO live_streams (title, description, youtube_video_id, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).bind(title, description || null, youtube_video_id, status || 'scheduled').run();
+      INSERT INTO live_streams (
+        title, description, youtube_video_id, platform, tiktok_username, status, 
+        created_at, updated_at, seller_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
+    `).bind(
+      title, 
+      description || null, 
+      youtube_video_id || null, 
+      streamPlatform,
+      tiktok_username || null,
+      status || 'scheduled',
+      auth.sellerId || null
+    ).run();
 
     return c.json({
       success: true,
@@ -2015,6 +2035,8 @@ app.post('/api/admin/streams', async (c) => {
         title,
         description,
         youtube_video_id,
+        platform: streamPlatform,
+        tiktok_username,
         status: status || 'scheduled'
       }
     });
@@ -2035,13 +2057,22 @@ app.put('/api/admin/streams/:id', async (c) => {
 
   try {
     const streamId = c.req.param('id');
-    const { title, description, youtube_video_id, status } = await c.req.json();
+    const { title, description, youtube_video_id, platform, tiktok_username, status } = await c.req.json();
 
     await DB.prepare(`
       UPDATE live_streams 
-      SET title = ?, description = ?, youtube_video_id = ?, status = ?, updated_at = datetime('now')
+      SET title = ?, description = ?, youtube_video_id = ?, platform = ?, tiktok_username = ?, 
+          status = ?, updated_at = datetime('now')
       WHERE id = ?
-    `).bind(title, description, youtube_video_id, status, streamId).run();
+    `).bind(
+      title, 
+      description, 
+      youtube_video_id || null, 
+      platform || 'youtube', 
+      tiktok_username || null, 
+      status, 
+      streamId
+    ).run();
 
     return c.json({ success: true });
 
