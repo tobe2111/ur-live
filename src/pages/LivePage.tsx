@@ -17,6 +17,8 @@ interface Stream {
   title: string
   description: string
   youtube_video_id: string
+  platform?: string
+  tiktok_username?: string
   seller_name: string
   seller_profile_image?: string
   viewer_count?: number
@@ -126,7 +128,36 @@ export default function LivePage() {
 
   useEffect(() => {
     if (!stream?.youtube_video_id) return
+    
+    // TikTok embed - use iframe directly
+    if (stream.platform === 'tiktok') {
+      const playerElement = document.getElementById('youtube-player')
+      if (!playerElement) return
+      
+      setVideoStatus('playing')
+      setPlayerReady(true)
+      
+      // TikTok video ID is stored in youtube_video_id field
+      const videoId = stream.youtube_video_id
+      
+      // Create TikTok embed iframe
+      playerElement.innerHTML = `
+        <iframe 
+          src="https://www.tiktok.com/embed/v2/${videoId}?autoplay=1"
+          style="width: 100%; height: 100%; border: none;"
+          allow="autoplay; encrypted-media"
+          allowfullscreen
+        ></iframe>
+      `
+      
+      return () => {
+        if (playerElement) {
+          playerElement.innerHTML = ''
+        }
+      }
+    }
 
+    // YouTube player (existing code)
     let player: any = null
     let isMounted = true  // Track if component is mounted
 
