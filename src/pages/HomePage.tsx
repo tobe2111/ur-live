@@ -131,7 +131,7 @@ export default function HomePage() {
             </div>
 
             {/* Navigation Links - Desktop only */}
-            <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 mr-4">
+            <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 mr-6 lg:mr-8">
               <Link to="/" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
                 라이브
               </Link>
