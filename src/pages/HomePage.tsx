@@ -127,6 +127,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd]">
+      {/* Announcement Banner */}
+      <div className="bg-gradient-to-r from-[#007aff] to-[#0051d5] text-white text-center py-2 px-4 text-sm">
+        🎉 지금 라이브 쇼핑을 시작하세요! 특별 할인 진행 중
+      </div>
+      
       {/* Apple-style Navigation Bar with Glass Effect - Mobile Optimized */}
       <header className="sticky top-0 z-50 apple-glass border-b border-black/5">
         <div className="mx-auto max-w-[980px] px-4 sm:px-6">
