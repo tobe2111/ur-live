@@ -601,7 +601,7 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     
     console.log('[Kakao Sync] Authorization code received');
     
-    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '4fd3d6ea625c446c4c445d7fb28c3759';
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd';
     const KAKAO_REDIRECT_URI = `${new URL(c.req.url).origin}/auth/kakao/sync/callback`;
     
     console.log('[Kakao Sync] Exchanging code for token...');
@@ -832,7 +832,11 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
       console.error('[Kakao Callback] Token exchange failed:', errorData);
-      return c.json({ success: false, error: 'Failed to exchange code for token' }, 401);
+      return c.json({ 
+        success: false, 
+        error: 'Failed to exchange code for token',
+        details: errorData 
+      }, 401);
     }
     
     const tokenData = await tokenResponse.json();
