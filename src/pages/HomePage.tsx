@@ -129,7 +129,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#fbfbfd]">
       {/* Announcement Banner */}
       <div className="bg-gradient-to-r from-[#007aff] to-[#0051d5] text-white text-center py-2 px-4 text-sm">
-        🎉 YouTube & TikTok 영상으로 편리한 쇼핑! 특별 할인 진행 중
+        🎉 YouTube & TikTok 영상으로 편리한 쇼핑!
       </div>
       
       {/* Apple-style Navigation Bar with Glass Effect - Mobile Optimized */}
