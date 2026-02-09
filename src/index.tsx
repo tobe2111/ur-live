@@ -2239,6 +2239,35 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
 // Seller Stream Management APIs
 // =================================
 
+// Seller: Get seller's live streams
+app.get('/api/seller/streams', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = auth.sellerId;
+    
+    // Get all streams for this seller
+    const result = await DB.prepare(`
+      SELECT * FROM live_streams 
+      WHERE seller_id = ?
+      ORDER BY created_at DESC
+    `).bind(sellerId).all();
+
+    return c.json({ 
+      success: true, 
+      data: result.results || []
+    });
+  } catch (error: any) {
+    console.error('Error loading seller streams:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Seller: Create live stream (인플루언서가 직접 라이브 예약)
 app.post('/api/seller/streams', async (c) => {
   const { DB } = c.env;
