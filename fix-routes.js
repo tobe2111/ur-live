@@ -4,13 +4,14 @@ import path from 'path';
 const routesPath = path.join(process.cwd(), 'dist', '_routes.json');
 
 // Configuration for Cloudflare Pages routing:
-// - include: Routes that should be handled by the Worker (API, auth, and app pages)
-// - exclude: None - routes not matching 'include' are served as static files
+// - include: Routes that should be handled by the Worker (API only)
+// - exclude: Static files
+// - All other routes (including /auth/kakao/callback) are served as React SPA
 const routes = {
   version: 1,
-  include: ['/api/*', '/auth/*', '/live/*', '/cart', '/payment-result', '/my-orders'],  // Worker가 처리
-  exclude: ['/static/*']  // 정적 파일은 Cloudflare Pages가 직접 서빙
+  include: ['/api/*'],  // Only API routes go to Worker
+  exclude: ['/static/*']  // Static assets excluded
 };
 
 fs.writeFileSync(routesPath, JSON.stringify(routes, null, 2));
-console.log('✅ Fixed _routes.json - Worker for API/auth/live/cart/payment-result/my-orders, static for all others');
+console.log('✅ Fixed _routes.json - Worker for /api/* only, all other routes served as SPA');
