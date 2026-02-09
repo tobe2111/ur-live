@@ -54,7 +54,12 @@ export default function KakaoCallbackPage() {
         }
       } catch (err: any) {
         console.error('[Kakao OAuth] Callback processing failed:', err)
-        alert(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
+        console.error('[Kakao OAuth] Error response:', err.response?.data)
+        
+        const errorMessage = err.response?.data?.error || err.message || '로그인 처리 중 오류가 발생했습니다.'
+        const errorDetails = err.response?.data?.details || ''
+        
+        alert(`로그인 실패: ${errorMessage}${errorDetails ? '\n\n상세: ' + errorDetails : ''}`)
         navigate('/login')
       }
     }
