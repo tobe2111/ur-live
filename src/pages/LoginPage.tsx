@@ -23,11 +23,12 @@ export default function LoginPage() {
     const checkKakaoSDK = () => {
       if (window.Kakao && !window.Kakao.isInitialized()) {
         window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
-        console.log('[Kakao Sync] SDK initialized')
+        console.log('[Kakao Sync] SDK initialized:', window.Kakao.isInitialized())
       }
       
       if (window.Kakao && window.Kakao.isInitialized()) {
         setKakaoReady(true)
+        console.log('[Kakao Sync] SDK ready')
       } else {
         // SDK가 로드되지 않았으면 재시도
         setTimeout(checkKakaoSDK, 100)
@@ -47,37 +48,14 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // 1. Kakao 로그인 (프론트엔드에서 직접 처리)
-      window.Kakao.Auth.login({
+      console.log('[Kakao Sync] Starting login with loginForm()')
+      
+      // 카카오 싱크: 간편 로그인 (loginForm 사용)
+      // https://developers.kakao.com/docs/latest/ko/kakaosync/dev-guide
+      window.Kakao.Auth.loginForm({
         success: async function(authObj: any) {
           console.log('[Kakao Sync] Login success, access_token received')
-          
-          try {
-            // 2. 백엔드로 액세스 토큰 전송하여 검증 및 사용자 정보 저장
-            const response = await axios.post('/api/auth/kakao/sync', {
-              accessToken: authObj.access_token
-            })
-
-            if (response.data.success) {
-              const { user, session_token } = response.data.data
-
-              // 3. localStorage에 저장
-              localStorage.setItem('accessToken', session_token)
-              localStorage.setItem('userId', user.id.toString())
-              localStorage.setItem('userName', user.name)
-              localStorage.setItem('userEmail', user.email || '')
-
-              // 4. 메인 페이지로 이동
-              alert(`환영합니다, ${user.name}님!`)
-              navigate('/')
-            } else {
-              throw new Error(response.data.error || '로그인에 실패했습니다.')
-            }
-          } catch (err: any) {
-            console.error('[Kakao Sync] Backend verification failed:', err)
-            setError(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
-            setLoading(false)
-          }
+          await processKakaoLogin(authObj.access_token)
         },
         fail: function(err: any) {
           console.error('[Kakao Sync] Login failed:', err)
@@ -88,6 +66,37 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error('[Kakao Sync] Error:', err)
       setError('로그인 중 오류가 발생했습니다.')
+      setLoading(false)
+    }
+  }
+
+  async function processKakaoLogin(accessToken: string) {
+    try {
+      console.log('[Kakao Sync] Processing login with token')
+      
+      // 백엔드로 액세스 토큰 전송하여 검증 및 사용자 정보 저장
+      const response = await axios.post('/api/auth/kakao/sync', {
+        accessToken: accessToken
+      })
+
+      if (response.data.success) {
+        const { user, session_token } = response.data.data
+
+        // localStorage에 저장
+        localStorage.setItem('accessToken', session_token)
+        localStorage.setItem('userId', user.id.toString())
+        localStorage.setItem('userName', user.name)
+        localStorage.setItem('userEmail', user.email || '')
+
+        // 메인 페이지로 이동
+        alert(`환영합니다, ${user.name}님!`)
+        navigate('/')
+      } else {
+        throw new Error(response.data.error || '로그인에 실패했습니다.')
+      }
+    } catch (err: any) {
+      console.error('[Kakao Sync] Backend verification failed:', err)
+      setError(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
       setLoading(false)
     }
   }
@@ -116,7 +125,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* 카카오 싱크 로그인 버튼 */}
+            {/* 카카오 로그인 버튼 */}
             <Button
               onClick={handleKakaoLogin}
               disabled={loading || !kakaoReady}
