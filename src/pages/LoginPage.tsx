@@ -48,23 +48,29 @@ export default function LoginPage() {
     setError('')
 
     try {
-      console.log('[Kakao Sync] Starting login with loginForm()')
+      console.log('[Kakao] Checking login status...')
       
-      // 카카오 싱크: 간편 로그인 (loginForm 사용)
-      // https://developers.kakao.com/docs/latest/ko/kakaosync/dev-guide
-      window.Kakao.Auth.loginForm({
-        success: async function(authObj: any) {
-          console.log('[Kakao Sync] Login success, access_token received')
-          await processKakaoLogin(authObj.access_token)
-        },
-        fail: function(err: any) {
-          console.error('[Kakao Sync] Login failed:', err)
-          setError('카카오 로그인에 실패했습니다.')
-          setLoading(false)
-        },
-      })
+      // 1단계: 이미 로그인되어 있는지 확인 (카카오톡 앱 내부에서 자동 로그인된 경우)
+      const accessToken = window.Kakao.Auth.getAccessToken()
+      
+      if (accessToken) {
+        console.log('[Kakao] Already logged in via Kakao Sync')
+        await processKakaoLogin(accessToken)
+        return
+      }
+
+      // 2단계: 로그인되지 않은 경우, REST API OAuth 방식으로 로그인
+      console.log('[Kakao] Not logged in, redirecting to Kakao OAuth...')
+      
+      const KAKAO_REST_API_KEY = '5dd74bccb797640b0efd070467f3bafd'
+      const REDIRECT_URI = `${window.location.origin}/auth/kakao/callback`
+      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
+      
+      console.log('[Kakao] Redirecting to:', kakaoAuthUrl)
+      window.location.href = kakaoAuthUrl
+      
     } catch (err: any) {
-      console.error('[Kakao Sync] Error:', err)
+      console.error('[Kakao] Error:', err)
       setError('로그인 중 오류가 발생했습니다.')
       setLoading(false)
     }

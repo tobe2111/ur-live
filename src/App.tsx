@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import KakaoCallbackPage from './pages/KakaoCallbackPage'
 import LivePage from './pages/LivePage'
 import CheckoutPage from './pages/CheckoutPage'
 import SellerPage from './pages/SellerPage'
@@ -29,6 +30,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
         <Route path="/live/:streamId" element={<LivePage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/seller" element={<SellerPage />} />
