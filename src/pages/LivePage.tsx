@@ -128,11 +128,13 @@ export default function LivePage() {
     if (!stream?.youtube_video_id) return
 
     let player: any = null
+    let isMounted = true  // Track if component is mounted
 
     const initializePlayer = () => {
       try {
         // @ts-ignore
         if (!window.YT || !window.YT.Player) return
+        if (!isMounted) return  // Don't initialize if unmounted
 
         const playerElement = document.getElementById('youtube-player')
         if (!playerElement) return
@@ -165,6 +167,7 @@ export default function LivePage() {
           },
           events: {
             onReady: (event: any) => {
+              if (!isMounted) return  // Don't update state if unmounted
               console.log('YouTube player ready')
               playerRef.current = event.target
               setPlayerReady(true)
@@ -173,42 +176,39 @@ export default function LivePage() {
               event.target.playVideo()
             },
             onStateChange: (event: any) => {
+              if (!isMounted) return  // Don't update state if unmounted
               console.log('YouTube player state:', event.data)
-              // Use setTimeout to avoid React DOM manipulation conflicts
-              setTimeout(() => {
+              
+              // @ts-ignore
+              if (event.data === window.YT.PlayerState.PLAYING) {
+                if (isMounted) setVideoStatus('playing')
+              } else if (event.data === window.YT.PlayerState.BUFFERING) {
+                // Keep playing status during buffering
+                if (isMounted) setVideoStatus('playing')
+              } else if (event.data === window.YT.PlayerState.ENDED) {
+                // For non-live videos, restart from beginning
+                console.log('Video ended, restarting...')
+                if (isMounted) setVideoStatus('playing')
+                // Restart video for loop (backup in case YouTube loop fails)
+                if (event.target && typeof event.target.seekTo === 'function') {
+                  event.target.seekTo(0)
+                  event.target.playVideo()
+                }
+              } else if (event.data === window.YT.PlayerState.PAUSED) {
                 // @ts-ignore
-                if (event.data === window.YT.PlayerState.PLAYING) {
-                  setVideoStatus('playing')
-                } else if (event.data === window.YT.PlayerState.BUFFERING) {
-                  // Keep playing status during buffering
-                  setVideoStatus('playing')
-                } else if (event.data === window.YT.PlayerState.ENDED) {
-                  // For non-live videos, restart from beginning
-                  console.log('Video ended, restarting...')
-                  setVideoStatus('playing')
-                  // Restart video for loop (backup in case YouTube loop fails)
-                  if (event.target && typeof event.target.seekTo === 'function') {
-                    event.target.seekTo(0)
+                console.log('Video paused, attempting to play...')
+                setTimeout(() => {
+                  if (isMounted && event.target && typeof event.target.playVideo === 'function') {
                     event.target.playVideo()
                   }
-                } else if (event.data === window.YT.PlayerState.PAUSED) {
-                  // @ts-ignore
-                  console.log('Video paused, attempting to play...')
-                  setTimeout(() => {
-                    if (event.target && typeof event.target.playVideo === 'function') {
-                      event.target.playVideo()
-                    }
-                  }, 100)
-                }
-              }, 0)
+                }, 100)
+              }
             },
             onError: (event: any) => {
+              if (!isMounted) return  // Don't update state if unmounted
               console.error('YouTube player error:', event.data)
               // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
-              // Use setTimeout to avoid React DOM manipulation conflicts
-              setTimeout(() => {
-                setVideoStatus('ended')
-              }, 0)
+              if (isMounted) setVideoStatus('ended')
             },
           },
         })
@@ -232,13 +232,25 @@ export default function LivePage() {
       }
 
       // @ts-ignore
-      window.onYouTubeIframeAPIReady = initializePlayer
+      window.onYouTubeIframeAPIReady = () => {
+        if (isMounted) initializePlayer()
+      }
     }
 
     return () => {
+      isMounted = false  // Mark as unmounted
+      
+      // Destroy player safely
       if (player && typeof player.destroy === 'function') {
-        player.destroy()
+        try {
+          player.destroy()
+        } catch (error) {
+          console.error('Error destroying player:', error)
+        }
       }
+      
+      // Clear player ref
+      playerRef.current = null
     }
   }, [stream])
 
