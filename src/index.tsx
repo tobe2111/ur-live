@@ -99,6 +99,35 @@ function extractYouTubeVideoId(url: string): string | null {
   }
 }
 
+function extractTikTokVideoId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    
+    // tiktok.com/@username/video/7602630404377414932
+    if (urlObj.hostname.includes('tiktok.com')) {
+      const videoMatch = urlObj.pathname.match(/\/video\/(\d+)/);
+      if (videoMatch) {
+        return videoMatch[1]; // Return video ID
+      }
+      
+      // For live or username-only URLs, return the full path after @
+      const usernameMatch = urlObj.pathname.match(/\/@([a-zA-Z0-9_.]+)/);
+      if (usernameMatch) {
+        return usernameMatch[1]; // Return username as fallback
+      }
+    }
+    
+    // vm.tiktok.com or vt.tiktok.com short links
+    if (urlObj.hostname.includes('vm.tiktok.com') || urlObj.hostname.includes('vt.tiktok.com')) {
+      return urlObj.pathname.slice(1); // Return the short code
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function extractTikTokUsername(url: string): string | null {
   try {
     const urlObj = new URL(url);
@@ -2301,10 +2330,10 @@ app.post('/api/seller/streams', async (c) => {
       
       if (!videoId) {
         // Try TikTok
+        videoId = extractTikTokVideoId(youtube_url);
         tiktokUsername = extractTikTokUsername(youtube_url);
-        if (tiktokUsername) {
+        if (videoId) {
           platform = 'tiktok';
-          videoId = tiktokUsername; // Use username as identifier
         } else {
           return c.json({ 
             success: false, 
@@ -2403,23 +2432,42 @@ app.put('/api/seller/streams/:id', async (c) => {
       values.push(description);
     }
     
-    // Handle YouTube URL or video ID
+    // Handle YouTube/TikTok URL or video ID
     if (youtube_url !== undefined || youtube_video_id !== undefined) {
       let videoId = youtube_video_id;
+      let platform = 'youtube';
+      let tiktokUsername = null;
       
       if (youtube_url) {
+        // Try YouTube first
         videoId = extractYouTubeVideoId(youtube_url);
+        
         if (!videoId) {
-          return c.json({ 
-            success: false, 
-            error: 'Invalid YouTube URL. Please provide a valid YouTube video or live stream URL.' 
-          }, 400);
+          // Try TikTok
+          videoId = extractTikTokVideoId(youtube_url);
+          tiktokUsername = extractTikTokUsername(youtube_url);
+          
+          if (videoId) {
+            platform = 'tiktok';
+          } else {
+            return c.json({ 
+              success: false, 
+              error: 'Invalid URL. Please provide a valid YouTube or TikTok video URL.' 
+            }, 400);
+          }
         }
       }
       
       if (videoId !== undefined) {
         updates.push('youtube_video_id = ?');
         values.push(videoId);
+        updates.push('platform = ?');
+        values.push(platform);
+        
+        if (platform === 'tiktok' && tiktokUsername) {
+          updates.push('tiktok_username = ?');
+          values.push(tiktokUsername);
+        }
       }
     }
     if (status !== undefined) {
