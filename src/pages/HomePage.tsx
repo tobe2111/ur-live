@@ -472,7 +472,7 @@ export default function HomePage() {
       <section className="bg-white py-10 sm:py-12 md:py-16">
         <div className="mx-auto max-w-[980px] px-4 sm:px-6">
           <h2 className="mb-8 sm:mb-10 md:mb-12 text-center text-[28px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-semibold leading-[1.0834933333] tracking-tight text-[#1d1d1f]">
-            유어 라이브를 선택하는 이유
+            유어 쇼핑을 선택하는 이유
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-7 md:gap-8">
