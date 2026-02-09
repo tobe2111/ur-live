@@ -202,14 +202,12 @@ app.post('/api/auth/user/register', cors(), async (c) => {
     // 비밀번호 해시 (실제로는 bcrypt 사용 권장, 여기서는 간단히 처리)
     const passwordHash = `placeholder_hash_for_${password}`;
     
-    // toss_user_id는 레거시 컬럼이므로 자동 생성
-    const dummyTossId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     
     // 사용자 생성
     const result = await DB.prepare(`
-      INSERT INTO users (toss_user_id, email, password_hash, name, phone, created_at, last_login_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).bind(dummyTossId, email, passwordHash, name, phone || null).run();
+      INSERT INTO users (email, password_hash, name, phone, created_at, last_login_at)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(email, passwordHash, name, phone || null).run();
     
     const userId = result.meta.last_row_id;
     
@@ -891,13 +889,10 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
       console.log('[Kakao Callback] Existing user updated:', user.id);
     } else {
       // 새 사용자 생성
-      // toss_user_id는 레거시 컬럼이므로 자동 생성 (무시됨)
-      const dummyTossId = `user_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      
       const result = await DB.prepare(`
-        INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image, created_at, last_login_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).bind(dummyTossId, kakaoId, nickname, email || null, profileImage || null).run();
+        INSERT INTO users (kakao_id, name, email, profile_image, created_at, last_login_at)
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(kakaoId, nickname, email || null, profileImage || null).run();
       
       user = {
         id: result.meta.last_row_id,
