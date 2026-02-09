@@ -3169,12 +3169,27 @@ app.get('/api/seller/stats', async (c) => {
       WHERE p.seller_id = ?
     `).bind(auth.sellerId).first();
 
+    // Get streams for this seller
+    const activeStreams = await DB.prepare(`
+      SELECT COUNT(*) as count 
+      FROM live_streams 
+      WHERE seller_id = ? AND status = 'live'
+    `).bind(auth.sellerId).first();
+
+    const totalViewers = await DB.prepare(`
+      SELECT SUM(viewer_count) as total 
+      FROM live_streams 
+      WHERE seller_id = ?
+    `).bind(auth.sellerId).first();
+
     const stats = {
       totalProducts: products.count || 0,
       activeProducts: activeProducts.count || 0,
       totalStock: totalStock.total || 0,
       totalOrders: orders.count || 0,
-      totalRevenue: orders.total || 0
+      totalRevenue: orders.total || 0,
+      activeStreams: activeStreams.count || 0,
+      totalViewers: totalViewers.total || 0
     };
     
     // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (1\ubd84 TTL)
