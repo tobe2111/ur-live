@@ -133,7 +133,7 @@ export default function SellerStreamNewPage() {
 
               <div>
                 <label htmlFor="youtubeUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                  YouTube 라이브 URL *
+                  YouTube & TikTok 라이브 URL *
                 </label>
                 <input
                   id="youtubeUrl"
@@ -143,10 +143,10 @@ export default function SellerStreamNewPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+                  placeholder="https://www.youtube.com/watch?v=VIDEO_ID 또는 https://www.tiktok.com/@username/live"
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  지원 형식: youtube.com/watch?v=..., youtu.be/..., youtube.com/live/...
+                  지원 플랫폼: YouTube (youtube.com/watch?v=..., youtu.be/..., youtube.com/live/...) 및 TikTok (@username/live)
                 </p>
               </div>
 
@@ -240,12 +240,27 @@ export default function SellerStreamNewPage() {
           {/* Info Box */}
           <div className="mt-8 p-4 bg-blue-50 rounded-lg">
             <h4 className="font-semibold text-blue-900 mb-2">💡 라이브 시작 방법</h4>
-            <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
-              <li>YouTube Studio에서 라이브 스트리밍을 시작하세요</li>
-              <li>라이브 URL을 복사하여 위 폼에 붙여넣으세요</li>
-              <li>"라이브 시작" 버튼을 클릭하세요</li>
-              <li>시청자들이 라이브 페이지에서 방송을 볼 수 있습니다</li>
-            </ol>
+            <div className="text-sm text-blue-700 space-y-3">
+              <div>
+                <p className="font-semibold mb-1">YouTube 라이브:</p>
+                <ol className="space-y-1 list-decimal list-inside ml-2">
+                  <li>YouTube Studio에서 라이브 스트리밍을 시작하세요</li>
+                  <li>라이브 URL을 복사하여 위 폼에 붙여넣으세요</li>
+                  <li>"라이브 시작" 버튼을 클릭하세요</li>
+                </ol>
+              </div>
+              <div>
+                <p className="font-semibold mb-1">TikTok 라이브:</p>
+                <ol className="space-y-1 list-decimal list-inside ml-2">
+                  <li>TikTok 앱에서 라이브를 시작하세요</li>
+                  <li>라이브 URL (예: tiktok.com/@username/live)을 복사하세요</li>
+                  <li>"라이브 시작" 버튼을 클릭하세요</li>
+                </ol>
+              </div>
+              <p className="pt-2 border-t border-blue-200">
+                시청자들이 라이브 페이지에서 방송을 볼 수 있습니다
+              </p>
+            </div>
           </div>
         </div>
       </div>
