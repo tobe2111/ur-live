@@ -16,6 +16,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [kakaoReady, setKakaoReady] = useState(false)
+  const [showEmailLogin, setShowEmailLogin] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -109,6 +112,46 @@ export default function LoginPage() {
     }
   }
 
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!email || !password) {
+      setError('이메일과 비밀번호를 입력해주세요.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await axios.post('/api/auth/user/login', {
+        email,
+        password
+      })
+
+      if (response.data.success) {
+        const { user, access_token } = response.data.data
+
+        // localStorage에 저장
+        localStorage.setItem('accessToken', access_token)
+        localStorage.setItem('userId', user.id.toString())
+        localStorage.setItem('userName', user.name)
+        localStorage.setItem('userEmail', user.email || '')
+
+        // 메인 페이지로 이동
+        alert(`환영합니다, ${user.name}님!`)
+        navigate('/')
+      } else {
+        throw new Error(response.data.error || '로그인에 실패했습니다.')
+      }
+    } catch (err: any) {
+      console.error('[Email Login] Failed:', err)
+      setError(err.response?.data?.error || '이메일 또는 비밀번호가 올바르지 않습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fbfbfd] to-white flex flex-col items-center justify-center p-4">
       {/* Logo */}
@@ -133,17 +176,110 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* 카카오 로그인 버튼 */}
-            <Button
-              onClick={handleKakaoLogin}
-              disabled={loading || !kakaoReady}
-              className="w-full h-12 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] text-[16px] font-semibold rounded-lg flex items-center justify-center space-x-2"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M10 3C5.58172 3 2 5.89543 2 9.5C2 11.6484 3.2832 13.5234 5.25 14.6094L4.4375 17.5938C4.375 17.8203 4.60937 18 4.8125 17.875L8.25 15.7578C8.82813 15.8516 9.40625 15.9219 10 15.9219C14.4183 15.9219 18 13.0547 18 9.5C18 5.89543 14.4183 3 10 3Z" fill="currentColor"/>
-              </svg>
-              <span>{loading ? '로그인 중...' : '카카오 로그인'}</span>
-            </Button>
+            {!showEmailLogin ? (
+              <>
+                {/* 카카오 로그인 버튼 */}
+                <Button
+                  onClick={handleKakaoLogin}
+                  disabled={loading || !kakaoReady}
+                  className="w-full h-12 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] text-[16px] font-semibold rounded-lg flex items-center justify-center space-x-2"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 3C5.58172 3 2 5.89543 2 9.5C2 11.6484 3.2832 13.5234 5.25 14.6094L4.4375 17.5938C4.375 17.8203 4.60937 18 4.8125 17.875L8.25 15.7578C8.82813 15.8516 9.40625 15.9219 10 15.9219C14.4183 15.9219 18 13.0547 18 9.5C18 5.89543 14.4183 3 10 3Z" fill="currentColor"/>
+                  </svg>
+                  <span>{loading ? '로그인 중...' : '카카오 로그인'}</span>
+                </Button>
+
+                {!kakaoReady && (
+                  <p className="text-sm text-gray-500 text-center">
+                    카카오 SDK를 로드하는 중...
+                  </p>
+                )}
+
+                {/* 구분선 */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">또는</span>
+                  </div>
+                </div>
+
+                {/* 이메일 로그인 버튼 */}
+                <Button
+                  onClick={() => setShowEmailLogin(true)}
+                  variant="outline"
+                  className="w-full h-12 text-[16px] font-medium rounded-lg"
+                >
+                  이메일로 로그인
+                </Button>
+              </>
+            ) : (
+              <>
+                {/* 이메일 로그인 폼 */}
+                <form onSubmit={handleEmailLogin} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      이메일
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                      placeholder="user@example.com"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      비밀번호
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 bg-[#007aff] hover:bg-[#0051d5] text-white text-[16px] font-semibold rounded-lg"
+                  >
+                    {loading ? '로그인 중...' : '로그인'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowEmailLogin(false)
+                      setError('')
+                      setEmail('')
+                      setPassword('')
+                    }}
+                    variant="ghost"
+                    className="w-full text-sm text-gray-600"
+                  >
+                    ← 카카오 로그인으로 돌아가기
+                  </Button>
+                </form>
+
+                {/* 테스트 계정 안내 */}
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800 font-medium mb-1">테스트 계정</p>
+                  <p className="text-xs text-blue-700">
+                    이메일: user@example.com<br/>
+                    비밀번호: user123
+                  </p>
+                </div>
+              </>
+            )}
 
             {!kakaoReady && (
               <p className="text-sm text-gray-500 text-center">
