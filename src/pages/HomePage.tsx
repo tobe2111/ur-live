@@ -29,7 +29,6 @@ interface Product {
 export default function HomePage() {
   const [streams, setStreams] = useState<Stream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
-  const [popularProducts, setPopularProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchParams] = useSearchParams()
@@ -42,7 +41,6 @@ export default function HomePage() {
   useEffect(() => {
     loadStreams()
     loadScheduledStreams()
-    loadPopularProducts()
     loadUserInfo()
   }, [])
 
@@ -105,18 +103,7 @@ export default function HomePage() {
     }
   }
 
-  async function loadPopularProducts() {
-    try {
-      const response = await axios.get('/api/products/popular')
-      if (response.data.success) {
-        setPopularProducts((response.data.data || []).slice(0, 6))
-      }
-    } catch (error) {
-      console.error('Failed to load popular products:', error)
-      // 폴백: 빈 배열
-      setPopularProducts([])
-    }
-  }
+
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -479,62 +466,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Popular Products Section */}
-      {popularProducts.length > 0 && (
-        <section className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
-          <div className="mx-auto max-w-[980px] px-4 sm:px-6">
-            <div className="mb-6 sm:mb-8 md:mb-10">
-              <h2 className="mb-2 text-[28px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-semibold leading-[1.0834933333] tracking-tight text-[#1d1d1f]">
-                라이브에서 인기 상품
-              </h2>
-              <p className="text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73]">
-                많은 분들이 선택한 베스트 아이템
-              </p>
-            </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-              {popularProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  to={`/product/${product.id}`}
-                  className="group"
-                >
-                  <div className="apple-card overflow-hidden">
-                    <div className="relative aspect-square overflow-hidden bg-[#f5f5f7]">
-                      <img
-                        src={product.image_url || 'https://via.placeholder.com/400x400/f5f5f7/6e6e73?text=Product'}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement
-                          target.src = 'https://via.placeholder.com/400x400/f5f5f7/6e6e73?text=Product'
-                        }}
-                      />
-                      {product.sold_count && product.sold_count > 0 && (
-                        <div className="absolute right-2 sm:right-3 top-2 sm:top-3">
-                          <div className="rounded-full bg-black/70 backdrop-blur-md px-2 py-1 sm:px-2.5 sm:py-1">
-                            <span className="text-[10px] sm:text-[11px] font-semibold text-white">
-                              {product.sold_count}개 판매
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3 sm:p-4">
-                      <h3 className="mb-1 sm:mb-2 text-[14px] sm:text-[15px] font-normal leading-[1.2] text-[#1d1d1f] line-clamp-2 group-hover:text-[#007aff] transition-colors">
-                        {product.name}
-                      </h3>
-                      <p className="text-[15px] sm:text-[17px] font-semibold text-[#1d1d1f]">
-                        {product.current_price.toLocaleString()}원
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Features Section - Mobile Optimized */}
       <section className="bg-white py-10 sm:py-12 md:py-16">
