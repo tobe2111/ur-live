@@ -879,16 +879,19 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
         UPDATE users 
         SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now')
         WHERE kakao_id = ?
-      `).bind(nickname, email, profileImage, kakaoId).run();
+      `).bind(nickname, email || null, profileImage || null, kakaoId).run();
       
       user = { ...existingUser, name: nickname, email, profile_image: profileImage };
       console.log('[Kakao Callback] Existing user updated:', user.id);
     } else {
       // 새 사용자 생성
+      // toss_user_id는 kakao_id를 기반으로 생성
+      const tossUserId = `kakao_${kakaoId}`;
+      
       const result = await DB.prepare(`
-        INSERT INTO users (kakao_id, name, email, profile_image, created_at, last_login_at)
-        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).bind(kakaoId, nickname, email, profileImage).run();
+        INSERT INTO users (toss_user_id, kakao_id, name, email, profile_image, created_at, last_login_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(tossUserId, kakaoId, nickname, email || null, profileImage || null).run();
       
       user = {
         id: result.meta.last_row_id,
