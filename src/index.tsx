@@ -1911,11 +1911,11 @@ app.post('/api/orders', async (c) => {
 
         itemsWithDetails.push({
           product_id: item.productId,
-          option_id: item.optionId,
+          option_id: item.optionId || null,
           quantity: item.quantity,
           price: item.price,
-          product_name: product.name,
-          product_stock: product.stock
+          product_name: product.name as string,
+          product_stock: product.stock as number
         });
       }
 
