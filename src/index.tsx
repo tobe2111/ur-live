@@ -2312,6 +2312,7 @@ app.post('/api/seller/streams', async (c) => {
       description, 
       youtube_video_id, 
       youtube_url,  // Accept both YouTube and TikTok URLs
+      thumbnail_url,  // Optional: user-provided thumbnail URL
       scheduled_at, 
       status,
       seller_instagram,
@@ -2323,6 +2324,7 @@ app.post('/api/seller/streams', async (c) => {
     let videoId = youtube_video_id;
     let platform = 'youtube';
     let tiktokUsername = null;
+    let finalThumbnailUrl = thumbnail_url;
 
     if (youtube_url && !videoId) {
       // Try YouTube first
@@ -2342,6 +2344,14 @@ app.post('/api/seller/streams', async (c) => {
         }
       }
     }
+    
+    // Generate thumbnail URL if not provided
+    if (!finalThumbnailUrl && videoId) {
+      if (platform === 'youtube') {
+        finalThumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+      // For TikTok, thumbnail will be null and handled by frontend
+    }
 
     if (!title || !videoId) {
       return c.json({ 
@@ -2354,10 +2364,10 @@ app.post('/api/seller/streams', async (c) => {
       INSERT INTO live_streams (
         title, description, youtube_video_id, status, scheduled_at,
         seller_id, seller_instagram, seller_youtube, seller_facebook,
-        platform, tiktok_username,
+        platform, tiktok_username, thumbnail_url,
         created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       title, 
       description || null, 
@@ -2369,7 +2379,8 @@ app.post('/api/seller/streams', async (c) => {
       seller_youtube || null,
       seller_facebook || null,
       platform,
-      tiktokUsername
+      tiktokUsername,
+      finalThumbnailUrl || null
     ).run();
 
     // Get created stream
