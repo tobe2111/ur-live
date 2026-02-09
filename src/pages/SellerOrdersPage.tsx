@@ -20,6 +20,15 @@ import {
   FileText
 } from 'lucide-react'
 
+interface OrderItem {
+  id: number
+  product_id: number
+  product_name: string
+  image_url: string | null
+  quantity: number
+  price: number
+}
+
 interface Order {
   order_number: string
   user_name: string
@@ -33,6 +42,7 @@ interface Order {
   tracking_number: string | null
   created_at: string
   updated_at: string
+  items?: OrderItem[]
 }
 
 export default function SellerOrdersPage() {
@@ -381,12 +391,51 @@ export default function SellerOrdersPage() {
                   </div>
                 </div>
 
+                {/* Order Items */}
+                {selectedOrder.items && selectedOrder.items.length > 0 && (
+                  <div className="border-b pb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">주문 상품</h3>
+                    <div className="space-y-3">
+                      {selectedOrder.items.map((item) => (
+                        <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                          {/* Product Image */}
+                          <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                            {item.image_url ? (
+                              <img 
+                                src={item.image_url} 
+                                alt={item.product_name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'https://via.placeholder.com/64?text=No+Image'
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                No Image
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Product Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{item.product_name}</p>
+                            <p className="text-sm text-gray-500 mt-1">수량: {item.quantity}개</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              {formatPrice(item.price * item.quantity)}원
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Amount Info */}
                 <div className="border-b pb-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">결제 정보</h3>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex justify-between text-lg font-bold">
-                      <span>주문금액</span>
+                      <span>총 주문금액</span>
                       <span className="text-blue-600">{formatPrice(selectedOrder.total_amount)}원</span>
                     </div>
                   </div>
