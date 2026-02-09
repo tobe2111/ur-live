@@ -1868,7 +1868,136 @@ app.post('/api/orders', async (c) => {
   const { DB } = c.env;
 
   try {
-    const { userId, cartItemIds, shippingInfo } = await c.req.json();
+    const requestData = await c.req.json();
+    const { 
+      userId, 
+      cartItemIds, 
+      shippingInfo,
+      // 직접 전달된 주문 항목 (cart.html에서 사용)
+      items,
+      shippingAddress,
+      shippingAddressDetail,
+      recipientName,
+      recipientPhone,
+      deliveryMemo,
+      totalAmount: providedTotalAmount,
+      shippingFee
+    } = requestData;
+
+    // 직접 전달된 items가 있으면 새로운 방식으로 처리
+    if (items && items.length > 0) {
+      // 재고 확인 및 상품 정보 조회
+      const itemsWithDetails = [];
+      for (const item of items) {
+        const product = await DB.prepare(`
+          SELECT id, name, current_price, stock 
+          FROM products 
+          WHERE id = ?
+        `).bind(item.productId).first();
+
+        if (!product) {
+          return c.json<ApiResponse>({
+            success: false,
+            error: `상품을 찾을 수 없습니다 (ID: ${item.productId})`,
+          }, 400);
+        }
+
+        if ((product.stock as number) < item.quantity) {
+          return c.json<ApiResponse>({
+            success: false,
+            error: `재고 부족: ${product.name} (남은 재고: ${product.stock}개)`,
+          }, 400);
+        }
+
+        itemsWithDetails.push({
+          product_id: item.productId,
+          option_id: item.optionId,
+          quantity: item.quantity,
+          price: item.price,
+          product_name: product.name,
+          product_stock: product.stock
+        });
+      }
+
+      // 주문 번호 생성 (NicePay 형식: ORDER_timestamp_random)
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const orderNo = `ORDER_${timestamp}_${random}`;
+
+      // 주문 생성
+      const fullAddress = shippingAddressDetail 
+        ? `${shippingAddress} ${shippingAddressDetail}` 
+        : shippingAddress;
+      
+      const orderResult = await DB.prepare(`
+        INSERT INTO orders (
+          order_number, user_id, total_amount, payment_status,
+          shipping_address, shipping_name, shipping_phone, delivery_memo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        orderNo,
+        userId,
+        providedTotalAmount,
+        'pending',
+        fullAddress,
+        recipientName,
+        recipientPhone,
+        deliveryMemo || null
+      ).run();
+
+      const orderId = orderResult.meta.last_row_id;
+
+      // 주문 아이템 생성 및 재고 차감
+      for (const item of itemsWithDetails) {
+        // 재고 차감
+        const stockUpdateResult = await DB.prepare(`
+          UPDATE products 
+          SET stock = stock - ?, 
+              updated_at = datetime('now')
+          WHERE id = ? 
+            AND stock >= ?
+        `).bind(item.quantity, item.product_id, item.quantity).run();
+
+        if (stockUpdateResult.meta.changes === 0) {
+          return c.json<ApiResponse>({
+            success: false,
+            error: `재고 차감 실패: ${item.product_name}`,
+          }, 400);
+        }
+
+        // 주문 아이템 생성
+        await DB.prepare(`
+          INSERT INTO order_items (
+            order_id, product_id, option_id, quantity, price, product_name
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `).bind(
+          orderId,
+          item.product_id,
+          item.option_id,
+          item.quantity,
+          item.price,
+          item.product_name
+        ).run();
+      }
+
+      return c.json<ApiResponse>({
+        success: true,
+        data: {
+          orderId,
+          orderNo,
+          orderNumber: orderNo,
+          totalAmount: providedTotalAmount,
+        },
+      });
+    }
+
+    // 기존 방식: cartItemIds로 처리
+    if (!cartItemIds || cartItemIds.length === 0) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'No items provided',
+      }, 400);
+    }
 
     // 장바구니 아이템 조회
     const placeholders = cartItemIds.map(() => '?').join(',');
