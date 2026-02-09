@@ -682,6 +682,130 @@ app.get('/auth/kakao/sync/callback', async (c) => {
   }
 });
 
+// 카카오 로그인 콜백 처리 (OAuth code exchange)
+app.post('/api/auth/kakao/callback', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { code } = await c.req.json();
+    
+    if (!code) {
+      return c.json({ success: false, error: 'Authorization code is required' }, 400);
+    }
+    
+    console.log('[Kakao Callback] Exchanging code for token');
+    
+    // 1. 인증 코드로 액세스 토큰 교환
+    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: c.env.KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd',
+        redirect_uri: 'https://live.ur-team.com/auth/kakao/callback',
+        code: code,
+      }).toString(),
+    });
+    
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error('[Kakao Callback] Token exchange failed:', errorData);
+      return c.json({ success: false, error: 'Failed to exchange code for token' }, 401);
+    }
+    
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+    
+    console.log('[Kakao Callback] Token obtained, fetching user info');
+    
+    // 2. 액세스 토큰으로 사용자 정보 가져오기
+    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+      },
+    });
+    
+    if (!userResponse.ok) {
+      console.error('[Kakao Callback] Failed to get user info');
+      return c.json({ success: false, error: 'Failed to get user info' }, 500);
+    }
+    
+    const userData = await userResponse.json();
+    
+    if (!userData.id) {
+      console.error('[Kakao Callback] Invalid user data');
+      return c.json({ success: false, error: 'Invalid user data' }, 500);
+    }
+    
+    console.log('[Kakao Callback] User authenticated:', userData.id);
+    
+    // 3. 사용자 정보 추출
+    const kakaoId = userData.id.toString();
+    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
+    const email = userData.kakao_account?.email || '';
+    const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
+    
+    // 4. DB에서 사용자 확인 또는 생성
+    const existingUser = await DB.prepare(
+      'SELECT * FROM users WHERE kakao_id = ?'
+    ).bind(kakaoId).first();
+    
+    let user;
+    
+    if (existingUser) {
+      // 기존 사용자 업데이트
+      await DB.prepare(`
+        UPDATE users 
+        SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now')
+        WHERE kakao_id = ?
+      `).bind(nickname, email, profileImage, kakaoId).run();
+      
+      user = { ...existingUser, name: nickname, email, profile_image: profileImage };
+      console.log('[Kakao Callback] Existing user updated:', user.id);
+    } else {
+      // 새 사용자 생성
+      const result = await DB.prepare(`
+        INSERT INTO users (kakao_id, name, email, profile_image, created_at, last_login_at)
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(kakaoId, nickname, email, profileImage).run();
+      
+      user = {
+        id: result.meta.last_row_id,
+        kakao_id: kakaoId,
+        name: nickname,
+        email,
+        profile_image: profileImage,
+      };
+      console.log('[Kakao Callback] New user created:', user.id);
+    }
+    
+    // 5. 세션 생성 (간단한 토큰 - 실제로는 JWT 사용 권장)
+    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    return c.json({
+      success: true,
+      data: {
+        access_token: sessionToken,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profile_image: user.profile_image,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[Kakao Callback] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message || 'Internal server error',
+    }, 500);
+  }
+});
+
 // 카카오 싱크 토큰 검증 및 로그인 (Legacy - for reference)
 app.post('/api/auth/kakao/sync', cors(), async (c) => {
   const { DB } = c.env;
