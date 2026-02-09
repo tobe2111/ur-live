@@ -295,7 +295,7 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">총 매출</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {stats.totalRevenue.toLocaleString()}원
+              {(stats.totalRevenue || 0).toLocaleString()}원
             </p>
           </div>
 
@@ -308,7 +308,7 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">총 주문</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {stats.totalOrders}건
+              {stats.totalOrders || 0}건
             </p>
           </div>
 
@@ -323,7 +323,7 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">활성 라이브</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {stats.activeStreams}개
+              {stats.activeStreams || 0}개
             </p>
           </div>
 
@@ -336,7 +336,7 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">총 시청자</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {stats.totalViewers.toLocaleString()}명
+              {(stats.totalViewers || 0).toLocaleString()}명
             </p>
           </div>
         </div>
@@ -475,7 +475,7 @@ export default function SellerPage() {
                           <div className="flex items-center gap-4 text-[13px] text-[#6e6e73]">
                             <div className="flex items-center gap-1">
                               <Eye className="h-3.5 w-3.5" />
-                              {stream.viewer_count?.toLocaleString() || 0}
+                              {(stream.viewer_count || 0).toLocaleString()}
                             </div>
                             <div className="flex items-center gap-1">
                               <Clock className="h-3.5 w-3.5" />
@@ -556,7 +556,7 @@ export default function SellerPage() {
                           )}
                         </div>
                         <p className="text-[17px] font-bold text-[#1d1d1f] mb-2">
-                          {product.price.toLocaleString()}원
+                          {(product.price || 0).toLocaleString()}원
                         </p>
                         <div className="flex items-center justify-between">
                           <div className={`
