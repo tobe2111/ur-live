@@ -2938,8 +2938,8 @@ app.post('/api/seller/products', async (c) => {
     } = await c.req.json();
 
     // Validate required fields
-    if (!name || !price || !image_url) {
-      return c.json({ success: false, error: 'Name, price, and image are required' }, 400);
+    if (!name || !price) {
+      return c.json({ success: false, error: 'Name and price are required' }, 400);
     }
 
     // If live_stream_id provided, verify ownership
@@ -2965,7 +2965,7 @@ app.post('/api/seller/products', async (c) => {
       price,
       original_price || null,
       discount_rate || 0,
-      image_url,
+      image_url || null,
       stock || 0,
       category || null,
       live_stream_id || null,
