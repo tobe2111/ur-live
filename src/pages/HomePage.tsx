@@ -129,7 +129,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#fbfbfd]">
       {/* Announcement Banner */}
       <div className="bg-gradient-to-r from-[#007aff] to-[#0051d5] text-white text-center py-2 px-4 text-sm">
-        🎉 지금 라이브 쇼핑을 시작하세요! 특별 할인 진행 중
+        🎉 YouTube & TikTok 영상으로 편리한 쇼핑! 특별 할인 진행 중
       </div>
       
       {/* Apple-style Navigation Bar with Glass Effect - Mobile Optimized */}
@@ -142,7 +142,7 @@ export default function HomePage() {
                 <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white fill-white" />
               </div>
               <span className="text-[17px] sm:text-[21px] font-semibold tracking-tight text-[#1d1d1f]">
-                유어 라이브
+                유어 쇼핑
               </span>
             </Link>
 
@@ -173,7 +173,7 @@ export default function HomePage() {
                 }}
                 className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors"
               >
-                라이브
+                쇼핑 영상
               </button>
               <Link to="/my-orders" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
                 주문내역
@@ -237,21 +237,21 @@ export default function HomePage() {
             {/* Eyebrow */}
             <div className="mb-3 sm:mb-4">
               <Badge className="inline-flex items-center space-x-1.5 sm:space-x-2 bg-[#007aff]/10 text-[#007aff] border-0 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full font-normal">
-                <Circle className="h-1.5 w-1.5 sm:h-2 sm:w-2 fill-[#007aff] text-[#007aff] animate-pulse" />
-                <span className="text-[11px] sm:text-[12px] font-semibold tracking-tight">라이브 진행 중</span>
+                <Circle className="h-1.5 w-1.5 sm:h-2 sm:w-2 fill-[#007aff] text-[#007aff]" />
+                <span className="text-[11px] sm:text-[12px] font-semibold tracking-tight">영상 쇼핑</span>
               </Badge>
             </div>
 
             {/* Large Headline - Responsive */}
             <h1 className="mb-3 sm:mb-4 text-[32px] sm:text-[40px] md:text-[48px] lg:text-[64px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] px-4 sm:px-0">
-              <span className="bg-gradient-to-r from-[#ff3b30] to-[#ff9500] bg-clip-text text-transparent">라이브</span>로
+              <span className="bg-gradient-to-r from-[#ff3b30] to-[#ff9500] bg-clip-text text-transparent">영상</span>으로
               <br />
               보는 순간 바로 산다.
             </h1>
 
             {/* Subheadline - Responsive */}
             <p className="mb-6 sm:mb-8 text-[17px] sm:text-[19px] md:text-[21px] lg:text-[24px] leading-[1.381] font-normal text-[#6e6e73] px-4 sm:px-0">
-              실시간 라이브 방송(YouTube & TikTok)과 함께하는 새로운 쇼핑 경험.
+              YouTube & TikTok 영상과 함께하는 새로운 쇼핑 경험.
             </p>
 
             {/* CTA Buttons - Mobile Optimized */}
@@ -263,7 +263,7 @@ export default function HomePage() {
                 }}
                 className="apple-button w-full sm:w-auto text-[15px] sm:text-[17px] py-3 sm:py-3"
               >
-                라이브 보러가기
+                영상 쇼핑 시작하기
               </button>
                 <Link to="/seller/login" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
                 판매자 알아보기
@@ -300,10 +300,10 @@ export default function HomePage() {
           {/* Section Header */}
           <div className="mb-6 sm:mb-8 md:mb-10">
             <h2 className="mb-2 text-[28px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-semibold leading-[1.0834933333] tracking-tight text-[#1d1d1f]">
-              지금 라이브 중
+              추천 영상 쇼핑
             </h2>
             <p className="text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73]">
-              {streams.length > 0 ? `${streams.length}개의 라이브 방송이 진행 중입니다.` : '곧 새로운 라이브가 시작됩니다.'}
+              {streams.length > 0 ? `${streams.length}개의 영상 쇼핑이 준비되어 있습니다.` : '곧 새로운 영상이 업로드됩니다.'}
             </p>
           </div>
 
@@ -325,10 +325,10 @@ export default function HomePage() {
                 <Play className="h-8 w-8 sm:h-10 sm:w-10 text-[#6e6e73]" />
               </div>
               <h3 className="mb-2 text-[21px] sm:text-[24px] md:text-[28px] font-semibold leading-[1.14286] tracking-tight text-[#1d1d1f]">
-                곧 라이브가 시작됩니다
+                곧 새로운 영상이 올라옵니다
               </h3>
               <p className="mb-4 sm:mb-6 text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73] px-4 sm:px-0">
-                새로운 라이브 방송을 준비 중입니다.
+                새로운 영상 쇼핑 콘텐츠를 준비 중입니다.
               </p>
               <button className="apple-button text-[15px] sm:text-[17px]">
                 알림 받기
@@ -355,12 +355,12 @@ export default function HomePage() {
                         }}
                       />
                       
-                      {/* Live Indicator */}
+                      {/* Video Indicator */}
                       <div className="absolute left-3 sm:left-4 top-3 sm:top-4">
-                        <div className="flex items-center space-x-1.5 sm:space-x-2 rounded-full bg-[#ff3b30] px-2.5 py-1 sm:px-3 sm:py-1.5">
-                          <Circle className="h-1.5 w-1.5 sm:h-2 sm:w-2 fill-white text-white animate-pulse" />
+                        <div className="flex items-center space-x-1.5 sm:space-x-2 rounded-full bg-[#007aff] px-2.5 py-1 sm:px-3 sm:py-1.5">
+                          <Play className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white fill-white" />
                           <span className="text-[11px] sm:text-[12px] font-semibold text-white tracking-tight">
-                            LIVE
+                            영상
                           </span>
                         </div>
                       </div>
