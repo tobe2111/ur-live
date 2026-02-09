@@ -19,6 +19,7 @@ interface Stream {
   youtube_video_id: string
   platform?: string
   tiktok_username?: string
+  tiktok_video_type?: 'video' | 'live'
   seller_name: string
   seller_profile_image?: string
   viewer_count?: number
@@ -137,16 +138,27 @@ export default function LivePage() {
       setVideoStatus('playing')
       setPlayerReady(true)
       
-      // TikTok video ID is stored in youtube_video_id field
       const videoId = stream.youtube_video_id
+      const username = stream.tiktok_username || videoId
       
-      // Create TikTok embed iframe
+      // Different embed for live vs video
+      let embedUrl = ''
+      if (stream.tiktok_video_type === 'live') {
+        // TikTok Live: use the live page URL
+        embedUrl = `https://www.tiktok.com/@${username}/live`
+      } else {
+        // TikTok Video: use embed v2
+        embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`
+      }
+      
+      // Create TikTok iframe
       playerElement.innerHTML = `
         <iframe 
-          src="https://www.tiktok.com/embed/v2/${videoId}?autoplay=1"
+          src="${embedUrl}"
           style="width: 100%; height: 100%; border: none;"
-          allow="autoplay; encrypted-media"
+          allow="autoplay; encrypted-media; fullscreen"
           allowfullscreen
+          scrolling="no"
         ></iframe>
       `
       

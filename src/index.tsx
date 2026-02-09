@@ -128,6 +128,27 @@ function extractTikTokVideoId(url: string): string | null {
   }
 }
 
+function detectTikTokVideoType(url: string): 'video' | 'live' | null {
+  try {
+    const urlObj = new URL(url);
+    
+    if (urlObj.hostname.includes('tiktok.com')) {
+      // Check if it's a live stream
+      if (urlObj.pathname.includes('/live')) {
+        return 'live';
+      }
+      // Check if it's a video
+      if (urlObj.pathname.includes('/video/')) {
+        return 'video';
+      }
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function extractTikTokUsername(url: string): string | null {
   try {
     const urlObj = new URL(url);
@@ -2324,6 +2345,7 @@ app.post('/api/seller/streams', async (c) => {
     let videoId = youtube_video_id;
     let platform = 'youtube';
     let tiktokUsername = null;
+    let tiktokVideoType = null;
     let finalThumbnailUrl = thumbnail_url;
 
     if (youtube_url && !videoId) {
@@ -2334,6 +2356,7 @@ app.post('/api/seller/streams', async (c) => {
         // Try TikTok
         videoId = extractTikTokVideoId(youtube_url);
         tiktokUsername = extractTikTokUsername(youtube_url);
+        tiktokVideoType = detectTikTokVideoType(youtube_url);
         if (videoId) {
           platform = 'tiktok';
         } else {
@@ -2364,10 +2387,10 @@ app.post('/api/seller/streams', async (c) => {
       INSERT INTO live_streams (
         title, description, youtube_video_id, status, scheduled_at,
         seller_id, seller_instagram, seller_youtube, seller_facebook,
-        platform, tiktok_username, thumbnail_url,
+        platform, tiktok_username, tiktok_video_type, thumbnail_url,
         created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       title, 
       description || null, 
@@ -2380,6 +2403,7 @@ app.post('/api/seller/streams', async (c) => {
       seller_facebook || null,
       platform,
       tiktokUsername,
+      tiktokVideoType,
       finalThumbnailUrl || null
     ).run();
 
