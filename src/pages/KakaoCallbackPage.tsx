@@ -29,9 +29,10 @@ export default function KakaoCallbackPage() {
         console.log('[Kakao OAuth] Processing callback with code')
         
         // 백엔드로 코드 전송하여 액세스 토큰 교환 및 사용자 정보 저장
+        // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
         const response = await axios.post('/api/auth/kakao/callback', {
           code: code,
-          redirect_uri: `${window.location.origin}/auth/kakao/callback`
+          redirect_uri: 'https://live.ur-team.com/auth/kakao/callback'
         })
 
         if (response.data.success) {

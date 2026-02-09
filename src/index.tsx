@@ -802,7 +802,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
   const { DB } = c.env;
   
   try {
-    const { code } = await c.req.json();
+    const { code, redirect_uri } = await c.req.json();
     
     if (!code) {
       return c.json({ success: false, error: 'Authorization code is required' }, 400);
@@ -810,9 +810,8 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     
     console.log('[Kakao Callback] Exchanging code for token');
     
-    // redirect_uri를 환경 변수에서 가져오거나 요청 헤더로부터 추론
-    const origin = c.req.header('origin') || 'https://live.ur-team.com';
-    const redirectUri = `${origin}/auth/kakao/callback`;
+    // redirect_uri는 클라이언트에서 전달받음 (프로덕션 고정 값)
+    const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
     
     console.log('[Kakao Callback] Using redirect_uri:', redirectUri);
     

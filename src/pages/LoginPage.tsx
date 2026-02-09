@@ -63,10 +63,12 @@ export default function LoginPage() {
       console.log('[Kakao] Not logged in, redirecting to Kakao OAuth...')
       
       const KAKAO_REST_API_KEY = '5dd74bccb797640b0efd070467f3bafd'
-      const REDIRECT_URI = `${window.location.origin}/auth/kakao/callback`
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`
+      // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
+      const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/callback'
+      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`
       
       console.log('[Kakao] Redirecting to:', kakaoAuthUrl)
+      console.log('[Kakao] Redirect URI:', REDIRECT_URI)
       window.location.href = kakaoAuthUrl
       
     } catch (err: any) {
