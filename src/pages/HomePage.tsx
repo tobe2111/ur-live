@@ -4,7 +4,7 @@ import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Play, Users, ChevronRight, Circle, Menu } from 'lucide-react'
+import { Play, Users, ChevronRight, Circle, Menu, User } from 'lucide-react'
 
 interface Stream {
   id: number
@@ -161,9 +161,15 @@ export default function HomePage() {
 
             {/* Navigation Links - Desktop only */}
             <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 mr-6 lg:mr-8">
-              <Link to="/" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
+              <button 
+                onClick={() => {
+                  const liveSection = document.getElementById('live-section')
+                  liveSection?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors"
+              >
                 라이브
-              </Link>
+              </button>
               <Link to="/my-orders" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
                 주문내역
               </Link>
@@ -283,10 +289,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Live Streams Section - Mobile Optimized */}
-      <section id="live-streams-section" className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
+      {/* Live Streams Section - Horizontal Scroll */}
+      <section id="live-section" className="bg-[#fbfbfd] py-10 sm:py-12 md:py-16">
         <div className="mx-auto max-w-[980px] px-4 sm:px-6">
-          {/* Section Header - Responsive */}
+          {/* Section Header */}
           <div className="mb-6 sm:mb-8 md:mb-10">
             <h2 className="mb-2 text-[28px] sm:text-[32px] md:text-[40px] lg:text-[48px] font-semibold leading-[1.0834933333] tracking-tight text-[#1d1d1f]">
               지금 라이브 중
@@ -297,11 +303,11 @@ export default function HomePage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="apple-card animate-pulse overflow-hidden">
+                <div key={i} className="apple-card animate-pulse overflow-hidden flex-shrink-0 w-[280px] sm:w-[320px]">
                   <div className="aspect-video bg-[#e8e8ed]"></div>
-                  <div className="p-4 sm:p-5 md:p-6 space-y-3">
+                  <div className="p-4 sm:p-5 space-y-3">
                     <div className="h-5 sm:h-6 bg-[#e8e8ed] rounded w-3/4"></div>
                     <div className="h-4 bg-[#e8e8ed] rounded w-1/2"></div>
                   </div>
@@ -324,12 +330,12 @@ export default function HomePage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
+            <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
               {streams.map((stream) => (
                 <Link 
                   key={stream.id} 
                   to={`/live/${stream.id}`}
-                  className="group"
+                  className="group flex-shrink-0 w-[280px] sm:w-[320px]"
                 >
                   <div className="apple-card overflow-hidden">
                     {/* Thumbnail */}
@@ -344,7 +350,7 @@ export default function HomePage() {
                         }}
                       />
                       
-                      {/* Live Indicator - Mobile Optimized */}
+                      {/* Live Indicator */}
                       <div className="absolute left-3 sm:left-4 top-3 sm:top-4">
                         <div className="flex items-center space-x-1.5 sm:space-x-2 rounded-full bg-[#ff3b30] px-2.5 py-1 sm:px-3 sm:py-1.5">
                           <Circle className="h-1.5 w-1.5 sm:h-2 sm:w-2 fill-white text-white animate-pulse" />
@@ -354,7 +360,7 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Viewer Count - Mobile Optimized */}
+                      {/* Viewer Count */}
                       {stream.viewer_count && (
                         <div className="absolute right-3 sm:right-4 top-3 sm:top-4">
                           <div className="flex items-center space-x-1 sm:space-x-1.5 rounded-full bg-black/30 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5">
@@ -381,17 +387,17 @@ export default function HomePage() {
                         </p>
                       )}
 
-                      {/* Seller Info - Mobile Optimized */}
-                      <div className="flex items-center">
-                        <img
-                          src={stream.seller_profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(stream.seller_name)}&background=007aff&color=fff&size=64`}
-                          alt={stream.seller_name}
-                          className="h-7 w-7 sm:h-8 sm:w-8 rounded-full mr-2.5 sm:mr-3"
-                        />
-                        <span className="text-[13px] sm:text-[14px] font-normal text-[#1d1d1f]">
-                          {stream.seller_name}
-                        </span>
-                      </div>
+                      {/* Seller Info */}
+                      {stream.seller_name && (
+                        <div className="flex items-center">
+                          <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-[#f5f5f7] flex items-center justify-center mr-2.5 sm:mr-3">
+                            <User className="h-4 w-4 text-[#6e6e73]" />
+                          </div>
+                          <span className="text-[13px] sm:text-[14px] font-normal text-[#1d1d1f]">
+                            {stream.seller_name}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>

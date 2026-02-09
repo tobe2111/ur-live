@@ -54,14 +54,21 @@ export default function MyOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
 
-  // Get user info from localStorage
-  const userName = localStorage.getItem('user_name') || '게스트'
-  const userEmail = localStorage.getItem('user_email') || ''
-  const userProfileImage = localStorage.getItem('user_profile_image') || ''
+  // Check login status
+  const userId = localStorage.getItem('userId')
+  const userName = localStorage.getItem('userName') || '게스트'
+  const userEmail = localStorage.getItem('userEmail') || ''
 
   useEffect(() => {
+    // Redirect to login if not logged in
+    if (!userId) {
+      alert('로그인이 필요합니다.')
+      navigate('/login')
+      return
+    }
+    
     loadData()
-  }, [activeTab])
+  }, [activeTab, userId, navigate])
 
   async function loadData() {
     setLoading(true)
