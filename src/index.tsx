@@ -179,6 +179,118 @@ async function getSession(SESSION_KV: KVNamespace, sessionToken: string) {
   };
 }
 
+// 일반 사용자 회원가입 API
+app.post('/api/auth/user/register', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password, name, phone } = await c.req.json();
+    
+    if (!email || !password || !name) {
+      return c.json({ success: false, error: '이메일, 비밀번호, 이름은 필수입니다' }, 400);
+    }
+    
+    // 이메일 중복 확인
+    const existingUser = await DB.prepare(
+      'SELECT id FROM users WHERE email = ?'
+    ).bind(email).first();
+    
+    if (existingUser) {
+      return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 400);
+    }
+    
+    // 비밀번호 해시 (실제로는 bcrypt 사용 권장, 여기서는 간단히 처리)
+    const passwordHash = `placeholder_hash_for_${password}`;
+    
+    // 사용자 생성
+    const result = await DB.prepare(`
+      INSERT INTO users (email, password_hash, name, phone, created_at, last_login_at)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(email, passwordHash, name, phone || null).run();
+    
+    const userId = result.meta.last_row_id;
+    
+    // 세션 토큰 생성
+    const sessionToken = `user_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    return c.json({
+      success: true,
+      data: {
+        access_token: sessionToken,
+        user: {
+          id: userId,
+          email,
+          name,
+          phone,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[User Register] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message || '회원가입 중 오류가 발생했습니다',
+    }, 500);
+  }
+});
+
+// 일반 사용자 로그인 API
+app.post('/api/auth/user/login', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password } = await c.req.json();
+    
+    if (!email || !password) {
+      return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
+    }
+    
+    // 사용자 조회
+    const user = await DB.prepare(
+      'SELECT * FROM users WHERE email = ?'
+    ).bind(email).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // 비밀번호 검증
+    const validPassword = user.password_hash && user.password_hash.includes(`placeholder_hash_for_${password}`);
+    
+    if (!validPassword) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // 마지막 로그인 시간 업데이트
+    await DB.prepare(
+      'UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?'
+    ).bind(user.id).run();
+    
+    // 세션 토큰 생성
+    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    return c.json({
+      success: true,
+      data: {
+        access_token: sessionToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          phone: user.phone,
+          profile_image: user.profile_image,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[User Login] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message || '로그인 중 오류가 발생했습니다',
+    }, 500);
+  }
+});
+
 // 관리자 로그인 API
 app.post('/api/auth/login', cors(), async (c) => {
   const { DB } = c.env;

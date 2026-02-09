@@ -131,7 +131,7 @@ export default function HomePage() {
             </div>
 
             {/* Navigation Links - Desktop only */}
-            <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 mr-4">
               <Link to="/" className="text-[14px] font-normal text-[#1d1d1f] hover:text-[#007aff] transition-colors">
                 라이브
               </Link>
@@ -550,8 +550,8 @@ export default function HomePage() {
             <a href="/privacy" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
               개인정보처리방침
             </a>
-            <a href="http://pf.kakao.com/_AITdn/chat" target="_blank" rel="noopener noreferrer" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
-              고객센터
+            <a href="/shipping-policy" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
+              배송 및 환불 정책
             </a>
           </div>
 
@@ -566,7 +566,8 @@ export default function HomePage() {
               <span className="font-medium"> 통신판매업신고:</span> 2025-부산금정-0540
             </div>
             <div>
-              <span className="font-medium">이메일:</span> <a href="mailto:jiwon@ur-team.com" className="hover:text-[#1d1d1f] transition-colors">jiwon@ur-team.com</a>
+              <span className="font-medium">고객센터:</span> <a href="tel:0507-0177-0432" className="hover:text-[#1d1d1f] transition-colors">0507-0177-0432</a> | 
+              <span className="font-medium"> 이메일:</span> <a href="mailto:jiwon@ur-team.com" className="hover:text-[#1d1d1f] transition-colors">jiwon@ur-team.com</a>
             </div>
           </div>
 
