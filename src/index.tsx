@@ -1935,13 +1935,13 @@ app.post('/api/orders', async (c) => {
           shipping_address, shipping_name, shipping_phone, shipping_memo
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        orderNo,
-        userId,
-        providedTotalAmount,
+        orderNo || null,
+        userId || null,
+        providedTotalAmount || 0,
         'pending',
-        fullAddress,
-        recipientName,
-        recipientPhone,
+        fullAddress || null,
+        recipientName || null,
+        recipientPhone || null,
         deliveryMemo || null
       ).run();
 
