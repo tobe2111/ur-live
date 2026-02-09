@@ -3176,11 +3176,9 @@ app.get('/api/seller/stats', async (c) => {
       WHERE seller_id = ? AND status = 'live'
     `).bind(auth.sellerId).first();
 
-    const totalViewers = await DB.prepare(`
-      SELECT SUM(viewer_count) as total 
-      FROM live_streams 
-      WHERE seller_id = ?
-    `).bind(auth.sellerId).first();
+    // TODO: Add viewer_count column to live_streams table
+    // For now, return 0 for totalViewers
+    const totalViewers = 0;
 
     const stats = {
       totalProducts: products.count || 0,
@@ -3189,7 +3187,7 @@ app.get('/api/seller/stats', async (c) => {
       totalOrders: orders.count || 0,
       totalRevenue: orders.total || 0,
       activeStreams: activeStreams.count || 0,
-      totalViewers: totalViewers.total || 0
+      totalViewers: totalViewers
     };
     
     // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (1\ubd84 TTL)
