@@ -915,7 +915,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     return c.json({
       success: true,
       data: {
-        access_token: sessionToken,
+        session_token: sessionToken,
         user: {
           id: user.id,
           name: user.name,
