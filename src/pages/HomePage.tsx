@@ -491,7 +491,7 @@ export default function HomePage() {
                   <div className="apple-card overflow-hidden">
                     <div className="relative aspect-square overflow-hidden bg-[#f5f5f7]">
                       <img
-                        src={product.image_url}
+                        src={product.image_url || 'https://via.placeholder.com/400x400/f5f5f7/6e6e73?text=Product'}
                         alt={product.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {
