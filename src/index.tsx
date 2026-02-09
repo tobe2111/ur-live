@@ -1890,7 +1890,7 @@ app.post('/api/orders', async (c) => {
       const itemsWithDetails = [];
       for (const item of items) {
         const product = await DB.prepare(`
-          SELECT id, name, current_price, stock 
+          SELECT id, name, price, stock 
           FROM products 
           WHERE id = ?
         `).bind(item.productId).first();
