@@ -218,7 +218,7 @@ export default function HomePage() {
               
               {/* Desktop CTA */}
               <Button className="hidden md:flex apple-button h-9 border-0 shadow-none text-[14px] px-4" asChild>
-                <Link to="/seller/login">판매 시작하기</Link>
+                <Link to="/seller">대시보드</Link>
               </Button>
               
               {/* Mobile Menu Button */}
@@ -265,8 +265,8 @@ export default function HomePage() {
               >
                 영상 쇼핑 시작하기
               </button>
-                <Link to="/seller/login" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
-                판매자 알아보기
+                <Link to="/live/15" className="apple-link text-[15px] sm:text-[17px] font-normal flex items-center">
+                지금 구매하기
                 <ChevronRight className="inline-block ml-1 h-4 w-4" />
               </Link>
             </div>
