@@ -60,7 +60,9 @@ export default function SellerStreamNewPage() {
       }
     } catch (err: any) {
       console.error('Stream creation error:', err)
-      setError(err.response?.data?.error || err.response?.data?.message || '생성 실패')
+      console.error('Error response:', err.response?.data)
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || '생성 실패'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
