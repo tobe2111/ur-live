@@ -99,6 +99,29 @@ function extractYouTubeVideoId(url: string): string | null {
   }
 }
 
+function extractTikTokUsername(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    
+    // tiktok.com/@username or tiktok.com/@username/live
+    if (urlObj.hostname.includes('tiktok.com')) {
+      const match = urlObj.pathname.match(/\/@([a-zA-Z0-9_.]+)/);
+      if (match) return match[1];
+    }
+    
+    // vm.tiktok.com short links
+    if (urlObj.hostname.includes('vm.tiktok.com')) {
+      // For short links, we can't extract username directly
+      // Return a placeholder or the full URL
+      return urlObj.pathname.slice(1); // Return the short code
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // CORS 설정
 app.use('/api/*', cors());
 
@@ -2225,7 +2248,7 @@ app.post('/api/seller/streams', async (c) => {
       title, 
       description, 
       youtube_video_id, 
-      youtube_url,  // New: Accept YouTube URL
+      youtube_url,  // Accept both YouTube and TikTok URLs
       scheduled_at, 
       status,
       seller_instagram,
@@ -2233,22 +2256,34 @@ app.post('/api/seller/streams', async (c) => {
       seller_facebook 
     } = await c.req.json();
 
-    // Extract video ID from URL if provided
+    // Detect platform and extract video ID or username
     let videoId = youtube_video_id;
+    let platform = 'youtube';
+    let tiktokUsername = null;
+
     if (youtube_url && !videoId) {
+      // Try YouTube first
       videoId = extractYouTubeVideoId(youtube_url);
+      
       if (!videoId) {
-        return c.json({ 
-          success: false, 
-          error: 'Invalid YouTube URL. Please provide a valid YouTube video or live stream URL.' 
-        }, 400);
+        // Try TikTok
+        tiktokUsername = extractTikTokUsername(youtube_url);
+        if (tiktokUsername) {
+          platform = 'tiktok';
+          videoId = tiktokUsername; // Use username as identifier
+        } else {
+          return c.json({ 
+            success: false, 
+            error: 'Invalid URL. Please provide a valid YouTube or TikTok live stream URL.' 
+          }, 400);
+        }
       }
     }
 
     if (!title || !videoId) {
       return c.json({ 
         success: false, 
-        error: 'Title and YouTube video ID/URL are required' 
+        error: 'Title and live stream URL are required' 
       }, 400);
     }
 
@@ -2256,19 +2291,22 @@ app.post('/api/seller/streams', async (c) => {
       INSERT INTO live_streams (
         title, description, youtube_video_id, status, scheduled_at,
         seller_id, seller_instagram, seller_youtube, seller_facebook,
+        platform, tiktok_username,
         created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       title, 
       description || null, 
-      videoId,  // Use extracted video ID 
+      videoId,  // Use extracted video ID or TikTok username
       status || 'scheduled', 
       scheduled_at || null,
       auth.sellerId,
       seller_instagram || null,
       seller_youtube || null,
-      seller_facebook || null
+      seller_facebook || null,
+      platform,
+      tiktokUsername
     ).run();
 
     // Get created stream
