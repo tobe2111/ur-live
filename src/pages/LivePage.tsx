@@ -156,6 +156,9 @@ export default function LivePage() {
             playsinline: 1,  // Critical for iOS
             enablejsapi: 1,
             origin: window.location.origin,
+            // Loop settings for non-live videos
+            loop: 1,  // Enable loop
+            playlist: stream.youtube_video_id,  // Required for loop to work
             // Mobile optimizations
             fs: 1,  // Allow fullscreen
             cc_load_policy: 0,  // Don't show captions by default
@@ -180,8 +183,14 @@ export default function LivePage() {
                   // Keep playing status during buffering
                   setVideoStatus('playing')
                 } else if (event.data === window.YT.PlayerState.ENDED) {
-                  // For non-live videos, mark as ended
-                  setVideoStatus('ended')
+                  // For non-live videos, restart from beginning
+                  console.log('Video ended, restarting...')
+                  setVideoStatus('playing')
+                  // Restart video for loop (backup in case YouTube loop fails)
+                  if (event.target && typeof event.target.seekTo === 'function') {
+                    event.target.seekTo(0)
+                    event.target.playVideo()
+                  }
                 } else if (event.data === window.YT.PlayerState.PAUSED) {
                   // @ts-ignore
                   console.log('Video paused, attempting to play...')
