@@ -171,25 +171,35 @@ export default function LivePage() {
             },
             onStateChange: (event: any) => {
               console.log('YouTube player state:', event.data)
-              // @ts-ignore
-              if (event.data === window.YT.PlayerState.PLAYING) {
-                setVideoStatus('playing')
-              } else if (event.data === window.YT.PlayerState.BUFFERING) {
-                // Keep playing status during buffering
-                setVideoStatus('playing')
-              } else if (event.data === window.YT.PlayerState.ENDED) {
-                // For non-live videos, mark as ended
-                setVideoStatus('ended')
-              } else if (event.data === window.YT.PlayerState.PAUSED) {
+              // Use setTimeout to avoid React DOM manipulation conflicts
+              setTimeout(() => {
                 // @ts-ignore
-                console.log('Video paused, attempting to play...')
-                setTimeout(() => event.target.playVideo(), 100)
-              }
+                if (event.data === window.YT.PlayerState.PLAYING) {
+                  setVideoStatus('playing')
+                } else if (event.data === window.YT.PlayerState.BUFFERING) {
+                  // Keep playing status during buffering
+                  setVideoStatus('playing')
+                } else if (event.data === window.YT.PlayerState.ENDED) {
+                  // For non-live videos, mark as ended
+                  setVideoStatus('ended')
+                } else if (event.data === window.YT.PlayerState.PAUSED) {
+                  // @ts-ignore
+                  console.log('Video paused, attempting to play...')
+                  setTimeout(() => {
+                    if (event.target && typeof event.target.playVideo === 'function') {
+                      event.target.playVideo()
+                    }
+                  }, 100)
+                }
+              }, 0)
             },
             onError: (event: any) => {
               console.error('YouTube player error:', event.data)
               // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
-              setVideoStatus('ended')
+              // Use setTimeout to avoid React DOM manipulation conflicts
+              setTimeout(() => {
+                setVideoStatus('ended')
+              }, 0)
             },
           },
         })
