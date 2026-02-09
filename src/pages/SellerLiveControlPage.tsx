@@ -250,7 +250,7 @@ export default function SellerLiveControlPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {products.map((product, index) => (
                     <div
-                      key={product.id}
+                      key={`${product.id}-${index}`}
                       draggable
                       onDragStart={(e) => handleDragStart(e, index)}
                       onDragOver={handleDragOver}
