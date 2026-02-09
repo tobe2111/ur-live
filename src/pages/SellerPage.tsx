@@ -144,33 +144,8 @@ export default function SellerPage() {
           setProducts([])
         }
       } else {
-        // Demo products if no streams
-        setProducts([
-          {
-            id: 1,
-            name: '프리미엄 무선 이어폰',
-            price: 129000,
-            stock: 45,
-            image_url: 'https://via.placeholder.com/80',
-            is_active: true
-          },
-          {
-            id: 2,
-            name: '스마트 워치 밴드',
-            price: 29000,
-            stock: 8,
-            image_url: 'https://via.placeholder.com/80',
-            is_active: true
-          },
-          {
-            id: 3,
-            name: 'USB-C 충전 케이블',
-            price: 15000,
-            stock: 0,
-            image_url: 'https://via.placeholder.com/80',
-            is_active: false
-          }
-        ])
+        // No demo products - keep empty
+        setProducts([])
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
