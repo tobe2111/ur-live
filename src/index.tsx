@@ -82,15 +82,15 @@ function extractYouTubeVideoId(url: string): string | null {
       const videoId = urlObj.searchParams.get('v');
       if (videoId) return videoId;
       
-      // youtube.com/embed/VIDEO_ID or youtube.com/live/VIDEO_ID
-      const pathMatch = urlObj.pathname.match(/\/(embed|live)\/([a-zA-Z0-9_-]{11})/);
+      // youtube.com/embed/VIDEO_ID, youtube.com/live/VIDEO_ID, or youtube.com/shorts/VIDEO_ID
+      const pathMatch = urlObj.pathname.match(/\/(embed|live|shorts)\/([a-zA-Z0-9_-]{11})/);
       if (pathMatch) return pathMatch[2];
     }
     
     // youtu.be/VIDEO_ID
     if (urlObj.hostname === 'youtu.be') {
-      const videoId = urlObj.pathname.slice(1);
-      if (videoId) return videoId;
+      const videoId = urlObj.pathname.slice(1).split('?')[0]; // Remove query params
+      if (videoId && videoId.length === 11) return videoId;
     }
     
     return null;
@@ -103,7 +103,7 @@ function extractTikTokUsername(url: string): string | null {
   try {
     const urlObj = new URL(url);
     
-    // tiktok.com/@username or tiktok.com/@username/live
+    // tiktok.com/@username or tiktok.com/@username/live or tiktok.com/@username/video/12345
     if (urlObj.hostname.includes('tiktok.com')) {
       const match = urlObj.pathname.match(/\/@([a-zA-Z0-9_.]+)/);
       if (match) return match[1];
@@ -114,6 +114,11 @@ function extractTikTokUsername(url: string): string | null {
       // For short links, we can't extract username directly
       // Return a placeholder or the full URL
       return urlObj.pathname.slice(1); // Return the short code
+    }
+    
+    // vt.tiktok.com short links (another TikTok short link format)
+    if (urlObj.hostname.includes('vt.tiktok.com')) {
+      return urlObj.pathname.slice(1);
     }
     
     return null;
