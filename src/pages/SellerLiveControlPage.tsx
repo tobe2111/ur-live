@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { GripVertical } from 'lucide-react'
 
 interface Product {
   id: number
@@ -29,6 +30,7 @@ export default function SellerLiveControlPage() {
   const [currentProductId, setCurrentProductId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [changing, setChanging] = useState(false)
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   useEffect(() => {
     // Check seller session
@@ -93,6 +95,36 @@ export default function SellerLiveControlPage() {
     } finally {
       setChanging(false)
     }
+  }
+
+  function handleDragStart(e: React.DragEvent, index: number) {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  function handleDrop(e: React.DragEvent, dropIndex: number) {
+    e.preventDefault()
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null)
+      return
+    }
+
+    const newProducts = [...products]
+    const [draggedProduct] = newProducts.splice(draggedIndex, 1)
+    newProducts.splice(dropIndex, 0, draggedProduct)
+    
+    setProducts(newProducts)
+    setDraggedIndex(null)
+  }
+
+  function handleDragEnd() {
+    setDraggedIndex(null)
   }
 
   if (loading) {
@@ -170,11 +202,6 @@ export default function SellerLiveControlPage() {
               
               {currentProduct ? (
                 <div className="border-2 border-blue-500 rounded-lg p-4">
-                  <img
-                    src={currentProduct.image_url || 'https://via.placeholder.com/200'}
-                    alt={currentProduct.name}
-                    className="w-full h-48 object-cover rounded-lg mb-4"
-                  />
                   <h3 className="font-bold text-lg mb-2">{currentProduct.name}</h3>
                   <div className="flex items-baseline gap-2 mb-2">
                     {currentProduct.discount_rate > 0 && (
@@ -213,46 +240,54 @@ export default function SellerLiveControlPage() {
           {/* Product List */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">상품 목록 (클릭하여 전환)</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">상품 목록 (클릭: 전환 | 드래그: 순서 변경)</h2>
               
               {products.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   등록된 상품이 없습니다
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {products.map(product => (
-                    <button
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {products.map((product, index) => (
+                    <div
                       key={product.id}
-                      onClick={() => changeProduct(product.id)}
-                      disabled={changing || currentProductId === product.id}
-                      className={`text-left border-2 rounded-lg p-4 transition-all ${
-                        currentProductId === product.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                      } ${changing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={`relative border-2 rounded-lg transition-all ${
+                        draggedIndex === index ? 'opacity-50' : ''
+                      }`}
                     >
-                      <div className="flex gap-4">
-                        <img
-                          src={product.image_url || 'https://via.placeholder.com/100'}
-                          alt={product.name}
-                          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-900 mb-1 truncate">{product.name}</h3>
-                          <div className="flex items-baseline gap-2 mb-1">
-                            {product.discount_rate > 0 && (
-                              <span className="text-red-500 text-sm font-bold">{product.discount_rate}%</span>
-                            )}
-                            <span className="font-bold">{product.price.toLocaleString()}원</span>
-                          </div>
-                          <p className="text-sm text-gray-600">재고: {product.stock}개</p>
-                          {currentProductId === product.id && (
-                            <p className="text-xs text-blue-600 font-semibold mt-2">✓ 현재 노출 중</p>
-                          )}
-                        </div>
+                      {/* Drag Handle */}
+                      <div className="absolute top-2 left-2 text-gray-400 cursor-move">
+                        <GripVertical className="w-4 h-4" />
                       </div>
-                    </button>
+
+                      {/* Product Button */}
+                      <button
+                        onClick={() => changeProduct(product.id)}
+                        disabled={changing || currentProductId === product.id}
+                        className={`w-full text-left p-3 pl-8 rounded-lg transition-all ${
+                          currentProductId === product.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                        } ${changing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        <h3 className="font-bold text-gray-900 text-sm mb-1 truncate">{product.name}</h3>
+                        <div className="flex items-baseline gap-1 mb-1">
+                          {product.discount_rate > 0 && (
+                            <span className="text-red-500 text-xs font-bold">{product.discount_rate}%</span>
+                          )}
+                          <span className="font-bold text-sm">{product.price.toLocaleString()}원</span>
+                        </div>
+                        <p className="text-xs text-gray-600">재고: {product.stock}개</p>
+                        {currentProductId === product.id && (
+                          <p className="text-xs text-blue-600 font-semibold mt-1">✓ 현재 노출 중</p>
+                        )}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -264,10 +299,10 @@ export default function SellerLiveControlPage() {
         <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <h3 className="font-bold text-yellow-900 mb-2">💡 사용 방법</h3>
           <ul className="text-sm text-yellow-800 space-y-1">
-            <li>• 우측 상품 목록에서 상품을 클릭하면 실시간으로 시청자 화면의 상품이 변경됩니다</li>
+            <li>• 상품을 <strong>클릭</strong>하면 실시간으로 시청자 화면의 상품이 변경됩니다</li>
+            <li>• 상품을 <strong>드래그</strong>하여 순서를 변경할 수 있습니다</li>
             <li>• 좌측에서 현재 노출 중인 상품을 확인할 수 있습니다</li>
             <li>• 라이브 미리보기 링크를 새 탭에서 열어 실시간으로 확인하세요</li>
-            <li>• 상품 전환은 약 3초마다 시청자 화면에 반영됩니다</li>
           </ul>
         </div>
       </div>
