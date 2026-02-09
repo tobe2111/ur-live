@@ -7,11 +7,11 @@ interface CartItem {
   id: number
   product_id: number
   product_name: string
-  product_image_url?: string
+  image_url?: string
   quantity: number
   price_snapshot: number
   option_id?: number
-  option_name?: string
+  option_value?: string
 }
 
 export default function CartPage() {
@@ -34,10 +34,11 @@ export default function CartPage() {
       }
 
       const response = await axios.get(`/api/cart/${userId}`)
-      setCartItems(response.data || [])
+      const items = response.data?.data || []
+      setCartItems(items)
       
       // Update hasCartItems flag
-      localStorage.setItem('hasCartItems', response.data && response.data.length > 0 ? 'true' : 'false')
+      localStorage.setItem('hasCartItems', items.length > 0 ? 'true' : 'false')
     } catch (error) {
       console.error('Failed to load cart:', error)
       alert('장바구니를 불러오는데 실패했습니다.')
@@ -134,9 +135,9 @@ export default function CartPage() {
                 <div key={item.id} className="bg-white rounded-lg shadow-sm p-4 flex gap-4">
                   {/* Product Image */}
                   <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
-                    {item.product_image_url ? (
+                    {item.image_url ? (
                       <img 
-                        src={item.product_image_url} 
+                        src={item.image_url} 
                         alt={item.product_name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -153,8 +154,8 @@ export default function CartPage() {
                   {/* Product Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-gray-900 mb-1 truncate">{item.product_name}</h3>
-                    {item.option_name && (
-                      <p className="text-sm text-gray-500 mb-2">옵션: {item.option_name}</p>
+                    {item.option_value && (
+                      <p className="text-sm text-gray-500 mb-2">옵션: {item.option_value}</p>
                     )}
                     <p className="text-lg font-bold text-gray-900">
                       {(item.price_snapshot * item.quantity).toLocaleString()}원
