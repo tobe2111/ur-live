@@ -239,14 +239,14 @@ export default function HomePage() {
 
             {/* Large Headline - Responsive */}
             <h1 className="mb-3 sm:mb-4 text-[32px] sm:text-[40px] md:text-[48px] lg:text-[64px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] px-4 sm:px-0">
-              <span className="bg-gradient-to-r from-[#ff3b30] to-[#ff9500] bg-clip-text text-transparent">YouTube Live</span>로
+              <span className="bg-gradient-to-r from-[#ff3b30] to-[#ff9500] bg-clip-text text-transparent">라이브</span>로
               <br />
               보는 순간 바로 산다.
             </h1>
 
             {/* Subheadline - Responsive */}
             <p className="mb-6 sm:mb-8 text-[17px] sm:text-[19px] md:text-[21px] lg:text-[24px] leading-[1.381] font-normal text-[#6e6e73] px-4 sm:px-0">
-              실시간 YouTube 라이브 방송과 함께하는 새로운 쇼핑 경험.
+              실시간 라이브 방송(YouTube & TikTok)과 함께하는 새로운 쇼핑 경험.
             </p>
 
             {/* CTA Buttons - Mobile Optimized */}
@@ -539,18 +539,16 @@ export default function HomePage() {
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-7 md:gap-8">
-            {/* Feature 1 - YouTube Live 강조 */}
+            {/* Feature 1 - 멀티 플랫폼 라이브 */}
             <div className="text-center px-4 sm:px-0">
-              <div className="mx-auto mb-4 sm:mb-5 md:mb-6 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff0000] to-[#cc0000]">
-                <svg className="h-7 w-7 sm:h-8 sm:w-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
+              <div className="mx-auto mb-4 sm:mb-5 md:mb-6 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff3b30] to-[#ff9500]">
+                <Play className="h-7 w-7 sm:h-8 sm:w-8 text-white fill-white" />
               </div>
               <h3 className="mb-2 sm:mb-3 text-[19px] sm:text-[21px] md:text-[24px] font-semibold leading-[1.16667] tracking-tight text-[#1d1d1f]">
-                YouTube Live 연동
+                YouTube & TikTok Live
               </h3>
               <p className="text-[15px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73]">
-                익숙한 YouTube 라이브로 실시간 쇼핑을 즐기세요.
+                익숙한 플랫폼으로 실시간 쇼핑을 즐기세요.
               </p>
             </div>
 
