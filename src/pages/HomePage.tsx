@@ -34,6 +34,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const [user, setUser] = useState<{name: string, email: string} | null>(null)
 
   // No callback handling needed for Kakao Sync
   // Authentication is handled directly in the browser
@@ -42,7 +43,35 @@ export default function HomePage() {
     loadStreams()
     loadScheduledStreams()
     loadPopularProducts()
+    loadUserInfo()
   }, [])
+
+  function loadUserInfo() {
+    // localStorage에서 사용자 정보 읽기
+    const userName = localStorage.getItem('userName')
+    const userEmail = localStorage.getItem('userEmail')
+    
+    if (userName) {
+      setUser({
+        name: userName,
+        email: userEmail || ''
+      })
+    }
+  }
+
+  function handleLogout() {
+    // localStorage 정리
+    localStorage.removeItem('userId')
+    localStorage.removeItem('userName')
+    localStorage.removeItem('userEmail')
+    localStorage.removeItem('accessToken')
+    
+    // 상태 업데이트
+    setUser(null)
+    
+    // 알림 표시
+    alert('로그아웃되었습니다.')
+  }
 
   async function loadStreams() {
     try {
@@ -141,7 +170,41 @@ export default function HomePage() {
             </nav>
 
             {/* Right side buttons */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              {user ? (
+                // 로그인된 상태
+                <>
+                  <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-[#f5f5f7] rounded-lg">
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-gradient-to-br from-[#007aff] to-[#0051d5] text-white text-[12px] font-semibold">
+                      {user.name.charAt(0)}
+                    </div>
+                    <span className="text-[14px] text-[#1d1d1f] font-medium">
+                      {user.name}
+                    </span>
+                  </div>
+                  <Button 
+                    onClick={handleLogout}
+                    className="hidden sm:flex h-9 border-0 shadow-none text-[14px] px-4 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f]"
+                  >
+                    로그아웃
+                  </Button>
+                  {/* Mobile: 아바타만 표시 */}
+                  <div className="sm:hidden flex items-center justify-center h-9 w-9 rounded-full bg-gradient-to-br from-[#007aff] to-[#0051d5] text-white text-[14px] font-semibold">
+                    {user.name.charAt(0)}
+                  </div>
+                </>
+              ) : (
+                // 로그인되지 않은 상태
+                <>
+                  <Button 
+                    onClick={() => navigate('/login')}
+                    className="hidden sm:flex h-9 border-0 shadow-none text-[14px] px-4 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f]"
+                  >
+                    로그인
+                  </Button>
+                </>
+              )}
+              
               {/* Desktop CTA */}
               <Button className="hidden md:flex apple-button h-9 border-0 shadow-none text-[14px] px-4" asChild>
                 <Link to="/seller/login">판매 시작하기</Link>
