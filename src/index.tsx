@@ -1227,6 +1227,62 @@ app.get('/api/streams/:id', async (c) => {
   }
 });
 
+// Popular Products API - 인기 상품 목록
+app.get('/api/products/popular', async (c) => {
+  const { DB, CACHE_KV } = c.env;
+
+  try {
+    // 캐시 확인
+    const cached = await getCachedData(CACHE_KV, 'products:popular');
+    if (cached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: cached,
+        cached: true,
+      });
+    }
+
+    // 인기 상품 조회 (주문이 많은 순서대로, 최대 20개)
+    const products = await DB.prepare(`
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.price as current_price,
+        p.original_price,
+        p.discount_rate,
+        p.image_url,
+        p.stock,
+        p.category,
+        COALESCE(SUM(oi.quantity), 0) as sold_count
+      FROM products p
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id
+      WHERE p.is_active = 1 AND p.stock > 0
+      GROUP BY p.id
+      ORDER BY sold_count DESC, p.created_at DESC
+      LIMIT 20
+    `).all();
+
+    const popularProducts = products.results || [];
+
+    // 캐시 저장 (60초)
+    await setCachedData(CACHE_KV, 'products:popular', popularProducts, 60);
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: popularProducts,
+      cached: false,
+    });
+  } catch (err) {
+    console.error('Popular products error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // Product API
 app.get('/api/products/:id', async (c) => {
   const { DB } = c.env;
