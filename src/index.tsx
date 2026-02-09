@@ -735,16 +735,14 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         // Insert new Kakao user
         const result = await DB.prepare(`
           INSERT INTO users (
-            toss_user_id, 
             kakao_id, 
             name, 
             email, 
             profile_image,
-            access_token,
-            service_terms_agreed,
-            terms_agreed_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(kakaoId, kakaoId, nickname, email, profileImage, accessToken, serviceTermsJson).run();
+            created_at,
+            last_login_at
+          ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+        `).bind(kakaoId, nickname, email || null, profileImage || null).run();
         userId = result.meta.last_row_id;
         console.log('[Kakao Sync] Created user:', userId);
       }
