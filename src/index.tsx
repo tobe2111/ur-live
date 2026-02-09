@@ -807,6 +807,12 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     
     console.log('[Kakao Callback] Exchanging code for token');
     
+    // redirect_uri를 환경 변수에서 가져오거나 요청 헤더로부터 추론
+    const origin = c.req.header('origin') || 'https://live.ur-team.com';
+    const redirectUri = `${origin}/auth/kakao/callback`;
+    
+    console.log('[Kakao Callback] Using redirect_uri:', redirectUri);
+    
     // 1. 인증 코드로 액세스 토큰 교환
     const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
       method: 'POST',
@@ -816,7 +822,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         client_id: c.env.KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd',
-        redirect_uri: 'https://live.ur-team.com/auth/kakao/callback',
+        redirect_uri: redirectUri,
         code: code,
       }).toString(),
     });

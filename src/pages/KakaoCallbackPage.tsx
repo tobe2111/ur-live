@@ -22,11 +22,14 @@ export default function KakaoCallbackPage() {
         const response = await axios.post('/api/auth/kakao/callback', { code })
         
         if (response.data.success) {
-          // Save token and user info
-          localStorage.setItem('access_token', response.data.data.access_token)
-          localStorage.setItem('user_id', response.data.data.user.id)
-          localStorage.setItem('user_name', response.data.data.user.name)
-          localStorage.setItem('user_email', response.data.data.user.email)
+          // Save token and user info (consistent with email login)
+          localStorage.setItem('accessToken', response.data.data.access_token)
+          localStorage.setItem('userId', response.data.data.user.id.toString())
+          localStorage.setItem('userName', response.data.data.user.name)
+          localStorage.setItem('userEmail', response.data.data.user.email || '')
+          
+          // Show welcome message
+          alert(`환영합니다, ${response.data.data.user.name}님!`)
           
           // Redirect back to original page or home
           if (state) {
