@@ -2610,15 +2610,15 @@ app.post('/api/seller/streams/:streamId/change-product', async (c) => {
       return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
     }
 
-    // Get product info
+    // Get product info (allow any active product from this seller)
     const product = await DB.prepare(
-      'SELECT * FROM products WHERE id = ? AND is_active = 1 AND live_stream_id = ?'
-    ).bind(productId, streamId).first();
+      'SELECT * FROM products WHERE id = ? AND seller_id = ? AND is_active = 1'
+    ).bind(productId, auth.sellerId).first();
 
     if (!product) {
       return c.json({
         success: false,
-        error: 'Product not found or not associated with this stream',
+        error: 'Product not found or not active',
       }, 404);
     }
 
