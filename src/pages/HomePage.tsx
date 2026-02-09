@@ -544,10 +544,10 @@ export default function HomePage() {
         <div className="mx-auto max-w-[980px] px-4 sm:px-6 py-8 sm:py-10">
           {/* Footer Links - Mobile Optimized */}
           <div className="flex items-center flex-wrap justify-center gap-4 sm:gap-6 mb-6">
-            <a href="/terms.html" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
+            <a href="/terms" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
               서비스 이용약관
             </a>
-            <a href="/privacy.html" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
+            <a href="/privacy" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
               개인정보처리방침
             </a>
             <a href="http://pf.kakao.com/_AITdn/chat" target="_blank" rel="noopener noreferrer" className="text-[11px] sm:text-[12px] leading-[1.33337] font-normal text-[#6e6e73] hover:text-[#1d1d1f] transition-colors whitespace-nowrap">
