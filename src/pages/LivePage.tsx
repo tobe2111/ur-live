@@ -523,6 +523,14 @@ export default function LivePage() {
   async function handleAddToCart() {
     if (!currentProduct?.product) return
     if (addingToCart) return  // Prevent double-click
+    
+    // 재고 확인
+    if (currentProduct.product.stock === 0) {
+      setNotificationText('품절된 상품입니다')
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 2000)
+      return
+    }
 
     // Check login first
     if (!isLoggedIn) {
@@ -597,7 +605,15 @@ export default function LivePage() {
     } catch (error: any) {
       console.error('Failed to add to cart:', error)
       const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
-      alert(errorMessage)
+      
+      // 재고 부족 에러 처리
+      if (errorMessage.includes('Insufficient stock') || errorMessage.includes('재고가 부족')) {
+        setNotificationText('재고가 부족합니다')
+        setShowNotification(true)
+        setTimeout(() => setShowNotification(false), 2500)
+      } else {
+        alert(errorMessage)
+      }
     } finally {
       setAddingToCart(false)
     }
@@ -1106,7 +1122,7 @@ export default function LivePage() {
               {/* 상품 카드 (썸네일 제거, 높이 조정) */}
               <button
                 onClick={handleAddToCart}
-                disabled={addingToCart}
+                disabled={addingToCart || currentProduct.product.stock === 0}
                 className="flex-1 flex items-center gap-2.5 px-3 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
               >
@@ -1115,25 +1131,47 @@ export default function LivePage() {
                     {currentProduct.product.name}
                   </p>
                   <div className="flex items-baseline gap-1.5">
-                    {currentProduct.product.discount_rate > 0 && (
-                      <span className="text-[#ff3b30] text-[11px] font-extrabold">
-                        {currentProduct.product.discount_rate}%
+                    {currentProduct.product.stock === 0 ? (
+                      <span className="text-[#ff3b30] text-[12px] font-extrabold">
+                        품절
                       </span>
+                    ) : currentProduct.product.stock <= 10 ? (
+                      <>
+                        {currentProduct.product.discount_rate > 0 && (
+                          <span className="text-[#ff3b30] text-[11px] font-extrabold">
+                            {currentProduct.product.discount_rate}%
+                          </span>
+                        )}
+                        <span className="text-[#1d1d1f] text-[14px] font-extrabold">
+                          {discountedPrice.toLocaleString()}원
+                        </span>
+                        <span className="text-[#ff9500] text-[10px] font-bold">
+                          (재고 {currentProduct.product.stock}개)
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {currentProduct.product.discount_rate > 0 && (
+                          <span className="text-[#ff3b30] text-[11px] font-extrabold">
+                            {currentProduct.product.discount_rate}%
+                          </span>
+                        )}
+                        <span className="text-[#1d1d1f] text-[14px] font-extrabold">
+                          {discountedPrice.toLocaleString()}원
+                        </span>
+                      </>
                     )}
-                    <span className="text-[#1d1d1f] text-[14px] font-extrabold">
-                      {discountedPrice.toLocaleString()}원
-                    </span>
                   </div>
                 </div>
-                <div className="flex-shrink-0 bg-[#FF6B35] text-white px-3 py-1.5 rounded-full text-[10px] font-extrabold">
-                  {addingToCart ? '담는중...' : '담기'}
+                <div className={`flex-shrink-0 ${currentProduct.product.stock === 0 ? 'bg-[#8e8e93]' : 'bg-[#FF6B35]'} text-white px-3 py-1.5 rounded-full text-[10px] font-extrabold`}>
+                  {currentProduct.product.stock === 0 ? '품절' : addingToCart ? '담는중...' : '담기'}
                 </div>
               </button>
 
               {/* 결제 버튼 */}
               <button
                 onClick={handleCheckout}
-                disabled={checkingOut}
+                disabled={checkingOut || currentProduct.product.stock === 0}
                 className="relative flex-shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-[#0064FF] shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ boxShadow: '0 4px 16px rgba(0,100,255,0.4)' }}
               >
