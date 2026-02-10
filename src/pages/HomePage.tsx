@@ -49,29 +49,39 @@ export default function HomePage() {
 
   function loadUserInfo() {
     // localStorage에서 사용자 정보 읽기
-    const userName = localStorage.getItem('userName')
-    const userEmail = localStorage.getItem('userEmail')
+    // LivePage와 동일한 키 사용: user_name, user_id, session
+    const userName = localStorage.getItem('user_name') || localStorage.getItem('userName')
+    const userId = localStorage.getItem('user_id')
+    const session = localStorage.getItem('session')
     
-    if (userName) {
+    if (userName && (userId || session)) {
       setUser({
         name: userName,
-        email: userEmail || ''
+        email: '' // 이메일은 선택사항
       })
     }
   }
 
   function handleLogout() {
-    // localStorage 정리
+    // localStorage 정리 (모든 가능한 키)
+    localStorage.removeItem('user_id')
+    localStorage.removeItem('user_name')
+    localStorage.removeItem('session')
     localStorage.removeItem('userId')
     localStorage.removeItem('userName')
     localStorage.removeItem('userEmail')
+    localStorage.removeItem('access_token')
     localStorage.removeItem('accessToken')
+    localStorage.removeItem('hasCartItems')
     
     // 상태 업데이트
     setUser(null)
     
     // 알림 표시
     alert('로그아웃되었습니다.')
+    
+    // 홈페이지로 이동
+    navigate('/')
   }
 
   async function loadStreams() {
