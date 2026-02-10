@@ -4,7 +4,7 @@ import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star } from 'lucide-react'
+import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
 interface Stream {
@@ -25,16 +25,24 @@ interface Stream {
 interface Product {
   id: number
   name: string
+  price: number
   current_price: number
+  original_price?: number
+  discount_rate: number
   image_url: string
   sold_count?: number
+  stock: number
 }
 
 export default function HomePage() {
   const [streams, setStreams] = useState<Stream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
+  const [popularProducts, setPopularProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [productsLoading, setProductsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [sortBy, setSortBy] = useState('viewers')
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [user, setUser] = useState<{name: string, email: string} | null>(null)
@@ -46,6 +54,7 @@ export default function HomePage() {
   useEffect(() => {
     loadStreams()
     loadScheduledStreams()
+    loadPopularProducts()
     loadUserInfo()
   }, [])
 
@@ -96,6 +105,16 @@ export default function HomePage() {
     }
   }
 
+  // Sort streams based on selected sort option
+  const sortedStreams = [...streams].sort((a, b) => {
+    if (sortBy === 'viewers') {
+      return (b.viewer_count || 0) - (a.viewer_count || 0)
+    } else if (sortBy === 'recent') {
+      return b.id - a.id
+    }
+    return 0
+  })
+
   async function loadScheduledStreams() {
     try {
       const response = await axios.get('/api/streams?status=scheduled')
@@ -107,6 +126,20 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Failed to load scheduled streams:', error)
+    }
+  }
+
+  async function loadPopularProducts() {
+    try {
+      setProductsLoading(true)
+      const response = await axios.get('/api/products/popular')
+      if (response.data.success) {
+        setPopularProducts((response.data.data || []).slice(0, 10))
+      }
+    } catch (error) {
+      console.error('Failed to load popular products:', error)
+    } finally {
+      setProductsLoading(false)
     }
   }
 
@@ -277,6 +310,15 @@ export default function HomePage() {
               {/* Stats */}
               <div className="flex flex-wrap items-center gap-8 pt-4">
                 <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-pink-500 animate-pulse">
+                    <Circle className="h-5 w-5 text-white fill-white" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">{streams.length}</div>
+                    <div className="text-sm text-gray-600">라이브 진행 중</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
                   <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500]">
                     <Users className="h-5 w-5 text-white" />
                   </div>
@@ -387,10 +429,37 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Category Navigation */}
+      <section className="py-8 bg-white border-y border-gray-100 sticky top-16 sm:top-20 z-40 shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
+            {['all', 'fashion', 'beauty', 'electronics', 'food', 'home', 'sports'].map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`flex-shrink-0 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+                  selectedCategory === category
+                    ? 'bg-gradient-to-r from-[#6A5ACD] to-[#9370DB] text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {category === 'all' && '전체'}
+                {category === 'fashion' && '👗 패션'}
+                {category === 'beauty' && '💄 뷰티'}
+                {category === 'electronics' && '📱 가전'}
+                {category === 'food' && '🍕 식품'}
+                {category === 'home' && '🏠 홈/리빙'}
+                {category === 'sports' && '⚽ 스포츠'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Live Streams Section */}
       <section id="live-section" className="py-16 sm:py-20 md:py-24 bg-gradient-to-br from-gray-50 to-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex items-center justify-between mb-12">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
                 지금 방송 중! 🔥
@@ -399,6 +468,34 @@ export default function HomePage() {
                 {streams.length > 0 ? `${streams.length}개의 라이브 진행 중` : '곧 새로운 라이브가 시작됩니다'}
               </p>
             </div>
+            
+            {/* Sort Options */}
+            {streams.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setSortBy('viewers')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    sortBy === 'viewers'
+                      ? 'bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-gray-900 shadow-lg'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>인기순</span>
+                </button>
+                <button
+                  onClick={() => setSortBy('recent')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    sortBy === 'recent'
+                      ? 'bg-gradient-to-r from-[#FFD700] to-[#FFA500] text-gray-900 shadow-lg'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <Clock className="h-4 w-4" />
+                  <span>최신순</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -428,7 +525,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {streams.map((stream) => (
+              {sortedStreams.map((stream) => (
                 <Link 
                   key={stream.id} 
                   to={`/live/${stream.id}`}
@@ -497,6 +594,121 @@ export default function HomePage() {
                     </div>
                   </div>
                 </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Popular Products Section */}
+      <section className="py-16 sm:py-20 md:py-24 bg-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
+              인기 상품 🏆
+            </h2>
+            <p className="text-xl text-gray-600">
+              지금 가장 많이 판매되는 상품을 만나보세요
+            </p>
+          </div>
+
+          {productsLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="aspect-square bg-gray-200 rounded-2xl mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : popularProducts.length === 0 ? (
+            <div className="text-center py-16 bg-gray-50 rounded-3xl">
+              <Package className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600 text-lg">등록된 상품이 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+              {popularProducts.map((product, index) => (
+                <div key={product.id} className="group relative">
+                  <div className="relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                    {/* Rank Badge */}
+                    {index < 3 && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <div className={`flex items-center justify-center h-8 w-8 rounded-full font-bold text-sm shadow-lg ${
+                          index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' :
+                          index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
+                          'bg-gradient-to-br from-orange-400 to-orange-600 text-white'
+                        }`}>
+                          {index + 1}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Product Image */}
+                    <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                      <img
+                        src={product.image_url || 'https://via.placeholder.com/300'}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                      
+                      {/* Stock Badge */}
+                      {product.stock === 0 ? (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <div className="bg-red-500 text-white px-4 py-2 rounded-full font-bold text-sm">
+                            품절
+                          </div>
+                        </div>
+                      ) : product.stock <= 10 && (
+                        <div className="absolute bottom-2 left-2">
+                          <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                            재고 {product.stock}개
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Discount Badge */}
+                      {product.discount_rate > 0 && (
+                        <div className="absolute top-2 right-2">
+                          <div className="bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-bold">
+                            {product.discount_rate}%
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Product Info */}
+                    <div className="p-3 sm:p-4">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#6A5ACD] transition-colors">
+                        {product.name}
+                      </h3>
+                      
+                      {/* Price */}
+                      <div className="flex flex-col space-y-1">
+                        {product.discount_rate > 0 && product.original_price && (
+                          <div className="text-xs text-gray-400 line-through">
+                            {product.original_price.toLocaleString()}원
+                          </div>
+                        )}
+                        <div className="flex items-baseline space-x-2">
+                          <span className="text-lg sm:text-xl font-bold text-gray-900">
+                            {product.current_price.toLocaleString()}
+                          </span>
+                          <span className="text-sm text-gray-600">원</span>
+                        </div>
+                      </div>
+
+                      {/* Sales Count */}
+                      {product.sold_count && product.sold_count > 0 && (
+                        <div className="mt-2 flex items-center space-x-1 text-xs text-gray-500">
+                          <ShoppingBag className="h-3 w-3" />
+                          <span>{product.sold_count.toLocaleString()}개 판매</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
