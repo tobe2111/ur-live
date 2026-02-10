@@ -180,7 +180,7 @@ export default function LivePage() {
   useEffect(() => {
     if (!stream?.youtube_video_id) return
     
-    // TikTok embed - use iframe with sandbox to reduce CSP warnings
+    // TikTok embed - maximize video area, minimize UI
     if (stream.platform === 'tiktok') {
       const playerElement = document.getElementById('youtube-player')
       if (!playerElement) return
@@ -194,14 +194,12 @@ export default function LivePage() {
       // Different embed for live vs video
       let embedUrl = ''
       if (stream.tiktok_video_type === 'live') {
-        // TikTok Live: use the live page URL
         embedUrl = `https://www.tiktok.com/@${username}/live`
       } else {
-        // TikTok Video: use embed v2 with sandbox
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
       }
       
-      // Create TikTok iframe that covers full screen and hides bottom UI
+      // Create TikTok iframe - scaled to show only video content
       playerElement.innerHTML = `
         <div style="
           position: absolute;
@@ -210,6 +208,7 @@ export default function LivePage() {
           width: 100vw;
           height: 100vh;
           overflow: hidden;
+          background: black;
         ">
           <iframe 
             src="${embedUrl}"
@@ -217,9 +216,9 @@ export default function LivePage() {
               position: absolute;
               top: 50%;
               left: 50%;
-              transform: translate(-50%, -50%) scale(1.8);
+              transform: translate(-50%, -55%) scale(2.2);
               width: 100vw;
-              height: 120vh;
+              height: 150vh;
               border: none;
             "
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
