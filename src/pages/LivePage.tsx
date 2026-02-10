@@ -201,11 +201,22 @@ export default function LivePage() {
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
       }
       
-      // Create TikTok iframe with sandbox to isolate CSP
+      // Create TikTok iframe that covers full screen
       playerElement.innerHTML = `
         <iframe 
           src="${embedUrl}"
-          style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; min-width: 100%; min-height: 100%;"
+          style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.5);
+            width: 100vw;
+            height: 100vh;
+            min-width: 100vw;
+            min-height: 100vh;
+            border: none;
+            overflow: hidden;
+          "
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen="true"
           scrolling="no"
