@@ -739,6 +739,10 @@ export default function LivePage() {
     const shareTitle = stream?.title || '유어 쇼핑 라이브'
     const shareText = `${shareTitle} - ${stream?.seller_name || ''}`
 
+    console.log('[Share] URL:', shareUrl)
+    console.log('[Share] Title:', shareTitle)
+    console.log('[Share] Text:', shareText)
+
     // Web Share API 지원 확인 (모바일)
     if (navigator.share) {
       try {
@@ -763,9 +767,14 @@ export default function LivePage() {
   }
 
   function copyToClipboard(text: string) {
+    console.log('[Clipboard] Copying text:', text)
+    console.log('[Clipboard] Text length:', text.length)
+    console.log('[Clipboard] Text chars:', text.split('').map(c => `${c}(${c.charCodeAt(0)})`).join(' '))
+    
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
         .then(() => {
+          console.log('[Clipboard] Copy success')
           showAlert('링크가 복사되었습니다!\n원하는 곳에 붙여넣기 해주세요.', 'success', '공유하기')
         })
         .catch((error) => {
