@@ -1,3 +1,4 @@
+import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'

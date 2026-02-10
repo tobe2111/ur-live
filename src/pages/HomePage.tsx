@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Play, Users, ChevronRight, Circle, Menu, User } from 'lucide-react'
+import { CustomModal, useModal } from '@/components/CustomModal'
 
 interface Stream {
   id: number
@@ -37,6 +38,7 @@ export default function HomePage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [user, setUser] = useState<{name: string, email: string} | null>(null)
+  const { modal, showAlert, closeModal } = useModal()
 
   // No callback handling needed for Kakao Sync
   // Authentication is handled directly in the browser
@@ -78,10 +80,10 @@ export default function HomePage() {
     setUser(null)
     
     // 알림 표시
-    alert('로그아웃되었습니다.')
+    showAlert('로그아웃되었습니다.', 'success', '로그아웃 완료')
     
     // 홈페이지로 이동
-    navigate('/')
+    setTimeout(() => navigate('/'), 1500)
   }
 
   async function loadStreams() {
@@ -127,6 +129,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd]">
+      {/* Custom Modal */}
+      <CustomModal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
       {/* Announcement Banner */}
       <div className="bg-gradient-to-r from-[#007aff] to-[#0051d5] text-white text-center py-2 px-4 text-sm">
         🎉 YouTube & TikTok 영상으로 편리한 쇼핑!
