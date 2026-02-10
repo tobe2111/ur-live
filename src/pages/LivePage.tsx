@@ -180,7 +180,7 @@ export default function LivePage() {
   useEffect(() => {
     if (!stream?.youtube_video_id) return
     
-    // TikTok embed - optimized to show video with minimal UI
+    // TikTok embed - use proper embed URL format
     if (stream.platform === 'tiktok') {
       const playerElement = document.getElementById('youtube-player')
       if (!playerElement) return
@@ -191,42 +191,105 @@ export default function LivePage() {
       const videoId = stream.youtube_video_id
       const username = stream.tiktok_username || videoId
       
-      // Different embed for live vs video
+      // TikTok Live cannot be embedded via iframe (X-Frame-Options restriction)
+      // Only recorded videos can be embedded using embed/v2 API
       let embedUrl = ''
-      if (stream.tiktok_video_type === 'live') {
-        embedUrl = `https://www.tiktok.com/@${username}/live`
-      } else {
-        embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
-      }
       
-      // Create TikTok iframe - pure display without scale
-      playerElement.innerHTML = `
-        <div style="
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          overflow: hidden;
-          background: black;
-        ">
-          <iframe 
-            src="${embedUrl}"
-            style="
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              border: none;
-            "
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowfullscreen
-            scrolling="no"
-            frameborder="0"
-          ></iframe>
-        </div>
-      `
+      if (stream.tiktok_video_type === 'live') {
+        // For live streams, show message that direct embedding is not supported
+        playerElement.innerHTML = `
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #FF0050 0%, #00F2EA 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+          ">
+            <div style="
+              background: white;
+              border-radius: 24px;
+              padding: 40px 30px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              max-width: 400px;
+            ">
+              <svg style="width: 80px; height: 80px; margin-bottom: 20px;" viewBox="0 0 48 48" fill="none">
+                <path d="M38 24C38 31.732 31.732 38 24 38C16.268 38 10 31.732 10 24C10 16.268 16.268 10 24 10C31.732 10 38 16.268 38 24Z" fill="#00F2EA"/>
+                <path d="M34.2 18.4C32.8 17 30.9 16.2 28.9 16.2V20.3C30.1 20.3 31.2 20.7 32.1 21.5L34.2 18.4Z" fill="#FF0050"/>
+                <path d="M28.9 27.8V16.2C30.9 16.2 32.8 17 34.2 18.4L32.1 21.5C31.2 20.7 30.1 20.3 28.9 20.3V31.9C28.9 33.6 27.5 35 25.8 35C24.1 35 22.7 33.6 22.7 31.9C22.7 30.2 24.1 28.8 25.8 28.8V24.7C21.8 24.7 18.6 28 18.6 31.9C18.6 35.8 21.8 39.1 25.8 39.1C29.7 39.1 33 35.8 33 31.9V27.8H28.9Z" fill="#000000"/>
+              </svg>
+              <h2 style="
+                font-size: 24px;
+                font-weight: bold;
+                color: #1d1d1f;
+                margin: 0 0 12px 0;
+              ">TikTok Live</h2>
+              <p style="
+                font-size: 15px;
+                color: #6e6e73;
+                margin: 0 0 24px 0;
+                line-height: 1.5;
+              ">TikTok 라이브는 보안 정책상 웹 임베드를 지원하지 않습니다.</p>
+              <a 
+                href="https://www.tiktok.com/@${username}/live"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="
+                  display: inline-block;
+                  background: #FF0050;
+                  color: white;
+                  padding: 14px 32px;
+                  border-radius: 12px;
+                  font-size: 16px;
+                  font-weight: 600;
+                  text-decoration: none;
+                  transition: transform 0.2s;
+                "
+                onmouseover="this.style.transform='scale(1.05)'"
+                onmouseout="this.style.transform='scale(1)'"
+              >
+                TikTok에서 보기
+              </a>
+            </div>
+          </div>
+        `
+      } else {
+        // For recorded videos, use embed v2 API
+        embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
+        
+        playerElement.innerHTML = `
+          <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: black;
+          ">
+            <iframe 
+              src="${embedUrl}"
+              style="
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: none;
+              "
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              scrolling="no"
+            ></iframe>
+          </div>
+        `
+      }
       
       return () => {
         if (playerElement) {
