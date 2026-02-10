@@ -3516,6 +3516,43 @@ app.get('/api/orders/:orderNo', async (c) => {
   }
 });
 
+// Cancel order (User only - only for pending status)
+app.post('/api/orders/:orderId/cancel', async (c) => {
+  const { DB } = c.env;
+  const orderId = c.req.param('orderId');
+
+  try {
+    // Get order
+    const order = await DB.prepare(
+      'SELECT * FROM orders WHERE id = ?'
+    ).bind(orderId).first();
+
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    // Only allow cancellation for pending orders
+    if (order.status !== 'pending') {
+      return c.json({ 
+        success: false, 
+        error: '결제완료 상태에서만 취소가 가능합니다.' 
+      }, 400);
+    }
+
+    // Update order status to cancelled
+    await DB.prepare(
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind('cancelled', orderId).run();
+
+    return c.json({ 
+      success: true, 
+      message: 'Order cancelled successfully' 
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Get seller's orders
 app.get('/api/seller/orders', async (c) => {
   const { DB } = c.env;

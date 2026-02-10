@@ -32,16 +32,32 @@ interface CartItem {
   option_value?: string
 }
 
+interface OrderItem {
+  id: number
+  product_id: number
+  product_name: string
+  image_url: string
+  quantity: number
+  price_snapshot: number
+  option_value?: string
+}
+
 interface Order {
   id: number
   order_number: string
+  user_id: number
   total_amount: number
   status: string
+  payment_method: string
   shipping_address: string
+  shipping_address_detail: string
+  shipping_postal_code: string
   shipping_name: string
   shipping_phone: string
+  tracking_number?: string
   created_at: string
   updated_at: string
+  items: OrderItem[]
 }
 
 type TabType = 'cart' | 'orders' | 'profile'
@@ -53,6 +69,8 @@ export default function MyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   // Check login status
   const userId = localStorage.getItem('userId')
@@ -81,11 +99,10 @@ export default function MyOrdersPage() {
           setCartItems(response.data.data || [])
         }
       } else if (activeTab === 'orders') {
-        // TODO: Implement orders API
-        // const response = await axios.get(`/api/orders/${userId}`)
-        // if (response.data.success) {
-        //   setOrders(response.data.data || [])
-        // }
+        const response = await axios.get(`/api/orders/user/${userId}`)
+        if (response.data.success) {
+          setOrders(response.data.data || [])
+        }
       }
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -128,6 +145,26 @@ export default function MyOrdersPage() {
       return
     }
     navigate('/checkout')
+  }
+
+  async function handleCancelOrder(orderId: number, orderNumber: string) {
+    if (!confirm('주문을 취소하시겠습니까?\n결제완료 상태에서만 취소가 가능합니다.')) return
+
+    setProcessing(true)
+    try {
+      const response = await axios.post(`/api/orders/${orderId}/cancel`)
+      if (response.data.success) {
+        alert('주문이 취소되었습니다.')
+        loadData()
+      } else {
+        alert(response.data.error || '주문 취소에 실패했습니다.')
+      }
+    } catch (error: any) {
+      console.error('Failed to cancel order:', error)
+      alert(error.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
+    } finally {
+      setProcessing(false)
+    }
   }
 
   function handleLogout() {
@@ -351,7 +388,71 @@ export default function MyOrdersPage() {
             {/* Orders Tab */}
             {activeTab === 'orders' && (
               <div className="space-y-6">
-                {orders.length === 0 ? (
+                {/* Status Filter */}
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                      statusFilter === 'all'
+                        ? 'bg-[#007aff] text-white'
+                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+                    }`}
+                  >
+                    전체
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('pending')}
+                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                      statusFilter === 'pending'
+                        ? 'bg-[#007aff] text-white'
+                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+                    }`}
+                  >
+                    결제완료
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('preparing')}
+                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                      statusFilter === 'preparing'
+                        ? 'bg-[#007aff] text-white'
+                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+                    }`}
+                  >
+                    상품준비중
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('shipping')}
+                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                      statusFilter === 'shipping'
+                        ? 'bg-[#007aff] text-white'
+                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+                    }`}
+                  >
+                    배송중
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('delivered')}
+                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                      statusFilter === 'delivered'
+                        ? 'bg-[#007aff] text-white'
+                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+                    }`}
+                  >
+                    배송완료
+                  </button>
+                  <button
+                    onClick={() => setStatusFilter('cancelled')}
+                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                      statusFilter === 'cancelled'
+                        ? 'bg-[#007aff] text-white'
+                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
+                    }`}
+                  >
+                    취소/환불
+                  </button>
+                </div>
+
+                {orders.filter(order => statusFilter === 'all' || order.status === statusFilter).length === 0 ? (
                   <div className="apple-card p-12 text-center">
                     <div className="w-24 h-24 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-6">
                       <Package className="h-12 w-12 text-[#6e6e73]" />
@@ -368,7 +469,7 @@ export default function MyOrdersPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {orders.map(order => (
+                    {orders.filter(order => statusFilter === 'all' || order.status === statusFilter).map(order => (
                       <div key={order.id} className="apple-card p-6">
                         <div className="flex items-start justify-between mb-4">
                           <div>
@@ -390,7 +491,11 @@ export default function MyOrdersPage() {
                                 ? 'bg-[#34c759] text-white' 
                                 : order.status === 'shipping'
                                 ? 'bg-[#007aff] text-white'
-                                : 'bg-[#ff9500] text-white'
+                                : order.status === 'cancelled'
+                                ? 'bg-[#ff3b30] text-white'
+                                : order.status === 'preparing'
+                                ? 'bg-[#ff9500] text-white'
+                                : 'bg-[#8e8e93] text-white'
                               }
                             `}
                           >
@@ -398,11 +503,50 @@ export default function MyOrdersPage() {
                               ? '배송완료' 
                               : order.status === 'shipping'
                               ? '배송중'
-                              : '준비중'
+                              : order.status === 'cancelled'
+                              ? '취소/환불'
+                              : order.status === 'preparing'
+                              ? '상품준비중'
+                              : '결제완료'
                             }
                           </Badge>
                         </div>
 
+                        {/* Order Items */}
+                        <div className="space-y-3 mb-4">
+                          {order.items?.slice(0, 2).map((item, idx) => (
+                            <div key={idx} className="flex gap-3">
+                              <img
+                                src={item.image_url || 'https://via.placeholder.com/60'}
+                                alt={item.product_name}
+                                className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60'
+                                }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[14px] font-medium text-[#1d1d1f] line-clamp-1">
+                                  {item.product_name}
+                                </p>
+                                {item.option_value && (
+                                  <p className="text-[12px] text-[#6e6e73]">
+                                    옵션: {item.option_value}
+                                  </p>
+                                )}
+                                <p className="text-[13px] text-[#6e6e73]">
+                                  {item.quantity}개 · {(item.price_snapshot * item.quantity).toLocaleString()}원
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                          {order.items && order.items.length > 2 && (
+                            <p className="text-[13px] text-[#6e6e73] text-center">
+                              외 {order.items.length - 2}개
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Shipping Info */}
                         <div className="p-4 bg-[#f5f5f7] rounded-xl mb-4">
                           <div className="flex items-center gap-2 mb-2">
                             <MapPin className="h-4 w-4 text-[#6e6e73]" />
@@ -411,18 +555,50 @@ export default function MyOrdersPage() {
                             </span>
                           </div>
                           <p className="text-[14px] text-[#6e6e73] ml-6">
-                            {order.shipping_address}
+                            [{order.shipping_postal_code}] {order.shipping_address}
                           </p>
+                          {order.shipping_address_detail && (
+                            <p className="text-[14px] text-[#6e6e73] ml-6">
+                              {order.shipping_address_detail}
+                            </p>
+                          )}
+                          {order.tracking_number && (
+                            <div className="mt-3 pt-3 border-t border-[#d2d2d7]">
+                              <div className="flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-[#007aff]" />
+                                <span className="text-[13px] text-[#6e6e73]">
+                                  송장번호:
+                                </span>
+                                <span className="text-[13px] font-medium text-[#1d1d1f]">
+                                  {order.tracking_number}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
+                        {/* Actions */}
                         <div className="flex items-center justify-between">
                           <span className="text-[19px] font-bold text-[#1d1d1f]">
                             {order.total_amount.toLocaleString()}원
                           </span>
-                          <button className="flex items-center text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity">
-                            상세보기
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                          </button>
+                          <div className="flex gap-2">
+                            {order.status === 'pending' && (
+                              <button
+                                onClick={() => handleCancelOrder(order.id, order.order_number)}
+                                className="px-4 py-2 text-[13px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-full hover:bg-[#ff3b30] hover:text-white transition-colors"
+                              >
+                                주문취소
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              className="flex items-center text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+                            >
+                              상세보기
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -526,6 +702,176 @@ export default function MyOrdersPage() {
           </>
         )}
       </main>
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-[#e5e5ea] p-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1d1d1f]">주문 상세</h3>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="text-[#6e6e73] hover:text-[#1d1d1f]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Order Info */}
+              <div>
+                <h4 className="text-[15px] font-semibold text-[#1d1d1f] mb-3">주문 정보</h4>
+                <div className="space-y-2 text-[14px]">
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e73]">주문번호</span>
+                    <span className="font-medium text-[#1d1d1f]">{selectedOrder.order_number}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e73]">주문일시</span>
+                    <span className="font-medium text-[#1d1d1f]">
+                      {new Date(selectedOrder.created_at).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e73]">주문상태</span>
+                    <Badge 
+                      className={`
+                        border-0 px-3 py-1
+                        ${selectedOrder.status === 'delivered' 
+                          ? 'bg-[#34c759] text-white' 
+                          : selectedOrder.status === 'shipping'
+                          ? 'bg-[#007aff] text-white'
+                          : selectedOrder.status === 'cancelled'
+                          ? 'bg-[#ff3b30] text-white'
+                          : selectedOrder.status === 'preparing'
+                          ? 'bg-[#ff9500] text-white'
+                          : 'bg-[#8e8e93] text-white'
+                        }
+                      `}
+                    >
+                      {selectedOrder.status === 'delivered' 
+                        ? '배송완료' 
+                        : selectedOrder.status === 'shipping'
+                        ? '배송중'
+                        : selectedOrder.status === 'cancelled'
+                        ? '취소/환불'
+                        : selectedOrder.status === 'preparing'
+                        ? '상품준비중'
+                        : '결제완료'
+                      }
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div>
+                <h4 className="text-[15px] font-semibold text-[#1d1d1f] mb-3">주문 상품</h4>
+                <div className="space-y-3">
+                  {selectedOrder.items?.map((item, idx) => (
+                    <div key={idx} className="flex gap-3 p-3 bg-[#f5f5f7] rounded-xl">
+                      <img
+                        src={item.image_url || 'https://via.placeholder.com/60'}
+                        alt={item.product_name}
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60'
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-medium text-[#1d1d1f] line-clamp-2">
+                          {item.product_name}
+                        </p>
+                        {item.option_value && (
+                          <p className="text-[12px] text-[#6e6e73]">
+                            옵션: {item.option_value}
+                          </p>
+                        )}
+                        <div className="flex justify-between items-center mt-1">
+                          <p className="text-[13px] text-[#6e6e73]">
+                            {item.quantity}개
+                          </p>
+                          <p className="text-[14px] font-semibold text-[#1d1d1f]">
+                            {(item.price_snapshot * item.quantity).toLocaleString()}원
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Shipping Info */}
+              <div>
+                <h4 className="text-[15px] font-semibold text-[#1d1d1f] mb-3">배송 정보</h4>
+                <div className="p-4 bg-[#f5f5f7] rounded-xl space-y-2 text-[14px]">
+                  <div className="flex gap-2">
+                    <span className="text-[#6e6e73] min-w-[60px]">받는분</span>
+                    <span className="font-medium text-[#1d1d1f]">{selectedOrder.shipping_name}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-[#6e6e73] min-w-[60px]">연락처</span>
+                    <span className="font-medium text-[#1d1d1f]">{selectedOrder.shipping_phone}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-[#6e6e73] min-w-[60px]">주소</span>
+                    <span className="font-medium text-[#1d1d1f]">
+                      [{selectedOrder.shipping_postal_code}] {selectedOrder.shipping_address}
+                      {selectedOrder.shipping_address_detail && `, ${selectedOrder.shipping_address_detail}`}
+                    </span>
+                  </div>
+                  {selectedOrder.tracking_number && (
+                    <div className="flex gap-2 pt-2 border-t border-[#d2d2d7]">
+                      <span className="text-[#6e6e73] min-w-[60px]">송장번호</span>
+                      <span className="font-medium text-[#007aff]">{selectedOrder.tracking_number}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div>
+                <h4 className="text-[15px] font-semibold text-[#1d1d1f] mb-3">결제 정보</h4>
+                <div className="space-y-2 text-[14px]">
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e73]">상품 금액</span>
+                    <span className="font-medium text-[#1d1d1f]">
+                      {selectedOrder.items?.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0).toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e73]">배송비</span>
+                    <span className="font-medium text-[#1d1d1f]">3,000원</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-[#d2d2d7]">
+                    <span className="text-[#1d1d1f] font-semibold">총 결제금액</span>
+                    <span className="text-[19px] font-bold text-[#007aff]">
+                      {selectedOrder.total_amount.toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#6e6e73]">결제수단</span>
+                    <span className="font-medium text-[#1d1d1f]">{selectedOrder.payment_method || 'Mock 결제'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              {selectedOrder.status === 'pending' && (
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null)
+                    handleCancelOrder(selectedOrder.id, selectedOrder.order_number)
+                  }}
+                  className="w-full py-3 text-[15px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-xl hover:bg-[#ff3b30] hover:text-white transition-colors"
+                >
+                  주문 취소
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
