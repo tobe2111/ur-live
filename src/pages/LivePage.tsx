@@ -150,6 +150,38 @@ export default function LivePage() {
     
     if ((token && userId) || (session && userId)) {
       setIsLoggedIn(true)
+      
+      // Check if there's a temporary cart item to restore
+      const tempCartItem = localStorage.getItem('tempCartItem')
+      if (tempCartItem) {
+        try {
+          const cartData = JSON.parse(tempCartItem)
+          // Add to cart automatically
+          setTimeout(async () => {
+            try {
+              await axios.post('/api/cart', {
+                userId: userId,
+                productId: cartData.productId,
+                quantity: cartData.quantity,
+                priceSnapshot: cartData.priceSnapshot,
+                liveStreamId: cartData.liveStreamId
+              })
+              
+              localStorage.setItem('hasCartItems', 'true')
+              localStorage.removeItem('tempCartItem')
+              
+              // Show success message
+              showAlert(`로그인 완료! ${cartData.productName}을(를) 장바구니에 담았습니다.`, 'success', '장바구니 추가 완료')
+            } catch (error) {
+              console.error('Failed to restore cart item:', error)
+              localStorage.removeItem('tempCartItem')
+            }
+          }, 500)
+        } catch (error) {
+          console.error('Failed to parse temp cart item:', error)
+          localStorage.removeItem('tempCartItem')
+        }
+      }
     }
     
     // Prevent scrolling on body and html
@@ -494,6 +526,18 @@ export default function LivePage() {
 
     // Check login first
     if (!isLoggedIn) {
+      // Save current product to temporary cart before login
+      const tempCart = {
+        productId: currentProduct.product.id,
+        quantity: 1,
+        priceSnapshot: currentProduct.product.price,
+        liveStreamId: streamId,
+        productName: currentProduct.product.name,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('tempCartItem', JSON.stringify(tempCart))
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      
       alert('로그인이 필요합니다!')
       handleKakaoLogin()
       return
@@ -562,34 +606,14 @@ export default function LivePage() {
   // Kakao Sync Login
   async function handleKakaoLogin() {
     try {
-      // @ts-ignore - Kakao SDK loaded from CDN
-      if (!window.Kakao) {
-        console.error('[Kakao Sync] Kakao SDK not loaded')
-        alert('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.')
-        return
-      }
-
-      // Initialize if not already initialized
-      // @ts-ignore
-      if (!window.Kakao.isInitialized()) {
-        console.log('[Kakao Sync] Initializing Kakao SDK...')
-        // @ts-ignore
-        window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
-        console.log('[Kakao Sync] SDK Initialized:', window.Kakao.isInitialized())
-      }
-
-      console.log('[Kakao Sync] Starting authorize...')
-
-      // Use Kakao.Auth.authorize() for SDK 2.x
-      // @ts-ignore
-      window.Kakao.Auth.authorize({
-        redirectUri: `${window.location.origin}/auth/kakao/sync/callback`,
-        state: window.location.pathname, // Return to current page after login
-        throughTalk: false  // Force browser login (no Intent)
-      })
+      // Save current page to return after login
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      
+      // Navigate to login page with return URL
+      navigate('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
     } catch (error) {
-      console.error('[Kakao Sync] Exception:', error)
-      alert('로그인 중 오류가 발생했습니다.')
+      console.error('[Login] Exception:', error)
+      alert('로그인 페이지로 이동 중 오류가 발생했습니다.')
     }
   }
 

@@ -183,7 +183,11 @@ export default function HomePage() {
                 </>
               ) : (
                 <Button 
-                  onClick={() => navigate('/login')}
+                  onClick={() => {
+                    // Save current URL as return destination
+                    localStorage.setItem('loginReturnUrl', window.location.pathname)
+                    navigate('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
+                  }}
                   className="hidden sm:flex h-10 px-5 bg-gray-100 hover:bg-gray-200 text-gray-900 border-0 rounded-full text-sm font-medium"
                 >
                   로그인

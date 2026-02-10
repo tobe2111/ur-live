@@ -20,8 +20,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  
+  // Get return URL from query params or localStorage
+  const returnUrl = searchParams.get('returnUrl') || localStorage.getItem('loginReturnUrl') || '/'
 
   useEffect(() => {
+    // Save returnUrl to localStorage if provided
+    const urlParam = searchParams.get('returnUrl')
+    if (urlParam) {
+      localStorage.setItem('loginReturnUrl', urlParam)
+    }
+    
     // Kakao SDK 초기화 확인
     const checkKakaoSDK = () => {
       if (window.Kakao && !window.Kakao.isInitialized()) {
@@ -98,10 +108,21 @@ export default function LoginPage() {
         localStorage.setItem('userId', user.id.toString())
         localStorage.setItem('userName', user.name)
         localStorage.setItem('userEmail', user.email || '')
+        
+        // Also save with alternative keys for compatibility
+        localStorage.setItem('user_id', user.id.toString())
+        localStorage.setItem('user_name', user.name)
+        localStorage.setItem('session', session_token)
 
-        // 메인 페이지로 이동
+        // Clear return URL from localStorage
+        const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
+        localStorage.removeItem('loginReturnUrl')
+        
+        // 로그인 성공 메시지
         alert(`환영합니다, ${user.name}님!`)
-        navigate('/')
+        
+        // Navigate to return URL
+        navigate(savedReturnUrl)
       } else {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }
@@ -137,10 +158,21 @@ export default function LoginPage() {
         localStorage.setItem('userId', user.id.toString())
         localStorage.setItem('userName', user.name)
         localStorage.setItem('userEmail', user.email || '')
+        
+        // Also save with alternative keys for compatibility
+        localStorage.setItem('user_id', user.id.toString())
+        localStorage.setItem('user_name', user.name)
+        localStorage.setItem('session', access_token)
 
-        // 메인 페이지로 이동
+        // Clear return URL from localStorage
+        const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
+        localStorage.removeItem('loginReturnUrl')
+        
+        // 로그인 성공 메시지
         alert(`환영합니다, ${user.name}님!`)
-        navigate('/')
+        
+        // Navigate to return URL
+        navigate(savedReturnUrl)
       } else {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }
