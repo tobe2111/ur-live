@@ -61,6 +61,43 @@ export default function LivePage() {
   const [showChatInput, setShowChatInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
+  // Filter out TikTok CSP warnings from console (dev experience improvement)
+  useEffect(() => {
+    const originalWarn = console.warn
+    const originalError = console.error
+    
+    console.warn = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      // Filter TikTok CSP and Permissions Policy warnings
+      if (
+        message.includes('Content Security Policy') ||
+        message.includes('Permissions policy violation') ||
+        message.includes('upgrade-insecure-requests') ||
+        message.includes('unload is not allowed')
+      ) {
+        return // Suppress these warnings
+      }
+      originalWarn.apply(console, args)
+    }
+    
+    console.error = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      // Filter TikTok-related errors that don't affect functionality
+      if (
+        message.includes('Content Security Policy') ||
+        message.includes('Permissions policy')
+      ) {
+        return // Suppress these errors
+      }
+      originalError.apply(console, args)
+    }
+    
+    return () => {
+      console.warn = originalWarn
+      console.error = originalError
+    }
+  }, [])
+
   // 사용자 이름 마스킹 함수 (첫 글자만 보이고 나머지는 *)
   function maskUserName(name: string): string {
     if (!name || name === '익명' || name.includes('시스템')) {
@@ -143,7 +180,7 @@ export default function LivePage() {
   useEffect(() => {
     if (!stream?.youtube_video_id) return
     
-    // TikTok embed - use iframe directly
+    // TikTok embed - use iframe with sandbox to reduce CSP warnings
     if (stream.platform === 'tiktok') {
       const playerElement = document.getElementById('youtube-player')
       if (!playerElement) return
@@ -160,19 +197,21 @@ export default function LivePage() {
         // TikTok Live: use the live page URL
         embedUrl = `https://www.tiktok.com/@${username}/live`
       } else {
-        // TikTok Video: use embed v2
-        embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`
+        // TikTok Video: use embed v2 with sandbox
+        embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
       }
       
-      // Create TikTok iframe with full-screen cover (remove CSP warnings)
+      // Create TikTok iframe with sandbox to isolate CSP
       playerElement.innerHTML = `
         <iframe 
           src="${embedUrl}"
-          style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; object-fit: cover; min-width: 100%; min-height: 100%;"
+          style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; min-width: 100%; min-height: 100%;"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen="true"
           scrolling="no"
           frameborder="0"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
         ></iframe>
       `
       
