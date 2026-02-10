@@ -180,7 +180,7 @@ export default function LivePage() {
   useEffect(() => {
     if (!stream?.youtube_video_id) return
     
-    // TikTok embed - maximize video area, minimize UI
+    // TikTok embed - optimized to show video with minimal UI
     if (stream.platform === 'tiktok') {
       const playerElement = document.getElementById('youtube-player')
       if (!playerElement) return
@@ -199,7 +199,7 @@ export default function LivePage() {
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
       }
       
-      // Create TikTok iframe - scaled to show only video content
+      // Create TikTok iframe - carefully balanced scale and position
       playerElement.innerHTML = `
         <div style="
           position: absolute;
@@ -216,9 +216,9 @@ export default function LivePage() {
               position: absolute;
               top: 50%;
               left: 50%;
-              transform: translate(-50%, -55%) scale(2.2);
+              transform: translate(-50%, -50%) scale(1.4);
               width: 100vw;
-              height: 150vh;
+              height: 100vh;
               border: none;
             "
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
