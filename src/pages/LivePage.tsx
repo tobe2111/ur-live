@@ -155,10 +155,11 @@ export default function LivePage() {
       playerElement.innerHTML = `
         <iframe 
           src="${embedUrl}"
-          style="width: 100%; height: 100%; border: none;"
-          allow="autoplay; encrypted-media; fullscreen"
+          style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0;"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen
           scrolling="no"
+          frameborder="0"
         ></iframe>
       `
       
@@ -741,19 +742,20 @@ export default function LivePage() {
             <p className="text-white text-[17px] font-semibold">방송이 종료되었습니다.</p>
           </div>
         )}
-        {/* YouTube Player Container - Always render */}
+        {/* YouTube/TikTok Player Container - Always render */}
         <div 
           id="youtube-player"
           className="absolute inset-0"
           style={{
             width: '100%',
             height: '100%',
-            pointerEvents: muted ? 'none' : 'auto',  // Allow touch when unmuted
+            overflow: 'hidden',
+            pointerEvents: stream?.platform === 'tiktok' ? 'auto' : (muted ? 'none' : 'auto'),  // Allow touch when unmuted
           }}
         />
         
-        {/* Tap to unmute overlay */}
-        {muted && videoStatus === 'playing' && (
+        {/* Tap to unmute overlay (YouTube only) */}
+        {stream?.platform !== 'tiktok' && muted && videoStatus === 'playing' && (
           <div 
             onClick={toggleMute}
             className="absolute inset-0 z-10 cursor-pointer"
