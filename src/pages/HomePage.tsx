@@ -168,23 +168,33 @@ export default function HomePage() {
             <div className="flex items-center space-x-3">
               {user ? (
                 <>
-                  <div className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-full">
+                  {/* Desktop: User Profile */}
+                  <Link 
+                    to="/mypage"
+                    className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                  >
                     <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold">
                       {user.name.charAt(0)}
                     </div>
                     <span className="text-sm font-medium text-gray-900">
                       {user.name}
                     </span>
-                  </div>
+                  </Link>
+                  
                   <Button 
                     onClick={handleLogout}
                     className="hidden sm:flex h-10 px-5 bg-gray-100 hover:bg-gray-200 text-gray-900 border-0 rounded-full text-sm font-medium"
                   >
                     로그아웃
                   </Button>
-                  <div className="sm:hidden flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold">
+                  
+                  {/* Mobile: User Profile */}
+                  <Link 
+                    to="/mypage"
+                    className="sm:hidden flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold"
+                  >
                     {user.name.charAt(0)}
-                  </div>
+                  </Link>
                 </>
               ) : (
                 <Button 
