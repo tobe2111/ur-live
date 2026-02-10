@@ -801,12 +801,10 @@ app.get('/auth/kakao/sync/callback', async (c) => {
           SET name = ?, 
               email = ?, 
               profile_image = ?,
-              access_token = ?,
-              service_terms_agreed = ?,
-              terms_agreed_at = CURRENT_TIMESTAMP,
-              updated_at = CURRENT_TIMESTAMP 
+              updated_at = CURRENT_TIMESTAMP,
+              last_login_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).bind(nickname, email, profileImage, accessToken, serviceTermsJson, userId).run();
+        `).bind(nickname, email, profileImage, userId).run();
         console.log('[Kakao Sync] Updated user:', userId);
       } else {
         // Insert new Kakao user
