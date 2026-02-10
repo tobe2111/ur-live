@@ -1,33 +1,46 @@
-# Cloudflare Pages Static Asset Caching
+# Cloudflare Pages Static Asset Caching & Security Headers
 # SPA 최적화: HTML은 캐싱 안함, JS/CSS는 강력하게 캐싱
 
 # SPA Entry Point (index.html) - NO CACHE
 /
   Cache-Control: no-cache, no-store, must-revalidate
   CDN-Cache-Control: no-store
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
 
 # HTML files - NO CACHE (SPA uses client-side routing)
 /*.html
   Cache-Control: no-cache, no-store, must-revalidate
   CDN-Cache-Control: no-store
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
 
 # JavaScript bundles (with hash) - CACHE FOREVER
 /assets/*.js
   Cache-Control: public, max-age=31536000, immutable
   CDN-Cache-Control: public, max-age=31536000
+  X-Content-Type-Options: nosniff
 
 # CSS bundles (with hash) - CACHE FOREVER
 /assets/*.css
   Cache-Control: public, max-age=31536000, immutable
   CDN-Cache-Control: public, max-age=31536000
+  X-Content-Type-Options: nosniff
 
 # Static files in /static
 /static/*
   Cache-Control: public, max-age=31536000, immutable
   CDN-Cache-Control: public, max-age=31536000
 
-# Images
+# Images - 1 year cache
 /images/*
+  Cache-Control: public, max-age=31536000, immutable
+  CDN-Cache-Control: public, max-age=31536000
+
+# WebP Images
+/*.webp
   Cache-Control: public, max-age=31536000, immutable
   CDN-Cache-Control: public, max-age=31536000
 
@@ -35,10 +48,12 @@
 /*.woff
   Cache-Control: public, max-age=31536000, immutable
   CDN-Cache-Control: public, max-age=31536000
+  Access-Control-Allow-Origin: *
 
 /*.woff2
   Cache-Control: public, max-age=31536000, immutable
   CDN-Cache-Control: public, max-age=31536000
+  Access-Control-Allow-Origin: *
 
 # Favicon
 /favicon.svg
@@ -49,8 +64,10 @@
 /api/*
   Cache-Control: no-cache, no-store, must-revalidate
   CDN-Cache-Control: no-store
+  X-Content-Type-Options: nosniff
 
 # Auth routes (no caching)
 /auth/*
   Cache-Control: no-cache, no-store, must-revalidate
   CDN-Cache-Control: no-store
+  X-Content-Type-Options: nosniff

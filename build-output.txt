@@ -1,0 +1,43 @@
+
+> prebuild
+> rm -rf dist
+
+
+> build
+> vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js
+
+vite v6.4.1 building for production...
+transforming...
+✓ 2091 modules transformed.
+Generated an empty chunk: "sentry-vendor".
+rendering chunks...
+computing gzip size...
+dist/index.html                                  4.89 kB │ gzip:  1.71 kB
+dist/assets/index-C92AyMBd.css                  67.43 kB │ gzip: 11.34 kB
+dist/assets/sentry-vendor-l0sNRNKZ.js            0.00 kB │ gzip:  0.02 kB
+dist/assets/KakaoCallbackPage-DsHkANQy.js        1.88 kB │ gzip:  1.07 kB
+dist/assets/NotFoundPage-CA1xVi78.js             2.99 kB │ gzip:  1.28 kB
+dist/assets/ServerErrorPage-CnJVZsGr.js          3.17 kB │ gzip:  1.38 kB
+dist/assets/SearchPage-Cb8db_Q5.js               5.47 kB │ gzip:  1.85 kB
+dist/assets/LoginPage-CCWikDxB.js                7.86 kB │ gzip:  2.81 kB
+dist/assets/AddressManagementPage-CY_vsGWx.js    8.15 kB │ gzip:  2.52 kB
+dist/assets/admin-pages-Bighe_KN.js             24.72 kB │ gzip:  4.96 kB
+dist/assets/user-pages-jOMKFwOE.js              27.06 kB │ gzip:  5.43 kB
+dist/assets/vendor-L6tl9MpO.js                  30.71 kB │ gzip:  9.67 kB
+dist/assets/utils-vendor-B1ATcuf8.js            35.75 kB │ gzip: 13.98 kB
+dist/assets/index-BUk0Rezi.js                   43.80 kB │ gzip:  9.45 kB
+dist/assets/shopping-pages-DE7smarC.js          51.13 kB │ gzip: 13.04 kB
+dist/assets/seller-pages-dYgidx-H.js           138.17 kB │ gzip: 21.96 kB
+dist/assets/react-vendor-CdvWrI9H.js           239.57 kB │ gzip: 76.67 kB
+✓ built in 17.87s
+vite v6.4.1 building SSR bundle for production...
+transforming...
+✓ 29 modules transformed.
+rendering chunks...
+dist/_worker.js  141.24 kB
+✓ built in 1.13s
+✅ Fixed _routes.json - Worker for /api/* and /auth/*, all other routes served as SPA
+🔄 Forcing file updates (Build: 269da9529fe4d37b)...
+✅ Updated live.html (hash: 5c0fe712)
+✅ Updated cart.html (hash: 21d8452a)
+✅ Force update complete!
