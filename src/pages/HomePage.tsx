@@ -157,6 +157,11 @@ export default function HomePage() {
               <Link to="/my-orders" className="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">
                 주문내역
               </Link>
+              {user && (
+                <Link to="/mypage" className="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                  마이페이지
+                </Link>
+              )}
             </nav>
 
             {/* Right Side Buttons */}

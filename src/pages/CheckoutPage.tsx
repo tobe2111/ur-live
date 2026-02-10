@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, AlertCircle, Package } from 'lucide-react'
-import { requireLogin } from '@/utils/auth'
+import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin } from '@/utils/auth'
 
 interface CartItem {
@@ -17,29 +16,71 @@ interface CartItem {
   option_value?: string
 }
 
+interface ShippingAddress {
+  id: number
+  recipient_name: string
+  phone: string
+  postal_code: string
+  address: string
+  address_detail: string
+  is_default: number
+}
+
+declare global {
+  interface Window {
+    daum: any
+  }
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // 배송지 관련 상태
+  const [addresses, setAddresses] = useState<ShippingAddress[]>([])
+  const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
+  const [showAddressModal, setShowAddressModal] = useState(false)
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false)
+  
+  // 새 배송지 입력 폼
+  const [newAddress, setNewAddress] = useState({
+    recipient_name: '',
+    phone: '',
+    postal_code: '',
+    address: '',
+    address_detail: '',
+    is_default: 0
+  })
 
   const SHIPPING_FEE = 3000
 
   useEffect(() => {
-    loadCart()
+    const uid = localStorage.getItem('userId')
+    if (!uid) {
+      requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
+      return
+    }
+    setUserId(uid)
+    loadCart(uid)
+    loadAddresses(uid)
+    
+    // Daum 우편번호 API 스크립트 로드
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.async = true
+    document.body.appendChild(script)
+    
+    return () => {
+      document.body.removeChild(script)
+    }
   }, [])
 
-  async function loadCart() {
+  async function loadCart(uid: string) {
     try {
-      const userId = localStorage.getItem('userId')
-      
-      if (!userId) {
-        requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
-        setLoading(false)
-        return
-      }
-
-      const response = await axios.get(`/api/cart/${userId}`)
+      const response = await axios.get(`/api/cart/${uid}`)
       
       if (response.data.success) {
         setCartItems(response.data.data || [])
@@ -51,6 +92,75 @@ export default function CheckoutPage() {
       setError('장바구니를 불러오는 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadAddresses(uid: string) {
+    try {
+      const response = await axios.get(`/api/shipping-addresses/${uid}`)
+      if (response.data.success) {
+        const addrs = response.data.data || []
+        setAddresses(addrs)
+        // 기본 배송지 자동 선택
+        const defaultAddr = addrs.find((a: ShippingAddress) => a.is_default === 1)
+        if (defaultAddr) {
+          setSelectedAddress(defaultAddr)
+        } else if (addrs.length > 0) {
+          setSelectedAddress(addrs[0])
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load addresses:', err)
+    }
+  }
+
+  function openPostcode() {
+    if (!window.daum || !window.daum.Postcode) {
+      alert('우편번호 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
+
+    new window.daum.Postcode({
+      oncomplete: function(data: any) {
+        setNewAddress(prev => ({
+          ...prev,
+          postal_code: data.zonecode,
+          address: data.roadAddress || data.jibunAddress
+        }))
+      }
+    }).open()
+  }
+
+  async function handleSaveNewAddress() {
+    if (!userId) return
+    
+    if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
+      alert('모든 필수 항목을 입력해주세요.')
+      return
+    }
+
+    try {
+      const response = await axios.post('/api/shipping-addresses', {
+        user_id: parseInt(userId),
+        ...newAddress
+      })
+
+      if (response.data.success) {
+        alert('배송지가 저장되었습니다.')
+        await loadAddresses(userId)
+        setShowNewAddressForm(false)
+        setNewAddress({
+          recipient_name: '',
+          phone: '',
+          postal_code: '',
+          address: '',
+          address_detail: '',
+          is_default: 0
+        })
+      }
+    } catch (err: any) {
+      console.error('Failed to save address:', err)
+      alert('배송지 저장에 실패했습니다.')
     }
   }
 
@@ -126,8 +236,51 @@ export default function CheckoutPage() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* 주문 상품 목록 */}
-          <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-[#1d1d1f] mb-4">주문 상품</h2>
+          <div className="lg:col-span-2 space-y-6">
+            {/* 배송지 섹션 */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[#1d1d1f] flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-[#007aff]" />
+                  배송지
+                </h2>
+                <button
+                  onClick={() => setShowAddressModal(true)}
+                  className="text-sm text-[#007aff] hover:text-[#0051d5] font-medium flex items-center gap-1"
+                >
+                  변경
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {selectedAddress ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-[#1d1d1f]">{selectedAddress.recipient_name}</span>
+                    {selectedAddress.is_default === 1 && (
+                      <span className="px-2 py-0.5 bg-[#007aff] text-white text-xs rounded-full">
+                        기본배송지
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#6e6e73]">{selectedAddress.phone}</p>
+                  <p className="text-sm text-[#1d1d1f]">
+                    [{selectedAddress.postal_code}] {selectedAddress.address}
+                  </p>
+                  <p className="text-sm text-[#1d1d1f]">{selectedAddress.address_detail}</p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAddressModal(true)}
+                  className="w-full py-4 border-2 border-dashed border-[#d2d2d7] rounded-lg text-[#6e6e73] hover:border-[#007aff] hover:text-[#007aff] transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="h-5 w-5" />
+                  배송지를 선택해주세요
+                </button>
+              )}
+            </div>
+
+            <h2 className="text-lg sm:text-xl font-semibold text-[#1d1d1f]">주문 상품</h2>
             
             {cartItems.map((item) => (
               <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm">
@@ -193,6 +346,187 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
+      {/* 배송지 선택 모달 */}
+      {showAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-[#d2d2d7] p-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1d1d1f]">배송지 선택</h3>
+              <button
+                onClick={() => setShowAddressModal(false)}
+                className="text-[#6e6e73] hover:text-[#1d1d1f]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {addresses.map((addr) => (
+                <div
+                  key={addr.id}
+                  onClick={() => {
+                    setSelectedAddress(addr)
+                    setShowAddressModal(false)
+                  }}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    selectedAddress?.id === addr.id
+                      ? 'border-[#007aff] bg-blue-50'
+                      : 'border-[#d2d2d7] hover:border-[#007aff]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-[#1d1d1f]">{addr.recipient_name}</span>
+                    {addr.is_default === 1 && (
+                      <span className="px-2 py-0.5 bg-[#007aff] text-white text-xs rounded-full">
+                        기본배송지
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#6e6e73] mb-1">{addr.phone}</p>
+                  <p className="text-sm text-[#1d1d1f]">
+                    [{addr.postal_code}] {addr.address}
+                  </p>
+                  {addr.address_detail && (
+                    <p className="text-sm text-[#1d1d1f]">{addr.address_detail}</p>
+                  )}
+                </div>
+              ))}
+
+              <button
+                onClick={() => {
+                  setShowAddressModal(false)
+                  setShowNewAddressForm(true)
+                }}
+                className="w-full py-4 border-2 border-dashed border-[#d2d2d7] rounded-lg text-[#007aff] hover:border-[#007aff] hover:bg-blue-50 transition-all flex items-center justify-center gap-2 font-medium"
+              >
+                <Plus className="h-5 w-5" />
+                새 배송지 추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 새 배송지 입력 모달 */}
+      {showNewAddressForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-[#d2d2d7] p-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[#1d1d1f]">새 배송지 추가</h3>
+              <button
+                onClick={() => setShowNewAddressForm(false)}
+                className="text-[#6e6e73] hover:text-[#1d1d1f]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+                  받는 사람 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAddress.recipient_name}
+                  onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
+                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                  placeholder="받는 분 성함을 입력하세요"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+                  휴대폰 번호 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={newAddress.phone}
+                  onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                  placeholder="010-0000-0000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+                  우편번호 <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newAddress.postal_code}
+                    readOnly
+                    className="flex-1 px-4 py-3 border border-[#d2d2d7] rounded-lg bg-[#f5f5f7]"
+                    placeholder="우편번호"
+                  />
+                  <Button
+                    onClick={openPostcode}
+                    className="bg-[#007aff] hover:bg-[#0051d5] text-white px-6"
+                  >
+                    주소 검색
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+                  주소 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAddress.address}
+                  readOnly
+                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg bg-[#f5f5f7]"
+                  placeholder="주소 검색 버튼을 클릭하세요"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+                  상세 주소
+                </label>
+                <input
+                  type="text"
+                  value={newAddress.address_detail}
+                  onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
+                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                  placeholder="상세 주소를 입력하세요"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="default-address"
+                  checked={newAddress.is_default === 1}
+                  onChange={(e) => setNewAddress({ ...newAddress, is_default: e.target.checked ? 1 : 0 })}
+                  className="w-4 h-4 text-[#007aff] border-[#d2d2d7] rounded focus:ring-[#007aff]"
+                />
+                <label htmlFor="default-address" className="text-sm text-[#1d1d1f]">
+                  기본 배송지로 설정
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={() => setShowNewAddressForm(false)}
+                  className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f]"
+                >
+                  취소
+                </Button>
+                <Button
+                  onClick={handleSaveNewAddress}
+                  className="flex-1 bg-[#007aff] hover:bg-[#0051d5] text-white"
+                >
+                  저장
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
