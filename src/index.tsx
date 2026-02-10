@@ -891,112 +891,28 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
       return c.json({ success: false, error: 'Authorization code is required' }, 400);
     }
     
-    console.log('[Kakao Callback] Exchanging code for token');
-    
-    // redirect_uri는 클라이언트에서 전달받음 (프로덕션 고정 값)
-    const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
-    
-    console.log('[Kakao Callback] Using redirect_uri:', redirectUri);
-    
-    // 1. 인증 코드로 액세스 토큰 교환
-    const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: c.env.KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd',
-        redirect_uri: redirectUri,
-        code: code,
-      }).toString(),
-    });
-    
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text();
-      console.error('[Kakao Callback] Token exchange failed:', errorData);
+    // KAKAO_REST_API_KEY가 없으면 에러 (하드코딩 제거)
+    if (!c.env.KAKAO_REST_API_KEY) {
+      console.error('[Kakao Callback] KAKAO_REST_API_KEY not configured');
       return c.json({ 
         success: false, 
-        error: 'Failed to exchange code for token',
-        details: errorData 
-      }, 401);
+        error: 'Server configuration error',
+        code: 'MISSING_API_KEY'
+      }, 500);
     }
     
-    const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
+    const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
     
-    console.log('[Kakao Callback] Token obtained, fetching user info');
+    console.log('[Kakao Callback] Starting OAuth flow');
     
-    // 2. 액세스 토큰으로 사용자 정보 가져오기
-    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-    });
+    // 공통 유틸리티 함수 사용
+    const { exchangeKakaoCode, processKakaoLogin, AuthError } = await import('./auth-utils');
     
-    if (!userResponse.ok) {
-      console.error('[Kakao Callback] Failed to get user info');
-      return c.json({ success: false, error: 'Failed to get user info' }, 500);
-    }
+    // 1. 코드를 액세스 토큰으로 교환
+    const accessToken = await exchangeKakaoCode(code, redirectUri, c.env.KAKAO_REST_API_KEY);
     
-    const userData = await userResponse.json();
-    
-    if (!userData.id) {
-      console.error('[Kakao Callback] Invalid user data');
-      return c.json({ success: false, error: 'Invalid user data' }, 500);
-    }
-    
-    console.log('[Kakao Callback] User authenticated:', userData.id);
-    
-    // 3. 사용자 정보 추출
-    const kakaoId = userData.id.toString();
-    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
-    const email = userData.kakao_account?.email || '';
-    const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
-    
-    // 4. DB에서 사용자 확인 또는 생성
-    const existingUser = await DB.prepare(
-      'SELECT * FROM users WHERE kakao_id = ?'
-    ).bind(kakaoId).first();
-    
-    let user;
-    
-    if (existingUser) {
-      // 기존 사용자 업데이트
-      await DB.prepare(`
-        UPDATE users 
-        SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now'), updated_at = datetime('now')
-        WHERE kakao_id = ?
-      `).bind(nickname, email || null, profileImage || null, kakaoId).run();
-      
-      user = {
-        id: existingUser.id,
-        kakao_id: kakaoId,
-        name: nickname,
-        email: email || existingUser.email,
-        profile_image: profileImage || existingUser.profile_image
-      };
-      console.log('[Kakao Callback] Existing user updated:', user.id);
-    } else {
-      // 새 사용자 생성
-      const result = await DB.prepare(`
-        INSERT INTO users (kakao_id, name, email, profile_image, created_at, last_login_at)
-        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).bind(kakaoId, nickname, email || null, profileImage || null).run();
-      
-      user = {
-        id: result.meta.last_row_id,
-        kakao_id: kakaoId,
-        name: nickname,
-        email,
-        profile_image: profileImage,
-      };
-      console.log('[Kakao Callback] New user created:', user.id);
-    }
-    
-    // 5. 세션 생성 (간단한 토큰 - 실제로는 JWT 사용 권장)
-    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    // 2. 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
+    const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
     
     return c.json({
       success: true,
@@ -1010,11 +926,25 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
         },
       },
     });
+    
   } catch (error) {
     console.error('[Kakao Callback] Error:', error);
+    
+    // AuthError 타입 체크
+    const { AuthError } = await import('./auth-utils');
+    if (error instanceof AuthError) {
+      return c.json({
+        success: false,
+        error: error.message,
+        code: error.code,
+      }, error.statusCode);
+    }
+    
+    // 기타 에러
     return c.json({
       success: false,
       error: (error as Error).message || 'Internal server error',
+      code: 'UNKNOWN_ERROR',
     }, 500);
   }
 });
@@ -1032,78 +962,14 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     
     console.log('[Kakao Sync] Verifying access token');
     
-    // 1. 카카오 API로 토큰 검증 및 사용자 정보 가져오기
-    const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-    });
+    // 공통 유틸리티 함수 사용 (중복 코드 제거)
+    const { processKakaoLogin, AuthError } = await import('./auth-utils');
     
-    if (!userResponse.ok) {
-      console.error('[Kakao Sync] Token verification failed');
-      return c.json({ success: false, error: 'Invalid access token' }, 401);
-    }
-    
-    const userData = await userResponse.json();
-    
-    if (!userData.id) {
-      console.error('[Kakao Sync] Failed to get user info');
-      return c.json({ success: false, error: 'Failed to get user info' }, 500);
-    }
-    
-    console.log('[Kakao Sync] User authenticated:', userData.id);
-    
-    // 2. 사용자 정보 추출
-    const kakaoId = userData.id.toString();
-    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || 'Kakao User';
-    const email = userData.kakao_account?.email || '';
-    const profileImage = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
-    
-    // 3. DB에서 사용자 확인 또는 생성
-    const existingUser = await DB.prepare(
-      'SELECT * FROM users WHERE kakao_id = ?'
-    ).bind(kakaoId).first();
-    
-    let user;
-    
-    if (existingUser) {
-      // 기존 사용자 업데이트
-      await DB.prepare(`
-        UPDATE users 
-        SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now'), updated_at = datetime('now')
-        WHERE kakao_id = ?
-      `).bind(nickname, email || null, profileImage || null, kakaoId).run();
-      
-      user = {
-        id: existingUser.id,
-        name: nickname,
-        email: email,
-        profile_image: profileImage,
-      };
-      console.log('[Kakao Sync] Updated existing user:', user.id);
-    } else {
-      // 새 사용자 생성
-      const result = await DB.prepare(`
-        INSERT INTO users (kakao_id, name, email, profile_image, created_at, last_login_at)
-        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).bind(kakaoId, nickname, email || null, profileImage || null).run();
-      
-      user = {
-        id: result.meta.last_row_id,
-        name: nickname,
-        email: email,
-        profile_image: profileImage,
-      };
-      console.log('[Kakao Sync] Created new user:', user.id);
-    }
-    
-    // 4. 세션 토큰 생성
-    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    // 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
+    const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
     
     console.log('[Kakao Sync] Login successful');
     
-    // 5. 응답 반환
     return c.json({
       success: true,
       data: {
@@ -1119,9 +985,21 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     
   } catch (error) {
     console.error('[Kakao Sync] Error:', error);
+    
+    // AuthError 타입 체크
+    const { AuthError } = await import('./auth-utils');
+    if (error instanceof AuthError) {
+      return c.json({
+        success: false,
+        error: error.message,
+        code: error.code,
+      }, error.statusCode);
+    }
+    
     return c.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Login failed' 
+      error: error instanceof Error ? error.message : 'Login failed',
+      code: 'UNKNOWN_ERROR',
     }, 500);
   }
 });

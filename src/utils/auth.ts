@@ -1,33 +1,80 @@
 /**
  * Authentication utility functions
  * 모든 페이지에서 일관된 로그인/로그아웃 처리
+ * 
+ * localStorage 키 표준화:
+ * - session: 세션 토큰 (primary)
+ * - user_id: 사용자 ID (primary)
+ * - user_name: 사용자 이름 (primary)
+ * - user_email: 사용자 이메일 (primary)
+ * - user_profile_image: 프로필 이미지 (primary)
+ * 
+ * 레거시 호환성을 위해 읽기 시에는 여러 키를 확인하지만,
+ * 쓰기는 항상 표준 키로만 저장합니다.
  */
 
 import { NavigateFunction } from 'react-router-dom'
+
+// 표준 localStorage 키
+const STORAGE_KEYS = {
+  SESSION: 'session',
+  USER_ID: 'user_id',
+  USER_NAME: 'user_name',
+  USER_EMAIL: 'user_email',
+  USER_PROFILE_IMAGE: 'user_profile_image',
+  LOGIN_RETURN_URL: 'loginReturnUrl',
+  TEMP_CART_ITEM: 'tempCartItem',
+  HAS_CART_ITEMS: 'hasCartItems',
+} as const
+
+// 레거시 키 (읽기 전용, 호환성 유지)
+const LEGACY_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  ACCESS_TOKEN_ALT: 'accessToken',
+  USER_ID_ALT: 'userId',
+  USER_NAME_ALT: 'userName',
+  USER_EMAIL_ALT: 'userEmail',
+}
 
 /**
  * 로그인 상태 확인
  */
 export function isLoggedIn(): boolean {
-  const token = localStorage.getItem('access_token')
-  const session = localStorage.getItem('session')
-  const userId = localStorage.getItem('user_id')
+  const session = localStorage.getItem(STORAGE_KEYS.SESSION)
+  const userId = getUserId()
   
-  return !!((token && userId) || (session && userId))
+  return !!(session && userId)
 }
 
 /**
- * 사용자 ID 가져오기
+ * 사용자 ID 가져오기 (레거시 키 호환)
  */
 export function getUserId(): string | null {
-  return localStorage.getItem('user_id') || localStorage.getItem('userId')
+  return localStorage.getItem(STORAGE_KEYS.USER_ID) || 
+         localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
 }
 
 /**
- * 사용자 이름 가져오기
+ * 사용자 이름 가져오기 (레거시 키 호환)
  */
 export function getUserName(): string | null {
-  return localStorage.getItem('user_name') || localStorage.getItem('userName')
+  return localStorage.getItem(STORAGE_KEYS.USER_NAME) || 
+         localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
+}
+
+/**
+ * 사용자 이메일 가져오기 (레거시 키 호환)
+ */
+export function getUserEmail(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.USER_EMAIL) || 
+         localStorage.getItem(LEGACY_KEYS.USER_EMAIL_ALT)
+}
+
+/**
+ * 사용자 프로필 이미지 가져오기
+ */
+export function getUserProfileImage(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.USER_PROFILE_IMAGE)
 }
 
 /**
@@ -40,7 +87,7 @@ export function getUserName(): string | null {
 export function requireLogin(navigate: NavigateFunction, message: string = '로그인이 필요합니다.'): void {
   // Save current URL as return destination
   const currentPath = window.location.pathname + window.location.search
-  localStorage.setItem('loginReturnUrl', currentPath)
+  localStorage.setItem(STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
   
   // Show alert if message provided
   if (message) {
@@ -75,21 +122,21 @@ export function saveTempCartItem(
     productName,
     timestamp: Date.now()
   }
-  localStorage.setItem('tempCartItem', JSON.stringify(tempCart))
+  localStorage.setItem(STORAGE_KEYS.TEMP_CART_ITEM, JSON.stringify(tempCart))
 }
 
 /**
  * 임시 장바구니 아이템 가져오기
  */
 export function getTempCartItem(): any | null {
-  const tempCartItem = localStorage.getItem('tempCartItem')
+  const tempCartItem = localStorage.getItem(STORAGE_KEYS.TEMP_CART_ITEM)
   if (!tempCartItem) return null
   
   try {
     return JSON.parse(tempCartItem)
   } catch (error) {
     console.error('Failed to parse temp cart item:', error)
-    localStorage.removeItem('tempCartItem')
+    localStorage.removeItem(STORAGE_KEYS.TEMP_CART_ITEM)
     return null
   }
 }
@@ -98,52 +145,57 @@ export function getTempCartItem(): any | null {
  * 임시 장바구니 아이템 삭제
  */
 export function clearTempCartItem(): void {
-  localStorage.removeItem('tempCartItem')
+  localStorage.removeItem(STORAGE_KEYS.TEMP_CART_ITEM)
 }
 
 /**
  * 로그아웃
- * 모든 인증 관련 localStorage 데이터 삭제
+ * 모든 인증 관련 localStorage 데이터 삭제 (표준 키 + 레거시 키)
  */
 export function logout(): void {
-  // Remove all authentication keys
-  localStorage.removeItem('user_id')
-  localStorage.removeItem('user_name')
-  localStorage.removeItem('session')
-  localStorage.removeItem('userId')
-  localStorage.removeItem('userName')
-  localStorage.removeItem('userEmail')
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('hasCartItems')
-  localStorage.removeItem('loginReturnUrl')
-  localStorage.removeItem('tempCartItem')
+  // 표준 키 제거
+  Object.values(STORAGE_KEYS).forEach(key => {
+    localStorage.removeItem(key)
+  })
+  
+  // 레거시 키 제거
+  Object.values(LEGACY_KEYS).forEach(key => {
+    localStorage.removeItem(key)
+  })
 }
 
 /**
  * 사용자 정보 저장 (로그인 성공 후)
  * 
+ * 표준 키로만 저장합니다. 레거시 키는 더 이상 사용하지 않습니다.
+ * 
  * @param userId - 사용자 ID
  * @param userName - 사용자 이름
  * @param sessionToken - 세션 토큰
- * @param userEmail - 사용자 이메일 (선택사항)
+ * @param userEmail - 사용자 이메일 (선택사항, null이면 저장 안 함)
+ * @param profileImage - 프로필 이미지 URL (선택사항)
  */
 export function saveUserInfo(
-  userId: string,
+  userId: string | number,
   userName: string,
   sessionToken: string,
-  userEmail?: string
+  userEmail?: string | null,
+  profileImage?: string | null
 ): void {
-  // Save with both key styles for compatibility
-  localStorage.setItem('accessToken', sessionToken)
-  localStorage.setItem('userId', userId)
-  localStorage.setItem('userName', userName)
+  // 표준 키로 저장
+  localStorage.setItem(STORAGE_KEYS.USER_ID, userId.toString())
+  localStorage.setItem(STORAGE_KEYS.USER_NAME, userName)
+  localStorage.setItem(STORAGE_KEYS.SESSION, sessionToken)
+  
   if (userEmail) {
-    localStorage.setItem('userEmail', userEmail)
+    localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userEmail)
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.USER_EMAIL)
   }
   
-  // Alternative keys
-  localStorage.setItem('user_id', userId)
-  localStorage.setItem('user_name', userName)
-  localStorage.setItem('session', sessionToken)
+  if (profileImage) {
+    localStorage.setItem(STORAGE_KEYS.USER_PROFILE_IMAGE, profileImage)
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.USER_PROFILE_IMAGE)
+  }
 }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import { saveUserInfo, getTempCartItem, clearTempCartItem } from '@/utils/auth'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -38,16 +39,14 @@ export default function KakaoCallbackPage() {
         if (response.data.success) {
           const { user, session_token } = response.data.data
 
-          // localStorage에 저장 (두 가지 키 스타일 모두 저장)
-          localStorage.setItem('accessToken', session_token)
-          localStorage.setItem('userId', user.id.toString())
-          localStorage.setItem('userName', user.name)
-          localStorage.setItem('userEmail', user.email || '')
-          
-          // Alternative keys for compatibility
-          localStorage.setItem('user_id', user.id.toString())
-          localStorage.setItem('user_name', user.name)
-          localStorage.setItem('session', session_token)
+          // 표준 함수로 사용자 정보 저장 (localStorage 키 통일)
+          saveUserInfo(
+            user.id,
+            user.name,
+            session_token,
+            user.email,
+            user.profile_image
+          )
 
           console.log('[Kakao OAuth] Login successful')
           
@@ -55,35 +54,28 @@ export default function KakaoCallbackPage() {
           const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
           localStorage.removeItem('loginReturnUrl')
           
-          // Check for temporary cart item and restore it
-          const tempCartItem = localStorage.getItem('tempCartItem')
+          // 표준 함수로 임시 장바구니 복원
+          const tempCartItem = getTempCartItem()
           if (tempCartItem) {
-            try {
-              const cartData = JSON.parse(tempCartItem)
-              // Add to cart automatically
-              setTimeout(async () => {
-                try {
-                  await axios.post('/api/cart', {
-                    userId: user.id.toString(),
-                    productId: cartData.productId,
-                    quantity: cartData.quantity,
-                    priceSnapshot: cartData.priceSnapshot,
-                    liveStreamId: cartData.liveStreamId
-                  })
-                  
-                  localStorage.setItem('hasCartItems', 'true')
-                  localStorage.removeItem('tempCartItem')
-                  
-                  console.log('[Kakao OAuth] Restored cart item:', cartData.productName)
-                } catch (error) {
-                  console.error('[Kakao OAuth] Failed to restore cart item:', error)
-                  localStorage.removeItem('tempCartItem')
-                }
-              }, 500)
-            } catch (error) {
-              console.error('[Kakao OAuth] Failed to parse temp cart item:', error)
-              localStorage.removeItem('tempCartItem')
-            }
+            setTimeout(async () => {
+              try {
+                await axios.post('/api/cart', {
+                  userId: user.id.toString(),
+                  productId: tempCartItem.productId,
+                  quantity: tempCartItem.quantity,
+                  priceSnapshot: tempCartItem.priceSnapshot,
+                  liveStreamId: tempCartItem.liveStreamId
+                })
+                
+                localStorage.setItem('hasCartItems', 'true')
+                clearTempCartItem()
+                
+                console.log('[Kakao OAuth] Restored cart item:', tempCartItem.productName)
+              } catch (error) {
+                console.error('[Kakao OAuth] Failed to restore cart item:', error)
+                clearTempCartItem()
+              }
+            }, 500)
           }
           
           // Navigate to return URL
