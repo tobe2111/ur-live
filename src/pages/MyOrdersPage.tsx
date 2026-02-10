@@ -19,7 +19,8 @@ import {
   LogOut,
   Plus,
   Minus,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react'
 
 interface CartItem {
@@ -71,6 +72,16 @@ export default function MyOrdersPage() {
   const [processing, setProcessing] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [cancelModal, setCancelModal] = useState<{
+    isOpen: boolean
+    orderId: number | null
+    orderNumber: string
+  }>({
+    isOpen: false,
+    orderId: null,
+    orderNumber: ''
+  })
+  const [cancelReason, setCancelReason] = useState('')
 
   // Check login status
   const userId = localStorage.getItem('userId')
@@ -148,13 +159,33 @@ export default function MyOrdersPage() {
   }
 
   async function handleCancelOrder(orderId: number, orderNumber: string) {
-    if (!confirm('주문을 취소하시겠습니까?\n결제완료 상태에서만 취소가 가능합니다.')) return
+    // 취소 모달 열기
+    setCancelModal({
+      isOpen: true,
+      orderId,
+      orderNumber
+    })
+    setCancelReason('')
+  }
+
+  async function confirmCancelOrder() {
+    const { orderId } = cancelModal
+    if (!orderId) return
+    
+    if (!cancelReason.trim()) {
+      alert('취소 사유를 입력해주세요.')
+      return
+    }
 
     setProcessing(true)
     try {
-      const response = await axios.post(`/api/orders/${orderId}/cancel`)
+      const response = await axios.post(`/api/orders/${orderId}/cancel`, {
+        reason: cancelReason
+      })
       if (response.data.success) {
         alert('주문이 취소되었습니다.')
+        setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
+        setCancelReason('')
         loadData()
       } else {
         alert(response.data.error || '주문 취소에 실패했습니다.')
@@ -868,6 +899,87 @@ export default function MyOrdersPage() {
                   주문 취소
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {cancelModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+          <div 
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                주문 취소
+              </h3>
+              <button
+                onClick={() => setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Order Info */}
+            <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-600 mb-1">주문번호</p>
+              <p className="font-semibold text-gray-900">{cancelModal.orderNumber}</p>
+            </div>
+
+            {/* Cancel Reason */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                취소 사유 <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="">취소 사유를 선택해주세요</option>
+                <option value="단순 변심">단순 변심</option>
+                <option value="다른 상품 구매">다른 상품 구매</option>
+                <option value="배송 지연">배송 지연</option>
+                <option value="상품 정보 불일치">상품 정보 불일치</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+
+            {/* Notice */}
+            <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-700">
+                  <p className="font-medium mb-1">취소 안내</p>
+                  <p className="text-blue-600">• 결제완료 상태에서만 취소가 가능합니다.</p>
+                  <p className="text-blue-600">• 취소 후 3-5영업일 내 환불됩니다. (PG 연동 후)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
+                  setCancelReason('')
+                }}
+                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-medium rounded-full hover:bg-gray-200 transition-colors"
+                disabled={processing}
+              >
+                닫기
+              </button>
+              <button
+                onClick={confirmCancelOrder}
+                disabled={processing || !cancelReason.trim()}
+                className="flex-1 py-3 px-4 bg-red-500 text-white font-medium rounded-full hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processing ? '처리중...' : '취소 확정'}
+              </button>
             </div>
           </div>
         </div>

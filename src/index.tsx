@@ -3581,6 +3581,10 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
   const orderId = c.req.param('orderId');
 
   try {
+    // Get request body
+    const body = await c.req.json();
+    const cancelReason = body.reason || '사유 없음';
+
     // Get order
     const order = await DB.prepare(
       'SELECT * FROM orders WHERE id = ?'
@@ -3598,14 +3602,31 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
       }, 400);
     }
 
-    // Update order status to cancelled
+    // Get order items to restore stock
+    const orderItems: any = await DB.prepare(
+      'SELECT product_id, quantity FROM order_items WHERE order_id = ?'
+    ).bind(orderId).all();
+
+    // Restore stock for each item
+    for (const item of orderItems.results) {
+      await DB.prepare(
+        'UPDATE products SET stock = stock + ? WHERE id = ?'
+      ).bind(item.quantity, item.product_id).run();
+    }
+
+    // Update order status to cancelled with reason
     await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind('cancelled', orderId).run();
+      'UPDATE orders SET status = ?, cancellation_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind('cancelled', cancelReason, orderId).run();
 
     return c.json({ 
       success: true, 
-      message: 'Order cancelled successfully' 
+      message: 'Order cancelled successfully',
+      data: {
+        orderId,
+        reason: cancelReason,
+        itemsRestored: orderItems.results.length
+      }
     });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);

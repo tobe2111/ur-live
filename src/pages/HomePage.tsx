@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
+import { LazyImage } from '@/components/LazyImage'
 
 interface Stream {
   id: number
@@ -535,13 +536,13 @@ export default function HomePage() {
                     {/* Thumbnail */}
                     <div className="relative aspect-video overflow-hidden bg-gray-100">
                       {stream.thumbnail_url ? (
-                        <img
+                        <LazyImage
                           src={stream.thumbnail_url}
                           alt={stream.title}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                       ) : (
-                        <img
+                        <LazyImage
                           src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                           alt={stream.title}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -647,7 +648,7 @@ export default function HomePage() {
 
                     {/* Product Image */}
                     <div className="relative aspect-square bg-gray-100 overflow-hidden">
-                      <img
+                      <LazyImage
                         src={product.image_url || 'https://via.placeholder.com/300'}
                         alt={product.name}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -733,13 +734,13 @@ export default function HomePage() {
                 <div key={stream.id} className="bg-gradient-to-br from-purple-50 to-white rounded-3xl overflow-hidden shadow-lg border border-gray-100">
                   <div className="relative aspect-video overflow-hidden bg-gray-100">
                     {stream.thumbnail_url ? (
-                      <img
+                      <LazyImage
                         src={stream.thumbnail_url}
                         alt={stream.title}
                         className="h-full w-full object-cover opacity-75"
                       />
                     ) : (
-                      <img
+                      <LazyImage
                         src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                         alt={stream.title}
                         className="h-full w-full object-cover opacity-75"
@@ -766,7 +767,7 @@ export default function HomePage() {
                       </p>
                     )}
                     <div className="flex items-center">
-                      <img
+                      <LazyImage
                         src={stream.seller_profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(stream.seller_name)}&background=FFD700&color=000&size=64`}
                         alt={stream.seller_name}
                         className="h-8 w-8 rounded-full mr-2"

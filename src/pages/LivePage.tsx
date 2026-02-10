@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowLeft, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube, Package } from 'lucide-react'
+import { LazyImage } from '@/components/LazyImage'
 
 interface Product {
   id: number
@@ -1222,7 +1223,7 @@ export default function LivePage() {
                 <div className="space-y-4">
                   {cartItems.map((item, index) => (
                     <div key={index} className="flex gap-4 p-4 bg-[#f5f5f7] rounded-2xl">
-                      <img
+                      <LazyImage
                         src={item.image_url || 'https://via.placeholder.com/80'}
                         alt={item.name}
                         className="w-20 h-20 rounded-xl object-cover"
