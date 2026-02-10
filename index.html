@@ -1,6 +1,53 @@
 <!doctype html>
 <html lang="ko">
   <head>
+    <!-- TikTok Console Filter - Must be first to catch all warnings -->
+    <script>
+      (function() {
+        // Save original console methods
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        // Filter TikTok iframe warnings
+        console.warn = function(...args) {
+          const msg = args[0]?.toString() || '';
+          if (
+            msg.includes('Content Security Policy') ||
+            msg.includes('Permissions policy violation') ||
+            msg.includes('upgrade-insecure-requests') ||
+            msg.includes('unload is not allowed')
+          ) {
+            return; // Suppress
+          }
+          originalWarn.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+          const msg = args[0]?.toString() || '';
+          if (
+            msg.includes('Content Security Policy') ||
+            msg.includes('Permissions policy')
+          ) {
+            return; // Suppress
+          }
+          originalError.apply(console, args);
+        };
+        
+        // Also intercept console.log for violations
+        const originalLog = console.log;
+        console.log = function(...args) {
+          const msg = args[0]?.toString() || '';
+          if (
+            msg.includes('[Violation]') ||
+            msg.includes('Permissions policy violation')
+          ) {
+            return; // Suppress
+          }
+          originalLog.apply(console, args);
+        };
+      })();
+    </script>
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-B1ST2L37CM"></script>
     <script>
