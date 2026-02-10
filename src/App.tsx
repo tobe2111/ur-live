@@ -5,6 +5,7 @@ import KakaoCallbackPage from './pages/KakaoCallbackPage'
 import LivePage from './pages/LivePage'
 import CheckoutPage from './pages/CheckoutPage'
 import CartPage from './pages/CartPage'
+import SearchPage from './pages/SearchPage'
 import SellerPage from './pages/SellerPage'
 import SellerLoginPage from './pages/SellerLoginPage'
 import SellerRegisterPage from './pages/SellerRegisterPage'
@@ -38,6 +39,7 @@ function App() {
         <Route path="/live/:streamId" element={<LivePage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/seller" element={<SellerPage />} />
         <Route path="/seller/login" element={<SellerLoginPage />} />
         <Route path="/seller/register" element={<SellerRegisterPage />} />

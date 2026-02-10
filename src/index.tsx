@@ -1509,6 +1509,65 @@ app.get('/api/products/popular', async (c) => {
   }
 });
 
+// 상품 검색 API
+app.get('/api/products/search', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const query = c.req.query('q') || '';
+    const limit = parseInt(c.req.query('limit') || '20');
+    const offset = parseInt(c.req.query('offset') || '0');
+    
+    if (!query.trim()) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Search query is required',
+      }, 400);
+    }
+
+    const searchPattern = `%${query}%`;
+    
+    // 상품명 또는 판매자명으로 검색
+    const result = await DB.prepare(`
+      SELECT 
+        p.*,
+        s.display_name as seller_name,
+        s.username as seller_username
+      FROM products p
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE (p.name LIKE ? OR s.display_name LIKE ? OR s.username LIKE ?)
+        AND p.is_active = 1
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(searchPattern, searchPattern, searchPattern, limit, offset).all();
+
+    // 총 검색 결과 수
+    const countResult = await DB.prepare(`
+      SELECT COUNT(*) as total
+      FROM products p
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE (p.name LIKE ? OR s.display_name LIKE ? OR s.username LIKE ?)
+        AND p.is_active = 1
+    `).bind(searchPattern, searchPattern, searchPattern).first();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        products: result.results || [],
+        total: countResult?.total || 0,
+        query: query,
+        limit: limit,
+        offset: offset,
+      },
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // Product API
 app.get('/api/products/:id', async (c) => {
   const { DB } = c.env;
