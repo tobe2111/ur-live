@@ -700,6 +700,18 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     });
     
     console.log('[Kakao Sync] Token response status:', tokenResponse.status);
+    console.log('[Kakao Sync] Token request details:', {
+      client_id: KAKAO_REST_API_KEY,
+      redirect_uri: KAKAO_REDIRECT_URI,
+      code_length: code.length,
+      code_prefix: code.substring(0, 20)
+    });
+    
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('[Kakao Sync] Token request failed:', errorText);
+      return c.redirect(`${state}?error=token_request_failed&detail=${encodeURIComponent(errorText)}`);
+    }
     
     const tokenData = await tokenResponse.json();
     console.log('[Kakao Sync] Token data received:', { 

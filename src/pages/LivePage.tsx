@@ -621,15 +621,19 @@ export default function LivePage() {
       }
       
       const response = await axios.get(`/api/cart/${userId}`)
+      console.log('[Checkout] Server cart response:', response.data)
       
-      if (!response.data || response.data.length === 0) {
+      // Check if response is valid and has items
+      const cartData = response.data?.data || response.data
+      if (!cartData || !Array.isArray(cartData) || cartData.length === 0) {
         alert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!')
         localStorage.removeItem('hasCartItems')
         setCheckingOut(false)
         return
       }
       
-      // Navigate to cart page
+      // Navigate to cart page only if cart has items
+      console.log('[Checkout] Navigating to cart with', cartData.length, 'items')
       navigate('/cart')
       
     } catch (error: any) {
