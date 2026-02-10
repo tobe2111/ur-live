@@ -48,6 +48,7 @@ export default function LivePage() {
   const [loading, setLoading] = useState(true)
   const [muted, setMuted] = useState(true)  // Start muted for autoplay
   const playerRef = useRef<any>(null)
+  const { modal, showAlert, closeModal } = useModal()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [cartCount, setCartCount] = useState(0)
@@ -733,6 +734,76 @@ export default function LivePage() {
     }
   }
 
+  async function handleShare() {
+    const shareUrl = window.location.href
+    const shareTitle = stream?.title || '유어 쇼핑 라이브'
+    const shareText = `${shareTitle} - ${stream?.seller_name || ''}`
+
+    // Web Share API 지원 확인 (모바일)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        })
+        console.log('공유 성공')
+      } catch (error: any) {
+        // 사용자가 공유 취소한 경우 (AbortError)
+        if (error.name !== 'AbortError') {
+          console.error('공유 실패:', error)
+          // Fallback to clipboard
+          copyToClipboard(shareUrl)
+        }
+      }
+    } else {
+      // Web Share API 미지원 (데스크톱) - 클립보드 복사
+      copyToClipboard(shareUrl)
+    }
+  }
+
+  function copyToClipboard(text: string) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          showAlert('링크가 복사되었습니다!\n원하는 곳에 붙여넣기 해주세요.', 'success', '공유하기')
+        })
+        .catch((error) => {
+          console.error('클립보드 복사 실패:', error)
+          // Fallback for older browsers
+          fallbackCopyToClipboard(text)
+        })
+    } else {
+      // Fallback for older browsers
+      fallbackCopyToClipboard(text)
+    }
+  }
+
+  function fallbackCopyToClipboard(text: string) {
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-999999px'
+    textArea.style.top = '-999999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    
+    try {
+      const successful = document.execCommand('copy')
+      if (successful) {
+        showAlert('링크가 복사되었습니다!\n원하는 곳에 붙여넣기 해주세요.', 'success', '공유하기')
+      } else {
+        showAlert('링크 복사에 실패했습니다.\n수동으로 URL을 복사해주세요.', 'error', '공유 실패')
+      }
+    } catch (error) {
+      console.error('Fallback 복사 실패:', error)
+      showAlert('링크 복사에 실패했습니다.\n수동으로 URL을 복사해주세요.', 'error', '공유 실패')
+    } finally {
+      document.body.removeChild(textArea)
+    }
+  }
+
   const discountedPrice = currentProduct?.product 
     ? currentProduct.product.price * (1 - currentProduct.product.discount_rate / 100)
     : 0
@@ -765,6 +836,16 @@ export default function LivePage() {
 
   return (
     <div className="relative w-full h-[100dvh] overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh' }}>
+      {/* Custom Modal */}
+      <CustomModal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+      
       {/* YouTube/TikTok Video Container - Full Screen with dvh */}
       <div 
         className="absolute inset-0 w-full h-full"
@@ -904,7 +985,10 @@ export default function LivePage() {
       {/* Right Side Icons - 개선: 안쪽으로 이동, 말풍선으로 채팅 */}
       <div className="fixed right-5 bottom-40 z-30 flex flex-col gap-5">
         {/* 공유 버튼 */}
-        <button className="flex flex-col items-center gap-1.5 transition-all active:scale-95">
+        <button 
+          onClick={handleShare}
+          className="flex flex-col items-center gap-1.5 transition-all active:scale-95"
+        >
           <div className="w-11 h-11 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
             <Share2 className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
           </div>
