@@ -193,7 +193,7 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <Users className="w-8 h-8 text-blue-600" />
+              <Users className="w-10 h-10 text-blue-600" />
               <TrendingUp className="w-4 h-4 text-green-600" />
             </div>
             <p className="text-sm text-gray-600">총 판매자</p>
@@ -202,7 +202,7 @@ export default function AdminPage() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-10 h-10 text-green-600" />
             </div>
             <p className="text-sm text-gray-600">승인된 판매자</p>
             <p className="text-3xl font-bold text-gray-900">{stats.activeSellers}</p>
@@ -210,7 +210,7 @@ export default function AdminPage() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <Play className="w-8 h-8 text-red-600" />
+              <Play className="w-10 h-10 text-red-600" />
             </div>
             <p className="text-sm text-gray-600">총 라이브</p>
             <p className="text-3xl font-bold text-gray-900">{stats.totalStreams}</p>
@@ -218,7 +218,7 @@ export default function AdminPage() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <Package className="w-8 h-8 text-orange-600" />
+              <Package className="w-10 h-10 text-orange-600" />
             </div>
             <p className="text-sm text-gray-600">진행 중 라이브</p>
             <p className="text-3xl font-bold text-gray-900">{stats.activeStreams}</p>

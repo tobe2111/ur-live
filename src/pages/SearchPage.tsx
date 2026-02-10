@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowLeft, Search, Package, AlertCircle, Loader2 } from 'lucide-react'
@@ -24,6 +24,11 @@ interface SearchResult {
   offset: number
 }
 
+interface SearchSuggestion {
+  type: 'product' | 'seller'
+  text: string
+}
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -32,14 +37,54 @@ export default function SearchPage() {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [inputValue, setInputValue] = useState(query)
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (query) {
       performSearch()
+      setInputValue(query)
     } else {
       setLoading(false)
     }
   }, [query])
+
+  // 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // 검색 자동완성 디바운스
+  useEffect(() => {
+    if (!inputValue || inputValue.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const response = await axios.get(`/api/search/suggestions?q=${encodeURIComponent(inputValue)}`)
+        if (response.data.success) {
+          setSuggestions(response.data.data.suggestions || [])
+          setShowSuggestions(true)
+        }
+      } catch (error) {
+        console.error('Failed to load suggestions:', error)
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
+  }, [inputValue])
 
   const performSearch = async () => {
     setLoading(true)
@@ -67,6 +112,20 @@ export default function SearchPage() {
     return Math.floor(price * (1 - discountRate / 100))
   }
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (inputValue.trim()) {
+      navigate(`/search?q=${encodeURIComponent(inputValue)}`)
+      setShowSuggestions(false)
+    }
+  }
+
+  const handleSuggestionClick = (text: string) => {
+    setInputValue(text)
+    navigate(`/search?q=${encodeURIComponent(text)}`)
+    setShowSuggestions(false)
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f5f7]">
       {/* Header */}
@@ -79,18 +138,54 @@ export default function SearchPage() {
             >
               <ArrowLeft className="w-5 h-5 text-[#1d1d1f]" />
             </button>
-            <div className="flex-1">
-              <h1 className="text-[21px] font-bold text-[#1d1d1f]">
-                검색 결과
-              </h1>
-              {query && (
-                <p className="text-[13px] text-[#6e6e73] mt-0.5">
-                  "{query}"
-                  {searchResult && ` • ${searchResult.total}개 상품`}
-                </p>
+            
+            {/* 검색 입력창 */}
+            <div className="flex-1 relative" ref={searchRef}>
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6e6e73]" />
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onFocus={() => {
+                    if (suggestions.length > 0) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                  placeholder="상품명 또는 판매자명 검색"
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#f5f5f7] rounded-full text-[15px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                />
+              </form>
+              
+              {/* 자동완성 드롭다운 */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-lg border border-[#e5e5ea] overflow-hidden z-50">
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion.text)}
+                      className="w-full px-4 py-3 text-left hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 border-b border-[#e5e5ea] last:border-b-0"
+                    >
+                      <Search className="w-4 h-4 text-[#6e6e73]" />
+                      <span className="text-[15px] text-[#1d1d1f]">{suggestion.text}</span>
+                      {suggestion.type === 'seller' && (
+                        <span className="ml-auto text-[12px] text-[#6e6e73] bg-[#f5f5f7] px-2 py-0.5 rounded-full">
+                          판매자
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
+          
+          {query && (
+            <p className="text-[13px] text-[#6e6e73] mt-2 ml-[52px]">
+              "{query}"
+              {searchResult && ` • ${searchResult.total}개 상품`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -108,7 +203,7 @@ export default function SearchPage() {
         {!loading && error && (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-16 h-16 rounded-full bg-[#ff3b30]/10 flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-[#ff3b30]" />
+              <AlertCircle className="w-10 h-10 text-[#ff3b30]" />
             </div>
             <p className="text-[17px] font-semibold text-[#1d1d1f] mb-2">오류가 발생했습니다</p>
             <p className="text-[15px] text-[#6e6e73] mb-6">{error}</p>

@@ -319,7 +319,7 @@ export default function CartPage() {
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         disabled={updating || item.quantity <= 1}
-                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                        className="w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
                       >
                         <Minus className="w-3.5 h-3.5 text-gray-700" strokeWidth={2} />
                       </button>
@@ -329,7 +329,7 @@ export default function CartPage() {
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         disabled={updating}
-                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm"
+                        className="w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" strokeWidth={2} />
                       </button>

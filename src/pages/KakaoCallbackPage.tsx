@@ -102,7 +102,7 @@ export default function KakaoCallbackPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fbfbfd] to-white flex items-center justify-center">
       <div className="text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#FEE500] border-r-transparent mb-4"></div>
+        <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-[#FEE500] border-r-transparent mb-4"></div>
         <p className="text-lg text-gray-700">카카오 로그인 처리 중...</p>
       </div>
     </div>

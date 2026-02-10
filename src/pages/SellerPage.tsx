@@ -409,7 +409,7 @@ export default function SellerPage() {
             {streams.length === 0 ? (
               <div className="apple-card p-12 text-center">
                 <div className="w-16 h-16 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Play className="h-8 w-8 text-[#6e6e73]" />
+                  <Play className="h-10 w-10 text-[#6e6e73]" />
                 </div>
                 <p className="text-[15px] text-[#6e6e73] mb-4">
                   라이브가 없습니다
@@ -545,7 +545,7 @@ export default function SellerPage() {
             {products.length === 0 ? (
               <div className="apple-card p-12 text-center">
                 <div className="w-16 h-16 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Package className="h-8 w-8 text-[#6e6e73]" />
+                  <Package className="h-10 w-10 text-[#6e6e73]" />
                 </div>
                 <p className="text-[15px] text-[#6e6e73] mb-4">
                   등록된 상품이 없습니다

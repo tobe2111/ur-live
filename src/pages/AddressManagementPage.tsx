@@ -379,13 +379,13 @@ export default function AddressManagementPage() {
                       )}
                       <button
                         onClick={() => handleEditAddress(address)}
-                        className="p-2 text-gray-400 hover:text-[#9370DB] transition-colors"
+                        className="p-3 text-gray-400 hover:text-[#9370DB] transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteAddress(address.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-3 text-gray-400 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

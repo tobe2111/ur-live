@@ -146,7 +146,7 @@ export default function SellerProductsPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <Package className="w-8 h-8 text-blue-600" />
+              <Package className="w-10 h-10 text-blue-600" />
               <h1 className="text-3xl font-bold text-gray-900">상품 관리</h1>
             </div>
             <p className="text-gray-600 mt-2">
@@ -175,7 +175,7 @@ export default function SellerProductsPage() {
         {/* Loading */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
           </div>
         ) : (
           /* Products Grid */
@@ -221,7 +221,7 @@ export default function SellerProductsPage() {
                                 }}
                               />
                             ) : (
-                              <ImageIcon className="w-8 h-8 text-gray-400" />
+                              <ImageIcon className="w-10 h-10 text-gray-400" />
                             )}
                           </div>
                         </td>

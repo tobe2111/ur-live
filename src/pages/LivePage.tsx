@@ -1206,7 +1206,7 @@ export default function LivePage() {
                 </h3>
                 <button
                   onClick={() => setShowCart(false)}
-                  className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-[#f5f5f7]"
+                  className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#f5f5f7]"
                 >
                   <X className="w-5 h-5 text-[#1d1d1f]" />
                 </button>

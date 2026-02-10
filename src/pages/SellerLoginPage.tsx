@@ -66,7 +66,7 @@ export default function SellerLoginPage() {
               <span className="text-[14px] font-normal hidden sm:inline">홈으로</span>
             </button>
             <Link to="/" className="flex items-center space-x-1.5 sm:space-x-2">
-              <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#007aff] to-[#0051d5]">
+              <div className="flex h-7 w-7 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#007aff] to-[#0051d5]">
                 <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white fill-white" />
               </div>
               <span className="text-[17px] sm:text-[21px] font-semibold tracking-tight text-[#1d1d1f]">

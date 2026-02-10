@@ -146,7 +146,7 @@ export default function SellerStreamEditPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">스트림 로딩 중...</p>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function SellerStreamEditPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Play className="w-8 h-8 text-blue-600" />
+              <Play className="w-10 h-10 text-blue-600" />
               <h1 className="text-3xl font-bold text-gray-900">스트림 관리</h1>
             </div>
             <button

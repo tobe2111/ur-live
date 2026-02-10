@@ -139,7 +139,7 @@ export default function SellerBusinessInfoPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
       </div>
     )
   }
@@ -164,7 +164,7 @@ export default function SellerBusinessInfoPage() {
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Building2 className="w-8 h-8 text-blue-600" />
+            <Building2 className="w-10 h-10 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900">사업자 정보 관리</h1>
           </div>
           <p className="text-gray-600 mt-2">

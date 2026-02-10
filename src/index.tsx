@@ -1510,6 +1510,67 @@ app.get('/api/products/popular', async (c) => {
 });
 
 // 상품 검색 API
+// 검색 자동완성 API
+app.get('/api/search/suggestions', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const query = c.req.query('q') || '';
+    
+    if (!query.trim() || query.length < 2) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: {
+          suggestions: [],
+        },
+      });
+    }
+
+    const searchPattern = `%${query}%`;
+    
+    // 상품명 자동완성 (최대 10개)
+    const productResult = await DB.prepare(`
+      SELECT DISTINCT name
+      FROM products
+      WHERE name LIKE ? AND is_active = 1
+      ORDER BY name ASC
+      LIMIT 10
+    `).bind(searchPattern).all();
+
+    // 판매자명 자동완성 (최대 5개)
+    const sellerResult = await DB.prepare(`
+      SELECT DISTINCT display_name
+      FROM sellers
+      WHERE (display_name LIKE ? OR username LIKE ?) AND is_active = 1
+      ORDER BY display_name ASC
+      LIMIT 5
+    `).bind(searchPattern, searchPattern).all();
+
+    const suggestions = [
+      ...(productResult.results || []).map((row: any) => ({
+        type: 'product',
+        text: row.name,
+      })),
+      ...(sellerResult.results || []).map((row: any) => ({
+        type: 'seller',
+        text: row.display_name,
+      })),
+    ];
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        suggestions: suggestions,
+      },
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 app.get('/api/products/search', async (c) => {
   const { DB } = c.env;
   

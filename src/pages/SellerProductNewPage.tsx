@@ -135,7 +135,7 @@ export default function SellerProductNewPage() {
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <Package className="w-8 h-8 text-blue-600" />
+            <Package className="w-10 h-10 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900">상품 등록</h1>
           </div>
           <p className="text-gray-600 mt-2">

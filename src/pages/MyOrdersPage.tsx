@@ -348,16 +348,16 @@ export default function MyOrdersPage() {
                                 <button
                                   onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                                   disabled={item.quantity <= 1}
-                                  className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e5e5ea] transition-colors disabled:opacity-30"
+                                  className="w-10 h-10 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e5e5ea] transition-colors disabled:opacity-30"
                                 >
                                   <Minus className="h-4 w-4 text-[#1d1d1f]" />
                                 </button>
-                                <span className="text-[15px] font-medium text-[#1d1d1f] w-8 text-center">
+                                <span className="text-[15px] font-medium text-[#1d1d1f] w-10 text-center">
                                   {item.quantity}
                                 </span>
                                 <button
                                   onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                                  className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e5e5ea] transition-colors"
+                                  className="w-10 h-10 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e5e5ea] transition-colors"
                                 >
                                   <Plus className="h-4 w-4 text-[#1d1d1f]" />
                                 </button>

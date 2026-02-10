@@ -35,6 +35,11 @@ interface Product {
   stock: number
 }
 
+interface SearchSuggestion {
+  type: 'product' | 'seller'
+  text: string
+}
+
 export default function HomePage() {
   const [streams, setStreams] = useState<Stream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
@@ -48,6 +53,10 @@ export default function HomePage() {
   const navigate = useNavigate()
   const [user, setUser] = useState<{name: string, email: string} | null>(null)
   const { modal, showAlert, closeModal } = useModal()
+  
+  // 검색 자동완성 상태
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   // No callback handling needed for Kakao Sync
   // Authentication is handled directly in the browser
@@ -144,6 +153,29 @@ export default function HomePage() {
     }
   }
 
+  // 검색 자동완성 디바운스
+  useEffect(() => {
+    if (!searchQuery || searchQuery.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const response = await axios.get(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}`)
+        if (response.data.success) {
+          setSuggestions(response.data.data.suggestions || [])
+          setShowSuggestions(true)
+        }
+      } catch (error) {
+        console.error('Failed to load suggestions:', error)
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
+  }, [searchQuery])
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -207,7 +239,7 @@ export default function HomePage() {
                     to="/mypage"
                     className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold">
+                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold">
                       {user.name.charAt(0)}
                     </div>
                     <span className="text-sm font-medium text-gray-900">
@@ -356,10 +388,10 @@ export default function HomePage() {
                         <Play className="h-16 w-16 text-white fill-white" />
                       </div>
                       <div className="absolute -top-4 -right-4 flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-[#6A5ACD] to-[#9370DB] shadow-xl">
-                        <ShoppingBag className="h-8 w-8 text-white" />
+                        <ShoppingBag className="h-10 w-10 text-white" />
                       </div>
                       <div className="absolute -bottom-4 -left-4 flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500 to-red-500 shadow-xl">
-                        <Gift className="h-8 w-8 text-white" />
+                        <Gift className="h-10 w-10 text-white" />
                       </div>
                     </div>
                     
@@ -582,7 +614,7 @@ export default function HomePage() {
                       )}
                       {stream.seller_name && (
                         <div className="flex items-center">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center mr-2">
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] flex items-center justify-center mr-2">
                             <span className="text-xs font-bold text-white">
                               {stream.seller_name.charAt(0)}
                             </span>
@@ -770,7 +802,7 @@ export default function HomePage() {
                       <LazyImage
                         src={stream.seller_profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(stream.seller_name)}&background=FFD700&color=000&size=64`}
                         alt={stream.seller_name}
-                        className="h-8 w-8 rounded-full mr-2"
+                        className="h-10 w-10 rounded-full mr-2"
                       />
                       <span className="text-sm font-medium text-gray-700">
                         {stream.seller_name}
@@ -801,7 +833,7 @@ export default function HomePage() {
             <div className="relative bg-white rounded-3xl p-10 shadow-2xl border-2 border-[#6A5ACD] transform hover:scale-105 transition-all duration-300">
               <div className="absolute -top-6 left-1/2 -translate-x-1/2">
                 <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-[#6A5ACD] to-[#9370DB] shadow-xl">
-                  <TrendingUp className="h-8 w-8 text-white" />
+                  <TrendingUp className="h-10 w-10 text-white" />
                 </div>
               </div>
               
@@ -858,7 +890,7 @@ export default function HomePage() {
             <div className="relative bg-white rounded-3xl p-10 shadow-2xl border-2 border-[#FFD700] transform hover:scale-105 transition-all duration-300">
               <div className="absolute -top-6 left-1/2 -translate-x-1/2">
                 <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-xl">
-                  <ShoppingBag className="h-8 w-8 text-white" />
+                  <ShoppingBag className="h-10 w-10 text-white" />
                 </div>
               </div>
               

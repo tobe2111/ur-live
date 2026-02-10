@@ -235,7 +235,7 @@ export default function AdminSettlementPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="w-8 h-8 text-blue-600" />
+                <DollarSign className="w-10 h-10 text-blue-600" />
               </div>
               <p className="text-sm text-gray-600">총 판매액</p>
               <p className="text-3xl font-bold text-gray-900">{formatCurrency(stats.total_sales)}</p>
@@ -243,7 +243,7 @@ export default function AdminSettlementPage() {
 
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="w-8 h-8 text-green-600" />
+                <TrendingUp className="w-10 h-10 text-green-600" />
               </div>
               <p className="text-sm text-gray-600">총 수수료</p>
               <p className="text-3xl font-bold text-green-900">{formatCurrency(stats.total_commission)}</p>
@@ -251,7 +251,7 @@ export default function AdminSettlementPage() {
 
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-2">
-                <Users className="w-8 h-8 text-purple-600" />
+                <Users className="w-10 h-10 text-purple-600" />
               </div>
               <p className="text-sm text-gray-600">총 정산액</p>
               <p className="text-3xl font-bold text-purple-900">{formatCurrency(stats.total_seller_amount)}</p>
@@ -259,7 +259,7 @@ export default function AdminSettlementPage() {
 
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-2">
-                <CheckCircle className="w-8 h-8 text-orange-600" />
+                <CheckCircle className="w-10 h-10 text-orange-600" />
               </div>
               <p className="text-sm text-gray-600">주문 건수</p>
               <p className="text-3xl font-bold text-orange-900">{stats.total_orders}건</p>
