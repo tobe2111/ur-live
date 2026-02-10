@@ -164,13 +164,13 @@ export default function LivePage() {
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`
       }
       
-      // Create TikTok iframe with full-screen cover
+      // Create TikTok iframe with full-screen cover (remove CSP warnings)
       playerElement.innerHTML = `
         <iframe 
           src="${embedUrl}"
           style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; object-fit: cover; min-width: 100%; min-height: 100%;"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowfullscreen
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen="true"
           scrolling="no"
           frameborder="0"
         ></iframe>
@@ -230,18 +230,32 @@ export default function LivePage() {
               setPlayerReady(true)
               setVideoStatus('playing')
               
-              // Apply object-fit cover style to iframe for full-screen coverage
+              // Apply aggressive full-screen cover style to iframe
               const iframe = playerElement.querySelector('iframe')
               if (iframe) {
                 iframe.style.position = 'absolute'
                 iframe.style.top = '50%'
                 iframe.style.left = '50%'
                 iframe.style.transform = 'translate(-50%, -50%)'
-                iframe.style.width = '100vw'
-                iframe.style.height = '100dvh'
-                iframe.style.minWidth = '177.78vh'  // 16:9 aspect ratio (100vh * 16/9)
-                iframe.style.minHeight = '56.25vw'  // 9:16 aspect ratio (100vw * 9/16)
-                iframe.style.objectFit = 'cover'
+                // Make video cover entire viewport with no black bars
+                // Use Math.max to ensure we always cover the screen
+                const vw = window.innerWidth
+                const vh = window.innerHeight
+                const videoAspect = 16 / 9  // YouTube default
+                const screenAspect = vw / vh
+                
+                if (screenAspect > videoAspect) {
+                  // Screen is wider than video - fit width
+                  iframe.style.width = '100vw'
+                  iframe.style.height = `${(100 / screenAspect) * videoAspect}vh`
+                  iframe.style.minHeight = '100vh'
+                } else {
+                  // Screen is taller than video - fit height
+                  iframe.style.height = '100vh'
+                  iframe.style.width = `${100 * screenAspect * videoAspect}vw`
+                  iframe.style.minWidth = '100vw'
+                }
+                
                 iframe.style.pointerEvents = 'none'  // Hide controls for live feel
               }
               
