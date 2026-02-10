@@ -201,29 +201,35 @@ export default function LivePage() {
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
       }
       
-      // Create TikTok iframe that covers full screen
+      // Create TikTok iframe that covers full screen and hides bottom UI
       playerElement.innerHTML = `
-        <iframe 
-          src="${embedUrl}"
-          style="
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(1.5);
-            width: 100vw;
-            height: 100vh;
-            min-width: 100vw;
-            min-height: 100vh;
-            border: none;
-            overflow: hidden;
-          "
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen="true"
-          scrolling="no"
-          frameborder="0"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-        ></iframe>
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          overflow: hidden;
+        ">
+          <iframe 
+            src="${embedUrl}"
+            style="
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) scale(1.8);
+              width: 100vw;
+              height: 120vh;
+              border: none;
+            "
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen="true"
+            scrolling="no"
+            frameborder="0"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        </div>
       `
       
       return () => {
