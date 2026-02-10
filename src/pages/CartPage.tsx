@@ -241,30 +241,30 @@ export default function CartPage() {
         type={modal.type}
       />
 
-      {/* Header - 미니멀 스타일 */}
+      {/* Header - 미니멀 스타일 (반응형) */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
           <button 
             onClick={() => navigate(-1)}
             className="p-1 hover:opacity-60 transition-opacity"
           >
             <ArrowLeft className="w-6 h-6 text-gray-900" strokeWidth={1.5} />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900 tracking-tight">
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900 tracking-tight">
             장바구니
           </h1>
           <div className="w-6"></div> {/* Spacer for center alignment */}
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {cartItems.length === 0 ? (
           <div className="text-center py-24">
-            <ShoppingBag className="w-20 h-20 text-gray-200 mx-auto mb-6" strokeWidth={1.5} />
-            <p className="text-gray-400 text-sm mb-8">장바구니가 비어있습니다.</p>
+            <ShoppingBag className="w-16 h-16 sm:w-20 sm:h-20 text-gray-200 mx-auto mb-4 sm:mb-6" strokeWidth={1.5} />
+            <p className="text-gray-400 text-sm sm:text-base mb-6 sm:mb-8">장바구니가 비어있습니다.</p>
             <button
               onClick={() => navigate('/')}
-              className="px-8 py-3.5 bg-gray-900 text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors"
+              className="px-6 py-3 sm:px-8 sm:py-3.5 bg-gray-900 text-white text-sm sm:text-base font-medium rounded-full hover:bg-gray-800 transition-colors"
             >
               쇼핑 계속하기
             </button>
@@ -276,12 +276,12 @@ export default function CartPage() {
               {cartItems.map((item) => (
                 <div 
                   key={item.id} 
-                  className="bg-[#F9F9F9] rounded-2xl p-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-[#F9F9F9] rounded-2xl p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 shadow-sm hover:shadow-md transition-shadow"
                 >
                   {/* Product Info - 썸네일 제거 */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 mb-2 text-base leading-tight">
+                      <h3 className="font-bold text-gray-900 mb-2 text-sm sm:text-base leading-tight">
                         {item.product_name}
                       </h3>
                       {item.option_value && (
@@ -305,7 +305,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-between">
                     {/* Price */}
                     <div>
-                      <p className="text-xl font-bold text-gray-900">
+                      <p className="text-lg sm:text-xl font-bold text-gray-900">
                         {(item.price_snapshot * item.quantity).toLocaleString()}
                         <span className="text-sm font-normal ml-0.5">원</span>
                       </p>
@@ -319,7 +319,7 @@ export default function CartPage() {
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         disabled={updating || item.quantity <= 1}
-                        className="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
                       >
                         <Minus className="w-3.5 h-3.5 text-gray-700" strokeWidth={2} />
                       </button>
@@ -329,7 +329,7 @@ export default function CartPage() {
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         disabled={updating}
-                        className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm"
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" strokeWidth={2} />
                       </button>
@@ -341,7 +341,7 @@ export default function CartPage() {
 
             {/* Fixed Bottom Section - 결제 섹션 */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20">
-              <div className="max-w-2xl mx-auto px-6 py-5">
+              <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
                 {/* Total Summary */}
                 <div className="flex justify-between items-end mb-4">
                   <div>
@@ -353,7 +353,7 @@ export default function CartPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-gray-900 tracking-tight">
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
                       {totalAmount.toLocaleString()}
                       <span className="text-base font-normal ml-1">원</span>
                     </p>
@@ -364,7 +364,7 @@ export default function CartPage() {
                 <button
                   onClick={handleCheckout}
                   disabled={updating}
-                  className="w-full py-4 bg-gray-900 text-white text-base font-semibold rounded-full hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  className="w-full py-3 sm:py-4 bg-gray-900 text-white text-sm sm:text-base font-semibold rounded-full hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                 >
                   {updating ? '처리중...' : '주문하기'}
                 </button>

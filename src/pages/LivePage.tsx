@@ -1118,16 +1118,16 @@ export default function LivePage() {
 
           {/* 하단 버튼 - 상품 카드 + 결제 버튼 */}
           {!showChatInput && currentProduct?.product && (
-            <div className="flex gap-3 items-center">
+            <div className="flex gap-2 sm:gap-3 items-center">
               {/* 상품 카드 (썸네일 제거, 높이 조정) */}
               <button
                 onClick={handleAddToCart}
                 disabled={addingToCart || currentProduct.product.stock === 0}
-                className="flex-1 flex items-center gap-2.5 px-3 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center gap-2 sm:gap-2.5 px-3 py-3 sm:py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl transition-all active:scale-95 border border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
               >
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[12px] font-bold text-[#1d1d1f] line-clamp-1 mb-1">
+                  <p className="text-[11px] sm:text-[12px] font-bold text-[#1d1d1f] line-clamp-1 mb-1">
                     {currentProduct.product.name}
                   </p>
                   <div className="flex items-baseline gap-1.5">
@@ -1142,7 +1142,7 @@ export default function LivePage() {
                             {currentProduct.product.discount_rate}%
                           </span>
                         )}
-                        <span className="text-[#1d1d1f] text-[14px] font-extrabold">
+                        <span className="text-[#1d1d1f] text-[13px] sm:text-[14px] font-extrabold">
                           {discountedPrice.toLocaleString()}원
                         </span>
                         <span className="text-[#ff9500] text-[10px] font-bold">
@@ -1156,14 +1156,14 @@ export default function LivePage() {
                             {currentProduct.product.discount_rate}%
                           </span>
                         )}
-                        <span className="text-[#1d1d1f] text-[14px] font-extrabold">
+                        <span className="text-[#1d1d1f] text-[13px] sm:text-[14px] font-extrabold">
                           {discountedPrice.toLocaleString()}원
                         </span>
                       </>
                     )}
                   </div>
                 </div>
-                <div className={`flex-shrink-0 ${currentProduct.product.stock === 0 ? 'bg-[#8e8e93]' : 'bg-[#FF6B35]'} text-white px-3 py-1.5 rounded-full text-[10px] font-extrabold`}>
+                <div className={`flex-shrink-0 ${currentProduct.product.stock === 0 ? 'bg-[#8e8e93]' : 'bg-[#FF6B35]'} text-white px-2.5 py-1.5 sm:px-3 rounded-full text-[9px] sm:text-[10px] font-extrabold`}>
                   {currentProduct.product.stock === 0 ? '품절' : addingToCart ? '담는중...' : '담기'}
                 </div>
               </button>
@@ -1172,11 +1172,11 @@ export default function LivePage() {
               <button
                 onClick={handleCheckout}
                 disabled={checkingOut || currentProduct.product.stock === 0}
-                className="relative flex-shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-[#0064FF] shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="relative flex-shrink-0 flex items-center justify-center gap-1.5 sm:gap-2 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-[#0064FF] shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ boxShadow: '0 4px 16px rgba(0,100,255,0.4)' }}
               >
-                <ShoppingBag className="w-5 h-5 text-white" />
-                <span className="text-white text-[12px] font-extrabold">{checkingOut ? '확인중...' : '결제'}</span>
+                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                <span className="text-white text-[11px] sm:text-[12px] font-extrabold">{checkingOut ? '확인중...' : '결제'}</span>
                 {cartCount > 0 && (
                   <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] bg-[#ff3b30] rounded-full flex items-center justify-center px-1.5 shadow-lg">
                     <span className="text-white text-[10px] font-extrabold">{cartCount}</span>
