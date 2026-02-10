@@ -966,11 +966,17 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
       // 기존 사용자 업데이트
       await DB.prepare(`
         UPDATE users 
-        SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now')
+        SET name = ?, email = ?, profile_image = ?, last_login_at = datetime('now'), updated_at = datetime('now')
         WHERE kakao_id = ?
       `).bind(nickname, email || null, profileImage || null, kakaoId).run();
       
-      user = { ...existingUser, name: nickname, email, profile_image: profileImage };
+      user = {
+        id: existingUser.id,
+        kakao_id: kakaoId,
+        name: nickname,
+        email: email || existingUser.email,
+        profile_image: profileImage || existingUser.profile_image
+      };
       console.log('[Kakao Callback] Existing user updated:', user.id);
     } else {
       // 새 사용자 생성
