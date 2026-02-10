@@ -199,7 +199,7 @@ export default function LivePage() {
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}?autoplay=1`
       }
       
-      // Create TikTok iframe - carefully balanced scale and position
+      // Create TikTok iframe - pure display without scale
       playerElement.innerHTML = `
         <div style="
           position: absolute;
@@ -214,19 +214,16 @@ export default function LivePage() {
             src="${embedUrl}"
             style="
               position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) scale(1.4);
-              width: 100vw;
-              height: 100vh;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
               border: none;
             "
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen="true"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowfullscreen
             scrolling="no"
             frameborder="0"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
           ></iframe>
         </div>
       `
