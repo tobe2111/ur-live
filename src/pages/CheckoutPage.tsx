@@ -4,6 +4,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package } from 'lucide-react'
+import { requireLogin } from '@/utils/auth'
+import { requireLogin } from '@/utils/auth'
 
 interface CartItem {
   id: number
@@ -32,7 +34,7 @@ export default function CheckoutPage() {
       const userId = localStorage.getItem('userId')
       
       if (!userId) {
-        setError('로그인이 필요합니다.')
+        requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
         setLoading(false)
         return
       }

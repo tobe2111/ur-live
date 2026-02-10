@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
+import { requireLogin } from '@/utils/auth'
+import { requireLogin } from '@/utils/auth'
 
 interface CartItem {
   id: number
@@ -145,8 +147,7 @@ export default function CartPage() {
     try {
       const userId = localStorage.getItem('user_id')
       if (!userId) {
-        showAlert('로그인이 필요합니다.', 'alert', '로그인 필요')
-        setTimeout(() => navigate('/'), 2000)
+        requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
         return
       }
 
