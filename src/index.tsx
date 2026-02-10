@@ -3,6 +3,11 @@ import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
 import { issueTaxInvoiceAuto, convertToBarobillFormat, isBarobillMockMode, cancelBarobillTaxInvoice } from './services/barobill';
+import { 
+  exchangeKakaoCode, 
+  processKakaoLogin, 
+  AuthError 
+} from './auth-utils';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -905,9 +910,6 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     
     console.log('[Kakao Callback] Starting OAuth flow');
     
-    // 공통 유틸리티 함수 사용
-    const { exchangeKakaoCode, processKakaoLogin, AuthError } = await import('./auth-utils');
-    
     // 1. 코드를 액세스 토큰으로 교환
     const accessToken = await exchangeKakaoCode(code, redirectUri, c.env.KAKAO_REST_API_KEY);
     
@@ -931,7 +933,6 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     console.error('[Kakao Callback] Error:', error);
     
     // AuthError 타입 체크
-    const { AuthError } = await import('./auth-utils');
     if (error instanceof AuthError) {
       return c.json({
         success: false,
@@ -962,9 +963,6 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     
     console.log('[Kakao Sync] Verifying access token');
     
-    // 공통 유틸리티 함수 사용 (중복 코드 제거)
-    const { processKakaoLogin, AuthError } = await import('./auth-utils');
-    
     // 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
     const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
     
@@ -987,7 +985,6 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     console.error('[Kakao Sync] Error:', error);
     
     // AuthError 타입 체크
-    const { AuthError } = await import('./auth-utils');
     if (error instanceof AuthError) {
       return c.json({
         success: false,
