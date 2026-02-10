@@ -38,17 +38,57 @@ export default function KakaoCallbackPage() {
         if (response.data.success) {
           const { user, session_token } = response.data.data
 
-          // localStorage에 저장
+          // localStorage에 저장 (두 가지 키 스타일 모두 저장)
           localStorage.setItem('accessToken', session_token)
           localStorage.setItem('userId', user.id.toString())
           localStorage.setItem('userName', user.name)
           localStorage.setItem('userEmail', user.email || '')
+          
+          // Alternative keys for compatibility
+          localStorage.setItem('user_id', user.id.toString())
+          localStorage.setItem('user_name', user.name)
+          localStorage.setItem('session', session_token)
 
           console.log('[Kakao OAuth] Login successful')
           
-          // 메인 페이지로 이동
+          // Get return URL from localStorage
+          const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
+          localStorage.removeItem('loginReturnUrl')
+          
+          // Check for temporary cart item and restore it
+          const tempCartItem = localStorage.getItem('tempCartItem')
+          if (tempCartItem) {
+            try {
+              const cartData = JSON.parse(tempCartItem)
+              // Add to cart automatically
+              setTimeout(async () => {
+                try {
+                  await axios.post('/api/cart', {
+                    userId: user.id.toString(),
+                    productId: cartData.productId,
+                    quantity: cartData.quantity,
+                    priceSnapshot: cartData.priceSnapshot,
+                    liveStreamId: cartData.liveStreamId
+                  })
+                  
+                  localStorage.setItem('hasCartItems', 'true')
+                  localStorage.removeItem('tempCartItem')
+                  
+                  console.log('[Kakao OAuth] Restored cart item:', cartData.productName)
+                } catch (error) {
+                  console.error('[Kakao OAuth] Failed to restore cart item:', error)
+                  localStorage.removeItem('tempCartItem')
+                }
+              }, 500)
+            } catch (error) {
+              console.error('[Kakao OAuth] Failed to parse temp cart item:', error)
+              localStorage.removeItem('tempCartItem')
+            }
+          }
+          
+          // Navigate to return URL
           alert(`환영합니다, ${user.name}님!`)
-          navigate('/')
+          navigate(returnUrl)
         } else {
           throw new Error(response.data.error || '로그인에 실패했습니다.')
         }
