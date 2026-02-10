@@ -115,12 +115,25 @@ export default function LivePage() {
       setIsLoggedIn(true)
     }
     
+    // Prevent scrolling on body and html
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.height = '100dvh'
+    document.body.style.height = '100dvh'
+    
     loadStreamData()
     loadCurrentProduct()
     loadDemoMessages()
     
     const interval = setInterval(loadCurrentProduct, 3000)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      // Restore scrolling when leaving the page
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
+      document.documentElement.style.height = ''
+      document.body.style.height = ''
+    }
   }, [streamId])
 
   useEffect(() => {
@@ -151,12 +164,12 @@ export default function LivePage() {
         embedUrl = `https://www.tiktok.com/embed/v2/${videoId}`
       }
       
-      // Create TikTok iframe
+      // Create TikTok iframe with full-screen cover
       playerElement.innerHTML = `
         <iframe 
           src="${embedUrl}"
-          style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0;"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; object-fit: cover; min-width: 100%; min-height: 100%;"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowfullscreen
           scrolling="no"
           frameborder="0"
@@ -194,7 +207,7 @@ export default function LivePage() {
           playerVars: {
             autoplay: 1,
             mute: 1,
-            controls: 1,  // Show controls for live streams
+            controls: 0,  // Hide controls for immersive live experience
             modestbranding: 1,
             rel: 0,
             showinfo: 0,
@@ -206,7 +219,7 @@ export default function LivePage() {
             loop: 1,  // Enable loop
             playlist: stream.youtube_video_id,  // Required for loop to work
             // Mobile optimizations
-            fs: 1,  // Allow fullscreen
+            fs: 0,  // Disable fullscreen button for cleaner look
             cc_load_policy: 0,  // Don't show captions by default
           },
           events: {
@@ -216,6 +229,22 @@ export default function LivePage() {
               playerRef.current = event.target
               setPlayerReady(true)
               setVideoStatus('playing')
+              
+              // Apply object-fit cover style to iframe for full-screen coverage
+              const iframe = playerElement.querySelector('iframe')
+              if (iframe) {
+                iframe.style.position = 'absolute'
+                iframe.style.top = '50%'
+                iframe.style.left = '50%'
+                iframe.style.transform = 'translate(-50%, -50%)'
+                iframe.style.width = '100vw'
+                iframe.style.height = '100dvh'
+                iframe.style.minWidth = '177.78vh'  // 16:9 aspect ratio (100vh * 16/9)
+                iframe.style.minHeight = '56.25vw'  // 9:16 aspect ratio (100vw * 9/16)
+                iframe.style.objectFit = 'cover'
+                iframe.style.pointerEvents = 'none'  // Hide controls for live feel
+              }
+              
               // Start playing (muted for autoplay policy)
               event.target.playVideo()
             },
@@ -719,17 +748,18 @@ export default function LivePage() {
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black">
-      {/* YouTube Video Container - Full Screen */}
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh' }}>
+      {/* YouTube/TikTok Video Container - Full Screen with dvh */}
       <div 
         className="absolute inset-0 w-full h-full"
         style={{ 
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
+          width: '100vw',
+          height: '100dvh',
           zIndex: 0,
+          overflow: 'hidden',
         }}
       >
         {videoStatus === 'loading' && (
@@ -742,7 +772,7 @@ export default function LivePage() {
             <p className="text-white text-[17px] font-semibold">방송이 종료되었습니다.</p>
           </div>
         )}
-        {/* YouTube/TikTok Player Container - Always render */}
+        {/* YouTube/TikTok Player Container - Always render with object-fit cover */}
         <div 
           id="youtube-player"
           className="absolute inset-0"
@@ -750,7 +780,10 @@ export default function LivePage() {
             width: '100%',
             height: '100%',
             overflow: 'hidden',
-            pointerEvents: stream?.platform === 'tiktok' ? 'auto' : (muted ? 'none' : 'auto'),  // Allow touch when unmuted
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: stream?.platform === 'tiktok' ? 'auto' : (muted ? 'none' : 'auto'),
           }}
         />
         
