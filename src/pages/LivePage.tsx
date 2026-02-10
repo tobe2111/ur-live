@@ -594,18 +594,18 @@ export default function LivePage() {
   async function handleCheckout() {
     if (checkingOut) return  // Prevent double-click
     
-    // Check if cart has items first (before login check!)
+    // Check login FIRST (before checking cart)
+    if (!isLoggedIn) {
+      alert('로그인이 필요합니다!')
+      handleKakaoLogin()
+      return
+    }
+    
+    // Check if cart has items
     const hasCartItems = localStorage.getItem('hasCartItems')
     
     if (!hasCartItems || hasCartItems !== 'true') {
       alert('상품을 먼저 담아주세요!')
-      return
-    }
-    
-    // Check login
-    if (!isLoggedIn) {
-      alert('로그인이 필요합니다!')
-      handleKakaoLogin()
       return
     }
     
@@ -616,6 +616,7 @@ export default function LivePage() {
       
       if (!userId) {
         alert('로그인이 필요합니다.')
+        setCheckingOut(false)
         return
       }
       
@@ -624,6 +625,7 @@ export default function LivePage() {
       if (!response.data || response.data.length === 0) {
         alert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!')
         localStorage.removeItem('hasCartItems')
+        setCheckingOut(false)
         return
       }
       
