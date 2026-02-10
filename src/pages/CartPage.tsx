@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus } from 'lucide-react'
+import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface CartItem {
   id: number
@@ -14,11 +14,128 @@ interface CartItem {
   option_value?: string
 }
 
+interface ModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onConfirm?: () => void
+  title?: string
+  message: string
+  type?: 'alert' | 'confirm' | 'error' | 'success'
+}
+
+function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert' }: ModalProps) {
+  if (!isOpen) return null
+
+  const isConfirm = type === 'confirm'
+  const isError = type === 'error'
+  const isSuccess = type === 'success'
+
+  const getIcon = () => {
+    if (isSuccess) return <CheckCircle className="w-12 h-12 text-green-500" strokeWidth={1.5} />
+    if (isError) return <AlertCircle className="w-12 h-12 text-red-500" strokeWidth={1.5} />
+    return <AlertCircle className="w-12 h-12 text-gray-400" strokeWidth={1.5} />
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
+      <div 
+        className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 animate-slideUp"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Icon */}
+        <div className="flex justify-center mb-4">
+          {getIcon()}
+        </div>
+
+        {/* Title */}
+        {title && (
+          <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+            {title}
+          </h3>
+        )}
+
+        {/* Message */}
+        <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed">
+          {message}
+        </p>
+
+        {/* Buttons */}
+        <div className={`flex gap-3 ${isConfirm ? 'flex-row' : 'flex-col'}`}>
+          {isConfirm ? (
+            <>
+              <button
+                onClick={onClose}
+                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  onConfirm?.()
+                  onClose()
+                }}
+                className="flex-1 py-3 px-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors text-sm"
+              >
+                확인
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onClose}
+              className="w-full py-3 px-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors text-sm"
+            >
+              확인
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CartPage() {
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+
+  // Modal states
+  const [modal, setModal] = useState<{
+    isOpen: boolean
+    title?: string
+    message: string
+    type?: 'alert' | 'confirm' | 'error' | 'success'
+    onConfirm?: () => void
+  }>({
+    isOpen: false,
+    message: '',
+  })
+
+  const showAlert = (message: string, type: 'alert' | 'error' | 'success' = 'alert', title?: string) => {
+    setModal({
+      isOpen: true,
+      title,
+      message,
+      type,
+    })
+  }
+
+  const showConfirm = (message: string, onConfirm: () => void, title?: string) => {
+    setModal({
+      isOpen: true,
+      title,
+      message,
+      type: 'confirm',
+      onConfirm,
+    })
+  }
+
+  const closeModal = () => {
+    setModal({
+      isOpen: false,
+      message: '',
+    })
+  }
 
   useEffect(() => {
     loadCart()
@@ -28,8 +145,8 @@ export default function CartPage() {
     try {
       const userId = localStorage.getItem('user_id')
       if (!userId) {
-        alert('로그인이 필요합니다.')
-        navigate('/')
+        showAlert('로그인이 필요합니다.', 'alert', '로그인 필요')
+        setTimeout(() => navigate('/'), 2000)
         return
       }
 
@@ -41,7 +158,7 @@ export default function CartPage() {
       localStorage.setItem('hasCartItems', items.length > 0 ? 'true' : 'false')
     } catch (error) {
       console.error('Failed to load cart:', error)
-      alert('장바구니를 불러오는데 실패했습니다.')
+      showAlert('장바구니를 불러오는데 실패했습니다.', 'error', '오류')
     } finally {
       setLoading(false)
     }
@@ -57,31 +174,45 @@ export default function CartPage() {
       await loadCart()
     } catch (error: any) {
       console.error('Failed to update quantity:', error)
-      alert(error.response?.data?.error || '수량 변경에 실패했습니다.')
+      showAlert(
+        error.response?.data?.error || '수량 변경에 실패했습니다.',
+        'error',
+        '수량 변경 실패'
+      )
     } finally {
       setUpdating(false)
     }
   }
 
   async function removeItem(cartItemId: number) {
-    if (!confirm('이 상품을 장바구니에서 삭제하시겠습니까?')) return
     if (updating) return
 
-    setUpdating(true)
-    try {
-      await axios.delete(`/api/cart/${cartItemId}`)
-      await loadCart()
-    } catch (error: any) {
-      console.error('Failed to remove item:', error)
-      alert(error.response?.data?.error || '상품 삭제에 실패했습니다.')
-    } finally {
-      setUpdating(false)
-    }
+    showConfirm(
+      '이 상품을 장바구니에서 삭제하시겠습니까?',
+      async () => {
+        setUpdating(true)
+        try {
+          await axios.delete(`/api/cart/${cartItemId}`)
+          await loadCart()
+          showAlert('상품이 삭제되었습니다.', 'success')
+        } catch (error: any) {
+          console.error('Failed to remove item:', error)
+          showAlert(
+            error.response?.data?.error || '상품 삭제에 실패했습니다.',
+            'error',
+            '삭제 실패'
+          )
+        } finally {
+          setUpdating(false)
+        }
+      },
+      '상품 삭제'
+    )
   }
 
   function handleCheckout() {
     if (cartItems.length === 0) {
-      alert('장바구니가 비어있습니다.')
+      showAlert('장바구니가 비어있습니다.', 'alert', '장바구니 비어있음')
       return
     }
     navigate('/checkout')
@@ -99,6 +230,16 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-white pb-32">
+      {/* Custom Modal */}
+      <CustomModal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
+
       {/* Header - 미니멀 스타일 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -231,6 +372,30 @@ export default function CartPage() {
           </>
         )}
       </div>
+
+      {/* Add animations to global CSS */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+      `}</style>
     </div>
   )
 }
