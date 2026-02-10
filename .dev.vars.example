@@ -1,0 +1,108 @@
+# =================================
+# Environment Variables Template
+# =================================
+# 
+# This file contains ALL environment variables required for the application.
+# Copy this file to `.dev.vars` for local development.
+# For production, set these as Cloudflare Secrets using:
+#   npx wrangler secret put VARIABLE_NAME --project-name PROJECT_NAME
+#
+
+# =================================
+# Kakao Login Configuration
+# =================================
+
+# Kakao JavaScript Key (Frontend SDK)
+# Get from: https://developers.kakao.com/console/app/{APP_ID}/config/platform
+KAKAO_JS_KEY=your_kakao_js_key_here
+
+# Kakao REST API Key (Backend API)
+# Get from: https://developers.kakao.com/console/app/{APP_ID}/config/appKey
+KAKAO_REST_API_KEY=your_kakao_rest_api_key_here
+
+# Note: Kakao Sync doesn't require Redirect URI or Client Secret
+# Authentication is handled by Kakao SDK in the browser
+
+# =================================
+# Payment Gateway Configuration
+# =================================
+
+# Payment Provider Type
+# Options: 'mock' | 'toss' | 'portone'
+# Default: 'mock' (for development without real payment)
+PAYMENT_PROVIDER=mock
+
+# --- Toss Payments Configuration (when using PAYMENT_PROVIDER=toss) ---
+# Get from: https://docs.tosspayments.com/guides/using-api/getting-started#API-key
+# TOSS_CLIENT_KEY=test_ck_...        # Frontend client key
+# TOSS_SECRET_KEY=test_sk_...        # Backend secret key
+# TOSS_MERCHANT_ID=...               # Your merchant ID
+
+# --- PortOne Configuration (when using PAYMENT_PROVIDER=portone) ---
+# Get from: https://admin.portone.io/
+# PORTONE_API_KEY=...                # API Key
+# PORTONE_API_SECRET=...             # API Secret  
+# PORTONE_STORE_ID=...               # Store ID
+# PORTONE_CHANNEL_KEY=...            # Channel Key (formerly IMP)
+
+# =================================
+# Application Configuration
+# =================================
+
+# Application Environment
+# Options: 'development' | 'production'
+NODE_ENV=development
+
+# =================================
+# Database Configuration
+# =================================
+
+# D1 Database bindings are configured in wrangler.jsonc
+# No environment variables needed for D1
+
+# =================================
+# Security Configuration
+# =================================
+
+# Session Secret (for generating session tokens)
+# Generate a random string: openssl rand -hex 32
+# SESSION_SECRET=your_random_secret_here
+
+# CORS Allowed Origins (comma-separated)
+# Example: https://yourdomain.com,https://admin.yourdomain.com
+# CORS_ORIGINS=*
+
+# =================================
+# Third-Party Services
+# =================================
+
+# Firebase Configuration (for chat functionality)
+# Get from: Firebase Console > Project Settings > Your apps > Web app
+# FIREBASE_API_KEY=...
+# FIREBASE_AUTH_DOMAIN=...
+# FIREBASE_PROJECT_ID=...
+# FIREBASE_STORAGE_BUCKET=...
+# FIREBASE_MESSAGING_SENDER_ID=...
+# FIREBASE_APP_ID=...
+
+# =================================
+# Email/SMS Configuration (optional)
+# =================================
+
+# Email Service (SendGrid, Mailgun, etc.)
+# EMAIL_SERVICE_API_KEY=...
+# EMAIL_FROM_ADDRESS=...
+
+# SMS Service (Twilio, etc.)
+# SMS_SERVICE_API_KEY=...
+# SMS_FROM_NUMBER=...
+
+# =================================
+# Monitoring & Analytics (optional)
+# =================================
+
+# Sentry (Error monitoring)
+# SENTRY_DSN=...
+
+# Google Analytics
+# GA_MEASUREMENT_ID=...
