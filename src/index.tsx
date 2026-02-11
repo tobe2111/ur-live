@@ -43,32 +43,75 @@ interface PaymentProvider {
   getPayment(paymentKey: string): Promise<PaymentConfirmResponse>;
 }
 
-class TossPaymentsProvider implements PaymentProvider {
-  name = 'tosspayments';
-  private secretKey: string;
-  
-  constructor(secretKey: string) {
-    this.secretKey = secretKey;
-  }
-  
-  async confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse> {
-    try {
-      const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          paymentKey: request.paymentKey,
-          orderId: request.orderId,
-          amount: request.amount
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
+// 순수 함수 기반 Payment Provider (class 문법을 피해 Workers 번들링 이슈 방지)
+function createTossPaymentsProvider(secretKey: string): PaymentProvider {
+  return {
+    name: 'tosspayments',
+    
+    async confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse> {
+      try {
+        const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(secretKey + ':')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            paymentKey: request.paymentKey,
+            orderId: request.orderId,
+            amount: request.amount
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          return {
+            success: false,
+            orderId: request.orderId,
+            paymentKey: request.paymentKey,
+            method: '',
+            totalAmount: request.amount,
+            status: 'FAILED',
+            approvedAt: '',
+            error: data.message || '결제 승인 실패',
+            rawData: data
+          };
+        }
+        
+        let cardInfo: any = {};
+        if (data.card) {
+          cardInfo = {
+            cardCompany: data.card.company,
+            cardNumber: data.card.number,
+            installmentMonths: data.card.installmentPlanMonths || 0
+          };
+        }
+        
+        let virtualAccountInfo: any = {};
+        if (data.virtualAccount) {
+          virtualAccountInfo = {
+            virtualAccountBank: data.virtualAccount.bankCode,
+            virtualAccountNumber: data.virtualAccount.accountNumber,
+            virtualAccountHolder: data.virtualAccount.customerName,
+            virtualAccountDueDate: data.virtualAccount.dueDate
+          };
+        }
+        
+        return {
+          success: true,
+          orderId: data.orderId,
+          paymentKey: data.paymentKey,
+          method: data.method,
+          totalAmount: data.totalAmount,
+          status: data.status,
+          approvedAt: data.approvedAt,
+          transactionId: data.transactionKey,
+          ...cardInfo,
+          ...virtualAccountInfo,
+          rawData: data
+        };
+      } catch (err) {
         return {
           success: false,
           orderId: request.orderId,
@@ -77,119 +120,73 @@ class TossPaymentsProvider implements PaymentProvider {
           totalAmount: request.amount,
           status: 'FAILED',
           approvedAt: '',
-          error: data.message || '결제 승인 실패',
+          error: (err as Error).message,
+          rawData: null
+        };
+      }
+    },
+    
+    async cancelPayment(paymentKey: string, reason: string): Promise<{ success: boolean; error?: string }> {
+      try {
+        const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(secretKey + ':')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ cancelReason: reason })
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          return { success: false, error: data.message };
+        }
+        
+        return { success: true };
+      } catch (err) {
+        return { success: false, error: (err as Error).message };
+      }
+    },
+    
+    async getPayment(paymentKey: string): Promise<PaymentConfirmResponse> {
+      try {
+        const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${btoa(secretKey + ':')}`,
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message);
+        }
+        
+        return {
+          success: true,
+          orderId: data.orderId,
+          paymentKey: data.paymentKey,
+          method: data.method,
+          totalAmount: data.totalAmount,
+          status: data.status,
+          approvedAt: data.approvedAt,
           rawData: data
         };
+      } catch (err) {
+        throw err;
       }
-      
-      let cardInfo: any = {};
-      if (data.card) {
-        cardInfo = {
-          cardCompany: data.card.company,
-          cardNumber: data.card.number,
-          installmentMonths: data.card.installmentPlanMonths || 0
-        };
-      }
-      
-      let virtualAccountInfo: any = {};
-      if (data.virtualAccount) {
-        virtualAccountInfo = {
-          virtualAccountBank: data.virtualAccount.bankCode,
-          virtualAccountNumber: data.virtualAccount.accountNumber,
-          virtualAccountHolder: data.virtualAccount.customerName,
-          virtualAccountDueDate: data.virtualAccount.dueDate
-        };
-      }
-      
-      return {
-        success: true,
-        orderId: data.orderId,
-        paymentKey: data.paymentKey,
-        method: data.method,
-        totalAmount: data.totalAmount,
-        status: data.status,
-        approvedAt: data.approvedAt,
-        transactionId: data.transactionKey,
-        ...cardInfo,
-        ...virtualAccountInfo,
-        rawData: data
-      };
-    } catch (err) {
-      return {
-        success: false,
-        orderId: request.orderId,
-        paymentKey: request.paymentKey,
-        method: '',
-        totalAmount: request.amount,
-        status: 'FAILED',
-        approvedAt: '',
-        error: (err as Error).message,
-        rawData: null
-      };
     }
-  }
-  
-  async cancelPayment(paymentKey: string, reason: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ cancelReason: reason })
-      });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        return { success: false, error: data.message };
-      }
-      
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
-    }
-  }
-  
-  async getPayment(paymentKey: string): Promise<PaymentConfirmResponse> {
-    try {
-      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-      
-      return {
-        success: true,
-        orderId: data.orderId,
-        paymentKey: data.paymentKey,
-        method: data.method,
-        totalAmount: data.totalAmount,
-        status: data.status,
-        approvedAt: data.approvedAt,
-        rawData: data
-      };
-    } catch (err) {
-      throw err;
-    }
-  }
+  };
 }
 
-class PaymentProviderFactory {
-  static createProvider(provider: string, secretKey: string): PaymentProvider {
-    switch (provider.toLowerCase()) {
-      case 'tosspayments':
-        return new TossPaymentsProvider(secretKey);
-      default:
-        throw new Error(`Unknown payment provider: ${provider}`);
-    }
+// PaymentProvider Factory (순수 함수)
+function createPaymentProvider(provider: string, secretKey: string): PaymentProvider {
+  switch (provider.toLowerCase()) {
+    case 'tosspayments':
+      return createTossPaymentsProvider(secretKey);
+    default:
+      throw new Error(`Unknown payment provider: ${provider}`);
   }
 }
 
@@ -1605,6 +1602,40 @@ app.get('/api/streams', async (c) => {
 });
 
 app.get('/api/streams/:id', async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+
+  try {
+    const stream = await DB.prepare(`
+      SELECT ls.*, 
+             p.id as current_product_id, p.name as product_name, p.price, p.original_price, 
+             p.discount_rate, p.image_url, p.stock, p.category, p.description as product_description
+      FROM live_streams ls
+      LEFT JOIN products p ON ls.current_product_id = p.id
+      WHERE ls.id = ?
+    `).bind(id).first();
+
+    if (!stream) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Stream not found',
+      }, 404);
+    }
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: stream,
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 호환성을 위한 별칭 엔드포인트 (이전 /api/live-streams/:id를 지원)
+app.get('/api/live-streams/:id', async (c) => {
   const { DB } = c.env;
   const id = c.req.param('id');
 
@@ -4023,7 +4054,8 @@ app.post('/api/payments/confirm', async (c) => {
     }
 
     // PG 프로바이더 생성 (추상화된 인터페이스 사용)
-    const provider = PaymentProviderFactory.createProvider(pgProvider, secretKey);
+    // 지연 초기화: 결제 API 호출 시점에만 PaymentProvider 생성
+    const provider = createPaymentProvider(pgProvider, secretKey);
     
     // 결제 승인 (PG사와 무관하게 동일한 인터페이스)
     const paymentResult = await provider.confirmPayment({
