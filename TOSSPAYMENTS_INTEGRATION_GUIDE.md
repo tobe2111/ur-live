@@ -8,19 +8,19 @@
 ### 1. 환경 변수 설정 완료
 **`.env` (프론트엔드):**
 ```bash
-VITE_TOSS_CLIENT_KEY=test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
+VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
 ```
 
 **`.dev.vars` (백엔드 - 로컬):**
 ```bash
-TOSS_SECRET_KEY=test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
 ```
 
 **Cloudflare Pages 환경변수 (프로덕션):**
 ```bash
 # 배포 시 설정 필요
 wrangler secret put TOSS_SECRET_KEY
-# 실제 시크릿 키 입력: test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6
+# 실제 시크릿 키 입력: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
 ```
 
 ### 2. 테스트 키 vs 실제 키
@@ -338,7 +338,7 @@ app.post('/api/payments/confirm', async (c) => {
   const { orderId, paymentKey, amount } = await c.req.json()
   
   // 환경변수에서 시크릿 키 가져오기
-  const secretKey = c.env.TOSS_SECRET_KEY || 'test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6'
+  const secretKey = c.env.TOSS_SECRET_KEY || 'test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY'
   
   try {
     // 1. 토스페이먼츠 결제 승인 요청
