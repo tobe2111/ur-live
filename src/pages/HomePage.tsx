@@ -1027,7 +1027,7 @@ export default function HomePage() {
 
           <div className="text-center text-sm text-gray-600 space-y-2 mb-6">
             <div>
-              <span className="font-semibold">서비스명:</span> 유어 라이브 | 
+              <span className="font-semibold">상호명:</span> 리스터코퍼레이션 | 
               <span className="font-semibold"> 대표자:</span> 정지원
             </div>
             <div>
@@ -1035,8 +1035,11 @@ export default function HomePage() {
               <span className="font-semibold"> 통신판매업신고:</span> 2025-부산금정-0540
             </div>
             <div>
-              <span className="font-semibold">고객센터:</span> <a href="tel:0507-0177-0432" className="hover:text-gray-900">0507-0177-0432</a> | 
-              <span className="font-semibold"> 이메일:</span> <a href="mailto:jiwon@ur-team.com" className="hover:text-gray-900">jiwon@ur-team.com</a>
+              <span className="font-semibold">사업장주소:</span> 부산광역시 금정구 놀이마당로26 1402
+            </div>
+            <div>
+              <span className="font-semibold">대표전화:</span> <a href="tel:0507-0177-0432" className="hover:text-gray-900">0507-0177-0432</a> | 
+              <span className="font-semibold"> 대표이메일:</span> <a href="mailto:jiwon@ur-team.com" className="hover:text-gray-900">jiwon@ur-team.com</a>
             </div>
           </div>
 
