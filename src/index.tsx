@@ -1454,9 +1454,20 @@ app.post('/api/shipping-addresses', cors(), async (c) => {
   const { DB } = c.env;
   
   try {
-    const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
+    // ✅ snake_case로 받기 (프론트엔드가 snake_case로 전송)
+    const body = await c.req.json();
+    const userId = body.user_id;
+    const recipientName = body.recipient_name;
+    const phone = body.phone;
+    const postalCode = body.postal_code;
+    const address = body.address;
+    const addressDetail = body.address_detail;
+    const isDefault = body.is_default;
+    
+    console.log('[POST /api/shipping-addresses] Received:', JSON.stringify(body));
     
     if (!userId || !recipientName || !phone || !address) {
+      console.error('[POST /api/shipping-addresses] Missing required fields:', { userId, recipientName, phone, address });
       return c.json({ success: false, error: '필수 정보를 입력해주세요' }, 400);
     }
     
@@ -1470,12 +1481,15 @@ app.post('/api/shipping-addresses', cors(), async (c) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(userId, recipientName, phone, postalCode || '', address, addressDetail || '', isDefault ? 1 : 0).run();
     
+    console.log('[POST /api/shipping-addresses] Success:', { id: result.meta.last_row_id });
+    
     return c.json({
       success: true,
       data: { id: result.meta.last_row_id }
     });
     
   } catch (err) {
+    console.error('[POST /api/shipping-addresses] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -1486,7 +1500,15 @@ app.put('/api/shipping-addresses/:id', cors(), async (c) => {
   
   try {
     const id = c.req.param('id');
-    const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
+    // ✅ snake_case로 받기
+    const body = await c.req.json();
+    const userId = body.user_id;
+    const recipientName = body.recipient_name;
+    const phone = body.phone;
+    const postalCode = body.postal_code;
+    const address = body.address;
+    const addressDetail = body.address_detail;
+    const isDefault = body.is_default;
     
     // 기본 배송지로 설정하는 경우, 기존 기본 배송지 해제
     if (isDefault) {
@@ -3134,69 +3156,6 @@ app.get('/api/shipping-addresses/:userId', async (c) => {
       success: true,
       data: addresses.results
     });
-  } catch (error) {
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
-  }
-});
-
-// 배송지 추가
-app.post('/api/shipping-addresses', async (c) => {
-  const { DB } = c.env;
-  const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
-  
-  try {
-    // 기본 배송지로 설정 시 기존 기본 배송지 해제
-    if (isDefault) {
-      await DB.prepare(`
-        UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?
-      `).bind(userId).run();
-    }
-    
-    const result = await DB.prepare(`
-      INSERT INTO shipping_addresses (
-        user_id, recipient_name, phone, postal_code, 
-        address, address_detail, is_default, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).bind(userId, recipientName, phone, postalCode, address, addressDetail, isDefault ? 1 : 0).run();
-    
-    return c.json({
-      success: true,
-      data: { id: result.meta.last_row_id }
-    });
-  } catch (error) {
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
-  }
-});
-
-// 배송지 수정
-app.put('/api/shipping-addresses/:id', async (c) => {
-  const { DB } = c.env;
-  const addressId = c.req.param('id');
-  const { userId, recipientName, phone, postalCode, address, addressDetail, isDefault } = await c.req.json();
-  
-  try {
-    // 기본 배송지로 설정 시 기존 기본 배송지 해제
-    if (isDefault) {
-      await DB.prepare(`
-        UPDATE shipping_addresses SET is_default = 0 WHERE user_id = ?
-      `).bind(userId).run();
-    }
-    
-    await DB.prepare(`
-      UPDATE shipping_addresses 
-      SET recipient_name = ?, phone = ?, postal_code = ?, 
-          address = ?, address_detail = ?, is_default = ?, 
-          updated_at = datetime('now')
-      WHERE id = ? AND user_id = ?
-    `).bind(recipientName, phone, postalCode, address, addressDetail, isDefault ? 1 : 0, addressId, userId).run();
-    
-    return c.json({ success: true });
   } catch (error) {
     return c.json({
       success: false,
