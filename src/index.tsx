@@ -8,7 +8,190 @@ import {
   processKakaoLogin, 
   AuthError 
 } from './auth-utils';
-import { PaymentProviderFactory } from './services/payment/PaymentProvider';
+
+// Payment Provider (인라인 - 번들링 이슈 방지)
+interface PaymentConfirmRequest {
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+}
+
+interface PaymentConfirmResponse {
+  success: boolean;
+  orderId: string;
+  paymentKey: string;
+  method: string;
+  totalAmount: number;
+  status: string;
+  approvedAt: string;
+  cardCompany?: string;
+  cardNumber?: string;
+  installmentMonths?: number;
+  virtualAccountBank?: string;
+  virtualAccountNumber?: string;
+  virtualAccountHolder?: string;
+  virtualAccountDueDate?: string;
+  transactionId?: string;
+  rawData?: any;
+  error?: string;
+}
+
+interface PaymentProvider {
+  name: string;
+  confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse>;
+  cancelPayment(paymentKey: string, reason: string): Promise<{ success: boolean; error?: string }>;
+  getPayment(paymentKey: string): Promise<PaymentConfirmResponse>;
+}
+
+class TossPaymentsProvider implements PaymentProvider {
+  name = 'tosspayments';
+  private secretKey: string;
+  
+  constructor(secretKey: string) {
+    this.secretKey = secretKey;
+  }
+  
+  async confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse> {
+    try {
+      const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          paymentKey: request.paymentKey,
+          orderId: request.orderId,
+          amount: request.amount
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return {
+          success: false,
+          orderId: request.orderId,
+          paymentKey: request.paymentKey,
+          method: '',
+          totalAmount: request.amount,
+          status: 'FAILED',
+          approvedAt: '',
+          error: data.message || '결제 승인 실패',
+          rawData: data
+        };
+      }
+      
+      let cardInfo: any = {};
+      if (data.card) {
+        cardInfo = {
+          cardCompany: data.card.company,
+          cardNumber: data.card.number,
+          installmentMonths: data.card.installmentPlanMonths || 0
+        };
+      }
+      
+      let virtualAccountInfo: any = {};
+      if (data.virtualAccount) {
+        virtualAccountInfo = {
+          virtualAccountBank: data.virtualAccount.bankCode,
+          virtualAccountNumber: data.virtualAccount.accountNumber,
+          virtualAccountHolder: data.virtualAccount.customerName,
+          virtualAccountDueDate: data.virtualAccount.dueDate
+        };
+      }
+      
+      return {
+        success: true,
+        orderId: data.orderId,
+        paymentKey: data.paymentKey,
+        method: data.method,
+        totalAmount: data.totalAmount,
+        status: data.status,
+        approvedAt: data.approvedAt,
+        transactionId: data.transactionKey,
+        ...cardInfo,
+        ...virtualAccountInfo,
+        rawData: data
+      };
+    } catch (err) {
+      return {
+        success: false,
+        orderId: request.orderId,
+        paymentKey: request.paymentKey,
+        method: '',
+        totalAmount: request.amount,
+        status: 'FAILED',
+        approvedAt: '',
+        error: (err as Error).message,
+        rawData: null
+      };
+    }
+  }
+  
+  async cancelPayment(paymentKey: string, reason: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ cancelReason: reason })
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        return { success: false, error: data.message };
+      }
+      
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  }
+  
+  async getPayment(paymentKey: string): Promise<PaymentConfirmResponse> {
+    try {
+      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message);
+      }
+      
+      return {
+        success: true,
+        orderId: data.orderId,
+        paymentKey: data.paymentKey,
+        method: data.method,
+        totalAmount: data.totalAmount,
+        status: data.status,
+        approvedAt: data.approvedAt,
+        rawData: data
+      };
+    } catch (err) {
+      throw err;
+    }
+  }
+}
+
+class PaymentProviderFactory {
+  static createProvider(provider: string, secretKey: string): PaymentProvider {
+    switch (provider.toLowerCase()) {
+      case 'tosspayments':
+        return new TossPaymentsProvider(secretKey);
+      default:
+        throw new Error(`Unknown payment provider: ${provider}`);
+    }
+  }
+}
 
 const app = new Hono<{ Bindings: Bindings }>();
 
