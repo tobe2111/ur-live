@@ -22,6 +22,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
+import { getUserId, getUserName, getUserEmail, isLoggedIn, requireLogin } from '@/utils/auth'
 
 interface CartItem {
   id: number
@@ -83,16 +84,15 @@ export default function MyOrdersPage() {
   })
   const [cancelReason, setCancelReason] = useState('')
 
-  // Check login status
-  const userId = localStorage.getItem('user_id')
-  const userName = localStorage.getItem('user_name') || '게스트'
-  const userEmail = localStorage.getItem('userEmail') || ''
+  // Check login status (통합 인증 사용)
+  const userId = getUserId()
+  const userName = getUserName() || '게스트'
+  const userEmail = getUserEmail() || ''
 
   useEffect(() => {
-    // Redirect to login if not logged in
-    if (!userId) {
-      alert('로그인이 필요합니다.')
-      navigate('/login')
+    // Redirect to login if not logged in (통합 인증 체크)
+    if (!isLoggedIn() || !userId) {
+      requireLogin(navigate, '로그인이 필요합니다.')
       return
     }
     
@@ -102,15 +102,21 @@ export default function MyOrdersPage() {
   async function loadData() {
     setLoading(true)
     try {
-      const userId = localStorage.getItem('user_id') || '1'
+      // \uc0c1\ub2e8\uc5d0\uc11c \uc774\ubbf8 userId\ub97c \uac00\uc838\uc654\uc73c\ubbc0\ub85c \uc7ac\uc0ac\uc6a9
+      const uid = userId || getUserId()
+      
+      if (!uid) {
+        console.error('No user ID available')
+        return
+      }
       
       if (activeTab === 'cart') {
-        const response = await axios.get(`/api/cart/${userId}`)
+        const response = await axios.get(`/api/cart/${uid}`)
         if (response.data.success) {
           setCartItems(response.data.data || [])
         }
       } else if (activeTab === 'orders') {
-        const response = await axios.get(`/api/orders/user/${userId}`)
+        const response = await axios.get(`/api/orders/user/${uid}`)
         if (response.data.success) {
           setOrders(response.data.data || [])
         }

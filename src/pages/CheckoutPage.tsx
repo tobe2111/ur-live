@@ -5,7 +5,7 @@ import axios from 'axios'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin } from '@/utils/auth'
+import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { loadPaymentWidget, PaymentWidgetInstance, ANONYMOUS } from '@tosspayments/payment-widget-sdk'
 
 // 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
@@ -77,11 +77,18 @@ export default function CheckoutPage() {
   const totalAmount = subtotal + SHIPPING_FEE
 
   useEffect(() => {
-    const uid = localStorage.getItem('user_id')
+    // 통합 인증 체크
+    if (!isLoggedIn()) {
+      requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
+      return
+    }
+    
+    const uid = getUserId()
     if (!uid) {
       requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
       return
     }
+    
     setUserId(uid)
     loadCart(uid)
     loadAddresses(uid)

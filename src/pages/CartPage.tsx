@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
-import { requireLogin } from '@/utils/auth'
-import { requireLogin } from '@/utils/auth'
+import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 
 interface CartItem {
   id: number
@@ -145,7 +144,13 @@ export default function CartPage() {
 
   async function loadCart() {
     try {
-      const userId = localStorage.getItem('user_id')
+      // 통합 인증 체크
+      if (!isLoggedIn()) {
+        requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
+        return
+      }
+      
+      const userId = getUserId()
       if (!userId) {
         requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
         return

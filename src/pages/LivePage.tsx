@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowLeft, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube, Package } from 'lucide-react'
 import { LazyImage } from '@/components/LazyImage'
+import { getUserId, saveUserInfo, isLoggedIn } from '@/utils/auth'
 
 interface Product {
   id: number
@@ -145,11 +146,8 @@ export default function LivePage() {
 
   // Check login status from localStorage
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    const session = localStorage.getItem('session')
-    const userId = localStorage.getItem('user_id')
-    
-    if ((token && userId) || (session && userId)) {
+    // 통합 인증: isLoggedIn() 사용
+    if (isLoggedIn()) {
       setIsLoggedIn(true)
       
       // Check if there's a temporary cart item to restore
@@ -160,8 +158,15 @@ export default function LivePage() {
           // Add to cart automatically
           setTimeout(async () => {
             try {
+              const uid = getUserId()
+              if (!uid) {
+                console.error('User ID not found after login')
+                localStorage.removeItem('tempCartItem')
+                return
+              }
+              
               await axios.post('/api/cart', {
-                userId: userId,
+                userId: uid,
                 productId: cartData.productId,
                 quantity: cartData.quantity,
                 priceSnapshot: cartData.priceSnapshot,
@@ -554,7 +559,8 @@ export default function LivePage() {
 
     setAddingToCart(true)
     try {
-      const userId = localStorage.getItem('user_id')
+      // 통합 인증: getUserId() 사용
+      const userId = getUserId()
       
       if (!userId) {
         // 현재 URL을 returnUrl로 저장
@@ -672,7 +678,8 @@ export default function LivePage() {
     setCheckingOut(true)
     // Verify cart on server
     try {
-      const userId = localStorage.getItem('user_id')
+      // 통합 인증: getUserId() 사용
+      const userId = getUserId()
       
       if (!userId) {
         // 현재 URL을 returnUrl로 저장

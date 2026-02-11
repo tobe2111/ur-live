@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, Package, AlertCircle } from 'lucide-react'
+import { getUserId } from '@/utils/auth'
 
 export default function PaymentSuccessPage() {
   const navigate = useNavigate()
@@ -38,8 +39,8 @@ export default function PaymentSuccessPage() {
       if (response.data.success) {
         setOrderInfo(response.data.data)
         
-        // 주문 완료 후 장바구니 비우기
-        const userId = localStorage.getItem('user_id')
+        // 주문 완료 후 장바구니 비우기 (통합 인증 사용)
+        const userId = getUserId()
         if (userId) {
           await axios.delete(`/api/cart/${userId}`)
         }

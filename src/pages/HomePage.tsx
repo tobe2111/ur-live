@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
+import { getUserName, getUserId, saveUserInfo } from '@/utils/auth'
 
 interface Stream {
   id: number
@@ -64,16 +65,13 @@ export default function HomePage() {
     const userName = searchParams.get('userName')
 
     if (loginSuccess === 'success' && session && userId && userName) {
-      // URL 파라미터에서 세션 정보 저장
+      // 통합 인증: saveUserInfo 사용
       console.log('[Login] Processing login callback from URL params')
-      localStorage.setItem('session', session)
-      localStorage.setItem('user_id', userId)
-      localStorage.setItem('user_name', decodeURIComponent(userName))
-      
-      // 레거시 키도 저장 (호환성)
-      localStorage.setItem('userId', userId)
-      localStorage.setItem('userName', decodeURIComponent(userName))
-      localStorage.setItem('accessToken', session)
+      saveUserInfo(
+        userId,
+        decodeURIComponent(userName),
+        session
+      )
       
       // UI 업데이트
       setUser({
@@ -104,8 +102,9 @@ export default function HomePage() {
 
   function loadUserInfo() {
     // localStorage에서 사용자 정보 읽기
-    const userName = localStorage.getItem('user_name') || localStorage.getItem('userName')
-    const userId = localStorage.getItem('user_id')
+    // 통합 인증 사용
+    const userName = getUserName() || '게스트'
+    const userId = getUserId()
     const session = localStorage.getItem('session')
     
     if (userName && (userId || session)) {
