@@ -3112,6 +3112,36 @@ app.post('/api/seller/products', async (c) => {
   }
 });
 
+// Get single product (상품 단건 조회 - 수정용)
+app.get('/api/seller/products/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const id = c.req.param('id');
+
+    // Verify ownership and get product
+    const product = await DB.prepare(`
+      SELECT p.*, ls.title as live_stream_title
+      FROM products p
+      LEFT JOIN live_streams ls ON p.live_stream_id = ls.id
+      WHERE p.id = ? AND p.seller_id = ?
+    `).bind(id, auth.sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    return c.json({ success: true, data: product });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Update product
 app.put('/api/seller/products/:id', async (c) => {
   const { DB } = c.env;
@@ -3218,6 +3248,29 @@ app.delete('/api/seller/products/:id', async (c) => {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
     }
 
+    // Check if product is used in orders (prevent deletion if already ordered)
+    const ordersCount = await DB.prepare(
+      'SELECT COUNT(*) as count FROM order_items WHERE product_id = ?'
+    ).bind(id).first();
+
+    if (ordersCount && ordersCount.count > 0) {
+      return c.json({ 
+        success: false, 
+        error: '이미 주문된 상품은 삭제할 수 없습니다. 품절 처리하거나 숨김 처리해주세요.' 
+      }, 400);
+    }
+
+    // Delete related data first (to avoid foreign key constraint)
+    // 1. Delete product options
+    await DB.prepare('DELETE FROM product_options WHERE product_id = ?').bind(id).run();
+    
+    // 2. Delete cart items
+    await DB.prepare('DELETE FROM cart_items WHERE product_id = ?').bind(id).run();
+
+    // 3. Clear current_product_id in live_streams
+    await DB.prepare('UPDATE live_streams SET current_product_id = NULL WHERE current_product_id = ?').bind(id).run();
+
+    // 4. Finally delete the product
     await DB.prepare('DELETE FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).run();
 
     // \uce90\uc2dc \ubb34\ud6a8\ud654 (Cache Invalidation) \u2705
