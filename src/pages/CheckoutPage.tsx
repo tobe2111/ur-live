@@ -175,21 +175,20 @@ export default function CheckoutPage() {
         const tossPayments = await loadTossPayments(clientKey)
         console.log('[CheckoutPage] loadTossPayments 완료')
         
-        // 로그인한 사용자: 회원 결제 (브랜드페이 가능)
+        // 로그인한 사용자: 회원 결제 (브랜드페이 + 일반 결제 수단 모두 사용 가능)
         const customerKey = `customer_${userId}`
         console.log('[CheckoutPage] widgets() 호출...', { customerKey })
         
-        // 브랜드페이 redirectUrl 설정
+        // ✅ 브랜드페이는 선택적 (redirectUrl 설정하되, 일반 결제 수단도 함께 표시)
+        // 사용자가 선택할 수 있도록 모든 결제 수단 활성화
         const redirectUrl = `${window.location.origin}/api/brandpay/callback`
         console.log('[CheckoutPage] redirectUrl:', redirectUrl)
         
         const widgetsInstance = tossPayments.widgets({ 
-          customerKey,
-          brandpay: {
-            redirectUrl
-          }
+          customerKey
+          // brandpay 옵션 제거 → 모든 결제 수단 표시 (카드, 계좌이체, 가상계좌, 휴대폰, 브랜드페이 등)
         })
-        console.log('[CheckoutPage] widgets() 완료')
+        console.log('[CheckoutPage] widgets() 완료 (모든 결제 수단 활성화)')
         
         widgetsRef.current = widgetsInstance
         setWidgets(widgetsInstance)  // 상태 업데이트
