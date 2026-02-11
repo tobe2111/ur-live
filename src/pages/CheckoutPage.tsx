@@ -213,9 +213,19 @@ export default function CheckoutPage() {
         customerEmail: '',
         customerName: selectedAddress.recipient_name,
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('[CheckoutPage] 결제 요청 실패:', error)
-      alert('결제 요청 중 오류가 발생했습니다.')
+      
+      // 팝업 차단 에러 감지
+      if (error?.code === 'POPUP_BLOCKED' || error?.message?.includes('팝업')) {
+        alert('📱 팝업이 차단되었습니다.\n\n브라우저 설정에서 이 사이트의 팝업을 허용해주세요.\n\n[브라우저 주소창 오른쪽의 팝업 차단 아이콘을 클릭하여 허용]')
+      } else if (error?.code === 'USER_CANCEL') {
+        // 사용자가 결제를 취소한 경우 (정상)
+        console.log('[CheckoutPage] 사용자가 결제를 취소했습니다.')
+      } else {
+        alert('결제 요청 중 오류가 발생했습니다.')
+      }
+      
       setPaymentProcessing(false)
     }
   }
@@ -256,22 +266,36 @@ export default function CheckoutPage() {
     }
   }
 
+  const [showPostcodePopup, setShowPostcodePopup] = useState(false)
+
   function openPostcode() {
     if (!window.daum || !window.daum.Postcode) {
       alert('우편번호 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
       return
     }
 
-    new window.daum.Postcode({
-      oncomplete: function(data: any) {
-        setNewAddress(prev => ({
-          ...prev,
-          postal_code: data.zonecode,
-          address: data.roadAddress || data.jibunAddress
-        }))
-      }
-    }).open()
+    setShowPostcodePopup(true)
   }
+
+  useEffect(() => {
+    if (showPostcodePopup && window.daum && window.daum.Postcode) {
+      const container = document.getElementById('daum-postcode-container')
+      if (container) {
+        new window.daum.Postcode({
+          oncomplete: function(data: any) {
+            setNewAddress(prev => ({
+              ...prev,
+              postal_code: data.zonecode,
+              address: data.roadAddress || data.jibunAddress
+            }))
+            setShowPostcodePopup(false)
+          },
+          width: '100%',
+          height: '100%'
+        }).embed(container)
+      }
+    }
+  }, [showPostcodePopup])
 
   async function handleSaveNewAddress() {
     if (!userId) return
@@ -692,6 +716,26 @@ export default function CheckoutPage() {
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daum 우편번호 검색 임베디드 팝업 */}
+      {showPostcodePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl h-[600px] flex flex-col">
+            <div className="sticky top-0 bg-white border-b border-[#d2d2d7] p-4 flex items-center justify-between rounded-t-2xl">
+              <h3 className="text-lg font-semibold text-[#1d1d1f]">우편번호 검색</h3>
+              <button
+                onClick={() => setShowPostcodePopup(false)}
+                className="p-2 hover:bg-[#f5f5f7] rounded-full transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div id="daum-postcode-container" className="flex-1 overflow-hidden"></div>
           </div>
         </div>
       )}
