@@ -1041,11 +1041,14 @@ export default function HomePage() {
               <span className="font-semibold">대표전화:</span> <a href="tel:0507-0177-0432" className="hover:text-gray-900">0507-0177-0432</a> | 
               <span className="font-semibold"> 대표이메일:</span> <a href="mailto:jiwon@ur-team.com" className="hover:text-gray-900">jiwon@ur-team.com</a>
             </div>
+            <div className="pt-2 border-t border-gray-300 mt-4">
+              <span className="font-semibold">서비스 제공 기간:</span> 상품 구매 후 평균 7일 이내 배송 완료
+            </div>
           </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              © 2026 유어 라이브. All rights reserved.
+              © 2026 리스터코퍼레이션. All rights reserved.
             </p>
           </div>
         </div>
