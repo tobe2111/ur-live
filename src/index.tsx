@@ -1919,6 +1919,28 @@ app.delete('/api/cart/:cartItemId', async (c) => {
   }
 });
 
+// 장바구니 전체 비우기 (결제 완료 시 사용)
+app.delete('/api/cart/clear/:userId', async (c) => {
+  const { DB } = c.env;
+  const userId = c.req.param('userId');
+
+  try {
+    await DB.prepare(
+      'DELETE FROM cart_items WHERE user_id = ?'
+    ).bind(userId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: '장바구니가 비워졌습니다.'
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // 장바구니 아이템 수량 변경
 app.put('/api/cart/:cartItemId', async (c) => {
   const { DB } = c.env;
@@ -1991,7 +2013,11 @@ app.post('/api/orders', async (c) => {
       recipientPhone,
       deliveryMemo,
       totalAmount: providedTotalAmount,
-      shippingFee
+      shippingFee,
+      // 결제 정보 (PaymentSuccessPage에서 전달)
+      orderNo: providedOrderNo,
+      paymentKey,
+      paymentMethod
     } = requestData;
 
     // 직접 전달된 items가 있으면 새로운 방식으로 처리
@@ -2029,10 +2055,10 @@ app.post('/api/orders', async (c) => {
         });
       }
 
-      // 주문 번호 생성
+      // 주문 번호 생성 (이미 제공되었으면 사용, 없으면 생성)
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const orderNo = `ORDER_${timestamp}_${random}`;
+      const orderNo = providedOrderNo || `ORDER_${timestamp}_${random}`;
 
       // 주문 생성
       const fullAddress = shippingAddressDetail 
@@ -2041,18 +2067,22 @@ app.post('/api/orders', async (c) => {
       
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
-          order_number, user_id, total_amount, payment_status,
-          shipping_address, shipping_name, shipping_phone, shipping_memo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          order_no, user_id, total_amount, status, payment_status,
+          shipping_address, shipping_name, shipping_phone, shipping_memo,
+          payment_key, payment_method, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
-        orderNo || null,
+        orderNo,
         userId || null,
         providedTotalAmount || 0,
-        'pending',
+        'paid',  // 결제 완료 상태
+        'completed',  // 결제 완료
         fullAddress || null,
         recipientName || null,
         recipientPhone || null,
-        deliveryMemo || null
+        deliveryMemo || null,
+        paymentKey || null,
+        paymentMethod || null
       ).run();
 
       const orderId = orderResult.meta.last_row_id;
@@ -3779,8 +3809,10 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
 });
 
 // ==========================================
-// Payment API - 토스페이먼츠 결제 승인
+// Payment API - PG 결제 승인 (PG사 변경 가능)
 // ==========================================
+
+import { PaymentProviderFactory } from './services/payment/PaymentProvider';
 
 // 결제 승인 API
 app.post('/api/payments/confirm', async (c) => {
@@ -3797,8 +3829,10 @@ app.post('/api/payments/confirm', async (c) => {
       }, 400);
     }
 
-    // 토스페이먼츠 시크릿 키
-    const secretKey = c.env.TOSS_SECRET_KEY;
+    // PG 프로바이더 설정 (환경 변수로 전환 가능)
+    const pgProvider = c.env.PAYMENT_PG_PROVIDER || 'tosspayments';
+    const secretKey = c.env.TOSS_SECRET_KEY;  // 또는 PG별로 다른 키 사용
+    
     if (!secretKey) {
       return c.json({
         success: false,
@@ -3806,51 +3840,75 @@ app.post('/api/payments/confirm', async (c) => {
       }, 500);
     }
 
-    // 토스페이먼츠 API 호출하여 결제 승인
-    const tossResponse = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(secretKey + ':')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        paymentKey,
-        orderId,
-        amount
-      })
+    // PG 프로바이더 생성 (추상화된 인터페이스 사용)
+    const provider = PaymentProviderFactory.createProvider(pgProvider, secretKey);
+    
+    // 결제 승인 (PG사와 무관하게 동일한 인터페이스)
+    const paymentResult = await provider.confirmPayment({
+      paymentKey,
+      orderId,
+      amount
     });
 
-    const tossData = await tossResponse.json();
-
-    if (!tossResponse.ok) {
-      console.error('토스페이먼츠 결제 승인 실패:', tossData);
+    if (!paymentResult.success) {
+      console.error(`${pgProvider} 결제 승인 실패:`, paymentResult.error);
       return c.json({
         success: false,
-        error: tossData.message || '결제 승인에 실패했습니다.'
-      }, tossResponse.status);
+        error: paymentResult.error || '결제 승인에 실패했습니다.'
+      }, 400);
     }
 
-    // 결제 정보 저장 (payments 테이블이 있다면)
-    // await DB.prepare(`
-    //   INSERT INTO payments (order_id, payment_key, method, amount, status, created_at)
-    //   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    // `).bind(orderId, paymentKey, tossData.method, amount, 'completed').run();
+    // ✅ 결제 정보 DB 저장 (payments 테이블)
+    await DB.prepare(`
+      INSERT INTO payments (
+        order_id, pg_provider, pg_payment_key, pg_transaction_id,
+        method, amount, status, 
+        card_company, card_number, installment_months,
+        virtual_account_bank, virtual_account_number, 
+        virtual_account_holder, virtual_account_due_date,
+        approved_at, pg_raw_data, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      orderId,
+      pgProvider,
+      paymentResult.paymentKey,
+      paymentResult.transactionId || null,
+      paymentResult.method,
+      paymentResult.totalAmount,
+      paymentResult.status,
+      paymentResult.cardCompany || null,
+      paymentResult.cardNumber || null,
+      paymentResult.installmentMonths || null,
+      paymentResult.virtualAccountBank || null,
+      paymentResult.virtualAccountNumber || null,
+      paymentResult.virtualAccountHolder || null,
+      paymentResult.virtualAccountDueDate || null,
+      paymentResult.approvedAt,
+      JSON.stringify(paymentResult.rawData)
+    ).run();
 
-    // 주문 상태 업데이트 (pending -> paid)
-    // await DB.prepare(`
-    //   UPDATE orders SET status = 'paid', updated_at = CURRENT_TIMESTAMP 
-    //   WHERE order_no = ?
-    // `).bind(orderId).run();
+    // ✅ 주문 상태 업데이트 (pending -> paid)
+    await DB.prepare(`
+      UPDATE orders 
+      SET status = 'paid', 
+          payment_key = ?,
+          payment_status = 'completed',
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE order_no = ?
+    `).bind(paymentResult.paymentKey, orderId).run();
+
+    console.log(`✅ 결제 승인 완료 [${pgProvider}]: ${orderId}`);
 
     return c.json({
       success: true,
       data: {
-        orderId: tossData.orderId,
-        paymentKey: tossData.paymentKey,
-        method: tossData.method,
-        totalAmount: tossData.totalAmount,
-        status: tossData.status,
-        approvedAt: tossData.approvedAt
+        orderId: paymentResult.orderId,
+        paymentKey: paymentResult.paymentKey,
+        method: paymentResult.method,
+        totalAmount: paymentResult.totalAmount,
+        status: paymentResult.status,
+        approvedAt: paymentResult.approvedAt,
+        pgProvider: pgProvider
       }
     });
   } catch (err) {

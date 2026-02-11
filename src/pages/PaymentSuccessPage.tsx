@@ -30,23 +30,85 @@ export default function PaymentSuccessPage() {
 
   async function confirmPayment() {
     try {
+      // 1️⃣ 결제 승인 요청
       const response = await axios.post('/api/payments/confirm', {
         paymentKey,
         orderId,
         amount: parseInt(amount || '0')
       })
 
-      if (response.data.success) {
-        setOrderInfo(response.data.data)
-        
-        // 주문 완료 후 장바구니 비우기 (통합 인증 사용)
-        const userId = getUserId()
-        if (userId) {
-          await axios.delete(`/api/cart/${userId}`)
-        }
-      } else {
+      if (!response.data.success) {
         setError(response.data.error || '결제 승인에 실패했습니다.')
+        return
       }
+
+      const paymentData = response.data.data
+      setOrderInfo(paymentData)
+      
+      // 2️⃣ 장바구니에서 주문 정보 가져오기
+      const userId = getUserId()
+      if (!userId) {
+        setError('사용자 정보를 찾을 수 없습니다.')
+        return
+      }
+
+      // 장바구니 아이템 조회
+      const cartResponse = await axios.get(`/api/cart/${userId}`)
+      const cartItems = cartResponse.data?.data || []
+
+      if (cartItems.length === 0) {
+        console.warn('장바구니가 비어있습니다. 주문 생성을 건너뜁니다.')
+        // 장바구니가 비어있어도 결제는 성공했으므로 에러는 아님
+        return
+      }
+
+      // 3️⃣ 주문 생성 요청
+      const orderItems = cartItems.map((item: any) => ({
+        productId: item.product_id,
+        quantity: item.quantity,
+        priceSnapshot: item.price_snapshot,
+        optionValue: item.option_value || null
+      }))
+
+      // 배송지 정보는 CheckoutPage에서 localStorage에 저장했을 수 있음
+      const shippingAddress = localStorage.getItem('checkoutShippingAddress') || ''
+      const recipientName = localStorage.getItem('checkoutRecipientName') || ''
+      const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
+
+      try {
+        await axios.post('/api/orders', {
+          userId,
+          orderNo: orderId,
+          items: orderItems,
+          totalAmount: parseInt(amount || '0'),
+          shippingAddress: shippingAddress,
+          recipientName: recipientName,
+          recipientPhone: recipientPhone,
+          paymentKey: paymentData.paymentKey,
+          paymentMethod: paymentData.method
+        })
+
+        console.log('✅ 주문 생성 완료:', orderId)
+      } catch (orderErr) {
+        console.error('주문 생성 실패 (결제는 성공):', orderErr)
+        // 주문 생성 실패해도 결제는 성공했으므로 에러는 표시하지 않음
+      }
+      
+      // 4️⃣ 장바구니 비우기
+      try {
+        await axios.delete(`/api/cart/clear/${userId}`)
+        localStorage.removeItem('hasCartItems')
+        console.log('✅ 장바구니 비우기 완료')
+      } catch (cartErr) {
+        console.error('장바구니 비우기 실패:', cartErr)
+        // 장바구니 비우기 실패해도 결제/주문은 성공했으므로 에러는 표시하지 않음
+      }
+
+      // 배송지 정보 localStorage 정리
+      localStorage.removeItem('checkoutShippingAddress')
+      localStorage.removeItem('checkoutRecipientName')
+      localStorage.removeItem('checkoutRecipientPhone')
+
     } catch (err: any) {
       console.error('결제 승인 실패:', err)
       setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')

@@ -153,6 +153,13 @@ export default function CheckoutPage() {
     setPaymentProcessing(true)
 
     try {
+      // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
+      localStorage.setItem('checkoutShippingAddress', 
+        `${selectedAddress.postal_code} ${selectedAddress.address} ${selectedAddress.address_detail || ''}`.trim()
+      )
+      localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
+      localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
+
       // 주문 ID 생성 (timestamp + random)
       const orderId = `ORDER_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
       
