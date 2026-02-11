@@ -161,43 +161,68 @@ export default function CheckoutPage() {
   // Step 1: TossPayments 인스턴스 로드 및 widgets 초기화
   useEffect(() => {
     async function fetchPaymentWidgets() {
+      console.log('[CheckoutPage] Step 1 실행 조건 체크:', { userId, cartItemsLength: cartItems.length })
+      
       if (!userId || cartItems.length === 0) {
+        console.warn('[CheckoutPage] Step 1 건너뜀: userId 또는 cartItems 없음')
         return
       }
 
       try {
+        console.log('[CheckoutPage] Step 1 시작: loadTossPayments 호출...', { clientKey: clientKey?.substring(0, 20) + '...' })
         // ------ 결제위젯 초기화 ------
         const tossPayments = await loadTossPayments(clientKey)
+        console.log('[CheckoutPage] loadTossPayments 완료')
         
         // 비회원 결제 (브랜드페이 비활성화)
+        console.log('[CheckoutPage] widgets() 호출...', { customerKey: 'ANONYMOUS' })
         const widgetsInstance = tossPayments.widgets({ customerKey: ANONYMOUS })
+        console.log('[CheckoutPage] widgets() 완료')
         
         widgetsRef.current = widgetsInstance
         setWidgets(widgetsInstance)  // 상태 업데이트
-        console.log('[CheckoutPage] TossPayments widgets 초기화 완료')
+        console.log('[CheckoutPage] ✅ Step 1 완료: TossPayments widgets 초기화 성공')
       } catch (error) {
-        console.error('[CheckoutPage] TossPayments 초기화 실패:', error)
+        console.error('[CheckoutPage] ❌ Step 1 실패: TossPayments 초기화 오류:', error)
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack?.substring(0, 500)
+          })
+        }
         setError('결제 시스템을 불러올 수 없습니다.')
       }
     }
 
     fetchPaymentWidgets()
-  }, [userId, cartItems.length])
+  }, [userId, cartItems.length, clientKey])
 
   // Step 2: 결제 금액 설정 및 UI 렌더링
   useEffect(() => {
     async function renderPaymentWidgets() {
-      if (widgets == null || totalAmount === 0) {
+      console.log('[CheckoutPage] Step 2 실행 조건 체크:', { hasWidgets: widgets != null, totalAmount })
+      
+      if (widgets == null) {
+        console.warn('[CheckoutPage] Step 2 건너뜀: widgets가 null')
+        return
+      }
+      
+      if (totalAmount === 0) {
+        console.warn('[CheckoutPage] Step 2 건너뜀: totalAmount가 0')
         return
       }
 
       try {
+        console.log('[CheckoutPage] Step 2 시작: setAmount 호출...', { currency: 'KRW', value: totalAmount })
         // ------ 주문의 결제 금액 설정 ------
         await widgets.setAmount({
           currency: 'KRW',
           value: totalAmount,
         })
+        console.log('[CheckoutPage] setAmount 완료')
 
+        console.log('[CheckoutPage] renderPaymentMethods & renderAgreement 호출...')
         await Promise.all([
           // ------ 결제 UI 렌더링 ------
           widgets.renderPaymentMethods({
@@ -210,11 +235,19 @@ export default function CheckoutPage() {
             variantKey: 'AGREEMENT',
           }),
         ])
+        console.log('[CheckoutPage] UI 렌더링 완료')
 
         setReady(true)
-        console.log('[CheckoutPage] 결제 UI 렌더링 완료 ✅')
+        console.log('[CheckoutPage] ✅ Step 2 완료: 결제 UI 렌더링 성공')
       } catch (error) {
-        console.error('[CheckoutPage] 결제 UI 렌더링 실패:', error)
+        console.error('[CheckoutPage] ❌ Step 2 실패: 결제 UI 렌더링 오류:', error)
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack?.substring(0, 500)
+          })
+        }
         setError('결제 화면을 불러올 수 없습니다.')
       }
     }
