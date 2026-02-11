@@ -6,7 +6,7 @@ import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
-import { loadTossPayments, ANONYMOUS } from '@tosspayments/tosspayments-sdk'
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 
 // 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
 // 결제위젯 연동 키 (test_gck_xxx) 사용
@@ -174,9 +174,10 @@ export default function CheckoutPage() {
         const tossPayments = await loadTossPayments(clientKey)
         console.log('[CheckoutPage] loadTossPayments 완료')
         
-        // 비회원 결제 (브랜드페이 비활성화)
-        console.log('[CheckoutPage] widgets() 호출...', { customerKey: 'ANONYMOUS' })
-        const widgetsInstance = tossPayments.widgets({ customerKey: ANONYMOUS })
+        // 로그인한 사용자: 회원 결제 (브랜드페이 가능)
+        const customerKey = `customer_${userId}`
+        console.log('[CheckoutPage] widgets() 호출...', { customerKey })
+        const widgetsInstance = tossPayments.widgets({ customerKey })
         console.log('[CheckoutPage] widgets() 완료')
         
         widgetsRef.current = widgetsInstance
