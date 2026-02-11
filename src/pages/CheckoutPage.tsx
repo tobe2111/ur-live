@@ -51,6 +51,7 @@ export default function CheckoutPage() {
   
   // 토스페이먼츠 결제 위젯 관련 상태
   const widgetsRef = useRef<any>(null)  // TossPayments widgets instance
+  const [widgets, setWidgets] = useState<any>(null)  // 상태로 관리
   const [ready, setReady] = useState(false)
 
   // 배송지 관련 상태
@@ -169,9 +170,10 @@ export default function CheckoutPage() {
         const tossPayments = await loadTossPayments(clientKey)
         
         // 비회원 결제 (브랜드페이 비활성화)
-        const widgets = tossPayments.widgets({ customerKey: ANONYMOUS })
+        const widgetsInstance = tossPayments.widgets({ customerKey: ANONYMOUS })
         
-        widgetsRef.current = widgets
+        widgetsRef.current = widgetsInstance
+        setWidgets(widgetsInstance)  // 상태 업데이트
         console.log('[CheckoutPage] TossPayments widgets 초기화 완료')
       } catch (error) {
         console.error('[CheckoutPage] TossPayments 초기화 실패:', error)
@@ -185,13 +187,11 @@ export default function CheckoutPage() {
   // Step 2: 결제 금액 설정 및 UI 렌더링
   useEffect(() => {
     async function renderPaymentWidgets() {
-      if (widgetsRef.current == null || totalAmount === 0) {
+      if (widgets == null || totalAmount === 0) {
         return
       }
 
       try {
-        const widgets = widgetsRef.current
-
         // ------ 주문의 결제 금액 설정 ------
         await widgets.setAmount({
           currency: 'KRW',
@@ -220,23 +220,23 @@ export default function CheckoutPage() {
     }
 
     renderPaymentWidgets()
-  }, [widgetsRef.current, totalAmount])
+  }, [widgets, totalAmount])
 
   // Step 3: 금액 변경 시 업데이트
   useEffect(() => {
-    if (widgetsRef.current == null) {
+    if (widgets == null) {
       return
     }
 
-    widgetsRef.current.setAmount({
+    widgets.setAmount({
       currency: 'KRW',
       value: totalAmount,
     })
-  }, [totalAmount])
+  }, [widgets, totalAmount])
 
   // 결제 요청 처리
   const handlePayment = async () => {
-    if (!widgetsRef.current) {
+    if (!widgets) {
       alert('결제 위젯이 준비되지 않았습니다.')
       return
     }
@@ -263,7 +263,7 @@ export default function CheckoutPage() {
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
 
       // ------ '결제하기' 버튼 누르면 결제창 띄우기 ------
-      await widgetsRef.current.requestPayment({
+      await widgets.requestPayment({
         orderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
