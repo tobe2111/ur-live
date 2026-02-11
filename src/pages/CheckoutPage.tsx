@@ -77,7 +77,7 @@ export default function CheckoutPage() {
   const totalAmount = subtotal + SHIPPING_FEE
 
   useEffect(() => {
-    const uid = localStorage.getItem('userId')
+    const uid = localStorage.getItem('user_id')
     if (!uid) {
       requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
       return

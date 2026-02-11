@@ -84,8 +84,8 @@ export default function MyOrdersPage() {
   const [cancelReason, setCancelReason] = useState('')
 
   // Check login status
-  const userId = localStorage.getItem('userId')
-  const userName = localStorage.getItem('userName') || '게스트'
+  const userId = localStorage.getItem('user_id')
+  const userName = localStorage.getItem('user_name') || '게스트'
   const userEmail = localStorage.getItem('userEmail') || ''
 
   useEffect(() => {

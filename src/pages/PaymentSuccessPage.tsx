@@ -39,7 +39,7 @@ export default function PaymentSuccessPage() {
         setOrderInfo(response.data.data)
         
         // 주문 완료 후 장바구니 비우기
-        const userId = localStorage.getItem('userId')
+        const userId = localStorage.getItem('user_id')
         if (userId) {
           await axios.delete(`/api/cart/${userId}`)
         }
