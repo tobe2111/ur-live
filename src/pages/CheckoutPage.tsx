@@ -214,6 +214,21 @@ export default function CheckoutPage() {
       }
 
       try {
+        // DOM 요소가 준비될 때까지 잠시 대기
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // DOM 요소 존재 확인
+        const paymentElement = document.querySelector('#payment-widget')
+        const agreementElement = document.querySelector('#agreement')
+        console.log('[CheckoutPage] DOM 요소 확인:', {
+          hasPaymentElement: !!paymentElement,
+          hasAgreementElement: !!agreementElement
+        })
+        
+        if (!paymentElement || !agreementElement) {
+          throw new Error('결제 위젯 DOM 요소를 찾을 수 없습니다.')
+        }
+        
         console.log('[CheckoutPage] Step 2 시작: setAmount 호출...', { currency: 'KRW', value: totalAmount })
         // ------ 주문의 결제 금액 설정 ------
         await widgets.setAmount({
