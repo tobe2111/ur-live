@@ -557,7 +557,22 @@ export default function LivePage() {
       const userId = localStorage.getItem('user_id')
       
       if (!userId) {
-        alert('로그인이 필요합니다.')
+        // 현재 URL을 returnUrl로 저장
+        const currentUrl = window.location.pathname + window.location.search
+        localStorage.setItem('loginReturnUrl', currentUrl)
+        
+        // 장바구니에 담으려던 상품 정보 임시 저장
+        const tempCartData = {
+          productId: currentProduct.product.id,
+          productName: currentProduct.product.name,
+          quantity: 1,
+          priceSnapshot: currentProduct.product.price,
+          liveStreamId: streamId
+        }
+        localStorage.setItem('tempCartItem', JSON.stringify(tempCartData))
+        
+        alert('로그인이 필요합니다. 로그인 후 자동으로 장바구니에 담아드립니다.')
+        window.location.href = '/login'
         return
       }
       
@@ -658,8 +673,13 @@ export default function LivePage() {
       const userId = localStorage.getItem('user_id')
       
       if (!userId) {
+        // 현재 URL을 returnUrl로 저장
+        const currentUrl = window.location.pathname + window.location.search
+        localStorage.setItem('loginReturnUrl', currentUrl)
+        
         alert('로그인이 필요합니다.')
         setCheckingOut(false)
+        window.location.href = '/login'
         return
       }
       

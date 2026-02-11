@@ -58,15 +58,44 @@ export default function HomePage() {
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // No callback handling needed for Kakao Sync
-  // Authentication is handled directly in the browser
-
+  // 카카오 로그인 콜백 처리
   useEffect(() => {
+    const loginSuccess = searchParams.get('login')
+    const session = searchParams.get('session')
+    const userId = searchParams.get('userId')
+    const userName = searchParams.get('userName')
+
+    if (loginSuccess === 'success' && session && userId && userName) {
+      // URL 파라미터에서 세션 정보 저장
+      console.log('[Login] Processing login callback from URL params')
+      localStorage.setItem('session', session)
+      localStorage.setItem('user_id', userId)
+      localStorage.setItem('user_name', decodeURIComponent(userName))
+      
+      // 레거시 키도 저장 (호환성)
+      localStorage.setItem('userId', userId)
+      localStorage.setItem('userName', decodeURIComponent(userName))
+      localStorage.setItem('accessToken', session)
+      
+      // UI 업데이트
+      setUser({
+        name: decodeURIComponent(userName),
+        email: ''
+      })
+      
+      // URL에서 파라미터 제거 (깔끔한 URL 유지)
+      const cleanUrl = window.location.pathname
+      window.history.replaceState({}, '', cleanUrl)
+      
+      console.log('[Login] Session saved successfully')
+      showAlert(`환영합니다, ${decodeURIComponent(userName)}님!`, 'success', '로그인 성공')
+    }
+    
     loadStreams()
     loadScheduledStreams()
     loadPopularProducts()
     loadUserInfo()
-  }, [])
+  }, [searchParams])
 
   function loadUserInfo() {
     // localStorage에서 사용자 정보 읽기

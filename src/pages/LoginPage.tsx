@@ -75,13 +75,19 @@ export default function LoginPage() {
       // 2단계: 로그인되지 않은 경우, REST API OAuth 방식으로 로그인
       console.log('[Kakao] Not logged in, redirecting to Kakao OAuth...')
       
+      // returnUrl 파라미터 또는 localStorage에서 읽기
+      const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') 
+        || localStorage.getItem('loginReturnUrl') 
+        || '/'
+      
       const KAKAO_REST_API_KEY = '5dd74bccb797640b0efd070467f3bafd'
       // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`
+      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`
       
       console.log('[Kakao] Redirecting to:', kakaoAuthUrl)
       console.log('[Kakao] Redirect URI:', REDIRECT_URI)
+      console.log('[Kakao] Return URL:', returnUrl)
       window.location.href = kakaoAuthUrl
       
     } catch (err: any) {
