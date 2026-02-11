@@ -1142,7 +1142,8 @@ export default function LivePage() {
           )}
 
           {/* 하단 버튼 - 상품 카드 + 결제 버튼 */}
-          {!showChatInput && currentProduct?.product && (
+          {!showChatInput && (
+            currentProduct?.product ? (
             <div className="flex gap-2 sm:gap-3 items-center">
               {/* 상품 카드 (썸네일 제거, 높이 조정) */}
               <button
@@ -1209,6 +1210,11 @@ export default function LivePage() {
                 )}
               </button>
             </div>
+            ) : (
+              <div className="flex items-center justify-center p-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-white/30">
+                <p className="text-gray-500 text-sm">상품 준비 중...</p>
+              </div>
+            )
           )}
         </div>
       </div>
