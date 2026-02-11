@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowLeft, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube, Package } from 'lucide-react'
 import { LazyImage } from '@/components/LazyImage'
-import { getUserId, saveUserInfo, isLoggedIn } from '@/utils/auth'
+import { getUserId, saveUserInfo, isLoggedIn as checkIsLoggedIn } from '@/utils/auth'
 
 interface Product {
   id: number
@@ -146,8 +146,8 @@ export default function LivePage() {
 
   // Check login status from localStorage
   useEffect(() => {
-    // 통합 인증: isLoggedIn() 사용
-    if (isLoggedIn()) {
+    // 통합 인증: checkIsLoggedIn() 사용
+    if (checkIsLoggedIn()) {
       setIsLoggedIn(true)
       
       // Check if there's a temporary cart item to restore
