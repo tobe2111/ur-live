@@ -162,11 +162,22 @@ export default function CheckoutPage() {
         await new Promise(resolve => setTimeout(resolve, 100))
         
         // 결제 금액 및 통화 설정 (한국 원화)
-        // 최소 설정으로 테스트 - 금액만 지정
-        console.log('[CheckoutPage] renderPaymentMethods 호출 (최소 설정)...', { totalAmount })
+        // 브랜드페이 명시적 비활성화 (테스트 환경에서 customerToken 오류 방지)
+        console.log('[CheckoutPage] renderPaymentMethods 호출 (브랜드페이 비활성화)...', { totalAmount })
         const paymentMethodWidget = paymentWidget.renderPaymentMethods(
           '#payment-widget',
-          { value: totalAmount }
+          { value: totalAmount },
+          {
+            variantKey: 'DEFAULT',
+            // 브랜드페이 명시적으로 제외
+            // @see https://docs.tosspayments.com/guides/v2/payment-widget/integration
+            methodVariants: [
+              { key: 'CARD', options: { useBrandPay: false } },  // 브랜드페이 사용 안 함
+              { key: 'TRANSFER', options: {} },
+              { key: 'VIRTUAL_ACCOUNT', options: {} },
+              { key: 'MOBILE_PHONE', options: {} }
+            ]
+          }
         )
         console.log('[CheckoutPage] renderPaymentMethods 완료')
 
