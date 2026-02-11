@@ -6,12 +6,11 @@ import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
-import { loadPaymentWidget, PaymentWidgetInstance } from '@tosspayments/payment-widget-sdk'
+import { loadTossPayments, ANONYMOUS } from '@tosspayments/tosspayments-sdk'
 
 // 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
 // 결제위젯 연동 키 (test_gck_xxx) 사용
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
-// customerKey는 사용자 ID로 동적 설정 (브랜드페이 사용 가능)
 
 interface CartItem {
   id: number
@@ -47,10 +46,8 @@ export default function CheckoutPage() {
   const [userId, setUserId] = useState<string | null>(null)
   
   // 토스페이먼츠 결제 위젯 관련 상태
-  const paymentWidgetRef = useRef<PaymentWidgetInstance | null>(null)
-  const paymentMethodWidgetRef = useRef<any>(null)
-  const [paymentReady, setPaymentReady] = useState(false)
-  const [paymentProcessing, setPaymentProcessing] = useState(false)
+  const widgetsRef = useRef<any>(null)  // TossPayments widgets instance
+  const [ready, setReady] = useState(false)
 
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -121,90 +118,87 @@ export default function CheckoutPage() {
     }
   }, [])
 
-  // 토스페이먼츠 결제 위젯 초기화
+  // 토스페이먼츠 결제 위젯 초기화 (공식 가이드 기반)
+  // Step 1: TossPayments 인스턴스 로드 및 widgets 초기화
   useEffect(() => {
-    // 금액이 0원이면 초기화하지 않음 (중요!)
-    if (!userId || cartItems.length === 0 || totalAmount === 0) {
-      console.warn('[CheckoutPage] 결제 위젯 초기화 조건 미충족:', { userId, cartItemsLength: cartItems.length, totalAmount })
-      return
-    }
-    
-    if (!clientKey) {
-      console.error('토스페이먼츠 클라이언트 키가 설정되지 않았습니다.')
-      setError('결제 시스템 설정이 올바르지 않습니다. 관리자에게 문의하세요.')
-      return
-    }
+    async function fetchPaymentWidgets() {
+      if (!userId || cartItems.length === 0) {
+        return
+      }
 
-    const initializePaymentWidget = async () => {
       try {
-        // customerKey를 userId로 설정 (브랜드페이 카드 등록 가능)
-        // ANONYMOUS 사용 (브랜드페이 비활성화 - 테스트 환경에서만)
-        // customer_${userId} 사용 시 브랜드페이가 자동 활성화되어 customerToken 오류 발생
-        const customerKey = 'ANONYMOUS'
-        console.log('[CheckoutPage] 결제 위젯 초기화 시작', { 
-          clientKey: clientKey.substring(0, 20) + '...', 
-          customerKey,
-          totalAmount,
-          cartItemsCount: cartItems.length,
-          currency: 'KRW',
-          country: 'KR'
-        })
+        // ------ 결제위젯 초기화 ------
+        const tossPayments = await loadTossPayments(clientKey)
         
-        // 금액 유효성 체크 (최소 100원)
-        if (totalAmount < 100) {
-          throw new Error(`결제 금액이 너무 적습니다: ${totalAmount}원 (최소 100원)`)
-        }
+        // 비회원 결제 (브랜드페이 비활성화)
+        const widgets = tossPayments.widgets({ customerKey: ANONYMOUS })
         
-        // Toss Payments 공식 가이드에 따른 위젯 로드
-        console.log('[CheckoutPage] loadPaymentWidget 호출...')
-        const paymentWidget = await loadPaymentWidget(clientKey, customerKey)
-        console.log('[CheckoutPage] loadPaymentWidget 완료')
-        
-        // 결제 수단 렌더링 전 대기 (안정성 향상)
-        await new Promise(resolve => setTimeout(resolve, 100))
-        
-        // 결제 금액 및 통화 설정 (한국 원화)
-        // 브랜드페이 명시적 비활성화 (테스트 환경에서 customerToken 오류 방지)
-        console.log('[CheckoutPage] renderPaymentMethods 호출 (브랜드페이 비활성화)...', { totalAmount })
-        const paymentMethodWidget = paymentWidget.renderPaymentMethods(
-          '#payment-widget',
-          { value: totalAmount },
-          {
-            variantKey: 'DEFAULT',
-            // 브랜드페이 명시적으로 제외
-            // @see https://docs.tosspayments.com/guides/v2/payment-widget/integration
-            methodVariants: [
-              { key: 'CARD', options: { useBrandPay: false } },  // 브랜드페이 사용 안 함
-              { key: 'TRANSFER', options: {} },
-              { key: 'VIRTUAL_ACCOUNT', options: {} },
-              { key: 'MOBILE_PHONE', options: {} }
-            ]
-          }
-        )
-        console.log('[CheckoutPage] renderPaymentMethods 완료')
-
-        paymentWidgetRef.current = paymentWidget
-        paymentMethodWidgetRef.current = paymentMethodWidget
-        setPaymentReady(true)
-        console.log('[CheckoutPage] 결제 위젯 초기화 완료 ✅')
+        widgetsRef.current = widgets
+        console.log('[CheckoutPage] TossPayments widgets 초기화 완료')
       } catch (error) {
-        console.error('[CheckoutPage] 결제 위젯 초기화 실패:', error)
-        // 에러 상세 정보 출력
-        if (error instanceof Error) {
-          console.error('Error name:', error.name)
-          console.error('Error message:', error.message)
-          console.error('Error stack:', error.stack)
-        }
-        setError('결제 위젯을 불러올 수 없습니다. 페이지를 새로고침해주세요.')
+        console.error('[CheckoutPage] TossPayments 초기화 실패:', error)
+        setError('결제 시스템을 불러올 수 없습니다.')
       }
     }
 
-    initializePaymentWidget()
-  }, [userId, cartItems, totalAmount, clientKey])
+    fetchPaymentWidgets()
+  }, [userId, cartItems.length])
+
+  // Step 2: 결제 금액 설정 및 UI 렌더링
+  useEffect(() => {
+    async function renderPaymentWidgets() {
+      if (widgetsRef.current == null || totalAmount === 0) {
+        return
+      }
+
+      try {
+        const widgets = widgetsRef.current
+
+        // ------ 주문의 결제 금액 설정 ------
+        await widgets.setAmount({
+          currency: 'KRW',
+          value: totalAmount,
+        })
+
+        await Promise.all([
+          // ------ 결제 UI 렌더링 ------
+          widgets.renderPaymentMethods({
+            selector: '#payment-widget',
+            variantKey: 'DEFAULT',
+          }),
+          // ------ 이용약관 UI 렌더링 ------
+          widgets.renderAgreement({
+            selector: '#agreement',
+            variantKey: 'AGREEMENT',
+          }),
+        ])
+
+        setReady(true)
+        console.log('[CheckoutPage] 결제 UI 렌더링 완료 ✅')
+      } catch (error) {
+        console.error('[CheckoutPage] 결제 UI 렌더링 실패:', error)
+        setError('결제 화면을 불러올 수 없습니다.')
+      }
+    }
+
+    renderPaymentWidgets()
+  }, [widgetsRef.current, totalAmount])
+
+  // Step 3: 금액 변경 시 업데이트
+  useEffect(() => {
+    if (widgetsRef.current == null) {
+      return
+    }
+
+    widgetsRef.current.setAmount({
+      currency: 'KRW',
+      value: totalAmount,
+    })
+  }, [totalAmount])
 
   // 결제 요청 처리
   const handlePayment = async () => {
-    if (!paymentWidgetRef.current) {
+    if (!widgetsRef.current) {
       alert('결제 위젯이 준비되지 않았습니다.')
       return
     }
@@ -213,8 +207,6 @@ export default function CheckoutPage() {
       alert('배송지를 선택해주세요.')
       return
     }
-
-    setPaymentProcessing(true)
 
     try {
       // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
@@ -232,14 +224,15 @@ export default function CheckoutPage() {
         ? cartItems[0].product_name
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
 
-      // 결제 요청
-      await paymentWidgetRef.current.requestPayment({
+      // ------ '결제하기' 버튼 누르면 결제창 띄우기 ------
+      await widgetsRef.current.requestPayment({
         orderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
         customerEmail: '',
         customerName: selectedAddress.recipient_name,
+        customerMobilePhone: selectedAddress.phone,
       })
     } catch (error: any) {
       console.error('[CheckoutPage] 결제 요청 실패:', error)
@@ -253,8 +246,6 @@ export default function CheckoutPage() {
       } else {
         alert('결제 요청 중 오류가 발생했습니다.')
       }
-      
-      setPaymentProcessing(false)
     }
   }
 
@@ -543,12 +534,15 @@ export default function CheckoutPage() {
               {/* 토스페이먼츠 결제 위젯 */}
               <div id="payment-widget" className="mb-4"></div>
 
+              {/* 이용약관 UI */}
+              <div id="agreement" className="mb-4"></div>
+
               <Button
                 onClick={handlePayment}
-                disabled={!paymentReady || !selectedAddress || paymentProcessing}
+                disabled={!ready || !selectedAddress}
                 className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {paymentProcessing ? '결제 진행 중...' : paymentReady ? '결제하기' : '결제 준비 중...'}
+                {ready ? '결제하기' : '결제 준비 중...'}
               </Button>
 
               <div className="mt-4 p-4 bg-[#f5f5f7] rounded-xl">
