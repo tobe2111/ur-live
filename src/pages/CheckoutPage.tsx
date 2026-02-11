@@ -107,7 +107,12 @@ export default function CheckoutPage() {
 
   // 토스페이먼츠 결제 위젯 초기화
   useEffect(() => {
-    if (!userId || cartItems.length === 0) return
+    // 금액이 0원이면 초기화하지 않음 (중요!)
+    if (!userId || cartItems.length === 0 || totalAmount === 0) {
+      console.warn('[CheckoutPage] 결제 위젯 초기화 조건 미충족:', { userId, cartItemsLength: cartItems.length, totalAmount })
+      return
+    }
+    
     if (!clientKey) {
       console.error('토스페이먼츠 클라이언트 키가 설정되지 않았습니다.')
       setError('결제 시스템 설정이 올바르지 않습니다. 관리자에게 문의하세요.')
@@ -122,13 +127,26 @@ export default function CheckoutPage() {
           clientKey: clientKey.substring(0, 20) + '...', 
           customerKey,
           totalAmount,
-          cartItemsCount: cartItems.length
+          cartItemsCount: cartItems.length,
+          currency: 'KRW',
+          country: 'KR'
         })
         
+        // 금액 유효성 체크 (최소 100원)
+        if (totalAmount < 100) {
+          throw new Error(`결제 금액이 너무 적습니다: ${totalAmount}원 (최소 100원)`)
+        }
+        
         // Toss Payments 공식 가이드에 따른 위젯 로드
+        console.log('[CheckoutPage] loadPaymentWidget 호출...')
         const paymentWidget = await loadPaymentWidget(clientKey, customerKey)
+        console.log('[CheckoutPage] loadPaymentWidget 완료')
+        
+        // 결제 수단 렌더링 전 대기 (안정성 향상)
+        await new Promise(resolve => setTimeout(resolve, 100))
         
         // 결제 금액 및 통화 설정 (한국 원화)
+        console.log('[CheckoutPage] renderPaymentMethods 호출...', { totalAmount, currency: 'KRW', country: 'KR' })
         const paymentMethodWidget = paymentWidget.renderPaymentMethods(
           '#payment-widget',
           { 
@@ -138,13 +156,20 @@ export default function CheckoutPage() {
           },
           { variantKey: 'DEFAULT' }
         )
+        console.log('[CheckoutPage] renderPaymentMethods 완료')
 
         paymentWidgetRef.current = paymentWidget
         paymentMethodWidgetRef.current = paymentMethodWidget
         setPaymentReady(true)
-        console.log('[CheckoutPage] 결제 위젯 초기화 완료')
+        console.log('[CheckoutPage] 결제 위젯 초기화 완료 ✅')
       } catch (error) {
         console.error('[CheckoutPage] 결제 위젯 초기화 실패:', error)
+        // 에러 상세 정보 출력
+        if (error instanceof Error) {
+          console.error('Error name:', error.name)
+          console.error('Error message:', error.message)
+          console.error('Error stack:', error.stack)
+        }
         setError('결제 위젯을 불러올 수 없습니다. 페이지를 새로고침해주세요.')
       }
     }
