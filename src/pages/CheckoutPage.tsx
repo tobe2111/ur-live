@@ -138,7 +138,9 @@ export default function CheckoutPage() {
     const initializePaymentWidget = async () => {
       try {
         // customerKey를 userId로 설정 (브랜드페이 카드 등록 가능)
-        const customerKey = `customer_${userId}`
+        // ANONYMOUS 사용 (브랜드페이 비활성화 - 테스트 환경에서만)
+        // customer_${userId} 사용 시 브랜드페이가 자동 활성화되어 customerToken 오류 발생
+        const customerKey = 'ANONYMOUS'
         console.log('[CheckoutPage] 결제 위젯 초기화 시작', { 
           clientKey: clientKey.substring(0, 20) + '...', 
           customerKey,
