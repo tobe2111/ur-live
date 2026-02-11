@@ -8,6 +8,7 @@ import {
   processKakaoLogin, 
   AuthError 
 } from './auth-utils';
+import { PaymentProviderFactory } from './services/payment/PaymentProvider';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -3811,8 +3812,6 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
 // ==========================================
 // Payment API - PG 결제 승인 (PG사 변경 가능)
 // ==========================================
-
-import { PaymentProviderFactory } from './services/payment/PaymentProvider';
 
 // 결제 승인 API
 app.post('/api/payments/confirm', async (c) => {
