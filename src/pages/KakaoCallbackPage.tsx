@@ -33,7 +33,7 @@ export default function KakaoCallbackPage() {
         // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
         const response = await axios.post('/api/auth/kakao/callback', {
           code: code,
-          redirect_uri: 'https://live.ur-team.com/auth/kakao/callback'
+          redirect_uri: 'https://live.ur-team.com/auth/kakao/sync/callback'
         })
 
         if (response.data.success) {
