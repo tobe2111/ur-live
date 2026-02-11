@@ -146,6 +146,7 @@ export default function CheckoutPage() {
         await new Promise(resolve => setTimeout(resolve, 100))
         
         // 결제 금액 및 통화 설정 (한국 원화)
+        // NOTE: 테스트 환경에서는 브랜드페이가 지원되지 않으므로 카드 결제만 활성화
         console.log('[CheckoutPage] renderPaymentMethods 호출...', { totalAmount, currency: 'KRW', country: 'KR' })
         const paymentMethodWidget = paymentWidget.renderPaymentMethods(
           '#payment-widget',
@@ -154,7 +155,19 @@ export default function CheckoutPage() {
             currency: 'KRW',
             country: 'KR'
           },
-          { variantKey: 'DEFAULT' }
+          { 
+            variantKey: 'DEFAULT',
+            // 테스트 환경에서 브랜드페이 제외
+            // 전자결제 계약 후에는 이 옵션 제거 가능
+            methodVariants: [
+              { key: 'CARD', options: {} },
+              { key: 'TRANSFER', options: {} },
+              { key: 'VIRTUAL_ACCOUNT', options: {} },
+              { key: 'MOBILE_PHONE', options: {} },
+              // BRANDPAY는 테스트 환경에서 제외
+              // { key: 'BRANDPAY', options: {} }
+            ]
+          }
         )
         console.log('[CheckoutPage] renderPaymentMethods 완료')
 
