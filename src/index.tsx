@@ -2423,6 +2423,37 @@ app.post('/api/seller/streams', async (c) => {
       'SELECT * FROM live_streams WHERE id = ?'
     ).bind(result.meta.last_row_id).first();
 
+    // 판매자 정보 가져오기
+    const seller = await DB.prepare(
+      'SELECT display_name, username FROM sellers WHERE id = ?'
+    ).bind(auth.sellerId).first();
+
+    // 이메일 알림 전송 (비동기, 실패해도 라이브 생성은 성공)
+    try {
+      const { sendLiveStreamCreatedEmail } = await import('./utils/email');
+      
+      // 이메일 전송 (await 없이 비동기 실행)
+      sendLiveStreamCreatedEmail({
+        streamId: result.meta.last_row_id as number,
+        title: title,
+        sellerName: seller?.display_name || seller?.username || '알 수 없음',
+        platform: platform,
+        scheduledAt: scheduled_at,
+        status: status || 'scheduled',
+      }).then(result => {
+        if (result.success) {
+          console.log(`[Email] Live stream notification sent for stream #${result.meta.last_row_id}`);
+        } else {
+          console.error(`[Email] Failed to send notification:`, result.error);
+        }
+      }).catch(error => {
+        console.error('[Email] Exception while sending notification:', error);
+      });
+    } catch (emailError) {
+      // 이메일 전송 실패는 로그만 남기고 무시
+      console.error('[Email] Failed to send live stream notification:', emailError);
+    }
+
     return c.json({
       success: true,
       data: stream
