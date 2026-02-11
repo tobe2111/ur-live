@@ -121,14 +121,21 @@ export default function CheckoutPage() {
         console.log('[CheckoutPage] 결제 위젯 초기화 시작', { 
           clientKey: clientKey.substring(0, 20) + '...', 
           customerKey,
-          totalAmount 
+          totalAmount,
+          cartItemsCount: cartItems.length
         })
+        
+        // Toss Payments 공식 가이드에 따른 위젯 로드
         const paymentWidget = await loadPaymentWidget(clientKey, customerKey)
         
-        // 결제 금액 설정
+        // 결제 금액 및 통화 설정 (한국 원화)
         const paymentMethodWidget = paymentWidget.renderPaymentMethods(
           '#payment-widget',
-          { value: totalAmount },
+          { 
+            value: totalAmount,
+            currency: 'KRW',
+            country: 'KR'
+          },
           { variantKey: 'DEFAULT' }
         )
 
