@@ -317,10 +317,18 @@
         const API_BASE = '/api';
         
         // URL에서 streamId 추출
-        const urlParams = new URLSearchParams(window.location.search);
-        const STREAM_ID = urlParams.get('streamId') || '1';
+        // /live/20 형식의 경로에서 ID 파싱
+        const pathParts = window.location.pathname.split('/');
+        const pathStreamId = pathParts[pathParts.length - 1];
         
-        console.log('🎬 Stream ID:', STREAM_ID);
+        // URL 파라미터에서도 확인 (폴백)
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramStreamId = urlParams.get('streamId');
+        
+        // 경로 우선, 파라미터 폴백, 최종 기본값 '1'
+        const STREAM_ID = pathStreamId && !isNaN(pathStreamId) ? pathStreamId : (paramStreamId || '1');
+        
+        console.log('🎬 Stream ID:', STREAM_ID, '(from path:', pathStreamId, ', from param:', paramStreamId, ')');
         
         // ==========================================
         // Firebase 초기화
