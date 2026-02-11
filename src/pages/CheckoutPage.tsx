@@ -307,8 +307,10 @@ export default function CheckoutPage() {
       return
     }
 
+    // 배송지 필수 체크
     if (!selectedAddress) {
-      alert('배송지를 선택해주세요.')
+      alert('⚠️ 배송지를 먼저 선택해주세요.\n\n배송지 선택 화면으로 이동합니다.')
+      setShowAddressModal(true)  // 배송지 선택 모달 자동 오픈
       return
     }
 
@@ -556,13 +558,26 @@ export default function CheckoutPage() {
                   <p className="text-sm text-[#1d1d1f]">{selectedAddress.address_detail}</p>
                 </div>
               ) : (
-                <button
-                  onClick={() => setShowAddressModal(true)}
-                  className="w-full py-4 border-2 border-dashed border-[#d2d2d7] rounded-lg text-[#6e6e73] hover:border-[#007aff] hover:text-[#007aff] transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus className="h-5 w-5" />
-                  배송지를 선택해주세요
-                </button>
+                <div className="space-y-3">
+                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-semibold text-red-800 mb-1">배송지를 선택해주세요 (필수)</h3>
+                        <p className="text-sm text-red-700">
+                          결제를 진행하려면 상품을 받으실 배송지를 먼저 선택해야 합니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAddressModal(true)}
+                    className="w-full py-4 border-2 border-dashed border-red-300 bg-red-50 rounded-lg text-red-600 hover:border-red-500 hover:bg-red-100 transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Plus className="h-5 w-5" />
+                    배송지 선택하기 (필수)
+                  </button>
+                </div>
               )}
             </div>
 
@@ -679,8 +694,18 @@ export default function CheckoutPage() {
                 disabled={!ready || !selectedAddress || isProcessing}
                 className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isProcessing ? '처리 중...' : ready ? '결제하기' : '결제 준비 중...'}
+                {isProcessing ? '처리 중...' : !selectedAddress ? '⚠️ 배송지를 선택해주세요' : ready ? '결제하기' : '결제 준비 중...'}
               </Button>
+              
+              {/* 배송지 미선택 경고 */}
+              {!selectedAddress && (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800 text-center flex items-center justify-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>배송지를 선택하셔야 결제가 가능합니다</span>
+                  </p>
+                </div>
+              )}
 
               <div className="mt-4 p-4 bg-[#f5f5f7] rounded-xl">
                 <p className="text-xs text-[#6e6e73] text-center mb-1">
