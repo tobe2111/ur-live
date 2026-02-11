@@ -9,8 +9,10 @@ import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { loadPaymentWidget, PaymentWidgetInstance } from '@tosspayments/payment-widget-sdk'
 
 // 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
-// TODO: Cloudflare Pages Dashboard에서 VITE_TOSS_CLIENT_KEY 환경변수 설정 필요
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
+// 현재 API 개별 연동 키 사용 (test_ck_xxx)
+// TODO: 결제위젯 SDK는 결제위젯 연동 키(test_gck_xxx)가 필요합니다
+// API 개별 연동 키로는 오류가 발생할 수 있습니다
+const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_ck_d46qopOB89Okomkvlm6aVZmM75y0'
 // customerKey는 사용자 ID로 동적 설정 (브랜드페이 사용 가능)
 
 interface CartItem {
