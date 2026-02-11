@@ -139,7 +139,7 @@ export default function LivePage() {
       window.history.replaceState({}, document.title, cleanUrl)
       
       // Show success message
-      alert(`환영합니다, ${decodeURIComponent(userName || '카카오 사용자')}님!`)
+      showAlert(`환영합니다, ${decodeURIComponent(userName || '카카오 사용자')}님!`, 'success', '로그인 완료')
     }
   }, [searchParams, streamId])
 
@@ -547,7 +547,7 @@ export default function LivePage() {
       localStorage.setItem('tempCartItem', JSON.stringify(tempCart))
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       
-      alert('로그인이 필요합니다!')
+      showAlert('로그인이 필요합니다!', 'warning', '로그인 필요')
       handleKakaoLogin()
       return
     }
@@ -571,8 +571,10 @@ export default function LivePage() {
         }
         localStorage.setItem('tempCartItem', JSON.stringify(tempCartData))
         
-        alert('로그인이 필요합니다. 로그인 후 자동으로 장바구니에 담아드립니다.')
-        window.location.href = '/login'
+        showAlert('로그인이 필요합니다. 로그인 후 자동으로 장바구니에 담아드립니다.', 'info', '로그인 필요')
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
         return
       }
       
@@ -628,7 +630,7 @@ export default function LivePage() {
         setShowNotification(true)
         setTimeout(() => setShowNotification(false), 2500)
       } else {
-        alert(errorMessage)
+        showAlert(errorMessage, 'error', '장바구니 추가 실패')
       }
     } finally {
       setAddingToCart(false)
@@ -645,7 +647,7 @@ export default function LivePage() {
       navigate('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
     } catch (error) {
       console.error('[Login] Exception:', error)
-      alert('로그인 페이지로 이동 중 오류가 발생했습니다.')
+      showAlert('로그인 페이지로 이동 중 오류가 발생했습니다.', 'error', '오류 발생')
     }
   }
 
@@ -654,7 +656,7 @@ export default function LivePage() {
     
     // Check login FIRST (before checking cart)
     if (!isLoggedIn) {
-      alert('로그인이 필요합니다!')
+      showAlert('로그인이 필요합니다!', 'warning', '로그인 필요')
       handleKakaoLogin()
       return
     }
@@ -663,7 +665,7 @@ export default function LivePage() {
     const hasCartItems = localStorage.getItem('hasCartItems')
     
     if (!hasCartItems || hasCartItems !== 'true') {
-      alert('상품을 먼저 담아주세요!')
+      showAlert('상품을 먼저 담아주세요!', 'info', '상품 담기')
       return
     }
     
@@ -677,9 +679,11 @@ export default function LivePage() {
         const currentUrl = window.location.pathname + window.location.search
         localStorage.setItem('loginReturnUrl', currentUrl)
         
-        alert('로그인이 필요합니다.')
+        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
         setCheckingOut(false)
-        window.location.href = '/login'
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
         return
       }
       
@@ -689,7 +693,7 @@ export default function LivePage() {
       // Check if response is valid and has items
       const cartData = response.data?.data || response.data
       if (!cartData || !Array.isArray(cartData) || cartData.length === 0) {
-        alert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!')
+        showAlert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!', 'info', '장바구니 비어있음')
         localStorage.removeItem('hasCartItems')
         setCheckingOut(false)
         return
@@ -702,7 +706,7 @@ export default function LivePage() {
     } catch (error: any) {
       console.error('Failed to check cart:', error)
       const errorMessage = error.response?.data?.error || error.message || '장바구니 확인에 실패했습니다.'
-      alert(errorMessage)
+      showAlert(errorMessage, 'error', '결제 실패')
     } finally {
       setCheckingOut(false)
     }
@@ -774,13 +778,13 @@ export default function LivePage() {
       setShowChatInput(false)
     } catch (error) {
       console.error('메시지 전송 실패:', error)
-      alert('메시지 전송에 실패했습니다.')
+      showAlert('메시지 전송에 실패했습니다.', 'error', '전송 실패')
     }
   }
 
   function handleShowProducts() {
     // Navigate to products page or show product list
-    alert('상품 목록 보기 기능 (구현 예정)')
+    showAlert('상품 목록 보기 기능 (구현 예정)', 'info', '준비 중')
   }
 
   function toggleMute() {
