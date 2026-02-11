@@ -69,6 +69,13 @@ export default function CheckoutPage() {
 
   const SHIPPING_FEE = 3000
 
+  // totalAmount를 useEffect보다 먼저 계산
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.price_snapshot * item.quantity,
+    0
+  )
+  const totalAmount = subtotal + SHIPPING_FEE
+
   useEffect(() => {
     const uid = localStorage.getItem('userId')
     if (!uid) {
@@ -93,9 +100,15 @@ export default function CheckoutPage() {
   // 토스페이먼츠 결제 위젯 초기화
   useEffect(() => {
     if (!userId || cartItems.length === 0) return
+    if (!clientKey) {
+      console.error('토스페이먼츠 클라이언트 키가 설정되지 않았습니다.')
+      setError('결제 시스템 설정이 올바르지 않습니다. 관리자에게 문의하세요.')
+      return
+    }
 
     const initializePaymentWidget = async () => {
       try {
+        console.log('[CheckoutPage] 결제 위젯 초기화 시작', { clientKey: clientKey.substring(0, 20) + '...', totalAmount })
         const paymentWidget = await loadPaymentWidget(clientKey, customerKey)
         
         // 결제 금액 설정
@@ -108,13 +121,15 @@ export default function CheckoutPage() {
         paymentWidgetRef.current = paymentWidget
         paymentMethodWidgetRef.current = paymentMethodWidget
         setPaymentReady(true)
+        console.log('[CheckoutPage] 결제 위젯 초기화 완료')
       } catch (error) {
-        console.error('결제 위젯 초기화 실패:', error)
+        console.error('[CheckoutPage] 결제 위젯 초기화 실패:', error)
+        setError('결제 위젯을 불러올 수 없습니다. 페이지를 새로고침해주세요.')
       }
     }
 
     initializePaymentWidget()
-  }, [userId, cartItems, totalAmount])
+  }, [userId, cartItems, totalAmount, clientKey])
 
   // 결제 요청 처리
   const handlePayment = async () => {
@@ -149,7 +164,7 @@ export default function CheckoutPage() {
         customerName: selectedAddress.recipient_name,
       })
     } catch (error) {
-      console.error('결제 요청 실패:', error)
+      console.error('[CheckoutPage] 결제 요청 실패:', error)
       alert('결제 요청 중 오류가 발생했습니다.')
       setPaymentProcessing(false)
     }
@@ -241,11 +256,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price_snapshot * item.quantity,
-    0
-  )
-  const totalAmount = subtotal + SHIPPING_FEE
+  // subtotal과 totalAmount는 이미 상단에서 정의됨 (중복 제거)
 
   if (loading) {
     return (
