@@ -6,11 +6,11 @@ import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
-import { loadPaymentWidget, PaymentWidgetInstance, ANONYMOUS } from '@tosspayments/payment-widget-sdk'
+import { loadPaymentWidget, PaymentWidgetInstance } from '@tosspayments/payment-widget-sdk'
 
 // 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || ''
-const customerKey = ANONYMOUS // 익명 사용자 (비회원 결제)
+// customerKey는 사용자 ID로 동적 설정 (브랜드페이 사용 가능)
 
 interface CartItem {
   id: number
@@ -115,7 +115,13 @@ export default function CheckoutPage() {
 
     const initializePaymentWidget = async () => {
       try {
-        console.log('[CheckoutPage] 결제 위젯 초기화 시작', { clientKey: clientKey.substring(0, 20) + '...', totalAmount })
+        // customerKey를 userId로 설정 (브랜드페이 사용 가능)
+        const customerKey = `customer_${userId}`
+        console.log('[CheckoutPage] 결제 위젯 초기화 시작', { 
+          clientKey: clientKey.substring(0, 20) + '...', 
+          customerKey,
+          totalAmount 
+        })
         const paymentWidget = await loadPaymentWidget(clientKey, customerKey)
         
         // 결제 금액 설정
