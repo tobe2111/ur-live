@@ -105,6 +105,22 @@ export default function CheckoutPage() {
     }
   }, [])
 
+  // Toss Payments SDK 로깅 오류 무시
+  useEffect(() => {
+    const originalError = console.error
+    console.error = (...args: any[]) => {
+      // log.tosspayments.com 관련 오류는 무시
+      if (args[0]?.includes?.('log.tosspayments.com')) {
+        return
+      }
+      originalError.apply(console, args)
+    }
+    
+    return () => {
+      console.error = originalError
+    }
+  }, [])
+
   // 토스페이먼츠 결제 위젯 초기화
   useEffect(() => {
     // 금액이 0원이면 초기화하지 않음 (중요!)
