@@ -283,24 +283,38 @@ export default function CheckoutPage() {
 
             <h2 className="text-lg sm:text-xl font-semibold text-[#1d1d1f]">주문 상품</h2>
             
-            {cartItems.map((item) => (
-              <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm">
-                <div className="flex gap-4">
-                  <img
-                    src={item.image_url || 'https://via.placeholder.com/100x100/f5f5f7/6e6e73?text=Product'}
-                    alt={item.product_name}
-                    className="w-20 h-20 object-cover rounded-lg"
-                  />
+            {cartItems.map((item, index) => (
+              <div key={item.id} className="bg-white rounded-xl p-5 shadow-sm border border-[#e5e5e7] hover:border-[#007aff] transition-all">
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="font-medium text-[#1d1d1f] mb-1">{item.product_name}</h3>
-                    {item.option_value && (
-                      <p className="text-sm text-[#6e6e73] mb-2">옵션: {item.option_value}</p>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#6e6e73]">수량: {item.quantity}개</span>
-                      <span className="font-semibold text-[#1d1d1f]">
-                        {(item.price_snapshot * item.quantity).toLocaleString()}원
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#007aff] text-white text-xs font-bold">
+                        {index + 1}
                       </span>
+                      <h3 className="font-semibold text-[#1d1d1f] text-base">{item.product_name}</h3>
+                    </div>
+                    <div className="ml-8 space-y-1">
+                      {item.option_value && (
+                        <p className="text-sm text-[#6e6e73]">
+                          <span className="font-medium">옵션:</span> {item.option_value}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-[#6e6e73]">
+                          <span className="font-medium">수량:</span> {item.quantity}개
+                        </span>
+                        <span className="text-sm text-[#6e6e73]">
+                          <span className="font-medium">단가:</span> {item.price_snapshot.toLocaleString()}원
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right ml-4">
+                    <div className="text-lg font-bold text-[#007aff]">
+                      {(item.price_snapshot * item.quantity).toLocaleString()}원
+                    </div>
+                    <div className="text-xs text-[#6e6e73] mt-1">
+                      합계
                     </div>
                   </div>
                 </div>
@@ -310,39 +324,63 @@ export default function CheckoutPage() {
 
           {/* 결제 금액 */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
-              <h2 className="text-lg font-semibold text-[#1d1d1f] mb-4">결제 금액</h2>
-              
-              <div className="space-y-3 mb-4 pb-4 border-b border-[#d2d2d7]">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6e6e73]">상품 금액</span>
-                  <span className="text-[#1d1d1f]">{subtotal.toLocaleString()}원</span>
+            <div className="bg-gradient-to-br from-white to-[#f5f5f7] rounded-2xl p-6 shadow-lg border border-[#e5e5e7] sticky top-24">
+              <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+                <h2 className="text-xl font-bold text-[#1d1d1f] mb-4 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-[#007aff]" />
+                  결제 금액
+                </h2>
+                
+                <div className="space-y-3 mb-4 pb-4 border-b-2 border-[#e5e5e7]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-[#6e6e73]">상품 금액</span>
+                    <span className="text-base font-semibold text-[#1d1d1f]">{subtotal.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-[#6e6e73]">배송비</span>
+                    <span className="text-base font-semibold text-[#1d1d1f]">
+                      {SHIPPING_FEE.toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-[#86868b] pt-2 border-t border-dashed border-[#d2d2d7]">
+                    <span>상품 개수</span>
+                    <span>{cartItems.length}개</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#6e6e73]">배송비</span>
-                  <span className="text-[#1d1d1f]">
-                    {SHIPPING_FEE.toLocaleString()}원
-                  </span>
-                </div>
-              </div>
 
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-lg font-semibold text-[#1d1d1f]">총 결제금액</span>
-                <span className="text-2xl font-bold text-[#007aff]">
-                  {totalAmount.toLocaleString()}원
-                </span>
+                <div className="bg-gradient-to-r from-[#007aff] to-[#0051d5] rounded-xl p-4 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-white/90">총 결제금액</span>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-white">
+                        {totalAmount.toLocaleString()}원
+                      </div>
+                      <div className="text-xs text-white/80 mt-1">
+                        VAT 포함
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <Button
                 onClick={() => alert('결제 서비스 준비 중입니다.\n고객센터(0507-0177-0432)로 문의해주세요.')}
-                className="w-full bg-[#007aff] hover:bg-[#0051d5] text-white h-12 rounded-lg text-base font-semibold"
+                className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
               >
                 주문 문의하기
               </Button>
 
-              <p className="text-xs text-[#6e6e73] text-center mt-4">
-                고객센터: 0507-0177-0432
-              </p>
+              <div className="mt-4 p-4 bg-[#f5f5f7] rounded-xl">
+                <p className="text-xs text-[#6e6e73] text-center mb-1">
+                  궁금한 점이 있으신가요?
+                </p>
+                <p className="text-sm font-semibold text-[#1d1d1f] text-center">
+                  📞 고객센터: 0507-0177-0432
+                </p>
+                <p className="text-xs text-[#86868b] text-center mt-1">
+                  평일 09:00 - 18:00
+                </p>
+              </div>
             </div>
           </div>
         </div>
