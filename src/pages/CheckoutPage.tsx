@@ -53,6 +53,7 @@ export default function CheckoutPage() {
   const widgetsRef = useRef<any>(null)  // TossPayments widgets instance
   const [widgets, setWidgets] = useState<any>(null)  // 상태로 관리
   const [ready, setReady] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)  // 결제 처리 중 플래그
 
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -295,6 +296,12 @@ export default function CheckoutPage() {
 
   // 결제 요청 처리
   const handlePayment = async () => {
+    // 중복 실행 방지
+    if (isProcessing) {
+      console.warn('[CheckoutPage] 결제가 이미 진행 중입니다.')
+      return
+    }
+
     if (!widgets) {
       alert('결제 위젯이 준비되지 않았습니다.')
       return
@@ -306,6 +313,9 @@ export default function CheckoutPage() {
     }
 
     try {
+      setIsProcessing(true)  // 처리 시작
+      console.log('[CheckoutPage] 결제 요청 시작...')
+
       // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
       localStorage.setItem('checkoutShippingAddress', 
         `${selectedAddress.postal_code} ${selectedAddress.address} ${selectedAddress.address_detail || ''}`.trim()
@@ -321,6 +331,8 @@ export default function CheckoutPage() {
         ? cartItems[0].product_name
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
 
+      console.log('[CheckoutPage] requestPayment 호출:', { orderId, orderName, totalAmount })
+
       // ------ '결제하기' 버튼 누르면 결제창 띄우기 ------
       await widgets.requestPayment({
         orderId,
@@ -331,6 +343,8 @@ export default function CheckoutPage() {
         customerName: selectedAddress.recipient_name,
         customerMobilePhone: selectedAddress.phone,
       })
+      
+      console.log('[CheckoutPage] 결제 요청 완료 (리다이렉트 대기 중)')
     } catch (error: any) {
       console.error('[CheckoutPage] 결제 요청 실패:', error)
       
@@ -343,6 +357,12 @@ export default function CheckoutPage() {
       } else {
         alert('결제 요청 중 오류가 발생했습니다.')
       }
+    } finally {
+      // 처리 완료 (성공/실패 관계없이)
+      setTimeout(() => {
+        setIsProcessing(false)
+        console.log('[CheckoutPage] 결제 처리 플래그 해제')
+      }, 2000)  // 2초 후 플래그 해제 (중복 클릭 방지)
     }
   }
 
@@ -656,10 +676,10 @@ export default function CheckoutPage() {
 
               <Button
                 onClick={handlePayment}
-                disabled={!ready || !selectedAddress}
+                disabled={!ready || !selectedAddress || isProcessing}
                 className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {ready ? '결제하기' : '결제 준비 중...'}
+                {isProcessing ? '처리 중...' : ready ? '결제하기' : '결제 준비 중...'}
               </Button>
 
               <div className="mt-4 p-4 bg-[#f5f5f7] rounded-xl">
