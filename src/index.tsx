@@ -3778,6 +3778,90 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
   }
 });
 
+// ==========================================
+// Payment API - 토스페이먼츠 결제 승인
+// ==========================================
+
+// 결제 승인 API
+app.post('/api/payments/confirm', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const body = await c.req.json();
+    const { paymentKey, orderId, amount } = body;
+
+    if (!paymentKey || !orderId || !amount) {
+      return c.json({
+        success: false,
+        error: '필수 파라미터가 누락되었습니다.'
+      }, 400);
+    }
+
+    // 토스페이먼츠 시크릿 키
+    const secretKey = c.env.TOSS_SECRET_KEY;
+    if (!secretKey) {
+      return c.json({
+        success: false,
+        error: '결제 시스템 설정이 올바르지 않습니다.'
+      }, 500);
+    }
+
+    // 토스페이먼츠 API 호출하여 결제 승인
+    const tossResponse = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(secretKey + ':')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        paymentKey,
+        orderId,
+        amount
+      })
+    });
+
+    const tossData = await tossResponse.json();
+
+    if (!tossResponse.ok) {
+      console.error('토스페이먼츠 결제 승인 실패:', tossData);
+      return c.json({
+        success: false,
+        error: tossData.message || '결제 승인에 실패했습니다.'
+      }, tossResponse.status);
+    }
+
+    // 결제 정보 저장 (payments 테이블이 있다면)
+    // await DB.prepare(`
+    //   INSERT INTO payments (order_id, payment_key, method, amount, status, created_at)
+    //   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    // `).bind(orderId, paymentKey, tossData.method, amount, 'completed').run();
+
+    // 주문 상태 업데이트 (pending -> paid)
+    // await DB.prepare(`
+    //   UPDATE orders SET status = 'paid', updated_at = CURRENT_TIMESTAMP 
+    //   WHERE order_no = ?
+    // `).bind(orderId).run();
+
+    return c.json({
+      success: true,
+      data: {
+        orderId: tossData.orderId,
+        paymentKey: tossData.paymentKey,
+        method: tossData.method,
+        totalAmount: tossData.totalAmount,
+        status: tossData.status,
+        approvedAt: tossData.approvedAt
+      }
+    });
+  } catch (err) {
+    console.error('결제 승인 처리 중 오류:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
 // Get seller's orders
 app.get('/api/seller/orders', async (c) => {
   const { DB } = c.env;

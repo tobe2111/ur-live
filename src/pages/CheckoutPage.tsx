@@ -1,11 +1,16 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin } from '@/utils/auth'
+import { loadPaymentWidget, PaymentWidgetInstance, ANONYMOUS } from '@tosspayments/payment-widget-sdk'
+
+// 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
+const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || ''
+const customerKey = ANONYMOUS // 익명 사용자 (비회원 결제)
 
 interface CartItem {
   id: number
@@ -39,6 +44,12 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
+  
+  // 토스페이먼츠 결제 위젯 관련 상태
+  const paymentWidgetRef = useRef<PaymentWidgetInstance | null>(null)
+  const paymentMethodWidgetRef = useRef<any>(null)
+  const [paymentReady, setPaymentReady] = useState(false)
+  const [paymentProcessing, setPaymentProcessing] = useState(false)
 
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -78,6 +89,71 @@ export default function CheckoutPage() {
       document.body.removeChild(script)
     }
   }, [])
+
+  // 토스페이먼츠 결제 위젯 초기화
+  useEffect(() => {
+    if (!userId || cartItems.length === 0) return
+
+    const initializePaymentWidget = async () => {
+      try {
+        const paymentWidget = await loadPaymentWidget(clientKey, customerKey)
+        
+        // 결제 금액 설정
+        const paymentMethodWidget = paymentWidget.renderPaymentMethods(
+          '#payment-widget',
+          { value: totalAmount },
+          { variantKey: 'DEFAULT' }
+        )
+
+        paymentWidgetRef.current = paymentWidget
+        paymentMethodWidgetRef.current = paymentMethodWidget
+        setPaymentReady(true)
+      } catch (error) {
+        console.error('결제 위젯 초기화 실패:', error)
+      }
+    }
+
+    initializePaymentWidget()
+  }, [userId, cartItems, totalAmount])
+
+  // 결제 요청 처리
+  const handlePayment = async () => {
+    if (!paymentWidgetRef.current) {
+      alert('결제 위젯이 준비되지 않았습니다.')
+      return
+    }
+
+    if (!selectedAddress) {
+      alert('배송지를 선택해주세요.')
+      return
+    }
+
+    setPaymentProcessing(true)
+
+    try {
+      // 주문 ID 생성 (timestamp + random)
+      const orderId = `ORDER_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+      
+      // 주문명 생성
+      const orderName = cartItems.length === 1 
+        ? cartItems[0].product_name
+        : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
+
+      // 결제 요청
+      await paymentWidgetRef.current.requestPayment({
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+        customerEmail: '',
+        customerName: selectedAddress.recipient_name,
+      })
+    } catch (error) {
+      console.error('결제 요청 실패:', error)
+      alert('결제 요청 중 오류가 발생했습니다.')
+      setPaymentProcessing(false)
+    }
+  }
 
   async function loadCart(uid: string) {
     try {
@@ -222,18 +298,6 @@ export default function CheckoutPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* 결제 서비스 준비중 안내 */}
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-yellow-900 mb-1">결제 기능 준비중</h3>
-              <p className="text-sm text-yellow-800">
-                현재 결제 서비스를 준비하고 있습니다. 주문은 고객센터(0507-0177-0432)로 문의해주세요.
-              </p>
-            </div>
-          </div>
-        </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* 주문 상품 목록 */}
@@ -322,7 +386,7 @@ export default function CheckoutPage() {
             ))}
           </div>
 
-          {/* 결제 금액 */}
+          {/* 결제 금액 및 결제 수단 */}
           <div className="lg:col-span-1">
             <div className="bg-gradient-to-br from-white to-[#f5f5f7] rounded-2xl p-6 shadow-lg border border-[#e5e5e7] sticky top-24">
               <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
@@ -363,11 +427,15 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* 토스페이먼츠 결제 위젯 */}
+              <div id="payment-widget" className="mb-4"></div>
+
               <Button
-                onClick={() => alert('결제 서비스 준비 중입니다.\n고객센터(0507-0177-0432)로 문의해주세요.')}
-                className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
+                onClick={handlePayment}
+                disabled={!paymentReady || !selectedAddress || paymentProcessing}
+                className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                주문 문의하기
+                {paymentProcessing ? '결제 진행 중...' : paymentReady ? '결제하기' : '결제 준비 중...'}
               </Button>
 
               <div className="mt-4 p-4 bg-[#f5f5f7] rounded-xl">
