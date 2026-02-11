@@ -1969,10 +1969,15 @@ app.get('/api/cart/:userId', async (c) => {
         ci.*,
         p.name as product_name,
         p.image_url as image_url,
-        po.option_value as option_value
+        p.seller_id as seller_id,
+        po.option_value as option_value,
+        s.shipping_fee as shipping_fee,
+        s.free_shipping_threshold as free_shipping_threshold,
+        s.display_name as seller_name
       FROM cart_items ci
       JOIN products p ON ci.product_id = p.id
       LEFT JOIN product_options po ON ci.option_id = po.id
+      LEFT JOIN sellers s ON p.seller_id = s.id
       WHERE ci.user_id = ?
       ORDER BY ci.added_at DESC
     `).bind(userId).all();

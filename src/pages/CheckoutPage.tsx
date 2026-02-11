@@ -20,6 +20,10 @@ interface CartItem {
   quantity: number
   price_snapshot: number
   option_value?: string
+  seller_id?: number
+  seller_name?: string
+  shipping_fee?: number
+  free_shipping_threshold?: number
 }
 
 interface ShippingAddress {
@@ -65,14 +69,48 @@ export default function CheckoutPage() {
     is_default: 0
   })
 
-  const SHIPPING_FEE = 3000
+  // 셀러별 장바구니 그룹화 및 배송비 계산
+  const sellerGroups = cartItems.reduce((groups, item) => {
+    const sellerId = item.seller_id || 0
+    if (!groups[sellerId]) {
+      groups[sellerId] = {
+        seller_id: sellerId,
+        seller_name: item.seller_name || '판매자',
+        items: [],
+        subtotal: 0,
+        shipping_fee: item.shipping_fee || 3000,  // 기본 배송비 3,000원
+        free_shipping_threshold: item.free_shipping_threshold || 0,
+      }
+    }
+    groups[sellerId].items.push(item)
+    groups[sellerId].subtotal += item.price_snapshot * item.quantity
+    return groups
+  }, {} as Record<number, {
+    seller_id: number
+    seller_name: string
+    items: CartItem[]
+    subtotal: number
+    shipping_fee: number
+    free_shipping_threshold: number
+  }>)
 
-  // totalAmount를 useEffect보다 먼저 계산
+  // 전체 소계 계산
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price_snapshot * item.quantity,
     0
   )
-  const totalAmount = subtotal + SHIPPING_FEE
+
+  // 셀러별 배송비 계산 (무료배송 조건 체크)
+  const totalShippingFee = Object.values(sellerGroups).reduce((sum, group) => {
+    // 무료배송 조건: free_shipping_threshold가 0보다 크고, 소계가 조건 이상일 때
+    if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
+      return sum  // 무료배송
+    }
+    return sum + group.shipping_fee  // 배송비 추가
+  }, 0)
+
+  // 최종 결제 금액
+  const totalAmount = subtotal + totalShippingFee
 
   useEffect(() => {
     // 통합 인증 체크
@@ -504,12 +542,32 @@ export default function CheckoutPage() {
                     <span className="text-sm font-medium text-[#6e6e73]">상품 금액</span>
                     <span className="text-base font-semibold text-[#1d1d1f]">{subtotal.toLocaleString()}원</span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  
+                  {/* 셀러별 배송비 상세 */}
+                  <div className="flex justify-between items-start">
                     <span className="text-sm font-medium text-[#6e6e73]">배송비</span>
-                    <span className="text-base font-semibold text-[#1d1d1f]">
-                      {SHIPPING_FEE.toLocaleString()}원
-                    </span>
+                    <div className="text-right">
+                      {Object.values(sellerGroups).map((group, index) => {
+                        const isFreeShipping = group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
+                        return (
+                          <div key={group.seller_id} className="mb-1">
+                            <span className="text-xs text-[#86868b] mr-2">{group.seller_name}</span>
+                            {isFreeShipping ? (
+                              <span className="text-sm font-semibold text-[#34c759]">무료배송</span>
+                            ) : (
+                              <span className="text-sm font-semibold text-[#1d1d1f]">
+                                {group.shipping_fee.toLocaleString()}원
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                      <div className="text-base font-semibold text-[#1d1d1f] mt-1 pt-1 border-t border-dashed border-[#d2d2d7]">
+                        총 {totalShippingFee.toLocaleString()}원
+                      </div>
+                    </div>
                   </div>
+                  
                   <div className="flex justify-between items-center text-xs text-[#86868b] pt-2 border-t border-dashed border-[#d2d2d7]">
                     <span>상품 개수</span>
                     <span>{cartItems.length}개</span>
