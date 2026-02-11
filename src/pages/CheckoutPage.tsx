@@ -177,7 +177,17 @@ export default function CheckoutPage() {
         // 로그인한 사용자: 회원 결제 (브랜드페이 가능)
         const customerKey = `customer_${userId}`
         console.log('[CheckoutPage] widgets() 호출...', { customerKey })
-        const widgetsInstance = tossPayments.widgets({ customerKey })
+        
+        // 브랜드페이 redirectUrl 설정
+        const redirectUrl = `${window.location.origin}/api/brandpay/callback`
+        console.log('[CheckoutPage] redirectUrl:', redirectUrl)
+        
+        const widgetsInstance = tossPayments.widgets({ 
+          customerKey,
+          brandpay: {
+            redirectUrl
+          }
+        })
         console.log('[CheckoutPage] widgets() 완료')
         
         widgetsRef.current = widgetsInstance
