@@ -26,7 +26,10 @@
           const msg = args[0]?.toString() || '';
           if (
             msg.includes('Content Security Policy') ||
-            msg.includes('Permissions policy')
+            msg.includes('Permissions policy') ||
+            msg.includes('Failed to launch') ||
+            msg.includes('intent://') ||
+            msg.includes('scheme does not have a registered handler')
           ) {
             return; // Suppress
           }
