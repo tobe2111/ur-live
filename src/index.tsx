@@ -4011,15 +4011,15 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
 // 결제 승인 API
 app.post('/api/payments/confirm', async (c) => {
   const { DB } = c.env;
-  let body: any = null;  // catch 블록에서도 접근 가능하도록 함수 스코프로 이동
+  let body: any = null;
   
   try {
     body = await c.req.json();
     const { paymentKey, orderId, amount } = body;
 
-    console.log('[Payment] 결제 승인 요청:', { orderId, amount, paymentKey: paymentKey?.substring(0, 20) + '...' });
+    console.log('[Payment] 결제 승인 요청:', { orderId, amount });
 
-    // 1️⃣ 필수 파라미터 검증
+    // 필수 파라미터 검증
     if (!paymentKey || !orderId || !amount) {
       return c.json({
         success: false,
@@ -4027,157 +4027,77 @@ app.post('/api/payments/confirm', async (c) => {
       }, 400);
     }
 
-    // 2️⃣ 중복 결제 방지 - payments 테이블 확인
-    const existingPayment = await DB.prepare(`
-      SELECT id FROM payments WHERE order_id = ? AND status = 'completed'
-    `).bind(orderId).first();
-
-    if (existingPayment) {
-      console.warn('[Payment] ❌ 중복 결제 시도 차단:', orderId);
-      return c.json({ 
-        success: false, 
-        error: '이미 결제가 완료된 주문입니다.' 
-      }, 400);
-    }
-
-    // 3️⃣ 주문 조회 및 상태 확인
-    const order = await DB.prepare(`
-      SELECT total_amount, payment_status FROM orders WHERE order_number = ?
-    `).bind(orderId).first();
-
-    if (!order) {
-      console.error('[Payment] ❌ 주문을 찾을 수 없음:', orderId);
-      return c.json({ 
-        success: false, 
-        error: '주문을 찾을 수 없습니다.' 
-      }, 404);
-    }
-
-    if (order.payment_status === 'approved') {
-      console.warn('[Payment] ❌ 이미 결제 완료된 주문:', orderId);
-      return c.json({ 
-        success: false, 
-        error: '이미 결제가 완료된 주문입니다.' 
-      }, 400);
-    }
-
-    // 4️⃣ 금액 검증 (보안 핵심!)
-    if (order.total_amount !== amount) {
-      console.error('[Payment] ❌ 금액 불일치 감지!', {
-        orderId,
-        orderAmount: order.total_amount,
-        requestAmount: amount,
-        difference: order.total_amount - amount
-      });
-      
-      return c.json({ 
-        success: false, 
-        error: '결제 금액이 일치하지 않습니다.' 
-      }, 400);
-    }
-
-    console.log('[Payment] ✅ 검증 완료 (중복 체크, 금액 검증)');
-
-    // 5️⃣ PG 프로바이더 설정
-    const pgProvider = c.env.PAYMENT_PG_PROVIDER || 'tosspayments';
+    // 시크릿 키
     const secretKey = c.env.TOSS_SECRET_KEY;
-    
     if (!secretKey) {
+      console.error('[Payment] ❌ TOSS_SECRET_KEY 환경 변수 없음');
       return c.json({
         success: false,
         error: '결제 시스템 설정이 올바르지 않습니다.'
       }, 500);
     }
 
-    // 6️⃣ PG 프로바이더 생성
-    const provider = createPaymentProvider(pgProvider, secretKey);
+    // 토스페이먼츠 결제 승인 API 호출 (공식 가이드대로)
+    console.log('[Payment] 토스페이먼츠 결제 승인 API 호출...');
+    const encryptedSecretKey = 'Basic ' + btoa(secretKey + ':');
     
-    // 7️⃣ 결제 승인 (DB 검증된 금액 사용!)
-    console.log('[Payment] PG 결제 승인 요청 중...', { pgProvider, orderId });
-    const paymentResult = await provider.confirmPayment({
-      paymentKey,
-      orderId,
-      amount: order.total_amount  // ✅ DB의 금액 사용! (클라이언트 금액 무시)
+    const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: {
+        'Authorization': encryptedSecretKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        orderId: orderId,
+        amount: amount,
+        paymentKey: paymentKey
+      })
     });
 
-    if (!paymentResult.success) {
-      console.error(`[Payment] ❌ ${pgProvider} 결제 승인 실패:`, paymentResult.error);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('[Payment] ❌ 토스페이먼츠 승인 실패:', data);
       return c.json({
         success: false,
-        error: paymentResult.error || '결제 승인에 실패했습니다.'
-      }, 400);
+        error: data.message || '결제 승인에 실패했습니다.',
+        code: data.code
+      }, response.status);
     }
 
-    console.log('[Payment] ✅ PG 결제 승인 완료:', {
-      orderId,
-      paymentKey: paymentResult.paymentKey,
-      method: paymentResult.method,
-      amount: paymentResult.totalAmount
-    });
+    console.log('[Payment] ✅ 결제 승인 성공:', orderId);
 
-    // 8️⃣ 결제 정보 DB 저장 (payments 테이블)
-    await DB.prepare(`
-      INSERT INTO payments (
-        order_id, pg_provider, pg_payment_key, pg_transaction_id,
-        method, amount, status, 
-        card_company, card_number, installment_months,
-        virtual_account_bank, virtual_account_number, 
-        virtual_account_holder, virtual_account_due_date,
-        approved_at, pg_raw_data, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).bind(
-      orderId,
-      pgProvider,
-      paymentResult.paymentKey,
-      paymentResult.transactionId || null,
-      paymentResult.method,
-      paymentResult.totalAmount,
-      paymentResult.status,
-      paymentResult.cardCompany || null,
-      paymentResult.cardNumber || null,
-      paymentResult.installmentMonths || null,
-      paymentResult.virtualAccountBank || null,
-      paymentResult.virtualAccountNumber || null,
-      paymentResult.virtualAccountHolder || null,
-      paymentResult.virtualAccountDueDate || null,
-      paymentResult.approvedAt,
-      JSON.stringify(paymentResult.rawData)
-    ).run();
-
-    // 9️⃣ 주문 상태 업데이트 (pending -> paid)
-    await DB.prepare(`
-      UPDATE orders 
-      SET payment_key = ?,
-          payment_status = 'approved',
-          updated_at = CURRENT_TIMESTAMP 
-      WHERE order_number = ?
-    `).bind(paymentResult.paymentKey, orderId).run();
-
-    console.log(`[Payment] ✅ 결제 승인 완료 [${pgProvider}]: ${orderId}, 금액: ${paymentResult.totalAmount}원`);
+    // 주문 상태 업데이트 (간소화)
+    try {
+      await DB.prepare(`
+        UPDATE orders 
+        SET payment_key = ?,
+            payment_status = 'approved',
+            updated_at = CURRENT_TIMESTAMP 
+        WHERE order_number = ?
+      `).bind(paymentKey, orderId).run();
+      
+      console.log('[Payment] ✅ 주문 상태 업데이트 완료');
+    } catch (dbErr) {
+      console.error('[Payment] ⚠️ DB 업데이트 실패 (결제는 성공):', dbErr);
+      // DB 실패해도 결제는 성공했으므로 성공 응답 반환
+    }
 
     return c.json({
       success: true,
-      data: {
-        orderId: paymentResult.orderId,
-        paymentKey: paymentResult.paymentKey,
-        method: paymentResult.method,
-        totalAmount: paymentResult.totalAmount,
-        status: paymentResult.status,
-        approvedAt: paymentResult.approvedAt,
-        pgProvider: pgProvider
-      }
+      data: data
     });
+
   } catch (err) {
     console.error('[Payment] ❌ 결제 승인 실패:', {
       orderId: body?.orderId,
       error: (err as Error).message,
-      stack: (err as Error).stack?.substring(0, 500),
-      timestamp: new Date().toISOString()
+      stack: (err as Error).stack?.substring(0, 500)
     });
     
     return c.json({ 
       success: false, 
-      error: '결제 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.' 
+      error: '결제 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.'
     }, 500);
   }
 });
