@@ -54,7 +54,7 @@ export default function PaymentSuccessPage() {
       const orderItems = cartItems.map((item: any) => ({
         productId: item.product_id,
         quantity: item.quantity,
-        priceSnapshot: item.price_snapshot,
+        price: item.price_snapshot,  // ✅ price로 전송 (API가 기대하는 필드명)
         optionValue: item.option_value || null
       }))
 

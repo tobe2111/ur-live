@@ -1,15 +1,14 @@
-import { CustomModal, useModal } from '@/components/CustomModal'
-import { useEffect, useState, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { CustomModal, useModal } from '@/components/CustomModal'
 
-// 환경변수에서 토스페이먼츠 클라이언트 키 가져오기
-// 결제위젯 연동 키 (test_gck_xxx) 사용
+// 토스페이먼츠 클라이언트 키
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
 
 interface CartItem {
@@ -42,6 +41,10 @@ declare global {
   }
 }
 
+function generateRandomString() {
+  return window.btoa(Math.random().toString()).slice(0, 20)
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -49,17 +52,17 @@ export default function CheckoutPage() {
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   
-  // 토스페이먼츠 결제 위젯 관련 상태
-  const widgetsRef = useRef<any>(null)  // TossPayments widgets instance
-  const [widgets, setWidgets] = useState<any>(null)  // 상태로 관리
+  // 토스페이먼츠 위젯 상태
+  const [widgets, setWidgets] = useState<any>(null)
   const [ready, setReady] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)  // 결제 처리 중 플래그
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [showNewAddressForm, setShowNewAddressForm] = useState(false)
+  const [showPostcodePopup, setShowPostcodePopup] = useState(false)
   
   // 새 배송지 입력 폼
   const [newAddress, setNewAddress] = useState({
@@ -80,7 +83,7 @@ export default function CheckoutPage() {
         seller_name: item.seller_name || '판매자',
         items: [],
         subtotal: 0,
-        shipping_fee: item.shipping_fee || 3000,  // 기본 배송비 3,000원
+        shipping_fee: item.shipping_fee || 3000,
         free_shipping_threshold: item.free_shipping_threshold || 0,
       }
     }
@@ -96,362 +99,228 @@ export default function CheckoutPage() {
     free_shipping_threshold: number
   }>)
 
-  // 전체 소계 계산
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price_snapshot * item.quantity,
-    0
-  )
-
-  // 셀러별 배송비 계산 (무료배송 조건 체크)
-  const totalShippingFee = Object.values(sellerGroups).reduce((sum, group) => {
-    // 무료배송 조건: free_shipping_threshold가 0보다 크고, 소계가 조건 이상일 때
+  // 소계 및 배송비 계산
+  const subtotal = cartItems.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0)
+  
+  const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
-      return sum  // 무료배송
+      return total
     }
-    return sum + group.shipping_fee  // 배송비 추가
+    return total + group.shipping_fee
   }, 0)
 
-  // 최종 결제 금액
   const totalAmount = subtotal + totalShippingFee
 
-  useEffect(() => {
-    // 통합 인증 체크
-    if (!isLoggedIn()) {
-      requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
-      return
-    }
-    
-    const uid = getUserId()
-    if (!uid) {
-      requireLogin(navigate, '결제하려면 로그인이 필요합니다.')
-      return
-    }
-    
-    setUserId(uid)
-    loadCart(uid)
-    loadAddresses(uid)
-    
-    // Daum 우편번호 API 스크립트 로드
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.async = true
-    document.body.appendChild(script)
-    
-    return () => {
-      document.body.removeChild(script)
-    }
-  }, [])
-
-  // Toss Payments SDK 로깅 오류 무시
-  useEffect(() => {
-    const originalError = console.error
-    console.error = (...args: any[]) => {
-      // log.tosspayments.com 관련 오류는 무시
-      if (args[0]?.includes?.('log.tosspayments.com')) {
-        return
-      }
-      originalError.apply(console, args)
-    }
-    
-    return () => {
-      console.error = originalError
-    }
-  }, [])
-
-  // 토스페이먼츠 결제 위젯 초기화 (공식 가이드 기반)
-  // Step 1: TossPayments 인스턴스 로드 및 widgets 초기화
+  // 🎯 Step 1: 토스페이먼츠 SDK 초기화 및 위젯 인스턴스 생성
   useEffect(() => {
     async function fetchPaymentWidgets() {
-      console.log('[CheckoutPage] Step 1 실행 조건 체크:', { userId, cartItemsLength: cartItems.length })
-      
       if (!userId || cartItems.length === 0) {
-        console.warn('[CheckoutPage] Step 1 건너뜀: userId 또는 cartItems 없음')
+        console.log('[TossPayments] Step 1 대기 중: userId 또는 cartItems 없음')
         return
       }
 
       try {
-        console.log('[CheckoutPage] Step 1 시작: loadTossPayments 호출...', { clientKey: clientKey?.substring(0, 20) + '...' })
-        // ------ 결제위젯 초기화 ------
+        console.log('[TossPayments] Step 1: SDK 초기화 시작')
+        
+        // SDK 로드
         const tossPayments = await loadTossPayments(clientKey)
-        console.log('[CheckoutPage] loadTossPayments 완료')
         
-        // 로그인한 사용자: 회원 결제 (브랜드페이 + 일반 결제 수단 모두 사용 가능)
+        // customerKey 생성 (고유한 사용자 식별자)
         const customerKey = `customer_${userId}`
-        console.log('[CheckoutPage] widgets() 호출...', { customerKey })
         
-        // ✅ 브랜드페이는 선택적 (redirectUrl 설정하되, 일반 결제 수단도 함께 표시)
-        // 사용자가 선택할 수 있도록 모든 결제 수단 활성화
-        const redirectUrl = `${window.location.origin}/api/brandpay/callback`
-        console.log('[CheckoutPage] redirectUrl:', redirectUrl)
-        
+        // widgets 인스턴스 생성 (brandpay 옵션 제거!)
         const widgetsInstance = tossPayments.widgets({ 
           customerKey
-          // brandpay 옵션 제거 → 모든 결제 수단 표시 (카드, 계좌이체, 가상계좌, 휴대폰, 브랜드페이 등)
         })
-        console.log('[CheckoutPage] widgets() 완료 (모든 결제 수단 활성화)')
         
-        widgetsRef.current = widgetsInstance
-        setWidgets(widgetsInstance)  // 상태 업데이트
-        console.log('[CheckoutPage] ✅ Step 1 완료: TossPayments widgets 초기화 성공')
-      } catch (error) {
-        console.error('[CheckoutPage] ❌ Step 1 실패: TossPayments 초기화 오류:', error)
-        if (error instanceof Error) {
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack?.substring(0, 500)
-          })
-        }
+        setWidgets(widgetsInstance)
+        console.log('[TossPayments] ✅ Step 1 완료: widgets 인스턴스 생성')
+      } catch (err) {
+        console.error('[TossPayments] ❌ Step 1 실패:', err)
         setError('결제 시스템을 불러올 수 없습니다.')
       }
     }
 
     fetchPaymentWidgets()
-  }, [userId, cartItems.length, clientKey])
+  }, [userId, cartItems])
 
-  // Step 2: 결제 금액 설정 및 UI 렌더링
+  // 🎯 Step 2: 결제 UI 렌더링
   useEffect(() => {
     async function renderPaymentWidgets() {
-      console.log('[CheckoutPage] Step 2 실행 조건 체크:', { hasWidgets: widgets != null, totalAmount })
-      
       if (widgets == null) {
-        console.warn('[CheckoutPage] Step 2 건너뜀: widgets가 null')
-        return
-      }
-      
-      if (totalAmount === 0) {
-        console.warn('[CheckoutPage] Step 2 건너뜀: totalAmount가 0')
         return
       }
 
       try {
-        // DOM 요소가 준비될 때까지 잠시 대기
+        console.log('[TossPayments] Step 2: 결제 UI 렌더링 시작')
+        
+        // DOM 요소가 존재하는지 100ms 대기
         await new Promise(resolve => setTimeout(resolve, 100))
         
-        // DOM 요소 존재 확인
-        const paymentElement = document.querySelector('#payment-widget')
-        const agreementElement = document.querySelector('#agreement')
-        console.log('[CheckoutPage] DOM 요소 확인:', {
-          hasPaymentElement: !!paymentElement,
-          hasAgreementElement: !!agreementElement
-        })
+        const paymentMethodEl = document.getElementById('payment-method')
+        const agreementEl = document.getElementById('agreement')
         
-        if (!paymentElement || !agreementElement) {
-          throw new Error('결제 위젯 DOM 요소를 찾을 수 없습니다.')
+        if (!paymentMethodEl || !agreementEl) {
+          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음')
+          setError('결제 UI를 불러올 수 없습니다.')
+          return
         }
         
-        console.log('[CheckoutPage] Step 2 시작: setAmount 호출...', { currency: 'KRW', value: totalAmount })
-        // ------ 주문의 결제 금액 설정 ------
+        // 금액 설정 (반드시 렌더링 전에 호출!)
         await widgets.setAmount({
           currency: 'KRW',
-          value: totalAmount,
+          value: totalAmount
         })
-        console.log('[CheckoutPage] setAmount 완료')
-
-        console.log('[CheckoutPage] renderPaymentMethods & renderAgreement 호출...')
-        await Promise.all([
-          // ------ 결제 UI 렌더링 ------
-          widgets.renderPaymentMethods({
-            selector: '#payment-widget',
-            variantKey: 'DEFAULT',
-          }),
-          // ------ 이용약관 UI 렌더링 ------
-          widgets.renderAgreement({
-            selector: '#agreement',
-            variantKey: 'AGREEMENT',
-          }),
-        ])
-        console.log('[CheckoutPage] UI 렌더링 완료')
-
+        
+        // 결제 수단 UI 렌더링
+        await widgets.renderPaymentMethods({
+          selector: '#payment-method',
+          variantKey: 'DEFAULT'  // 모든 결제 수단 표시
+        })
+        
+        // 이용약관 UI 렌더링
+        await widgets.renderAgreement({
+          selector: '#agreement',
+          variantKey: 'AGREEMENT'
+        })
+        
         setReady(true)
-        console.log('[CheckoutPage] ✅ Step 2 완료: 결제 UI 렌더링 성공')
-      } catch (error) {
-        console.error('[CheckoutPage] ❌ Step 2 실패: 결제 UI 렌더링 오류:', error)
-        if (error instanceof Error) {
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack?.substring(0, 500)
-          })
-        }
-        setError('결제 화면을 불러올 수 없습니다.')
+        console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공')
+      } catch (err) {
+        console.error('[TossPayments] ❌ Step 2 실패:', err)
+        setError('결제 UI 렌더링에 실패했습니다.')
       }
     }
 
     renderPaymentWidgets()
   }, [widgets, totalAmount])
 
-  // Step 3: 금액 변경 시 업데이트
+  // 🎯 Step 3: 금액 변경 시 업데이트
   useEffect(() => {
-    if (widgets == null) {
+    if (widgets == null || !ready) {
       return
     }
 
-    widgets.setAmount({
-      currency: 'KRW',
-      value: totalAmount,
-    })
-  }, [widgets, totalAmount])
-
-  // 결제 요청 처리
-  const handlePayment = async () => {
-    // 중복 실행 방지
-    if (isProcessing) {
-      console.warn('[CheckoutPage] 결제가 이미 진행 중입니다.')
-      return
-    }
-
-    if (!widgets) {
-      alert('결제 위젯이 준비되지 않았습니다.')
-      return
-    }
-
-    // 배송지 필수 체크
-    if (!selectedAddress) {
-      alert('⚠️ 배송지를 먼저 선택해주세요.\n\n배송지 선택 화면으로 이동합니다.')
-      setShowAddressModal(true)  // 배송지 선택 모달 자동 오픈
-      return
-    }
-
-    try {
-      setIsProcessing(true)  // 처리 시작
-      console.log('[CheckoutPage] 결제 요청 시작...')
-
-      // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
-      localStorage.setItem('checkoutShippingAddress', 
-        `${selectedAddress.postal_code} ${selectedAddress.address} ${selectedAddress.address_detail || ''}`.trim()
-      )
-      localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
-      localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
-
-      // 주문 ID 생성 (timestamp + random)
-      const orderId = `ORDER_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-      
-      // 주문명 생성
-      const orderName = cartItems.length === 1 
-        ? cartItems[0].product_name
-        : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
-
-      console.log('[CheckoutPage] requestPayment 호출:', { orderId, orderName, totalAmount })
-
-      // ------ '결제하기' 버튼 누르면 결제창 띄우기 ------
-      await widgets.requestPayment({
-        orderId,
-        orderName,
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`,
-        customerEmail: '',
-        customerName: selectedAddress.recipient_name,
-        customerMobilePhone: selectedAddress.phone,
-      })
-      
-      console.log('[CheckoutPage] 결제 요청 완료 (리다이렉트 대기 중)')
-    } catch (error: any) {
-      console.error('[CheckoutPage] 결제 요청 실패:', error)
-      
-      // 팝업 차단 에러 감지
-      if (error?.code === 'POPUP_BLOCKED' || error?.message?.includes('팝업')) {
-        alert('📱 팝업이 차단되었습니다.\n\n브라우저 설정에서 이 사이트의 팝업을 허용해주세요.\n\n[브라우저 주소창 오른쪽의 팝업 차단 아이콘을 클릭하여 허용]')
-      } else if (error?.code === 'USER_CANCEL') {
-        // 사용자가 결제를 취소한 경우 (정상)
-        console.log('[CheckoutPage] 사용자가 결제를 취소했습니다.')
-      } else {
-        alert('결제 요청 중 오류가 발생했습니다.')
+    async function updateAmount() {
+      try {
+        await widgets.setAmount({
+          currency: 'KRW',
+          value: totalAmount
+        })
+        console.log('[TossPayments] ✅ Step 3: 금액 업데이트', totalAmount)
+      } catch (err) {
+        console.error('[TossPayments] ❌ Step 3 실패:', err)
       }
-    } finally {
-      // 처리 완료 (성공/실패 관계없이)
-      setTimeout(() => {
-        setIsProcessing(false)
-        console.log('[CheckoutPage] 결제 처리 플래그 해제')
-      }, 2000)  // 2초 후 플래그 해제 (중복 클릭 방지)
     }
-  }
 
-  async function loadCart(uid: string) {
-    try {
-      const response = await axios.get(`/api/cart/${uid}`)
-      
-      if (response.data.success) {
-        setCartItems(response.data.data || [])
-      } else {
-        setError('장바구니를 불러올 수 없습니다.')
-      }
-    } catch (err: any) {
-      console.error('Failed to load cart:', err)
-      setError('장바구니를 불러오는 중 오류가 발생했습니다.')
-    } finally {
+    updateAmount()
+  }, [totalAmount, widgets, ready])
+
+  // 초기 데이터 로드
+  useEffect(() => {
+    const uid = getUserId()
+    
+    if (!isLoggedIn()) {
+      requireLogin()
+      return
+    }
+
+    if (!uid) {
+      setError('사용자 정보를 확인할 수 없습니다.')
       setLoading(false)
-    }
-  }
-
-  async function loadAddresses(uid: string) {
-    try {
-      const response = await axios.get(`/api/shipping-addresses/${uid}`)
-      if (response.data.success) {
-        const addrs = response.data.data || []
-        setAddresses(addrs)
-        // 기본 배송지 자동 선택
-        const defaultAddr = addrs.find((a: ShippingAddress) => a.is_default === 1)
-        if (defaultAddr) {
-          setSelectedAddress(defaultAddr)
-        } else if (addrs.length > 0) {
-          setSelectedAddress(addrs[0])
-        }
-      }
-    } catch (err: any) {
-      console.error('Failed to load addresses:', err)
-    }
-  }
-
-  const [showPostcodePopup, setShowPostcodePopup] = useState(false)
-
-  function openPostcode() {
-    if (!window.daum || !window.daum.Postcode) {
-      alert('우편번호 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
       return
     }
 
-    setShowPostcodePopup(true)
-  }
+    setUserId(uid)
 
+    const loadData = async () => {
+      try {
+        // 장바구니 조회
+        const cartResponse = await axios.get(`/api/cart/${uid}`)
+        if (cartResponse.data.success && cartResponse.data.data.length > 0) {
+          setCartItems(cartResponse.data.data)
+        } else {
+          setError('장바구니가 비어있습니다.')
+          setTimeout(() => navigate('/cart'), 2000)
+        }
+
+        // 배송지 조회
+        const addressResponse = await axios.get(`/api/shipping-addresses/${uid}`)
+        if (addressResponse.data.success) {
+          const addressList = addressResponse.data.data
+          setAddresses(addressList)
+          
+          // 기본 배송지 자동 선택
+          const defaultAddr = addressList.find((addr: ShippingAddress) => addr.is_default === 1)
+          if (defaultAddr) {
+            setSelectedAddress(defaultAddr)
+          }
+        }
+      } catch (err) {
+        handleApiError(err, '데이터 로드 실패')
+        setError('데이터를 불러올 수 없습니다.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+
+    // Daum 우편번호 스크립트 로드
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.async = true
+    document.head.appendChild(script)
+  }, [navigate])
+
+  // Daum 우편번호 팝업
   useEffect(() => {
     if (showPostcodePopup && window.daum && window.daum.Postcode) {
       const container = document.getElementById('daum-postcode-container')
-      if (container) {
-        new window.daum.Postcode({
-          oncomplete: function(data: any) {
-            setNewAddress(prev => ({
-              ...prev,
-              postal_code: data.zonecode,
-              address: data.roadAddress || data.jibunAddress
-            }))
-            setShowPostcodePopup(false)
-          },
-          width: '100%',
-          height: '100%'
-        }).embed(container)
-      }
+      if (!container) return
+
+      new window.daum.Postcode({
+        oncomplete: (data: any) => {
+          setNewAddress({
+            ...newAddress,
+            postal_code: data.zonecode,
+            address: data.roadAddress || data.jibunAddress
+          })
+          setShowPostcodePopup(false)
+        },
+        width: '100%',
+        height: '100%'
+      }).embed(container)
     }
   }, [showPostcodePopup])
 
-  async function handleSaveNewAddress() {
-    if (!userId) return
-    
+  // 배송지 저장
+  const handleSaveNewAddress = async () => {
+    if (!userId) {
+      showErrorToast('로그인이 필요합니다.')
+      return
+    }
+
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
-      alert('모든 필수 항목을 입력해주세요.')
+      showErrorToast('모든 필수 항목을 입력해주세요.')
       return
     }
 
     try {
       const response = await axios.post('/api/shipping-addresses', {
-        user_id: parseInt(userId),
+        user_id: userId,
         ...newAddress
       })
 
       if (response.data.success) {
-        alert('배송지가 저장되었습니다.')
-        await loadAddresses(userId)
+        const newId = response.data.data.id
+        const savedAddress = { ...newAddress, id: newId }
+        
+        setAddresses([...addresses, savedAddress as ShippingAddress])
+        setSelectedAddress(savedAddress as ShippingAddress)
         setShowNewAddressForm(false)
+        setShowAddressModal(false)
+        
         setNewAddress({
           recipient_name: '',
           phone: '',
@@ -461,467 +330,438 @@ export default function CheckoutPage() {
           is_default: 0
         })
       }
-    } catch (err: any) {
-      console.error('Failed to save address:', err)
-      alert('배송지 저장에 실패했습니다.')
+    } catch (err) {
+      handleApiError(err, '배송지 저장 실패')
     }
   }
 
-  // subtotal과 totalAmount는 이미 상단에서 정의됨 (중복 제거)
+  // 🎯 결제하기 버튼 클릭
+  const handlePayment = async () => {
+    // 중복 실행 방지
+    if (isProcessing) {
+      console.log('[Payment] ⚠️ 이미 결제 진행 중')
+      return
+    }
+
+    // 위젯 준비 확인
+    if (!widgets || !ready) {
+      showErrorToast('결제 시스템을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
+
+    // 배송지 선택 확인
+    if (!selectedAddress) {
+      alert('배송지를 선택해주세요.')
+      setShowAddressModal(true)  // 자동으로 배송지 선택 모달 열기
+      return
+    }
+
+    // 처리 중 플래그 설정
+    setIsProcessing(true)
+    console.log('[Payment] ✅ 결제 시작:', { totalAmount, selectedAddress })
+
+    try {
+      // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
+      localStorage.setItem('checkoutShippingAddress', selectedAddress.address)
+      localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
+      localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
+
+      // 주문 번호 생성
+      const orderId = `ORDER_${Date.now()}_${generateRandomString()}`
+      
+      // 주문명 생성
+      const firstItem = cartItems[0]
+      const orderName = cartItems.length > 1 
+        ? `${firstItem.product_name} 외 ${cartItems.length - 1}건`
+        : firstItem.product_name
+
+      console.log('[Payment] requestPayment 호출:', { orderId, orderName, totalAmount })
+
+      // 결제 요청
+      await widgets.requestPayment({
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/payment/success`,
+        failUrl: `${window.location.origin}/payment/fail`,
+        customerEmail: 'customer@example.com',
+        customerName: selectedAddress.recipient_name,
+        customerMobilePhone: selectedAddress.phone.replace(/-/g, '')
+      })
+    } catch (err: any) {
+      console.error('[Payment] ❌ 결제 요청 실패:', err)
+      
+      // 팝업 차단 에러는 무시
+      if (err.code === 'POPUP_BLOCKED') {
+        showErrorToast('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
+      } 
+      // 사용자 취소는 조용히 처리
+      else if (err.code === 'USER_CANCEL') {
+        console.log('[Payment] 사용자가 결제를 취소했습니다.')
+      } 
+      // 그 외 에러
+      else {
+        showErrorToast('결제 요청에 실패했습니다.')
+      }
+    } finally {
+      // 2초 후 플래그 해제 (중복 클릭 방지)
+      setTimeout(() => {
+        setIsProcessing(false)
+      }, 2000)
+    }
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff]"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-[#1d1d1f] mb-2">오류가 발생했습니다</h2>
-          <p className="text-[#6e6e73] mb-6">{error}</p>
-          <Button onClick={() => navigate('/')}>메인으로 돌아가기</Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (cartItems.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
-          <Package className="h-16 w-16 text-[#6e6e73] mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-[#1d1d1f] mb-2">장바구니가 비어있습니다</h2>
-          <p className="text-[#6e6e73] mb-6">상품을 담아주세요</p>
-          <Button onClick={() => navigate('/')}>쇼핑 계속하기</Button>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <p className="text-red-800">{error}</p>
+          </div>
+          <Button 
+            onClick={() => navigate('/cart')} 
+            className="mt-4"
+          >
+            장바구니로 돌아가기
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd]">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-[#d2d2d7]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <Link to="/" className="flex items-center space-x-2 text-[#007aff] hover:text-[#0051d5] transition-colors">
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="text-sm sm:text-base font-medium">뒤로</span>
-            </Link>
-            <h1 className="text-base sm:text-lg font-semibold text-[#1d1d1f]">주문 확인</h1>
-            <div className="w-20"></div>
-          </div>
-        </div>
-      </header>
+    <div className="max-w-6xl mx-auto p-6">
+      {/* 헤더 */}
+      <div className="mb-6">
+        <button
+          onClick={() => navigate('/cart')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>장바구니로 돌아가기</span>
+        </button>
+        <h1 className="text-3xl font-bold">주문/결제</h1>
+      </div>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* 주문 상품 목록 */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* 배송지 섹션 */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-[#1d1d1f] flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-[#007aff]" />
-                  배송지
-                </h2>
-                <button
-                  onClick={() => setShowAddressModal(true)}
-                  className="text-sm text-[#007aff] hover:text-[#0051d5] font-medium flex items-center gap-1"
-                >
-                  변경
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 좌측: 주문 정보 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* 배송지 정보 */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-blue-600" />
+                <h2 className="text-xl font-bold">배송지 정보</h2>
               </div>
-
-              {selectedAddress ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-[#1d1d1f]">{selectedAddress.recipient_name}</span>
-                    {selectedAddress.is_default === 1 && (
-                      <span className="px-2 py-0.5 bg-[#007aff] text-white text-xs rounded-full">
-                        기본배송지
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-[#6e6e73]">{selectedAddress.phone}</p>
-                  <p className="text-sm text-[#1d1d1f]">
-                    [{selectedAddress.postal_code}] {selectedAddress.address}
-                  </p>
-                  <p className="text-sm text-[#1d1d1f]">{selectedAddress.address_detail}</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <h3 className="font-semibold text-red-800 mb-1">배송지를 선택해주세요 (필수)</h3>
-                        <p className="text-sm text-red-700">
-                          결제를 진행하려면 상품을 받으실 배송지를 먼저 선택해야 합니다.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowAddressModal(true)}
-                    className="w-full py-4 border-2 border-dashed border-red-300 bg-red-50 rounded-lg text-red-600 hover:border-red-500 hover:bg-red-100 transition-colors flex items-center justify-center gap-2 font-medium"
-                  >
-                    <Plus className="h-5 w-5" />
-                    배송지 선택하기 (필수)
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <h2 className="text-lg sm:text-xl font-semibold text-[#1d1d1f]">주문 상품</h2>
-            
-            {cartItems.map((item, index) => (
-              <div key={item.id} className="bg-white rounded-xl p-5 shadow-sm border border-[#e5e5e7] hover:border-[#007aff] transition-all">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#007aff] text-white text-xs font-bold">
-                        {index + 1}
-                      </span>
-                      <h3 className="font-semibold text-[#1d1d1f] text-base">{item.product_name}</h3>
-                    </div>
-                    <div className="ml-8 space-y-1">
-                      {item.option_value && (
-                        <p className="text-sm text-[#6e6e73]">
-                          <span className="font-medium">옵션:</span> {item.option_value}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm text-[#6e6e73]">
-                          <span className="font-medium">수량:</span> {item.quantity}개
-                        </span>
-                        <span className="text-sm text-[#6e6e73]">
-                          <span className="font-medium">단가:</span> {item.price_snapshot.toLocaleString()}원
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right ml-4">
-                    <div className="text-lg font-bold text-[#007aff]">
-                      {(item.price_snapshot * item.quantity).toLocaleString()}원
-                    </div>
-                    <div className="text-xs text-[#6e6e73] mt-1">
-                      합계
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 결제 금액 및 결제 수단 */}
-          <div className="lg:col-span-1">
-            <div className="bg-gradient-to-br from-white to-[#f5f5f7] rounded-2xl p-6 shadow-lg border border-[#e5e5e7] sticky top-24">
-              <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-                <h2 className="text-xl font-bold text-[#1d1d1f] mb-4 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-[#007aff]" />
-                  결제 금액
-                </h2>
-                
-                <div className="space-y-3 mb-4 pb-4 border-b-2 border-[#e5e5e7]">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-[#6e6e73]">상품 금액</span>
-                    <span className="text-base font-semibold text-[#1d1d1f]">{subtotal.toLocaleString()}원</span>
-                  </div>
-                  
-                  {/* 셀러별 배송비 상세 */}
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-medium text-[#6e6e73]">배송비</span>
-                    <div className="text-right">
-                      {Object.values(sellerGroups).map((group, index) => {
-                        const isFreeShipping = group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
-                        return (
-                          <div key={group.seller_id} className="mb-1">
-                            <span className="text-xs text-[#86868b] mr-2">{group.seller_name}</span>
-                            {isFreeShipping ? (
-                              <span className="text-sm font-semibold text-[#34c759]">무료배송</span>
-                            ) : (
-                              <span className="text-sm font-semibold text-[#1d1d1f]">
-                                {group.shipping_fee.toLocaleString()}원
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
-                      <div className="text-base font-semibold text-[#1d1d1f] mt-1 pt-1 border-t border-dashed border-[#d2d2d7]">
-                        총 {totalShippingFee.toLocaleString()}원
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center text-xs text-[#86868b] pt-2 border-t border-dashed border-[#d2d2d7]">
-                    <span>상품 개수</span>
-                    <span>{cartItems.length}개</span>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-[#007aff] to-[#0051d5] rounded-xl p-4 mb-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-white/90">총 결제금액</span>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-white">
-                        {totalAmount.toLocaleString()}원
-                      </div>
-                      <div className="text-xs text-white/80 mt-1">
-                        VAT 포함
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 토스페이먼츠 결제 위젯 */}
-              <div id="payment-widget" className="mb-4"></div>
-
-              {/* 이용약관 UI */}
-              <div id="agreement" className="mb-4"></div>
-
               <Button
-                onClick={handlePayment}
-                disabled={!ready || !selectedAddress || isProcessing}
-                className="w-full bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-14 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setShowAddressModal(true)}
+                variant="outline"
+                size="sm"
               >
-                {isProcessing ? '처리 중...' : !selectedAddress ? '⚠️ 배송지를 선택해주세요' : ready ? '결제하기' : '결제 준비 중...'}
+                {selectedAddress ? '변경' : '선택'}
               </Button>
-              
-              {/* 배송지 미선택 경고 */}
-              {!selectedAddress && (
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-800 text-center flex items-center justify-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>배송지를 선택하셔야 결제가 가능합니다</span>
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-4 p-4 bg-[#f5f5f7] rounded-xl">
-                <p className="text-xs text-[#6e6e73] text-center mb-1">
-                  궁금한 점이 있으신가요?
-                </p>
-                <p className="text-sm font-semibold text-[#1d1d1f] text-center">
-                  📞 고객센터: 0507-0177-0432
-                </p>
-                <p className="text-xs text-[#86868b] text-center mt-1">
-                  평일 09:00 - 18:00
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* 배송지 선택 모달 */}
-      {showAddressModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-[#d2d2d7] p-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[#1d1d1f]">배송지 선택</h3>
-              <button
-                onClick={() => setShowAddressModal(false)}
-                className="text-[#6e6e73] hover:text-[#1d1d1f]"
-              >
-                ✕
-              </button>
             </div>
 
-            <div className="p-4 space-y-3">
-              {addresses.map((addr) => (
-                <div
-                  key={addr.id}
-                  onClick={() => {
-                    setSelectedAddress(addr)
-                    setShowAddressModal(false)
-                  }}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedAddress?.id === addr.id
-                      ? 'border-[#007aff] bg-blue-50'
-                      : 'border-[#d2d2d7] hover:border-[#007aff]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-medium text-[#1d1d1f]">{addr.recipient_name}</span>
-                    {addr.is_default === 1 && (
-                      <span className="px-2 py-0.5 bg-[#007aff] text-white text-xs rounded-full">
-                        기본배송지
-                      </span>
-                    )}
+            {!selectedAddress && (
+              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-800 font-bold text-lg">⚠️ 배송지를 선택해주세요 (필수)</p>
+                    <p className="text-red-700 mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
                   </div>
-                  <p className="text-sm text-[#6e6e73] mb-1">{addr.phone}</p>
-                  <p className="text-sm text-[#1d1d1f]">
-                    [{addr.postal_code}] {addr.address}
+                </div>
+              </div>
+            )}
+
+            {selectedAddress && (
+              <div className="space-y-2 bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <p className="font-semibold text-lg">{selectedAddress.recipient_name}</p>
+                <p className="text-gray-700">{selectedAddress.phone}</p>
+                <p className="text-gray-600">
+                  [{selectedAddress.postal_code}] {selectedAddress.address}
+                </p>
+                {selectedAddress.address_detail && (
+                  <p className="text-gray-600">{selectedAddress.address_detail}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 주문 상품 정보 */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Package className="w-5 h-5 text-blue-600" />
+              <h2 className="text-xl font-bold">주문 상품</h2>
+            </div>
+
+            <div className="space-y-4">
+              {Object.values(sellerGroups).map((group) => (
+                <div key={group.seller_id} className="border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                    {group.seller_name}
                   </p>
-                  {addr.address_detail && (
-                    <p className="text-sm text-[#1d1d1f]">{addr.address_detail}</p>
+                  
+                  {group.items.map((item) => (
+                    <div key={item.id} className="flex gap-4 py-3 border-t border-gray-100 first:border-t-0">
+                      <img
+                        src={item.image_url || '/placeholder.png'}
+                        alt={item.product_name}
+                        className="w-20 h-20 object-cover rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium">{item.product_name}</p>
+                        {item.option_value && (
+                          <p className="text-sm text-gray-500">{item.option_value}</p>
+                        )}
+                        <p className="text-sm text-gray-600 mt-1">
+                          {item.price_snapshot.toLocaleString()}원 × {item.quantity}개
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">
+                          {(item.price_snapshot * item.quantity).toLocaleString()}원
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* 배송비 정보 */}
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between text-sm">
+                    <span className="text-gray-600">배송비</span>
+                    <span className="font-semibold">
+                      {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
+                        ? '무료'
+                        : `${group.shipping_fee.toLocaleString()}원`}
+                    </span>
+                  </div>
+                  {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {(group.free_shipping_threshold - group.subtotal).toLocaleString()}원 추가 시 무료배송
+                    </p>
                   )}
                 </div>
               ))}
-
-              <button
-                onClick={() => {
-                  setShowAddressModal(false)
-                  setShowNewAddressForm(true)
-                }}
-                className="w-full py-4 border-2 border-dashed border-[#d2d2d7] rounded-lg text-[#007aff] hover:border-[#007aff] hover:bg-blue-50 transition-all flex items-center justify-center gap-2 font-medium"
-              >
-                <Plus className="h-5 w-5" />
-                새 배송지 추가
-              </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* 새 배송지 입력 모달 */}
-      {showNewAddressForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-[#d2d2d7] p-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[#1d1d1f]">새 배송지 추가</h3>
-              <button
-                onClick={() => setShowNewAddressForm(false)}
-                className="text-[#6e6e73] hover:text-[#1d1d1f]"
-              >
-                ✕
-              </button>
+          {/* 결제 수단 선택 */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-xl font-bold mb-4">결제 수단</h2>
+            
+            {/* 토스페이먼츠 위젯 렌더링 영역 */}
+            <div id="payment-method"></div>
+            <div id="agreement" className="mt-4"></div>
+          </div>
+        </div>
+
+        {/* 우측: 결제 요약 */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-6">
+            <h2 className="text-xl font-bold mb-4">결제 금액</h2>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between text-gray-600">
+                <span>상품 금액</span>
+                <span>{subtotal.toLocaleString()}원</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>배송비</span>
+                <span>{totalShippingFee.toLocaleString()}원</span>
+              </div>
+              <div className="border-t border-gray-200 pt-3 flex justify-between text-lg font-bold">
+                <span>총 결제 금액</span>
+                <span className="text-blue-600">{totalAmount.toLocaleString()}원</span>
+              </div>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
-                  받는 사람 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newAddress.recipient_name}
-                  onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]"
-                  placeholder="받는 분 성함을 입력하세요"
-                />
-              </div>
+            <Button
+              onClick={handlePayment}
+              className="w-full mt-6 py-6 text-lg font-bold"
+              disabled={!ready || !selectedAddress || isProcessing}
+              style={{
+                backgroundColor: !ready || !selectedAddress ? '#e5e7eb' : undefined,
+                cursor: !ready || !selectedAddress || isProcessing ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isProcessing 
+                ? '처리 중...'
+                : !selectedAddress 
+                  ? '⚠️ 배송지를 선택해주세요'
+                  : !ready 
+                    ? '결제 준비 중...'
+                    : '결제하기'}
+            </Button>
 
-              <div>
-                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
-                  휴대폰 번호 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={newAddress.phone}
-                  onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]"
-                  placeholder="010-0000-0000"
-                />
+            {!selectedAddress && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                <p className="text-sm text-amber-800 text-center">
+                  ⚠️ 배송지를 선택하셔야 결제가 가능합니다
+                </p>
               </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
-                  우편번호 <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newAddress.postal_code}
-                    readOnly
-                    className="flex-1 px-4 py-3 border border-[#d2d2d7] rounded-lg bg-[#f5f5f7]"
-                    placeholder="우편번호"
-                  />
-                  <Button
-                    onClick={openPostcode}
-                    className="bg-[#007aff] hover:bg-[#0051d5] text-white px-6"
-                  >
-                    주소 검색
-                  </Button>
+      {/* 배송지 선택 모달 */}
+      <CustomModal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        title="배송지 선택"
+      >
+        <div className="space-y-4">
+          {addresses.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">등록된 배송지가 없습니다.</p>
+          ) : (
+            addresses.map((addr) => (
+              <div
+                key={addr.id}
+                className={`border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition ${
+                  selectedAddress?.id === addr.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                }`}
+                onClick={() => {
+                  setSelectedAddress(addr)
+                  setShowAddressModal(false)
+                }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold">{addr.recipient_name}</p>
+                    <p className="text-sm text-gray-600 mt-1">{addr.phone}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      [{addr.postal_code}] {addr.address}
+                    </p>
+                    {addr.address_detail && (
+                      <p className="text-sm text-gray-600">{addr.address_detail}</p>
+                    )}
+                  </div>
+                  {addr.is_default === 1 && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      기본배송지
+                    </span>
+                  )}
                 </div>
               </div>
+            ))
+          )}
 
-              <div>
-                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
-                  주소 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newAddress.address}
-                  readOnly
-                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg bg-[#f5f5f7]"
-                  placeholder="주소 검색 버튼을 클릭하세요"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
-                  상세 주소
-                </label>
-                <input
-                  type="text"
-                  value={newAddress.address_detail}
-                  onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
-                  className="w-full px-4 py-3 border border-[#d2d2d7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff]"
-                  placeholder="상세 주소를 입력하세요"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="default-address"
-                  checked={newAddress.is_default === 1}
-                  onChange={(e) => setNewAddress({ ...newAddress, is_default: e.target.checked ? 1 : 0 })}
-                  className="w-4 h-4 text-[#007aff] border-[#d2d2d7] rounded focus:ring-[#007aff]"
-                />
-                <label htmlFor="default-address" className="text-sm text-[#1d1d1f]">
-                  기본 배송지로 설정
-                </label>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  onClick={() => setShowNewAddressForm(false)}
-                  className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f]"
-                >
-                  취소
-                </Button>
-                <Button
-                  onClick={handleSaveNewAddress}
-                  className="flex-1 bg-[#007aff] hover:bg-[#0051d5] text-white"
-                >
-                  저장
-                </Button>
-              </div>
-            </div>
-          </div>
+          <Button
+            onClick={() => setShowNewAddressForm(true)}
+            className="w-full"
+            variant="outline"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            새 배송지 추가
+          </Button>
         </div>
-      )}
+      </CustomModal>
 
-      {/* Daum 우편번호 검색 임베디드 팝업 */}
-      {showPostcodePopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl h-[600px] flex flex-col">
-            <div className="sticky top-0 bg-white border-b border-[#d2d2d7] p-4 flex items-center justify-between rounded-t-2xl">
-              <h3 className="text-lg font-semibold text-[#1d1d1f]">우편번호 검색</h3>
-              <button
-                onClick={() => setShowPostcodePopup(false)}
-                className="p-2 hover:bg-[#f5f5f7] rounded-full transition-colors"
+      {/* 새 배송지 추가 모달 */}
+      <CustomModal
+        isOpen={showNewAddressForm}
+        onClose={() => setShowNewAddressForm(false)}
+        title="새 배송지 추가"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">수령인 이름 *</label>
+            <input
+              type="text"
+              value={newAddress.recipient_name}
+              onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder="수령인 이름"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">연락처 *</label>
+            <input
+              type="tel"
+              value={newAddress.phone}
+              onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder="010-1234-5678"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">우편번호 *</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newAddress.postal_code}
+                readOnly
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                placeholder="우편번호"
+              />
+              <Button
+                onClick={() => setShowPostcodePopup(true)}
+                variant="outline"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+                주소 검색
+              </Button>
             </div>
-            <div id="daum-postcode-container" className="flex-1 overflow-hidden"></div>
+          </div>
+
+          {showPostcodePopup && (
+            <div
+              id="daum-postcode-container"
+              style={{ width: '100%', height: '400px' }}
+            ></div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">주소 *</label>
+            <input
+              type="text"
+              value={newAddress.address}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+              placeholder="주소"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">상세주소</label>
+            <input
+              type="text"
+              value={newAddress.address_detail}
+              onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder="상세주소 (선택)"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSaveNewAddress} className="flex-1">
+              저장
+            </Button>
+            <Button
+              onClick={() => {
+                setShowNewAddressForm(false)
+                setShowPostcodePopup(false)
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              취소
+            </Button>
           </div>
         </div>
-      )}
+      </CustomModal>
     </div>
   )
 }
