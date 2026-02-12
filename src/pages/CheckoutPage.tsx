@@ -546,11 +546,6 @@ export default function CheckoutPage() {
                   
                   {group.items.map((item) => (
                     <div key={item.id} className="flex gap-4 py-3 border-t border-gray-100 first:border-t-0">
-                      <img
-                        src={item.image_url || '/placeholder.png'}
-                        alt={item.product_name}
-                        className="w-20 h-20 object-cover rounded"
-                      />
                       <div className="flex-1">
                         <p className="font-medium">{item.product_name}</p>
                         {item.option_value && (
