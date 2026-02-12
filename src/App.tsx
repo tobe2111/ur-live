@@ -4,12 +4,13 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 
 // 초기 로딩 페이지만 즉시 로드
 import HomePage from './pages/HomePage'
+// CheckoutPage는 즉시 로드 (lazy loading 문제 해결)
+import CheckoutPage from './pages/CheckoutPage'
 
 // 나머지 페이지는 lazy load
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const LivePage = lazy(() => import('./pages/LivePage'))
-const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))

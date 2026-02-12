@@ -37,12 +37,16 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // console.log 제거
+        drop_console: false, // 🔧 console.log 보존 (디버깅용)
         drop_debugger: true,
       },
     },
     rollupOptions: {
       output: {
+        // 🔧 해시 기반 파일명으로 캐시 무효화
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
           // node_modules 의존성 분리
           if (id.includes('node_modules')) {

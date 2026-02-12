@@ -55,6 +55,7 @@ function generateRandomString() {
 }
 
 export default function CheckoutPage() {
+  console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -244,52 +245,69 @@ export default function CheckoutPage() {
 
   // 초기 데이터 로드
   useEffect(() => {
+    console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
     const uid = getUserId()
+    console.log('[CheckoutPage] userId:', uid)
+    console.log('[CheckoutPage] isLoggedIn:', isLoggedIn())
     
     if (!isLoggedIn()) {
+      console.log('[CheckoutPage] ❌ 로그인 필요 - requireLogin() 호출')
       requireLogin()
       return
     }
 
     if (!uid) {
+      console.log('[CheckoutPage] ❌ userId 없음')
       setError('사용자 정보를 확인할 수 없습니다.')
       setLoading(false)
       return
     }
 
+    console.log('[CheckoutPage] ✅ userId 설정:', uid)
     setUserId(uid)
 
     const loadData = async () => {
       try {
+        console.log('[CheckoutPage] 📡 장바구니 API 호출 시작: /api/cart/' + uid)
         // 장바구니 조회
         const cartResponse = await axios.get(`/api/cart/${uid}`)
+        console.log('[CheckoutPage] 장바구니 응답:', cartResponse.data)
         if (cartResponse.data.success && cartResponse.data.data.length > 0) {
+          console.log('[CheckoutPage] ✅ 장바구니 데이터 설정:', cartResponse.data.data.length, '개 상품')
           setCartItems(cartResponse.data.data)
         } else {
+          console.log('[CheckoutPage] ❌ 장바구니 비어있음')
           setError('장바구니가 비어있습니다.')
           setTimeout(() => navigate('/cart'), 2000)
         }
 
         // 배송지 조회
+        console.log('[CheckoutPage] 📡 배송지 API 호출 시작: /api/shipping-addresses/' + uid)
         const addressResponse = await axios.get(`/api/shipping-addresses/${uid}`)
+        console.log('[CheckoutPage] 배송지 응답:', addressResponse.data)
         if (addressResponse.data.success) {
           const addressList = addressResponse.data.data
           setAddresses(addressList)
+          console.log('[CheckoutPage] ✅ 배송지 데이터 설정:', addressList.length, '개')
           
           // 기본 배송지 자동 선택
           const defaultAddr = addressList.find((addr: ShippingAddress) => addr.is_default === 1)
           if (defaultAddr) {
+            console.log('[CheckoutPage] ✅ 기본 배송지 선택:', defaultAddr)
             setSelectedAddress(defaultAddr)
           }
         }
       } catch (err) {
+        console.error('[CheckoutPage] ❌ API 에러:', err)
         handleApiError(err, '데이터 로드 실패')
         setError('데이터를 불러올 수 없습니다.')
       } finally {
+        console.log('[CheckoutPage] 로딩 완료')
         setLoading(false)
       }
     }
 
+    console.log('[CheckoutPage] loadData() 호출')
     loadData()
 
     // Daum 우편번호 스크립트 로드
