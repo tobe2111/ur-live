@@ -2150,22 +2150,52 @@ app.post('/api/cart', async (c) => {
       }, 400);
     }
 
-    // 장바구니에 추가
-    const result = await DB.prepare(`
-      INSERT INTO cart_items (user_id, product_id, option_id, quantity, price_snapshot, live_stream_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(
-      dbUserId, 
-      productId, 
-      optionId || null,  // null 처리
-      quantity, 
-      priceSnapshot, 
-      liveStreamId || null  // null 처리
-    ).run();
+    // 기존 장바구니 아이템 확인 (같은 상품 + 같은 옵션)
+    const existingItem = await DB.prepare(`
+      SELECT id, quantity 
+      FROM cart_items 
+      WHERE user_id = ? 
+        AND product_id = ? 
+        AND (option_id = ? OR (option_id IS NULL AND ? IS NULL))
+    `).bind(dbUserId, productId, optionId || null, optionId || null).first();
+
+    let cartItemId: number;
+
+    if (existingItem) {
+      // 기존 아이템이 있으면 수량만 증가
+      const newQuantity = (existingItem.quantity as number) + quantity;
+      await DB.prepare(`
+        UPDATE cart_items 
+        SET quantity = ?, 
+            price_snapshot = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(newQuantity, priceSnapshot, existingItem.id).run();
+      
+      cartItemId = existingItem.id as number;
+    } else {
+      // 새 아이템 추가
+      const result = await DB.prepare(`
+        INSERT INTO cart_items (user_id, product_id, option_id, quantity, price_snapshot, live_stream_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(
+        dbUserId, 
+        productId, 
+        optionId || null,
+        quantity, 
+        priceSnapshot, 
+        liveStreamId || null
+      ).run();
+      
+      cartItemId = result.meta.last_row_id as number;
+    }
 
     return c.json<ApiResponse>({
       success: true,
-      data: { id: result.meta.last_row_id },
+      data: { 
+        id: cartItemId,
+        isUpdate: !!existingItem 
+      },
     });
   } catch (err) {
     return c.json<ApiResponse>({
