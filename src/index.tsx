@@ -2337,7 +2337,7 @@ app.post('/api/orders', async (c) => {
         orderNumber,
         userId || null,
         providedTotalAmount || 0,
-        'approved',  // 결제 승인 완료 (DB의 CHECK 제약 조건: pending, approved, failed, cancelled, refunded)
+        'pending',  // 결제 대기 상태 (결제 승인 완료 후 'approved'로 변경)
         fullAddress || null,
         recipientName || null,
         recipientPhone || null,
