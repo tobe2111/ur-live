@@ -55,7 +55,7 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
     
     async confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse> {
       try {
-        const response = await fetch('https://api.tosspayments.com/v2/payments/confirm', {
+        const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
@@ -144,7 +144,7 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
           body.cancelAmount = request.cancelAmount;
         }
         
-        const response = await fetch(`https://api.tosspayments.com/v2/payments/${request.paymentKey}/cancel`, {
+        const response = await fetch(`https://api.tosspayments.com/v1/payments/${request.paymentKey}/cancel`, {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
@@ -172,7 +172,7 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
     
     async getPayment(paymentKey: string): Promise<PaymentConfirmResponse> {
       try {
-        const response = await fetch(`https://api.tosspayments.com/v2/payments/${paymentKey}`, {
+        const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
           method: 'GET',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
@@ -4082,7 +4082,7 @@ app.post('/api/payments/confirm', async (c) => {
     
     const encryptedSecretKey = 'Basic ' + btoa(secretKey + ':');
     
-    const response = await fetch('https://api.tosspayments.com/v2/payments/confirm', {
+    const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
       method: 'POST',
       headers: {
         'Authorization': encryptedSecretKey,
