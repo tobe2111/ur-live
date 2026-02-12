@@ -2331,8 +2331,8 @@ app.post('/api/orders', async (c) => {
         INSERT INTO orders (
           order_number, user_id, total_amount, payment_status,
           shipping_address, shipping_name, shipping_phone, shipping_memo,
-          payment_key, payment_method, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          payment_key, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
         orderNumber,
         userId || null,
@@ -2342,8 +2342,7 @@ app.post('/api/orders', async (c) => {
         recipientName || null,
         recipientPhone || null,
         deliveryMemo || null,
-        paymentKey || null,
-        paymentMethod || null
+        paymentKey || null
       ).run();
 
       const orderId = orderResult.meta.last_row_id;
