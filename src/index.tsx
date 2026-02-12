@@ -55,12 +55,12 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
     
     async confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse> {
       try {
-        const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+        const response = await fetch('https://api.tosspayments.com/v2/payments/confirm', {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
             'Content-Type': 'application/json',
-            'TossPayments-API-Version': '2022-11-16'
+            'TossPayments-API-Version': '2024-06-01'
           },
           body: JSON.stringify({
             paymentKey: request.paymentKey,
@@ -144,12 +144,12 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
           body.cancelAmount = request.cancelAmount;
         }
         
-        const response = await fetch(`https://api.tosspayments.com/v1/payments/${request.paymentKey}/cancel`, {
+        const response = await fetch(`https://api.tosspayments.com/v2/payments/${request.paymentKey}/cancel`, {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
             'Content-Type': 'application/json',
-            'TossPayments-API-Version': '2022-11-16'
+            'TossPayments-API-Version': '2024-06-01'
           },
           body: JSON.stringify(body)
         });
@@ -172,11 +172,11 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
     
     async getPayment(paymentKey: string): Promise<PaymentConfirmResponse> {
       try {
-        const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
+        const response = await fetch(`https://api.tosspayments.com/v2/payments/${paymentKey}`, {
           method: 'GET',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
-            'TossPayments-API-Version': '2022-11-16'
+            'TossPayments-API-Version': '2024-06-01'
           }
         });
         
@@ -4082,12 +4082,12 @@ app.post('/api/payments/confirm', async (c) => {
     
     const encryptedSecretKey = 'Basic ' + btoa(secretKey + ':');
     
-    const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+    const response = await fetch('https://api.tosspayments.com/v2/payments/confirm', {
       method: 'POST',
       headers: {
         'Authorization': encryptedSecretKey,
         'Content-Type': 'application/json',
-        'TossPayments-API-Version': '2022-11-16'
+        'TossPayments-API-Version': '2024-06-01'
       },
       body: JSON.stringify({
         orderId: orderId,
