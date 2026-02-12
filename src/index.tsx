@@ -4117,6 +4117,7 @@ app.post('/api/payments/confirm', async (c) => {
         UPDATE orders 
         SET payment_key = ?,
             payment_status = 'approved',
+            status = 'paid',
             updated_at = CURRENT_TIMESTAMP 
         WHERE order_number = ?
       `).bind(paymentKey, orderId).run();
@@ -4206,6 +4207,7 @@ async function handlePaymentStatusChanged(DB: any, data: any) {
     await DB.prepare(`
       UPDATE orders 
       SET payment_status = 'approved',
+          status = 'paid',
           updated_at = CURRENT_TIMESTAMP
       WHERE order_number = ?
     `).bind(orderId).run();
@@ -4734,20 +4736,20 @@ app.post('/api/orders/:orderNumber/refund', async (c) => {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    // Check if order can be refunded
-    if (!['PAY_COMPLETE', 'PREPARING', 'SHIPPED', 'DELIVERED'].includes(order.status)) {
+    // Check if order can be refunded (소문자 상태값 사용)
+    if (!['paid', 'preparing', 'shipped', 'delivered'].includes(order.status)) {
       return c.json({ success: false, error: '환불이 불가능한 주문 상태입니다.' }, 400);
     }
 
-    // Check if order can be refunded
-    if (order.status === 'REFUNDED' || order.status === 'CANCELLED') {
+    // Check if order is already refunded or cancelled
+    if (order.status === 'refunded' || order.status === 'cancelled') {
       return c.json({ success: false, error: '이미 환불 또는 취소된 주문입니다.' }, 400);
     }
 
     // Update order status to refund requested (manual processing required)
     await DB.prepare(
       'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
-    ).bind('REFUND_REQUESTED', orderNumber).run();
+    ).bind('refunded', orderNumber).run();
 
     return c.json({ 
       success: true, 
@@ -5977,10 +5979,10 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
     let csv = '주문번호,주문일시,주문자,총금액,수수료(10%),정산금액(90%),주문상태,사업자명,사업자번호,세금계산서번호,발행일자,계산서상태,국세청승인번호\n';
     
     for (const order of ordersResult?.results || []) {
-      const orderStatus = order.status === 'DELIVERED' ? '배송완료' : 
-                         order.status === 'SHIPPING' ? '배송중' : 
-                         order.status === 'PREPARING' ? '상품준비중' : 
-                         order.status === 'PAY_COMPLETE' ? '결제완료' : '완료';
+      const orderStatus = order.status === 'delivered' ? '배송완료' : 
+                         order.status === 'shipped' ? '배송중' : 
+                         order.status === 'preparing' ? '상품준비중' : 
+                         order.status === 'paid' ? '결제완료' : '대기중';
       
       const businessName = order.buyer_business_name || '-';
       const businessNumber = order.buyer_business_number || '-';
