@@ -2167,8 +2167,7 @@ app.post('/api/cart', async (c) => {
       await DB.prepare(`
         UPDATE cart_items 
         SET quantity = ?, 
-            price_snapshot = ?,
-            updated_at = CURRENT_TIMESTAMP
+            price_snapshot = ?
         WHERE id = ?
       `).bind(newQuantity, priceSnapshot, existingItem.id).run();
       
