@@ -1234,16 +1234,16 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
 // 결제 성공 페이지
 app.get('/payment/success', async (c) => {
   const { DB } = c.env;
-  const orderNo = c.req.query('orderNo');
+  const orderNumber = c.req.query('orderNumber');
   
-  if (!orderNo) {
+  if (!orderNumber) {
     return c.redirect('/orders');
   }
   
   // 주문 정보 조회
   const order = await DB.prepare(`
     SELECT * FROM orders WHERE order_number = ?
-  `).bind(orderNo).first();
+  `).bind(orderNumber).first();
   
   if (!order) {
     return c.redirect('/orders');
@@ -2295,7 +2295,7 @@ app.get('/dashboard/seller/:username', async (c) => {
 // Removed route: /orders (handled by React SPA)
 
 // 주문 상세 페이지
-// Removed route: /order/:orderNo (handled by React SPA)
+// Removed route: /order/:orderNumber (handled by React SPA)
 
 // Update product
 app.put('/api/seller/products/:id', async (c) => {
@@ -2589,14 +2589,14 @@ app.get('/api/orders/user/:userId', async (c) => {
 });
 
 // Get order by order number
-app.get('/api/orders/:orderNo', async (c) => {
+app.get('/api/orders/:orderNumber', async (c) => {
   const { DB } = c.env;
-  const orderNo = c.req.param('orderNo');
+  const orderNumber = c.req.param('orderNumber');
 
   try {
     const order = await DB.prepare(
       'SELECT * FROM orders WHERE order_number = ?'
-    ).bind(orderNo).first();
+    ).bind(orderNumber).first();
 
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
@@ -2666,7 +2666,7 @@ app.get('/api/seller/orders', async (c) => {
 });
 
 // Update order status (Seller only)
-app.patch('/api/seller/orders/:orderNo/status', async (c) => {
+app.patch('/api/seller/orders/:orderNumber/status', async (c) => {
   const { DB } = c.env;
   const auth = await verifySellerSession(c);
 
@@ -2675,7 +2675,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
   }
 
   try {
-    const orderNo = c.req.param('orderNo');
+    const orderNumber = c.req.param('orderNumber');
     const { status } = await c.req.json();
 
     // Validate status
@@ -2685,7 +2685,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
     }
 
     // Verify this order contains seller's products
-    const order = await DB.prepare('SELECT id FROM orders WHERE order_no = ?').bind(orderNo).first();
+    const order = await DB.prepare('SELECT id FROM orders WHERE order_number = ?').bind(orderNumber).first();
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
@@ -2700,8 +2700,8 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
 
     // Update order status
     await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
-    ).bind(status, orderNo).run();
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
+    ).bind(status, orderNumber).run();
 
     return c.json({ success: true });
   } catch (err) {
@@ -2710,13 +2710,13 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
 });
 
 // Request refund (Customer)
-app.post('/api/orders/:orderNo/refund', async (c) => {
+app.post('/api/orders/:orderNumber/refund', async (c) => {
   const { DB } = c.env;
-  const orderNo = c.req.param('orderNo');
+  const orderNumber = c.req.param('orderNumber');
   const { reason } = await c.req.json();
 
   try {
-    const order = await DB.prepare('SELECT * FROM orders WHERE order_no = ?').bind(orderNo).first();
+    const order = await DB.prepare('SELECT * FROM orders WHERE order_number = ?').bind(orderNumber).first();
 
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
@@ -2729,8 +2729,8 @@ app.post('/api/orders/:orderNo/refund', async (c) => {
 
     // Update status to cancelled/refund requested
     await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
-    ).bind('REFUND_REQUESTED', orderNo).run();
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
+    ).bind('REFUND_REQUESTED', orderNumber).run();
 
     // TODO: Call Toss Pay refund API
 
@@ -3448,7 +3448,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     }
     
     // 주문번호 생성 (타임스탬프 + 랜덤)
-    const orderNo = `ORDER_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`;
+    const orderNumber = `ORDER_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`;
     
     // 주문 생성 (배송지 정보 포함)
     const orderResult = await DB.prepare(`
@@ -3461,7 +3461,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, datetime('now'))
     `).bind(
-      orderNo, 
+      orderNumber, 
       finalUserId,
       sellerId || null,
       totalAmount,
@@ -3536,12 +3536,12 @@ app.post('/api/toss-pay/payments/create', async (c) => {
       `).bind(mockPayToken, orderId).run();
       
       // Mock 결제 페이지 URL 생성
-      const mockCheckoutPage = `${new URL(c.req.url).origin}/mock-payment?orderNo=${orderNo}&amount=${totalAmount}&productDesc=${encodeURIComponent(productDesc)}`;
+      const mockCheckoutPage = `${new URL(c.req.url).origin}/mock-payment?orderNumber=${orderNumber}&amount=${totalAmount}&productDesc=${encodeURIComponent(productDesc)}`;
       
       return c.json({
         success: true,
         data: {
-          orderNo: orderNo,
+          orderNumber: orderNumber,
           orderId: orderId,
           checkoutPage: mockCheckoutPage,
           payToken: mockPayToken
@@ -3555,7 +3555,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     
     // 유어페이 결제 생성 요청
     const tossPayPayload = {
-      orderNo: orderNo,
+      orderNumber: orderNumber,
       amount: totalAmount,
       amountTaxFree: 0,
       productDesc: productDesc,
@@ -3593,7 +3593,7 @@ app.post('/api/toss-pay/payments/create', async (c) => {
     return c.json({
       success: true,
       data: {
-        orderNo: orderNo,
+        orderNumber: orderNumber,
         orderId: orderId,
         checkoutPage: tossPayData.checkoutPage,
         payToken: tossPayData.payToken
@@ -3618,16 +3618,16 @@ app.post('/api/toss-pay/callback', async (c) => {
     
     console.log('유어페이 Callback 수신:', JSON.stringify(callbackData, null, 2));
     
-    const { orderNo, status, payToken } = callbackData;
+    const { orderNumber, status, payToken } = callbackData;
     
-    if (!orderNo) {
-      return c.json({ success: false, error: 'orderNo 누락' }, 400);
+    if (!orderNumber) {
+      return c.json({ success: false, error: 'orderNumber 누락' }, 400);
     }
     
     // 주문 조회
     const order = await DB.prepare(`
       SELECT * FROM orders WHERE order_number = ?
-    `).bind(orderNo).first();
+    `).bind(orderNumber).first();
     
     if (!order) {
       return c.json({ success: false, error: '주문을 찾을 수 없음' }, 404);
@@ -3654,7 +3654,7 @@ app.post('/api/toss-pay/callback', async (c) => {
       UPDATE orders 
       SET payment_status = ?, payment_key = ?, updated_at = datetime('now')
       WHERE order_number = ?
-    `).bind(paymentStatus, payToken || order.payment_key, orderNo).run();
+    `).bind(paymentStatus, payToken || order.payment_key, orderNumber).run();
     
     return c.json({ success: true });
     

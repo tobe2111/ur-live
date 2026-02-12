@@ -22,7 +22,7 @@ interface TaxInvoice {
   id: number
   invoice_number: string
   issue_date: string
-  order_no: string
+  order_number: string
   supplier_business_name: string
   buyer_business_name: string
   buyer_business_number: string
@@ -36,7 +36,7 @@ interface TaxInvoice {
 
 interface AutoIssueLog {
   id: number
-  order_no: string
+  order_number: string
   status: 'success' | 'failed' | 'pending' | 'retry'
   error_message: string | null
   retry_count: number
@@ -107,15 +107,15 @@ export default function SellerTaxInvoicesPage() {
     }
   }
 
-  async function handleRetry(orderNo: string) {
-    setRetrying(orderNo)
+  async function handleRetry(orderNumber: string) {
+    setRetrying(orderNumber)
     setError('')
 
     try {
       const sessionToken = localStorage.getItem('session_token')
       
 
-      const response = await axios.post(`/api/seller/tax-invoices/retry/${orderNo}`, {}, {
+      const response = await axios.post(`/api/seller/tax-invoices/retry/${orderNumber}`, {}, {
         headers: { 'X-Session-Token': sessionToken }
       })
 
@@ -271,7 +271,7 @@ export default function SellerTaxInvoicesPage() {
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {new Date(invoice.issue_date).toLocaleDateString('ko-KR')}
                         </td>
-                        <td className="px-6 py-4 text-sm font-mono text-gray-900">{invoice.order_no}</td>
+                        <td className="px-6 py-4 text-sm font-mono text-gray-900">{invoice.order_number}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           <div>{invoice.buyer_business_name}</div>
                           <div className="text-xs text-gray-400">{invoice.buyer_business_number}</div>
@@ -321,7 +321,7 @@ export default function SellerTaxInvoicesPage() {
                   <tbody className="divide-y">
                     {logs.map((log) => (
                       <tr key={log.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-mono text-gray-900">{log.order_no}</td>
+                        <td className="px-6 py-4 text-sm font-mono text-gray-900">{log.order_number}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{log.buyer_business_name || '-'}</td>
                         <td className="px-6 py-4 text-sm text-right text-gray-900">
                           {log.total_amount ? `${formatPrice(log.total_amount)}원` : '-'}
@@ -340,11 +340,11 @@ export default function SellerTaxInvoicesPage() {
                           {log.status === 'failed' && log.retry_count < 3 && (
                             <Button
                               size="sm"
-                              onClick={() => handleRetry(log.order_no)}
-                              disabled={retrying === log.order_no}
+                              onClick={() => handleRetry(log.order_number)}
+                              disabled={retrying === log.order_number}
                               className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
-                              {retrying === log.order_no ? (
+                              {retrying === log.order_number ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <RefreshCw className="w-4 h-4" />
@@ -396,7 +396,7 @@ export default function SellerTaxInvoicesPage() {
                     </div>
                     <div>
                       <p className="text-gray-500 mb-1">주문번호</p>
-                      <p className="font-mono font-medium">{selectedInvoice.order_no}</p>
+                      <p className="font-mono font-medium">{selectedInvoice.order_number}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-1">상태</p>

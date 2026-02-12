@@ -91,7 +91,7 @@ export default function SellerOrdersPage() {
     }
   }
 
-  async function handleStatusChange(orderNo: string, newStatus: string) {
+  async function handleStatusChange(orderNumber: string, newStatus: string) {
     if (!confirm(`주문 상태를 "${getStatusText(newStatus)}"(으)로 변경하시겠습니까?`)) {
       return
     }
@@ -104,7 +104,7 @@ export default function SellerOrdersPage() {
       
 
       const response = await axios.patch(
-        `/api/seller/orders/${orderNo}/status`,
+        `/api/seller/orders/${orderNumber}/status`,
         { status: newStatus },
         { headers: { 'X-Session-Token': sessionToken } }
       )
@@ -112,7 +112,7 @@ export default function SellerOrdersPage() {
       if (response.data.success) {
         alert('주문 상태가 변경되었습니다.')
         loadOrders()
-        if (selectedOrder && selectedOrder.order_number === orderNo) {
+        if (selectedOrder && selectedOrder.order_number === orderNumber) {
           setShowDetail(false)
           setSelectedOrder(null)
         }
@@ -125,7 +125,7 @@ export default function SellerOrdersPage() {
     }
   }
 
-  async function handleTrackingSubmit(e: React.FormEvent, orderNo: string) {
+  async function handleTrackingSubmit(e: React.FormEvent, orderNumber: string) {
     e.preventDefault()
     setUpdating(true)
     setError('')
@@ -135,7 +135,7 @@ export default function SellerOrdersPage() {
       
 
       const response = await axios.put(
-        `/api/seller/orders/${orderNo}/tracking`,
+        `/api/seller/orders/${orderNumber}/tracking`,
         trackingForm,
         { headers: { 'X-Session-Token': sessionToken } }
       )
@@ -144,7 +144,7 @@ export default function SellerOrdersPage() {
         alert('송장번호가 등록되었습니다.')
         setTrackingForm({ courier: '', tracking_number: '' })
         loadOrders()
-        if (selectedOrder && selectedOrder.order_number === orderNo) {
+        if (selectedOrder && selectedOrder.order_number === orderNumber) {
           setShowDetail(false)
           setSelectedOrder(null)
         }

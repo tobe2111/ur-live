@@ -2277,7 +2277,7 @@ app.post('/api/orders', async (c) => {
       totalAmount: providedTotalAmount,
       shippingFee,
       // 결제 정보 (PaymentSuccessPage에서 전달)
-      orderNo: providedOrderNo,
+      orderNumber: providedOrderNo,
       paymentKey,
       paymentMethod
     } = requestData;
@@ -2320,7 +2320,7 @@ app.post('/api/orders', async (c) => {
       // 주문 번호 생성 (이미 제공되었으면 사용, 없으면 생성)
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const orderNo = providedOrderNo || `ORDER_${timestamp}_${random}`;
+      const orderNumber = providedOrderNo || `ORDER_${timestamp}_${random}`;
 
       // 주문 생성
       const fullAddress = shippingAddressDetail 
@@ -2329,12 +2329,12 @@ app.post('/api/orders', async (c) => {
       
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
-          order_no, user_id, total_amount, status, payment_status,
+          order_number, user_id, total_amount, status, payment_status,
           shipping_address, shipping_name, shipping_phone, shipping_memo,
           payment_key, payment_method, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
-        orderNo,
+        orderNumber,
         userId || null,
         providedTotalAmount || 0,
         'paid',  // 결제 완료 상태
@@ -2386,8 +2386,7 @@ app.post('/api/orders', async (c) => {
         success: true,
         data: {
           orderId,
-          orderNo,
-          orderNumber: orderNo,
+          orderNumber,
           totalAmount: providedTotalAmount,
         },
       });
@@ -3223,7 +3222,7 @@ app.delete('/api/shipping-addresses/:id', async (c) => {
 // Removed route: /orders (handled by React SPA)
 
 // 주문 상세 페이지
-// Removed route: /order/:orderNo (handled by React SPA)
+// Removed route: /order/:orderNumber (handled by React SPA)
 
 // =================================
 // Seller Product Management APIs
@@ -3916,14 +3915,14 @@ app.get('/api/orders/user/:userId', async (c) => {
 });
 
 // Get order by order number
-app.get('/api/orders/:orderNo', async (c) => {
+app.get('/api/orders/:orderNumber', async (c) => {
   const { DB } = c.env;
-  const orderNo = c.req.param('orderNo');
+  const orderNumber = c.req.param('orderNumber');
 
   try {
     const order = await DB.prepare(
       'SELECT * FROM orders WHERE order_number = ?'
-    ).bind(orderNo).first();
+    ).bind(orderNumber).first();
 
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
@@ -4044,7 +4043,7 @@ app.post('/api/payments/confirm', async (c) => {
 
     // 3️⃣ 주문 조회 및 상태 확인
     const order = await DB.prepare(`
-      SELECT total_amount, status FROM orders WHERE order_no = ?
+      SELECT total_amount, status FROM orders WHERE order_number = ?
     `).bind(orderId).first();
 
     if (!order) {
@@ -4153,7 +4152,7 @@ app.post('/api/payments/confirm', async (c) => {
           payment_key = ?,
           payment_status = 'completed',
           updated_at = CURRENT_TIMESTAMP 
-      WHERE order_no = ?
+      WHERE order_number = ?
     `).bind(paymentResult.paymentKey, orderId).run();
 
     console.log(`[Payment] ✅ 결제 승인 완료 [${pgProvider}]: ${orderId}, 금액: ${paymentResult.totalAmount}원`);
@@ -4247,7 +4246,7 @@ async function handlePaymentStatusChanged(DB: any, data: any) {
       SET status = 'paid',
           payment_status = 'completed',
           updated_at = CURRENT_TIMESTAMP
-      WHERE order_no = ?
+      WHERE order_number = ?
     `).bind(orderId).run();
     
     console.log('[Webhook] ✅ 가상계좌 입금 완료 처리:', orderId);
@@ -4390,7 +4389,7 @@ app.post('/api/payments/:paymentKey/cancel', async (c) => {
       SET status = 'cancelled',
           payment_status = 'cancelled',
           updated_at = CURRENT_TIMESTAMP
-      WHERE order_no = ?
+      WHERE order_number = ?
     `).bind(payment.order_id).run();
 
     console.log(`[Payment] ✅ 결제 취소 완료 [${pgProvider}]: ${paymentKey}`);
@@ -4422,9 +4421,9 @@ app.get('/api/payments/:paymentKey', async (c) => {
     const paymentKey = c.req.param('paymentKey');
     
     const payment = await DB.prepare(`
-      SELECT p.*, o.order_no, o.status as order_status
+      SELECT p.*, o.order_number, o.status as order_status
       FROM payments p
-      LEFT JOIN orders o ON p.order_id = o.order_no
+      LEFT JOIN orders o ON p.order_id = o.order_number
       WHERE p.pg_payment_key = ?
     `).bind(paymentKey).first();
 
@@ -4516,7 +4515,7 @@ app.get('/api/seller/orders', async (c) => {
 });
 
 // Update order status (Seller only)
-app.patch('/api/seller/orders/:orderNo/status', async (c) => {
+app.patch('/api/seller/orders/:orderNumber/status', async (c) => {
   const { DB } = c.env;
   const auth = await verifySellerSession(c);
 
@@ -4525,7 +4524,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
   }
 
   try {
-    const orderNo = c.req.param('orderNo');
+    const orderNumber = c.req.param('orderNumber');
     const { status } = await c.req.json();
 
     // Validate status
@@ -4535,7 +4534,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
     }
 
     // Verify this order contains seller's products
-    const order = await DB.prepare('SELECT id FROM orders WHERE order_no = ?').bind(orderNo).first();
+    const order = await DB.prepare('SELECT id FROM orders WHERE order_number = ?').bind(orderNumber).first();
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
@@ -4550,13 +4549,13 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
 
     // Update order status
     await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
-    ).bind(status, orderNo).run();
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
+    ).bind(status, orderNumber).run();
 
     // 🚀 자동 세금계산서 발행: 배송완료 시
     if (status === 'DELIVERED') {
       try {
-        console.log(`[AUTO TAX INVOICE] 배송완료 감지: ${orderNo}, 자동 발행 시작...`);
+        console.log(`[AUTO TAX INVOICE] 배송완료 감지: ${orderNumber}, 자동 발행 시작...`);
 
         // 주문 정보 조회 (사업자 정보 포함)
         const fullOrder = await DB.prepare(`
@@ -4565,9 +4564,9 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
             oi.seller_id
           FROM orders o
           LEFT JOIN order_items oi ON o.id = oi.order_id
-          WHERE o.order_no = ?
+          WHERE o.order_number = ?
           LIMIT 1
-        `).bind(orderNo).first();
+        `).bind(orderNumber).first();
 
         // 사업자 정보가 있는지 확인
         if (fullOrder?.buyer_business_number && fullOrder?.buyer_business_name) {
@@ -4582,12 +4581,12 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
             console.warn(`[AUTO TAX INVOICE] 판매자 사업자 정보 미승인: seller_id=${auth.sellerId}`);
             // 자동 발행 실패 로그 기록 (관리자 알림용)
             await DB.prepare(`
-              INSERT INTO tax_invoice_auto_issue_log (order_no, seller_id, status, error_message, created_at)
+              INSERT INTO tax_invoice_auto_issue_log (order_number, seller_id, status, error_message, created_at)
               VALUES (?, ?, 'failed', '판매자 사업자 정보가 승인되지 않았습니다.', CURRENT_TIMESTAMP)
-            `).bind(orderNo, auth.sellerId).run();
+            `).bind(orderNumber, auth.sellerId).run();
           } else {
             // 세금계산서 자동 발행
-            console.log(`[AUTO TAX INVOICE] 발행 시작: orderNo=${orderNo}`);
+            console.log(`[AUTO TAX INVOICE] 발행 시작: orderNumber=${orderNumber}`);
 
             // 주문 상품 정보 조회
             const orderItems = await DB.prepare(`
@@ -4612,7 +4611,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
             // 세금계산서 발행 (DB 저장)
             const taxInvoiceResult = await DB.prepare(`
               INSERT INTO tax_invoices (
-                seller_id, order_no, invoice_number, issue_date,
+                seller_id, order_number, invoice_number, issue_date,
                 supplier_business_number, supplier_business_name, supplier_ceo_name,
                 supplier_address, supplier_business_type, supplier_business_category,
                 supplier_email, supplier_phone,
@@ -4635,7 +4634,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
               )
             `).bind(
               auth.sellerId,
-              orderNo,
+              orderNumber,
               invoice_number,
               sellerBusiness.business_number,
               sellerBusiness.business_name,
@@ -4684,23 +4683,23 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
 
             // 자동 발행 성공 로그 기록
             await DB.prepare(`
-              INSERT INTO tax_invoice_auto_issue_log (order_no, seller_id, tax_invoice_id, status, created_at)
+              INSERT INTO tax_invoice_auto_issue_log (order_number, seller_id, tax_invoice_id, status, created_at)
               VALUES (?, ?, ?, 'success', CURRENT_TIMESTAMP)
-            `).bind(orderNo, auth.sellerId, taxInvoiceId).run();
+            `).bind(orderNumber, auth.sellerId, taxInvoiceId).run();
 
             console.log(`[AUTO TAX INVOICE] ✅ 발행 완료: invoice_id=${taxInvoiceId}, invoice_number=${invoice_number}`);
           }
         } else {
-          console.log(`[AUTO TAX INVOICE] 일반 구매 (사업자 정보 없음): ${orderNo}`);
+          console.log(`[AUTO TAX INVOICE] 일반 구매 (사업자 정보 없음): ${orderNumber}`);
         }
       } catch (autoIssueErr) {
         // 자동 발행 실패 시 로그만 기록하고 주문 상태 변경은 성공 처리
         console.error('[AUTO TAX INVOICE] 발행 실패:', autoIssueErr);
         try {
           await DB.prepare(`
-            INSERT INTO tax_invoice_auto_issue_log (order_no, seller_id, status, error_message, created_at)
+            INSERT INTO tax_invoice_auto_issue_log (order_number, seller_id, status, error_message, created_at)
             VALUES (?, ?, 'failed', ?, CURRENT_TIMESTAMP)
-          `).bind(orderNo, auth.sellerId, (autoIssueErr as Error).message).run();
+          `).bind(orderNumber, auth.sellerId, (autoIssueErr as Error).message).run();
         } catch (logErr) {
           console.error('[AUTO TAX INVOICE] 로그 기록 실패:', logErr);
         }
@@ -4714,7 +4713,7 @@ app.patch('/api/seller/orders/:orderNo/status', async (c) => {
 });
 
 // Update order tracking (Seller only) - 송장번호 입력
-app.put('/api/seller/orders/:orderNo/tracking', async (c) => {
+app.put('/api/seller/orders/:orderNumber/tracking', async (c) => {
   const { DB } = c.env;
   const auth = await verifySellerSession(c);
 
@@ -4723,7 +4722,7 @@ app.put('/api/seller/orders/:orderNo/tracking', async (c) => {
   }
 
   try {
-    const orderNo = c.req.param('orderNo');
+    const orderNumber = c.req.param('orderNumber');
     const { courier, tracking_number } = await c.req.json();
 
     if (!courier || !tracking_number) {
@@ -4731,7 +4730,7 @@ app.put('/api/seller/orders/:orderNo/tracking', async (c) => {
     }
 
     // Verify this order contains seller's products
-    const order = await DB.prepare('SELECT id FROM orders WHERE order_no = ?').bind(orderNo).first();
+    const order = await DB.prepare('SELECT id FROM orders WHERE order_number = ?').bind(orderNumber).first();
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
@@ -4752,8 +4751,8 @@ app.put('/api/seller/orders/:orderNo/tracking', async (c) => {
           shipped_at = CASE WHEN shipped_at IS NULL THEN CURRENT_TIMESTAMP ELSE shipped_at END,
           status = CASE WHEN status = 'PREPARING' THEN 'SHIPPING' ELSE status END,
           updated_at = CURRENT_TIMESTAMP 
-      WHERE order_no = ?
-    `).bind(courier, tracking_number, orderNo).run();
+      WHERE order_number = ?
+    `).bind(courier, tracking_number, orderNumber).run();
 
     return c.json({ success: true, message: 'Tracking information updated' });
   } catch (err) {
@@ -4762,13 +4761,13 @@ app.put('/api/seller/orders/:orderNo/tracking', async (c) => {
 });
 
 // Request refund (Customer)
-app.post('/api/orders/:orderNo/refund', async (c) => {
+app.post('/api/orders/:orderNumber/refund', async (c) => {
   const { DB } = c.env;
-  const orderNo = c.req.param('orderNo');
+  const orderNumber = c.req.param('orderNumber');
   const { reason } = await c.req.json();
 
   try {
-    const order = await DB.prepare('SELECT * FROM orders WHERE order_no = ?').bind(orderNo).first();
+    const order = await DB.prepare('SELECT * FROM orders WHERE order_number = ?').bind(orderNumber).first();
 
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
@@ -4786,8 +4785,8 @@ app.post('/api/orders/:orderNo/refund', async (c) => {
 
     // Update order status to refund requested (manual processing required)
     await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_no = ?'
-    ).bind('REFUND_REQUESTED', orderNo).run();
+      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
+    ).bind('REFUND_REQUESTED', orderNumber).run();
 
     return c.json({ 
       success: true, 
@@ -5775,27 +5774,27 @@ app.post('/api/orders/create', async (c) => {
 
 /**
  * 주문 취소/환불 API (PG 연동 전 - 상태 변경만)
- * POST /api/orders/:orderNo/refund
+ * POST /api/orders/:orderNumber/refund
  * 
  * Request Body:
  * - reason: 취소/환불 사유
  */
-app.post('/api/orders/:orderNo/refund', cors(), async (c) => {
+app.post('/api/orders/:orderNumber/refund', cors(), async (c) => {
   const { DB } = c.env;
   
   try {
-    const orderNo = c.req.param('orderNo');
+    const orderNumber = c.req.param('orderNumber');
     const { reason } = await c.req.json();
     
     console.log('[Order Refund] 환불 요청:', {
-      orderNo,
+      orderNumber,
       reason
     });
     
     // 1. 주문 조회
     const order = await DB.prepare(`
       SELECT * FROM orders WHERE order_number = ?
-    `).bind(orderNo).first();
+    `).bind(orderNumber).first();
     
     if (!order) {
       return c.json({
@@ -5821,9 +5820,9 @@ app.post('/api/orders/:orderNo/refund', cors(), async (c) => {
         cancel_reason = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE order_number = ?
-    `).bind(reason || '구매자 요청', orderNo).run();
+    `).bind(reason || '구매자 요청', orderNumber).run();
     
-    console.log('[Order Refund] 주문 상태 업데이트 완료:', orderNo);
+    console.log('[Order Refund] 주문 상태 업데이트 완료:', orderNumber);
     
     // 4. 재고 복구
     const orderItems = await DB.prepare(`
@@ -5846,7 +5845,7 @@ app.post('/api/orders/:orderNo/refund', cors(), async (c) => {
     }
     
     console.log('[Order Refund] ✅ 환불 완료:', {
-      orderNo,
+      orderNumber,
       reason
     });
     
@@ -5854,7 +5853,7 @@ app.post('/api/orders/:orderNo/refund', cors(), async (c) => {
       success: true,
       message: '주문이 취소되었습니다',
       data: {
-        orderNo: orderNo,
+        orderNumber: orderNumber,
         cancelDate: new Date().toISOString()
       }
     });
@@ -6005,7 +6004,7 @@ app.get('/api/seller/settlement-csv', cors(), async (c) => {
         ti.nts_confirm_number
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
-      LEFT JOIN tax_invoices ti ON o.order_number = ti.order_no
+      LEFT JOIN tax_invoices ti ON o.order_number = ti.order_number
       WHERE o.seller_id = ?
         AND o.payment_status IN ('approved', 'completed')
         AND DATE(o.created_at) >= DATE(?)
@@ -6060,9 +6059,9 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
   }
 
   try {
-    const { order_no } = await c.req.json();
+    const { order_number } = await c.req.json();
 
-    if (!order_no) {
+    if (!order_number) {
       return c.json({ success: false, error: '주문번호는 필수입니다.' }, 400);
     }
 
@@ -6072,7 +6071,7 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       WHERE o.order_number = ?
-    `).bind(order_no).first();
+    `).bind(order_number).first();
 
     if (!order) {
       return c.json({ success: false, error: '주문을 찾을 수 없습니다.' }, 404);
@@ -6137,7 +6136,7 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
     // 세금계산서 DB 저장
     const taxInvoiceResult = await DB.prepare(`
       INSERT INTO tax_invoices (
-        seller_id, order_no, invoice_type, invoice_number, issue_date,
+        seller_id, order_number, invoice_type, invoice_number, issue_date,
         supplier_business_number, supplier_business_name, supplier_ceo_name, supplier_address,
         supplier_business_type, supplier_business_category,
         buyer_business_number, buyer_name, buyer_ceo_name,
@@ -6147,7 +6146,7 @@ app.post('/api/seller/tax-invoices/issue', async (c) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       auth.sellerId,
-      order_no,
+      order_number,
       'tax',
       invoiceNumber,
       today,
@@ -6392,7 +6391,7 @@ app.get('/api/seller/tax-invoices/auto-issue-logs', async (c) => {
         o.total_amount,
         o.buyer_business_name
       FROM tax_invoice_auto_issue_log log
-      LEFT JOIN orders o ON log.order_no = o.order_no
+      LEFT JOIN orders o ON log.order_number = o.order_number
       WHERE log.seller_id = ?
     `;
 
@@ -6415,7 +6414,7 @@ app.get('/api/seller/tax-invoices/auto-issue-logs', async (c) => {
 });
 
 // 자동 발행 재시도 API (관리자/판매자)
-app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
+app.post('/api/seller/tax-invoices/retry/:orderNumber', async (c) => {
   const { DB } = c.env;
   const auth = await verifySellerSession(c);
 
@@ -6424,17 +6423,17 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
   }
 
   try {
-    const orderNo = c.req.param('orderNo');
+    const orderNumber = c.req.param('orderNumber');
 
-    console.log(`[TAX INVOICE RETRY] 재시도 시작: ${orderNo}`);
+    console.log(`[TAX INVOICE RETRY] 재시도 시작: ${orderNumber}`);
 
     // 이전 실패 로그 조회
     const failedLog = await DB.prepare(`
       SELECT * FROM tax_invoice_auto_issue_log
-      WHERE order_no = ? AND seller_id = ? AND status = 'failed'
+      WHERE order_number = ? AND seller_id = ? AND status = 'failed'
       ORDER BY created_at DESC
       LIMIT 1
-    `).bind(orderNo, auth.sellerId).first();
+    `).bind(orderNumber, auth.sellerId).first();
 
     if (!failedLog) {
       return c.json({ success: false, error: '재시도할 실패 로그를 찾을 수 없습니다.' }, 404);
@@ -6453,9 +6452,9 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
         oi.seller_id
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
-      WHERE o.order_no = ?
+      WHERE o.order_number = ?
       LIMIT 1
-    `).bind(orderNo).first();
+    `).bind(orderNumber).first();
 
     if (!fullOrder) {
       return c.json({ success: false, error: '주문을 찾을 수 없습니다.' }, 404);
@@ -6498,7 +6497,7 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
     // 세금계산서 발행 (DB 저장)
     const taxInvoiceResult = await DB.prepare(`
       INSERT INTO tax_invoices (
-        seller_id, order_no, invoice_number, issue_date,
+        seller_id, order_number, invoice_number, issue_date,
         supplier_business_number, supplier_business_name, supplier_ceo_name,
         supplier_address, supplier_business_type, supplier_business_category,
         supplier_email, supplier_phone,
@@ -6521,7 +6520,7 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
       )
     `).bind(
       auth.sellerId,
-      orderNo,
+      orderNumber,
       invoice_number,
       sellerBusiness.business_number,
       sellerBusiness.business_name,
@@ -6571,9 +6570,9 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
     // 재시도 성공 로그 기록
     await DB.prepare(`
       INSERT INTO tax_invoice_auto_issue_log (
-        order_no, seller_id, tax_invoice_id, status, retry_count, created_at
+        order_number, seller_id, tax_invoice_id, status, retry_count, created_at
       ) VALUES (?, ?, ?, 'success', ?, CURRENT_TIMESTAMP)
-    `).bind(orderNo, auth.sellerId, taxInvoiceId, retryCount + 1).run();
+    `).bind(orderNumber, auth.sellerId, taxInvoiceId, retryCount + 1).run();
 
     // 기존 실패 로그 상태 업데이트
     await DB.prepare(`
@@ -6597,21 +6596,21 @@ app.post('/api/seller/tax-invoices/retry/:orderNo', async (c) => {
 
     // 재시도 실패 로그 기록
     try {
-      const orderNo = c.req.param('orderNo');
+      const orderNumber = c.req.param('orderNumber');
       const failedLog = await DB.prepare(`
         SELECT * FROM tax_invoice_auto_issue_log
-        WHERE order_no = ? AND seller_id = ? AND status = 'failed'
+        WHERE order_number = ? AND seller_id = ? AND status = 'failed'
         ORDER BY created_at DESC
         LIMIT 1
-      `).bind(orderNo, auth.sellerId).first();
+      `).bind(orderNumber, auth.sellerId).first();
 
       const retryCount = Number(failedLog?.retry_count || 0);
 
       await DB.prepare(`
         INSERT INTO tax_invoice_auto_issue_log (
-          order_no, seller_id, status, error_message, retry_count, created_at
+          order_number, seller_id, status, error_message, retry_count, created_at
         ) VALUES (?, ?, 'failed', ?, ?, CURRENT_TIMESTAMP)
-      `).bind(orderNo, auth.sellerId, (err as Error).message, retryCount + 1).run();
+      `).bind(orderNumber, auth.sellerId, (err as Error).message, retryCount + 1).run();
     } catch (logErr) {
       console.error('[TAX INVOICE RETRY] 로그 기록 실패:', logErr);
     }

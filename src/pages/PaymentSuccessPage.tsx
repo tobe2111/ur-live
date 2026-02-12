@@ -76,7 +76,7 @@ export default function PaymentSuccessPage() {
       try {
         await axios.post('/api/orders', {
           userId,
-          orderNo: orderId,
+          orderNumber: orderId,
           items: orderItems,
           totalAmount: parseInt(amount || '0'),
           shippingAddress: shippingAddress,
