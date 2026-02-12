@@ -188,11 +188,18 @@ export default function CheckoutPage() {
           value: totalAmount
         })
         
-        // 결제 수단 UI 렌더링 (variantKey 'DEFAULT' 사용)
+        // 모바일 감지
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        console.log('[TossPayments] 모바일 감지:', isMobile)
+        
+        // 결제 수단 UI 렌더링
+        // 모바일에서는 간편결제 우선 표시 (카드사 앱 실행 문제 방지)
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'DEFAULT'
+          variantKey: isMobile ? 'MOBILE' : 'DEFAULT'
         })
+        
+        console.log('[TossPayments] 결제 UI 렌더링 완료 (variantKey:', isMobile ? 'MOBILE' : 'DEFAULT', ')')
         
         // 이용약관 UI 렌더링
         await widgets.renderAgreement({
@@ -408,8 +415,12 @@ export default function CheckoutPage() {
 
       console.log('[Payment] requestPayment 호출:', { orderId, orderName, totalAmount })
 
-      // 결제 요청
-      await widgets.requestPayment({
+      // 모바일 감지
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      console.log('[Payment] 모바일 감지:', isMobile)
+
+      // 결제 요청 옵션
+      const requestOptions: any = {
         orderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
@@ -417,12 +428,28 @@ export default function CheckoutPage() {
         customerEmail: 'customer@example.com',
         customerName: selectedAddress.recipient_name,
         customerMobilePhone: selectedAddress.phone.replace(/-/g, '')
-      })
+      }
+
+      // 모바일인 경우: REDIRECT 모드 사용 (카드사 앱 실행을 위함)
+      if (isMobile) {
+        requestOptions.flowMode = 'REDIRECT'
+        console.log('[Payment] 모바일 REDIRECT 모드 활성화')
+      }
+
+      console.log('[Payment] 최종 요청 옵션:', requestOptions)
+
+      // 결제 요청
+      await widgets.requestPayment(requestOptions)
     } catch (err: any) {
       console.error('[Payment] ❌ 결제 요청 실패:', err)
       
-      // 팝업 차단 에러는 무시
-      if (err.code === 'POPUP_BLOCKED') {
+      // Intent URL 에러 (카드사 앱 실행 실패)
+      if (err.message && err.message.includes('intent://')) {
+        console.log('[Payment] ⚠️ Intent URL 에러 발생 - 모바일 앱 실행 실패')
+        showErrorToast('카드사 앱을 실행할 수 없습니다. 다른 결제 수단을 이용해주세요.')
+      }
+      // 팝업 차단 에러
+      else if (err.code === 'POPUP_BLOCKED') {
         showErrorToast('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
       } 
       // 사용자 취소는 조용히 처리
@@ -431,7 +458,7 @@ export default function CheckoutPage() {
       } 
       // 그 외 에러
       else {
-        showErrorToast('결제 요청에 실패했습니다.')
+        showErrorToast('결제 요청에 실패했습니다. 다시 시도해주세요.')
       }
     } finally {
       // 2초 후 플래그 해제 (중복 클릭 방지)
