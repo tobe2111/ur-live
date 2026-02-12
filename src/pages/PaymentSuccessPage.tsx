@@ -34,8 +34,16 @@ export default function PaymentSuccessPage() {
       
       // 1️⃣ 사용자 정보 확인
       const userId = getUserId()
+      
+      // 🎯 데모 모드 감지: userId가 없으면 데모 결제로 간주
       if (!userId) {
-        setError('사용자 정보를 찾을 수 없습니다.')
+        console.log('[PaymentSuccess] 🎭 데모 모드 - 간단한 성공 메시지만 표시')
+        setOrderInfo({
+          orderId: orderId,
+          method: '테스트',
+          status: 'demo'
+        })
+        setLoading(false)
         return
       }
 
@@ -209,28 +217,55 @@ export default function PaymentSuccessPage() {
               </div>
 
               {/* 안내 메시지 */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm text-blue-900">
-                  🎉 주문이 접수되었습니다. 배송은 영업일 기준 3~5일 소요됩니다.
-                </p>
-              </div>
+              {orderInfo?.status === 'demo' ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <p className="text-sm text-yellow-900">
+                    🎭 <strong>데모 모드</strong>: 실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-sm text-blue-900">
+                    🎉 주문이 접수되었습니다. 배송은 영업일 기준 3~5일 소요됩니다.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           {/* 액션 버튼 */}
           <div className="mt-8 flex gap-3">
-            <Button
-              onClick={() => navigate('/orders')}
-              className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12"
-            >
-              주문 내역 보기
-            </Button>
-            <Button
-              onClick={() => navigate('/')}
-              className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12"
-            >
-              쇼핑 계속하기
-            </Button>
+            {orderInfo?.status === 'demo' ? (
+              <>
+                <Button
+                  onClick={() => navigate('/payment/demo')}
+                  className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12"
+                >
+                  다시 테스트하기
+                </Button>
+                <Button
+                  onClick={() => navigate('/')}
+                  className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12"
+                >
+                  메인으로
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => navigate('/orders')}
+                  className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12"
+                >
+                  주문 내역 보기
+                </Button>
+                <Button
+                  onClick={() => navigate('/')}
+                  className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12"
+                >
+                  쇼핑 계속하기
+                </Button>
+              </>
+            )}
           </div>
 
           {/* 고객센터 정보 */}
