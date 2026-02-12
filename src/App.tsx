@@ -10,6 +10,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const LivePage = lazy(() => import('./pages/LivePage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
+const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
@@ -67,6 +68,7 @@ function App() {
             <Route path="/live/:streamId" element={<LivePage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/payment/demo" element={<PaymentDemoPage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
             <Route path="/search" element={<SearchPage />} />
