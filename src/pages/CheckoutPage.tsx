@@ -156,14 +156,28 @@ export default function CheckoutPage() {
       try {
         console.log('[TossPayments] Step 2: 결제 UI 렌더링 시작')
         
-        // DOM 요소가 존재하는지 100ms 대기
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // DOM 요소가 존재할 때까지 최대 3초 대기
+        let paymentMethodEl = null
+        let agreementEl = null
+        let attempts = 0
+        const maxAttempts = 30  // 30번 시도 (3초)
         
-        const paymentMethodEl = document.getElementById('payment-method')
-        const agreementEl = document.getElementById('agreement')
+        while (attempts < maxAttempts) {
+          paymentMethodEl = document.getElementById('payment-method')
+          agreementEl = document.getElementById('agreement')
+          
+          if (paymentMethodEl && agreementEl) {
+            console.log('[TossPayments] ✅ DOM 요소 발견! (', attempts * 100, 'ms)')
+            break
+          }
+          
+          console.log('[TossPayments] ⏳ DOM 대기 중... (', attempts * 100, 'ms)')
+          await new Promise(resolve => setTimeout(resolve, 100))
+          attempts++
+        }
         
         if (!paymentMethodEl || !agreementEl) {
-          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음')
+          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음 (3초 초과)')
           setError('결제 UI를 불러올 수 없습니다.')
           return
         }
