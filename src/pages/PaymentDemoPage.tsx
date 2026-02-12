@@ -76,11 +76,11 @@ export default function PaymentDemoPage() {
         console.log('[Demo] 금액 설정:', amount)
         await widgets.setAmount(amount)
         
-        // 결제 수단 렌더링 (MID urteamizy1의 variantKey: Test1)
+        // 결제 수단 렌더링 (variantKey 'DEFAULT' 사용)
         console.log('[Demo] 결제 수단 렌더링...')
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'Test1'
+          variantKey: 'DEFAULT'
         })
         
         // 이용약관 렌더링
