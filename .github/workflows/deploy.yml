@@ -39,7 +39,7 @@ jobs:
           accountId: 1a2c006f0fb54894f81283a5ea787b83
           projectName: ur-live
           directory: dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          # gitHubToken 제거 - GitHub Deployments 생성 권한 없음
           branch: ${{ github.ref_name }}
       
       - name: Deployment summary
