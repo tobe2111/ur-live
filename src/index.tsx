@@ -4011,9 +4011,10 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
 // 결제 승인 API
 app.post('/api/payments/confirm', async (c) => {
   const { DB } = c.env;
+  let body: any = null;  // catch 블록에서도 접근 가능하도록 함수 스코프로 이동
   
   try {
-    const body = await c.req.json();
+    body = await c.req.json();
     const { paymentKey, orderId, amount } = body;
 
     console.log('[Payment] 결제 승인 요청:', { orderId, amount, paymentKey: paymentKey?.substring(0, 20) + '...' });
