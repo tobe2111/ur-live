@@ -328,14 +328,6 @@ export default function MyOrdersPage() {
                     <div className="apple-card divide-y divide-[#e5e5ea]">
                       {cartItems.map(item => (
                         <div key={item.id} className="p-4 sm:p-6 flex gap-4">
-                          <img
-                            src={item.image_url || 'https://via.placeholder.com/100'}
-                            alt={item.product_name}
-                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover flex-shrink-0"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/100'
-                            }}
-                          />
                           <div className="flex-1 min-w-0">
                             <h3 className="text-[15px] sm:text-[17px] font-semibold text-[#1d1d1f] mb-1 line-clamp-2">
                               {item.product_name}
@@ -553,14 +545,6 @@ export default function MyOrdersPage() {
                         <div className="space-y-3 mb-4">
                           {order.items?.slice(0, 2).map((item, idx) => (
                             <div key={idx} className="flex gap-3">
-                              <img
-                                src={item.image_url || 'https://via.placeholder.com/60'}
-                                alt={item.product_name}
-                                className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60'
-                                }}
-                              />
                               <div className="flex-1 min-w-0">
                                 <p className="text-[14px] font-medium text-[#1d1d1f] line-clamp-1">
                                   {item.product_name}
@@ -807,14 +791,6 @@ export default function MyOrdersPage() {
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item, idx) => (
                     <div key={idx} className="flex gap-3 p-3 bg-[#f5f5f7] rounded-xl">
-                      <img
-                        src={item.image_url || 'https://via.placeholder.com/60'}
-                        alt={item.product_name}
-                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60'
-                        }}
-                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-medium text-[#1d1d1f] line-clamp-2">
                           {item.product_name}
