@@ -144,6 +144,14 @@ export default function LivePage() {
     }
   }, [searchParams, streamId])
 
+  // Save current live stream ID for "Continue Shopping" button
+  useEffect(() => {
+    if (streamId) {
+      localStorage.setItem('lastViewedLiveId', streamId)
+      console.log('[LivePage] 저장된 라이브 ID:', streamId)
+    }
+  }, [streamId])
+
   // Check login status from localStorage
   useEffect(() => {
     // 통합 인증: checkIsLoggedIn() 사용

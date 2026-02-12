@@ -31,6 +31,9 @@ export default function PaymentSuccessPage() {
   async function confirmPayment() {
     try {
       console.log('[PaymentSuccess] 결제 승인 프로세스 시작')
+      console.log('[PaymentSuccess] paymentKey:', paymentKey)
+      console.log('[PaymentSuccess] orderId:', orderId)
+      console.log('[PaymentSuccess] amount:', amount)
       
       // 1️⃣ 사용자 정보 확인
       const userId = getUserId()
@@ -47,52 +50,11 @@ export default function PaymentSuccessPage() {
         return
       }
 
-      // 2️⃣ 장바구니에서 주문 정보 가져오기
-      console.log('[PaymentSuccess] 장바구니 조회 중...')
-      const cartResponse = await axios.get(`/api/cart/${userId}`)
-      const cartItems = cartResponse.data?.data || []
+      console.log('[PaymentSuccess] userId:', userId)
 
-      if (cartItems.length === 0) {
-        console.warn('[PaymentSuccess] 장바구니가 비어있습니다.')
-        setError('장바구니가 비어있습니다. 결제를 진행할 수 없습니다.')
-        return
-      }
-
-      // 3️⃣ 주문 생성 요청 (결제 승인 전에 먼저!)
-      const orderItems = cartItems.map((item: any) => ({
-        productId: item.product_id,
-        quantity: item.quantity,
-        price: item.price_snapshot,  // ✅ price로 전송 (API가 기대하는 필드명)
-        optionValue: item.option_value || null
-      }))
-
-      // 배송지 정보는 CheckoutPage에서 localStorage에 저장
-      const shippingAddress = localStorage.getItem('checkoutShippingAddress') || ''
-      const recipientName = localStorage.getItem('checkoutRecipientName') || ''
-      const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
-
-      console.log('[PaymentSuccess] 주문 생성 중...', { orderId, userId })
-      
-      try {
-        await axios.post('/api/orders', {
-          userId,
-          orderNumber: orderId,
-          items: orderItems,
-          totalAmount: parseInt(amount || '0'),
-          shippingAddress: shippingAddress,
-          recipientName: recipientName,
-          recipientPhone: recipientPhone,
-          status: 'pending'  // 결제 승인 전이므로 pending 상태
-        })
-
-        console.log('[PaymentSuccess] ✅ 주문 생성 완료:', orderId)
-      } catch (orderErr: any) {
-        console.error('[PaymentSuccess] ❌ 주문 생성 실패:', orderErr)
-        setError(orderErr.response?.data?.error || '주문 생성에 실패했습니다.')
-        return  // 주문 생성 실패 시 결제 승인하지 않음
-      }
-
-      // 4️⃣ 결제 승인 요청 (주문 생성 후!)
+      // 2️⃣ 결제 승인 요청 (최우선!)
+      // ⚠️ 중요: 장바구니 확인보다 먼저 결제 승인을 해야 함
+      // 이유: 결제 완료 후 재방문 시 장바구니가 비어있을 수 있음
       console.log('[PaymentSuccess] 결제 승인 요청 중...')
       const response = await axios.post('/api/payments/confirm', {
         paymentKey,
@@ -100,7 +62,10 @@ export default function PaymentSuccessPage() {
         amount: parseInt(amount || '0')
       })
 
+      console.log('[PaymentSuccess] 결제 승인 응답:', response.data)
+
       if (!response.data.success) {
+        console.error('[PaymentSuccess] 결제 승인 실패:', response.data.error)
         setError(response.data.error || '결제 승인에 실패했습니다.')
         return
       }
@@ -109,21 +74,29 @@ export default function PaymentSuccessPage() {
       setOrderInfo(paymentData)
       console.log('[PaymentSuccess] ✅ 결제 승인 완료:', paymentData)
       
-      // 5️⃣ 장바구니 비우기
-      console.log('[PaymentSuccess] 장바구니 비우기 중...')
+      // 3️⃣ 장바구니 비우기 (선택사항)
+      console.log('[PaymentSuccess] 장바구니 비우기 시도 중...')
       try {
-        await axios.delete(`/api/cart/clear/${userId}`)
+        const cartResponse = await axios.get(`/api/cart/${userId}`)
+        const cartItems = cartResponse.data?.data || []
+        
+        if (cartItems.length > 0) {
+          await axios.delete(`/api/cart/clear/${userId}`)
+          console.log('[PaymentSuccess] ✅ 장바구니 비우기 완료')
+        } else {
+          console.log('[PaymentSuccess] ℹ️ 장바구니가 이미 비어있음')
+        }
         localStorage.removeItem('hasCartItems')
-        console.log('[PaymentSuccess] ✅ 장바구니 비우기 완료')
       } catch (cartErr) {
-        console.error('[PaymentSuccess] ⚠️ 장바구니 비우기 실패:', cartErr)
-        // 장바구니 비우기 실패해도 결제/주문은 성공했으므로 에러는 표시하지 않음
+        console.error('[PaymentSuccess] ⚠️ 장바구니 처리 실패:', cartErr)
+        // 장바구니 처리 실패해도 결제는 성공했으므로 에러는 표시하지 않음
       }
 
-      // 배송지 정보 localStorage 정리
+      // 4️⃣ 배송지 정보 localStorage 정리
       localStorage.removeItem('checkoutShippingAddress')
       localStorage.removeItem('checkoutRecipientName')
       localStorage.removeItem('checkoutRecipientPhone')
+      localStorage.removeItem('lastViewedLiveId')  // 라이브 페이지 복귀를 위한 ID 저장
 
     } catch (err: any) {
       console.error('[PaymentSuccess] ❌ 결제 승인 실패:', err)
@@ -253,13 +226,21 @@ export default function PaymentSuccessPage() {
             ) : (
               <>
                 <Button
-                  onClick={() => navigate('/orders')}
+                  onClick={() => navigate('/my-orders')}
                   className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12"
                 >
                   주문 내역 보기
                 </Button>
                 <Button
-                  onClick={() => navigate('/')}
+                  onClick={() => {
+                    // 마지막으로 본 라이브 페이지로 복귀
+                    const lastLiveId = localStorage.getItem('lastViewedLiveId')
+                    if (lastLiveId) {
+                      navigate(`/live/${lastLiveId}`)
+                    } else {
+                      navigate('/')
+                    }
+                  }}
                   className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12"
                 >
                   쇼핑 계속하기
