@@ -4072,7 +4072,14 @@ app.post('/api/payments/confirm', async (c) => {
     }
 
     // 토스페이먼츠 결제 승인 API 호출 (공식 가이드대로)
-    console.log('[Payment] 토스페이먼츠 결제 승인 API 호출...');
+    console.log('[Payment] 🚀 토스페이먼츠 결제 승인 API 호출 시작...');
+    console.log('[Payment] 📋 요청 데이터:', {
+      paymentKey,
+      orderId,
+      amount,
+      secretKeyPrefix: secretKey.substring(0, 20) + '...'
+    });
+    
     const encryptedSecretKey = 'Basic ' + btoa(secretKey + ':');
     
     const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
@@ -4091,8 +4098,16 @@ app.post('/api/payments/confirm', async (c) => {
 
     const data = await response.json();
     
+    console.log('[Payment] 📡 토스페이먼츠 API 응답 상태:', response.status);
+    console.log('[Payment] 📡 토스페이먼츠 API 응답 데이터:', JSON.stringify(data).substring(0, 500));
+    
     if (!response.ok) {
-      console.error('[Payment] ❌ 토스페이먼츠 승인 실패:', data);
+      console.error('[Payment] ❌ 토스페이먼츠 승인 실패:', {
+        status: response.status,
+        code: data.code,
+        message: data.message,
+        orderId
+      });
       return c.json({
         success: false,
         error: data.message || '결제 승인에 실패했습니다.',
@@ -4100,7 +4115,8 @@ app.post('/api/payments/confirm', async (c) => {
       }, response.status);
     }
 
-    console.log('[Payment] ✅ 결제 승인 성공:', orderId);
+    console.log('[Payment] ✅ 결제 승인 성공! paymentKey:', paymentKey);
+    console.log('[Payment] ✅ 주문 번호:', orderId);
 
     // 주문 상태 업데이트 + 재고 차감
     try {
