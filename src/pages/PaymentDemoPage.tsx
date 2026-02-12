@@ -74,18 +74,18 @@ export default function PaymentDemoPage() {
         console.log('[Demo] 금액 설정:', amount)
         await widgets.setAmount(amount)
         
-        // 결제 수단 렌더링
+        // 결제 수단 렌더링 (공식 가이드대로 variantKey 명시)
         console.log('[Demo] 결제 수단 렌더링...')
         await widgets.renderPaymentMethods({
-          selector: '#payment-method'
-          // variantKey는 생략 (기본값 사용)
+          selector: '#payment-method',
+          variantKey: 'DEFAULT'
         })
         
-        // 이용약관 렌더링
+        // 이용약관 렌더링 (공식 가이드대로 variantKey 명시)
         console.log('[Demo] 이용약관 렌더링...')
         await widgets.renderAgreement({
-          selector: '#agreement'
-          // variantKey는 생략 (기본값 사용)
+          selector: '#agreement',
+          variantKey: 'AGREEMENT'
         })
         
         setReady(true)

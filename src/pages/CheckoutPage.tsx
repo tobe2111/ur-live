@@ -172,16 +172,16 @@ export default function CheckoutPage() {
           value: totalAmount
         })
         
-        // 결제 수단 UI 렌더링
+        // 결제 수단 UI 렌더링 (공식 가이드대로 variantKey 명시)
         await widgets.renderPaymentMethods({
-          selector: '#payment-method'
-          // variantKey는 생략 (기본값 사용)
+          selector: '#payment-method',
+          variantKey: 'DEFAULT'
         })
         
-        // 이용약관 UI 렌더링
+        // 이용약관 UI 렌더링 (공식 가이드대로 variantKey 명시)
         await widgets.renderAgreement({
-          selector: '#agreement'
-          // variantKey는 생략 (기본값 사용)
+          selector: '#agreement',
+          variantKey: 'AGREEMENT'
         })
         
         setReady(true)
