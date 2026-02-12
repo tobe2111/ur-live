@@ -2329,16 +2329,15 @@ app.post('/api/orders', async (c) => {
       
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
-          order_number, user_id, total_amount, status, payment_status,
+          order_number, user_id, total_amount, payment_status,
           shipping_address, shipping_name, shipping_phone, shipping_memo,
           payment_key, payment_method, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
         orderNumber,
         userId || null,
         providedTotalAmount || 0,
-        'paid',  // 결제 완료 상태
-        'completed',  // 결제 완료
+        'approved',  // 결제 승인 완료 (DB의 CHECK 제약 조건: pending, approved, failed, cancelled, refunded)
         fullAddress || null,
         recipientName || null,
         recipientPhone || null,
@@ -4054,7 +4053,7 @@ app.post('/api/payments/confirm', async (c) => {
       }, 404);
     }
 
-    if (order.status === 'paid') {
+    if (order.payment_status === 'approved') {
       console.warn('[Payment] ❌ 이미 결제 완료된 주문:', orderId);
       return c.json({ 
         success: false, 
@@ -4148,9 +4147,8 @@ app.post('/api/payments/confirm', async (c) => {
     // 9️⃣ 주문 상태 업데이트 (pending -> paid)
     await DB.prepare(`
       UPDATE orders 
-      SET status = 'paid', 
-          payment_key = ?,
-          payment_status = 'completed',
+      SET payment_key = ?,
+          payment_status = 'approved',
           updated_at = CURRENT_TIMESTAMP 
       WHERE order_number = ?
     `).bind(paymentResult.paymentKey, orderId).run();
@@ -4243,8 +4241,7 @@ async function handlePaymentStatusChanged(DB: any, data: any) {
   if (status === 'DONE' || status === 'completed') {
     await DB.prepare(`
       UPDATE orders 
-      SET status = 'paid',
-          payment_status = 'completed',
+      SET payment_status = 'approved',
           updated_at = CURRENT_TIMESTAMP
       WHERE order_number = ?
     `).bind(orderId).run();
