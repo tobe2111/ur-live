@@ -4125,7 +4125,6 @@ app.post('/api/payments/confirm', async (c) => {
       console.error('[Payment] 에러 코드:', data.code)
       console.error('[Payment] 에러 메시지:', data.message)
       console.error('[Payment] 전체 응답:', JSON.stringify(data, null, 2))
-      });
       return c.json({
         success: false,
         error: data.message || '결제 승인에 실패했습니다.',
