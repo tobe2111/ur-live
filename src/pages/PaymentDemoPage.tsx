@@ -76,14 +76,14 @@ export default function PaymentDemoPage() {
         console.log('[Demo] 금액 설정:', amount)
         await widgets.setAmount(amount)
         
-        // 결제 수단 렌더링 (공식 가이드대로 variantKey 명시)
+        // 결제 수단 렌더링 (MID urteamizy1의 variantKey: Test1)
         console.log('[Demo] 결제 수단 렌더링...')
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'DEFAULT'
+          variantKey: 'Test1'
         })
         
-        // 이용약관 렌더링 (공식 가이드대로 variantKey 명시)
+        // 이용약관 렌더링
         console.log('[Demo] 이용약관 렌더링...')
         await widgets.renderAgreement({
           selector: '#agreement',

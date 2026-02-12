@@ -188,13 +188,13 @@ export default function CheckoutPage() {
           value: totalAmount
         })
         
-        // 결제 수단 UI 렌더링 (공식 가이드대로 variantKey 명시)
+        // 결제 수단 UI 렌더링 (MID urteamizy1의 variantKey: Test1)
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: 'DEFAULT'
+          variantKey: 'Test1'
         })
         
-        // 이용약관 UI 렌더링 (공식 가이드대로 variantKey 명시)
+        // 이용약관 UI 렌더링
         await widgets.renderAgreement({
           selector: '#agreement',
           variantKey: 'AGREEMENT'
