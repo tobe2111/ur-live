@@ -92,6 +92,7 @@ function App() {
             <Route path="/admin/settlement" element={<AdminSettlementPage />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/my-orders" element={<MyOrdersPage />} />
+            <Route path="/orders" element={<MyOrdersPage />} />
             
             {/* Error Pages */}
             <Route path="/500" element={<ServerErrorPage />} />

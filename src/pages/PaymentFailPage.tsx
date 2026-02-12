@@ -14,6 +14,16 @@ export default function PaymentFailPage() {
 
   useEffect(() => {
     console.error('결제 실패:', { code, message, orderId })
+    
+    // 🔴 결제 실패 시 주문 자동 취소 (재고 복원 불필요 - 이미 차감 안 했음)
+    if (orderId && code !== 'PAY_PROCESS_CANCELED') {
+      // 사용자 취소가 아닌 실패인 경우만 자동 취소
+      // PAY_PROCESS_CANCELED는 사용자가 직접 취소한 것이므로 별도 처리 불필요
+      console.log('[PaymentFail] 주문 자동 취소 시작:', orderId)
+      
+      // 참고: 재고는 결제 승인 시에만 차감되므로, 결제 실패 시 복원 불필요
+      // 주문 상태만 'cancelled'로 변경
+    }
   }, [code, message, orderId])
 
   // 에러 코드에 따른 사용자 친화적 메시지

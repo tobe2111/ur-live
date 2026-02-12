@@ -2372,15 +2372,16 @@ app.post('/api/orders', async (c) => {
       
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
-          order_number, user_id, total_amount, payment_status,
+          order_number, user_id, total_amount, payment_status, status,
           shipping_address, shipping_name, shipping_phone, shipping_memo,
           payment_key, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
         orderNumber,
         userId || null,
         providedTotalAmount || 0,
-        'pending',  // 결제 대기 상태 (결제 승인 완료 후 'approved'로 변경)
+        'pending',  // 결제 대기 상태
+        'pending',  // 주문 상태 (결제 승인 후 'paid'로 변경)
         fullAddress || null,
         recipientName || null,
         recipientPhone || null,
@@ -2390,23 +2391,10 @@ app.post('/api/orders', async (c) => {
 
       const orderId = orderResult.meta.last_row_id;
 
-      // 주문 아이템 생성 및 재고 차감
+      // 주문 아이템 생성 (⚠️ 재고 차감 제거 - 결제 승인 시 처리)
       for (const item of itemsWithDetails) {
-        // 재고 차감
-        const stockUpdateResult = await DB.prepare(`
-          UPDATE products 
-          SET stock = stock - ?, 
-              updated_at = datetime('now')
-          WHERE id = ? 
-            AND stock >= ?
-        `).bind(item.quantity, item.product_id, item.quantity).run();
-
-        if (stockUpdateResult.meta.changes === 0) {
-          return c.json<ApiResponse>({
-            success: false,
-            error: `재고 차감 실패: ${item.product_name}`,
-          }, 400);
-        }
+        // ❌ 재고 차감 제거 (Before: 여기서 차감했음)
+        // ✅ 결제 승인 API에서 처리함
 
         // 주문 아이템 생성
         await DB.prepare(`
@@ -4012,7 +4000,7 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
     if (order.status !== 'pending') {
       return c.json({ 
         success: false, 
-        error: '결제완료 상태에서만 취소가 가능합니다.' 
+        error: '결제 대기 중인 주문만 취소할 수 있습니다. 결제가 완료된 주문은 환불을 신청해주세요.' 
       }, 400);
     }
 
@@ -4110,8 +4098,9 @@ app.post('/api/payments/confirm', async (c) => {
 
     console.log('[Payment] ✅ 결제 승인 성공:', orderId);
 
-    // 주문 상태 업데이트 (간소화)
+    // 주문 상태 업데이트 + 재고 차감
     try {
+      // 1️⃣ 주문 상태 업데이트
       await DB.prepare(`
         UPDATE orders 
         SET payment_key = ?,
@@ -4122,6 +4111,28 @@ app.post('/api/payments/confirm', async (c) => {
       `).bind(paymentKey, orderId).run();
       
       console.log('[Payment] ✅ 주문 상태 업데이트 완료');
+
+      // 2️⃣ 재고 차감 (✅ 결제 승인 후에만 차감)
+      const orderItems: any = await DB.prepare(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = (SELECT id FROM orders WHERE order_number = ?)'
+      ).bind(orderId).all();
+
+      for (const item of orderItems.results) {
+        const stockUpdateResult = await DB.prepare(`
+          UPDATE products 
+          SET stock = stock - ?
+          WHERE id = ? AND stock >= ?
+        `).bind(item.quantity, item.product_id, item.quantity).run();
+
+        if (stockUpdateResult.meta.changes === 0) {
+          console.error(`[Payment] ⚠️ 재고 부족: product_id=${item.product_id}`);
+          // 재고 부족 시에도 결제는 성공했으므로 주문은 유지
+          // 관리자가 수동으로 처리해야 함
+        }
+      }
+
+      console.log('[Payment] ✅ 재고 차감 완료');
+      
     } catch (dbErr) {
       console.error('[Payment] ⚠️ DB 업데이트 실패 (결제는 성공):', dbErr);
       // DB 실패해도 결제는 성공했으므로 성공 응답 반환
