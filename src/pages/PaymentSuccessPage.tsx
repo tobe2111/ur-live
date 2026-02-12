@@ -6,6 +6,9 @@ import { CheckCircle, Package, AlertCircle } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 
 export default function PaymentSuccessPage() {
+  console.log('🚀🚀🚀 PaymentSuccessPage 컴포넌트 로드됨!')
+  console.log('🚀🚀🚀 URL:', window.location.href)
+  
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -16,6 +19,8 @@ export default function PaymentSuccessPage() {
   const paymentKey = searchParams.get('paymentKey')
   const orderId = searchParams.get('orderId')
   const amount = searchParams.get('amount')
+  
+  console.log('🚀🚀🚀 URL 파라미터:', { paymentKey, orderId, amount })
 
   useEffect(() => {
     if (!paymentKey || !orderId || !amount) {
