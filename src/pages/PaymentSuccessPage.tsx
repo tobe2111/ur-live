@@ -55,11 +55,27 @@ export default function PaymentSuccessPage() {
       // 2️⃣ 장바구니 조회 (주문 데이터 생성을 위해 필수)
       console.log('[PaymentSuccess] 장바구니 조회 중...')
       const cartResponse = await axios.get(`/api/cart/${userId}`)
-      const cartItems = cartResponse.data?.data || []
+      let cartItems = cartResponse.data?.data || []
       
+      // 💾 장바구니가 비어있으면 localStorage 백업에서 복원
       if (cartItems.length === 0) {
-        console.log('[PaymentSuccess] ⚠️ 장바구니가 비어있지만 결제는 진행')
-        // 장바구니가 비어있어도 결제 승인은 진행 (재방문 케이스)
+        console.log('[PaymentSuccess] ⚠️ 장바구니가 비어있음 - localStorage 백업 확인')
+        const cartBackup = localStorage.getItem('checkoutCartBackup')
+        if (cartBackup) {
+          try {
+            cartItems = JSON.parse(cartBackup)
+            console.log('[PaymentSuccess] ✅ localStorage 백업에서 복원:', cartItems.length, '개 상품')
+          } catch (e) {
+            console.error('[PaymentSuccess] ❌ 백업 파싱 실패:', e)
+          }
+        }
+        
+        // 여전히 비어있으면 에러
+        if (cartItems.length === 0) {
+          console.error('[PaymentSuccess] ❌ 주문 데이터 없음 - 장바구니와 백업 모두 비어있음')
+          setError('주문 정보를 찾을 수 없습니다. 다시 시도해주세요.')
+          return
+        }
       }
 
       // 3️⃣ 주문 데이터 생성 (결제 승인 전에 필수!)
@@ -124,7 +140,7 @@ export default function PaymentSuccessPage() {
       setOrderInfo(paymentData)
       console.log('[PaymentSuccess] ✅ 결제 승인 완료!', paymentData)
       
-      // 5️⃣ 장바구니 비우기
+      // 5️⃣ 장바구니 비우기 및 백업 삭제
       console.log('[PaymentSuccess] 장바구니 비우기 시도 중...')
       try {
         if (cartItems.length > 0) {
@@ -132,6 +148,8 @@ export default function PaymentSuccessPage() {
           console.log('[PaymentSuccess] ✅ 장바구니 비우기 완료')
         }
         localStorage.removeItem('hasCartItems')
+        localStorage.removeItem('checkoutCartBackup')  // 백업 삭제
+        console.log('[PaymentSuccess] ✅ 백업 데이터 삭제 완료')
       } catch (cartErr) {
         console.error('[PaymentSuccess] ⚠️ 장바구니 처리 실패:', cartErr)
       }

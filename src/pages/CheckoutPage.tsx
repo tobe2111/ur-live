@@ -406,6 +406,17 @@ export default function CheckoutPage() {
       localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
       localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
 
+      // 💾 장바구니 데이터를 localStorage에 백업 (결제 승인 시 사용)
+      const cartBackup = cartItems.map(item => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        price_snapshot: item.price_snapshot,
+        option_value: item.option_value || null
+      }))
+      localStorage.setItem('checkoutCartBackup', JSON.stringify(cartBackup))
+      console.log('[Payment] 💾 장바구니 백업 완료:', cartBackup.length, '개 상품')
+
       // 주문 번호 생성
       const orderId = `ORDER_${Date.now()}_${generateRandomString()}`
       
