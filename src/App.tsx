@@ -46,6 +46,10 @@ const AdminSettlementPage = lazy(() => import('./pages/AdminSettlementPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 
+// 약관 페이지들
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
+
 // 로딩 컴포넌트
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -93,6 +97,10 @@ function App() {
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
+            
+            {/* Terms Pages */}
+            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
             
             {/* Error Pages */}
             <Route path="/500" element={<ServerErrorPage />} />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -675,6 +675,30 @@ export default function CheckoutPage() {
                 </p>
               </div>
             )}
+
+            {/* 약관 링크 */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 text-center mb-2">
+                결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
+              </p>
+              <div className="flex justify-center gap-3 text-xs">
+                <Link 
+                  to="/terms" 
+                  target="_blank"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  이용약관
+                </Link>
+                <span className="text-gray-300">|</span>
+                <Link 
+                  to="/privacy" 
+                  target="_blank"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  개인정보 처리방침
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
