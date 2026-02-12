@@ -59,7 +59,8 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'TossPayments-API-Version': '2022-11-16'
           },
           body: JSON.stringify({
             paymentKey: request.paymentKey,
@@ -147,7 +148,8 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'TossPayments-API-Version': '2022-11-16'
           },
           body: JSON.stringify(body)
         });
@@ -174,6 +176,7 @@ function createTossPaymentsProvider(secretKey: string): PaymentProvider {
           method: 'GET',
           headers: {
             'Authorization': `Basic ${btoa(secretKey + ':')}`,
+            'TossPayments-API-Version': '2022-11-16'
           }
         });
         
@@ -4076,7 +4079,8 @@ app.post('/api/payments/confirm', async (c) => {
       method: 'POST',
       headers: {
         'Authorization': encryptedSecretKey,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'TossPayments-API-Version': '2022-11-16'
       },
       body: JSON.stringify({
         orderId: orderId,
