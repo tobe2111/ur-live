@@ -17,7 +17,8 @@ declare global {
 }
 
 // 토스페이먼츠 클라이언트 키 (결제위젯 연동 키)
-const clientKey = 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
+// 공식 문서 테스트 키: https://docs.tosspayments.com/reference/widget-sdk
+const clientKey = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
 
 interface CartItem {
   id: number

@@ -7,7 +7,7 @@ export default defineConfig({
   // 환경변수 정의 (빌드 시점에 번들에 포함)
   define: {
     'import.meta.env.VITE_TOSS_CLIENT_KEY': JSON.stringify(
-      process.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
+      process.env.VITE_TOSS_CLIENT_KEY || 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
     ),
   },
   plugins: [
