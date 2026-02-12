@@ -352,7 +352,20 @@ export default function CheckoutPage() {
   }
 
   // 🎯 결제하기 버튼 클릭
-  const handlePayment = async () => {
+  const handlePayment = async (e?: React.MouseEvent | React.TouchEvent) => {
+    // 이벤트 전파 방지 (모바일 터치 이벤트 중복 방지)
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    console.log('[Payment] 🔘 버튼 클릭 감지:', {
+      isProcessing,
+      ready,
+      hasWidgets: !!widgets,
+      hasAddress: !!selectedAddress
+    })
+
     // 중복 실행 방지
     if (isProcessing) {
       console.log('[Payment] ⚠️ 이미 결제 진행 중')
@@ -361,12 +374,14 @@ export default function CheckoutPage() {
 
     // 위젯 준비 확인
     if (!widgets || !ready) {
+      console.error('[Payment] ❌ 위젯 미준비:', { widgets: !!widgets, ready })
       showErrorToast('결제 시스템을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
       return
     }
 
     // 배송지 선택 확인
     if (!selectedAddress) {
+      console.log('[Payment] ⚠️ 배송지 미선택')
       alert('배송지를 선택해주세요.')
       setShowAddressModal(true)  // 자동으로 배송지 선택 모달 열기
       return
@@ -604,11 +619,20 @@ export default function CheckoutPage() {
 
             <Button
               onClick={handlePayment}
-              className="w-full mt-6 py-6 text-lg font-bold"
+              onTouchEnd={(e) => {
+                // 모바일 터치 이벤트 지원
+                e.preventDefault()
+                if (!isProcessing && ready && selectedAddress) {
+                  handlePayment(e)
+                }
+              }}
+              className="w-full mt-6 py-6 text-lg font-bold touch-manipulation"
               disabled={!ready || !selectedAddress || isProcessing}
               style={{
                 backgroundColor: !ready || !selectedAddress ? '#e5e7eb' : undefined,
-                cursor: !ready || !selectedAddress || isProcessing ? 'not-allowed' : 'pointer'
+                cursor: !ready || !selectedAddress || isProcessing ? 'not-allowed' : 'pointer',
+                touchAction: 'manipulation', // 모바일 더블탭 줌 방지
+                WebkitTapHighlightColor: 'transparent' // iOS 탭 하이라이트 제거
               }}
             >
               {isProcessing 
