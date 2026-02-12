@@ -9,7 +9,9 @@ import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
 // 토스페이먼츠 클라이언트 키
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
+// 공식 샌드박스 키 (테스트용)
+// 실제 운영 시에는 MID urteamizy1의 클라이언트 키로 변경 필요
+const clientKey = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
 
 interface CartItem {
   id: number
