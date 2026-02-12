@@ -174,14 +174,14 @@ export default function CheckoutPage() {
         
         // 결제 수단 UI 렌더링
         await widgets.renderPaymentMethods({
-          selector: '#payment-method',
-          variantKey: 'DEFAULT'  // 모든 결제 수단 표시
+          selector: '#payment-method'
+          // variantKey는 생략 (기본값 사용)
         })
         
         // 이용약관 UI 렌더링
         await widgets.renderAgreement({
-          selector: '#agreement',
-          variantKey: 'AGREEMENT'
+          selector: '#agreement'
+          // variantKey는 생략 (기본값 사용)
         })
         
         setReady(true)
