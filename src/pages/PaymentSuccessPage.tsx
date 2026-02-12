@@ -9,6 +9,9 @@ export default function PaymentSuccessPage() {
   console.log('🚀🚀🚀 PaymentSuccessPage 컴포넌트 로드됨!')
   console.log('🚀🚀🚀 URL:', window.location.href)
   
+  // 🔥 디버그: 페이지 타이틀로 로드 확인
+  document.title = '🚀 PaymentSuccess LOADED - ' + new Date().toISOString()
+  
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
