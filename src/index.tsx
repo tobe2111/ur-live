@@ -4041,7 +4041,7 @@ app.post('/api/payments/confirm', async (c) => {
 
     // 3️⃣ 주문 조회 및 상태 확인
     const order = await DB.prepare(`
-      SELECT total_amount, status FROM orders WHERE order_number = ?
+      SELECT total_amount, payment_status FROM orders WHERE order_number = ?
     `).bind(orderId).first();
 
     if (!order) {
