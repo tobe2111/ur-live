@@ -30,17 +30,26 @@ export default function PaymentSuccessPage() {
 
   async function confirmPayment() {
     try {
-      console.log('[PaymentSuccess] 결제 승인 프로세스 시작')
-      console.log('[PaymentSuccess] paymentKey:', paymentKey)
-      console.log('[PaymentSuccess] orderId:', orderId)
-      console.log('[PaymentSuccess] amount:', amount)
+      console.log('========================================')
+      console.log('[PaymentSuccess] 🚀 결제 승인 프로세스 시작')
+      console.log('========================================')
+      console.log('[PaymentSuccess] 📋 URL 파라미터:')
+      console.log('  - paymentKey:', paymentKey)
+      console.log('  - orderId:', orderId)
+      console.log('  - amount:', amount)
+      console.log('  - timestamp:', new Date().toISOString())
       
       // 1️⃣ 사용자 정보 확인
+      console.log('[PaymentSuccess] 1️⃣ 사용자 정보 확인 중...')
       const userId = getUserId()
+      console.log('[PaymentSuccess] getUserId() 결과:', userId)
       
       // 🎯 데모 모드 감지: userId가 없으면 데모 결제로 간주
       if (!userId) {
+        console.log('[PaymentSuccess] ⚠️ userId가 없음!')
         console.log('[PaymentSuccess] 🎭 데모 모드 - 간단한 성공 메시지만 표시')
+        console.log('[PaymentSuccess] ❌ 토스페이먼츠에 결제 승인 요청하지 않음')
+        console.log('[PaymentSuccess] ❌ 따라서 개발자센터에 결제 내역이 표시되지 않음')
         setOrderInfo({
           orderId: orderId,
           method: '테스트',
@@ -50,41 +59,59 @@ export default function PaymentSuccessPage() {
         return
       }
 
-      console.log('[PaymentSuccess] userId:', userId)
+      console.log('[PaymentSuccess] ✅ userId 확인:', userId)
 
       // 2️⃣ 장바구니 조회 (주문 데이터 생성을 위해 필수)
-      console.log('[PaymentSuccess] 장바구니 조회 중...')
+      console.log('[PaymentSuccess] 2️⃣ 장바구니 조회 중...')
+      console.log('[PaymentSuccess] API 호출: GET /api/cart/' + userId)
       const cartResponse = await axios.get(`/api/cart/${userId}`)
+      console.log('[PaymentSuccess] 장바구니 API 응답:', cartResponse.data)
       let cartItems = cartResponse.data?.data || []
+      console.log('[PaymentSuccess] 장바구니 아이템 개수:', cartItems.length)
       
       // 💾 장바구니가 비어있으면 localStorage 백업에서 복원
       if (cartItems.length === 0) {
-        console.log('[PaymentSuccess] ⚠️ 장바구니가 비어있음 - localStorage 백업 확인')
+        console.log('[PaymentSuccess] ⚠️ 장바구니가 비어있음 - localStorage 백업 확인 중...')
         const cartBackup = localStorage.getItem('checkoutCartBackup')
+        console.log('[PaymentSuccess] localStorage.getItem("checkoutCartBackup"):', cartBackup ? '데이터 있음' : '데이터 없음')
+        
         if (cartBackup) {
           try {
             cartItems = JSON.parse(cartBackup)
-            console.log('[PaymentSuccess] ✅ localStorage 백업에서 복원:', cartItems.length, '개 상품')
+            console.log('[PaymentSuccess] ✅ localStorage 백업에서 복원 성공!')
+            console.log('[PaymentSuccess] 복원된 상품 개수:', cartItems.length)
+            console.log('[PaymentSuccess] 복원된 데이터:', cartItems)
           } catch (e) {
             console.error('[PaymentSuccess] ❌ 백업 파싱 실패:', e)
           }
+        } else {
+          console.error('[PaymentSuccess] ❌ localStorage에 백업 데이터 없음!')
         }
         
         // 여전히 비어있으면 에러
         if (cartItems.length === 0) {
-          console.error('[PaymentSuccess] ❌ 주문 데이터 없음 - 장바구니와 백업 모두 비어있음')
+          console.error('[PaymentSuccess] ❌❌❌ 심각: 주문 데이터를 찾을 수 없음!')
+          console.error('[PaymentSuccess] 장바구니도 비어있고, localStorage 백업도 없음')
+          console.error('[PaymentSuccess] 결제 승인을 중단합니다.')
           setError('주문 정보를 찾을 수 없습니다. 다시 시도해주세요.')
           return
         }
+      } else {
+        console.log('[PaymentSuccess] ✅ 장바구니에 상품 있음:', cartItems.length, '개')
       }
 
       // 3️⃣ 주문 데이터 생성 (결제 승인 전에 필수!)
-      console.log('[PaymentSuccess] 주문 데이터 생성 중...')
+      console.log('[PaymentSuccess] 3️⃣ 주문 데이터 생성 중...')
       
       // localStorage에서 배송지 정보 가져오기
       const shippingAddress = localStorage.getItem('checkoutShippingAddress') || ''
       const recipientName = localStorage.getItem('checkoutRecipientName') || ''
       const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
+      
+      console.log('[PaymentSuccess] 배송지 정보:')
+      console.log('  - shippingAddress:', shippingAddress)
+      console.log('  - recipientName:', recipientName)
+      console.log('  - recipientPhone:', recipientPhone)
 
       // 주문 아이템 매핑
       const orderItems = cartItems.map((item: any) => ({
@@ -94,14 +121,7 @@ export default function PaymentSuccessPage() {
         optionValue: item.option_value || null
       }))
 
-      console.log('[PaymentSuccess] 주문 생성 요청:', {
-        userId,
-        orderNumber: orderId,
-        itemsCount: orderItems.length
-      })
-
-      // DB에 주문 생성
-      const orderCreateResponse = await axios.post('/api/orders', {
+      const orderData = {
         userId: userId,
         orderNumber: orderId,
         items: orderItems,
@@ -110,40 +130,59 @@ export default function PaymentSuccessPage() {
         recipientName: recipientName,
         recipientPhone: recipientPhone,
         status: 'pending'
-      })
+      }
+
+      console.log('[PaymentSuccess] 주문 생성 요청 데이터:', orderData)
+      console.log('[PaymentSuccess] API 호출: POST /api/orders')
+
+      // DB에 주문 생성
+      const orderCreateResponse = await axios.post('/api/orders', orderData)
+      console.log('[PaymentSuccess] 주문 생성 API 응답:', orderCreateResponse.data)
 
       if (!orderCreateResponse.data.success) {
-        console.error('[PaymentSuccess] ❌ 주문 생성 실패:', orderCreateResponse.data)
+        console.error('[PaymentSuccess] ❌ 주문 생성 실패!')
+        console.error('[PaymentSuccess] 에러 상세:', orderCreateResponse.data)
         setError('주문 생성에 실패했습니다.')
         return
       }
 
-      console.log('[PaymentSuccess] ✅ 주문 생성 완료:', orderCreateResponse.data)
+      console.log('[PaymentSuccess] ✅ 주문 생성 완료!')
+      console.log('[PaymentSuccess] 생성된 주문 ID:', orderCreateResponse.data.data?.orderId)
 
       // 4️⃣ 결제 승인 요청 (주문 생성 후!)
-      console.log('[PaymentSuccess] 결제 승인 요청 중...')
-      const response = await axios.post('/api/payments/confirm', {
+      console.log('[PaymentSuccess] 4️⃣ 결제 승인 요청 중...')
+      console.log('[PaymentSuccess] 🔑 중요: 이제 토스페이먼츠 API를 호출합니다!')
+      console.log('[PaymentSuccess] API 호출: POST /api/payments/confirm')
+      
+      const confirmData = {
         paymentKey,
         orderId,
         amount: parseInt(amount || '0')
-      })
+      }
+      console.log('[PaymentSuccess] 결제 승인 요청 데이터:', confirmData)
+      
+      const response = await axios.post('/api/payments/confirm', confirmData)
 
-      console.log('[PaymentSuccess] 결제 승인 응답:', response.data)
+      console.log('[PaymentSuccess] 결제 승인 API 응답:', response.data)
 
       if (!response.data.success) {
-        console.error('[PaymentSuccess] 결제 승인 실패:', response.data.error)
+        console.error('[PaymentSuccess] ❌ 결제 승인 실패!')
+        console.error('[PaymentSuccess] 에러 상세:', response.data.error)
         setError(response.data.error || '결제 승인에 실패했습니다.')
         return
       }
 
       const paymentData = response.data.data
       setOrderInfo(paymentData)
-      console.log('[PaymentSuccess] ✅ 결제 승인 완료!', paymentData)
+      console.log('[PaymentSuccess] ✅✅✅ 결제 승인 완료!')
+      console.log('[PaymentSuccess] 결제 데이터:', paymentData)
+      console.log('[PaymentSuccess] 🎉 토스페이먼츠 개발자센터에 결제 내역이 표시됩니다!')
       
       // 5️⃣ 장바구니 비우기 및 백업 삭제
-      console.log('[PaymentSuccess] 장바구니 비우기 시도 중...')
+      console.log('[PaymentSuccess] 5️⃣ 장바구니 비우기 시도 중...')
       try {
         if (cartItems.length > 0) {
+          console.log('[PaymentSuccess] API 호출: DELETE /api/cart/clear/' + userId)
           await axios.delete(`/api/cart/clear/${userId}`)
           console.log('[PaymentSuccess] ✅ 장바구니 비우기 완료')
         }

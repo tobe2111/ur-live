@@ -4051,36 +4051,56 @@ app.post('/api/payments/confirm', async (c) => {
     body = await c.req.json();
     const { paymentKey, orderId, amount } = body;
 
-    console.log('[Payment] 결제 승인 요청:', { orderId, amount });
+    console.log('========================================')
+    console.log('[Payment] 🚀 결제 승인 API 호출됨')
+    console.log('========================================')
+    console.log('[Payment] 📋 요청 파라미터:')
+    console.log('  - orderId:', orderId)
+    console.log('  - paymentKey:', paymentKey)
+    console.log('  - amount:', amount)
+    console.log('  - timestamp:', new Date().toISOString())
 
     // 필수 파라미터 검증
     if (!paymentKey || !orderId || !amount) {
+      console.error('[Payment] ❌ 필수 파라미터 누락!')
+      console.error('[Payment] paymentKey:', !!paymentKey)
+      console.error('[Payment] orderId:', !!orderId)
+      console.error('[Payment] amount:', !!amount)
       return c.json({
         success: false,
         error: '필수 파라미터가 누락되었습니다.'
       }, 400);
     }
+    
+    console.log('[Payment] ✅ 필수 파라미터 검증 통과')
 
     // 시크릿 키
     const secretKey = c.env.TOSS_SECRET_KEY;
     if (!secretKey) {
       console.error('[Payment] ❌ TOSS_SECRET_KEY 환경 변수 없음');
+      console.error('[Payment] c.env:', Object.keys(c.env || {}))
       return c.json({
         success: false,
         error: '결제 시스템 설정이 올바르지 않습니다.'
       }, 500);
     }
+    
+    console.log('[Payment] ✅ TOSS_SECRET_KEY 확인됨:', secretKey.substring(0, 20) + '...')
 
     // 토스페이먼츠 결제 승인 API 호출 (공식 가이드대로)
-    console.log('[Payment] 🚀 토스페이먼츠 결제 승인 API 호출 시작...');
-    console.log('[Payment] 📋 요청 데이터:', {
-      paymentKey,
-      orderId,
-      amount,
-      secretKeyPrefix: secretKey.substring(0, 20) + '...'
-    });
+    console.log('[Payment] 🌐 토스페이먼츠 API 호출 시작...')
+    console.log('[Payment] API URL: https://api.tosspayments.com/v1/payments/confirm')
+    console.log('[Payment] API 버전: 2024-06-01')
     
     const encryptedSecretKey = 'Basic ' + btoa(secretKey + ':');
+    console.log('[Payment] Authorization 헤더 생성 완료')
+    
+    const requestBody = {
+      orderId: orderId,
+      amount: amount,
+      paymentKey: paymentKey
+    }
+    console.log('[Payment] 요청 본문:', JSON.stringify(requestBody, null, 2))
     
     const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
       method: 'POST',
@@ -4089,24 +4109,22 @@ app.post('/api/payments/confirm', async (c) => {
         'Content-Type': 'application/json',
         'TossPayments-API-Version': '2024-06-01'
       },
-      body: JSON.stringify({
-        orderId: orderId,
-        amount: amount,
-        paymentKey: paymentKey
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const data = await response.json();
     
-    console.log('[Payment] 📡 토스페이먼츠 API 응답 상태:', response.status);
-    console.log('[Payment] 📡 토스페이먼츠 API 응답 데이터:', JSON.stringify(data).substring(0, 500));
+    console.log('[Payment] 📡 토스페이먼츠 API 응답:')
+    console.log('  - HTTP 상태:', response.status)
+    console.log('  - 응답 OK?:', response.ok)
+    console.log('  - 응답 데이터 (일부):', JSON.stringify(data).substring(0, 300))
     
     if (!response.ok) {
-      console.error('[Payment] ❌ 토스페이먼츠 승인 실패:', {
-        status: response.status,
-        code: data.code,
-        message: data.message,
-        orderId
+      console.error('[Payment] ❌❌❌ 토스페이먼츠 승인 실패!')
+      console.error('[Payment] HTTP 상태:', response.status)
+      console.error('[Payment] 에러 코드:', data.code)
+      console.error('[Payment] 에러 메시지:', data.message)
+      console.error('[Payment] 전체 응답:', JSON.stringify(data, null, 2))
       });
       return c.json({
         success: false,
