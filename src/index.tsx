@@ -1604,6 +1604,20 @@ async function verifySellerSession(c: any) {
 // Live Stream API
 // =================================
 
+// Health check endpoint (no DB required)
+app.get('/api/health', (c) => {
+  return c.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    env: {
+      hasDB: !!c.env.DB,
+      hasSessionKV: !!c.env.SESSION_KV,
+      hasCacheKV: !!c.env.CACHE_KV,
+    }
+  });
+});
+
 // Live Stream API
 app.get('/api/streams', async (c) => {
   const { DB, CACHE_KV } = c.env;

@@ -1,9 +1,8 @@
+// Import Cloudflare runtime bindings
+/// <reference types="../worker-configuration.d.ts" />
+
 // Type definitions for Cloudflare bindings
-export type Bindings = {
-  DB: D1Database;
-  SESSION_KV: KVNamespace;
-  CACHE_KV: KVNamespace;
-};
+export type Bindings = CloudflareBindings;
 
 // Live Stream Types
 export type LiveStreamStatus = 'scheduled' | 'live' | 'ended';
