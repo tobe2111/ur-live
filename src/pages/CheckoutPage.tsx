@@ -5,12 +5,18 @@ import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
-// 토스페이먼츠 클라이언트 키
-// 공식 샌드박스 키 (테스트용)
-// 실제 운영 시에는 MID urteamizy1의 클라이언트 키로 변경 필요
+// 🚨 중요: TossPayments SDK는 HTML에서 로드됨 (index.html 참고)
+// window.TossPayments 전역 객체 사용
+declare global {
+  interface Window {
+    TossPayments: (clientKey: string) => any
+    daum: any
+  }
+}
+
+// 토스페이먼츠 클라이언트 키 (결제위젯 연동 키)
 const clientKey = 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
 
 interface CartItem {
@@ -123,17 +129,20 @@ export default function CheckoutPage() {
 
       try {
         console.log('[TossPayments] Step 1: SDK 초기화 시작')
+        console.log('[TossPayments] window.TossPayments 존재 여부:', typeof window.TossPayments)
         
-        // SDK 로드
-        const tossPayments = await loadTossPayments(clientKey)
+        // 전역 객체에서 SDK 로드 확인
+        if (typeof window.TossPayments === 'undefined') {
+          throw new Error('TossPayments SDK가 로드되지 않았습니다. index.html을 확인하세요.')
+        }
         
-        // customerKey 생성 (고유한 사용자 식별자)
-        const customerKey = `customer_${userId}`
+        // TossPayments 초기화 (공식 문서 방식)
+        const tossPayments = window.TossPayments(clientKey)
+        console.log('[TossPayments] ✅ TossPayments 객체 생성 완료')
         
-        // widgets 인스턴스 생성 (brandpay 옵션 제거!)
-        const widgetsInstance = tossPayments.widgets({ 
-          customerKey
-        })
+        // 결제위젯 초기화
+        const customerKey = `customer_${userId}`  // 고유한 구매자 ID
+        const widgetsInstance = tossPayments.widgets({ customerKey })
         
         setWidgets(widgetsInstance)
         console.log('[TossPayments] ✅ Step 1 완료: widgets 인스턴스 생성')
@@ -188,18 +197,11 @@ export default function CheckoutPage() {
           value: totalAmount
         })
         
-        // 모바일 감지
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        console.log('[TossPayments] 모바일 감지:', isMobile)
-        
-        // 결제 수단 UI 렌더링
-        // 모바일에서는 간편결제 우선 표시 (카드사 앱 실행 문제 방지)
+        // 결제 수단 UI 렌더링 (공식 문서 방식 - variantKey 기본값 'DEFAULT')
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
-          variantKey: isMobile ? 'MOBILE' : 'DEFAULT'
+          variantKey: 'DEFAULT'  // 기본 UI (모바일/PC 자동 최적화)
         })
-        
-        console.log('[TossPayments] 결제 UI 렌더링 완료 (variantKey:', isMobile ? 'MOBILE' : 'DEFAULT', ')')
         
         // 이용약관 UI 렌더링
         await widgets.renderAgreement({
