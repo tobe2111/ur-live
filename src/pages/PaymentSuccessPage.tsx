@@ -17,6 +17,7 @@ export default function PaymentSuccessPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [orderInfo, setOrderInfo] = useState<any>(null)
+  const [isProcessing, setIsProcessing] = useState(false) // 중복 호출 방지
 
   // URL 파라미터에서 결제 정보 추출
   const paymentKey = searchParams.get('paymentKey')
@@ -32,11 +33,20 @@ export default function PaymentSuccessPage() {
       return
     }
 
+    // 🔒 중복 호출 방지: 이미 처리 중이면 무시
+    if (isProcessing) {
+      console.log('[PaymentSuccess] ⚠️ 이미 처리 중 - 중복 호출 무시')
+      return
+    }
+
     // 백엔드에 결제 승인 요청
     confirmPayment()
   }, [paymentKey, orderId, amount])
 
   async function confirmPayment() {
+    // 🔒 중복 호출 방지
+    setIsProcessing(true)
+    
     try {
       console.log('========================================')
       console.log('[PaymentSuccess] 🚀 결제 승인 프로세스 시작')
@@ -211,6 +221,7 @@ export default function PaymentSuccessPage() {
       setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
+      setIsProcessing(false) // 처리 완료
     }
   }
 
