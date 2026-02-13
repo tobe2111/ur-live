@@ -192,19 +192,22 @@ export default function CheckoutPage() {
           return
         }
         
-        // 결제 수단 UI 렌더링 (Version 1 공식 문서 방식)
-        await widgets.renderPaymentMethods(
+        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드)
+        widgets.renderPaymentMethods(
           '#payment-method',
           { value: totalAmount, currency: 'KRW' },
           { variantKey: 'DEFAULT' }
         )
         
-        // 이용약관 UI 렌더링 (Version 1 방식)
-        await widgets.renderAgreement(
+        // 이용약관 UI 렌더링 (Version 1 - 동기 메서드, await 불필요)
+        widgets.renderAgreement(
           '#agreement',
           { variantKey: 'AGREEMENT' }
         )
-        console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공')
+        
+        // V1은 동기 메서드라 즉시 완료됨
+        setReady(true)
+        console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공 (V1 동기 방식)')
       } catch (err) {
         console.error('[TossPayments] ❌ Step 2 실패:', err)
         setError('결제 UI 렌더링에 실패했습니다.')
@@ -436,11 +439,8 @@ export default function CheckoutPage() {
 
       console.log('[Payment] requestPayment 호출:', { orderId, orderName, totalAmount })
 
-      // 모바일 감지
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-      console.log('[Payment] 모바일 감지:', isMobile)
-
-      // 결제 요청 옵션
+      // 결제 요청 옵션 (Version 1 - 모바일/PC 자동 감지)
+      // ✅ V1은 자동으로 환경을 감지하여 최적화된 UI 제공 (flowMode 불필요)
       const requestOptions: any = {
         orderId,
         orderName,
@@ -451,13 +451,7 @@ export default function CheckoutPage() {
         customerMobilePhone: selectedAddress.phone.replace(/-/g, '')
       }
 
-      // 모바일인 경우: REDIRECT 모드 사용 (카드사 앱 실행을 위함)
-      if (isMobile) {
-        requestOptions.flowMode = 'REDIRECT'
-        console.log('[Payment] 모바일 REDIRECT 모드 활성화')
-      }
-
-      console.log('[Payment] 최종 요청 옵션:', requestOptions)
+      console.log('[Payment] 최종 요청 옵션 (V1 - 자동 모바일/PC 감지):', requestOptions)
 
       // 결제 요청
       await widgets.requestPayment(requestOptions)
