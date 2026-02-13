@@ -8,10 +8,10 @@ import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
 // 🚨 중요: 결제위젯 SDK는 HTML에서 로드됨 (index.html 참고)
-// window.PaymentWidget 전역 객체 사용
+// window.PaymentWidget 전역 함수 사용 (V1 공식 샘플 방식)
 declare global {
   interface Window {
-    PaymentWidget: new (clientKey: string, customerKey: string) => any
+    PaymentWidget: (clientKey: string, customerKey: string) => any
     daum: any
   }
 }
@@ -66,6 +66,7 @@ export default function CheckoutPage() {
   
   // 토스페이먼츠 위젯 상태
   const [widgets, setWidgets] = useState<any>(null)
+  const [paymentMethodWidget, setPaymentMethodWidget] = useState<any>(null)  // V1: renderPaymentMethods 반환값
   const [ready, setReady] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -140,10 +141,10 @@ export default function CheckoutPage() {
           throw new Error('결제위젯 SDK가 로드되지 않았습니다. index.html을 확인하세요.')
         }
         
-        // 결제위젯 초기화 (Version 1 방식)
+        // 결제위젯 초기화 (Version 1 공식 샘플 방식 - new 키워드 없음)
         const customerKey = `customer_${userId}`  // 고유한 구매자 ID
-        const widgetsInstance = new window.PaymentWidget(clientKey, customerKey)
-        console.log('[TossPayments] ✅ PaymentWidget 인스턴스 생성 완료')
+        const widgetsInstance = window.PaymentWidget(clientKey, customerKey)
+        console.log('[TossPayments] ✅ PaymentWidget 인스턴스 생성 완료 (V1 함수 호출 방식)')
         
         setWidgets(widgetsInstance)
         console.log('[TossPayments] ✅ Step 1 완료: widgets 인스턴스 생성')
@@ -198,11 +199,11 @@ export default function CheckoutPage() {
           return
         }
         
-        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드, 한 번만 실행)
+        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드, 반환값 저장)
         console.log('[TossPayments] 초기 금액으로 렌더링:', totalAmount)
-        widgets.renderPaymentMethods(
+        const paymentMethodWidgetInstance = widgets.renderPaymentMethods(
           '#payment-method',
-          { value: totalAmount, currency: 'KRW' },
+          { value: totalAmount },
           { variantKey: 'DEFAULT' }
         )
         
@@ -212,9 +213,12 @@ export default function CheckoutPage() {
           { variantKey: 'AGREEMENT' }
         )
         
-        // V1은 동기 메서드라 즉시 완료됨
-        setReady(true)
-        console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공 (V1 동기 방식, 이제 금액 업데이트 가능)')
+        // V1 공식: 'ready' 이벤트로 렌더링 완료 확인
+        paymentMethodWidgetInstance.on('ready', function() {
+          setPaymentMethodWidget(paymentMethodWidgetInstance)  // 저장
+          setReady(true)
+          console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 준비됨 (ready 이벤트)')
+        })
       } catch (err) {
         console.error('[TossPayments] ❌ Step 2 실패:', err)
         setError('결제 UI 렌더링에 실패했습니다.')
@@ -226,21 +230,21 @@ export default function CheckoutPage() {
 
   // 🎯 Step 3: 금액 변경 시 업데이트 (V1 - 동기 메서드)
   useEffect(() => {
-    if (widgets == null || !ready) {
-      console.log('[TossPayments] Step 3: 대기 중 (widgets:', !!widgets, 'ready:', ready, ')')
+    if (paymentMethodWidget == null || !ready) {
+      console.log('[TossPayments] Step 3: 대기 중 (paymentMethodWidget:', !!paymentMethodWidget, 'ready:', ready, ')')
       return
     }
 
     try {
-      // V1에서 updateAmount는 동기 메서드
+      // V1 공식: paymentMethodWidget.updateAmount() 사용
       console.log('[TossPayments] Step 3: 금액 업데이트 시도', totalAmount)
-      widgets.updateAmount(totalAmount)
+      paymentMethodWidget.updateAmount(totalAmount)
       console.log('[TossPayments] ✅ Step 3: 금액 업데이트 성공', totalAmount)
     } catch (err) {
       console.error('[TossPayments] ❌ Step 3 실패:', err)
       // 금액 업데이트 실패는 치명적이지 않으므로 계속 진행
     }
-  }, [totalAmount, widgets, ready])
+  }, [totalAmount, paymentMethodWidget, ready])
 
   // 초기 데이터 로드
   useEffect(() => {
