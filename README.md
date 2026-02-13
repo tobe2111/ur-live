@@ -95,14 +95,22 @@ npm run db:console:prod
 ### 개발 환경 (`.dev.vars`)
 
 ```bash
-TOSS_SECRET_KEY=test_gsk_bAjYKeZ4G5V47OvXZLy9lMKwv12Eqpmo
+TOSS_SECRET_KEY=test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
 ```
 
 ### 프로덕션 환경 (Cloudflare Pages)
 
 ```bash
-wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
+# ⚠️ 중요: Secret 변경 후 반드시 재배포 필요!
+echo "test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY" | \
+  npx wrangler pages secret put TOSS_SECRET_KEY --project-name toss-live-commerce
+
+# 빌드 및 재배포 (필수!)
+npm run build
+npx wrangler pages deploy dist --project-name toss-live-commerce
 ```
+
+**📋 자세한 배포 가이드:** [Cloudflare 배포 프로토콜](./CLOUDFLARE_DEPLOYMENT_PROTOCOL.md)
 
 ## 📋 주요 기능
 
@@ -169,6 +177,8 @@ CVC: 123
 
 ## 📚 문서
 
+- [🚀 Cloudflare 배포 프로토콜](./CLOUDFLARE_DEPLOYMENT_PROTOCOL.md) ⭐ **필수**
+- [결제 내역 분석 보고서](./PAYMENT_HISTORY_ANALYSIS.md)
 - [결제 테스트 가이드](./PAYMENT_TEST_GUIDE.md)
 - [결제 이슈 해결 가이드](./PAYMENT_ISSUE_FIXED.md)
 - [장바구니 백업 수정](./PAYMENT_CART_BACKUP_FIX.md)
