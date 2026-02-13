@@ -127,10 +127,10 @@
       console.log('[Firebase] SDK loaded');
     </script>
     
-    <!-- TossPayments SDK v2 - Load globally -->
-    <script src="https://js.tosspayments.com/v2/standard"></script>
+    <!-- TossPayments 결제위젯 SDK (Version 1) - MUST use for widget keys (test_gck_/test_gsk_) -->
+    <script src="https://js.tosspayments.com/v1/payment-widget"></script>
     <script>
-      console.log('[TossPayments] SDK v2 loaded - window.TossPayments:', typeof window.TossPayments);
+      console.log('[TossPayments] 결제위젯 SDK v1 loaded - window.PaymentWidget:', typeof window.PaymentWidget);
     </script>
     
     <script type="module" src="/src/main.tsx"></script>

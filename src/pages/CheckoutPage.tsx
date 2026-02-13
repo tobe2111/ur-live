@@ -7,11 +7,11 @@ import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'luc
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
-// 🚨 중요: TossPayments SDK는 HTML에서 로드됨 (index.html 참고)
-// window.TossPayments 전역 객체 사용
+// 🚨 중요: 결제위젯 SDK는 HTML에서 로드됨 (index.html 참고)
+// window.PaymentWidget 전역 객체 사용
 declare global {
   interface Window {
-    TossPayments: (clientKey: string) => any
+    PaymentWidget: new (clientKey: string, customerKey: string) => any
     daum: any
   }
 }
@@ -133,20 +133,17 @@ export default function CheckoutPage() {
 
       try {
         console.log('[TossPayments] Step 1: SDK 초기화 시작')
-        console.log('[TossPayments] window.TossPayments 존재 여부:', typeof window.TossPayments)
+        console.log('[TossPayments] window.PaymentWidget 존재 여부:', typeof window.PaymentWidget)
         
         // 전역 객체에서 SDK 로드 확인
-        if (typeof window.TossPayments === 'undefined') {
-          throw new Error('TossPayments SDK가 로드되지 않았습니다. index.html을 확인하세요.')
+        if (typeof window.PaymentWidget === 'undefined') {
+          throw new Error('결제위젯 SDK가 로드되지 않았습니다. index.html을 확인하세요.')
         }
         
-        // TossPayments 초기화 (공식 문서 방식)
-        const tossPayments = window.TossPayments(clientKey)
-        console.log('[TossPayments] ✅ TossPayments 객체 생성 완료')
-        
-        // 결제위젯 초기화
+        // 결제위젯 초기화 (Version 1 방식)
         const customerKey = `customer_${userId}`  // 고유한 구매자 ID
-        const widgetsInstance = tossPayments.widgets({ customerKey })
+        const widgetsInstance = new window.PaymentWidget(clientKey, customerKey)
+        console.log('[TossPayments] ✅ PaymentWidget 인스턴스 생성 완료')
         
         setWidgets(widgetsInstance)
         console.log('[TossPayments] ✅ Step 1 완료: widgets 인스턴스 생성')
@@ -195,25 +192,18 @@ export default function CheckoutPage() {
           return
         }
         
-        // 금액 설정 (반드시 렌더링 전에 호출!)
-        await widgets.setAmount({
-          currency: 'KRW',
-          value: totalAmount
-        })
+        // 결제 수단 UI 렌더링 (Version 1 공식 문서 방식)
+        await widgets.renderPaymentMethods(
+          '#payment-method',
+          { value: totalAmount, currency: 'KRW' },
+          { variantKey: 'DEFAULT' }
+        )
         
-        // 결제 수단 UI 렌더링 (공식 문서 방식 - variantKey 기본값 'DEFAULT')
-        await widgets.renderPaymentMethods({
-          selector: '#payment-method',
-          variantKey: 'DEFAULT'  // 기본 UI (모바일/PC 자동 최적화)
-        })
-        
-        // 이용약관 UI 렌더링
-        await widgets.renderAgreement({
-          selector: '#agreement',
-          variantKey: 'AGREEMENT'
-        })
-        
-        setReady(true)
+        // 이용약관 UI 렌더링 (Version 1 방식)
+        await widgets.renderAgreement(
+          '#agreement',
+          { variantKey: 'AGREEMENT' }
+        )
         console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공')
       } catch (err) {
         console.error('[TossPayments] ❌ Step 2 실패:', err)
@@ -232,10 +222,7 @@ export default function CheckoutPage() {
 
     async function updateAmount() {
       try {
-        await widgets.setAmount({
-          currency: 'KRW',
-          value: totalAmount
-        })
+        await widgets.updateAmount(totalAmount)
         console.log('[TossPayments] ✅ Step 3: 금액 업데이트', totalAmount)
       } catch (err) {
         console.error('[TossPayments] ❌ Step 3 실패:', err)
