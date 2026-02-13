@@ -156,10 +156,16 @@ export default function CheckoutPage() {
     fetchPaymentWidgets()
   }, [userId, cartItems])
 
-  // 🎯 Step 2: 결제 UI 렌더링
+  // 🎯 Step 2: 결제 UI 렌더링 (한 번만 실행, 금액은 Step 3에서 업데이트)
   useEffect(() => {
     async function renderPaymentWidgets() {
       if (widgets == null) {
+        return
+      }
+      
+      // 이미 렌더링되었다면 중복 실행 방지
+      if (ready) {
+        console.log('[TossPayments] Step 2: 이미 렌더링됨, 스킵')
         return
       }
 
@@ -192,14 +198,15 @@ export default function CheckoutPage() {
           return
         }
         
-        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드)
+        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드, 한 번만 실행)
+        console.log('[TossPayments] 초기 금액으로 렌더링:', totalAmount)
         widgets.renderPaymentMethods(
           '#payment-method',
           { value: totalAmount, currency: 'KRW' },
           { variantKey: 'DEFAULT' }
         )
         
-        // 이용약관 UI 렌더링 (Version 1 - 동기 메서드, await 불필요)
+        // 이용약관 UI 렌더링 (Version 1 - 동기 메서드)
         widgets.renderAgreement(
           '#agreement',
           { variantKey: 'AGREEMENT' }
@@ -207,7 +214,7 @@ export default function CheckoutPage() {
         
         // V1은 동기 메서드라 즉시 완료됨
         setReady(true)
-        console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공 (V1 동기 방식)')
+        console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 성공 (V1 동기 방식, 이제 금액 업데이트 가능)')
       } catch (err) {
         console.error('[TossPayments] ❌ Step 2 실패:', err)
         setError('결제 UI 렌더링에 실패했습니다.')
@@ -215,24 +222,24 @@ export default function CheckoutPage() {
     }
 
     renderPaymentWidgets()
-  }, [widgets, totalAmount])
+  }, [widgets])  // ⚠️ totalAmount 제거 - 렌더링은 한 번만!
 
-  // 🎯 Step 3: 금액 변경 시 업데이트
+  // 🎯 Step 3: 금액 변경 시 업데이트 (V1 - 동기 메서드)
   useEffect(() => {
     if (widgets == null || !ready) {
+      console.log('[TossPayments] Step 3: 대기 중 (widgets:', !!widgets, 'ready:', ready, ')')
       return
     }
 
-    async function updateAmount() {
-      try {
-        await widgets.updateAmount(totalAmount)
-        console.log('[TossPayments] ✅ Step 3: 금액 업데이트', totalAmount)
-      } catch (err) {
-        console.error('[TossPayments] ❌ Step 3 실패:', err)
-      }
+    try {
+      // V1에서 updateAmount는 동기 메서드
+      console.log('[TossPayments] Step 3: 금액 업데이트 시도', totalAmount)
+      widgets.updateAmount(totalAmount)
+      console.log('[TossPayments] ✅ Step 3: 금액 업데이트 성공', totalAmount)
+    } catch (err) {
+      console.error('[TossPayments] ❌ Step 3 실패:', err)
+      // 금액 업데이트 실패는 치명적이지 않으므로 계속 진행
     }
-
-    updateAmount()
   }, [totalAmount, widgets, ready])
 
   // 초기 데이터 로드
@@ -454,7 +461,11 @@ export default function CheckoutPage() {
       console.log('[Payment] 최종 요청 옵션 (V1 - 자동 모바일/PC 감지):', requestOptions)
 
       // 결제 요청
-      await widgets.requestPayment(requestOptions)
+      // ⚠️ V1에서 successUrl/failUrl을 설정하면 리다이렉트 방식으로 작동
+      // 모바일: 카드사 앱으로 이동 후 successUrl/failUrl로 리다이렉트
+      // PC: iframe 내에서 처리 후 successUrl/failUrl로 리다이렉트
+      // await를 사용하지 않음 (리다이렉트 방식이므로 Promise 반환 안됨)
+      widgets.requestPayment(requestOptions)
     } catch (err: any) {
       console.error('[Payment] ❌ 결제 요청 실패:', err)
       
