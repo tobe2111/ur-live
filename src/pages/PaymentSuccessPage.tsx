@@ -175,9 +175,11 @@ export default function PaymentSuccessPage() {
       const confirmData = {
         paymentKey,
         orderId,
-        amount: parseInt(amount || '0')
+        amount: Number(amount) // ✅ 명시적으로 Number 타입으로 변환
       }
       console.log('[PaymentSuccess] 결제 승인 요청 데이터:', confirmData)
+      console.log('[PaymentSuccess] 📊 amount 타입:', typeof confirmData.amount)
+      console.log('[PaymentSuccess] 📊 amount 값:', confirmData.amount)
       
       const response = await axios.post('/api/payments/confirm', confirmData)
 
