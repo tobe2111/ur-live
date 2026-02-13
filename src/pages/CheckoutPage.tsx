@@ -16,10 +16,11 @@ declare global {
   }
 }
 
-// 토스페이먼츠 클라이언트 키 (API 개별 연동 키)
-// ✅ MID: urteamizy1 전용 키
+// 토스페이먼츠 클라이언트 키 (결제위젯 연동 키)
+// ✅ widgets() 메서드 사용을 위해 test_gck_ 키 필수
+// MID 매칭은 토스 개발자센터 > 결제 UI 설정에서 관리
 // https://docs.tosspayments.com/reference/widget-sdk
-const clientKey = 'test_ck_KNbdOvk5rk5lGyQnAq0o3n07xlzm' // ✅ API 개별 연동 클라이언트 키 (MID: urteamizy1)
+const clientKey = 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN' // ✅ 결제위젯 클라이언트 키
 
 interface CartItem {
   id: number

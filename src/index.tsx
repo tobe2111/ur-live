@@ -4087,10 +4087,10 @@ app.post('/api/payments/confirm', async (c) => {
     
     console.log('[Payment] ✅ TOSS_SECRET_KEY 확인됨:', secretKey.substring(0, 20) + '...')
 
-    // 토스페이먼츠 결제 승인 API 호출 (공식 가이드대로)
+    // 토스페이먼츠 결제 승인 API 호출 (결제위젯 전용)
     console.log('[Payment] 🌐 토스페이먼츠 API 호출 시작...')
     console.log('[Payment] API URL: https://api.tosspayments.com/v1/payments/confirm')
-    console.log('[Payment] API 버전: 2024-06-01')
+    console.log('[Payment] API 버전: 2022-11-16 (결제위젯 고정 버전)')
     
     const encryptedSecretKey = 'Basic ' + btoa(secretKey + ':');
     console.log('[Payment] Authorization 헤더 생성 완료')
@@ -4107,7 +4107,7 @@ app.post('/api/payments/confirm', async (c) => {
       headers: {
         'Authorization': encryptedSecretKey,
         'Content-Type': 'application/json',
-        'TossPayments-API-Version': '2024-06-01'
+        'TossPayments-API-Version': '2022-11-16'
       },
       body: JSON.stringify(requestBody)
     });
