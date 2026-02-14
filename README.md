@@ -32,6 +32,25 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 - **결제 버튼 상태 표시**: 시스템 로딩/UI 준비 중 구분
 - **요소 크기 로깅**: payment-method, agreement 크기 확인
 
+### 12. UX 개선 (뒤로가기, 에러 로깅) ✅
+**기능**:
+- **상품 상세 뒤로가기**: 로그인/카카오 콜백에서 온 경우 홈으로 이동
+- **장바구니 API 에러 로깅**: 500 에러 발생 시 상세 로그 (message, stack)
+- **개발 문서 추가**: DEVELOPMENT_LOG.md (전체 기능, API, 트러블슈팅)
+
+**파일**:
+- `src/pages/ProductDetailPage.tsx` - 뒤로가기 로직
+- `src/index.tsx` - POST /api/cart 에러 로깅
+- `DEVELOPMENT_LOG.md` - 신규 개발 문서
+
+---
+
+## 📖 개발 문서
+
+프로젝트의 전체 기능, API 엔드포인트, 데이터베이스 마이그레이션, 트러블슈팅 히스토리는 [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md)를 참고하세요.
+
+---
+
 ### 🎯 주요 기능 추가 (Phase 1 & 2 Complete)
 
 #### 1. 실시간 채팅 시스템 ✅
@@ -92,9 +111,9 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 ## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Latest Preview**: https://7392b34c.toss-live-commerce.pages.dev
+- **Latest Preview**: https://38cc7923.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
-- **Build Hash**: `2d668d9f` (2026-02-14 Phase 3 CRITICAL FIX)
+- **Build Hash**: `0bd9bf17` (2026-02-14 Phase 3 + UX)
 
 ## 🛠️ 기술 스택
 
