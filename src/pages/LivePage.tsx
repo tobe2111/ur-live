@@ -273,44 +273,27 @@ export default function LivePage() {
               setPlayerReady(true)
               setVideoStatus('playing')
               
-              // Apply full-screen style to iframe - responsive to container
+              // Apply full-screen style to iframe - use percentage for true responsiveness
               const iframe = playerElement.querySelector('iframe')
               if (iframe) {
                 // Remove any existing inline styles that might interfere
                 iframe.removeAttribute('style')
                 
-                // Calculate aspect ratio for proper scaling
-                const container = playerElement.parentElement
-                if (container) {
-                  const containerWidth = container.clientWidth
-                  const containerHeight = container.clientHeight
-                  const videoAspect = 16 / 9  // YouTube default
-                  const containerAspect = containerWidth / containerHeight
-                  
-                  let width, height
-                  if (containerAspect > videoAspect) {
-                    // Container is wider - fit to width
-                    width = containerWidth
-                    height = containerWidth / videoAspect
-                  } else {
-                    // Container is taller - fit to height
-                    height = containerHeight
-                    width = containerHeight * videoAspect
-                  }
-                  
-                  // Apply calculated styles
-                  iframe.style.cssText = `
-                    position: absolute !important;
-                    top: 50% !important;
-                    left: 50% !important;
-                    width: ${width}px !important;
-                    height: ${height}px !important;
-                    transform: translate(-50%, -50%) !important;
-                    pointer-events: none !important;
-                    border: none !important;
-                    z-index: 1 !important;
-                  `
-                }
+                // Use CSS percentage and viewport height for true mobile responsiveness
+                // This ensures iframe fills the container regardless of device
+                iframe.style.cssText = `
+                  position: absolute !important;
+                  top: 50% !important;
+                  left: 50% !important;
+                  width: 100% !important;
+                  height: 100% !important;
+                  min-width: 100% !important;
+                  min-height: 100% !important;
+                  transform: translate(-50%, -50%) !important;
+                  pointer-events: none !important;
+                  border: none !important;
+                  z-index: 1 !important;
+                `
               }
               
               // Start playing (muted for autoplay policy)
@@ -935,7 +918,7 @@ export default function LivePage() {
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+    <div className="relative w-full overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}>
       {/* Custom Modal */}
       <CustomModal
         isOpen={modal.isOpen}
@@ -953,8 +936,8 @@ export default function LivePage() {
           position: 'absolute',
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
+          right: 0,
+          bottom: 0,
           zIndex: 0,
           overflow: 'hidden',
         }}
