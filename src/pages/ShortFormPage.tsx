@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Home, Heart, User, ChevronDown, Share2, ShoppingCart } from 'lucide-react'
+import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import axios from 'axios'
 import GripFrameLayout from '@/components/GripFrameLayout'
@@ -19,26 +19,45 @@ interface Product {
   category?: string
 }
 
+interface Stream {
+  id: number
+  title: string
+  description: string
+  thumbnail_url?: string
+  seller_name: string
+  viewer_count?: number
+  status: string
+}
+
 export default function ShortFormPage() {
   const [products, setProducts] = useState<Product[]>([])
+  const [streams, setStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('home')
   const [filterTab, setFilterTab] = useState('popularity')
   const navigate = useNavigate()
 
   useEffect(() => {
-    loadProducts()
+    loadData()
   }, [])
 
-  async function loadProducts() {
+  async function loadData() {
     try {
       setLoading(true)
-      const response = await axios.get('/api/products?featured=true&limit=20')
-      if (response.data.success) {
-        setProducts(response.data.data)
+      
+      // Load products
+      const productsRes = await axios.get('/api/products?featured=true&limit=20')
+      if (productsRes.data.success) {
+        setProducts(productsRes.data.data)
+      }
+
+      // Load live streams
+      const streamsRes = await axios.get('/api/streams?status=live')
+      if (streamsRes.data.success) {
+        setStreams(streamsRes.data.data || [])
       }
     } catch (error) {
-      console.error('Failed to load products:', error)
+      console.error('Failed to load data:', error)
     } finally {
       setLoading(false)
     }
@@ -71,6 +90,10 @@ export default function ShortFormPage() {
     navigate(`/product/${productId}`)
   }
 
+  function handleStreamClick(streamId: number) {
+    navigate(`/live/${streamId}`)
+  }
+
   if (loading) {
     return (
       <GripFrameLayout>
@@ -84,19 +107,19 @@ export default function ShortFormPage() {
   return (
     <GripFrameLayout>
       <div className="min-h-screen bg-gray-50 pb-20">
-        {/* Header - YOGO Style */}
+        {/* Header - UR Live Branding */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-4 py-3">
-            <button className="p-2">
+            <button className="p-2" onClick={() => navigate('/browse')}>
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
             
-            <h1 className="text-2xl font-black text-gray-900">YOGO</h1>
+            <h1 className="text-2xl font-black text-gray-900">UR Live</h1>
             
             <div className="flex items-center gap-2">
-              <button className="p-2">
+              <button className="p-2" onClick={() => navigate('/search')}>
                 <Search className="w-5 h-5 text-gray-600" />
               </button>
               <button className="p-2">
@@ -108,10 +131,10 @@ export default function ShortFormPage() {
           {/* Filter Tabs */}
           <div className="flex items-center gap-4 px-4 py-2 border-t border-gray-100">
             <button
-              onClick={() => setFilterTab('deals')}
-              className={`text-sm font-medium ${filterTab === 'deals' ? 'text-blue-600' : 'text-gray-600'}`}
+              onClick={() => setFilterTab('live')}
+              className={`text-sm font-medium ${filterTab === 'live' ? 'text-blue-600' : 'text-gray-600'}`}
             >
-              오늘의 특가
+              라이브 중
             </button>
             <button
               onClick={() => setFilterTab('popularity')}
@@ -120,38 +143,82 @@ export default function ShortFormPage() {
               인기순 <ChevronDown className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setFilterTab('views')}
-              className={`flex items-center gap-1 text-sm font-medium ${filterTab === 'views' ? 'text-blue-600' : 'text-gray-600'}`}
+              onClick={() => setFilterTab('newest')}
+              className={`flex items-center gap-1 text-sm font-medium ${filterTab === 'newest' ? 'text-blue-600' : 'text-gray-600'}`}
             >
-              조회순 <ChevronDown className="w-4 h-4" />
+              최신순 <ChevronDown className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        {/* Hero Section */}
-        <div className="relative h-64 bg-gradient-to-br from-orange-400 to-red-500 overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white p-6">
-              <h2 className="text-2xl font-bold mb-2">편리한 한 끼배달은</h2>
-              <p className="text-xl mb-4">한주 속 6&50분</p>
-              <button className="bg-white text-blue-600 font-bold px-6 py-2 rounded-full hover:bg-gray-100 transition">
-                바로가기
-              </button>
+        {/* Live Streams Section */}
+        {streams.length > 0 && (
+          <div className="mt-2">
+            <div className="bg-white px-4 py-3 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                <h3 className="text-lg font-bold text-gray-900">지금 LIVE 중</h3>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 p-3">
+              {streams.slice(0, 4).map((stream) => (
+                <div
+                  key={stream.id}
+                  onClick={() => handleStreamClick(stream.id)}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition"
+                >
+                  <div className="relative aspect-square bg-gray-900">
+                    {stream.thumbnail_url ? (
+                      <img
+                        src={stream.thumbnail_url}
+                        alt={stream.title}
+                        className="w-full h-full object-cover opacity-90"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Play className="w-16 h-16 text-white opacity-50" />
+                      </div>
+                    )}
+                    
+                    {/* LIVE Badge */}
+                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                      LIVE
+                    </div>
+
+                    {/* Viewer Count */}
+                    <div className="absolute top-2 right-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {stream.viewer_count || 0}
+                    </div>
+
+                    {/* Play Button Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-12 h-12 bg-white/30 backdrop-blur-sm rounded-full flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white fill-white" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3">
+                    <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
+                      {stream.title}
+                    </h4>
+                    <p className="text-xs text-gray-600">{stream.seller_name}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="absolute top-4 right-4">
-            <button className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-              <Share2 className="w-5 h-5 text-white" />
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Section Header */}
-        <div className="bg-white px-4 py-3 border-b border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900">오늘의 추천 상품</h3>
+        <div className="bg-white px-4 py-3 border-b border-gray-200 mt-4">
+          <h3 className="text-lg font-bold text-gray-900">인기 상품</h3>
         </div>
 
-        {/* Product Grid - 2 Columns YOGO Style */}
+        {/* Product Grid - 2 Columns */}
         <div className="grid grid-cols-2 gap-3 p-3">
           {products.map((product, index) => (
             <div
@@ -180,33 +247,34 @@ export default function ShortFormPage() {
                   </div>
                 )}
 
-                {/* Ranking Badge */}
+                {/* Ranking Badge for top 3 */}
                 {index < 3 && (
                   <div className="absolute bottom-2 left-2 w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
                     {index + 1}
                   </div>
                 )}
 
-                {/* Checkmark Badge */}
+                {/* Like Button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     // TODO: Add to favorites
                   }}
-                  className="absolute bottom-2 right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center shadow-md"
+                  className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white transition"
                 >
-                  <Heart className="w-4 h-4 text-white" />
+                  <Heart className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
 
               {/* Product Info */}
               <div className="p-3">
+                <p className="text-xs text-gray-500 mb-1">{product.seller_name}</p>
                 <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
                   {product.name}
                 </h4>
                 
                 <div className="flex items-center gap-2 mb-3">
-                  {product.original_price && (
+                  {product.original_price && product.original_price > product.current_price && (
                     <span className="text-xs text-gray-400 line-through">
                       ₩{product.original_price.toLocaleString()}
                     </span>
@@ -221,87 +289,21 @@ export default function ShortFormPage() {
                   onClick={(e) => handleAddToCart(product.id, e)}
                   className="w-full bg-blue-600 text-white font-bold text-sm py-2 rounded-lg hover:bg-blue-700 transition"
                 >
-                  구매
+                  장바구니
                 </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Section: 세트로 배달 */}
-        <div className="mt-6">
-          <div className="bg-white px-4 py-3 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900">세트로 배달</h3>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3 p-3">
-            {products.slice(0, 4).map((product) => (
-              <div
-                key={`set-${product.id}`}
-                className="bg-white rounded-xl shadow-sm overflow-hidden"
-              >
-                <div className="relative aspect-square bg-gray-100">
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
-                    무료배송
-                  </div>
-                </div>
-                <div className="p-3">
-                  <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
-                    [세트] {product.name}
-                  </h4>
-                  <div className="text-lg font-bold text-blue-600 mb-2">
-                    ₩{product.current_price.toLocaleString()}
-                  </div>
-                  <button className="w-full bg-blue-600 text-white font-bold text-sm py-2 rounded-lg">
-                    구매
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section: 서비스 */}
-        <div className="mt-6 mb-6">
-          <div className="bg-white px-4 py-3 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900">서비스</h3>
-          </div>
-          
-          <div className="space-y-3 p-3">
-            {[
-              { title: 'OTM 서비스 예약예', subtitle: '여행, 뷰티, 헬스 등', price: '₩25,000' },
-              { title: '앱카 대행', subtitle: '운전기사 1시간', price: '₩45,000' },
-              { title: 'JK코칭', subtitle: '1:1 맞춤 코칭', price: '₩80,000' }
-            ].map((service, idx) => (
-              <div key={idx} className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                      {idx + 1}
-                    </div>
-                    <h4 className="font-bold text-gray-900">{service.title}</h4>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2">{service.subtitle}</p>
-                  <p className="text-lg font-bold text-blue-600">{service.price}</p>
-                </div>
-                <button className="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-                  예약
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom Navigation - YOGO Style */}
+        {/* Bottom Navigation */}
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
           <div className="max-w-md mx-auto flex justify-around items-center py-2">
             <button
-              onClick={() => setActiveTab('home')}
+              onClick={() => {
+                setActiveTab('home')
+                navigate('/')
+              }}
               className={`flex flex-col items-center gap-1 px-4 py-2 ${
                 activeTab === 'home' ? 'text-blue-600' : 'text-gray-400'
               }`}
@@ -311,7 +313,10 @@ export default function ShortFormPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab('search')}
+              onClick={() => {
+                setActiveTab('search')
+                navigate('/search')
+              }}
               className={`flex flex-col items-center gap-1 px-4 py-2 ${
                 activeTab === 'search' ? 'text-blue-600' : 'text-gray-400'
               }`}
@@ -329,7 +334,11 @@ export default function ShortFormPage() {
                 activeTab === 'cart' ? 'text-blue-600' : 'text-gray-400'
               }`}
             >
-              <ShoppingCart className="w-6 h-6" />
+              <div className="relative">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
               <span className="text-xs font-medium">장바구니</span>
             </button>
 

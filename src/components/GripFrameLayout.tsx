@@ -99,7 +99,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
       </div>
 
       {/* Mobile Frame Container */}
-      <div className="relative flex items-center justify-center lg:justify-end min-h-screen lg:pr-20">
+      <div className="relative flex items-center justify-center min-h-screen">
         <div className="w-full lg:w-[450px] h-screen lg:h-[calc(100vh-80px)] lg:max-h-[900px] bg-white lg:rounded-3xl lg:shadow-2xl overflow-hidden relative">
           {/* Decorative elements for desktop */}
           <div className="hidden lg:block absolute -top-4 -right-4 w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full opacity-20 blur-2xl"></div>
