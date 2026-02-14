@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Heart, Share2, ShoppingCart, Volume2, VolumeX, ChevronLeft, Menu } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import axios from 'axios'
+import GripFrameLayout from '@/components/GripFrameLayout'
 
 interface Product {
   id: number
@@ -183,21 +184,24 @@ export default function ShortFormPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-      </div>
+      <GripFrameLayout>
+        <div className="flex items-center justify-center h-screen bg-black">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+        </div>
+      </GripFrameLayout>
     )
   }
 
   const currentProduct = products[currentIndex]
 
   return (
-    <div 
-      ref={containerRef}
-      className="relative w-full h-screen overflow-hidden bg-black"
-      onWheel={handleScroll}
-      onTouchStart={handleTouchStart}
-    >
+    <GripFrameLayout>
+      <div 
+        ref={containerRef}
+        className="relative w-full h-screen overflow-hidden bg-black"
+        onWheel={handleScroll}
+        onTouchStart={handleTouchStart}
+      >
       {/* Header - Transparent overlay */}
       <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/60 to-transparent p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
@@ -473,6 +477,7 @@ export default function ShortFormPage() {
           animation: slide-up 0.3s ease-out;
         }
       `}</style>
-    </div>
+      </div>
+    </GripFrameLayout>
   )
 }
