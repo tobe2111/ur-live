@@ -6,6 +6,8 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import HomePage from './pages/HomePage'
 // CheckoutPage는 즉시 로드 (lazy loading 문제 해결)
 import CheckoutPage from './pages/CheckoutPage'
+// ShortFormPage - 요고 스타일 숏폼 커머스
+import ShortFormPage from './pages/ShortFormPage'
 
 // 나머지 페이지는 lazy load
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -67,7 +69,10 @@ function App() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            {/* ShortForm 메인 페이지 - 요고 스타일 */}
+            <Route path="/" element={<ShortFormPage />} />
+            {/* 기존 홈페이지는 /browse로 이동 */}
+            <Route path="/browse" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/live/:streamId" element={<LivePage />} />
