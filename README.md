@@ -111,9 +111,9 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 ## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Latest Preview**: https://38cc7923.toss-live-commerce.pages.dev
+- **Latest Preview**: https://4b32d791.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
-- **Build Hash**: `0bd9bf17` (2026-02-14 Phase 3 + UX)
+- **Build Hash**: `1455668d` (2026-02-14 Phase 3 + Cache Fix)
 
 ## 🛠️ 기술 스택
 
