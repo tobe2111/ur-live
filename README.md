@@ -6,6 +6,18 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 
 ### 🎯 Phase 3: 모바일 최적화 & 결제 안정화 ✅
 
+#### 🔥 긴급 수정: 모바일 레이아웃 버그 해결 (CRITICAL)
+**문제**: GripFrame 도입 후 모바일에서 결제 수단 미표시, 장바구니/구매하기 버튼 오류 발생
+- **원인**: GripFrameLayout이 모바일에서도 360px 컨테이너로 감싸면서 TossPayments 위젯 렌더링 실패
+- **증상**: 
+  - ❌ 결제 페이지: "결제 수단" 영역 비어있음
+  - ❌ 상품 상세: "구매하기" 클릭 시 실패
+  - ❌ 장바구니: "장바구니 추가" 실패
+- **해결**: 
+  - ✅ GripFrame을 PC 전용으로 변경 (`lg:block` / `lg:hidden`)
+  - ✅ 모바일은 전체 화면 레이아웃 (`min-h-screen`)
+  - ✅ overflow 제약 제거로 위젯 렌더링 정상화
+
 #### 1. 라이브 페이지 UI 개선 ✅
 - **폰트 크기 축소**: LIVE 배지 11px→9px, 채팅 12px→10px
 - **채팅/공유 버튼 위치 하향**: bottom-40→bottom-180px (상품 카드 회피)
@@ -80,9 +92,9 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 ## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Latest Preview**: https://440163c1.toss-live-commerce.pages.dev
+- **Latest Preview**: https://7392b34c.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
-- **Build Hash**: `57b699f1` (2026-02-14 Phase 3)
+- **Build Hash**: `2d668d9f` (2026-02-14 Phase 3 CRITICAL FIX)
 
 ## 🛠️ 기술 스택
 
