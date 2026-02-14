@@ -2,10 +2,26 @@
 
 UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 
-## 🚀 배포 정보
+## 🚀 최신 업데이트 (2026-02-14)
+
+### ✨ 우주 테마 디자인 적용
+- **PC 배경**: 우주 테마 (별 애니메이션 + 다크 그라데이션)
+- **브랜딩 영역**: 좌측에 UR Live 브랜딩, 회사 정보, 푸터 통합
+- **모바일 프레임**: 우측 중앙 배치 (360px), 입체감 있는 디자인
+
+### 🎨 레이아웃 개선
+- **인기 상품 우선**: 인기 상품 그리드가 먼저 표시
+- **라이브 섹션**: 인기 상품 아래로 이동
+- **캐주얼 탭바**: 하단 네비게이션 디자인 개선 (호버 효과, 그라데이션 배경)
+
+### 📞 제휴 및 입점 문의
+- **이메일**: jiwon@ur-team.com
+- **회사소개서**: 다운로드 버튼 제공 (좌측 브랜딩 영역)
+
+## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Preview**: https://ur-live.pages.dev
+- **Latest Preview**: https://24fc7a39.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
 
 ## 🛠️ 기술 스택
@@ -15,7 +31,8 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 - **TypeScript** 5.x
 - **Vite** 6.x
 - **TailwindCSS** 3.x
-- **Grip-Style Webview Frame** (그립 스타일 웹뷰 프레임) ⭐ **NEW**
+- **Cosmic Space Theme** (우주 테마 디자인) ⭐ **NEW**
+- **Grip-Style Frame** (모바일 프레임 레이아웃)
 
 ### Backend
 - **Hono** 4.x (Edge Runtime)
