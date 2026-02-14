@@ -6,7 +6,7 @@ interface FrameWrapperProps {
   children: ReactNode
 }
 
-// PC에서 프레임 안에 보여될 페이지들 (사용자 페이지만)
+// PC에서 프레임 안에 보여질 페이지들 (사용자 페이지만)
 const FRAME_PAGES = [
   '/',
   '/cart',
@@ -15,17 +15,17 @@ const FRAME_PAGES = [
   '/my-orders',
   '/orders',
   '/product/',
-  '/live/',  // 다시 포함 - 모바일 비율로 최적화
   '/login'
 ]
 
-// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈, 결제)
+// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈, 결제, 라이브)
 const EXCLUDE_PAGES = [
   '/seller',
   '/admin',
   '/browse',
   '/checkout',
-  '/payment'
+  '/payment',
+  '/live/'
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {
