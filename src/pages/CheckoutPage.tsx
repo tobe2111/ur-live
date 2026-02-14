@@ -511,7 +511,7 @@ export default function CheckoutPage() {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="w-full p-4 sm:p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-red-600" />
@@ -529,7 +529,8 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="w-full min-h-screen bg-gray-50">
+      <div className="w-full p-4 sm:p-6">
       {/* 헤더 */}
       <div className="mb-6">
         <button
@@ -878,6 +879,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       </CustomModal>
+      </div>
     </div>
   )
 }
