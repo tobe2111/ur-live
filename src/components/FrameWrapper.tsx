@@ -15,17 +15,17 @@ const FRAME_PAGES = [
   '/my-orders',
   '/orders',
   '/product/',
-  '/live/',
-  '/checkout',
-  '/payment/',
   '/login'
 ]
 
-// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈)
+// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈, 라이브, 결제)
 const EXCLUDE_PAGES = [
   '/seller',
   '/admin',
-  '/browse'
+  '/browse',
+  '/live',
+  '/checkout',
+  '/payment'
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {
