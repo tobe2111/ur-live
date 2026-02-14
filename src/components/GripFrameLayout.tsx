@@ -157,7 +157,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
           </div>
 
           {/* Right - Mobile Frame */}
-          <div className="w-[360px] h-[calc(100vh-80px)] max-h-[800px] relative">
+          <div className="w-[360px] h-[780px] relative">
             <div className={`w-full h-full ${isLivePage ? 'bg-black' : 'bg-white'} rounded-3xl shadow-2xl shadow-purple-900/50 overflow-hidden relative border-4 border-purple-900/30`}>
               {/* Glow effect */}
               <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 rounded-3xl blur opacity-20"></div>

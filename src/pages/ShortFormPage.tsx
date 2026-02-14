@@ -158,26 +158,26 @@ export default function ShortFormPage() {
               <div className="space-y-2">
                 <button onClick={() => { setIsSidebarOpen(false); navigate('/mypage'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
                   <User className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium">\ub9c8\uc774\ud398\uc774\uc9c0</span>
+                  <span className="font-medium">마이페이지</span>
                 </button>
                 <button onClick={() => { setIsSidebarOpen(false); navigate('/my-orders'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
                   <Package className="w-5 h-5 text-indigo-600" />
-                  <span className="font-medium">\uc8fc\ubb38\ub0b4\uc5ed</span>
+                  <span className="font-medium">주문내역</span>
                 </button>
                 <button onClick={() => { setIsSidebarOpen(false); navigate('/cart'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
                   <ShoppingBag className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium">\uc7a5\ubc14\uad6c\ub2c8</span>
+                  <span className="font-medium">장바구니</span>
                 </button>
                 <div className="border-t my-2"></div>
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-lg text-red-600">
                   <LogOut className="w-5 h-5" />
-                  <span className="font-medium">\ub85c\uadf8\uc544\uc6c3</span>
+                  <span className="font-medium">로그아웃</span>
                 </button>
               </div>
             ) : (
               <div className="text-center py-8">
                 <button onClick={() => { setIsSidebarOpen(false); navigate('/login'); }} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold">
-                  \ub85c\uadf8\uc778 \ud558\uae30
+                  로그인 하기
                 </button>
               </div>
             )}
