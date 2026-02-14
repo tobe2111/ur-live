@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import FrameWrapper from './components/FrameWrapper'
 
 // 초기 로딩 페이지만 즉시 로드
 import HomePage from './pages/HomePage'
@@ -67,8 +68,9 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
+        <FrameWrapper>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
             {/* ShortForm 메인 페이지 - 요고 스타일 */}
             <Route path="/" element={<ShortFormPage />} />
             {/* 기존 홈페이지는 /browse로 이동 */}
@@ -115,8 +117,9 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
-      </BrowserRouter>
-    </ErrorBoundary>
+      </FrameWrapper>
+    </BrowserRouter>
+  </ErrorBoundary>
   )
 }
 

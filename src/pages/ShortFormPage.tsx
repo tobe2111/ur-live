@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import axios from 'axios'
-import GripFrameLayout from '@/components/GripFrameLayout'
 
 interface Product {
   id: number
@@ -107,17 +106,14 @@ export default function ShortFormPage() {
 
   if (loading) {
     return (
-      <GripFrameLayout>
-        <div className="flex items-center justify-center h-screen bg-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
-        </div>
-      </GripFrameLayout>
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
+      </div>
     )
   }
 
   return (
-    <GripFrameLayout>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         {/* Header - UR Live Branding */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-4 py-3">
@@ -425,6 +421,5 @@ export default function ShortFormPage() {
           </div>
         )}
       </div>
-    </GripFrameLayout>
   )
 }
