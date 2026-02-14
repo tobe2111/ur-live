@@ -4,6 +4,22 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 
 ## 🚀 최신 업데이트 (2026-02-14)
 
+### 🖼️ 상품 상세 이미지 기능 추가
+- **상세 이미지 표시**: 상품 상세 페이지에서 여러 이미지 갤러리 형태로 표시
+- **셀러 이미지 관리**: 셀러 페이지에서 상품 상세 이미지 추가/삭제 가능
+- **더미 데이터**: 5개 상품에 각 3개의 상세 이미지 추가 (Unsplash)
+- **DB 구조**: `detail_images` 컬럼 (JSON array) 추가
+
+### 📱 모바일 반응형 완료
+- **360px 프레임 최적화**: 모든 페이지가 360px 모바일 프레임에 완벽히 맞춤
+- **수정된 페이지들**:
+  - ProductDetailPage: 하단 버튼 전체 너비
+  - MyPage: 전체 너비 적용
+  - MyOrdersPage: 전체 섹션 너비 조정
+  - SearchPage: 검색 결과 반응형
+  - CheckoutPage: 결제 페이지 최적화
+  - CartPage: Sticky 푸터 개선
+
 ### ✨ 우주 테마 디자인 적용
 - **PC 배경**: 우주 테마 (별 애니메이션 + 다크 그라데이션)
 - **브랜딩 영역**: 좌측에 UR Live 브랜딩, 회사 정보, 푸터 통합
@@ -21,7 +37,7 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 ## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Latest Preview**: https://24fc7a39.toss-live-commerce.pages.dev
+- **Latest Preview**: https://910f7fca.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
 
 ## 🛠️ 기술 스택
@@ -143,6 +159,7 @@ npx wrangler pages deploy dist --project-name toss-live-commerce
 - ✅ 카카오 로그인
 - ✅ 라이브 스트리밍 시청
 - ✅ 실시간 채팅
+- ✅ 상품 상세 페이지 (이미지 갤러리) ⭐ **NEW**
 - ✅ 장바구니
 - ✅ 주문/결제 (TossPayments)
 - ✅ 주문 내역 조회
@@ -150,6 +167,7 @@ npx wrangler pages deploy dist --project-name toss-live-commerce
 
 ### 판매자 기능
 - ✅ 상품 관리 (CRUD)
+- ✅ 상품 상세 이미지 관리 (URL 업로드) ⭐ **NEW**
 - ✅ 라이브 방송 관리
 - ✅ 주문 관리
 - ✅ 통계 대시보드
