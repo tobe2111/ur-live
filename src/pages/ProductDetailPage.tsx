@@ -59,14 +59,16 @@ export default function ProductDetailPage() {
   async function handleAddToCart() {
     if (!isLoggedIn()) {
       showToast('로그인이 필요합니다.', 'error')
+      // 현재 페이지 경로를 저장하고 로그인 페이지로 이동
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 1000)
       return
     }
 
     try {
       await axios.post('/api/cart', {
-        user_id: getUserId(),
-        product_id: product!.id,
+        userId: Number(getUserId()),
+        productId: product!.id,
         quantity
       })
       showToast('장바구니에 추가되었습니다!')
@@ -79,6 +81,8 @@ export default function ProductDetailPage() {
   async function handleBuyNow() {
     if (!isLoggedIn()) {
       showToast('로그인이 필요합니다.', 'error')
+      // 현재 페이지 경로를 저장하고 로그인 페이지로 이동
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 1000)
       return
     }
@@ -86,8 +90,8 @@ export default function ProductDetailPage() {
     try {
       // 장바구니에 추가
       await axios.post('/api/cart', {
-        user_id: getUserId(),
-        product_id: product!.id,
+        userId: Number(getUserId()),
+        productId: product!.id,
         quantity
       })
       // 결제 페이지로 이동
@@ -149,7 +153,7 @@ export default function ProductDetailPage() {
     : []
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-28">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
