@@ -2003,10 +2003,15 @@ app.get('/api/products/:id', async (c) => {
   const id = c.req.param('id');
 
   try {
-    // 상품 정보 조회
-    const product = await DB.prepare(
-      'SELECT * FROM products WHERE id = ? AND is_active = 1'
-    ).bind(id).first();
+    // 상품 정보 조회 (seller 정보 포함)
+    const product = await DB.prepare(`
+      SELECT 
+        p.*,
+        COALESCE(s.name, s.username, 'UR Live') as seller_name
+      FROM products p
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE p.id = ? AND p.is_active = 1
+    `).bind(id).first();
 
     if (!product) {
       return c.json<ApiResponse>({
