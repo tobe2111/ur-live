@@ -1749,7 +1749,9 @@ app.get('/api/products', async (c) => {
       });
     }
 
-    let query = `
+    // featured 파라미터는 무시하고 모든 활성 상품 조회
+    // (is_featured 컬럼이 없으므로 인기 상품으로 간주)
+    const query = `
       SELECT 
         p.id,
         p.name,
@@ -1761,20 +1763,11 @@ app.get('/api/products', async (c) => {
         p.stock,
         p.category,
         p.seller_id,
-        p.is_featured,
         COALESCE(SUM(oi.quantity), 0) as sold_count
       FROM products p
       LEFT JOIN order_items oi ON p.id = oi.product_id
       LEFT JOIN orders o ON oi.order_id = o.id
-      WHERE p.is_active = 1
-    `;
-
-    // featured 필터 추가
-    if (featured === 'true') {
-      query += ` AND p.is_featured = 1`;
-    }
-
-    query += `
+      WHERE p.is_active = 1 AND p.stock > 0
       GROUP BY p.id
       ORDER BY sold_count DESC, p.created_at DESC
       LIMIT ? OFFSET ?
