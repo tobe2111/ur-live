@@ -121,10 +121,10 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
             </div>
 
             {/* Contact */}
-            <div className="pt-2 space-y-2">
-              <div className="flex items-center gap-2 text-purple-200">
-                <Mail className="w-4 h-4" />
-                <p className="text-sm">
+            <div className="pt-2 space-y-1">
+              <div className="flex items-center gap-1.5 text-purple-200">
+                <Mail className="w-3 h-3" />
+                <p className="text-[9px] leading-tight">
                   <span className="text-purple-300 font-medium">제휴 | 입점 문의</span>
                   <span className="text-white"> : </span>
                   <a href="mailto:jiwon@ur-team.com" className="text-purple-400 hover:text-purple-300 underline">
@@ -135,8 +135,8 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
             </div>
 
             {/* Footer Information */}
-            <div className="pt-4 space-y-3 text-xs text-purple-300/80 border-t border-purple-500/30">
-              <div className="flex gap-3">
+            <div className="pt-2 space-y-1.5 text-[8px] text-purple-300/80 border-t border-purple-500/30 leading-tight">
+              <div className="flex gap-2 flex-wrap">
                 <a href="/terms" className="hover:text-purple-200 transition">서비스 이용약관</a>
                 <span>|</span>
                 <a href="/privacy" className="hover:text-purple-200 transition">개인정보처리방침</a>
@@ -144,7 +144,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                 <a href="/refund" className="hover:text-purple-200 transition">배송 및 환불 정책</a>
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <p>상호명: 리스터코퍼레이션 | 대표자: 정지원</p>
                 <p>사업자등록번호: 479-09-02930 | 통신판매업신고: 2025-부산금정-0540</p>
                 <p>사업장주소: 부산광역시 금정구 놀이마당로26 1402</p>
@@ -152,7 +152,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                 <p>서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료</p>
               </div>
               
-              <p className="pt-2">© 2026 리스터코퍼레이션. All rights reserved.</p>
+              <p className="pt-1">© 2026 리스터코퍼레이션. All rights reserved.</p>
             </div>
           </div>
 
