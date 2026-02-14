@@ -40,6 +40,7 @@ const SellerPublicPage = lazy(() => import('./pages/SellerPublicPage'))
 const MyPage = lazy(() => import('./pages/MyPage'))
 const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage'))
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
 // Admin 페이지들
 const AdminPage = lazy(() => import('./pages/AdminPage'))
@@ -78,6 +79,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/live/:streamId" element={<LivePage />} />
+            <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/payment/demo" element={<PaymentDemoPage />} />
