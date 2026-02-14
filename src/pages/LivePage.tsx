@@ -273,26 +273,44 @@ export default function LivePage() {
               setPlayerReady(true)
               setVideoStatus('playing')
               
-              // Apply aggressive full-screen cover style to iframe
+              // Apply full-screen style to iframe - responsive to container
               const iframe = playerElement.querySelector('iframe')
               if (iframe) {
                 // Remove any existing inline styles that might interfere
                 iframe.removeAttribute('style')
                 
-                // Apply styles directly
-                iframe.style.cssText = `
-                  position: absolute !important;
-                  top: 50% !important;
-                  left: 50% !important;
-                  width: 100vw !important;
-                  height: 100vh !important;
-                  min-width: 100% !important;
-                  min-height: 100% !important;
-                  transform: translate(-50%, -50%) !important;
-                  pointer-events: none !important;
-                  border: none !important;
-                  z-index: 1 !important;
-                `
+                // Calculate aspect ratio for proper scaling
+                const container = playerElement.parentElement
+                if (container) {
+                  const containerWidth = container.clientWidth
+                  const containerHeight = container.clientHeight
+                  const videoAspect = 16 / 9  // YouTube default
+                  const containerAspect = containerWidth / containerHeight
+                  
+                  let width, height
+                  if (containerAspect > videoAspect) {
+                    // Container is wider - fit to width
+                    width = containerWidth
+                    height = containerWidth / videoAspect
+                  } else {
+                    // Container is taller - fit to height
+                    height = containerHeight
+                    width = containerHeight * videoAspect
+                  }
+                  
+                  // Apply calculated styles
+                  iframe.style.cssText = `
+                    position: absolute !important;
+                    top: 50% !important;
+                    left: 50% !important;
+                    width: ${width}px !important;
+                    height: ${height}px !important;
+                    transform: translate(-50%, -50%) !important;
+                    pointer-events: none !important;
+                    border: none !important;
+                    z-index: 1 !important;
+                  `
+                }
               }
               
               // Start playing (muted for autoplay policy)
