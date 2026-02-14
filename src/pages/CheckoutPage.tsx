@@ -77,9 +77,6 @@ export default function CheckoutPage() {
   const [showNewAddressForm, setShowNewAddressForm] = useState(false)
   const [showPostcodePopup, setShowPostcodePopup] = useState(false)
   
-  // 약관 동의
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
-  
   // 새 배송지 입력 폼
   const [newAddress, setNewAddress] = useState({
     recipient_name: '',
@@ -421,17 +418,6 @@ export default function CheckoutPage() {
       return
     }
 
-    // 약관 동의 확인
-    if (!agreedToTerms) {
-      console.log('[Payment] ⚠️ 약관 미동의')
-      showModal({
-        type: 'warning',
-        title: '약관 동의 필요',
-        message: '필수 약관에 동의해주세요',
-      })
-      return
-    }
-
     // 처리 중 플래그 설정
     setIsProcessing(true)
     console.log('[Payment] ✅ 결제 시작:', { totalAmount, selectedAddress })
@@ -718,40 +704,28 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* 약관 동의 */}
+            {/* 약관 링크 */}
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <label className="flex items-start gap-3 cursor-pointer bg-gray-50 rounded-lg p-4">
-                <input
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-1 w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 mb-1">
-                    [필수] 결제 서비스 이용 약관, 개인정보 처리 동의
-                  </p>
-                  <div className="flex gap-3 text-xs">
-                    <Link 
-                      to="/terms" 
-                      target="_blank"
-                      className="text-blue-600 hover:text-blue-800 underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      이용약관
-                    </Link>
-                    <span className="text-gray-300">|</span>
-                    <Link 
-                      to="/privacy" 
-                      target="_blank"
-                      className="text-blue-600 hover:text-blue-800 underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      개인정보 처리방침
-                    </Link>
-                  </div>
-                </div>
-              </label>
+              <p className="text-xs text-gray-500 text-center mb-2">
+                결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
+              </p>
+              <div className="flex justify-center gap-3 text-xs">
+                <Link 
+                  to="/terms" 
+                  target="_blank"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  이용약관
+                </Link>
+                <span className="text-gray-300">|</span>
+                <Link 
+                  to="/privacy" 
+                  target="_blank"
+                  className="text-blue-600 hover:text-blue-800 underline"
+                >
+                  개인정보 처리방침
+                </Link>
+              </div>
             </div>
           </div>
         </div>
