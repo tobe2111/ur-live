@@ -10,6 +10,7 @@ interface FrameWrapperProps {
 const FRAME_PAGES = [
   '/',
   '/cart',
+  '/checkout',  // 결제 페이지 추가
   '/search',
   '/mypage',
   '/my-orders',
@@ -18,13 +19,12 @@ const FRAME_PAGES = [
   '/login'
 ]
 
-// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈, 결제, 라이브)
+// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈, 결제 결과, 라이브)
 const EXCLUDE_PAGES = [
   '/seller',
   '/admin',
   '/browse',
-  '/checkout',
-  '/payment',
+  '/payment',  // 결제 성공/실패 페이지만 제외
   '/live/'
 ]
 
