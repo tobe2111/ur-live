@@ -4,6 +4,22 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 
 ## 🚀 최신 업데이트 (2026-02-14)
 
+### 🎯 Phase 3: 모바일 최적화 & 결제 안정화 ✅
+
+#### 1. 라이브 페이지 UI 개선 ✅
+- **폰트 크기 축소**: LIVE 배지 11px→9px, 채팅 12px→10px
+- **채팅/공유 버튼 위치 하향**: bottom-40→bottom-180px (상품 카드 회피)
+- **SNS 버튼 크기 축소**: 9×9→7×7 (w-7 h-7)
+- **상품 카드 최적화**: 폰트 및 간격 축소
+
+#### 2. 결제 페이지 디버깅 강화 ✅
+- **상세 로깅 추가**: 위젯 생명주기 전체 추적
+- **DOM 대기 시간 증가**: 3초→5초 (모바일 환경 고려)
+- **위젯 상태 체크**: widgets, ready, isProcessing 모두 검증
+- **에러 메시지 개선**: 디버깅을 위한 구체적인 메시지
+- **결제 버튼 상태 표시**: 시스템 로딩/UI 준비 중 구분
+- **요소 크기 로깅**: payment-method, agreement 크기 확인
+
 ### 🎯 주요 기능 추가 (Phase 1 & 2 Complete)
 
 #### 1. 실시간 채팅 시스템 ✅
@@ -64,9 +80,9 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 ## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Latest Preview**: https://30976bcc.toss-live-commerce.pages.dev
+- **Latest Preview**: https://440163c1.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
-- **Build Hash**: `415e1979` (2026-02-14)
+- **Build Hash**: `57b699f1` (2026-02-14 Phase 3)
 
 ## 🛠️ 기술 스택
 
