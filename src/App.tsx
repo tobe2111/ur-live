@@ -55,6 +55,8 @@ const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 // 약관 페이지들
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
+const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
+const FAQPage = lazy(() => import('./pages/FAQPage'))
 
 // 로딩 컴포넌트
 const PageLoader = () => (
@@ -114,6 +116,8 @@ function App() {
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/refund" element={<RefundPolicyPage />} />
+            <Route path="/faq" element={<FAQPage />} />
             
             {/* Error Pages */}
             <Route path="/500" element={<ServerErrorPage />} />

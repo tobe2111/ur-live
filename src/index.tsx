@@ -4140,6 +4140,101 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
   }
 });
 
+// ========================================
+// 라이브 방송 시청자 수 조정 (Admin/Seller)
+// ========================================
+
+// Get current viewer count
+app.get('/api/streams/:streamId/viewer-count', async (c) => {
+  const { DB } = c.env;
+
+  try {
+    const streamId = c.req.param('streamId');
+
+    const stream = await DB.prepare(
+      'SELECT viewer_count FROM live_streams WHERE id = ?'
+    ).bind(streamId).first();
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found' }, 404);
+    }
+
+    return c.json({ 
+      success: true, 
+      data: { 
+        viewer_count: stream.viewer_count || 0 
+      } 
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update viewer count (Admin/Seller only)
+app.put('/api/streams/:streamId/viewer-count', async (c) => {
+  const { DB } = c.env;
+  
+  // Try both admin and seller auth
+  const adminAuth = await verifyAdminSession(c);
+  const sellerAuth = !adminAuth.success ? await verifySellerSession(c) : { success: false };
+
+  if (!adminAuth.success && !sellerAuth.success) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('streamId');
+    const { viewer_count } = await c.req.json();
+
+    if (typeof viewer_count !== 'number' || viewer_count < 0) {
+      return c.json({ success: false, error: 'Invalid viewer count' }, 400);
+    }
+
+    // If seller, verify ownership
+    if (sellerAuth.success) {
+      const stream = await DB.prepare(
+        'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+      ).bind(streamId, sellerAuth.sellerId).first();
+
+      if (!stream) {
+        return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
+      }
+    }
+
+    await DB.prepare(
+      'UPDATE live_streams SET viewer_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(viewer_count, streamId).run();
+
+    return c.json({ success: true, data: { viewer_count } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Increment viewer count (called when user joins)
+app.post('/api/streams/:streamId/view', async (c) => {
+  const { DB } = c.env;
+
+  try {
+    const streamId = c.req.param('streamId');
+
+    await DB.prepare(
+      'UPDATE live_streams SET viewer_count = viewer_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(streamId).run();
+
+    const stream = await DB.prepare(
+      'SELECT viewer_count FROM live_streams WHERE id = ?'
+    ).bind(streamId).first();
+
+    return c.json({ 
+      success: true, 
+      data: { viewer_count: stream?.viewer_count || 0 } 
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ==========================================
 // Payment API - PG 결제 승인 (PG사 변경 가능)
 // ==========================================
@@ -7290,6 +7385,7 @@ app.get('/api/seller/profile', async (c) => {
         sns_facebook,
         sns_twitter,
         website_url,
+        kakao_chat_link,
         status,
         created_at
       FROM sellers 
@@ -7337,7 +7433,8 @@ app.patch('/api/seller/profile', async (c) => {
       sns_youtube,
       sns_facebook,
       sns_twitter,
-      website_url
+      website_url,
+      kakao_chat_link
     } = await c.req.json();
 
     // Build update query dynamically
@@ -7372,6 +7469,10 @@ app.patch('/api/seller/profile', async (c) => {
       updates.push('website_url = ?');
       params.push(website_url);
     }
+    if (kakao_chat_link !== undefined) {
+      updates.push('kakao_chat_link = ?');
+      params.push(kakao_chat_link);
+    }
 
     if (updates.length === 0) {
       return c.json({ success: false, error: '수정할 내용이 없습니다' }, 400);
@@ -7404,6 +7505,7 @@ app.patch('/api/seller/profile', async (c) => {
         sns_facebook,
         sns_twitter,
         website_url,
+        kakao_chat_link,
         status,
         created_at
       FROM sellers 

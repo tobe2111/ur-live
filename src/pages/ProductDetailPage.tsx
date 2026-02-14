@@ -15,16 +15,29 @@ interface Product {
   discount_rate: number
   image_url: string
   seller_name: string
+  seller_id?: number
   stock: number
   sold_count?: number
   category?: string
   detail_images?: string | string[]
+  kakao_chat_link?: string
+}
+
+interface ProductOption {
+  id: number
+  product_id: number
+  option_type: string
+  option_value: string
+  price_adjustment: number
+  stock: number
 }
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [product, setProduct] = useState<Product | null>(null)
+  const [options, setOptions] = useState<ProductOption[]>([])
+  const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
   const [quantity, setQuantity] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -32,7 +45,19 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     loadProduct()
+    loadOptions()
   }, [id])
+
+  async function loadOptions() {
+    try {
+      const response = await axios.get(`/api/seller/products/${id}/options`)
+      if (response.data.success) {
+        setOptions(response.data.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to load options:', err)
+    }
+  }
 
   async function loadProduct() {
     try {
