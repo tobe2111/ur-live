@@ -240,7 +240,26 @@ export default function ProductDetailPage() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg transition">
+          <button 
+            onClick={() => {
+              // Check if there's a previous page in history
+              if (window.history.length > 1) {
+                // Check if the previous page was login/kakao callback
+                const referrer = document.referrer
+                if (referrer.includes('/login') || referrer.includes('/auth/kakao/callback')) {
+                  // Go to home instead
+                  navigate('/')
+                } else {
+                  // Go back normally
+                  navigate(-1)
+                }
+              } else {
+                // No history, go to home
+                navigate('/')
+              }
+            }}
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+          >
             <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
           <h1 className="text-lg font-bold text-gray-900">상품 상세</h1>

@@ -2302,9 +2302,12 @@ app.post('/api/cart', async (c) => {
       },
     });
   } catch (err) {
+    console.error('[API /api/cart POST] Error:', err)
+    console.error('[API /api/cart POST] Error message:', (err as Error).message)
+    console.error('[API /api/cart POST] Error stack:', (err as Error).stack)
     return c.json<ApiResponse>({
       success: false,
-      error: (err as Error).message,
+      error: 'Failed to add to cart: ' + ((err as Error).message || 'Unknown error'),
     }, 500);
   }
 });
