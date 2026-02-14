@@ -15,6 +15,7 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 - **TypeScript** 5.x
 - **Vite** 6.x
 - **TailwindCSS** 3.x
+- **Grip-Style Webview Frame** (그립 스타일 웹뷰 프레임) ⭐ **NEW**
 
 ### Backend
 - **Hono** 4.x (Edge Runtime)
@@ -184,6 +185,7 @@ CVC: 123
 
 ## 📚 문서
 
+- [🖥️ 그립 프레임 가이드](./GRIP_FRAME_GUIDE.md) ⭐ **NEW**
 - [🎬 숏폼 커머스 가이드](./SHORTFORM_COMMERCE_GUIDE.md) ⭐ **NEW**
 - [🚀 Cloudflare 배포 프로토콜](./CLOUDFLARE_DEPLOYMENT_PROTOCOL.md) ⭐ **필수**
 - [결제 내역 분석 보고서](./PAYMENT_HISTORY_ANALYSIS.md)
