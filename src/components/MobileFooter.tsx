@@ -1,3 +1,4 @@
+// Mobile Footer Component - v2.0
 export default function MobileFooter() {
   return (
     <footer className="bg-gray-50 border-t border-gray-200 py-4 px-4 mt-8">
