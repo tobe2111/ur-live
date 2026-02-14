@@ -1,11 +1,15 @@
 import { ReactNode } from 'react'
 import { Download, Mail } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 
 interface GripFrameLayoutProps {
   children: ReactNode
 }
 
 export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
+  const location = useLocation()
+  const isLivePage = location.pathname.startsWith('/live/')
+  
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Pure Black Background - No animations */}
@@ -154,12 +158,12 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
 
           {/* Right - Mobile Frame */}
           <div className="w-[360px] h-[calc(100vh-80px)] max-h-[800px] relative">
-            <div className="w-full h-full bg-white rounded-3xl shadow-2xl shadow-purple-900/50 overflow-hidden relative border-4 border-purple-900/30">
+            <div className={`w-full h-full ${isLivePage ? 'bg-black' : 'bg-white'} rounded-3xl shadow-2xl shadow-purple-900/50 overflow-hidden relative border-4 border-purple-900/30`}>
               {/* Glow effect */}
               <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 rounded-3xl blur opacity-20"></div>
               
               {/* Content */}
-              <div className="relative w-full h-full overflow-y-auto overflow-x-hidden scrollbar-hide bg-white rounded-3xl">
+              <div className={`relative w-full h-full overflow-y-auto overflow-x-hidden scrollbar-hide ${isLivePage ? 'bg-black' : 'bg-white'} rounded-3xl`}>
                 {children}
               </div>
             </div>
