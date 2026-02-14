@@ -147,7 +147,7 @@ export default function ShortFormPage() {
                 </div>
                 <div>
                   <p className="text-white font-semibold text-sm">{userName}</p>
-                  <p className="text-purple-100 text-xs">\ud658\uc601\ud569\ub2c8\ub2e4!</p>
+                  <p className="text-purple-100 text-xs">환영합니다!</p>
                 </div>
               </div>
             )}
@@ -175,10 +175,11 @@ export default function ShortFormPage() {
                 </button>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <button onClick={() => { setIsSidebarOpen(false); navigate('/login'); }} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold">
-                  로그인 하기
+              <div className="space-y-2">
+                <button onClick={() => { setIsSidebarOpen(false); navigate('/login'); }} className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                  로그인
                 </button>
+                <p className="text-center text-sm text-gray-500 py-4">로그인하여 더 많은 서비스를 이용하세요</p>
               </div>
             )}
           </div>
