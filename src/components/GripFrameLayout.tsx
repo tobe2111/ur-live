@@ -7,13 +7,8 @@ interface GripFrameLayoutProps {
 
 export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-950 relative overflow-hidden">
-      {/* Animated Space Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="stars"></div>
-        <div className="stars2"></div>
-        <div className="stars3"></div>
-      </div>
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      {/* Pure Black Background - No animations */}
 
       {/* Desktop Background Branding Area */}
       <div className="hidden lg:flex fixed inset-0 items-center justify-center">
@@ -199,34 +194,6 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
 
         .animate-fade-in-up {
           animation: fade-in-up 1s ease-out;
-        }
-
-        /* Stars animation */
-        .stars, .stars2, .stars3 {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-        }
-
-        .stars {
-          background: transparent url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMiIgaGVpZ2h0PSIyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEiIGN5PSIxIiByPSIxIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==') repeat;
-          animation: animateStars 100s linear infinite;
-          opacity: 0.3;
-        }
-
-        .stars2 {
-          background: transparent url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjAuNSIgY3k9IjAuNSIgcj0iMC41IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==') repeat;
-          animation: animateStars 150s linear infinite;
-          opacity: 0.2;
-        }
-
-        .stars3 {
-          background: transparent url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMyIgaGVpZ2h0PSIzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEuNSIgY3k9IjEuNSIgcj0iMS41IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==') repeat;
-          animation: animateStars 200s linear infinite;
-          opacity: 0.15;
         }
 
         @keyframes animateStars {

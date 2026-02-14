@@ -106,7 +106,7 @@ export default function ShortFormPage() {
 
   return (
     <GripFrameLayout>
-      <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="min-h-screen bg-gray-50">
         {/* Header - UR Live Branding */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-4 py-3">
@@ -312,118 +312,6 @@ export default function ShortFormPage() {
             </div>
           </div>
         )}
-
-        {/* Bottom Navigation - Casual Design */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 shadow-lg z-40">
-          <div className="max-w-md mx-auto flex justify-around items-center py-3">
-            <button
-              onClick={() => {
-                setActiveTab('home')
-                navigate('/')
-              }}
-              className={`flex flex-col items-center gap-1.5 px-3 transition-all duration-200 ${
-                activeTab === 'home' 
-                  ? 'text-purple-600 scale-110' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <div className={`p-2 rounded-2xl transition-all duration-200 ${
-                activeTab === 'home' 
-                  ? 'bg-gradient-to-br from-purple-100 to-indigo-100' 
-                  : 'hover:bg-gray-100'
-              }`}>
-                <Home className="w-6 h-6" strokeWidth={activeTab === 'home' ? 2.5 : 2} />
-              </div>
-              <span className="text-xs font-semibold">홈</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('search')
-                navigate('/search')
-              }}
-              className={`flex flex-col items-center gap-1.5 px-3 transition-all duration-200 ${
-                activeTab === 'search' 
-                  ? 'text-purple-600 scale-110' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <div className={`p-2 rounded-2xl transition-all duration-200 ${
-                activeTab === 'search' 
-                  ? 'bg-gradient-to-br from-purple-100 to-indigo-100' 
-                  : 'hover:bg-gray-100'
-              }`}>
-                <Search className="w-6 h-6" strokeWidth={activeTab === 'search' ? 2.5 : 2} />
-              </div>
-              <span className="text-xs font-semibold">검색</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('cart')
-                navigate('/cart')
-              }}
-              className={`flex flex-col items-center gap-1.5 px-3 transition-all duration-200 ${
-                activeTab === 'cart' 
-                  ? 'text-purple-600 scale-110' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <div className={`p-2 rounded-2xl relative transition-all duration-200 ${
-                activeTab === 'cart' 
-                  ? 'bg-gradient-to-br from-purple-100 to-indigo-100' 
-                  : 'hover:bg-gray-100'
-              }`}>
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={activeTab === 'cart' ? 2.5 : 2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <span className="text-xs font-semibold">장바구니</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('like')
-                // TODO: Add favorites page route
-              }}
-              className={`flex flex-col items-center gap-1.5 px-3 transition-all duration-200 ${
-                activeTab === 'like' 
-                  ? 'text-purple-600 scale-110' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <div className={`p-2 rounded-2xl transition-all duration-200 ${
-                activeTab === 'like' 
-                  ? 'bg-gradient-to-br from-purple-100 to-indigo-100' 
-                  : 'hover:bg-gray-100'
-              }`}>
-                <Heart className="w-6 h-6" strokeWidth={activeTab === 'like' ? 2.5 : 2} />
-              </div>
-              <span className="text-xs font-semibold">좋아요</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('my')
-                navigate('/mypage')
-              }}
-              className={`flex flex-col items-center gap-1.5 px-3 transition-all duration-200 ${
-                activeTab === 'my' 
-                  ? 'text-purple-600 scale-110' 
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <div className={`p-2 rounded-2xl transition-all duration-200 ${
-                activeTab === 'my' 
-                  ? 'bg-gradient-to-br from-purple-100 to-indigo-100' 
-                  : 'hover:bg-gray-100'
-              }`}>
-                <User className="w-6 h-6" strokeWidth={activeTab === 'my' ? 2.5 : 2} />
-              </div>
-              <span className="text-xs font-semibold">마이</span>
-            </button>
-          </div>
-        </nav>
       </div>
     </GripFrameLayout>
   )
