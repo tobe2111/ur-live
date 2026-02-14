@@ -6,21 +6,39 @@ interface FrameWrapperProps {
   children: ReactNode
 }
 
-// PC에서 프레임 안에 보여질 페이지들
+// PC에서 프레임 안에 보여질 페이지들 (사용자 페이지만)
 const FRAME_PAGES = [
   '/',
   '/cart',
   '/search',
   '/mypage',
-  '/mypage/addresses',
   '/my-orders',
   '/orders',
   '/product/',
-  '/live/'
+  '/live/',
+  '/checkout',
+  '/payment/',
+  '/login'
+]
+
+// 프레임에서 제외할 페이지들 (셀러, 어드민, 브라우즈)
+const EXCLUDE_PAGES = [
+  '/seller',
+  '/admin',
+  '/browse'
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {
   const location = useLocation()
+  
+  // 제외 페이지인지 확인
+  const isExcludePage = EXCLUDE_PAGES.some(path => {
+    return location.pathname.startsWith(path)
+  })
+  
+  if (isExcludePage) {
+    return <>{children}</>
+  }
   
   // 현재 경로가 프레임 페이지인지 확인
   const isFramePage = FRAME_PAGES.some(path => {

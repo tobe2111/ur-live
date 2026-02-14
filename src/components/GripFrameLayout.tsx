@@ -168,7 +168,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
       </div>
 
       {/* Mobile Full Screen */}
-      <div className="lg:hidden w-full h-screen overflow-y-auto overflow-x-hidden scrollbar-hide">
+      <div className="lg:hidden w-full min-h-screen overflow-y-auto overflow-x-hidden scrollbar-hide">
         {children}
       </div>
 
