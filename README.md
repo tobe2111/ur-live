@@ -114,6 +114,13 @@ npx wrangler pages deploy dist --project-name toss-live-commerce
 
 ## 📋 주요 기능
 
+### 🎬 숏폼 커머스 (NEW!)
+- ✅ 요고(yo-go) 스타일 세로 영상 레이아웃
+- ✅ Snap Scrolling & Auto Play
+- ✅ 좋아요, 공유, 장바구니 인터랙션
+- ✅ Slide-up 결제 Drawer
+- ✅ 모바일 최적화 (9:16 비율)
+
 ### 사용자 기능
 - ✅ 카카오 로그인
 - ✅ 라이브 스트리밍 시청
@@ -177,6 +184,7 @@ CVC: 123
 
 ## 📚 문서
 
+- [🎬 숏폼 커머스 가이드](./SHORTFORM_COMMERCE_GUIDE.md) ⭐ **NEW**
 - [🚀 Cloudflare 배포 프로토콜](./CLOUDFLARE_DEPLOYMENT_PROTOCOL.md) ⭐ **필수**
 - [결제 내역 분석 보고서](./PAYMENT_HISTORY_ANALYSIS.md)
 - [결제 테스트 가이드](./PAYMENT_TEST_GUIDE.md)
