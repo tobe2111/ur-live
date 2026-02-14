@@ -373,11 +373,17 @@ export default function ShortFormPage() {
             >
               {/* Product Image */}
               <div className="relative aspect-square bg-gray-100">
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ShoppingBag className="w-16 h-16 text-gray-300" />
+                  </div>
+                )}
                 
                 {/* Badges */}
                 {product.discount_rate > 0 && (
