@@ -222,7 +222,7 @@ export default function MyOrdersPage() {
     <div className="min-h-screen bg-[#fbfbfd]">
       {/* Header */}
       <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
-        <div className="max-w-[980px] mx-auto px-4 sm:px-6">
+        <div className="w-full px-4 sm:px-6">
           <div className="flex h-[52px] items-center justify-between">
             <Link 
               to="/"
@@ -241,7 +241,7 @@ export default function MyOrdersPage() {
 
       {/* Tab Navigation */}
       <div className="bg-white border-b border-[#e5e5ea]">
-        <div className="max-w-[980px] mx-auto px-4 sm:px-6">
+        <div className="w-full px-4 sm:px-6">
           <div className="flex space-x-1">
             <button
               onClick={() => setActiveTab('cart')}
@@ -296,7 +296,7 @@ export default function MyOrdersPage() {
       </div>
 
       {/* Content */}
-      <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <main className="w-full px-4 sm:px-6 py-8 sm:py-12">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -728,7 +728,7 @@ export default function MyOrdersPage() {
       {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-[#e5e5ea] p-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-[#1d1d1f]">주문 상세</h3>
               <button

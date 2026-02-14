@@ -48,7 +48,7 @@ export default function MyPage() {
     <div className="min-h-screen bg-[#FFFFFF]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="text-xl font-bold text-gray-900">
               ← 홈
@@ -59,7 +59,7 @@ export default function MyPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full px-4 sm:px-6 py-8">
         {/* 프로필 카드 */}
         <div className="bg-gradient-to-br from-[#FFD700]/20 to-[#9370DB]/20 rounded-2xl p-6 mb-6">
           <div className="flex items-center space-x-4">

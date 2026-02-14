@@ -131,7 +131,7 @@ export default function SearchPage() {
     <div className="min-h-screen bg-[#f5f5f7]">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-[#e5e5ea]">
-        <div className="max-w-screen-xl mx-auto px-4 py-3">
+        <div className="w-full px-4 py-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
@@ -191,7 +191,7 @@ export default function SearchPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-screen-xl mx-auto px-4 py-6">
+      <div className="w-full px-4 py-6">
         {/* Loading */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">

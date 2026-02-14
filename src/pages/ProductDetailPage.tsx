@@ -260,7 +260,7 @@ export default function ProductDetailPage() {
 
       {/* Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg lg:static lg:shadow-none">
-        <div className="flex gap-3 max-w-md mx-auto lg:max-w-none">
+        <div className="flex gap-3 w-full">
           <button
             onClick={handleAddToCart}
             className="flex-1 bg-white border-2 border-purple-600 text-purple-600 font-bold py-4 rounded-xl hover:bg-purple-50 transition-all duration-200"
