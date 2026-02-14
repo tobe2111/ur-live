@@ -273,28 +273,41 @@ export default function LivePage() {
               setPlayerReady(true)
               setVideoStatus('playing')
               
-              // Apply full-screen style to iframe - use percentage for true responsiveness
-              const iframe = playerElement.querySelector('iframe')
-              if (iframe) {
-                // Remove any existing inline styles that might interfere
-                iframe.removeAttribute('style')
-                
-                // Use CSS percentage and viewport height for true mobile responsiveness
-                // This ensures iframe fills the container regardless of device
-                iframe.style.cssText = `
-                  position: absolute !important;
-                  top: 50% !important;
-                  left: 50% !important;
-                  width: 100% !important;
-                  height: 100% !important;
-                  min-width: 100% !important;
-                  min-height: 100% !important;
-                  transform: translate(-50%, -50%) !important;
-                  pointer-events: none !important;
-                  border: none !important;
-                  z-index: 1 !important;
-                `
+              // Apply full-screen style to iframe immediately
+              const applyIframeStyles = () => {
+                const iframe = playerElement.querySelector('iframe')
+                if (iframe) {
+                  console.log('Applying iframe styles, current size:', iframe.offsetWidth, 'x', iframe.offsetHeight)
+                  
+                  // Force remove YouTube's default styles
+                  iframe.removeAttribute('style')
+                  iframe.removeAttribute('width')
+                  iframe.removeAttribute('height')
+                  
+                  // Apply our styles with maximum specificity
+                  iframe.style.cssText = `
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    max-width: 100% !important;
+                    max-height: 100% !important;
+                    pointer-events: none !important;
+                    border: none !important;
+                    z-index: 1 !important;
+                  `
+                  
+                  console.log('After applying styles:', iframe.offsetWidth, 'x', iframe.offsetHeight)
+                }
               }
+              
+              // Apply immediately
+              applyIframeStyles()
+              
+              // Also apply after a short delay to override any YouTube changes
+              setTimeout(applyIframeStyles, 100)
+              setTimeout(applyIframeStyles, 500)
               
               // Start playing (muted for autoplay policy)
               event.target.playVideo()
