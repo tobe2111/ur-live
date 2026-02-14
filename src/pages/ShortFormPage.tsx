@@ -32,12 +32,14 @@ interface Stream {
 
 export default function ShortFormPage() {
   const [products, setProducts] = useState<Product[]>([])
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<Stream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('home')
   const [filterTab, setFilterTab] = useState('popularity')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(8)
   const navigate = useNavigate()
   const userName = getUserName()
   const loggedIn = isLoggedIn()
@@ -50,10 +52,12 @@ export default function ShortFormPage() {
     try {
       setLoading(true)
       
-      // Load products
-      const productsRes = await axios.get('/api/products?featured=true&limit=20')
+      // Load products - only from approved sellers
+      const productsRes = await axios.get('/api/products?limit=100')
       if (productsRes.data.success) {
-        setProducts(productsRes.data.data)
+        const allProducts = productsRes.data.data
+        setProducts(allProducts)
+        setDisplayedProducts(allProducts.slice(0, 8))
       }
 
       // Load live streams
@@ -75,6 +79,12 @@ export default function ShortFormPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleLoadMore() {
+    const nextCount = visibleCount + 8
+    setDisplayedProducts(products.slice(0, nextCount))
+    setVisibleCount(nextCount)
   }
 
   async function handleAddToCart(productId: number, e: React.MouseEvent) {
@@ -345,17 +355,17 @@ export default function ShortFormPage() {
           </div>
         )}
 
-        {/* Section Header - Popular Products */}
+        {/* Section Header - UR Special Deals */}
         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-purple-100 mt-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <span className="text-purple-600">🔥</span>
-            인기 상품
+            <span className="text-purple-600">💎</span>
+            유어 특가
           </h3>
         </div>
 
         {/* Product Grid - 2 Columns */}
         <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50">
-          {products.map((product, index) => (
+          {displayedProducts.map((product, index) => (
             <div
               key={product.id}
               onClick={() => handleProductClick(product.id)}
@@ -430,6 +440,18 @@ export default function ShortFormPage() {
             </div>
           ))}
         </div>
+
+        {/* Load More Button */}
+        {visibleCount < products.length && (
+          <div className="px-4 py-3 bg-gray-50">
+            <button
+              onClick={handleLoadMore}
+              className="w-full bg-white text-purple-600 font-bold text-sm py-3 rounded-xl border-2 border-purple-600 hover:bg-purple-50 transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              더보기 ({visibleCount} / {products.length})
+            </button>
+          </div>
+        )}
 
         {/* Live Streams Section */}
         {streams.length > 0 && (
