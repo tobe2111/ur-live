@@ -276,13 +276,23 @@ export default function LivePage() {
               // Apply aggressive full-screen cover style to iframe
               const iframe = playerElement.querySelector('iframe')
               if (iframe) {
-                iframe.style.position = 'absolute'
-                iframe.style.top = '0'
-                iframe.style.left = '0'
-                iframe.style.width = '100%'
-                iframe.style.height = '100%'
-                iframe.style.objectFit = 'cover'
-                iframe.style.pointerEvents = 'none'  // Hide controls for live feel
+                // Remove any existing inline styles that might interfere
+                iframe.removeAttribute('style')
+                
+                // Apply styles directly
+                iframe.style.cssText = `
+                  position: absolute !important;
+                  top: 50% !important;
+                  left: 50% !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  min-width: 100% !important;
+                  min-height: 100% !important;
+                  transform: translate(-50%, -50%) !important;
+                  pointer-events: none !important;
+                  border: none !important;
+                  z-index: 1 !important;
+                `
               }
               
               // Start playing (muted for autoplay policy)
@@ -946,13 +956,14 @@ export default function LivePage() {
           id="youtube-player"
           className="absolute inset-0"
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
             width: '100%',
             height: '100%',
             overflow: 'hidden',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             pointerEvents: stream?.platform === 'tiktok' ? 'auto' : (muted ? 'none' : 'auto'),
+            zIndex: 1,
           }}
         />
         
