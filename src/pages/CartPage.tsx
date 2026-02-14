@@ -236,7 +236,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-32">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Custom Modal */}
       <CustomModal
         isOpen={modal.isOpen}
@@ -263,7 +263,7 @@ export default function CartPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex-1 overflow-y-auto pb-32">
         {cartItems.length === 0 ? (
           <div className="text-center py-24">
             <ShoppingBag className="w-16 h-16 sm:w-20 sm:h-20 text-gray-200 mx-auto mb-4 sm:mb-6" strokeWidth={1.5} />
@@ -346,8 +346,8 @@ export default function CartPage() {
             </div>
 
             {/* Fixed Bottom Section - 결제 섹션 */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20">
-              <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+            <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20 mt-auto">
+              <div className="px-4 sm:px-6 py-4 sm:py-5">
                 {/* Total Summary */}
                 <div className="flex justify-between items-end mb-4">
                   <div>
