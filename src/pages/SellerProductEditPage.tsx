@@ -28,6 +28,7 @@ interface Product {
   image_url: string
   live_stream_id: number | null
   is_active: boolean
+  detail_images?: string | string[]
 }
 
 export default function SellerProductEditPage() {
@@ -46,7 +47,8 @@ export default function SellerProductEditPage() {
     stock: '',
     image_url: '',
     live_stream_id: '',
-    is_active: true
+    is_active: true,
+    detail_images: [] as string[]
   })
 
   useEffect(() => {
@@ -79,6 +81,15 @@ export default function SellerProductEditPage() {
       if (response.data.success) {
         const productData = response.data.data
         setProduct(productData)
+        
+        // Parse detail_images if it exists
+        let detailImages: string[] = []
+        if (productData.detail_images) {
+          detailImages = typeof productData.detail_images === 'string' 
+            ? JSON.parse(productData.detail_images)
+            : productData.detail_images
+        }
+        
         setFormData({
           name: productData.name,
           description: productData.description || '',
@@ -86,7 +97,8 @@ export default function SellerProductEditPage() {
           stock: String(productData.stock),
           image_url: productData.image_url || '',
           live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
-          is_active: productData.is_active
+          is_active: productData.is_active,
+          detail_images: detailImages
         })
       }
     } catch (error: any) {
@@ -135,7 +147,8 @@ export default function SellerProductEditPage() {
         stock: Number(formData.stock),
         image_url: formData.image_url,
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        detail_images: JSON.stringify(formData.detail_images)
       }
 
       const response = await axios.patch(`/api/seller/products/${id}`, payload, {
@@ -168,6 +181,23 @@ export default function SellerProductEditPage() {
         [name]: value
       })
     }
+  }
+
+  function addDetailImage() {
+    const url = prompt('상세 이미지 URL을 입력하세요:')
+    if (url && url.trim()) {
+      setFormData({
+        ...formData,
+        detail_images: [...formData.detail_images, url.trim()]
+      })
+    }
+  }
+
+  function removeDetailImage(index: number) {
+    setFormData({
+      ...formData,
+      detail_images: formData.detail_images.filter((_, i) => i !== index)
+    })
   }
 
   if (loading) {
@@ -344,6 +374,61 @@ export default function SellerProductEditPage() {
               </div>
             </div>
           )}
+
+          {/* Detail Images */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                상품 상세 이미지 (선택)
+              </label>
+              <Button
+                type="button"
+                onClick={addDetailImage}
+                className="text-sm py-1 px-3 bg-green-600 hover:bg-green-700 text-white"
+              >
+                + 이미지 추가
+              </Button>
+            </div>
+            
+            {formData.detail_images.length > 0 ? (
+              <div className="space-y-3">
+                {formData.detail_images.map((imageUrl, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border">
+                    <div className="w-24 h-24 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                      <img
+                        src={imageUrl}
+                        alt={`상세 이미지 ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/96'
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-500 mb-1">이미지 {index + 1}</p>
+                      <p className="text-sm text-gray-700 break-all">{imageUrl}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => removeDetailImage(index)}
+                      className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm"
+                    >
+                      삭제
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
+                <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">상세 이미지가 없습니다</p>
+                <p className="text-xs text-gray-400 mt-1">위의 "+ 이미지 추가" 버튼을 클릭하여 이미지를 추가하세요</p>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Tip: Unsplash, Pexels 등 무료 이미지 사이트에서 이미지 URL을 복사하여 사용할 수 있습니다
+            </p>
+          </div>
 
           {/* Live Stream Selection */}
           {liveStreams.length > 0 && (

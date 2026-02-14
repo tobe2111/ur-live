@@ -18,6 +18,7 @@ interface Product {
   stock: number
   sold_count?: number
   category?: string
+  detail_images?: string | string[]
 }
 
 export default function ProductDetailPage() {
@@ -135,6 +136,13 @@ export default function ProductDetailPage() {
   }
 
   const displayPrice = product.current_price || product.price
+  
+  // Parse detail_images if it's a JSON string
+  const detailImages = product.detail_images 
+    ? (typeof product.detail_images === 'string' 
+        ? JSON.parse(product.detail_images) 
+        : product.detail_images)
+    : []
 
   return (
     <div className="min-h-screen bg-white">
@@ -226,6 +234,27 @@ export default function ProductDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Detail Images */}
+        {detailImages.length > 0 && (
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">상품 상세 이미지</h3>
+            <div className="space-y-2">
+              {detailImages.map((imageUrl: string, index: number) => (
+                <div key={index} className="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <img
+                    src={imageUrl}
+                    alt={`${product.name} 상세 ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800'
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quantity Selector */}
         <div className="border-t border-gray-200 pt-6">
