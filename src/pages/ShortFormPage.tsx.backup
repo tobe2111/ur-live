@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag, X, Package, LogOut } from 'lucide-react'
+import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag, X, LogIn, Package, MapPin, Settings, LogOut } from 'lucide-react'
 import { getUserId, getUserName, isLoggedIn } from '@/utils/auth'
 import axios from 'axios'
 
@@ -109,8 +109,7 @@ export default function ShortFormPage() {
 
   function handleLogout() {
     localStorage.clear()
-    alert('\ub85c\uadf8\uc544\uc6c3\ub418\uc5c8\uc2b5\ub2c8\ub2e4.')
-    setIsSidebarOpen(false)
+    alert('로그아웃되었습니다.')
     navigate('/login')
   }
 
@@ -124,70 +123,165 @@ export default function ShortFormPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sidebar Backdrop */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsSidebarOpen(false)} />
-      )}
-      
       {/* Sidebar */}
-      <div className={`fixed top-0 left-0 h-full w-72 bg-white z-50 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl`}>
-        <div className="flex flex-col h-full">
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">\uba54\ub274</h2>
-              <button onClick={() => setIsSidebarOpen(false)} className="text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            {loggedIn && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">{userName}</p>
-                  <p className="text-purple-100 text-xs">\ud658\uc601\ud569\ub2c8\ub2e4!</p>
-                </div>
-              </div>
-            )}
-          </div>
+      {isSidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+            onClick={() => setIsSidebarOpen(false)}
+          />
           
-          <div className="flex-1 overflow-y-auto p-4">
-            {loggedIn ? (
-              <div className="space-y-2">
-                <button onClick={() => { setIsSidebarOpen(false); navigate('/mypage'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
-                  <User className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium">\ub9c8\uc774\ud398\uc774\uc9c0</span>
-                </button>
-                <button onClick={() => { setIsSidebarOpen(false); navigate('/my-orders'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
-                  <Package className="w-5 h-5 text-indigo-600" />
-                  <span className="font-medium">\uc8fc\ubb38\ub0b4\uc5ed</span>
-                </button>
-                <button onClick={() => { setIsSidebarOpen(false); navigate('/cart'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
-                  <ShoppingBag className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium">\uc7a5\ubc14\uad6c\ub2c8</span>
-                </button>
-                <div className="border-t my-2"></div>
-                <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-lg text-red-600">
-                  <LogOut className="w-5 h-5" />
-                  <span className="font-medium">\ub85c\uadf8\uc544\uc6c3</span>
+          {/* Sidebar Menu */}
+          <div className="fixed top-0 left-0 h-full w-80 bg-white z-50 shadow-2xl transition-transform duration-300 transform translate-x-0 overflow-y-auto">
+            {/* Sidebar Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">메뉴</h2>
+                <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition"
+                >
+                  <X className="w-6 h-6 text-white" />
                 </button>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <button onClick={() => { setIsSidebarOpen(false); navigate('/login'); }} className="bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold">
-                  \ub85c\uadf8\uc778 \ud558\uae30
-                </button>
-              </div>
-            )}
+              
+              {loggedIn ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">{userName || '사용자'}</p>
+                    <p className="text-purple-100 text-sm">환영합니다!</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-white text-sm mb-3">로그인이 필요합니다</p>
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      navigate('/login')
+                    }}
+                    className="w-full bg-white text-purple-600 font-semibold py-2 px-4 rounded-lg hover:bg-purple-50 transition"
+                  >
+                    로그인 하기
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Menu Items */}
+            <div className="p-4">
+              {loggedIn ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      navigate('/mypage')
+                    }}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition"
+                  >
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <User className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-gray-900">마이페이지</p>
+                      <p className="text-xs text-gray-500">프로필 및 설정</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      navigate('/my-orders')
+                    }}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition"
+                  >
+                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <Package className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-gray-900">주문내역</p>
+                      <p className="text-xs text-gray-500">구매한 상품 확인</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      navigate('/cart')
+                    }}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition"
+                  >
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <ShoppingBag className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-gray-900">장바구니</p>
+                      <p className="text-xs text-gray-500">담은 상품 보기</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      navigate('/mypage/addresses')
+                    }}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 rounded-xl transition"
+                  >
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-gray-900">배송지 관리</p>
+                      <p className="text-xs text-gray-500">주소 추가/수정</p>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-200 my-4"></div>
+
+                  <button
+                    onClick={() => {
+                      setIsSidebarOpen(false)
+                      handleLogout()
+                    }}
+                    className="w-full flex items-center gap-3 p-4 hover:bg-red-50 rounded-xl transition text-red-600"
+                  >
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <LogOut className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold">로그아웃</p>
+                      <p className="text-xs text-red-400">계정에서 나가기</p>
+                    </div>
+                  </button>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">로그인 후 이용 가능합니다</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs text-gray-500 text-center">
+                © 2026 리스터코퍼레이션. All rights reserved.
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Header - UR Live Branding */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => setIsSidebarOpen(true)}>
+          <button 
+            className="p-2 hover:bg-gray-100 rounded-lg transition" 
+            onClick={() => setIsSidebarOpen(true)}
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -491,5 +585,6 @@ export default function ShortFormPage() {
           </div>
         )}
       </div>
+    </div>
   )
 }
