@@ -117,7 +117,7 @@ export default function ShortFormPage() {
         {/* Header - UR Live Branding */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between px-4 py-3">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/browse')}>
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/')}>
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
@@ -214,10 +214,10 @@ export default function ShortFormPage() {
                 <h3 className="text-lg font-bold text-gray-900">예정된 라이브</h3>
               </div>
               <button 
-                onClick={() => navigate('/browse')}
+                onClick={() => navigate('/')}
                 className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
               >
-                전체보기
+                더보기
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
