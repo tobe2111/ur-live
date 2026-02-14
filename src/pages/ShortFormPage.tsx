@@ -135,7 +135,7 @@ export default function ShortFormPage() {
         <div className="flex flex-col h-full">
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">\uba54\ub274</h2>
+              <h2 className="text-xl font-bold text-white">메뉴</h2>
               <button onClick={() => setIsSidebarOpen(false)} className="text-white">
                 <X className="w-6 h-6" />
               </button>
