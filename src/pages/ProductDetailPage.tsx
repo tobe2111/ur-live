@@ -38,7 +38,11 @@ export default function ProductDetailPage() {
     try {
       setLoading(true)
       const response = await axios.get(`/api/products/${id}`)
-      setProduct(response.data.product)
+      if (response.data.success && response.data.data?.product) {
+        setProduct(response.data.data.product)
+      } else {
+        setError('상품을 불러올 수 없습니다.')
+      }
     } catch (err) {
       console.error('Failed to load product:', err)
       setError('상품을 불러올 수 없습니다.')
