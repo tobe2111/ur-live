@@ -139,6 +139,64 @@ export default function ProductDetailPage() {
     }
   }
 
+  function handleShare() {
+    const shareUrl = window.location.href
+    const shareText = `${product!.name} - ${displayPrice.toLocaleString()}원`
+    
+    if (navigator.share) {
+      navigator.share({
+        title: product!.name,
+        text: shareText,
+        url: shareUrl
+      }).catch(err => console.log('Share failed:', err))
+    } else {
+      // Fallback: Copy to clipboard
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast('링크가 복사되었습니다!')
+      }).catch(() => {
+        showToast('링크 복사에 실패했습니다.', 'error')
+      })
+    }
+  }
+
+  function handleKakaoShare() {
+    if (typeof window.Kakao === 'undefined') {
+      showToast('카카오톡 공유를 사용할 수 없습니다.', 'error')
+      return
+    }
+
+    if (!window.Kakao.isInitialized()) {
+      window.Kakao.init('YOUR_KAKAO_JS_KEY') // Replace with actual key
+    }
+
+    window.Kakao.Share.sendDefault({
+      objectType: 'commerce',
+      content: {
+        title: product!.name,
+        imageUrl: product!.image_url,
+        link: {
+          mobileWebUrl: window.location.href,
+          webUrl: window.location.href
+        }
+      },
+      commerce: {
+        productName: product!.name,
+        regularPrice: product!.price,
+        discountPrice: displayPrice,
+        discountRate: product!.discount_rate
+      },
+      buttons: [
+        {
+          title: '구매하기',
+          link: {
+            mobileWebUrl: window.location.href,
+            webUrl: window.location.href
+          }
+        }
+      ]
+    })
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -187,7 +245,11 @@ export default function ProductDetailPage() {
           </button>
           <h1 className="text-lg font-bold text-gray-900">상품 상세</h1>
           <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+            <button 
+              onClick={handleShare}
+              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              aria-label="공유하기"
+            >
               <Share2 className="w-5 h-5 text-gray-600" />
             </button>
             <button className="p-2 hover:bg-gray-100 rounded-lg transition">
