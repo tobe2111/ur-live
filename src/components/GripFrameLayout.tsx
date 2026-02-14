@@ -15,10 +15,10 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
       {/* Pure Black Background - No animations */}
 
       {/* Desktop Background Branding Area */}
-      <div className="hidden lg:flex fixed inset-0 items-center justify-center">
-        <div className="flex items-start justify-center gap-12 w-full max-w-7xl px-8">
+      <div className="hidden lg:flex fixed inset-0 items-start justify-center pt-8 pb-8 overflow-y-auto">
+        <div className="flex items-start justify-center gap-12 w-full max-w-7xl px-8 min-h-full">
           {/* Left Branding Column */}
-          <div className="w-[500px] space-y-6 animate-fade-in-up">
+          <div className="w-[500px] space-y-6 animate-fade-in-up flex-shrink-0">
             {/* Logo & Branding */}
             <div className="space-y-4">
               <div className="flex items-center gap-4">

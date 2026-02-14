@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag, X, Package, LogOut } from 'lucide-react'
 import { getUserId, getUserName, isLoggedIn } from '@/utils/auth'
 import axios from 'axios'
+import MobileFooter from '@/components/MobileFooter'
 
 interface Product {
   id: number
@@ -490,6 +491,9 @@ export default function ShortFormPage() {
             </div>
           </div>
         )}
+
+        {/* Mobile Footer */}
+        <MobileFooter />
       </div>
   )
 }

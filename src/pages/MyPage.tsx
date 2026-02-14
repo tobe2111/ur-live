@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import MobileFooter from '@/components/MobileFooter'
 import { 
   User, 
   MapPin, 
@@ -165,12 +166,11 @@ export default function MyPage() {
           <span className="font-medium">로그아웃</span>
         </button>
 
-        {/* 버전 정보 */}
-        <div className="text-center mt-8 text-sm text-gray-400">
-          <p>버전 1.0.0</p>
-          <p className="mt-1">© 2026 Live Commerce</p>
-        </div>
+        {/* 버전 정보 - 제거하고 Footer로 대체 */}
       </main>
+
+      {/* Mobile Footer */}
+      <MobileFooter />
     </div>
   )
 }

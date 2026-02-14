@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowLeft, Search, Package, AlertCircle, Loader2 } from 'lucide-react'
+import MobileFooter from '@/components/MobileFooter'
 
 interface Product {
   id: number
@@ -328,6 +329,9 @@ export default function SearchPage() {
             })}
           </div>
         )}
+
+        {/* Mobile Footer */}
+        <MobileFooter />
       </div>
     </div>
   )

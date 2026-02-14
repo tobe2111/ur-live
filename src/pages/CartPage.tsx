@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
+import MobileFooter from '@/components/MobileFooter'
 
 interface CartItem {
   id: number
@@ -402,6 +403,9 @@ export default function CartPage() {
           animation: slideUp 0.3s ease-out;
         }
       `}</style>
+
+      {/* Mobile Footer */}
+      <MobileFooter />
     </div>
   )
 }

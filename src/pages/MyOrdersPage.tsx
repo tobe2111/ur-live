@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import MobileFooter from '@/components/MobileFooter'
 import { 
   ArrowLeft, 
   Package, 
@@ -966,6 +967,9 @@ export default function MyOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Mobile Footer */}
+      <MobileFooter />
     </div>
   )
 }
