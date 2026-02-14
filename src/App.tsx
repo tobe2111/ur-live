@@ -1,3 +1,4 @@
+// React Router App - v2.1 (Cache Buster)
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -57,10 +58,10 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 
 // 로딩 컴포넌트
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen">
+  <div className="flex items-center justify-center min-h-screen bg-gray-50">
     <div className="text-center">
       <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p className="mt-4 text-gray-600">로딩 중...</p>
+      <p className="mt-4 text-gray-600 font-medium">로딩 중...</p>
     </div>
   </div>
 )
