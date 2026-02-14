@@ -641,12 +641,19 @@ export default function CheckoutPage() {
           </div>
 
           {/* 결제 수단 선택 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-xl font-bold mb-4">결제 수단</h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h2 className="text-base font-bold mb-4">결제 수단</h2>
             
-            {/* 토스페이먼츠 위젯 렌더링 영역 */}
-            <div id="payment-method"></div>
-            <div id="agreement" className="mt-4"></div>
+            {/* 토스페이먼츠 위젯 렌더링 영역 - 모바일 최적화 */}
+            <div id="payment-method" className="min-h-[200px] w-full"></div>
+            <div id="agreement" className="mt-4 w-full"></div>
+            
+            {!ready && (
+              <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                결제 수단 불러오는 중...
+              </div>
+            )}
           </div>
         </div>
 

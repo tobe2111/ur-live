@@ -1053,77 +1053,77 @@ export default function LivePage() {
           </button>
 
           {/* 중앙: LIVE 배지 + 시청자 수 */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/10" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-              <div className="w-2 h-2 bg-[#ff3b30] rounded-full animate-pulse" />
-              <span className="text-white text-[11px] font-bold tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>LIVE</span>
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/10" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+              <div className="w-1.5 h-1.5 bg-[#ff3b30] rounded-full animate-pulse" />
+              <span className="text-white text-[9px] font-bold tracking-wide" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>LIVE</span>
             </div>
             {stream.viewer_count && (
-              <div className="px-3 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/10" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                <span className="text-white text-[11px] font-semibold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+              <div className="px-2.5 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/10" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                <span className="text-white text-[9px] font-semibold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
                   {stream.viewer_count.toLocaleString()}
                 </span>
               </div>
             )}
           </div>
 
-          {/* 우측: SNS 버튼 - 옅은 원형 배경 */}
-          <div className="flex items-center gap-2">
+          {/* 우측: SNS 버튼 - 더 작게 */}
+          <div className="flex items-center gap-1.5">
             {stream.seller_instagram && (
               <button 
                 onClick={() => handleSNSFollow('instagram')}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md border border-white/10 transition-all active:scale-95"
+                className="flex items-center justify-center w-7 h-7 rounded-full bg-black/20 backdrop-blur-md border border-white/10 transition-all active:scale-95"
                 style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
               >
-                <Instagram className="w-4 h-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                <Instagram className="w-3.5 h-3.5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
               </button>
             )}
             {stream.seller_youtube && (
               <button 
                 onClick={() => handleSNSFollow('youtube')}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md border border-white/10 transition-all active:scale-95"
+                className="flex items-center justify-center w-7 h-7 rounded-full bg-black/20 backdrop-blur-md border border-white/10 transition-all active:scale-95"
                 style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
               >
-                <Youtube className="w-4 h-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                <Youtube className="w-3.5 h-3.5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
               </button>
             )}
             {stream.seller_facebook && (
               <button 
                 onClick={() => handleSNSFollow('facebook')}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-black/20 backdrop-blur-md border border-white/10 transition-all active:scale-95"
+                className="flex items-center justify-center w-7 h-7 rounded-full bg-black/20 backdrop-blur-md border border-white/10 transition-all active:scale-95"
                 style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}
               >
-                <Facebook className="w-4 h-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+                <Facebook className="w-3.5 h-3.5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Right Side Icons - 개선: 안쪽으로 이동, 말풍선으로 채팅 */}
-      <div className="fixed right-5 bottom-40 z-30 flex flex-col gap-5">
-        {/* 공유 버튼 */}
+      {/* Right Side Icons - 개선: 위치 하향 */}
+      <div className="fixed right-4 bottom-[180px] z-30 flex flex-col gap-3">
+        {/* 공유 버튼 - 더 작게 */}
         <button 
           onClick={handleShare}
-          className="flex flex-col items-center gap-1.5 transition-all active:scale-95"
+          className="flex flex-col items-center gap-1 transition-all active:scale-95"
         >
-          <div className="w-11 h-11 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-            <Share2 className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+          <div className="w-9 h-9 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <Share2 className="w-4 h-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
           </div>
-          <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
+          <span className="text-white text-[8px] font-bold" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             공유
           </span>
         </button>
 
-        {/* 채팅 버튼 (말풍선 클릭 시 입력창) */}
+        {/* 채팅 버튼 - 더 작게 */}
         <button 
           onClick={() => setShowChatInput(!showChatInput)}
-          className="flex flex-col items-center gap-1.5 transition-all active:scale-95"
+          className="flex flex-col items-center gap-1 transition-all active:scale-95"
         >
-          <div className="w-11 h-11 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-            <MessageCircle className="w-5 h-5 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
+          <div className="w-9 h-9 rounded-full bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            <MessageCircle className="w-4 h-4 text-white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }} />
           </div>
-          <span className="text-white text-[10px] font-bold" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
+          <span className="text-white text-[8px] font-bold" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             채팅
           </span>
         </button>
@@ -1132,14 +1132,14 @@ export default function LivePage() {
       {/* Bottom Content - 개선: 상품 카드 하단으로, 그라데이션 제거 */}
       <div className="fixed bottom-0 left-0 right-0 z-20 pb-8">
         <div className="flex flex-col justify-end px-5 space-y-4">
-          {/* Chat Messages - 간격 축소 */}
+          {/* Chat Messages - 폰트 축소 */}
           <div className="space-y-1 max-h-24 overflow-y-auto">
             {messages.slice(-4).map((msg) => (
-              <div key={msg.id} className={`flex items-start gap-2 px-2.5 py-1 rounded-lg backdrop-blur-sm max-w-[80%] ${
+              <div key={msg.id} className={`flex items-start gap-1.5 px-2 py-0.5 rounded-lg backdrop-blur-sm max-w-[80%] ${
                 msg.is_admin ? 'bg-red-400/30' : msg.is_seller ? 'bg-blue-400/30' : 'bg-black/15'
               }`} style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
                 <span 
-                  className={`text-[12px] font-bold shrink-0 ${
+                  className={`text-[10px] font-bold shrink-0 ${
                     msg.is_admin ? 'text-red-300' : msg.is_seller ? 'text-blue-300' : 'text-white'
                   }`}
                   style={{ 
@@ -1149,7 +1149,7 @@ export default function LivePage() {
                   {msg.is_admin ? '👑 ' : msg.is_seller ? '🏪 ' : ''}{msg.user_name}
                 </span>
                 <span 
-                  className={`text-[12px] ${
+                  className={`text-[10px] ${
                     msg.is_admin ? 'text-red-200' : msg.is_seller ? 'text-blue-200' : 'text-white/95'
                   }`}
                   style={{ 
@@ -1197,43 +1197,43 @@ export default function LivePage() {
                 style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}
               >
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[11px] sm:text-[12px] font-bold text-[#1d1d1f] line-clamp-1 mb-1">
+                  <p className="text-[10px] font-bold text-[#1d1d1f] line-clamp-1 mb-0.5">
                     {currentProduct.product.name}
                   </p>
-                  <div className="flex items-baseline gap-1.5">
+                  <div className="flex items-baseline gap-1">
                     {currentProduct.product.stock === 0 ? (
-                      <span className="text-[#ff3b30] text-[12px] font-extrabold">
+                      <span className="text-[#ff3b30] text-[11px] font-extrabold">
                         품절
                       </span>
                     ) : currentProduct.product.stock <= 10 ? (
                       <>
                         {currentProduct.product.discount_rate > 0 && (
-                          <span className="text-[#ff3b30] text-[11px] font-extrabold">
+                          <span className="text-[#ff3b30] text-[9px] font-extrabold">
                             {currentProduct.product.discount_rate}%
                           </span>
                         )}
-                        <span className="text-[#1d1d1f] text-[13px] sm:text-[14px] font-extrabold">
+                        <span className="text-[#1d1d1f] text-[11px] font-extrabold">
                           {discountedPrice.toLocaleString()}원
                         </span>
-                        <span className="text-[#ff9500] text-[10px] font-bold">
+                        <span className="text-[#ff9500] text-[8px] font-bold">
                           (재고 {currentProduct.product.stock}개)
                         </span>
                       </>
                     ) : (
                       <>
                         {currentProduct.product.discount_rate > 0 && (
-                          <span className="text-[#ff3b30] text-[11px] font-extrabold">
+                          <span className="text-[#ff3b30] text-[9px] font-extrabold">
                             {currentProduct.product.discount_rate}%
                           </span>
                         )}
-                        <span className="text-[#1d1d1f] text-[13px] sm:text-[14px] font-extrabold">
+                        <span className="text-[#1d1d1f] text-[11px] font-extrabold">
                           {discountedPrice.toLocaleString()}원
                         </span>
                       </>
                     )}
                   </div>
                 </div>
-                <div className={`flex-shrink-0 ${currentProduct.product.stock === 0 ? 'bg-[#8e8e93]' : 'bg-[#FF6B35]'} text-white px-2.5 py-1.5 sm:px-3 rounded-full text-[9px] sm:text-[10px] font-extrabold`}>
+                <div className={`flex-shrink-0 ${currentProduct.product.stock === 0 ? 'bg-[#8e8e93]' : 'bg-[#FF6B35]'} text-white px-2 py-1 rounded-full text-[8px] font-extrabold`}>
                   {currentProduct.product.stock === 0 ? '품절' : addingToCart ? '담는중...' : '담기'}
                 </div>
               </button>
