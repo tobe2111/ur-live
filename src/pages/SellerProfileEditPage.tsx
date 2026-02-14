@@ -33,6 +33,7 @@ interface SellerProfile {
   sns_facebook?: string
   sns_twitter?: string
   website_url?: string
+  kakao_chat_link?: string
   status: string
   created_at: string
 }
@@ -53,7 +54,8 @@ export default function SellerProfileEditPage() {
     sns_youtube: '',
     sns_facebook: '',
     sns_twitter: '',
-    website_url: ''
+    website_url: '',
+    kakao_chat_link: ''
   })
 
   useEffect(() => {
@@ -88,7 +90,8 @@ export default function SellerProfileEditPage() {
           sns_youtube: seller.sns_youtube || '',
           sns_facebook: seller.sns_facebook || '',
           sns_twitter: seller.sns_twitter || '',
-          website_url: seller.website_url || ''
+          website_url: seller.website_url || '',
+          kakao_chat_link: seller.kakao_chat_link || ''
         })
       }
     } catch (error) {
@@ -350,6 +353,38 @@ export default function SellerProfileEditPage() {
                   placeholder="@username 또는 https://twitter.com/username"
                   className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* KakaoTalk Chat Link Section */}
+          <div className="apple-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-[#fee500]/10 rounded-full flex items-center justify-center">
+                <MessageSquare className="h-5 w-5 text-[#fee500]" />
+              </div>
+              <div>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">카카오톡 문의</h2>
+                <p className="text-[13px] text-[#6e6e73]">고객 문의를 위한 카카오톡 오픈채팅 링크</p>
+              </div>
+            </div>
+
+            <div>
+              <input
+                type="text"
+                value={formData.kakao_chat_link}
+                onChange={(e) => setFormData({ ...formData, kakao_chat_link: e.target.value })}
+                placeholder="https://open.kakao.com/o/..."
+                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+              />
+              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex gap-2 text-[11px] text-orange-800">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold mb-1">⚠️ 외부 거래 주의 사항</p>
+                    <p>플랫폼 외부에서의 거래는 금지되며, 사기 피해 시 플랫폼은 책임지지 않습니다. 의심스러운 거래는 고객센터(0507-0177-0432)로 즉시 신고해주세요.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
