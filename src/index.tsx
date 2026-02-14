@@ -4527,6 +4527,160 @@ app.delete('/api/chat/:liveStreamId/ban/:userId', cors(), async (c) => {
 });
 
 // ============================================
+// 🔔 Notification APIs
+// ============================================
+
+// 알림 생성 (내부 함수)
+async function createNotification(
+  DB: D1Database,
+  userId: number,
+  type: string,
+  title: string,
+  message: string,
+  link?: string
+) {
+  try {
+    await DB.prepare(`
+      INSERT INTO notifications (user_id, type, title, message, link)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(userId, type, title, message, link || null).run();
+  } catch (err) {
+    console.error('Error creating notification:', err);
+  }
+}
+
+// 사용자 알림 조회
+app.get('/api/notifications', cors(), async (c) => {
+  const { DB } = c.env;
+  const userId = c.req.query('userId');
+
+  if (!userId) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: 'userId is required',
+    }, 400);
+  }
+
+  try {
+    const result = await DB.prepare(`
+      SELECT 
+        id,
+        type,
+        title,
+        message,
+        link,
+        is_read,
+        datetime(created_at) as created_at
+      FROM notifications
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 50
+    `).bind(userId).all();
+
+    // 읽지 않은 알림 개수
+    const unreadResult = await DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM notifications
+      WHERE user_id = ? AND is_read = 0
+    `).bind(userId).first();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        notifications: result.results,
+        unread_count: unreadResult?.count || 0,
+      },
+    });
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 알림 읽음 처리
+app.put('/api/notifications/:id/read', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+
+  try {
+    await DB.prepare(`
+      UPDATE notifications
+      SET is_read = 1
+      WHERE id = ?
+    `).bind(id).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'Notification marked as read',
+    });
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 모든 알림 읽음 처리
+app.put('/api/notifications/read-all', cors(), async (c) => {
+  const { DB } = c.env;
+  const userId = c.req.query('userId');
+
+  if (!userId) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: 'userId is required',
+    }, 400);
+  }
+
+  try {
+    await DB.prepare(`
+      UPDATE notifications
+      SET is_read = 1
+      WHERE user_id = ? AND is_read = 0
+    `).bind(userId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'All notifications marked as read',
+    });
+  } catch (err) {
+    console.error('Error marking all notifications as read:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 알림 삭제
+app.delete('/api/notifications/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+
+  try {
+    await DB.prepare(`
+      DELETE FROM notifications WHERE id = ?
+    `).bind(id).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'Notification deleted',
+    });
+  } catch (err) {
+    console.error('Error deleting notification:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// ============================================
 // 💳 Payment Advanced APIs (Webhook, Cancel, Query)
 // ============================================
 
