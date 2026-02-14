@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users } from 'lucide-react'
+import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import axios from 'axios'
 import GripFrameLayout from '@/components/GripFrameLayout'
@@ -27,11 +27,13 @@ interface Stream {
   seller_name: string
   viewer_count?: number
   status: string
+  scheduled_start_time?: string
 }
 
 export default function ShortFormPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<Stream[]>([])
+  const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('home')
   const [filterTab, setFilterTab] = useState('popularity')
@@ -55,6 +57,15 @@ export default function ShortFormPage() {
       const streamsRes = await axios.get('/api/streams?status=live')
       if (streamsRes.data.success) {
         setStreams(streamsRes.data.data || [])
+      }
+
+      // Load scheduled streams
+      const scheduledRes = await axios.get('/api/streams?status=scheduled')
+      if (scheduledRes.data.success) {
+        const scheduled = (scheduledRes.data.data || [])
+          .filter((s: Stream) => s.status === 'scheduled')
+          .slice(0, 4)
+        setScheduledStreams(scheduled)
       }
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -124,8 +135,11 @@ export default function ShortFormPage() {
               <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/search')}>
                 <Search className="w-5 h-5 text-gray-600" />
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-                <Bell className="w-5 h-5 text-gray-600" />
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/cart')}>
+                <ShoppingBag className="w-5 h-5 text-gray-600" />
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/mypage')}>
+                <User className="w-5 h-5 text-gray-600" />
               </button>
             </div>
           </div>
@@ -165,8 +179,106 @@ export default function ShortFormPage() {
           </div>
         </header>
 
+        {/* Hero Banner */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-600 px-4 py-8">
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-5 h-5 text-yellow-300" />
+              <span className="text-xs font-bold text-yellow-300 uppercase tracking-wide">Special Offer</span>
+            </div>
+            <h2 className="text-2xl font-black text-white mb-2">
+              실시간 라이브 쇼핑
+            </h2>
+            <p className="text-sm text-purple-100 mb-4">
+              지금 바로 라이브 방송에서 특별한 상품을 만나보세요
+            </p>
+            <button 
+              onClick={() => {
+                const liveSection = document.getElementById('live-section')
+                liveSection?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="bg-white text-purple-600 font-bold text-sm px-6 py-2.5 rounded-full hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl inline-flex items-center gap-2"
+            >
+              라이브 보러가기
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+        </div>
+
+        {/* Scheduled Streams Section */}
+        {scheduledStreams.length > 0 && (
+          <div className="mt-4 bg-white">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-lg font-bold text-gray-900">예정된 라이브</h3>
+              </div>
+              <button 
+                onClick={() => navigate('/browse')}
+                className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+              >
+                전체보기
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50">
+              {scheduledStreams.map((stream) => (
+                <div
+                  key={stream.id}
+                  onClick={() => handleStreamClick(stream.id)}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
+                >
+                  <div className="relative aspect-square bg-gray-900">
+                    {stream.thumbnail_url ? (
+                      <img
+                        src={stream.thumbnail_url}
+                        alt={stream.title}
+                        className="w-full h-full object-cover opacity-90"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Clock className="w-16 h-16 text-white opacity-50" />
+                      </div>
+                    )}
+                    
+                    {/* Scheduled Badge */}
+                    <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                      <Clock className="w-3 h-3" />
+                      예정
+                    </div>
+
+                    {/* Scheduled Time */}
+                    {stream.scheduled_start_time && (
+                      <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-xs font-medium px-2 py-1 rounded text-center">
+                        {new Date(stream.scheduled_start_time).toLocaleString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3">
+                    <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
+                      {stream.title}
+                    </h4>
+                    <p className="text-xs text-gray-600">{stream.seller_name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Section Header - Popular Products */}
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-purple-100">
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-purple-100 mt-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <span className="text-purple-600">🔥</span>
             인기 상품
@@ -253,7 +365,7 @@ export default function ShortFormPage() {
 
         {/* Live Streams Section */}
         {streams.length > 0 && (
-          <div className="mt-4 bg-white">
+          <div id="live-section" className="mt-4 bg-white pb-6">
             <div className="bg-gradient-to-r from-red-50 to-pink-50 px-4 py-3 border-b border-red-100">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
@@ -262,7 +374,7 @@ export default function ShortFormPage() {
             </div>
             
             <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50">
-              {streams.slice(0, 4).map((stream) => (
+              {streams.slice(0, 6).map((stream) => (
                 <div
                   key={stream.id}
                   onClick={() => handleStreamClick(stream.id)}
