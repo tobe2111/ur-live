@@ -1749,29 +1749,57 @@ app.get('/api/products', async (c) => {
       });
     }
 
-    // featured 파라미터는 무시하고 모든 활성 상품 조회
-    // (is_featured 컬럼이 없으므로 인기 상품으로 간주)
-    const query = `
-      SELECT 
-        p.id,
-        p.name,
-        p.description,
-        p.price,
-        p.original_price,
-        p.discount_rate,
-        p.image_url,
-        p.stock,
-        p.category,
-        p.seller_id,
-        COALESCE(SUM(oi.quantity), 0) as sold_count
-      FROM products p
-      LEFT JOIN order_items oi ON p.id = oi.product_id
-      LEFT JOIN orders o ON oi.order_id = o.id
-      WHERE p.is_active = 1 AND p.stock > 0
-      GROUP BY p.id
-      ORDER BY sold_count DESC, p.created_at DESC
-      LIMIT ? OFFSET ?
-    `;
+    // featured 파라미터가 있으면 featured seller의 상품만 조회
+    let query;
+    if (featured === 'true') {
+      query = `
+        SELECT 
+          p.id,
+          p.name,
+          p.description,
+          p.price,
+          p.original_price,
+          p.discount_rate,
+          p.image_url,
+          p.stock,
+          p.category,
+          p.seller_id,
+          s.display_name as seller_name,
+          COALESCE(SUM(oi.quantity), 0) as sold_count
+        FROM products p
+        JOIN sellers s ON p.seller_id = s.id
+        LEFT JOIN order_items oi ON p.id = oi.product_id
+        LEFT JOIN orders o ON oi.order_id = o.id
+        WHERE p.is_active = 1 
+          AND p.stock > 0 
+          AND s.is_featured_seller = 1
+        GROUP BY p.id
+        ORDER BY sold_count DESC, p.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+    } else {
+      query = `
+        SELECT 
+          p.id,
+          p.name,
+          p.description,
+          p.price,
+          p.original_price,
+          p.discount_rate,
+          p.image_url,
+          p.stock,
+          p.category,
+          p.seller_id,
+          COALESCE(SUM(oi.quantity), 0) as sold_count
+        FROM products p
+        LEFT JOIN order_items oi ON p.id = oi.product_id
+        LEFT JOIN orders o ON oi.order_id = o.id
+        WHERE p.is_active = 1 AND p.stock > 0
+        GROUP BY p.id
+        ORDER BY sold_count DESC, p.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+    }
 
     const result = await DB.prepare(query).bind(limit, offset).all();
     const products = result.results || [];
