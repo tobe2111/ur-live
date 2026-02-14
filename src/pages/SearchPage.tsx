@@ -41,6 +41,8 @@ export default function SearchPage() {
   const [inputValue, setInputValue] = useState(query)
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
+  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
   const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -125,6 +127,30 @@ export default function SearchPage() {
     setInputValue(text)
     navigate(`/search?q=${encodeURIComponent(text)}`)
     setShowSuggestions(false)
+  }
+
+  const getSortedAndFilteredProducts = () => {
+    if (!searchResult?.products) return []
+    
+    let filtered = searchResult.products.filter(product => {
+      const price = getDiscountedPrice(product.price, product.discount_rate)
+      return price >= priceRange.min && price <= priceRange.max
+    })
+    
+    switch (sortBy) {
+      case 'price_low':
+        return filtered.sort((a, b) => 
+          getDiscountedPrice(a.price, a.discount_rate) - getDiscountedPrice(b.price, b.discount_rate)
+        )
+      case 'price_high':
+        return filtered.sort((a, b) => 
+          getDiscountedPrice(b.price, b.discount_rate) - getDiscountedPrice(a.price, a.discount_rate)
+        )
+      case 'newest':
+        return filtered.sort((a, b) => b.id - a.id)
+      default:
+        return filtered
+    }
   }
 
   return (
@@ -243,8 +269,28 @@ export default function SearchPage() {
 
         {/* Results Grid */}
         {!loading && !error && searchResult && searchResult.total > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {searchResult.products.map((product) => {
+          <>
+            {/* Sort and Filter Bar */}
+            <div className="mb-4 pb-4 border-b border-[#e5e5ea]">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-[15px] text-[#6e6e73]">
+                  총 <span className="font-semibold text-[#1d1d1f]">{searchResult.total}</span>개 상품
+                </p>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-2 text-[13px] border border-[#e5e5ea] rounded-lg bg-white text-[#1d1d1f] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                >
+                  <option value="relevance">관련도순</option>
+                  <option value="price_low">낮은 가격순</option>
+                  <option value="price_high">높은 가격순</option>
+                  <option value="newest">최신순</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {getSortedAndFilteredProducts().map((product) => {
               const discountedPrice = getDiscountedPrice(product.price, product.discount_rate)
               
               return (
@@ -328,6 +374,7 @@ export default function SearchPage() {
               )
             })}
           </div>
+          </>
         )}
 
         {/* Mobile Footer */}

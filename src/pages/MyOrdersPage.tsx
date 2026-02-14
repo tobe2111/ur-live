@@ -57,7 +57,10 @@ interface Order {
   shipping_postal_code: string
   shipping_name: string
   shipping_phone: string
+  courier?: string
   tracking_number?: string
+  shipped_at?: string
+  delivered_at?: string
   created_at: string
   updated_at: string
   items: OrderItem[]
@@ -163,6 +166,22 @@ export default function MyOrdersPage() {
       return
     }
     navigate('/checkout')
+  }
+
+  function getTrackingUrl(courier?: string, trackingNumber?: string): string {
+    if (!courier || !trackingNumber) return ''
+    
+    const courierUrls: { [key: string]: string } = {
+      'CJ대한통운': `https://www.cjlogistics.com/ko/tool/parcel/tracking?gnbInvNo=${trackingNumber}`,
+      '우체국택배': `https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm?sid1=${trackingNumber}`,
+      '한진택배': `https://www.hanjin.com/kor/CMS/DeliveryMgr/WaybillResult.do?mCode=MN038&schLang=KR&wblnumText2=${trackingNumber}`,
+      '로젠택배': `https://www.ilogen.com/web/personal/trace/${trackingNumber}`,
+      'GS Postbox 택배': `https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${trackingNumber}`,
+      '롯데택배': `https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=${trackingNumber}`,
+      '쿠팡로켓배송': `https://www.coupang.com/my/orders/lookup?q=${trackingNumber}`
+    }
+    
+    return courierUrls[courier] || `https://tracker.delivery/#/${courier}/${trackingNumber}`
   }
 
   async function handleCancelOrder(orderId: number, orderNumber: string) {
@@ -584,16 +603,29 @@ export default function MyOrdersPage() {
                               {order.shipping_address_detail}
                             </p>
                           )}
-                          {order.tracking_number && (
+                          {order.courier && order.tracking_number && (
                             <div className="mt-3 pt-3 border-t border-[#d2d2d7]">
-                              <div className="flex items-center gap-2">
-                                <Truck className="h-4 w-4 text-[#007aff]" />
-                                <span className="text-[13px] text-[#6e6e73]">
-                                  송장번호:
-                                </span>
-                                <span className="text-[13px] font-medium text-[#1d1d1f]">
-                                  {order.tracking_number}
-                                </span>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Truck className="h-4 w-4 text-[#007aff]" />
+                                  <div className="text-[13px]">
+                                    <span className="text-[#6e6e73]">{order.courier} · </span>
+                                    <span className="font-medium text-[#1d1d1f]">
+                                      {order.tracking_number}
+                                    </span>
+                                  </div>
+                                </div>
+                                {getTrackingUrl(order.courier, order.tracking_number) && (
+                                  <a
+                                    href={getTrackingUrl(order.courier, order.tracking_number)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-1"
+                                  >
+                                    배송조회
+                                    <ChevronRight className="h-3 w-3" />
+                                  </a>
+                                )}
                               </div>
                             </div>
                           )}
