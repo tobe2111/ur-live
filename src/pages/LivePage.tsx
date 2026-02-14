@@ -931,7 +931,7 @@ export default function LivePage() {
   }
 
   return (
-    <div className="relative w-full overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}>
+    <div className="relative w-full h-full bg-black overflow-hidden">
       {/* Custom Modal */}
       <CustomModal
         isOpen={modal.isOpen}
@@ -942,7 +942,7 @@ export default function LivePage() {
         type={modal.type}
       />
       
-      {/* YouTube/TikTok Video Container - Full Screen */}
+      {/* YouTube/TikTok Video Container - Full Container */}
       <div 
         className="absolute inset-0 w-full h-full bg-black"
         style={{ 
@@ -952,7 +952,6 @@ export default function LivePage() {
           right: 0,
           bottom: 0,
           zIndex: 0,
-          overflow: 'hidden',
         }}
       >
         {videoStatus === 'loading' && (
