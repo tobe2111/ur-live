@@ -40,6 +40,10 @@ export default defineConfig({
         drop_console: false, // 🔧 console.log 보존 (디버깅용)
         drop_debugger: true,
       },
+      format: {
+        ascii_only: false, // 🔧 한글 유니코드 이스케이프 방지
+        beautify: false,
+      },
     },
     rollupOptions: {
       output: {

@@ -135,7 +135,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
             </div>
 
             {/* Footer Information */}
-            <div className="pt-2 space-y-1.5 text-[8px] text-purple-300/80 border-t border-purple-500/30 leading-tight">
+            <div className="pt-2 space-y-1.5 text-[7px] text-purple-300/80 border-t border-purple-500/30 leading-tight">
               <div className="flex gap-2 flex-wrap">
                 <a href="/terms" className="hover:text-purple-200 transition">서비스 이용약관</a>
                 <span>|</span>

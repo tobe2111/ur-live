@@ -18,7 +18,7 @@ export default function MobileFooter() {
       </div>
 
       {/* Company Info */}
-      <div className="space-y-0.5 text-[8px] text-gray-600 text-center leading-tight">
+      <div className="space-y-0.5 text-[7px] text-gray-600 text-center leading-tight">
         <p>상호명: 리스터코퍼레이션 | 대표자: 정지원</p>
         <p>사업자등록번호: 479-09-02930 | 통신판매업신고: 2025-부산금정-0540</p>
         <p>사업장주소: 부산광역시 금정구 놀이마당로26 1402</p>
@@ -28,7 +28,7 @@ export default function MobileFooter() {
 
       {/* Copyright */}
       <div className="mt-3 pt-2 border-t border-gray-200">
-        <p className="text-[8px] text-gray-500 text-center leading-tight">
+        <p className="text-[7px] text-gray-500 text-center leading-tight">
           © 2026 리스터코퍼레이션. All rights reserved.
         </p>
       </div>
