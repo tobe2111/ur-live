@@ -277,28 +277,11 @@ export default function LivePage() {
               const iframe = playerElement.querySelector('iframe')
               if (iframe) {
                 iframe.style.position = 'absolute'
-                iframe.style.top = '50%'
-                iframe.style.left = '50%'
-                iframe.style.transform = 'translate(-50%, -50%)'
-                // Make video cover entire viewport with no black bars
-                // Use Math.max to ensure we always cover the screen
-                const vw = window.innerWidth
-                const vh = window.innerHeight
-                const videoAspect = 16 / 9  // YouTube default
-                const screenAspect = vw / vh
-                
-                if (screenAspect > videoAspect) {
-                  // Screen is wider than video - fit width
-                  iframe.style.width = '100vw'
-                  iframe.style.height = `${(100 / screenAspect) * videoAspect}vh`
-                  iframe.style.minHeight = '100vh'
-                } else {
-                  // Screen is taller than video - fit height
-                  iframe.style.height = '100vh'
-                  iframe.style.width = `${100 * screenAspect * videoAspect}vw`
-                  iframe.style.minWidth = '100vw'
-                }
-                
+                iframe.style.top = '0'
+                iframe.style.left = '0'
+                iframe.style.width = '100%'
+                iframe.style.height = '100%'
+                iframe.style.objectFit = 'cover'
                 iframe.style.pointerEvents = 'none'  // Hide controls for live feel
               }
               
@@ -924,7 +907,7 @@ export default function LivePage() {
   }
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh' }}>
+    <div className="relative w-full h-screen overflow-hidden bg-black" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Custom Modal */}
       <CustomModal
         isOpen={modal.isOpen}
@@ -935,15 +918,15 @@ export default function LivePage() {
         type={modal.type}
       />
       
-      {/* YouTube/TikTok Video Container - Full Screen with dvh */}
+      {/* YouTube/TikTok Video Container - Full Screen */}
       <div 
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full bg-black"
         style={{ 
-          position: 'fixed',
+          position: 'absolute',
           top: 0,
           left: 0,
-          width: '100vw',
-          height: '100dvh',
+          width: '100%',
+          height: '100%',
           zIndex: 0,
           overflow: 'hidden',
         }}
