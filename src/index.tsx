@@ -1727,6 +1727,79 @@ app.get('/api/live-streams/:id', async (c) => {
   }
 });
 
+// Products List API - 상품 목록 조회 (featured, limit 지원)
+app.get('/api/products', async (c) => {
+  const { DB, CACHE_KV } = c.env;
+
+  try {
+    const featured = c.req.query('featured');
+    const limit = parseInt(c.req.query('limit') || '20');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    // 캐시 키 생성
+    const cacheKey = `products:list:${featured || 'all'}:${limit}:${offset}`;
+
+    // 캐시 확인
+    const cached = await getCachedData(CACHE_KV, cacheKey);
+    if (cached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: cached,
+        cached: true,
+      });
+    }
+
+    let query = `
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.price,
+        p.original_price,
+        p.discount_rate,
+        p.image_url,
+        p.stock,
+        p.category,
+        p.seller_id,
+        p.is_featured,
+        COALESCE(SUM(oi.quantity), 0) as sold_count
+      FROM products p
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id
+      WHERE p.is_active = 1
+    `;
+
+    // featured 필터 추가
+    if (featured === 'true') {
+      query += ` AND p.is_featured = 1`;
+    }
+
+    query += `
+      GROUP BY p.id
+      ORDER BY sold_count DESC, p.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const result = await DB.prepare(query).bind(limit, offset).all();
+    const products = result.results || [];
+
+    // 캐시 저장 (60초)
+    await setCachedData(CACHE_KV, cacheKey, products, 60);
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: products,
+      cached: false,
+    });
+  } catch (err) {
+    console.error('Products list error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // Popular Products API - 인기 상품 목록
 app.get('/api/products/popular', async (c) => {
   const { DB, CACHE_KV } = c.env;
