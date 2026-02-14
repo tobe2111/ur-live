@@ -2152,6 +2152,156 @@ app.get('/api/cart/:userId', async (c) => {
   }
 });
 
+// ========================================
+// 파일 업로드 API
+// ========================================
+
+// 파일 업로드 (이미지만 지원, KV 스토리지 사용)
+app.post('/api/upload', cors(), async (c) => {
+  const { CACHE_KV } = c.env;
+
+  try {
+    const contentType = c.req.header('content-type') || '';
+    
+    if (!contentType.includes('multipart/form-data')) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Content-Type must be multipart/form-data',
+      }, 400);
+    }
+
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File | null;
+
+    if (!file) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'No file provided',
+      }, 400);
+    }
+
+    // 파일 타입 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Only image files (JPEG, PNG, WebP, GIF) are allowed',
+      }, 400);
+    }
+
+    // 파일 크기 검증 (10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'File size must be less than 10MB',
+      }, 400);
+    }
+
+    // 파일을 ArrayBuffer로 읽기
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+    // 고유한 파일 키 생성
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(7);
+    const extension = file.name.split('.').pop() || 'jpg';
+    const fileKey = `uploads/${timestamp}-${randomStr}.${extension}`;
+
+    // KV에 저장 (메타데이터 포함)
+    const metadata = {
+      originalName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    await CACHE_KV.put(fileKey, base64, {
+      metadata: metadata,
+    });
+
+    // Public URL 반환 (이미지 제공 엔드포인트)
+    const publicUrl = `/api/images/${fileKey.replace('uploads/', '')}`;
+
+    return c.json<ApiResponse<{ url: string; key: string }>>({
+      success: true,
+      data: {
+        url: publicUrl,
+        key: fileKey,
+      },
+    });
+  } catch (err) {
+    console.error('Error uploading file:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 업로드된 이미지 제공
+app.get('/api/images/:key', async (c) => {
+  const { CACHE_KV } = c.env;
+  const key = c.req.param('key');
+
+  try {
+    const fileKey = `uploads/${key}`;
+    const base64Data = await CACHE_KV.get(fileKey);
+    const metadata = await CACHE_KV.getWithMetadata(fileKey);
+
+    if (!base64Data) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Image not found',
+      }, 404);
+    }
+
+    // Base64를 바이너리로 변환
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    const mimeType = metadata.metadata?.mimeType || 'image/jpeg';
+
+    return new Response(bytes, {
+      headers: {
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=31536000', // 1년 캐시
+      },
+    });
+  } catch (err) {
+    console.error('Error serving image:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 이미지 삭제
+app.delete('/api/upload/:key', cors(), async (c) => {
+  const { CACHE_KV } = c.env;
+  const key = c.req.param('key');
+
+  try {
+    const fileKey = key.startsWith('uploads/') ? key : `uploads/${key}`;
+    await CACHE_KV.delete(fileKey);
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'Image deleted successfully',
+    });
+  } catch (err) {
+    console.error('Error deleting image:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // 사용자 생성 (게스트 유저 자동 생성용)
 app.post('/api/users', async (c) => {
   const { DB } = c.env;

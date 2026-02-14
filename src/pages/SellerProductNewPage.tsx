@@ -10,7 +10,9 @@ import {
   DollarSign,
   Box,
   FileText,
-  Play
+  Play,
+  Upload,
+  X
 } from 'lucide-react'
 
 interface LiveStream {
@@ -22,6 +24,8 @@ interface LiveStream {
 export default function SellerProductNewPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
 
@@ -112,6 +116,67 @@ export default function SellerProductNewPage() {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
+    })
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // 파일 타입 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setError('JPEG, PNG, WebP, GIF 파일만 업로드 가능합니다')
+      return
+    }
+
+    // 파일 크기 검증 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('파일 크기는 10MB 이하여야 합니다')
+      return
+    }
+
+    setUploading(true)
+    setError('')
+    setUploadProgress(0)
+
+    try {
+      const formDataObj = new FormData()
+      formDataObj.append('file', file)
+
+      const response = await axios.post('/api/upload', formDataObj, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            setUploadProgress(percent)
+          }
+        }
+      })
+
+      if (response.data.success) {
+        // 업로드 성공 - URL 설정
+        const uploadedUrl = `${window.location.origin}${response.data.data.url}`
+        setFormData({
+          ...formData,
+          image_url: uploadedUrl
+        })
+      }
+    } catch (error: any) {
+      console.error('Failed to upload file:', error)
+      setError(error.response?.data?.error || '파일 업로드에 실패했습니다')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  function clearImage() {
+    setFormData({
+      ...formData,
+      image_url: ''
     })
   }
 
@@ -232,8 +297,58 @@ export default function SellerProductNewPage() {
           {/* Image URL */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상품 이미지 URL
+              상품 이미지
             </label>
+            
+            {/* File Upload Section */}
+            <div className="mb-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-blue-400 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer flex flex-col items-center justify-center"
+                >
+                  {uploading ? (
+                    <div className="text-center">
+                      <Loader2 className="w-12 h-12 mx-auto text-blue-500 animate-spin mb-3" />
+                      <p className="text-sm text-gray-600">업로드 중... {uploadProgress}%</p>
+                      <div className="w-full max-w-xs h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                      <p className="text-sm text-gray-600 mb-1">
+                        <span className="text-blue-600 font-medium">클릭하여 파일 선택</span> 또는 드래그 앤 드롭
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        JPEG, PNG, WebP, GIF (최대 10MB)
+                      </p>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-gray-300" />
+              <span className="text-sm text-gray-500">또는</span>
+              <div className="flex-1 h-px bg-gray-300" />
+            </div>
+
+            {/* URL Input */}
             <div className="relative">
               <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -243,15 +358,26 @@ export default function SellerProductNewPage() {
                 onChange={handleChange}
                 placeholder="https://example.com/image.jpg"
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={uploading}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">상품 이미지 URL을 입력하거나 비워두세요</p>
+            <p className="text-xs text-gray-500 mt-1">이미지 URL을 직접 입력할 수도 있습니다</p>
           </div>
 
           {/* Image Preview */}
           {formData.image_url && (
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">이미지 미리보기</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-gray-700">이미지 미리보기</p>
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  제거
+                </button>
+              </div>
               <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden border">
                 <img
                   src={formData.image_url}
