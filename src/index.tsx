@@ -2153,156 +2153,9 @@ app.get('/api/cart/:userId', async (c) => {
 });
 
 // ========================================
-// 파일 업로드 API
+// 사용자 생성 (게스트 유저 자동 생성용)
 // ========================================
 
-// 파일 업로드 (이미지만 지원, KV 스토리지 사용)
-app.post('/api/upload', cors(), async (c) => {
-  const { CACHE_KV } = c.env;
-
-  try {
-    const contentType = c.req.header('content-type') || '';
-    
-    if (!contentType.includes('multipart/form-data')) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Content-Type must be multipart/form-data',
-      }, 400);
-    }
-
-    const formData = await c.req.formData();
-    const file = formData.get('file') as File | null;
-
-    if (!file) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'No file provided',
-      }, 400);
-    }
-
-    // 파일 타입 검증
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Only image files (JPEG, PNG, WebP, GIF) are allowed',
-      }, 400);
-    }
-
-    // 파일 크기 검증 (10MB)
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'File size must be less than 10MB',
-      }, 400);
-    }
-
-    // 파일을 ArrayBuffer로 읽기
-    const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-    // 고유한 파일 키 생성
-    const timestamp = Date.now();
-    const randomStr = Math.random().toString(36).substring(7);
-    const extension = file.name.split('.').pop() || 'jpg';
-    const fileKey = `uploads/${timestamp}-${randomStr}.${extension}`;
-
-    // KV에 저장 (메타데이터 포함)
-    const metadata = {
-      originalName: file.name,
-      mimeType: file.type,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-    };
-
-    await CACHE_KV.put(fileKey, base64, {
-      metadata: metadata,
-    });
-
-    // Public URL 반환 (이미지 제공 엔드포인트)
-    const publicUrl = `/api/images/${fileKey.replace('uploads/', '')}`;
-
-    return c.json<ApiResponse<{ url: string; key: string }>>({
-      success: true,
-      data: {
-        url: publicUrl,
-        key: fileKey,
-      },
-    });
-  } catch (err) {
-    console.error('Error uploading file:', err);
-    return c.json<ApiResponse>({
-      success: false,
-      error: (err as Error).message,
-    }, 500);
-  }
-});
-
-// 업로드된 이미지 제공
-app.get('/api/images/:key', async (c) => {
-  const { CACHE_KV } = c.env;
-  const key = c.req.param('key');
-
-  try {
-    const fileKey = `uploads/${key}`;
-    const base64Data = await CACHE_KV.get(fileKey);
-    const metadata = await CACHE_KV.getWithMetadata(fileKey);
-
-    if (!base64Data) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Image not found',
-      }, 404);
-    }
-
-    // Base64를 바이너리로 변환
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    const mimeType = metadata.metadata?.mimeType || 'image/jpeg';
-
-    return new Response(bytes, {
-      headers: {
-        'Content-Type': mimeType,
-        'Cache-Control': 'public, max-age=31536000', // 1년 캐시
-      },
-    });
-  } catch (err) {
-    console.error('Error serving image:', err);
-    return c.json<ApiResponse>({
-      success: false,
-      error: (err as Error).message,
-    }, 500);
-  }
-});
-
-// 이미지 삭제
-app.delete('/api/upload/:key', cors(), async (c) => {
-  const { CACHE_KV } = c.env;
-  const key = c.req.param('key');
-
-  try {
-    const fileKey = key.startsWith('uploads/') ? key : `uploads/${key}`;
-    await CACHE_KV.delete(fileKey);
-
-    return c.json<ApiResponse>({
-      success: true,
-      message: 'Image deleted successfully',
-    });
-  } catch (err) {
-    console.error('Error deleting image:', err);
-    return c.json<ApiResponse>({
-      success: false,
-      error: (err as Error).message,
-    }, 500);
-  }
-});
-
-// 사용자 생성 (게스트 유저 자동 생성용)
 app.post('/api/users', async (c) => {
   const { DB } = c.env;
 
@@ -4441,6 +4294,234 @@ app.post('/api/payments/confirm', async (c) => {
     return c.json({ 
       success: false, 
       error: '결제 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.'
+    }, 500);
+  }
+});
+
+// ============================================
+// 💬 Real-time Chat APIs
+// ============================================
+
+// 채팅 메시지 전송
+app.post('/api/chat/:liveStreamId/messages', cors(), async (c) => {
+  const { DB } = c.env;
+  const liveStreamId = c.req.param('liveStreamId');
+
+  try {
+    const body = await c.req.json();
+    const { userId, userName, userAvatar, message, isSeller, isAdmin } = body;
+
+    if (!message || message.trim().length === 0) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Message cannot be empty',
+      }, 400);
+    }
+
+    // 메시지 길이 제한 (500자)
+    if (message.length > 500) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Message is too long (max 500 characters)',
+      }, 400);
+    }
+
+    // 채팅 금지 여부 확인
+    if (userId) {
+      const ban = await DB.prepare(`
+        SELECT id FROM chat_bans
+        WHERE live_stream_id = ? AND user_id = ?
+        AND (expires_at IS NULL OR expires_at > datetime('now'))
+      `).bind(liveStreamId, userId).first();
+
+      if (ban) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'You are banned from this chat',
+        }, 403);
+      }
+    }
+
+    // 간단한 욕설 필터링 (확장 가능)
+    const profanityWords = ['씨발', '개새끼', '병신', '좆', '시발'];
+    let filteredMessage = message;
+    profanityWords.forEach(word => {
+      const regex = new RegExp(word, 'gi');
+      filteredMessage = filteredMessage.replace(regex, '*'.repeat(word.length));
+    });
+
+    // 메시지 저장
+    const result = await DB.prepare(`
+      INSERT INTO chat_messages 
+      (live_stream_id, user_id, user_name, user_avatar, message, is_seller, is_admin)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      liveStreamId,
+      userId || null,
+      userName,
+      userAvatar || null,
+      filteredMessage,
+      isSeller ? 1 : 0,
+      isAdmin ? 1 : 0
+    ).run();
+
+    return c.json<ApiResponse<{ id: number; message: string }>>({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        message: filteredMessage,
+      },
+    });
+  } catch (err) {
+    console.error('Error sending chat message:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 채팅 메시지 조회 (폴링용)
+app.get('/api/chat/:liveStreamId/messages', cors(), async (c) => {
+  const { DB } = c.env;
+  const liveStreamId = c.req.param('liveStreamId');
+  const since = c.req.query('since'); // 마지막으로 받은 메시지 ID
+  const limit = Number(c.req.query('limit')) || 50;
+
+  try {
+    let query = `
+      SELECT 
+        id,
+        user_id,
+        user_name,
+        user_avatar,
+        message,
+        is_seller,
+        is_admin,
+        is_deleted,
+        datetime(created_at) as created_at
+      FROM chat_messages
+      WHERE live_stream_id = ? AND is_deleted = 0
+    `;
+    
+    const params: any[] = [liveStreamId];
+
+    if (since) {
+      query += ` AND id > ?`;
+      params.push(Number(since));
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const result = await DB.prepare(query).bind(...params).all();
+
+    // 최신순으로 정렬되어 있으므로 역순으로 반환
+    const messages = result.results.reverse();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: messages,
+    });
+  } catch (err) {
+    console.error('Error fetching chat messages:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 채팅 메시지 삭제 (관리자/셀러만)
+app.delete('/api/chat/:liveStreamId/messages/:messageId', cors(), async (c) => {
+  const { DB } = c.env;
+  const messageId = c.req.param('messageId');
+
+  try {
+    // 관리자/셀러 권한 확인은 프론트엔드에서 처리
+    // 실제 환경에서는 세션 토큰으로 권한 확인 필요
+
+    await DB.prepare(`
+      UPDATE chat_messages
+      SET is_deleted = 1
+      WHERE id = ?
+    `).bind(messageId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'Message deleted successfully',
+    });
+  } catch (err) {
+    console.error('Error deleting chat message:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 사용자 채팅 금지
+app.post('/api/chat/:liveStreamId/ban', cors(), async (c) => {
+  const { DB } = c.env;
+  const liveStreamId = c.req.param('liveStreamId');
+
+  try {
+    const body = await c.req.json();
+    const { userId, bannedBy, reason, duration } = body; // duration in minutes
+
+    if (!userId || !bannedBy) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'userId and bannedBy are required',
+      }, 400);
+    }
+
+    let expiresAt = null;
+    if (duration) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + duration);
+      expiresAt = now.toISOString();
+    }
+
+    await DB.prepare(`
+      INSERT INTO chat_bans (live_stream_id, user_id, banned_by, reason, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(liveStreamId, userId, bannedBy, reason || null, expiresAt).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'User banned successfully',
+    });
+  } catch (err) {
+    console.error('Error banning user:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 채팅 금지 해제
+app.delete('/api/chat/:liveStreamId/ban/:userId', cors(), async (c) => {
+  const { DB } = c.env;
+  const liveStreamId = c.req.param('liveStreamId');
+  const userId = c.req.param('userId');
+
+  try {
+    await DB.prepare(`
+      DELETE FROM chat_bans
+      WHERE live_stream_id = ? AND user_id = ?
+    `).bind(liveStreamId, userId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: 'Ban removed successfully',
+    });
+  } catch (err) {
+    console.error('Error removing ban:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
     }, 500);
   }
 });

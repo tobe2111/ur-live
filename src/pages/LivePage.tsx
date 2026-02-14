@@ -34,11 +34,15 @@ interface CurrentProduct {
 }
 
 interface ChatMessage {
-  id: string
-  username: string
+  id: number
+  user_id?: number
+  user_name: string
+  user_avatar?: string
   message: string
-  timestamp: number
-  isSystem?: boolean
+  is_seller: boolean
+  is_admin: boolean
+  is_deleted: boolean
+  created_at: string
 }
 
 export default function LivePage() {
@@ -53,6 +57,8 @@ export default function LivePage() {
   const { modal, showAlert, closeModal } = useModal()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
+  const [lastMessageId, setLastMessageId] = useState<number>(0)
+  const [sendingMessage, setSendingMessage] = useState(false)
   const [cartCount, setCartCount] = useState(0)
   const [showCart, setShowCart] = useState(false)
   const [cartItems, setCartItems] = useState<any[]>([])
@@ -206,11 +212,15 @@ export default function LivePage() {
     
     loadStreamData()
     loadCurrentProduct()
-    loadDemoMessages()
+    loadChatMessages() // 초기 채팅 메시지 로드
+    
+    // 실시간 채팅 폴링 (3초마다)
+    const chatInterval = setInterval(loadChatMessages, 3000)
     
     const interval = setInterval(loadCurrentProduct, 3000)
     return () => {
       clearInterval(interval)
+      clearInterval(chatInterval)
       // Restore scrolling when leaving the page
       document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
@@ -489,27 +499,79 @@ export default function LivePage() {
   }
 
   function loadDemoMessages() {
-    const demoMessages: ChatMessage[] = [
-      {
-        id: '1',
-        username: '김**',  // 마스킹 처리
-        message: '와 이 제품 너무 예쁘다! 😍',
-        timestamp: Date.now() - 120000,
-      },
-      {
-        id: '2',
-        username: '박**',  // 마스킹 처리
-        message: '가격이 얼마인가요?',
-        timestamp: Date.now() - 90000,
-      },
-      {
-        id: '3',
-        username: '이**',  // 마스킹 처리
-        message: '재고 있나요?',
-        timestamp: Date.now() - 60000,
-      },
-    ]
-    setMessages(demoMessages)
+    // 실제 채팅 메시지 로드로 대체됨
+    loadChatMessages()
+  }
+
+  async function loadChatMessages() {
+    if (!streamId) return
+
+    try {
+      const url = lastMessageId > 0 
+        ? `/api/chat/${streamId}/messages?since=${lastMessageId}&limit=50`
+        : `/api/chat/${streamId}/messages?limit=50`
+
+      const response = await axios.get(url)
+      
+      if (response.data.success) {
+        const newMessages = response.data.data as ChatMessage[]
+        
+        if (newMessages.length > 0) {
+          setMessages(prev => {
+            // 중복 제거
+            const existingIds = new Set(prev.map(m => m.id))
+            const filtered = newMessages.filter(m => !existingIds.has(m.id))
+            return [...prev, ...filtered]
+          })
+          
+          // 마지막 메시지 ID 업데이트
+          const lastId = Math.max(...newMessages.map(m => m.id))
+          setLastMessageId(lastId)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load chat messages:', error)
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!newMessage.trim() || !streamId || sendingMessage) return
+
+    const messageText = newMessage.trim()
+    setNewMessage('')
+    setSendingMessage(true)
+
+    try {
+      const userId = getUserId()
+      const userName = localStorage.getItem('user_name') || '익명'
+      
+      const response = await axios.post(`/api/chat/${streamId}/messages`, {
+        userId: userId || null,
+        userName: maskUserName(userName),
+        userAvatar: null,
+        message: messageText,
+        isSeller: false,
+        isAdmin: false
+      })
+
+      if (response.data.success) {
+        // 메시지 전송 성공 - 즉시 새 메시지 로드
+        loadChatMessages()
+      }
+    } catch (error: any) {
+      console.error('Failed to send message:', error)
+      
+      if (error.response?.status === 403) {
+        showAlert('채팅이 금지되었습니다', 'error', '채팅 금지')
+      } else {
+        showAlert('메시지 전송에 실패했습니다', 'error', '전송 실패')
+      }
+      
+      // 실패 시 메시지 복구
+      setNewMessage(messageText)
+    } finally {
+      setSendingMessage(false)
+    }
   }
 
   async function loadStreamData() {
@@ -759,49 +821,8 @@ export default function LivePage() {
 
   function handleSendMessage(e: React.FormEvent) {
     e.preventDefault()
-    if (!newMessage.trim()) return
-
-    // Firebase로 메시지 전송
-    try {
-      // @ts-ignore
-      if (typeof window.firebase !== 'undefined' && window.firebase) {
-        // @ts-ignore
-        const database = window.firebase.database()
-        const chatRef = database.ref(`chats/stream${streamId}`)
-        
-        const userName = localStorage.getItem('user_name') || '익명'
-        const maskedName = maskUserName(userName)  // 마스킹 적용!
-        
-        // 새 메시지 추가
-        chatRef.push({
-          username: maskedName,  // 마스킹된 이름 사용
-          text: newMessage,
-          // @ts-ignore
-          timestamp: window.firebase.database.ServerValue.TIMESTAMP,
-          isSystem: false
-        })
-        
-        console.log('✅ 메시지 전송:', newMessage)
-      } else {
-        // Firebase 없으면 로컬에만 추가 (폴백)
-        const userName = localStorage.getItem('user_name') || '익명'
-        const maskedName = maskUserName(userName)
-        
-        const message: ChatMessage = {
-          id: Date.now().toString(),
-          username: maskedName,  // 마스킹된 이름 사용
-          message: newMessage,
-          timestamp: Date.now(),
-        }
-        setMessages(prev => [...prev, message])
-      }
-      
-      setNewMessage('')
-      setShowChatInput(false)
-    } catch (error) {
-      console.error('메시지 전송 실패:', error)
-      showAlert('메시지 전송에 실패했습니다.', 'error', '전송 실패')
-    }
+    sendChatMessage()
+    setShowChatInput(false)
   }
 
   function handleShowProducts() {
@@ -1115,21 +1136,21 @@ export default function LivePage() {
           <div className="space-y-1 max-h-24 overflow-y-auto">
             {messages.slice(-4).map((msg) => (
               <div key={msg.id} className={`flex items-start gap-2 px-2.5 py-1 rounded-lg backdrop-blur-sm max-w-[80%] ${
-                msg.isSystem ? 'bg-yellow-400/30' : 'bg-black/15'
+                msg.is_admin ? 'bg-red-400/30' : msg.is_seller ? 'bg-blue-400/30' : 'bg-black/15'
               }`} style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
                 <span 
                   className={`text-[12px] font-bold shrink-0 ${
-                    msg.isSystem ? 'text-yellow-300' : 'text-white'
+                    msg.is_admin ? 'text-red-300' : msg.is_seller ? 'text-blue-300' : 'text-white'
                   }`}
                   style={{ 
                     textShadow: '0 1px 3px rgba(0,0,0,0.9)',
                   }}
                 >
-                  {msg.username}
+                  {msg.is_admin ? '👑 ' : msg.is_seller ? '🏪 ' : ''}{msg.user_name}
                 </span>
                 <span 
                   className={`text-[12px] ${
-                    msg.isSystem ? 'text-yellow-200' : 'text-white/95'
+                    msg.is_admin ? 'text-red-200' : msg.is_seller ? 'text-blue-200' : 'text-white/95'
                   }`}
                   style={{ 
                     textShadow: '0 1px 3px rgba(0,0,0,0.9)',
