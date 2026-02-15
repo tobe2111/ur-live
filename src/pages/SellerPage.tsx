@@ -24,7 +24,8 @@ import {
   FileText,
   Copy,
   ExternalLink,
-  CheckCheck
+  CheckCheck,
+  LogOut
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -75,7 +76,7 @@ export default function SellerPage() {
 
   useEffect(() => {
     // Check authentication
-    const sessionToken = localStorage.getItem('session_token')
+    const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -89,8 +90,8 @@ export default function SellerPage() {
   async function loadDashboardData() {
     try {
       // Get session token from localStorage
-      const sessionToken = localStorage.getItem('session_token')
-      const userId = localStorage.getItem('user_id')
+      const sessionToken = localStorage.getItem('seller_session_token')
+      const userId = localStorage.getItem('seller_id')
       
       // Load seller ID from localStorage or API
       if (userId) {
@@ -101,7 +102,7 @@ export default function SellerPage() {
       if (sessionToken) {
         try {
           const statsResponse = await axios.get('/api/seller/stats', {
-            headers: { 'X-Session-Token': sessionToken }
+            headers: { 'Authorization': `Bearer ${sessionToken}` }
           })
           
           if (statsResponse.data.success) {
@@ -130,7 +131,7 @@ export default function SellerPage() {
       // Load streams
       const streamsResponse = await axios.get('/api/seller/streams', {
         headers: {
-          'X-Session-Token': sessionToken
+          'Authorization': `Bearer ${sessionToken}`
         }
       })
       if (streamsResponse.data.success) {
@@ -160,6 +161,13 @@ export default function SellerPage() {
     }
   }
 
+  function logout() {
+    localStorage.removeItem('seller_session_token')
+    localStorage.removeItem('user_type')
+    localStorage.removeItem('seller_id')
+    navigate('/seller/login')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
@@ -187,13 +195,23 @@ export default function SellerPage() {
             <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
               셀러 대시보드
             </h1>
-            <button 
-              onClick={() => navigate('/seller/profile')}
-              className="text-[#1d1d1f] hover:opacity-60 transition-opacity"
-              title="프로필 편집"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => navigate('/seller/profile')}
+                className="text-[#1d1d1f] hover:opacity-60 transition-opacity"
+                title="프로필 편집"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+              <button 
+                onClick={logout}
+                className="flex items-center gap-1.5 text-[#ff3b30] hover:opacity-60 transition-opacity"
+                title="로그아웃"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="text-[14px] font-medium hidden sm:inline">로그아웃</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>

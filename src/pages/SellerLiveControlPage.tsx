@@ -35,7 +35,7 @@ export default function SellerLiveControlPage() {
 
   useEffect(() => {
     // Check seller session
-    const sessionToken = localStorage.getItem('session_token')
+    const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -48,16 +48,16 @@ export default function SellerLiveControlPage() {
 
   async function loadData() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
       // Load live streams
       const streamsRes = await axios.get('/api/seller/streams', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
       
       // Load products
       const productsRes = await axios.get('/api/seller/products', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       const liveStreams = streamsRes.data.data.filter((s: LiveStream) => s.status === 'live')
@@ -82,11 +82,11 @@ export default function SellerLiveControlPage() {
 
     setChanging(true)
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       await axios.post(
         `/api/seller/streams/${selectedStream.id}/change-product`,
         { productId },
-        { headers: { 'X-Session-Token': sessionToken } }
+        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
       setCurrentProductId(productId)

@@ -45,7 +45,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     // Check admin session
-    const token = localStorage.getItem('session_token')
+    const token = localStorage.getItem('admin_session_token')
     const userType = localStorage.getItem('user_type')
     if (!token || userType !== 'admin') {
       navigate('/admin/login')
@@ -57,11 +57,11 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const token = localStorage.getItem('session_token')
+      const token = localStorage.getItem('admin_session_token')
       
       // Load sellers
       const sellersRes = await axios.get('/api/admin/sellers', {
-        headers: { 'X-Session-Token': token }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
       
       // Load streams
@@ -85,7 +85,7 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error('Failed to load data:', err)
       if (err.response?.status === 401) {
-        localStorage.removeItem('session_token')
+        localStorage.removeItem('admin_session_token')
         localStorage.removeItem('user_type')
         navigate('/admin/login')
       }
@@ -95,11 +95,11 @@ export default function AdminPage() {
 
   async function approveSeller(sellerId: number) {
     try {
-      const token = localStorage.getItem('session_token')
+      const token = localStorage.getItem('admin_session_token')
       await axios.post(
         `/api/admin/sellers/${sellerId}/approve`,
         {},
-        { headers: { 'X-Session-Token': token } }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       )
       alert('판매자 승인 완료!')
       loadData()
@@ -112,9 +112,9 @@ export default function AdminPage() {
     if (!confirm('정말 이 라이브를 삭제하시겠습니까?')) return
 
     try {
-      const token = localStorage.getItem('session_token')
+      const token = localStorage.getItem('admin_session_token')
       await axios.delete(`/api/admin/streams/${streamId}`, {
-        headers: { 'X-Session-Token': token }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
       alert('라이브 삭제 완료!')
       loadData()
@@ -134,11 +134,11 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('session_token')
+      const token = localStorage.getItem('admin_session_token')
       await axios.patch(
         `/api/admin/sellers/${sellerId}/commission`,
         { commission_rate: rate },
-        { headers: { 'X-Session-Token': token } }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       )
       alert(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
       loadData()
@@ -148,7 +148,7 @@ export default function AdminPage() {
   }
 
   function logout() {
-    localStorage.removeItem('session_token')
+    localStorage.removeItem('admin_session_token')
     localStorage.removeItem('user_type')
     localStorage.removeItem('admin_id')
     navigate('/admin/login')

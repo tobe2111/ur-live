@@ -30,7 +30,7 @@ export default function SellerStreamEditPage() {
   })
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('session_token')
+    const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -43,10 +43,10 @@ export default function SellerStreamEditPage() {
 
   async function loadStream() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       const response = await axios.get(`/api/seller/streams`, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -76,14 +76,14 @@ export default function SellerStreamEditPage() {
     setLoading(true)
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       const response = await axios.put(`/api/seller/streams/${id}`, {
         title: formData.title,
         description: formData.description,
         status: formData.status
       }, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -106,10 +106,10 @@ export default function SellerStreamEditPage() {
     }
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       const response = await axios.delete(`/api/seller/streams/${id}`, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {

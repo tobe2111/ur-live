@@ -66,7 +66,7 @@ export default function SellerTaxInvoicesPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       if (!sessionToken) {
@@ -89,7 +89,7 @@ export default function SellerTaxInvoicesPage() {
 
   async function loadInvoices(sessionToken: string) {
     const response = await axios.get('/api/seller/tax-invoices', {
-      headers: { 'X-Session-Token': sessionToken }
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
     })
 
     if (response.data.success) {
@@ -99,7 +99,7 @@ export default function SellerTaxInvoicesPage() {
 
   async function loadLogs(sessionToken: string) {
     const response = await axios.get('/api/seller/tax-invoices/auto-issue-logs', {
-      headers: { 'X-Session-Token': sessionToken }
+      headers: { 'Authorization': `Bearer ${sessionToken}` }
     })
 
     if (response.data.success) {
@@ -112,11 +112,11 @@ export default function SellerTaxInvoicesPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       const response = await axios.post(`/api/seller/tax-invoices/retry/${orderNumber}`, {}, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -133,11 +133,11 @@ export default function SellerTaxInvoicesPage() {
 
   async function viewInvoiceDetail(invoiceId: number) {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       const response = await axios.get(`/api/seller/tax-invoices/${invoiceId}`, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {

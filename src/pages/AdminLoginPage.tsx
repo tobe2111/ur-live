@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
       })
 
       if (response.data.success) {
-        localStorage.setItem('session_token', response.data.data.sessionToken)
+        localStorage.setItem('admin_session_token', response.data.data.sessionToken)
         localStorage.setItem('user_type', 'admin')
         localStorage.setItem('admin_id', response.data.data.user.id)
         navigate('/admin')

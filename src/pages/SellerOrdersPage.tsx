@@ -68,7 +68,7 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       if (!sessionToken) {
@@ -77,7 +77,7 @@ export default function SellerOrdersPage() {
       }
 
       const response = await axios.get('/api/seller/orders', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -100,13 +100,13 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       const response = await axios.patch(
         `/api/seller/orders/${orderNumber}/status`,
         { status: newStatus },
-        { headers: { 'X-Session-Token': sessionToken } }
+        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
       if (response.data.success) {
@@ -131,13 +131,13 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       const response = await axios.put(
         `/api/seller/orders/${orderNumber}/tracking`,
         trackingForm,
-        { headers: { 'X-Session-Token': sessionToken } }
+        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
       if (response.data.success) {

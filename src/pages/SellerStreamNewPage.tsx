@@ -29,7 +29,7 @@ export default function SellerStreamNewPage() {
     setLoading(true)
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
       if (!sessionToken) {
         setError('로그인이 필요합니다')
@@ -48,7 +48,7 @@ export default function SellerStreamNewPage() {
         seller_facebook: formData.sellerFacebook || null
       }, {
         headers: {
-          'X-Session-Token': sessionToken
+          'Authorization': `Bearer ${sessionToken}`
         }
       })
 

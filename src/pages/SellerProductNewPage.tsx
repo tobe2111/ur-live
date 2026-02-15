@@ -36,7 +36,7 @@ export default function SellerProductNewPage() {
 
   useEffect(() => {
     // Check authentication
-    const sessionToken = localStorage.getItem('session_token')
+    const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -49,7 +49,7 @@ export default function SellerProductNewPage() {
 
   async function loadLiveStreams() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -58,7 +58,7 @@ export default function SellerProductNewPage() {
 
       // Note: You may need to create this API endpoint
       const response = await axios.get('/api/seller/streams', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -76,7 +76,7 @@ export default function SellerProductNewPage() {
     setLoading(true)
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -93,7 +93,7 @@ export default function SellerProductNewPage() {
       }
 
       const response = await axios.post('/api/seller/products', payload, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {

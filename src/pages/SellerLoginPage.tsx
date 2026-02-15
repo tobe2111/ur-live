@@ -33,7 +33,7 @@ export default function SellerLoginPage() {
         })
 
         if (response.data.success) {
-          localStorage.setItem('session_token', response.data.data.sessionToken)
+          localStorage.setItem('seller_session_token', response.data.data.sessionToken)
           localStorage.setItem('user_type', 'seller')
           localStorage.setItem('seller_id', response.data.data.user.id)
           alert('로그인 성공!')

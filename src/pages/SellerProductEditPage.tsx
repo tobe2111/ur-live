@@ -53,7 +53,7 @@ export default function SellerProductEditPage() {
 
   useEffect(() => {
     // Check authentication
-    const sessionToken = localStorage.getItem('session_token')
+    const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -67,7 +67,7 @@ export default function SellerProductEditPage() {
 
   async function loadProduct() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -75,7 +75,7 @@ export default function SellerProductEditPage() {
       }
 
       const response = await axios.get(`/api/seller/products/${id}`, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -111,12 +111,12 @@ export default function SellerProductEditPage() {
 
   async function loadLiveStreams() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       if (!sessionToken) return
 
       const response = await axios.get('/api/seller/streams', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -133,7 +133,7 @@ export default function SellerProductEditPage() {
     setSubmitting(true)
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -152,7 +152,7 @@ export default function SellerProductEditPage() {
       }
 
       const response = await axios.patch(`/api/seller/products/${id}`, payload, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {

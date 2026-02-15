@@ -46,7 +46,7 @@ export default function SellerProductsPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       if (!sessionToken) {
@@ -55,7 +55,7 @@ export default function SellerProductsPage() {
       }
 
       const response = await axios.get('/api/seller/products', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -75,13 +75,13 @@ export default function SellerProductsPage() {
     }
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       const response = await axios.patch(
         `/api/seller/products/${productId}`,
         { is_active: !currentStatus },
-        { headers: { 'X-Session-Token': sessionToken } }
+        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
       if (response.data.success) {
@@ -102,11 +102,11 @@ export default function SellerProductsPage() {
     setDeleting(productId)
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       const response = await axios.delete(`/api/seller/products/${productId}`, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {

@@ -60,7 +60,7 @@ export default function SellerProfileEditPage() {
 
   useEffect(() => {
     // Check authentication
-    const sessionToken = localStorage.getItem('session_token')
+    const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -73,9 +73,9 @@ export default function SellerProfileEditPage() {
 
   async function loadProfile() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       const response = await axios.get('/api/seller/profile', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
@@ -108,11 +108,11 @@ export default function SellerProfileEditPage() {
     setErrorMessage('')
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       const response = await axios.patch(
         '/api/seller/profile',
         formData,
-        { headers: { 'X-Session-Token': sessionToken } }
+        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
       if (response.data.success) {

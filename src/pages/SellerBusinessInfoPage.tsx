@@ -56,7 +56,7 @@ export default function SellerBusinessInfoPage() {
 
   async function loadBusinessInfo() {
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       if (!sessionToken) {
@@ -65,7 +65,7 @@ export default function SellerBusinessInfoPage() {
       }
 
       const response = await axios.get('/api/seller/business-info', {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success && response.data.data) {
@@ -103,7 +103,7 @@ export default function SellerBusinessInfoPage() {
     setSubmitting(true)
 
     try {
-      const sessionToken = localStorage.getItem('session_token')
+      const sessionToken = localStorage.getItem('seller_session_token')
       
 
       if (!sessionToken) {
@@ -112,7 +112,7 @@ export default function SellerBusinessInfoPage() {
       }
 
       const response = await axios.post('/api/seller/business-info', formData, {
-        headers: { 'X-Session-Token': sessionToken }
+        headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
