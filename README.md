@@ -2,7 +2,34 @@
 
 UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 
-## 🚀 최신 업데이트 (2026-02-14)
+## 🚀 최신 업데이트 (2026-02-15)
+
+### 🎯 Phase 3.1: 모바일 반응형 레이아웃 완성 ✅
+
+#### 📱 체크아웃 페이지 모바일 반응형 최적화 (COMPLETE)
+**문제**: 모바일에서 체크아웃 페이지 레이아웃이 깨지고 텍스트가 너무 작게 표시됨
+- **원인**: 
+  - 컨테이너 패딩이 고정값으로 설정 (`p-4`, `p-6`)
+  - 폰트 크기가 모바일 고려 없이 설정 (`text-xl`, `text-lg`)
+  - 간격이 데스크톱 기준으로만 설정 (`space-y-6`, `gap-4`)
+- **해결**: 
+  - ✅ **반응형 컨테이너**: `max-w-7xl mx-auto px-3 sm:px-4 lg:px-6`
+  - ✅ **반응형 폰트**: `text-xs sm:text-sm lg:text-base`
+  - ✅ **반응형 간격**: `space-y-3 sm:space-y-4`, `gap-2 sm:gap-4`
+  - ✅ **반응형 패딩**: `p-3 sm:p-4 lg:p-6`
+  - ✅ **모바일 버튼**: `py-4 sm:py-6`, `text-base sm:text-lg`
+  - ✅ **상품 목록 최적화**: `min-w-0`, `truncate` 추가
+  - ✅ **결제 위젯 컨테이너**: `w-full` 유지로 위젯 정상 렌더링
+
+#### 📋 개선 내역
+| 요소 | 모바일 (< 640px) | 태블릿 (≥ 640px) | 데스크톱 (≥ 1024px) |
+|------|----------------|----------------|-------------------|
+| 컨테이너 패딩 | `px-3 py-4` | `px-4 py-6` | `px-6 py-6` |
+| 제목 크기 | `text-xl` | `text-2xl` | `text-3xl` |
+| 본문 폰트 | `text-xs` | `text-sm` | `text-base` |
+| 버튼 높이 | `py-4` | `py-6` | `py-6` |
+| 카드 간격 | `space-y-3` | `space-y-4` | `space-y-6` |
+| 요약 박스 | 하단 고정 | 하단 고정 | Sticky 상단 |
 
 ### 🎯 Phase 3: 모바일 최적화 & 결제 안정화 ✅
 
@@ -127,7 +154,8 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 - **Production**: https://live.ur-team.com
 - **Latest Preview**: https://a8708df2.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
-- **Build Hash**: `620a6e9a` (2026-02-14 CRITICAL FIX)
+- **Build Hash**: `f6f80729` (2026-02-15 모바일 반응형 완성)
+- **Preview URL**: https://2db2579f.toss-live-commerce.pages.dev
 
 ## 🛠️ 기술 스택
 
