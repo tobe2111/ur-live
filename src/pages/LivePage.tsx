@@ -137,6 +137,9 @@ export default function LivePage() {
       localStorage.setItem('user_id', userId || '')
       localStorage.setItem('user_name', decodeURIComponent(userName || '카카오 사용자'))
       
+      // ALSO save to cookie (for API requests)
+      document.cookie = `session=${sessionToken}; path=/; max-age=86400; SameSite=Lax`
+      
       setIsLoggedIn(true)
       
       console.log('✅ 로그인 성공:', { userId, userName })
@@ -1329,7 +1332,7 @@ export default function LivePage() {
                   </span>
                 </div>
                 <button
-                  onClick={() => navigate('/checkout')}
+                  onClick={() => navigate('/cart')}
                   className="w-full bg-[#0064FF] text-white py-4 rounded-2xl text-[17px] font-semibold"
                 >
                   결제하기

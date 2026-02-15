@@ -1203,17 +1203,25 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       
       console.log('[Kakao Sync] User saved successfully, userId:', userId);
       
-      // 4. Create session (24 hours)
+      // 4. Create session (24 hours) in SESSION_KV
       console.log('[Kakao Sync] Step 4: Creating session...');
       
+      const { SESSION_KV } = c.env;
       const sessionToken = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
       
-      await DB.prepare(
-        'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
-      ).bind(sessionToken, 'user', expiresAt).run();
+      // Store session in SESSION_KV (to match requireAuth)
+      await SESSION_KV.put(
+        `session:${sessionToken}`,
+        JSON.stringify({
+          user_id: userId,
+          user_type: 'user',
+          expires_at: expiresAt
+        }),
+        { expirationTtl: 24 * 60 * 60 }
+      );
       
-      console.log('[Kakao Sync] Session created successfully');
+      console.log('[Kakao Sync] Session created successfully in SESSION_KV');
       
       // 5. Redirect back with session info
       console.log('[Kakao Sync] Step 5: Redirecting...');
