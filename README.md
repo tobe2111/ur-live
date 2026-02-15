@@ -32,6 +32,20 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 - **결제 버튼 상태 표시**: 시스템 로딩/UI 준비 중 구분
 - **요소 크기 로깅**: payment-method, agreement 크기 확인
 
+### 13. 긴급 버그 수정 (장바구니 500 에러, 이미지 무한 로드) ✅
+**문제**:
+- **장바구니 API 500 에러**: `priceSnapshot` 파라미터 누락으로 구매하기/장바구니 추가 실패
+- **무한 이미지 로드**: `via.placeholder.com` DNS 에러로 `onError` 무한 루프
+
+**해결**:
+- **priceSnapshot 추가**: `product.current_price || product.price` 값 전송
+- **인라인 SVG 사용**: 외부 placeholder 대신 data URI SVG 사용
+- **무한 루프 방지**: `dataset.fallbackApplied` 플래그로 한 번만 실행
+
+**파일**:
+- `src/pages/ProductDetailPage.tsx` - 장바구니/구매하기 수정, 이미지 fallback
+- `src/pages/LivePage.tsx` - 이미지 fallback
+
 ### 12. UX 개선 (뒤로가기, 에러 로깅) ✅
 **기능**:
 - **상품 상세 뒤로가기**: 로그인/카카오 콜백에서 온 경우 홈으로 이동
@@ -111,9 +125,9 @@ UR Team의 실시간 라이브 쇼핑 플랫폼입니다.
 ## 🌐 배포 정보
 
 - **Production**: https://live.ur-team.com
-- **Latest Preview**: https://4b32d791.toss-live-commerce.pages.dev
+- **Latest Preview**: https://a8708df2.toss-live-commerce.pages.dev
 - **GitHub**: https://github.com/tobe2111/ur-live
-- **Build Hash**: `1455668d` (2026-02-14 Phase 3 + Cache Fix)
+- **Build Hash**: `620a6e9a` (2026-02-14 CRITICAL FIX)
 
 ## 🛠️ 기술 스택
 
