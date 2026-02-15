@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { 
   MapPin, 
   Plus, 
@@ -56,7 +56,7 @@ export default function AddressManagementPage() {
   async function loadAddresses() {
     try {
       const userId = getUserId()
-      const response = await axios.get(`/api/shipping-addresses/${userId}`)
+      const response = await api.get(`/api/shipping-addresses/${userId}`)
       
       if (response.data.success) {
         setAddresses(response.data.data || [])
@@ -80,7 +80,7 @@ export default function AddressManagementPage() {
       
       if (editingId) {
         // 수정
-        await axios.put(`/api/shipping-addresses/${editingId}`, {
+        await api.put(`/api/shipping-addresses/${editingId}`, {
           userId: parseInt(userId!),
           ...formData,
           is_default: formData.is_default ? 1 : 0
@@ -88,7 +88,7 @@ export default function AddressManagementPage() {
         alert('배송지가 수정되었습니다.')
       } else {
         // 추가
-        await axios.post('/api/shipping-addresses', {
+        await api.post('/api/shipping-addresses', {
           userId: parseInt(userId!),
           ...formData,
           is_default: formData.is_default ? 1 : 0
@@ -121,7 +121,7 @@ export default function AddressManagementPage() {
 
     try {
       const userId = getUserId()
-      await axios.delete(`/api/shipping-addresses/${id}`, {
+      await api.delete(`/api/shipping-addresses/${id}`, {
         params: { userId }
       })
       alert('배송지가 삭제되었습니다.')
@@ -138,7 +138,7 @@ export default function AddressManagementPage() {
       const address = addresses.find(a => a.id === id)
       if (!address) return
 
-      await axios.put(`/api/shipping-addresses/${id}`, {
+      await api.put(`/api/shipping-addresses/${id}`, {
         userId: parseInt(userId!),
         ...address,
         is_default: 1

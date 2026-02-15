@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -64,7 +64,7 @@ export default function SellerBusinessInfoPage() {
         return
       }
 
-      const response = await axios.get('/api/seller/business-info', {
+      const response = await api.get('/api/seller/business-info', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -86,7 +86,6 @@ export default function SellerBusinessInfoPage() {
     } catch (error: any) {
       if (error.response?.status === 404) {
         // 사업자 정보가 아직 등록되지 않음
-        console.log('사업자 정보 미등록')
       } else {
         console.error('Failed to load business info:', error)
         setError('사업자 정보를 불러올 수 없습니다.')
@@ -111,7 +110,7 @@ export default function SellerBusinessInfoPage() {
         return
       }
 
-      const response = await axios.post('/api/seller/business-info', formData, {
+      const response = await api.post('/api/seller/business-info', formData, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { ArrowLeft, Search, Package, AlertCircle, Loader2 } from 'lucide-react'
 import MobileFooter from '@/components/MobileFooter'
 
@@ -76,7 +76,7 @@ export default function SearchPage() {
 
     const debounceTimer = setTimeout(async () => {
       try {
-        const response = await axios.get(`/api/search/suggestions?q=${encodeURIComponent(inputValue)}`)
+        const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(inputValue)}`)
         if (response.data.success) {
           setSuggestions(response.data.data.suggestions || [])
           setShowSuggestions(true)
@@ -94,7 +94,7 @@ export default function SearchPage() {
     setError('')
     
     try {
-      const response = await axios.get('/api/products/search', {
+      const response = await api.get('/api/products/search', {
         params: { q: query, limit: 20, offset: 0 }
       })
       

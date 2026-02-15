@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag, X, Package, LogOut } from 'lucide-react'
 import { getUserId, getUserName, isLoggedIn } from '@/utils/auth'
-import axios from 'axios'
+import api from '@/lib/api'
 import MobileFooter from '@/components/MobileFooter'
 
 interface Product {
@@ -53,7 +53,7 @@ export default function ShortFormPage() {
       setLoading(true)
       
       // Load products - only from approved sellers
-      const productsRes = await axios.get('/api/products?limit=100')
+      const productsRes = await api.get('/api/products?limit=100')
       if (productsRes.data.success) {
         const allProducts = productsRes.data.data
         setProducts(allProducts)
@@ -61,13 +61,13 @@ export default function ShortFormPage() {
       }
 
       // Load live streams
-      const streamsRes = await axios.get('/api/streams?status=live')
+      const streamsRes = await api.get('/api/streams?status=live')
       if (streamsRes.data.success) {
         setStreams(streamsRes.data.data || [])
       }
 
       // Load scheduled streams
-      const scheduledRes = await axios.get('/api/streams?status=scheduled')
+      const scheduledRes = await api.get('/api/streams?status=scheduled')
       if (scheduledRes.data.success) {
         const scheduled = (scheduledRes.data.data || [])
           .filter((s: Stream) => s.status === 'scheduled')
@@ -98,7 +98,7 @@ export default function ShortFormPage() {
     }
 
     try {
-      await axios.post('/api/cart', {
+      await api.post('/api/cart', {
         userId: Number(userId),
         productId: productId,
         quantity: 1

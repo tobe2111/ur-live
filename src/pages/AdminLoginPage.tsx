@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
@@ -15,7 +15,7 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/auth/login', {
+      const response = await api.post('/api/auth/login', {
         username: email, // API uses 'username' field
         password,
         userType: 'admin'

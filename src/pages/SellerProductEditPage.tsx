@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { 
   ArrowLeft, 
@@ -74,7 +74,7 @@ export default function SellerProductEditPage() {
         return
       }
 
-      const response = await axios.get(`/api/seller/products/${id}`, {
+      const response = await api.get(`/api/seller/products/${id}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -115,7 +115,7 @@ export default function SellerProductEditPage() {
 
       if (!sessionToken) return
 
-      const response = await axios.get('/api/seller/streams', {
+      const response = await api.get('/api/seller/streams', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -151,7 +151,7 @@ export default function SellerProductEditPage() {
         detail_images: JSON.stringify(formData.detail_images)
       }
 
-      const response = await axios.patch(`/api/seller/products/${id}`, payload, {
+      const response = await api.patch(`/api/seller/products/${id}`, payload, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

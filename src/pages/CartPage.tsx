@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import MobileFooter from '@/components/MobileFooter'
@@ -157,7 +157,7 @@ export default function CartPage() {
         return
       }
 
-      const response = await axios.get(`/api/cart/${userId}`)
+      const response = await api.get(`/api/cart/${userId}`)
       const items = response.data?.data || []
       setCartItems(items)
       
@@ -177,7 +177,7 @@ export default function CartPage() {
 
     setUpdating(true)
     try {
-      await axios.put(`/api/cart/${cartItemId}`, { quantity: newQuantity })
+      await api.put(`/api/cart/${cartItemId}`, { quantity: newQuantity })
       await loadCart()
     } catch (error: any) {
       console.error('Failed to update quantity:', error)
@@ -199,7 +199,7 @@ export default function CartPage() {
       async () => {
         setUpdating(true)
         try {
-          await axios.delete(`/api/cart/${cartItemId}`)
+          await api.delete(`/api/cart/${cartItemId}`)
           await loadCart()
           showAlert('상품이 삭제되었습니다.', 'success')
         } catch (error: any) {

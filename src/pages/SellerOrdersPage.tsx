@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -76,7 +76,7 @@ export default function SellerOrdersPage() {
         return
       }
 
-      const response = await axios.get('/api/seller/orders', {
+      const response = await api.get('/api/seller/orders', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -103,7 +103,7 @@ export default function SellerOrdersPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
 
-      const response = await axios.patch(
+      const response = await api.patch(
         `/api/seller/orders/${orderNumber}/status`,
         { status: newStatus },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }
@@ -134,7 +134,7 @@ export default function SellerOrdersPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
 
-      const response = await axios.put(
+      const response = await api.put(
         `/api/seller/orders/${orderNumber}/tracking`,
         trackingForm,
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }

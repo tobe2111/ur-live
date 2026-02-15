@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -88,7 +88,7 @@ export default function SellerTaxInvoicesPage() {
   }
 
   async function loadInvoices(sessionToken: string) {
-    const response = await axios.get('/api/seller/tax-invoices', {
+    const response = await api.get('/api/seller/tax-invoices', {
       headers: { 'Authorization': `Bearer ${sessionToken}` }
     })
 
@@ -98,7 +98,7 @@ export default function SellerTaxInvoicesPage() {
   }
 
   async function loadLogs(sessionToken: string) {
-    const response = await axios.get('/api/seller/tax-invoices/auto-issue-logs', {
+    const response = await api.get('/api/seller/tax-invoices/auto-issue-logs', {
       headers: { 'Authorization': `Bearer ${sessionToken}` }
     })
 
@@ -115,7 +115,7 @@ export default function SellerTaxInvoicesPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
 
-      const response = await axios.post(`/api/seller/tax-invoices/retry/${orderNumber}`, {}, {
+      const response = await api.post(`/api/seller/tax-invoices/retry/${orderNumber}`, {}, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -136,7 +136,7 @@ export default function SellerTaxInvoicesPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
 
-      const response = await axios.get(`/api/seller/tax-invoices/${invoiceId}`, {
+      const response = await api.get(`/api/seller/tax-invoices/${invoiceId}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

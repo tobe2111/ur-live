@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Play } from 'lucide-react'
@@ -36,12 +36,10 @@ export default function LoginPage() {
     const checkKakaoSDK = () => {
       if (window.Kakao && !window.Kakao.isInitialized()) {
         window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
-        console.log('[Kakao Sync] SDK initialized:', window.Kakao.isInitialized())
       }
       
       if (window.Kakao && window.Kakao.isInitialized()) {
         setKakaoReady(true)
-        console.log('[Kakao Sync] SDK ready')
       } else {
         // SDK가 로드되지 않았으면 재시도
         setTimeout(checkKakaoSDK, 100)
@@ -61,19 +59,16 @@ export default function LoginPage() {
     setError('')
 
     try {
-      console.log('[Kakao] Checking login status...')
       
       // 1단계: 이미 로그인되어 있는지 확인 (카카오톡 앱 내부에서 자동 로그인된 경우)
       const accessToken = window.Kakao.Auth.getAccessToken()
       
       if (accessToken) {
-        console.log('[Kakao] Already logged in via Kakao Sync')
         await processKakaoLogin(accessToken)
         return
       }
 
       // 2단계: 로그인되지 않은 경우, REST API OAuth 방식으로 로그인
-      console.log('[Kakao] Not logged in, redirecting to Kakao OAuth...')
       
       // returnUrl 파라미터 또는 localStorage에서 읽기
       const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') 
@@ -85,13 +80,9 @@ export default function LoginPage() {
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`
       
-      console.log('[Kakao] Redirecting to:', kakaoAuthUrl)
-      console.log('[Kakao] Redirect URI:', REDIRECT_URI)
-      console.log('[Kakao] Return URL:', returnUrl)
       window.location.href = kakaoAuthUrl
       
     } catch (err: any) {
-      console.error('[Kakao] Error:', err)
       setError('로그인 중 오류가 발생했습니다.')
       setLoading(false)
     }
@@ -99,10 +90,9 @@ export default function LoginPage() {
 
   async function processKakaoLogin(accessToken: string) {
     try {
-      console.log('[Kakao Sync] Processing login with token')
       
       // 백엔드로 액세스 토큰 전송하여 검증 및 사용자 정보 저장
-      const response = await axios.post('/api/auth/kakao/sync', {
+      const response = await api.post('/api/auth/kakao/sync', {
         accessToken: accessToken
       })
 
@@ -133,7 +123,6 @@ export default function LoginPage() {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }
     } catch (err: any) {
-      console.error('[Kakao Sync] Backend verification failed:', err)
       setError(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
       setLoading(false)
     }
@@ -151,7 +140,7 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const response = await axios.post('/api/auth/user/login', {
+      const response = await api.post('/api/auth/user/login', {
         email,
         password
       })
@@ -183,7 +172,6 @@ export default function LoginPage() {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }
     } catch (err: any) {
-      console.error('[Email Login] Failed:', err)
       setError(err.response?.data?.error || '이메일 또는 비밀번호가 올바르지 않습니다.')
     } finally {
       setLoading(false)

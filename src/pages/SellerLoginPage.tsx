@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Play, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
@@ -26,7 +26,7 @@ export default function SellerLoginPage() {
     try {
       if (isLogin) {
         // Login logic
-        const response = await axios.post('/api/auth/login', {
+        const response = await api.post('/api/auth/login', {
           username: formData.email,
           password: formData.password,
           userType: 'seller'

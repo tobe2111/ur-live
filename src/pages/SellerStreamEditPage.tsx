@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { ArrowLeft, Loader2, Play, Edit, Trash2 } from 'lucide-react'
 
 interface Stream {
@@ -45,7 +45,7 @@ export default function SellerStreamEditPage() {
     try {
       const sessionToken = localStorage.getItem('seller_session_token')
 
-      const response = await axios.get(`/api/seller/streams`, {
+      const response = await api.get(`/api/seller/streams`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -78,7 +78,7 @@ export default function SellerStreamEditPage() {
     try {
       const sessionToken = localStorage.getItem('seller_session_token')
 
-      const response = await axios.put(`/api/seller/streams/${id}`, {
+      const response = await api.put(`/api/seller/streams/${id}`, {
         title: formData.title,
         description: formData.description,
         status: formData.status
@@ -108,7 +108,7 @@ export default function SellerStreamEditPage() {
     try {
       const sessionToken = localStorage.getItem('seller_session_token')
 
-      const response = await axios.delete(`/api/seller/streams/${id}`, {
+      const response = await api.delete(`/api/seller/streams/${id}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

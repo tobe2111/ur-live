@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShoppingCart, Heart, Share2, Minus, Plus, AlertCircle } from 'lucide-react'
-import axios from 'axios'
+import api from '@/lib/api'
 import { getUserId, isLoggedIn } from '@/utils/auth'
 import MobileFooter from '@/components/MobileFooter'
 
@@ -50,7 +50,7 @@ export default function ProductDetailPage() {
 
   async function loadOptions() {
     try {
-      const response = await axios.get(`/api/seller/products/${id}/options`)
+      const response = await api.get(`/api/seller/products/${id}/options`)
       if (response.data.success) {
         setOptions(response.data.data || [])
       }
@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
   async function loadProduct() {
     try {
       setLoading(true)
-      const response = await axios.get(`/api/products/${id}`)
+      const response = await api.get(`/api/products/${id}`)
       if (response.data.success && response.data.data?.product) {
         setProduct(response.data.data.product)
       } else {
@@ -91,7 +91,7 @@ export default function ProductDetailPage() {
     }
 
     try {
-      await axios.post('/api/cart', {
+      await api.post('/api/cart', {
         userId: Number(getUserId()),
         productId: product!.id,
         quantity,
@@ -115,7 +115,7 @@ export default function ProductDetailPage() {
 
     try {
       // 장바구니에 추가
-      await axios.post('/api/cart', {
+      await api.post('/api/cart', {
         userId: Number(getUserId()),
         productId: product!.id,
         quantity,

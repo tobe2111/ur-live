@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -66,7 +66,6 @@ export default function HomePage() {
 
     if (loginSuccess === 'success' && session && userId && userName) {
       // 통합 인증: saveUserInfo 사용
-      console.log('[Login] Processing login callback from URL params')
       saveUserInfo(
         userId,
         decodeURIComponent(userName),
@@ -83,7 +82,6 @@ export default function HomePage() {
       const cleanUrl = window.location.pathname
       window.history.replaceState({}, '', cleanUrl)
       
-      console.log('[Login] Session saved successfully')
       showAlert(`환영합니다, ${decodeURIComponent(userName)}님!`, 'success', '로그인 성공')
     }
     
@@ -94,7 +92,6 @@ export default function HomePage() {
     // 실시간 업데이트: 30초마다 라이브 스트림 새로고침
     const intervalId = setInterval(() => {
       loadStreams()
-      console.log('[HomePage] Auto-refreshing live streams')
     }, 30000) // 30초
     
     return () => clearInterval(intervalId)
@@ -134,7 +131,7 @@ export default function HomePage() {
   async function loadStreams() {
     try {
       setLoading(true)
-      const response = await axios.get('/api/streams')
+      const response = await api.get('/api/streams')
       if (response.data.success) {
         const liveStreams = (response.data.data || []).filter(
           (s: Stream) => !s.status || s.status === 'live'
@@ -160,7 +157,7 @@ export default function HomePage() {
 
   async function loadScheduledStreams() {
     try {
-      const response = await axios.get('/api/streams?status=scheduled')
+      const response = await api.get('/api/streams?status=scheduled')
       if (response.data.success) {
         const scheduled = (response.data.data || [])
           .filter((s: Stream) => s.status === 'scheduled')
@@ -182,7 +179,7 @@ export default function HomePage() {
 
     const debounceTimer = setTimeout(async () => {
       try {
-        const response = await axios.get(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}`)
+        const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}`)
         if (response.data.success) {
           setSuggestions(response.data.data.suggestions || [])
           setShowSuggestions(true)

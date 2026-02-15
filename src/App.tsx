@@ -1,7 +1,7 @@
 // React Router App - v2.1 (Cache Buster)
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { ErrorBoundary } from './components/ErrorBoundary'
+import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 
 // 초기 로딩 페이지만 즉시 로드

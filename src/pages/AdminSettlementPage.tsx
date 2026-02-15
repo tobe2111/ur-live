@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock, ArrowLeft } from 'lucide-react'
 
 interface SettlementStats {
@@ -68,7 +68,7 @@ export default function AdminSettlementPage() {
       const headers = { 'X-Session-Token': token }
 
       // Load statistics
-      const statsRes = await axios.get(`/api/admin/settlement/stats?period=${period}`, { headers })
+      const statsRes = await api.get(`/api/admin/settlement/stats?period=${period}`, { headers })
       
       if (statsRes.data.success) {
         setStats(statsRes.data.data.overview)
@@ -81,7 +81,7 @@ export default function AdminSettlementPage() {
       if (selectedSeller) params.append('seller_id', selectedSeller.toString())
       if (statusFilter !== 'all') params.append('status', statusFilter)
 
-      const recordsRes = await axios.get(`/api/admin/settlement/records?${params.toString()}`, { headers })
+      const recordsRes = await api.get(`/api/admin/settlement/records?${params.toString()}`, { headers })
       
       if (recordsRes.data.success) {
         setRecords(recordsRes.data.data || [])
@@ -102,7 +102,7 @@ export default function AdminSettlementPage() {
   async function updateSettlementStatus(orderId: number, status: string) {
     try {
       const token = localStorage.getItem('session_token')
-      await axios.patch(
+      await api.patch(
         `/api/admin/settlement/${orderId}/status`,
         { status },
         { headers: { 'X-Session-Token': token } }
@@ -119,7 +119,7 @@ export default function AdminSettlementPage() {
 
     try {
       const token = localStorage.getItem('session_token')
-      await axios.post(
+      await api.post(
         '/api/admin/settlement/batch-complete',
         { order_ids: orderIds },
         { headers: { 'X-Session-Token': token } }
@@ -138,7 +138,7 @@ export default function AdminSettlementPage() {
       if (period !== 'all') params.append('period', period)
       if (selectedSeller) params.append('seller_id', selectedSeller.toString())
 
-      const response = await axios.get(
+      const response = await api.get(
         `/api/admin/settlement/export-csv?${params.toString()}`,
         {
           headers: { 'X-Session-Token': token },

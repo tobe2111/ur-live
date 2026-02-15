@@ -1,7 +1,7 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Seller {
@@ -60,12 +60,12 @@ export default function AdminPage() {
       const token = localStorage.getItem('admin_session_token')
       
       // Load sellers
-      const sellersRes = await axios.get('/api/admin/sellers', {
+      const sellersRes = await api.get('/api/admin/sellers', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
       // Load streams
-      const streamsRes = await axios.get('/api/streams')
+      const streamsRes = await api.get('/api/streams')
 
       const sellersData = sellersRes.data.data || []
       const streamsData = streamsRes.data.data || []
@@ -96,7 +96,7 @@ export default function AdminPage() {
   async function approveSeller(sellerId: number) {
     try {
       const token = localStorage.getItem('admin_session_token')
-      await axios.post(
+      await api.post(
         `/api/admin/sellers/${sellerId}/approve`,
         {},
         { headers: { 'Authorization': `Bearer ${token}` } }
@@ -113,7 +113,7 @@ export default function AdminPage() {
 
     try {
       const token = localStorage.getItem('admin_session_token')
-      await axios.delete(`/api/admin/streams/${streamId}`, {
+      await api.delete(`/api/admin/streams/${streamId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       alert('라이브 삭제 완료!')
@@ -135,7 +135,7 @@ export default function AdminPage() {
 
     try {
       const token = localStorage.getItem('admin_session_token')
-      await axios.patch(
+      await api.patch(
         `/api/admin/sellers/${sellerId}/commission`,
         { commission_rate: rate },
         { headers: { 'Authorization': `Bearer ${token}` } }

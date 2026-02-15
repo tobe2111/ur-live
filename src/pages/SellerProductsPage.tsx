@@ -1,7 +1,7 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -54,7 +54,7 @@ export default function SellerProductsPage() {
         return
       }
 
-      const response = await axios.get('/api/seller/products', {
+      const response = await api.get('/api/seller/products', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -78,7 +78,7 @@ export default function SellerProductsPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
 
-      const response = await axios.patch(
+      const response = await api.patch(
         `/api/seller/products/${productId}`,
         { is_active: !currentStatus },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }
@@ -105,7 +105,7 @@ export default function SellerProductsPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
 
-      const response = await axios.delete(`/api/seller/products/${productId}`, {
+      const response = await api.delete(`/api/seller/products/${productId}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

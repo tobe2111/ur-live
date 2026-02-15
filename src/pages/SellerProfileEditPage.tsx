@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { 
   ArrowLeft,
@@ -74,7 +74,7 @@ export default function SellerProfileEditPage() {
   async function loadProfile() {
     try {
       const sessionToken = localStorage.getItem('seller_session_token')
-      const response = await axios.get('/api/seller/profile', {
+      const response = await api.get('/api/seller/profile', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -109,7 +109,7 @@ export default function SellerProfileEditPage() {
 
     try {
       const sessionToken = localStorage.getItem('seller_session_token')
-      const response = await axios.patch(
+      const response = await api.patch(
         '/api/seller/profile',
         formData,
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }

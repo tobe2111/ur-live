@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 
 export default function SellerRegisterPage() {
   const navigate = useNavigate()
@@ -46,7 +46,7 @@ export default function SellerRegisterPage() {
     setLoading(true)
 
     try {
-      const response = await axios.post('/api/seller/register', {
+      const response = await api.post('/api/seller/register', {
         email: formData.email,
         password: formData.password,
         name: formData.name,

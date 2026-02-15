@@ -22,21 +22,16 @@ export default function PaymentDemoPage() {
   useEffect(() => {
     async function fetchPaymentWidgets() {
       try {
-        console.log('[Demo] Step 1: SDK 초기화 시작')
-        console.log('[Demo] clientKey:', clientKey)
         
         const tossPayments = await loadTossPayments(clientKey)
         
         // 데모용 customerKey
         const customerKey = generateRandomString()
-        console.log('[Demo] customerKey:', customerKey)
         
         const widgetsInstance = tossPayments.widgets({ customerKey })
         
         setWidgets(widgetsInstance)
-        console.log('[Demo] ✅ Step 1 완료')
       } catch (err: any) {
-        console.error('[Demo] ❌ Step 1 실패:', err)
         setError(`SDK 초기화 실패: ${err.message}`)
       }
     }
@@ -52,7 +47,6 @@ export default function PaymentDemoPage() {
       }
 
       try {
-        console.log('[Demo] Step 2: 결제 UI 렌더링 시작')
         
         // DOM 대기
         await new Promise(resolve => setTimeout(resolve, 100))
@@ -61,39 +55,32 @@ export default function PaymentDemoPage() {
         const agreementEl = document.getElementById('agreement')
         
         if (!paymentMethodEl) {
-          console.error('[Demo] ❌ #payment-method 요소를 찾을 수 없음')
           setError('결제 UI 컨테이너를 찾을 수 없습니다.')
           return
         }
         
         if (!agreementEl) {
-          console.error('[Demo] ❌ #agreement 요소를 찾을 수 없음')
           setError('약관 UI 컨테이너를 찾을 수 없습니다.')
           return
         }
         
         // 금액 설정
-        console.log('[Demo] 금액 설정:', amount)
         await widgets.setAmount(amount)
         
         // 결제 수단 렌더링 (variantKey 'DEFAULT' 사용)
-        console.log('[Demo] 결제 수단 렌더링...')
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
           variantKey: 'DEFAULT'
         })
         
         // 이용약관 렌더링
-        console.log('[Demo] 이용약관 렌더링...')
         await widgets.renderAgreement({
           selector: '#agreement',
           variantKey: 'AGREEMENT'
         })
         
         setReady(true)
-        console.log('[Demo] ✅ Step 2 완료')
       } catch (err: any) {
-        console.error('[Demo] ❌ Step 2 실패:', err)
         setError(`UI 렌더링 실패: ${err.message}`)
       }
     }
@@ -109,10 +96,8 @@ export default function PaymentDemoPage() {
 
     async function updateAmount() {
       try {
-        console.log('[Demo] Step 3: 금액 업데이트', amount)
         await widgets.setAmount(amount)
       } catch (err: any) {
-        console.error('[Demo] ❌ Step 3 실패:', err)
       }
     }
 
@@ -129,7 +114,6 @@ export default function PaymentDemoPage() {
     try {
       const orderId = `ORDER_${Date.now()}_${generateRandomString()}`
       
-      console.log('[Demo] 결제 요청:', { orderId, amount: amount.value })
       
       await widgets.requestPayment({
         orderId,
@@ -141,7 +125,6 @@ export default function PaymentDemoPage() {
         customerMobilePhone: '01012341234'
       })
     } catch (err: any) {
-      console.error('[Demo] ❌ 결제 요청 실패:', err)
       if (err.code === 'USER_CANCEL') {
         alert('결제가 취소되었습니다.')
       } else {

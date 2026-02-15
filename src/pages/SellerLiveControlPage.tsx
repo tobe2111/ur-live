@@ -1,7 +1,7 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { GripVertical } from 'lucide-react'
 
 interface Product {
@@ -51,12 +51,12 @@ export default function SellerLiveControlPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
       // Load live streams
-      const streamsRes = await axios.get('/api/seller/streams', {
+      const streamsRes = await api.get('/api/seller/streams', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
       
       // Load products
-      const productsRes = await axios.get('/api/seller/products', {
+      const productsRes = await api.get('/api/seller/products', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -83,7 +83,7 @@ export default function SellerLiveControlPage() {
     setChanging(true)
     try {
       const sessionToken = localStorage.getItem('seller_session_token')
-      await axios.post(
+      await api.post(
         `/api/seller/streams/${selectedStream.id}/change-product`,
         { productId },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }

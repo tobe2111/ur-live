@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 
 export default function SellerStreamNewPage() {
   const navigate = useNavigate()
@@ -37,7 +37,7 @@ export default function SellerStreamNewPage() {
         return
       }
 
-      const response = await axios.post('/api/seller/streams', {
+      const response = await api.post('/api/seller/streams', {
         title: formData.title,
         description: formData.description,
         youtube_url: formData.youtubeUrl,

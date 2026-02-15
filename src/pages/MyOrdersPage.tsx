@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
@@ -115,12 +115,12 @@ export default function MyOrdersPage() {
       }
       
       if (activeTab === 'cart') {
-        const response = await axios.get('/api/cart')
+        const response = await api.get('/api/cart')
         if (response.data.success) {
           setCartItems(response.data.data || [])
         }
       } else if (activeTab === 'orders') {
-        const response = await axios.get('/api/orders')
+        const response = await api.get('/api/orders')
         if (response.data.success) {
           setOrders(response.data.data || [])
         }
@@ -136,7 +136,7 @@ export default function MyOrdersPage() {
     if (newQuantity < 1) return
 
     try {
-      const response = await axios.put(`/api/cart/${itemId}`, { quantity: newQuantity })
+      const response = await api.put(`/api/cart/${itemId}`, { quantity: newQuantity })
       if (response.data.success) {
         loadData()
       }
@@ -150,7 +150,7 @@ export default function MyOrdersPage() {
     if (!confirm('장바구니에서 삭제하시겠습니까?')) return
 
     try {
-      const response = await axios.delete(`/api/cart/${itemId}`)
+      const response = await api.delete(`/api/cart/${itemId}`)
       if (response.data.success) {
         loadData()
       }
@@ -205,7 +205,7 @@ export default function MyOrdersPage() {
 
     setProcessing(true)
     try {
-      const response = await axios.post(`/api/orders/${orderId}/cancel`, {
+      const response = await api.post(`/api/orders/${orderId}/cancel`, {
         reason: cancelReason
       })
       if (response.data.success) {

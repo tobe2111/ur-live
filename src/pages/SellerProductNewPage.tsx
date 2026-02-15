@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { 
   ArrowLeft, 
@@ -57,7 +57,7 @@ export default function SellerProductNewPage() {
       }
 
       // Note: You may need to create this API endpoint
-      const response = await axios.get('/api/seller/streams', {
+      const response = await api.get('/api/seller/streams', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
@@ -92,7 +92,7 @@ export default function SellerProductNewPage() {
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null
       }
 
-      const response = await axios.post('/api/seller/products', payload, {
+      const response = await api.post('/api/seller/products', payload, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

@@ -1,118 +1,107 @@
-import React from 'react'
-import { AlertTriangle, Home, RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+/**
+ * Error Boundary Component
+ * React 컴포넌트 트리에서 발생한 에러를 포착하고 폴백 UI를 표시합니다.
+ */
+
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
-  children: React.ReactNode
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
-  hasError: boolean
-  error: Error | null
+  hasError: boolean;
+  error?: Error;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false, error: null }
+    super(props);
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Sentry로 에러 전송 (Mock 모드에서는 콘솔 로그)
-    console.error('🔴 ErrorBoundary caught an error:', error, errorInfo)
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // 에러 로깅 (프로덕션에서는 Sentry 등으로 전송)
+    console.error('Error Boundary caught an error:', error, errorInfo);
     
-    // 추가 컨텍스트 정보
-    const context = {
-      componentStack: errorInfo.componentStack,
-      errorBoundary: 'App',
+    // 개발 환경에서만 상세 정보 출력
+    if (import.meta.env.DEV) {
+      console.error('Component Stack:', errorInfo.componentStack);
     }
-    
-    console.error('📍 Context:', context)
-  }
-
-  handleReset = () => {
-    this.setState({ hasError: false, error: null })
-    window.location.href = '/'
-  }
-
-  handleReload = () => {
-    window.location.reload()
   }
 
   render() {
     if (this.state.hasError) {
+      // 커스텀 폴백 UI가 제공되면 사용
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      // 기본 폴백 UI
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 to-white flex items-center justify-center p-4">
-          <div className="max-w-md w-full">
-            <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
-              {/* Error Icon */}
-              <div className="flex items-center justify-center h-20 w-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-red-500 to-red-600 shadow-xl">
-                <AlertTriangle className="h-10 w-10 text-white" />
-              </div>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
 
-              {/* Error Title */}
-              <h1 className="text-3xl font-extrabold text-gray-900 mb-3">
-                앗! 오류가 발생했습니다
-              </h1>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              문제가 발생했습니다
+            </h2>
 
-              {/* Error Message */}
-              <p className="text-gray-600 mb-2">
-                예상치 못한 오류가 발생했습니다.
-              </p>
-              <p className="text-sm text-gray-500 mb-6">
-                불편을 드려 죄송합니다.
-              </p>
+            <p className="text-gray-600 mb-6">
+              일시적인 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
+            </p>
 
-              {/* Error Details (Development Only) */}
-              {import.meta.env.DEV && this.state.error && (
-                <div className="mb-6 p-4 bg-red-50 rounded-2xl text-left">
-                  <p className="text-xs font-mono text-red-800 break-all">
-                    {this.state.error.message}
-                  </p>
-                </div>
-              )}
+            {import.meta.env.DEV && this.state.error && (
+              <details className="text-left mb-6">
+                <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                  개발자 정보 (Dev Only)
+                </summary>
+                <pre className="mt-2 text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
+                  {this.state.error.toString()}
+                </pre>
+              </details>
+            )}
 
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                <Button
-                  onClick={this.handleReload}
-                  className="w-full py-6 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all"
-                >
-                  <RefreshCw className="h-5 w-5 mr-2" />
-                  페이지 새로고침
-                </Button>
-
-                <Button
-                  onClick={this.handleReset}
-                  variant="outline"
-                  className="w-full py-6 bg-white hover:bg-gray-50 text-gray-900 font-bold text-lg rounded-2xl border-2 border-gray-200"
-                >
-                  <Home className="h-5 w-5 mr-2" />
-                  홈으로 돌아가기
-                </Button>
-              </div>
-
-              {/* Support Link */}
-              <div className="mt-6 text-sm text-gray-500">
-                문제가 계속되면{' '}
-                <a
-                  href="mailto:jiwon@ur-team.com"
-                  className="text-red-600 hover:text-red-700 font-medium underline"
-                >
-                  고객센터
-                </a>
-                로 문의해주세요.
-              </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 bg-gray-900 text-white py-3 px-4 rounded-full font-medium hover:bg-gray-800 transition-colors"
+              >
+                새로고침
+              </button>
+              <button
+                onClick={() => window.location.href = '/'}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-colors"
+              >
+                홈으로
+              </button>
             </div>
           </div>
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
+
+export default ErrorBoundary;

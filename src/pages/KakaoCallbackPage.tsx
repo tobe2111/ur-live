@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { saveUserInfo, getTempCartItem, clearTempCartItem } from '@/utils/auth'
 
 export default function KakaoCallbackPage() {
@@ -13,25 +13,22 @@ export default function KakaoCallbackPage() {
       const error = searchParams.get('error')
 
       if (error) {
-        console.error('[Kakao OAuth] Error:', error)
         alert('카카오 로그인에 실패했습니다.')
         navigate('/login')
         return
       }
 
       if (!code) {
-        console.error('[Kakao OAuth] No authorization code')
         alert('인증 코드가 없습니다.')
         navigate('/login')
         return
       }
 
       try {
-        console.log('[Kakao OAuth] Processing callback with code')
         
         // 백엔드로 코드 전송하여 액세스 토큰 교환 및 사용자 정보 저장
         // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
-        const response = await axios.post('/api/auth/kakao/callback', {
+        const response = await api.post('/api/auth/kakao/callback', {
           code: code,
           redirect_uri: 'https://live.ur-team.com/auth/kakao/sync/callback'
         })
@@ -48,7 +45,6 @@ export default function KakaoCallbackPage() {
             user.profile_image
           )
 
-          console.log('[Kakao OAuth] Login successful')
           
           // Get return URL from localStorage
           const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
@@ -59,7 +55,7 @@ export default function KakaoCallbackPage() {
           if (tempCartItem) {
             setTimeout(async () => {
               try {
-                await axios.post('/api/cart', {
+                await api.post('/api/cart', {
                   userId: user.id.toString(),
                   productId: tempCartItem.productId,
                   quantity: tempCartItem.quantity,
@@ -70,9 +66,7 @@ export default function KakaoCallbackPage() {
                 localStorage.setItem('hasCartItems', 'true')
                 clearTempCartItem()
                 
-                console.log('[Kakao OAuth] Restored cart item:', tempCartItem.productName)
               } catch (error) {
-                console.error('[Kakao OAuth] Failed to restore cart item:', error)
                 clearTempCartItem()
               }
             }, 500)
@@ -85,8 +79,6 @@ export default function KakaoCallbackPage() {
           throw new Error(response.data.error || '로그인에 실패했습니다.')
         }
       } catch (err: any) {
-        console.error('[Kakao OAuth] Callback processing failed:', err)
-        console.error('[Kakao OAuth] Error response:', err.response?.data)
         
         const errorMessage = err.response?.data?.error || err.message || '로그인 처리 중 오류가 발생했습니다.'
         const errorDetails = err.response?.data?.details || ''

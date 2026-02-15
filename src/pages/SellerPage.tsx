@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -101,7 +101,7 @@ export default function SellerPage() {
       // Load real stats if session exists
       if (sessionToken) {
         try {
-          const statsResponse = await axios.get('/api/seller/stats', {
+          const statsResponse = await api.get('/api/seller/stats', {
             headers: { 'Authorization': `Bearer ${sessionToken}` }
           })
           
@@ -129,7 +129,7 @@ export default function SellerPage() {
       }
 
       // Load streams
-      const streamsResponse = await axios.get('/api/seller/streams', {
+      const streamsResponse = await api.get('/api/seller/streams', {
         headers: {
           'Authorization': `Bearer ${sessionToken}`
         }
@@ -142,7 +142,7 @@ export default function SellerPage() {
       if (streamsResponse.data.success && streamsResponse.data.data.length > 0) {
         const firstStream = streamsResponse.data.data[0]
         try {
-          const productsResponse = await axios.get(`/api/streams/${firstStream.id}/products`)
+          const productsResponse = await api.get(`/api/streams/${firstStream.id}/products`)
           if (productsResponse.data.success) {
             setProducts(productsResponse.data.data || [])
           }

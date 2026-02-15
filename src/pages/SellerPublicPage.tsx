@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { 
   Instagram, 
   Youtube, 
@@ -78,19 +78,19 @@ export default function SellerPublicPage() {
   async function loadSellerData() {
     try {
       // Load seller profile
-      const sellerResponse = await axios.get(`/api/seller/public/${sellerId}`)
+      const sellerResponse = await api.get(`/api/seller/public/${sellerId}`)
       if (sellerResponse.data.success) {
         setSeller(sellerResponse.data.data)
       }
 
       // Load seller's live streams
-      const streamsResponse = await axios.get(`/api/seller/${sellerId}/streams`)
+      const streamsResponse = await api.get(`/api/seller/${sellerId}/streams`)
       if (streamsResponse.data.success) {
         setStreams(streamsResponse.data.data || [])
       }
 
       // Load seller's products
-      const productsResponse = await axios.get(`/api/seller/${sellerId}/products-public`)
+      const productsResponse = await api.get(`/api/seller/${sellerId}/products-public`)
       if (productsResponse.data.success) {
         setProducts(productsResponse.data.data || [])
       }
