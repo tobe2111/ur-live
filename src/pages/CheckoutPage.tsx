@@ -556,28 +556,28 @@ export default function CheckoutPage() {
 
   return (
     <div className="w-full min-h-screen bg-gray-50">
-      <div className="w-full p-4 sm:p-6">
-      {/* 헤더 */}
-      <div className="mb-6">
-        <button
-          onClick={() => navigate('/cart')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>장바구니로 돌아가기</span>
-        </button>
-        <h1 className="text-3xl font-bold">주문/결제</h1>
-      </div>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+        {/* 헤더 */}
+        <div className="mb-4 sm:mb-6">
+          <button
+            onClick={() => navigate('/cart')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base"
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>장바구니로 돌아가기</span>
+          </button>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">주문/결제</h1>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* 좌측: 주문 정보 */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* 배송지 정보 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                <h2 className="text-xl font-bold">배송지 정보</h2>
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                <h2 className="text-base sm:text-lg lg:text-xl font-bold">배송지 정보</h2>
               </div>
               <Button
                 onClick={() => setShowAddressModal(true)}
@@ -589,58 +589,58 @@ export default function CheckoutPage() {
             </div>
 
             {!selectedAddress && (
-              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 sm:p-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-red-800 font-bold text-lg">⚠️ 배송지를 선택해주세요 (필수)</p>
-                    <p className="text-red-700 mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
+                    <p className="text-red-800 font-bold text-sm sm:text-base lg:text-lg">⚠️ 배송지를 선택해주세요</p>
+                    <p className="text-red-700 text-xs sm:text-sm mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
                   </div>
                 </div>
               </div>
             )}
 
             {selectedAddress && (
-              <div className="space-y-2 bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="font-semibold text-lg">{selectedAddress.recipient_name}</p>
-                <p className="text-gray-700">{selectedAddress.phone}</p>
-                <p className="text-gray-600">
+              <div className="space-y-2 bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+                <p className="font-semibold text-sm sm:text-base lg:text-lg">{selectedAddress.recipient_name}</p>
+                <p className="text-gray-700 text-sm sm:text-base">{selectedAddress.phone}</p>
+                <p className="text-gray-600 text-xs sm:text-sm">
                   [{selectedAddress.postal_code}] {selectedAddress.address}
                 </p>
                 {selectedAddress.address_detail && (
-                  <p className="text-gray-600">{selectedAddress.address_detail}</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">{selectedAddress.address_detail}</p>
                 )}
               </div>
             )}
           </div>
 
           {/* 주문 상품 정보 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Package className="w-5 h-5 text-blue-600" />
-              <h2 className="text-xl font-bold">주문 상품</h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+              <h2 className="text-base sm:text-lg lg:text-xl font-bold">주문 상품</h2>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {Object.values(sellerGroups).map((group) => (
-                <div key={group.seller_id} className="border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-gray-700 mb-3">
+                <div key={group.seller_id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                     {group.seller_name}
                   </p>
                   
                   {group.items.map((item) => (
-                    <div key={item.id} className="flex gap-4 py-3 border-t border-gray-100 first:border-t-0">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.product_name}</p>
+                    <div key={item.id} className="flex gap-2 sm:gap-4 py-2 sm:py-3 border-t border-gray-100 first:border-t-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm sm:text-base truncate">{item.product_name}</p>
                         {item.option_value && (
-                          <p className="text-sm text-gray-500">{item.option_value}</p>
+                          <p className="text-xs sm:text-sm text-gray-500">{item.option_value}</p>
                         )}
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
                           {item.price_snapshot.toLocaleString()}원 × {item.quantity}개
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold">
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-sm sm:text-base">
                           {(item.price_snapshot * item.quantity).toLocaleString()}원
                         </p>
                       </div>
@@ -648,7 +648,7 @@ export default function CheckoutPage() {
                   ))}
 
                   {/* 배송비 정보 */}
-                  <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between text-sm">
+                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200 flex justify-between text-xs sm:text-sm">
                     <span className="text-gray-600">배송비</span>
                     <span className="font-semibold">
                       {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
@@ -657,7 +657,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                       {(group.free_shipping_threshold - group.subtotal).toLocaleString()}원 추가 시 무료배송
                     </p>
                   )}
@@ -667,16 +667,16 @@ export default function CheckoutPage() {
           </div>
 
           {/* 결제 수단 선택 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h2 className="text-base font-bold mb-4">결제 수단</h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">결제 수단</h2>
             
             {/* 토스페이먼츠 위젯 렌더링 영역 - 모바일 최적화 */}
             <div id="payment-method" className="min-h-[200px] w-full"></div>
             <div id="agreement" className="mt-4 w-full"></div>
             
             {!ready && (
-              <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+              <div className="flex items-center justify-center py-8 text-gray-500 text-xs sm:text-sm">
+                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mr-3"></div>
                 결제 수단 불러오는 중...
               </div>
             )}
@@ -685,19 +685,19 @@ export default function CheckoutPage() {
 
         {/* 우측: 결제 요약 */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 p-6 sticky top-6">
-            <h2 className="text-xl font-bold mb-4">결제 금액</h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-6">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">결제 금액</h2>
             
-            <div className="space-y-3">
-              <div className="flex justify-between text-gray-600">
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                 <span>상품 금액</span>
                 <span>{subtotal.toLocaleString()}원</span>
               </div>
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-gray-600 text-sm sm:text-base">
                 <span>배송비</span>
                 <span>{totalShippingFee.toLocaleString()}원</span>
               </div>
-              <div className="border-t border-gray-200 pt-3 flex justify-between text-lg font-bold">
+              <div className="border-t border-gray-200 pt-2 sm:pt-3 flex justify-between text-base sm:text-lg font-bold">
                 <span>총 결제 금액</span>
                 <span className="text-blue-600">{totalAmount.toLocaleString()}원</span>
               </div>
@@ -712,7 +712,7 @@ export default function CheckoutPage() {
                   handlePayment(e)
                 }
               }}
-              className="w-full mt-6 py-6 text-lg font-bold touch-manipulation"
+              className="w-full mt-4 sm:mt-6 py-4 sm:py-6 text-base sm:text-lg font-bold touch-manipulation"
               disabled={!ready || !selectedAddress || isProcessing || !widgets}
               style={{
                 backgroundColor: !ready || !selectedAddress || !widgets ? '#e5e7eb' : undefined,
@@ -733,19 +733,19 @@ export default function CheckoutPage() {
             </Button>
 
             {!selectedAddress && (
-              <div className="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                <p className="text-sm text-amber-800 text-center">
+              <div className="mt-3 p-2 sm:p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                <p className="text-xs sm:text-sm text-amber-800 text-center">
                   ⚠️ 배송지를 선택하셔야 결제가 가능합니다
                 </p>
               </div>
             )}
 
             {/* 약관 링크 */}
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center mb-2">
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+              <p className="text-[10px] sm:text-xs text-gray-500 text-center mb-2">
                 결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
               </p>
-              <div className="flex justify-center gap-3 text-xs">
+              <div className="flex justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
                 <Link 
                   to="/terms" 
                   target="_blank"
