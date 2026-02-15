@@ -9,6 +9,28 @@ import {
   AuthError 
 } from './auth-utils';
 
+// Logging utilities (inline - prevent bundling issues)
+interface ApiLogContext {
+  method: string;
+  path: string;
+  status: number;
+  duration: number;
+  userId?: number;
+  userType?: string;
+  error?: string;
+}
+
+function logApiRequest(context: ApiLogContext) {
+  const level = context.status >= 500 ? 'error' : context.status >= 400 ? 'warn' : 'info';
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    message: 'API Request',
+    context,
+    duration: context.duration
+  }));
+}
+
 // Payment Provider (인라인 - 번들링 이슈 방지)
 interface PaymentConfirmRequest {
   paymentKey: string;
@@ -446,8 +468,84 @@ function extractTikTokUsername(url: string): string | null {
   }
 }
 
+// =================================
+// Security Headers Middleware
+// =================================
+app.use('*', async (c, next) => {
+  await next();
+  
+  // Content Security Policy
+  c.header('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://t1.kakaocdn.net https://developers.kakao.com https://js.tosspayments.com; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; " +
+    "img-src 'self' data: https: blob:; " +
+    "font-src 'self' data: https://cdn.jsdelivr.net; " +
+    "connect-src 'self' https://api.tosspayments.com https://kauth.kakao.com https://kapi.kakao.com https://www.youtube.com; " +
+    "frame-src 'self' https://www.youtube.com https://youtube.com; " +
+    "media-src 'self' https:; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'; " +
+    "frame-ancestors 'none';"
+  );
+  
+  // HTTPS 강제 (production only)
+  const url = new URL(c.req.url);
+  if (url.hostname !== 'localhost' && url.protocol === 'https:') {
+    c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  
+  // Clickjacking 방지
+  c.header('X-Frame-Options', 'SAMEORIGIN');
+  
+  // MIME 스니핑 방지
+  c.header('X-Content-Type-Options', 'nosniff');
+  
+  // XSS 필터 활성화
+  c.header('X-XSS-Protection', '1; mode=block');
+  
+  // Referrer 정책
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Permissions Policy
+  c.header('Permissions-Policy', 
+    'geolocation=(), microphone=(), camera=(), payment=(self), usb=()'
+  );
+});
+
 // CORS 설정
 app.use('/api/*', cors());
+
+// =================================
+// Performance Monitoring Middleware
+// =================================
+app.use('/api/*', async (c, next) => {
+  const start = Date.now();
+  const method = c.req.method;
+  const path = c.req.path;
+  
+  await next();
+  
+  const duration = Date.now() - start;
+  const status = c.res.status;
+  
+  // API 요청 로그 기록
+  const logContext: ApiLogContext = {
+    method,
+    path,
+    status,
+    duration,
+  };
+  
+  // 세션 정보가 있으면 추가
+  const userId = c.get('userId');
+  if (userId) {
+    logContext.userId = userId;
+  }
+  
+  logApiRequest(logContext);
+});
 
 // Static Asset CDN 최적화 - Cache-Control 헤더 설정
 app.use('/static/*', async (c, next) => {
@@ -1943,8 +2041,8 @@ app.get('/api/products', async (c) => {
     const result = await DB.prepare(query).bind(limit, offset).all();
     const products = result.results || [];
 
-    // 캐시 저장 (60초)
-    await setCachedData(CACHE_KV, cacheKey, products, 60);
+    // 캐시 저장 (5분)
+    await setCachedData(CACHE_KV, cacheKey, products, 300);
 
     return c.json<ApiResponse>({
       success: true,
@@ -1999,8 +2097,8 @@ app.get('/api/products/popular', async (c) => {
 
     const popularProducts = products.results || [];
 
-    // 캐시 저장 (60초)
-    await setCachedData(CACHE_KV, 'products:popular', popularProducts, 60);
+    // 캐시 저장 (10분)
+    await setCachedData(CACHE_KV, 'products:popular', popularProducts, 600);
 
     return c.json<ApiResponse>({
       success: true,
