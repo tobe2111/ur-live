@@ -219,6 +219,66 @@ const app = new Hono<{ Bindings: Bindings }>();
 // No need for manual compression middleware
 
 // =================================
+// Authentication Middleware
+// =================================
+
+/**
+ * 세션에서 사용자 ID 추출
+ * @param SESSION_KV - Cloudflare KV namespace for sessions
+ * @param sessionToken - Session token from cookie/header
+ * @returns User ID or null
+ */
+async function getUserIdFromSession(SESSION_KV: KVNamespace, sessionToken: string | undefined): Promise<number | null> {
+  if (!sessionToken) return null;
+  
+  try {
+    const sessionData = await SESSION_KV.get(`session:${sessionToken}`);
+    if (!sessionData) return null;
+    
+    const session = JSON.parse(sessionData);
+    return session.user_id || null;
+  } catch (error) {
+    console.error('[Auth] Session lookup error:', error);
+    return null;
+  }
+}
+
+/**
+ * 인증 필수 미들웨어
+ * Authorization 헤더 또는 쿠키에서 세션 토큰 확인
+ */
+async function requireAuth(c: any, next: any) {
+  const { SESSION_KV } = c.env;
+  
+  // 1. Authorization 헤더에서 토큰 추출
+  let sessionToken = c.req.header('Authorization')?.replace('Bearer ', '');
+  
+  // 2. 쿠키에서 토큰 추출 (fallback)
+  if (!sessionToken) {
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      const match = cookieHeader.match(/session=([^;]+)/);
+      sessionToken = match ? match[1] : undefined;
+    }
+  }
+  
+  // 3. 세션 검증
+  const userId = await getUserIdFromSession(SESSION_KV, sessionToken);
+  
+  if (!userId) {
+    return c.json({ 
+      success: false, 
+      error: '인증이 필요합니다. 로그인 해주세요.' 
+    }, 401);
+  }
+  
+  // 4. Context에 userId 저장
+  c.set('userId', userId);
+  
+  await next();
+}
+
+// =================================
 // Utility Functions
 // =================================
 
@@ -1452,15 +1512,45 @@ app.get('/api/auth/user/verify', cors(), async (c) => {
 // =================================
 
 // 배송지 목록 조회
-app.get('/api/shipping-addresses/:userId', cors(), async (c) => {
+// 🔒 배송지 목록 조회 (인증 필수)
+app.get('/api/shipping-addresses', cors(), requireAuth, async (c) => {
   const { DB } = c.env;
+  const userId = c.get('userId'); // 미들웨어에서 설정한 userId
   
   try {
-    const userId = c.req.param('userId');
-    
     const addresses = await DB.prepare(`
       SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC
     `).bind(userId).all();
+    
+    return c.json({
+      success: true,
+      data: addresses.results || []
+    });
+    
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ⚠️ DEPRECATED: 하위 호환성을 위한 구 엔드포인트 (인증 필수로 변경)
+// 새 코드는 /api/shipping-addresses (위) 사용 권장
+app.get('/api/shipping-addresses/:userId', cors(), requireAuth, async (c) => {
+  const { DB } = c.env;
+  const authenticatedUserId = c.get('userId'); // 실제 인증된 사용자
+  const requestedUserId = parseInt(c.req.param('userId')); // URL에서 요청한 사용자
+  
+  try {
+    // 🔒 보안: 본인의 배송지만 조회 가능
+    if (requestedUserId !== authenticatedUserId) {
+      return c.json({
+        success: false,
+        error: '본인의 배송지만 조회할 수 있습니다.'
+      }, 403);
+    }
+    
+    const addresses = await DB.prepare(`
+      SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC
+    `).bind(authenticatedUserId).all();
     
     return c.json({
       success: true,
@@ -1689,6 +1779,55 @@ app.get('/api/streams/:id', async (c) => {
     return c.json<ApiResponse>({
       success: false,
       error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 📺 라이브 스트림 목록 조회 (공개)
+app.get('/api/live-streams', async (c) => {
+  const { DB } = c.env;
+  const { status, seller_id, limit = '20', offset = '0' } = c.req.query();
+  
+  try {
+    let query = `
+      SELECT ls.*, 
+             s.display_name as seller_name
+      FROM live_streams ls
+      LEFT JOIN sellers s ON ls.seller_id = s.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    
+    // 상태 필터 (active, ended, scheduled)
+    if (status) {
+      query += ' AND ls.status = ?';
+      params.push(status);
+    }
+    
+    // 셀러 필터
+    if (seller_id) {
+      query += ' AND ls.seller_id = ?';
+      params.push(seller_id);
+    }
+    
+    // 정렬: 진행 중 → 예정 → 종료, 최신순
+    query += ' ORDER BY CASE ls.status WHEN "active" THEN 1 WHEN "scheduled" THEN 2 ELSE 3 END, ls.created_at DESC';
+    
+    // 페이징
+    query += ' LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const { results } = await DB.prepare(query).bind(...params).all();
+    
+    return c.json<ApiResponse>({
+      success: true,
+      data: results,
+    });
+  } catch (err) {
+    console.error('[API] Live streams list error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: `라이브 스트림 목록 조회 실패: ${(err as Error).message}`,
     }, 500);
   }
 });
@@ -2096,31 +2235,71 @@ app.get('/api/streams/:streamId/products', async (c) => {
 });
 
 // Cart API
-app.get('/api/cart/:userId', async (c) => {
+// 🔒 장바구니 조회 (인증 필수)
+app.get('/api/cart', requireAuth, async (c) => {
   const { DB } = c.env;
-  const userIdParam = c.req.param('userId');
+  const userId = c.get('userId'); // 미들웨어에서 설정한 userId
 
   try {
-    // 사용자 ID 조회 (kakao_id 기반)
+    const result = await DB.prepare(`
+      SELECT 
+        ci.*,
+        p.name as product_name,
+        p.image_url as image_url,
+        p.seller_id as seller_id,
+        po.option_value as option_value,
+        s.shipping_fee as shipping_fee,
+        s.free_shipping_threshold as free_shipping_threshold,
+        s.display_name as seller_name
+      FROM cart_items ci
+      JOIN products p ON ci.product_id = p.id
+      LEFT JOIN product_options po ON ci.option_id = po.id
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE ci.user_id = ?
+      ORDER BY ci.added_at DESC
+    `).bind(userId).all();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: result.results,
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: `장바구니 조회 실패: ${(err as Error).message}`,
+    }, 500);
+  }
+});
+
+// ⚠️ DEPRECATED: 하위 호환성을 위한 구 엔드포인트 (인증 필수로 변경)
+// 새 코드는 /api/cart (위) 사용 권장
+app.get('/api/cart/:userId', requireAuth, async (c) => {
+  const { DB } = c.env;
+  const authenticatedUserId = c.get('userId'); // 실제 인증된 사용자
+  const requestedUserId = c.req.param('userId'); // URL에서 요청한 사용자
+
+  try {
+    // 🔒 보안: 본인의 장바구니만 조회 가능
     let user = await DB.prepare(
       'SELECT id FROM users WHERE id = ?'
-    ).bind(userIdParam).first();
+    ).bind(authenticatedUserId).first();
     
-    // id로 못 찾으면 kakao_id로 찾기
-    if (!user) {
-      user = await DB.prepare(
-        'SELECT id FROM users WHERE kakao_id = ?'
-      ).bind(userIdParam).first();
-    }
-
     if (!user) {
       return c.json<ApiResponse>({
-        success: true,
-        data: [], // 사용자가 없으면 빈 장바구니 반환
-      });
+        success: false,
+        error: '사용자를 찾을 수 없습니다.',
+      }, 404);
     }
 
     const userId = user.id as number;
+
+    // 🔒 타인의 장바구니 접근 차단
+    if (requestedUserId !== String(userId)) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '본인의 장바구니만 조회할 수 있습니다.',
+      }, 403);
+    }
 
     const result = await DB.prepare(`
       SELECT 
@@ -3297,34 +3476,11 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
 // ============================================
 
 // 배송지 목록 조회
-app.get('/api/shipping-addresses/:userId', async (c) => {
-  const { DB } = c.env;
-  const userId = c.req.param('userId');
-  
-  try {
-    const addresses = await DB.prepare(`
-      SELECT * FROM shipping_addresses 
-      WHERE user_id = ? 
-      ORDER BY is_default DESC, created_at DESC
-    `).bind(userId).all();
-    
-    return c.json({
-      success: true,
-      data: addresses.results
-    });
-  } catch (error) {
-    return c.json({
-      success: false,
-      error: (error as Error).message
-    }, 500);
-  }
-});
-
-// 배송지 삭제
-app.delete('/api/shipping-addresses/:id', async (c) => {
+// 🔒 배송지 삭제 (인증 필수)
+app.delete('/api/shipping-addresses/:id', requireAuth, async (c) => {
   const { DB } = c.env;
   const addressId = c.req.param('id');
-  const userId = c.req.query('userId');
+  const authenticatedUserId = c.get('userId');
   
   try {
     await DB.prepare(`
@@ -4018,15 +4174,60 @@ app.get('/api/admin/seller-business', async (c) => {
 // =================================
 
 // Get user's orders
-app.get('/api/orders/user/:userId', async (c) => {
+// 🔒 주문 목록 조회 (인증 필수) - 본인 주문만 조회
+app.get('/api/orders', requireAuth, async (c) => {
   const { DB } = c.env;
-  const userId = c.req.param('userId');
+  const userId = c.get('userId'); // 미들웨어에서 설정한 userId
 
   try {
     // Get orders
     const orders = await DB.prepare(
       'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
     ).bind(userId).all();
+
+    // Get order items for each order
+    const ordersWithItems = await Promise.all(
+      orders.results.map(async (order: any) => {
+        const items = await DB.prepare(`
+          SELECT oi.*, p.name as product_name, p.image_url
+          FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = ?
+        `).bind(order.id).all();
+
+        return {
+          ...order,
+          items: items.results
+        };
+      })
+    );
+
+    return c.json({ success: true, data: ordersWithItems });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ⚠️ DEPRECATED: 하위 호환성을 위한 구 엔드포인트 (인증 필수로 변경)
+// 새 코드는 /api/orders (위) 사용 권장
+app.get('/api/orders/user/:userId', requireAuth, async (c) => {
+  const { DB } = c.env;
+  const authenticatedUserId = c.get('userId'); // 실제 인증된 사용자
+  const requestedUserId = parseInt(c.req.param('userId')); // URL에서 요청한 사용자
+
+  try {
+    // 🔒 보안: 본인의 주문만 조회 가능
+    if (requestedUserId !== authenticatedUserId) {
+      return c.json({
+        success: false,
+        error: '본인의 주문 내역만 조회할 수 있습니다.'
+      }, 403);
+    }
+
+    // Get orders
+    const orders = await DB.prepare(
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC'
+    ).bind(authenticatedUserId).all();
 
     // Get order items for each order
     const ordersWithItems = await Promise.all(
@@ -5412,6 +5613,51 @@ app.get('/api/admin/orders', async (c) => {
     return c.json({ success: true, data: orders.results });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// Public Seller APIs
+// =================================
+
+// 🏪 셀러 목록 조회 (공개) - 추천 셀러, 셀러 디렉토리용
+app.get('/api/sellers', async (c) => {
+  const { DB } = c.env;
+  const { is_featured, limit = '20', offset = '0' } = c.req.query();
+  
+  try {
+    let query = `
+      SELECT id, business_name, display_name, 
+             commission_rate, is_featured, created_at
+      FROM sellers 
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    
+    // 추천 셀러 필터
+    if (is_featured === 'true' || is_featured === '1') {
+      query += ' AND is_featured = 1';
+    }
+    
+    // 정렬: 추천 셀러 우선, 최신순
+    query += ' ORDER BY is_featured DESC, created_at DESC';
+    
+    // 페이징
+    query += ' LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const { results } = await DB.prepare(query).bind(...params).all();
+    
+    return c.json<ApiResponse>({
+      success: true,
+      data: results,
+    });
+  } catch (err) {
+    console.error('[API] Sellers list error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: `셀러 목록 조회 실패: ${(err as Error).message}`,
+    }, 500);
   }
 });
 
