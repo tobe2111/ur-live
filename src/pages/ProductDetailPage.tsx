@@ -94,7 +94,8 @@ export default function ProductDetailPage() {
       await axios.post('/api/cart', {
         userId: Number(getUserId()),
         productId: product!.id,
-        quantity
+        quantity,
+        priceSnapshot: product!.current_price || product!.price
       })
       showToast('장바구니에 추가되었습니다!')
     } catch (err) {
@@ -117,7 +118,8 @@ export default function ProductDetailPage() {
       await axios.post('/api/cart', {
         userId: Number(getUserId()),
         productId: product!.id,
-        quantity
+        quantity,
+        priceSnapshot: product!.current_price || product!.price
       })
       // 결제 페이지로 이동
       navigate('/checkout')
@@ -361,7 +363,12 @@ export default function ProductDetailPage() {
                     alt={`${product.name} 상세 ${index + 1}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/800'
+                      const target = e.target as HTMLImageElement
+                      // Prevent infinite loop
+                      if (!target.dataset.fallbackApplied) {
+                        target.dataset.fallbackApplied = 'true'
+                        target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="800"%3E%3Crect width="800" height="800" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%239ca3af"%3E이미지 없음%3C/text%3E%3C/svg%3E'
+                      }
                     }}
                   />
                 </div>

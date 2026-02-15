@@ -1298,7 +1298,7 @@ export default function LivePage() {
                   {cartItems.map((item, index) => (
                     <div key={index} className="flex gap-4 p-4 bg-[#f5f5f7] rounded-2xl">
                       <LazyImage
-                        src={item.image_url || 'https://via.placeholder.com/80'}
+                        src={item.image_url || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect width="80" height="80" fill="%23f3f4f6"/%3E%3C/svg%3E'}
                         alt={item.name}
                         className="w-20 h-20 rounded-xl object-cover"
                       />
