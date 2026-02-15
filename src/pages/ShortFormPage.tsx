@@ -50,34 +50,42 @@ export default function ShortFormPage() {
 
   async function loadData() {
     try {
+      console.log('[ShortFormPage] Starting to load data...')
       setLoading(true)
       
       // Load products - only from approved sellers
       const productsRes = await api.get('/api/products?limit=100')
+      console.log('[ShortFormPage] Products response:', productsRes.data)
       if (productsRes.data.success) {
         const allProducts = productsRes.data.data
+        console.log('[ShortFormPage] Loaded products:', allProducts.length)
         setProducts(allProducts)
         setDisplayedProducts(allProducts.slice(0, 8))
       }
 
       // Load live streams
       const streamsRes = await api.get('/api/streams?status=live')
+      console.log('[ShortFormPage] Streams response:', streamsRes.data)
       if (streamsRes.data.success) {
+        console.log('[ShortFormPage] Live streams:', streamsRes.data.data.length)
         setStreams(streamsRes.data.data || [])
       }
 
       // Load scheduled streams
       const scheduledRes = await api.get('/api/streams?status=scheduled')
+      console.log('[ShortFormPage] Scheduled response:', scheduledRes.data)
       if (scheduledRes.data.success) {
         const scheduled = (scheduledRes.data.data || [])
           .filter((s: Stream) => s.status === 'scheduled')
           .slice(0, 4)
+        console.log('[ShortFormPage] Scheduled streams:', scheduled.length)
         setScheduledStreams(scheduled)
       }
     } catch (error) {
-      console.error('Failed to load data:', error)
+      console.error('[ShortFormPage] Failed to load data:', error)
     } finally {
       setLoading(false)
+      console.log('[ShortFormPage] Loading complete')
     }
   }
 
