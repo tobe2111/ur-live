@@ -130,16 +130,19 @@ export default function HomePage() {
 
   async function loadStreams() {
     try {
+      console.log('[HomePage] Loading streams...')
       setLoading(true)
       const response = await api.get('/api/streams')
+      console.log('[HomePage] API Response:', response.data)
       if (response.data.success) {
         const liveStreams = (response.data.data || []).filter(
           (s: Stream) => !s.status || s.status === 'live'
         )
+        console.log('[HomePage] Filtered live streams:', liveStreams.length)
         setStreams(liveStreams)
       }
     } catch (error) {
-      console.error('Failed to load streams:', error)
+      console.error('[HomePage] Failed to load streams:', error)
     } finally {
       setLoading(false)
     }
