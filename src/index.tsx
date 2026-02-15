@@ -5623,30 +5623,22 @@ app.get('/api/admin/orders', async (c) => {
 // 🏪 셀러 목록 조회 (공개) - 추천 셀러, 셀러 디렉토리용
 app.get('/api/sellers', async (c) => {
   const { DB } = c.env;
-  const { is_featured, limit = '20', offset = '0' } = c.req.query();
+  const { limit = '20', offset = '0' } = c.req.query();
   
   try {
-    let query = `
-      SELECT id, business_name, display_name, 
-             commission_rate, is_featured, created_at
+    // 활성 셀러만 조회 (is_active = 1)
+    const query = `
+      SELECT id, business_name, name as display_name, 
+             commission_rate, created_at
       FROM sellers 
-      WHERE 1=1
+      WHERE is_active = 1
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
     `;
-    const params: any[] = [];
     
-    // 추천 셀러 필터
-    if (is_featured === 'true' || is_featured === '1') {
-      query += ' AND is_featured = 1';
-    }
-    
-    // 정렬: 추천 셀러 우선, 최신순
-    query += ' ORDER BY is_featured DESC, created_at DESC';
-    
-    // 페이징
-    query += ' LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
-    
-    const { results } = await DB.prepare(query).bind(...params).all();
+    const { results } = await DB.prepare(query)
+      .bind(parseInt(limit), parseInt(offset))
+      .all();
     
     return c.json<ApiResponse>({
       success: true,

@@ -115,12 +115,12 @@ export default function MyOrdersPage() {
       }
       
       if (activeTab === 'cart') {
-        const response = await axios.get(`/api/cart/${uid}`)
+        const response = await axios.get('/api/cart')
         if (response.data.success) {
           setCartItems(response.data.data || [])
         }
       } else if (activeTab === 'orders') {
-        const response = await axios.get(`/api/orders/user/${uid}`)
+        const response = await axios.get('/api/orders')
         if (response.data.success) {
           setOrders(response.data.data || [])
         }

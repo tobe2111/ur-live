@@ -771,7 +771,7 @@ export default function LivePage() {
         return
       }
       
-      const response = await axios.get(`/api/cart/${userId}`)
+      const response = await axios.get('/api/cart')
       console.log('[Checkout] Server cart response:', response.data)
       
       // Check if response is valid and has items

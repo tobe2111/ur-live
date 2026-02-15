@@ -81,8 +81,8 @@ export default function PaymentSuccessPage() {
 
       // 2️⃣ 장바구니 조회 (주문 데이터 생성을 위해 필수)
       console.log('[PaymentSuccess] 2️⃣ 장바구니 조회 중...')
-      console.log('[PaymentSuccess] API 호출: GET /api/cart/' + userId)
-      const cartResponse = await axios.get(`/api/cart/${userId}`)
+      console.log('[PaymentSuccess] API 호출: GET /api/cart')
+      const cartResponse = await axios.get('/api/cart')
       console.log('[PaymentSuccess] 장바구니 API 응답:', cartResponse.data)
       let cartItems = cartResponse.data?.data || []
       console.log('[PaymentSuccess] 장바구니 아이템 개수:', cartItems.length)
@@ -202,8 +202,8 @@ export default function PaymentSuccessPage() {
       console.log('[PaymentSuccess] 5️⃣ 장바구니 비우기 시도 중...')
       try {
         if (cartItems.length > 0) {
-          console.log('[PaymentSuccess] API 호출: DELETE /api/cart/clear/' + userId)
-          await axios.delete(`/api/cart/clear/${userId}`)
+          console.log('[PaymentSuccess] API 호출: DELETE /api/cart/clear')
+          await axios.delete('/api/cart/clear')
           console.log('[PaymentSuccess] ✅ 장바구니 비우기 완료')
         }
         localStorage.removeItem('hasCartItems')
