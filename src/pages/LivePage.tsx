@@ -2,6 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import api from '@/lib/api'
 import { ArrowLeft, Share2, MessageCircle, ShoppingBag, Send, X, Instagram, Facebook, Youtube, Package } from 'lucide-react'
 import { LazyImage } from '@/components/LazyImage'
 import { getUserId, saveUserInfo, isLoggedIn as checkIsLoggedIn } from '@/utils/auth'
@@ -774,7 +775,7 @@ export default function LivePage() {
         return
       }
       
-      const response = await axios.get('/api/cart')
+      const response = await api.get('/api/cart')
       console.log('[Checkout] Server cart response:', response.data)
       
       // Check if response is valid and has items
