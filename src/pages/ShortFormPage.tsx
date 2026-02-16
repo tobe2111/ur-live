@@ -55,37 +55,43 @@ export default function ShortFormPage() {
       
       // Load products - only from approved sellers
       const productsRes = await api.get('/api/products?limit=100')
-      console.log('[ShortFormPage] Products response:', productsRes.data)
+      console.log('[ShortFormPage] Products response:', JSON.stringify(productsRes.data))
       if (productsRes.data.success) {
         const allProducts = productsRes.data.data
         console.log('[ShortFormPage] Loaded products:', allProducts.length)
         setProducts(allProducts)
         setDisplayedProducts(allProducts.slice(0, 8))
+      } else {
+        console.warn('[ShortFormPage] Products API failed:', productsRes.data)
       }
 
       // Load live streams
       const streamsRes = await api.get('/api/streams?status=live')
-      console.log('[ShortFormPage] Streams response:', streamsRes.data)
+      console.log('[ShortFormPage] Streams response:', JSON.stringify(streamsRes.data))
       if (streamsRes.data.success) {
-        console.log('[ShortFormPage] Live streams:', streamsRes.data.data.length)
+        console.log('[ShortFormPage] Live streams:', streamsRes.data.data?.length || 0)
         setStreams(streamsRes.data.data || [])
+      } else {
+        console.warn('[ShortFormPage] Streams API failed:', streamsRes.data)
       }
 
       // Load scheduled streams
       const scheduledRes = await api.get('/api/streams?status=scheduled')
-      console.log('[ShortFormPage] Scheduled response:', scheduledRes.data)
+      console.log('[ShortFormPage] Scheduled response:', JSON.stringify(scheduledRes.data))
       if (scheduledRes.data.success) {
         const scheduled = (scheduledRes.data.data || [])
           .filter((s: Stream) => s.status === 'scheduled')
           .slice(0, 4)
         console.log('[ShortFormPage] Scheduled streams:', scheduled.length)
         setScheduledStreams(scheduled)
+      } else {
+        console.warn('[ShortFormPage] Scheduled API failed:', scheduledRes.data)
       }
     } catch (error) {
       console.error('[ShortFormPage] Failed to load data:', error)
     } finally {
       setLoading(false)
-      console.log('[ShortFormPage] Loading complete')
+      console.log('[ShortFormPage] Loading complete. Streams:', streams.length, 'Products:', products.length)
     }
   }
 
