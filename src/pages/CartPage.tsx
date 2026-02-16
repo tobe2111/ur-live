@@ -157,7 +157,8 @@ export default function CartPage() {
         return
       }
 
-      const response = await api.get(`/api/cart/${userId}`)
+      // Use /api/cart without userId - requireAuth will get userId from session
+      const response = await api.get(`/api/cart`)
       const items = response.data?.data || []
       setCartItems(items)
       
