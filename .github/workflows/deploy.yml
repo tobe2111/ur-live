@@ -4,47 +4,35 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
     name: Deploy to Cloudflare Pages
-    
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
-      - name: Build project
+
+      - name: Build
         run: npm run build
-        env:
-          NODE_ENV: production
-      
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: 1a2c006f0fb54894f81283a5ea787b83
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: ur-live
           directory: dist
-          # gitHubToken 제거 - GitHub Deployments 생성 권한 없음
-          branch: ${{ github.ref_name }}
-      
-      - name: Deployment summary
-        run: |
-          echo "✅ Deployment completed successfully!"
-          echo "📦 Project: ur-live"
-          echo "🌐 Production: https://ur-live.pages.dev"
-          echo "🔗 Custom Domain: https://live.ur-team.com"
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
