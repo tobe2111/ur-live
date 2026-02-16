@@ -299,7 +299,7 @@ export default function CheckoutPage() {
     
     if (!isLoggedIn()) {
       console.log('[CheckoutPage] ❌ 로그인 필요 - requireLogin() 호출')
-      requireLogin()
+      requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
       return
     }
 
