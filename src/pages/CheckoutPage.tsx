@@ -176,11 +176,11 @@ export default function CheckoutPage() {
         console.log('[TossPayments] totalAmount:', totalAmount)
         console.log('[TossPayments] cartItems:', cartItems.length)
         
-        // DOM 요소가 존재할 때까지 최대 5초 대기 (모바일에서 더 느림)
+        // DOM 요소가 존재할 때까지 최대 10초 대기 (모바일에서 더 느림)
         let paymentMethodEl = null
         let agreementEl = null
         let attempts = 0
-        const maxAttempts = 50  // 50번 시도 (5초)
+        const maxAttempts = 100  // 100번 시도 (10초) - 모바일 대응
         
         while (attempts < maxAttempts) {
           paymentMethodEl = document.getElementById('payment-method')
@@ -190,6 +190,14 @@ export default function CheckoutPage() {
             console.log('[TossPayments] ✅ DOM 요소 발견! (', attempts * 100, 'ms)')
             console.log('[TossPayments] payment-method 크기:', paymentMethodEl.offsetWidth, 'x', paymentMethodEl.offsetHeight)
             console.log('[TossPayments] agreement 크기:', agreementEl.offsetWidth, 'x', agreementEl.offsetHeight)
+            console.log('[TossPayments] 모바일 환경:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
+            
+            // 모바일에서 높이 강제 설정
+            if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
+              paymentMethodEl.style.minHeight = '350px'
+              console.log('[TossPayments] 📱 모바일 최소 높이 설정: 350px')
+            }
+            
             break
           }
           
@@ -199,9 +207,10 @@ export default function CheckoutPage() {
         }
         
         if (!paymentMethodEl || !agreementEl) {
-          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음 (5초 초과)')
+          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음 (10초 초과)')
           console.error('[TossPayments] payment-method:', paymentMethodEl)
           console.error('[TossPayments] agreement:', agreementEl)
+          console.error('[TossPayments] 디버그 - document.body.innerHTML 길이:', document.body.innerHTML.length)
           setError('결제 UI를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
           return
         }
@@ -210,9 +219,18 @@ export default function CheckoutPage() {
         console.log('[TossPayments] renderPaymentMethods 호출 직전')
         console.log('[TossPayments] widgets:', widgets)
         console.log('[TossPayments] widgets.renderPaymentMethods:', typeof widgets.renderPaymentMethods)
+        console.log('[TossPayments] 모바일 환경:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
+        console.log('[TossPayments] 화면 크기:', window.innerWidth, 'x', window.innerHeight)
         
         // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드, 반환값 저장)
         console.log('[TossPayments] 초기 금액으로 렌더링:', totalAmount)
+        
+        // 모바일 환경에서 추가 대기 시간
+        if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
+          console.log('[TossPayments] 📱 모바일 환경 - 500ms 추가 대기')
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+        
         const paymentMethodWidgetInstance = widgets.renderPaymentMethods(
           '#payment-method',
           { value: totalAmount },
@@ -671,13 +689,34 @@ export default function CheckoutPage() {
             <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">결제 수단</h2>
             
             {/* 토스페이먼츠 위젯 렌더링 영역 - 모바일 최적화 */}
-            <div id="payment-method" className="min-h-[200px] w-full"></div>
-            <div id="agreement" className="mt-4 w-full"></div>
+            {/* 모바일: min-h-[350px], PC: min-h-[300px] */}
+            <div 
+              id="payment-method" 
+              className="min-h-[350px] sm:min-h-[300px] w-full"
+              style={{
+                minHeight: '350px', // 모바일 기본값
+                width: '100%',
+                maxWidth: '100%',
+                overflow: 'visible'
+              }}
+            ></div>
+            <div 
+              id="agreement" 
+              className="mt-4 w-full"
+              style={{
+                width: '100%',
+                maxWidth: '100%',
+                overflow: 'visible'
+              }}
+            ></div>
             
             {!ready && (
               <div className="flex items-center justify-center py-8 text-gray-500 text-xs sm:text-sm">
                 <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mr-3"></div>
-                결제 수단 불러오는 중...
+                <div className="text-center">
+                  <p>결제 수단 불러오는 중...</p>
+                  <p className="text-xs text-gray-400 mt-1">최대 10초 소요될 수 있습니다</p>
+                </div>
               </div>
             )}
           </div>
