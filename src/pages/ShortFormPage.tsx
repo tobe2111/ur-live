@@ -48,6 +48,10 @@ export default function ShortFormPage() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    console.log('[ShortFormPage] State updated - Streams:', streams.length, 'Products:', products.length, 'DisplayedProducts:', displayedProducts.length)
+  }, [streams, products, displayedProducts])
+
   async function loadData() {
     try {
       console.log('[ShortFormPage] Starting to load data...')
