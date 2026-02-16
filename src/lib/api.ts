@@ -11,7 +11,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // API 클라이언트 생성
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/',  // Root path, we'll use full paths like '/api/streams'
   timeout: 10000, // 10초 타임아웃
   headers: {
     'Content-Type': 'application/json',
