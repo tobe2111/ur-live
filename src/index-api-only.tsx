@@ -628,6 +628,7 @@ app.get('/api/products', async (c) => {
     const sort = c.req.query('sort') || 'recent'; // recent, popular, price_low, price_high
     const search = c.req.query('search'); // 검색어
     const featured = c.req.query('featured'); // featured seller only (true/false)
+    const productType = c.req.query('type'); // product type: 'live' or 'featured'
 
     // Build query - JOIN with sellers table to check is_featured_seller
     let whereConditions = ['p.is_active = 1'];
@@ -636,6 +637,16 @@ app.get('/api/products', async (c) => {
     // Featured seller filter (for "Ur 특가" section)
     if (featured === 'true') {
       whereConditions.push('s.is_featured_seller = 1');
+      // Default to 'featured' type for Ur 특가
+      if (!productType) {
+        whereConditions.push("p.product_type = 'featured'");
+      }
+    }
+
+    // Product type filter
+    if (productType) {
+      whereConditions.push('p.product_type = ?');
+      bindings.push(productType);
     }
 
     if (category) {
@@ -665,7 +676,7 @@ app.get('/api/products', async (c) => {
       SELECT 
         p.id, p.name, p.price, p.original_price, p.discount_rate, 
         p.image_url, p.category, p.sold_count, p.rating, p.stock, 
-        p.created_at, p.seller_id,
+        p.created_at, p.seller_id, p.product_type,
         s.name as seller_name, s.is_featured_seller
       FROM products p
       LEFT JOIN sellers s ON p.seller_id = s.id
