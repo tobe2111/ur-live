@@ -107,11 +107,16 @@ export default function ProductGrid() {
     try {
       // Ur 특가 섹션은 featured seller 상품만 표시
       const response = await axios.get('/api/products?limit=6&sort=popular&featured=true')
-      if (response.data.success) {
-        setProducts(response.data.data.products || [])
+      console.log('[ProductGrid] API Response:', response.data)
+      if (response.data.success && Array.isArray(response.data.data)) {
+        console.log('[ProductGrid] Loaded products:', response.data.data.length)
+        setProducts(response.data.data)
+      } else {
+        console.error('[ProductGrid] Invalid response format:', response.data)
+        setProducts([])
       }
     } catch (error) {
-      console.error('Failed to load products:', error)
+      console.error('[ProductGrid] Failed to load products:', error)
       // Fallback demo data
       setProducts([
         {
