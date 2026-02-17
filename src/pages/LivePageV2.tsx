@@ -276,7 +276,7 @@ function KakaoTalkIcon({ className }: { className?: string }) {
 }
 
 // TopNav Component
-function TopNav({ viewers }: { viewers: number }) {
+function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string } }) {
   return (
     <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
       <div className="flex items-center gap-2">
@@ -293,40 +293,46 @@ function TopNav({ viewers }: { viewers: number }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <a
-          href="https://youtube.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-50 hover:opacity-80 transition-opacity"
-          aria-label="YouTube"
-        >
-          <YouTubeIcon className="h-[18px] w-[18px] text-white" />
-        </a>
-        <a
-          href="https://instagram.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-50 hover:opacity-80 transition-opacity"
-          aria-label="Instagram"
-        >
-          <InstagramIcon className="h-[18px] w-[18px] text-white" />
-        </a>
-        <a
-          href="https://pf.kakao.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-50 hover:opacity-80 transition-opacity"
-          aria-label="KakaoTalk"
-        >
-          <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
-        </a>
+        {sellerLinks?.youtube && (
+          <a
+            href={sellerLinks.youtube}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-50 hover:opacity-80 transition-opacity"
+            aria-label="YouTube"
+          >
+            <YouTubeIcon className="h-[18px] w-[18px] text-white" />
+          </a>
+        )}
+        {sellerLinks?.instagram && (
+          <a
+            href={sellerLinks.instagram}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-50 hover:opacity-80 transition-opacity"
+            aria-label="Instagram"
+          >
+            <InstagramIcon className="h-[18px] w-[18px] text-white" />
+          </a>
+        )}
+        {sellerLinks?.kakao && (
+          <a
+            href={sellerLinks.kakao}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-50 hover:opacity-80 transition-opacity"
+            aria-label="KakaoTalk"
+          >
+            <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
+          </a>
+        )}
       </div>
     </header>
   )
 }
 
 // LiveChat Component
-function LiveChat() {
+function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: () => void }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: '1', username: 'minjae_92', message: '방송 시작했다!' },
     { id: '2', username: 'yuna_shop', message: '오늘 뭐 파나요?' },
@@ -334,19 +340,90 @@ function LiveChat() {
   ])
   const nextId = useRef(4)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const chatRefFirebase = useRef<any>(null)
 
+  // Firebase 실시간 채팅
   useEffect(() => {
-    const interval = setInterval(() => {
-      const newMsg: ChatMessage = {
-        id: String(nextId.current++),
-        username: getRandomItem(usernames),
-        message: getRandomItem(chatTexts),
-      }
-      setChatMessages((prev) => [...prev.slice(-4), newMsg])
-    }, 1800 + Math.random() * 2200)
+    if (!streamId) return
 
-    return () => clearInterval(interval)
-  }, [])
+    const initFirebaseChat = () => {
+      try {
+        // @ts-ignore
+        const firebaseConfig = {
+          apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+          authDomain: "urteam-live-commerce.firebaseapp.com",
+          databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "urteam-live-commerce",
+          storageBucket: "urteam-live-commerce.firebasestorage.app",
+          messagingSenderId: "1098157020294",
+          appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
+        }
+
+        // @ts-ignore
+        if (!window.firebase.apps.length) {
+          // @ts-ignore
+          window.firebase.initializeApp(firebaseConfig)
+        }
+
+        // @ts-ignore
+        const database = window.firebase.database()
+        const chatRef = database.ref(`chats/stream${streamId}`)
+        chatRefFirebase.current = chatRef
+
+        // Load last 5 messages
+        chatRef.limitToLast(5).once('value', (snapshot: any) => {
+          const loaded: ChatMessage[] = []
+          snapshot.forEach((child: any) => {
+            const msg = child.val()
+            loaded.push({
+              id: child.key || String(Date.now()),
+              username: msg.username,
+              message: msg.text || msg.message,
+            })
+          })
+          if (loaded.length > 0) {
+            setChatMessages(loaded)
+          }
+        })
+
+        // Real-time listener
+        let lastTime = Date.now()
+        chatRef.orderByChild('timestamp').startAt(lastTime).on('child_added', (snapshot: any) => {
+          const msg = snapshot.val()
+          if (msg.timestamp > lastTime) {
+            setChatMessages(prev => [...prev.slice(-4), {
+              id: snapshot.key || String(Date.now()),
+              username: msg.username,
+              message: msg.text || msg.message,
+            }])
+          }
+        })
+      } catch (error) {
+        console.error('[LiveChat] Firebase error:', error)
+      }
+    }
+
+    // @ts-ignore
+    if (window.firebase) {
+      initFirebaseChat()
+    } else {
+      const checkFirebase = setInterval(() => {
+        // @ts-ignore
+        if (window.firebase) {
+          clearInterval(checkFirebase)
+          initFirebaseChat()
+        }
+      }, 500)
+      
+      setTimeout(() => clearInterval(checkFirebase), 10000)
+    }
+
+    return () => {
+      if (chatRefFirebase.current) {
+        chatRefFirebase.current.off()
+      }
+    }
+  }, [streamId])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -357,8 +434,9 @@ function LiveChat() {
   return (
     <div
       ref={scrollRef}
-      className="flex flex-col overflow-hidden"
+      className="flex flex-col overflow-hidden cursor-pointer"
       style={{ gap: '2px' }}
+      onClick={onChatClick}
     >
       {chatMessages.map((msg) => (
         <p
@@ -410,7 +488,7 @@ function ProductSheet({
       />
 
       {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white/80 backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar">
+      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar">
         {/* Handle */}
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/60 backdrop-blur-md">
           <div className="h-1 w-10 rounded-full bg-gray-300" />
