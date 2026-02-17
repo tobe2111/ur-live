@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus } from 'lucide-react'
 import axios from 'axios'
+import { getUserId } from '@/utils/auth'
+import api from '@/lib/api'
 
 // ============================================
 // TypeScript Interfaces
@@ -648,6 +650,7 @@ function ProductSheet({
 // ReelCard Component
 function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
   const [playerReady, setPlayerReady] = useState(false)
@@ -804,7 +807,7 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
           <div className="flex items-end gap-3 mb-2.5">
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
-              <LiveChat />
+              <LiveChat streamId={stream.id} onChatClick={() => setChatModalOpen(true)} />
             </div>
 
             {/* Chat + Share buttons - right side */}
@@ -997,7 +1000,14 @@ export default function LivePageV2() {
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-black">
-      <TopNav viewers={reels[activeIndex]?.stream.viewerCount || 0} />
+      <TopNav 
+        viewers={reels[activeIndex]?.stream.viewerCount || 0}
+        sellerLinks={{
+          youtube: reels[activeIndex]?.stream.streamerName ? 'https://youtube.com' : undefined,
+          instagram: reels[activeIndex]?.stream.streamerName ? 'https://instagram.com' : undefined,
+          kakao: reels[activeIndex]?.stream.streamerName ? 'https://pf.kakao.com' : undefined,
+        }}
+      />
       <div
         ref={containerRef}
         className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
