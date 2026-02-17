@@ -73,8 +73,8 @@ export default function KakaoCallbackPage() {
           }
           
           // Navigate to return URL
-          alert(`환영합니다, ${user.name}님!`)
-          navigate(returnUrl)
+          // Removed blocking alert for faster navigation
+          navigate(returnUrl, { replace: true })
         } else {
           throw new Error(response.data.error || '로그인에 실패했습니다.')
         }

@@ -176,11 +176,11 @@ export default function CheckoutPage() {
         console.log('[TossPayments] totalAmount:', totalAmount)
         console.log('[TossPayments] cartItems:', cartItems.length)
         
-        // DOM 요소가 존재할 때까지 최대 10초 대기 (모바일에서 더 느림)
+        // DOM 요소가 존재할 때까지 대기 (최적화: 최대 5초)
         let paymentMethodEl = null
         let agreementEl = null
         let attempts = 0
-        const maxAttempts = 100  // 100번 시도 (10초) - 모바일 대응
+        const maxAttempts = 50  // 50번 시도 (5초) - 최적화
         
         while (attempts < maxAttempts) {
           paymentMethodEl = document.getElementById('payment-method')
@@ -188,9 +188,6 @@ export default function CheckoutPage() {
           
           if (paymentMethodEl && agreementEl) {
             console.log('[TossPayments] ✅ DOM 요소 발견! (', attempts * 100, 'ms)')
-            console.log('[TossPayments] payment-method 크기:', paymentMethodEl.offsetWidth, 'x', paymentMethodEl.offsetHeight)
-            console.log('[TossPayments] agreement 크기:', agreementEl.offsetWidth, 'x', agreementEl.offsetHeight)
-            console.log('[TossPayments] 모바일 환경:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
             
             // 모바일에서 높이 강제 설정
             if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {

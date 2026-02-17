@@ -54,9 +54,13 @@ export default defineConfig({
         manualChunks: (id) => {
           // node_modules 의존성 분리
           if (id.includes('node_modules')) {
-            // React 관련
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            // React 관련 (가장 자주 사용, 별도 캐시)
+            if (id.includes('react') || id.includes('react-dom')) {
               return 'react-vendor'
+            }
+            // React Router (라우팅)
+            if (id.includes('react-router')) {
+              return 'router-vendor'
             }
             // UI 라이브러리
             if (id.includes('lucide-react')) {
@@ -74,8 +78,12 @@ export default defineConfig({
             return 'vendor'
           }
           
-          // 페이지별 청크
+          // 페이지별 청크 (더 세분화)
           if (id.includes('/src/pages/')) {
+            // 인증 관련 (로그인, 카카오 콜백)
+            if (id.includes('Login') || id.includes('Callback')) {
+              return 'auth-pages'
+            }
             // Seller 페이지들
             if (id.includes('/src/pages/Seller')) {
               return 'seller-pages'
@@ -93,6 +101,10 @@ export default defineConfig({
                 id.includes('/src/pages/Checkout') || 
                 id.includes('/src/pages/Live')) {
               return 'shopping-pages'
+            }
+            // 결제 관련
+            if (id.includes('/src/pages/Payment')) {
+              return 'payment-pages'
             }
           }
         },
