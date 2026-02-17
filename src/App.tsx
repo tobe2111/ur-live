@@ -6,6 +6,8 @@ import FrameWrapper from './components/FrameWrapper'
 
 // 초기 로딩 페이지만 즉시 로드
 import HomePage from './pages/HomePage'
+// MainHomePage - KREAM 스타일 메인 페이지
+import MainHomePage from './pages/MainHomePage'
 // CheckoutPage는 즉시 로드 (lazy loading 문제 해결)
 import CheckoutPage from './pages/CheckoutPage'
 // ShortFormPage - 요고 스타일 숏폼 커머스
@@ -79,8 +81,10 @@ function App() {
             <Routes>
             {/* 소개 페이지 - 브랜딩 + 메인 페이지 iframe */}
             <Route path="/introduce" element={<IntroducePage />} />
-            {/* ShortForm 메인 페이지 - 요고 스타일 */}
-            <Route path="/" element={<ShortFormPage />} />
+            {/* KREAM 스타일 메인 페이지 */}
+            <Route path="/" element={<MainHomePage />} />
+            {/* ShortForm 페이지 - 요고 스타일 */}
+            <Route path="/shortform" element={<ShortFormPage />} />
             {/* 기존 홈페이지는 /browse로 이동 */}
             <Route path="/browse" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
