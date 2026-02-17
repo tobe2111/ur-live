@@ -64,6 +64,51 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     
+    <!-- 🎨 CSS Variables for new introduce page design -->
+    <style>
+      :root {
+        --background: 0 0% 0%;
+        --foreground: 0 0% 96%;
+        --card: 0 0% 4%;
+        --card-foreground: 0 0% 96%;
+        --popover: 0 0% 4%;
+        --popover-foreground: 0 0% 96%;
+        --primary: 0 85% 55%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 0 0% 10%;
+        --secondary-foreground: 0 0% 80%;
+        --muted: 0 0% 10%;
+        --muted-foreground: 0 0% 55%;
+        --accent: 0 85% 55%;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 12%;
+        --input: 0 0% 12%;
+        --ring: 0 85% 55%;
+        --radius: 0.75rem;
+      }
+      
+      /* Text balance utility */
+      .text-balance {
+        text-wrap: balance;
+      }
+      
+      /* Pulse glow animation for CTA button */
+      @keyframes pulse-glow {
+        0%, 100% {
+          box-shadow: 0 0 20px rgba(220, 38, 38, 0.4), 0 0 60px rgba(220, 38, 38, 0.15);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(220, 38, 38, 0.6), 0 0 80px rgba(220, 38, 38, 0.25);
+        }
+      }
+      
+      .animate-pulse-glow {
+        animation: pulse-glow 2s ease-in-out infinite;
+      }
+    </style>
+    
     <!-- ⚡ Performance Optimization: Preconnect to external services -->
     <link rel="preconnect" href="https://kauth.kakao.com" crossorigin />
     <link rel="preconnect" href="https://js.tosspayments.com" crossorigin />
