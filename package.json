@@ -29,7 +29,9 @@
     "git:init": "git init && git add . && git commit -m 'Initial commit'",
     "git:commit": "git add . && git commit -m",
     "git:status": "git status",
-    "git:log": "git log --oneline"
+    "git:log": "git log --oneline",
+    "validate": "./scripts/validate-html.sh",
+    "pre-deploy": "npm run validate && npm run build"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
