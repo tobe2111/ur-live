@@ -8,6 +8,7 @@ interface GripFrameLayoutProps {
 
 export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
   const location = useLocation()
+  const isIntroducePage = location.pathname === '/introduce'
   const isLivePage = location.pathname.startsWith('/live/')
   
   return (
@@ -165,7 +166,18 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                   
                   {/* Content */}
                   <div className={`relative w-full h-full overflow-y-auto overflow-x-hidden scrollbar-hide ${isLivePage ? 'bg-black' : 'bg-white'} rounded-3xl`}>
-                    {children}
+                    {isIntroducePage ? (
+                      // introduce 페이지일 때는 메인 페이지를 iframe으로 표시
+                      <iframe
+                        src="/"
+                        title="UR Live Main"
+                        className="w-full h-full border-0"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                      />
+                    ) : (
+                      // 다른 페이지는 children 렌더링
+                      children
+                    )}
                   </div>
                 </div>
               </div>
