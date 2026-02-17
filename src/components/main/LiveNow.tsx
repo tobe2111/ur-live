@@ -10,6 +10,7 @@ interface LiveStream {
   viewer_count?: number
   seller_name?: string
   image_url?: string
+  thumbnail_url?: string
   current_product?: {
     id: number
     name: string
@@ -208,9 +209,9 @@ export default function LiveNow() {
             className="flex-shrink-0 w-[160px] sm:w-[200px] group text-left"
           >
             <div className="relative aspect-[3/4] w-full overflow-hidden rounded-sm bg-gray-200">
-              {stream.image_url ? (
+              {(stream.thumbnail_url || stream.image_url) ? (
                 <img
-                  src={stream.image_url}
+                  src={stream.thumbnail_url || stream.image_url}
                   alt={stream.title}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
