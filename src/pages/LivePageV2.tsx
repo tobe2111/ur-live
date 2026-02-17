@@ -473,9 +473,12 @@ function ProductSheet({
   const [quantity, setQuantity] = useState(1)
   const [addedToCart, setAddedToCart] = useState(false)
 
-  const discount = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100
-  )
+  const originalPrice = product.originalPrice || product.original_price || product.price
+  const currentPrice = product.price || 0
+
+  const discount = originalPrice > currentPrice
+    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+    : 0
 
   function handleAddToCart() {
     setAddedToCart(true)
@@ -512,7 +515,7 @@ function ProductSheet({
           <div className="flex items-start gap-4 mb-6">
             <div className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
               <img
-                src={product.image}
+                src={product.image || product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />
@@ -524,30 +527,36 @@ function ProductSheet({
               <div className="flex items-center gap-2 mb-1.5">
                 <div className="flex items-center gap-0.5">
                   <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-sm font-semibold text-gray-900">{product.rating}</span>
+                  <span className="text-sm font-semibold text-gray-900">{product.rating || 4.5}</span>
                 </div>
                 <span className="text-xs text-gray-500">
-                  {product.sold.toLocaleString()} sold
+                  {(product.sold || product.sold_count || 0).toLocaleString()} sold
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-extrabold text-red-500">
-                  ${product.price.toFixed(2)}
+                  ${(product.price || 0).toFixed(2)}
                 </span>
-                <span className="text-sm text-gray-400 line-through">
-                  ${product.originalPrice.toFixed(2)}
-                </span>
-                <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-500">
-                  -{discount}%
-                </span>
+                {(product.originalPrice || product.original_price) && (
+                  <>
+                    <span className="text-sm text-gray-400 line-through">
+                      ${(product.originalPrice || product.original_price || 0).toFixed(2)}
+                    </span>
+                    <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-500">
+                      -{discount}%
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           {/* Description */}
-          <p className="text-sm text-gray-600 leading-relaxed mb-5">
-            {product.description}
-          </p>
+          {product.description && (
+            <p className="text-sm text-gray-600 leading-relaxed mb-5">
+              {product.description}
+            </p>
+          )}
 
           {/* Colors */}
           {product.colors && (
@@ -1048,7 +1057,7 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
       {/* Background image */}
       <img
-        src={product.image}
+        src={product.image || product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
         alt={product.name}
         className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
           isActive ? 'scale-100' : 'scale-110'
