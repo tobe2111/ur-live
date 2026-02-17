@@ -615,7 +615,76 @@ app.get('/api/streams/:id', async (c) => {
   }
 });
 
-// Product API
+// Product APIs
+// GET /api/products - 상품 목록 조회 (with pagination, category filter, sort)
+app.get('/api/products', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    // Query parameters
+    const limit = parseInt(c.req.query('limit') || '20', 10);
+    const offset = parseInt(c.req.query('offset') || '0', 10);
+    const category = c.req.query('category'); // 카테고리 필터
+    const sort = c.req.query('sort') || 'recent'; // recent, popular, price_low, price_high
+    const search = c.req.query('search'); // 검색어
+
+    // Build query
+    let whereConditions = ['is_active = 1'];
+    const bindings: any[] = [];
+
+    if (category) {
+      whereConditions.push('category = ?');
+      bindings.push(category);
+    }
+
+    if (search) {
+      whereConditions.push('(name LIKE ? OR description LIKE ?)');
+      bindings.push(`%${search}%`, `%${search}%`);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    // Sort order
+    let orderBy = 'created_at DESC'; // default: recent
+    if (sort === 'popular') {
+      orderBy = 'sold_count DESC, created_at DESC';
+    } else if (sort === 'price_low') {
+      orderBy = 'price ASC';
+    } else if (sort === 'price_high') {
+      orderBy = 'price DESC';
+    }
+
+    // Query products
+    const products = await DB.prepare(`
+      SELECT id, name, price, discount_rate, image_url, category, sold_count, rating, stock, created_at
+      FROM products
+      WHERE ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT ? OFFSET ?
+    `).bind(...bindings, limit, offset).all();
+
+    // Count total
+    const countResult = await DB.prepare(`
+      SELECT COUNT(*) as total FROM products WHERE ${whereConditions.join(' AND ')}
+    `).bind(...bindings).first();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        products: products.results || [],
+        total: countResult?.total || 0,
+        limit,
+        offset,
+      },
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 app.get('/api/products/:id', async (c) => {
   const { DB } = c.env;
   const id = c.req.param('id');

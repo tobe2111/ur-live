@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Utensils, Shirt, Sparkles, Baby, ShoppingBasket } from 'lucide-react'
 
 const categories = [
@@ -10,10 +11,10 @@ const categories = [
 ]
 
 export default function QuickAccess() {
+  const navigate = useNavigate()
+
   const handleCategoryClick = (category: string) => {
-    // TODO: 카테고리 필터링 페이지로 이동 또는 필터링 적용
-    console.log('카테고리 클릭:', category)
-    // navigate(`/browse?category=${category}`)
+    navigate(`/browse?category=${category}`)
   }
 
   return (

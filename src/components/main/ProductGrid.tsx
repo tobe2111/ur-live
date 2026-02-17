@@ -105,9 +105,9 @@ export default function ProductGrid() {
 
   const loadProducts = async () => {
     try {
-      const response = await axios.get('/api/products?limit=6')
+      const response = await axios.get('/api/products?limit=6&sort=popular')
       if (response.data.success) {
-        setProducts(response.data.data)
+        setProducts(response.data.data.products || [])
       }
     } catch (error) {
       console.error('Failed to load products:', error)

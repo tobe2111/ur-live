@@ -7,7 +7,7 @@ export default function TopNav() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const handleProfileClick = () => {
-    navigate('/my')
+    navigate('/user/profile')
   }
 
   const handleSearchClick = () => {
@@ -80,7 +80,7 @@ export default function TopNav() {
                 { label: 'Home', path: '/' },
                 { label: 'Shop', path: '/browse' },
                 { label: 'Live', path: '/live/1' },
-                { label: 'My Page', path: '/my' },
+                { label: 'My Page', path: '/user/profile' },
                 { label: 'Cart', path: '/cart' },
                 { label: 'Orders', path: '/my-orders' }
               ].map((item) => (

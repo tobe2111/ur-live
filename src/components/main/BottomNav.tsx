@@ -7,7 +7,7 @@ const navItems = [
   { icon: Search, label: 'Search', path: '/search' },
   { icon: ShoppingBag, label: 'Shop', path: '/browse' },
   { icon: ShoppingCart, label: 'Cart', path: '/cart' },
-  { icon: User, label: 'My', path: '/my' },
+  { icon: User, label: 'My', path: '/user/profile' },
 ]
 
 export default function BottomNav() {
