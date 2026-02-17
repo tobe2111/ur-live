@@ -3773,6 +3773,188 @@ app.get('/api/seller/sales', cors(), async (c) => {
   }
 });
 
+// ==================== Seller Live Management APIs ====================
+
+// Get seller's streams
+app.get('/api/seller/streams', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401);
+    }
+    
+    const sessionToken = authHeader.replace('Bearer ', '');
+    
+    // 세션 검증
+    const session = await getSession(DB, sessionToken);
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
+    }
+    
+    // 셀러인지 확인
+    if (session.user_type !== 'seller') {
+      return c.json({ success: false, error: '셀러만 접근 가능합니다.' }, 403);
+    }
+    
+    const sellerId = session.seller_id || session.user_id;
+    
+    // 셀러의 스트림 목록 조회
+    const streams = await DB.prepare(`
+      SELECT 
+        id,
+        title,
+        description,
+        youtube_video_id,
+        platform,
+        status,
+        current_product_id,
+        viewer_count,
+        created_at,
+        updated_at
+      FROM live_streams
+      WHERE seller_id = ?
+      ORDER BY created_at DESC
+    `).bind(sellerId).all();
+    
+    return c.json({
+      success: true,
+      data: streams.results || []
+    });
+  } catch (error) {
+    console.error('Seller streams query error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+// Get seller's products
+app.get('/api/seller/products', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401);
+    }
+    
+    const sessionToken = authHeader.replace('Bearer ', '');
+    
+    // 세션 검증
+    const session = await getSession(DB, sessionToken);
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
+    }
+    
+    // 셀러인지 확인
+    if (session.user_type !== 'seller') {
+      return c.json({ success: false, error: '셀러만 접근 가능합니다.' }, 403);
+    }
+    
+    const sellerId = session.seller_id || session.user_id;
+    
+    // 셀러의 상품 목록 조회
+    const products = await DB.prepare(`
+      SELECT 
+        id,
+        name,
+        description,
+        price,
+        original_price,
+        discount_rate,
+        stock,
+        image_url,
+        is_active,
+        created_at
+      FROM products
+      WHERE seller_id = ?
+      ORDER BY created_at DESC
+    `).bind(sellerId).all();
+    
+    return c.json({
+      success: true,
+      data: products.results || []
+    });
+  } catch (error) {
+    console.error('Seller products query error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+// Change current product in live stream (Seller)
+app.post('/api/seller/streams/:streamId/change-product', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const streamId = c.req.param('streamId');
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401);
+    }
+    
+    const sessionToken = authHeader.replace('Bearer ', '');
+    
+    // 세션 검증
+    const session = await getSession(DB, sessionToken);
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
+    }
+    
+    // 셀러인지 확인
+    if (session.user_type !== 'seller') {
+      return c.json({ success: false, error: '셀러만 접근 가능합니다.' }, 403);
+    }
+    
+    const sellerId = session.seller_id || session.user_id;
+    
+    // 스트림 소유권 확인
+    const stream = await DB.prepare(`
+      SELECT id, seller_id, status
+      FROM live_streams
+      WHERE id = ?
+    `).bind(streamId).first();
+    
+    if (!stream) {
+      return c.json({ success: false, error: '스트림을 찾을 수 없습니다.' }, 404);
+    }
+    
+    if (stream.seller_id !== sellerId) {
+      return c.json({ success: false, error: '권한이 없습니다.' }, 403);
+    }
+    
+    const { productId } = await c.req.json();
+    
+    // 상품 정보 조회 및 소유권 확인
+    const product = await DB.prepare(`
+      SELECT * FROM products 
+      WHERE id = ? AND seller_id = ? AND is_active = 1
+    `).bind(productId, sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: '상품을 찾을 수 없거나 권한이 없습니다.' }, 404);
+    }
+    
+    // 라이브 스트림의 현재 상품 업데이트
+    await DB.prepare(`
+      UPDATE live_streams 
+      SET current_product_id = ?, updated_at = datetime("now") 
+      WHERE id = ?
+    `).bind(productId, streamId).run();
+    
+    return c.json({
+      success: true,
+      data: {
+        streamId: streamId,
+        productId: productId,
+        message: '상품이 변경되었습니다.'
+      }
+    });
+  } catch (error) {
+    console.error('Change product error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
 // 정산서 CSV 다운로드 API
 app.get('/api/seller/settlement-csv', cors(), async (c) => {
   try {
