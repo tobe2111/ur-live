@@ -42,11 +42,14 @@ interface CurrentProduct {
 
 interface ChatMessage {
   id: string
-  userId: string
-  userName: string
-  message: string
+  userId?: string
+  userName?: string
+  username?: string
+  message?: string
+  text?: string
   timestamp: number
   type?: 'user' | 'system' | 'product'
+  isSystem?: boolean
 }
 
 // ============================================
@@ -77,9 +80,11 @@ export default function LivePageV2() {
   const [lastMessageId, setLastMessageId] = useState(0)
   const [newMessage, setNewMessage] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<any>(null)
+  const chatRefFirebase = useRef<any>(null)
 
   // ============================================
   // Initialization Effects
@@ -143,8 +148,14 @@ export default function LivePageV2() {
     const loadStreamData = async () => {
       try {
         setLoading(true)
-        const response = await axios.get(`/api/live/stream/${streamId}`)
-        const streamData = response.data
+        const response = await axios.get(`/api/streams/${streamId}`)
+        
+        if (!response.data.success) {
+          setLoading(false)
+          return
+        }
+        
+        const streamData = response.data.data
         
         setStream(streamData)
         
@@ -169,45 +180,138 @@ export default function LivePageV2() {
       }
     }
 
-    const loadChatMessages = async () => {
-      if (!streamId) return
-
+    const loadCurrentProduct = async () => {
       try {
-        const url = lastMessageId > 0 
-          ? `/api/chat/${streamId}/messages?since=${lastMessageId}&limit=50`
-          : `/api/chat/${streamId}/messages?limit=50`
-
-        const response = await axios.get(url)
-        
-        if (response.data.success) {
-          const newMessages = response.data.data as ChatMessage[]
-          
-          if (newMessages.length > 0) {
-            setMessages(prev => {
-              const existingIds = new Set(prev.map(m => m.id))
-              const filtered = newMessages.filter(m => !existingIds.has(m.id))
-              return [...prev, ...filtered]
-            })
-            
-            const lastId = Math.max(...newMessages.map(m => Number(m.id)))
-            setLastMessageId(lastId)
-          }
+        const response = await axios.get(`/api/streams/${streamId}/current-product`)
+        if (response.data.success && response.data.data) {
+          const product = response.data.data
+          setCurrentProduct({
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            originalPrice: product.originalPrice,
+            image: product.image,
+            description: product.description,
+            stock: product.stock
+          })
         }
       } catch (error) {
-        console.error('[LivePageV2] Failed to load chat messages:', error)
+        console.error('[LivePageV2] Failed to load current product:', error)
       }
     }
 
     loadStreamData()
-    loadChatMessages()
+    loadCurrentProduct()
     
-    // Poll chat every 3 seconds
-    const chatInterval = setInterval(loadChatMessages, 3000)
+    // Poll current product every 3 seconds
+    const productInterval = setInterval(loadCurrentProduct, 3000)
     
     return () => {
-      clearInterval(chatInterval)
+      clearInterval(productInterval)
     }
-  }, [streamId, lastMessageId])
+  }, [streamId])
+
+  // Firebase Chat Integration
+  useEffect(() => {
+    if (!streamId) return
+
+    const initializeFirebaseChat = () => {
+      try {
+        // @ts-ignore
+        const firebaseConfig = {
+          apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+          authDomain: "urteam-live-commerce.firebaseapp.com",
+          databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "urteam-live-commerce",
+          storageBucket: "urteam-live-commerce.firebasestorage.app",
+          messagingSenderId: "1098157020294",
+          appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
+        }
+
+        // @ts-ignore
+        if (!window.firebase.apps.length) {
+          // @ts-ignore
+          window.firebase.initializeApp(firebaseConfig)
+        }
+
+        // @ts-ignore
+        const database = window.firebase.database()
+        const chatRef = database.ref(`chats/stream${streamId}`)
+        chatRefFirebase.current = chatRef
+        
+        console.log('[LivePageV2] Firebase 초기화 완료')
+        setFirebaseInitialized(true)
+
+        // 최신 10개 메시지 가져오기
+        chatRef.limitToLast(10).once('value', (snapshot: any) => {
+          const loadedMessages: ChatMessage[] = []
+          snapshot.forEach((child: any) => {
+            const msg = child.val()
+            loadedMessages.push({
+              id: child.key || Date.now().toString(),
+              username: msg.username,
+              userName: msg.username,
+              message: msg.text,
+              text: msg.text,
+              timestamp: msg.timestamp,
+              isSystem: msg.isSystem || false
+            })
+          })
+          
+          if (loadedMessages.length > 0) {
+            setMessages(loadedMessages)
+            console.log(`[LivePageV2] ${loadedMessages.length}개 메시지 로드됨`)
+          }
+        })
+
+        // 실시간 리스너 (새 메시지만)
+        let lastMessageTime = Date.now()
+        chatRef.orderByChild('timestamp').startAt(lastMessageTime).on('child_added', (snapshot: any) => {
+          const msg = snapshot.val()
+          
+          // 중복 방지
+          if (msg.timestamp > lastMessageTime) {
+            const newMessage: ChatMessage = {
+              id: snapshot.key || Date.now().toString(),
+              username: msg.username,
+              userName: msg.username,
+              message: msg.text,
+              text: msg.text,
+              timestamp: msg.timestamp,
+              isSystem: msg.isSystem || false
+            }
+            
+            setMessages(prev => [...prev, newMessage])
+            console.log('[LivePageV2] 새 메시지:', newMessage)
+          }
+        })
+      } catch (error) {
+        console.error('[LivePageV2] Firebase 초기화 실패:', error)
+      }
+    }
+
+    // @ts-ignore
+    if (typeof window.firebase !== 'undefined' && window.firebase) {
+      initializeFirebaseChat()
+    } else {
+      console.log('[LivePageV2] Waiting for Firebase SDK...')
+      const checkFirebase = setInterval(() => {
+        // @ts-ignore
+        if (typeof window.firebase !== 'undefined' && window.firebase) {
+          clearInterval(checkFirebase)
+          initializeFirebaseChat()
+        }
+      }, 500)
+      
+      return () => clearInterval(checkFirebase)
+    }
+
+    return () => {
+      if (chatRefFirebase.current) {
+        chatRefFirebase.current.off()
+      }
+    }
+  }, [streamId])
 
   // Auto-scroll chat
   useEffect(() => {
@@ -457,27 +561,30 @@ export default function LivePageV2() {
   }
 
   const sendChatMessage = async () => {
-    if (!newMessage.trim() || !streamId || sendingMessage) return
+    if (!newMessage.trim() || !streamId || sendingMessage || !firebaseInitialized) return
 
     const messageText = newMessage.trim()
     setNewMessage('')
     setSendingMessage(true)
 
     try {
-      const userId = localStorage.getItem('userId')
+      const userId = localStorage.getItem('userId') || 'anonymous'
       const userName = localStorage.getItem('userName') || '익명'
       
-      const response = await axios.post(`/api/chat/${streamId}/messages`, {
-        userId: userId || null,
-        userName: userName,
-        message: messageText
-      })
-
-      if (response.data.success) {
-        console.log('[LivePageV2] Message sent')
+      // Firebase에 메시지 전송
+      if (chatRefFirebase.current) {
+        await chatRefFirebase.current.push({
+          username: maskUserName(userName),
+          text: messageText,
+          timestamp: Date.now(),
+          userId: userId,
+          isSystem: false
+        })
+        console.log('[LivePageV2] Message sent to Firebase')
       }
     } catch (error) {
       console.error('[LivePageV2] Failed to send message:', error)
+      alert('메시지 전송에 실패했습니다.')
     } finally {
       setSendingMessage(false)
     }
@@ -692,10 +799,10 @@ export default function LivePageV2() {
                 className="inline-block px-3 py-2 rounded-2xl bg-black/40 backdrop-blur-md animate-fade-in"
               >
                 <span className="text-white font-medium text-sm drop-shadow-lg">
-                  {maskUserName(msg.userName)}:
+                  {maskUserName(msg.userName || msg.username || '익명')}:
                 </span>
                 <span className="text-white/90 text-sm ml-2 drop-shadow-lg">
-                  {msg.message}
+                  {msg.message || msg.text || ''}
                 </span>
               </div>
             ))}
