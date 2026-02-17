@@ -121,6 +121,13 @@
     font-weight: 400;
     letter-spacing: -0.022em;
   }
+
+  /* Footer tiny text override */
+  .footer-tiny,
+  .footer-tiny * {
+    font-size: 7px !important;
+    line-height: 1.4 !important;
+  }
 }
 
 /* Apple-style animations - Subtle and purposeful */

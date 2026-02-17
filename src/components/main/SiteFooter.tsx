@@ -3,7 +3,7 @@ import React from 'react'
 export default function SiteFooter() {
   return (
     <footer className="px-4 py-6 bg-background border-t border-gray-200">
-      <div className="flex flex-col gap-2" style={{ fontSize: '7px' }}>
+      <div className="flex flex-col gap-2 footer-tiny">
         {/* Contact */}
         <p className="text-gray-600">
           제휴 | 입점 문의 : jiwon@ur-team.com
