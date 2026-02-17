@@ -33,12 +33,7 @@ const EXCLUDE_PAGES = [
 export default function FrameWrapper({ children }: FrameWrapperProps) {
   const location = useLocation()
   
-  // 제외 페이지인지 확인
-  const isExcludePage = EXCLUDE_PAGES.some(path => {
-    return location.pathname.startsWith(path)
-  })
-  
-  // 현재 경로가 프레임 페이지인지 확인
+  // 🔥 중요: 프레임 페이지 체크를 먼저 수행 (EXCLUDE보다 우선)
   const isFramePage = FRAME_PAGES.some(path => {
     if (path.endsWith('/')) {
       return location.pathname.startsWith(path)
@@ -46,26 +41,30 @@ export default function FrameWrapper({ children }: FrameWrapperProps) {
     return location.pathname === path || location.pathname.startsWith(path + '/')
   })
   
-  // 디버깅
-  console.log('🎯 FrameWrapper Debug:', {
-    pathname: location.pathname,
-    isExcludePage,
-    isFramePage,
-    children: children ? 'exists' : 'null'
-  })
-  
-  if (isExcludePage) {
-    console.log('↩️ Returning children directly (excluded page)')
-    return <>{children}</>
-  }
-  
-  // 프레임 페이지면 GripFrameLayout으로 감싸기
+  // 프레임 페이지면 GripFrameLayout으로 감싸기 (최우선)
   if (isFramePage) {
-    console.log('🖼️ Wrapping with GripFrameLayout')
+    console.log('🖼️ FrameWrapper: Wrapping with GripFrameLayout', {
+      pathname: location.pathname,
+      children: children ? 'exists' : 'null'
+    })
     return <GripFrameLayout>{children}</GripFrameLayout>
   }
   
+  // 제외 페이지인지 확인 (프레임 페이지가 아닐 때만)
+  const isExcludePage = EXCLUDE_PAGES.some(path => {
+    return location.pathname.startsWith(path)
+  })
+  
+  if (isExcludePage) {
+    console.log('↩️ FrameWrapper: Returning children directly (excluded page)', {
+      pathname: location.pathname
+    })
+    return <>{children}</>
+  }
+  
   // 아니면 그냥 children 렌더링
-  console.log('👉 Returning children directly (default)')
+  console.log('👉 FrameWrapper: Returning children directly (default)', {
+    pathname: location.pathname
+  })
   return <>{children}</>
 }
