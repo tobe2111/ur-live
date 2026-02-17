@@ -38,10 +38,6 @@ export default function FrameWrapper({ children }: FrameWrapperProps) {
     return location.pathname.startsWith(path)
   })
   
-  if (isExcludePage) {
-    return <>{children}</>
-  }
-  
   // 현재 경로가 프레임 페이지인지 확인
   const isFramePage = FRAME_PAGES.some(path => {
     if (path.endsWith('/')) {
@@ -50,11 +46,26 @@ export default function FrameWrapper({ children }: FrameWrapperProps) {
     return location.pathname === path || location.pathname.startsWith(path + '/')
   })
   
+  // 디버깅
+  console.log('🎯 FrameWrapper Debug:', {
+    pathname: location.pathname,
+    isExcludePage,
+    isFramePage,
+    children: children ? 'exists' : 'null'
+  })
+  
+  if (isExcludePage) {
+    console.log('↩️ Returning children directly (excluded page)')
+    return <>{children}</>
+  }
+  
   // 프레임 페이지면 GripFrameLayout으로 감싸기
   if (isFramePage) {
+    console.log('🖼️ Wrapping with GripFrameLayout')
     return <GripFrameLayout>{children}</GripFrameLayout>
   }
   
   // 아니면 그냥 children 렌더링
+  console.log('👉 Returning children directly (default)')
   return <>{children}</>
 }
