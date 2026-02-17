@@ -1,368 +1,586 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { Heart, Share2, ShoppingCart, MessageCircle, Eye, Youtube, Instagram } from 'lucide-react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus } from 'lucide-react'
 import axios from 'axios'
 
 // ============================================
 // TypeScript Interfaces
 // ============================================
-interface Product {
-  id: number
-  name: string
-  price: number
-  originalPrice?: number
-  image: string
-  description?: string
-  stock?: number
-  sizes?: string[]
-  colors?: string[]
-}
-
 interface Stream {
   id: number
   title: string
-  streamerId: number
   streamerName: string
   streamerAvatar?: string
   videoUrl?: string
+  youtube_video_id?: string
   status: 'live' | 'ended' | 'scheduled'
   viewerCount: number
   products?: Product[]
 }
 
-interface CurrentProduct {
-  productId: number
+interface Product {
+  id: number
   name: string
   price: number
-  originalPrice?: number
+  originalPrice: number
   image: string
-  description?: string
-  stock?: number
+  description: string
+  rating: number
+  sold: number
+  colors?: { name: string; hex: string }[]
+  sizes?: string[]
 }
 
 interface ChatMessage {
   id: string
-  userId?: string
-  userName?: string
-  username?: string
-  message?: string
-  text?: string
-  timestamp: number
-  type?: 'user' | 'system' | 'product'
-  isSystem?: boolean
+  username: string
+  message: string
+}
+
+interface ReelData {
+  stream: Stream
+  product: Product
 }
 
 // ============================================
-// Main Component
+// Demo Data (for fallback)
 // ============================================
-export default function LivePageV2() {
-  const { streamId } = useParams<{ streamId: string }>()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+const demoStreams: Stream[] = [
+  {
+    id: 1,
+    title: '프리미엄 헤드폰 라이브',
+    streamerName: 'Marcus Chen',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    youtube_video_id: 'dQw4w9WgXcQ',
+    status: 'live',
+    viewerCount: 12400,
+    products: []
+  },
+  {
+    id: 2,
+    title: '골드 주얼리 특가',
+    streamerName: 'Sofia Laurent',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    youtube_video_id: 'dQw4w9WgXcQ',
+    status: 'live',
+    viewerCount: 34200,
+    products: []
+  },
+  {
+    id: 3,
+    title: '스니커즈 신상품',
+    streamerName: 'Jake Morrison',
+    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    youtube_video_id: 'dQw4w9WgXcQ',
+    status: 'live',
+    viewerCount: 52000,
+    products: []
+  }
+]
 
-  // ============================================
-  // State Management
-  // ============================================
-  const [stream, setStream] = useState<Stream | null>(null)
-  const [currentProduct, setCurrentProduct] = useState<CurrentProduct | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [muted, setMuted] = useState(true)
-  const [likes, setLikes] = useState(1234)
-  const [isLiked, setIsLiked] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [showProductSheet, setShowProductSheet] = useState(false)
-  const [selectedColor, setSelectedColor] = useState<string>('')
-  const [selectedSize, setSelectedSize] = useState<string>('')
+const demoProducts: Product[] = [
+  {
+    id: 1,
+    name: 'Nova Pro Wireless Headphones',
+    price: 89.99,
+    originalPrice: 149.99,
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
+    description: 'Premium noise-cancelling headphones with 30-hour battery life and studio-quality sound.',
+    rating: 4.8,
+    sold: 2340,
+    colors: [
+      { name: 'Midnight Black', hex: '#1a1a1a' },
+      { name: 'Space Gray', hex: '#6b6b6b' },
+      { name: 'Rose Gold', hex: '#b76e79' }
+    ]
+  },
+  {
+    id: 2,
+    name: 'Luna Gold Jewelry Set',
+    price: 45.00,
+    originalPrice: 78.00,
+    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800',
+    description: 'Elegant 18K gold-plated necklace and earring set, perfect for special occasions.',
+    rating: 4.9,
+    sold: 8720,
+    colors: [
+      { name: 'Gold', hex: '#ffd700' },
+      { name: 'Silver', hex: '#c0c0c0' },
+      { name: 'Rose Gold', hex: '#b76e79' }
+    ]
+  },
+  {
+    id: 3,
+    name: 'StreetX Cloud Sneakers',
+    price: 62.00,
+    originalPrice: 120.00,
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
+    description: 'Ultra-comfortable running shoes with cloud-like cushioning and breathable mesh.',
+    rating: 4.7,
+    sold: 15600,
+    sizes: ['US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12'],
+    colors: [
+      { name: 'Triple White', hex: '#ffffff' },
+      { name: 'Core Black', hex: '#000000' },
+      { name: 'Navy Blue', hex: '#000080' }
+    ]
+  },
+  {
+    id: 4,
+    name: 'Glow Elixir Vitamin C Serum',
+    price: 24.99,
+    originalPrice: 55.00,
+    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800',
+    description: 'Brightening serum with 20% vitamin C for radiant, youthful skin.',
+    rating: 4.9,
+    sold: 42100
+  },
+  {
+    id: 5,
+    name: 'Pulse Ultra Smartwatch',
+    price: 129.00,
+    originalPrice: 249.00,
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800',
+    description: 'Advanced fitness tracking, heart rate monitoring, and 7-day battery life.',
+    rating: 4.6,
+    sold: 6890,
+    colors: [
+      { name: 'Black', hex: '#000000' },
+      { name: 'Silver', hex: '#c0c0c0' },
+      { name: 'Gold', hex: '#ffd700' }
+    ]
+  },
+  {
+    id: 6,
+    name: 'Premium Leather Wallet',
+    price: 35.00,
+    originalPrice: 65.00,
+    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=800',
+    description: 'Genuine leather bifold wallet with RFID protection and card slots.',
+    rating: 4.7,
+    sold: 12300,
+    colors: [
+      { name: 'Black', hex: '#000000' },
+      { name: 'Brown', hex: '#8b4513' },
+      { name: 'Tan', hex: '#d2b48c' }
+    ]
+  },
+  {
+    id: 7,
+    name: 'Wireless Charging Pad',
+    price: 19.99,
+    originalPrice: 39.99,
+    image: 'https://images.unsplash.com/photo-1591290619762-0c0a6b5c2e7a?w=800',
+    description: 'Fast wireless charger compatible with all Qi-enabled devices.',
+    rating: 4.5,
+    sold: 18900
+  },
+  {
+    id: 8,
+    name: 'Eco-Friendly Water Bottle',
+    price: 12.99,
+    originalPrice: 24.99,
+    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800',
+    description: 'Stainless steel insulated bottle keeps drinks cold for 24 hours.',
+    rating: 4.8,
+    sold: 31200,
+    colors: [
+      { name: 'Black', hex: '#000000' },
+      { name: 'Blue', hex: '#0000ff' },
+      { name: 'Pink', hex: '#ff69b4' }
+    ]
+  },
+  {
+    id: 9,
+    name: 'Minimalist Backpack',
+    price: 49.00,
+    originalPrice: 89.00,
+    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800',
+    description: 'Sleek design with laptop compartment and water-resistant material.',
+    rating: 4.6,
+    sold: 9800,
+    colors: [
+      { name: 'Black', hex: '#000000' },
+      { name: 'Gray', hex: '#808080' },
+      { name: 'Navy', hex: '#000080' }
+    ]
+  },
+  {
+    id: 10,
+    name: 'Bluetooth Speaker',
+    price: 39.99,
+    originalPrice: 79.99,
+    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=800',
+    description: 'Portable speaker with 360° sound and 12-hour playtime.',
+    rating: 4.7,
+    sold: 22500,
+    colors: [
+      { name: 'Black', hex: '#000000' },
+      { name: 'Red', hex: '#ff0000' },
+      { name: 'Blue', hex: '#0000ff' }
+    ]
+  }
+]
+
+// ============================================
+// Utility Functions
+// ============================================
+const usernames = [
+  'minjae_92', 'yuna_shop', 'hyejin.k', 'joonho_lee', 'soyeon_99',
+  'dohyun_park', 'seulgi.m', 'taehyung_fan', 'nayeon_j', 'woojin.c',
+]
+
+const chatTexts = [
+  '와 대박', '이거 진짜 좋아요', '가격 너무 착하다',
+  '색상 이쁘다', '사이즈 추천해주세요!', '라이브 할인 최고',
+  '지금 사야되나요?', '품절되기 전에 빨리!', '배송 얼마나 걸려요?',
+  '후기 좋던데', '이거 선물용으로도 괜찮나요?', '재입고 언제 해요?',
+]
+
+function getRandomItem<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function formatViewers(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return n.toString()
+}
+
+// ============================================
+// Sub Components
+// ============================================
+
+// YouTube/Instagram/KakaoTalk Icons
+function YouTubeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  )
+}
+
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+    </svg>
+  )
+}
+
+function KakaoTalkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 3c-5.523 0-10 3.694-10 8.25 0 2.904 1.887 5.46 4.726 6.924-.157.564-.57 2.044-.652 2.362-.101.395.145.39.305.284.125-.083 1.994-1.355 2.808-1.907A11.59 11.59 0 0 0 12 19.5c5.523 0 10-3.694 10-8.25S17.523 3 12 3z" />
+    </svg>
+  )
+}
+
+// TopNav Component
+function TopNav({ viewers }: { viewers: number }) {
+  return (
+    <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-lg bg-red-500/90 backdrop-blur-sm px-2.5 py-1.5 shadow-lg shadow-red-500/30">
+          <span className="h-2 w-2 rounded-full bg-white animate-blink-live" />
+          <span className="text-xs font-extrabold tracking-wider text-white">LIVE</span>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg bg-black/40 backdrop-blur-md px-2.5 py-1.5">
+          <Eye className="h-3.5 w-3.5 text-white/80" />
+          <span className="text-xs font-semibold text-white/90">
+            {formatViewers(viewers)}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <a
+          href="https://youtube.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-50 hover:opacity-80 transition-opacity"
+          aria-label="YouTube"
+        >
+          <YouTubeIcon className="h-[18px] w-[18px] text-white" />
+        </a>
+        <a
+          href="https://instagram.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-50 hover:opacity-80 transition-opacity"
+          aria-label="Instagram"
+        >
+          <InstagramIcon className="h-[18px] w-[18px] text-white" />
+        </a>
+        <a
+          href="https://pf.kakao.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-50 hover:opacity-80 transition-opacity"
+          aria-label="KakaoTalk"
+        >
+          <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
+        </a>
+      </div>
+    </header>
+  )
+}
+
+// LiveChat Component
+function LiveChat() {
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { id: '1', username: 'minjae_92', message: '방송 시작했다!' },
+    { id: '2', username: 'yuna_shop', message: '오늘 뭐 파나요?' },
+    { id: '3', username: 'hyejin.k', message: '와 기대된다' },
+  ])
+  const nextId = useRef(4)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newMsg: ChatMessage = {
+        id: String(nextId.current++),
+        username: getRandomItem(usernames),
+        message: getRandomItem(chatTexts),
+      }
+      setChatMessages((prev) => [...prev.slice(-4), newMsg])
+    }, 1800 + Math.random() * 2200)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [chatMessages])
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex flex-col overflow-hidden"
+      style={{ gap: '2px' }}
+    >
+      {chatMessages.map((msg) => (
+        <p
+          key={msg.id}
+          className="text-[11px] leading-[1.3] animate-fade-in"
+          style={{
+            textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)',
+          }}
+        >
+          <span className="font-bold text-white/90">{msg.username}</span>
+          <span className="text-white/70">{' '}{msg.message}</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
+// ProductSheet Component
+function ProductSheet({
+  product,
+  onClose,
+}: {
+  product: Product
+  onClose: () => void
+}) {
+  const [selectedColor, setSelectedColor] = useState(0)
+  const [selectedSize, setSelectedSize] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [playerReady, setPlayerReady] = useState(false)
-  const [videoStatus, setVideoStatus] = useState<'playing' | 'ended'>('playing')
-  const [lastMessageId, setLastMessageId] = useState(0)
-  const [newMessage, setNewMessage] = useState('')
-  const [sendingMessage, setSendingMessage] = useState(false)
-  const [firebaseInitialized, setFirebaseInitialized] = useState(false)
+  const [addedToCart, setAddedToCart] = useState(false)
 
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const discount = Math.round(
+    ((product.originalPrice - product.price) / product.originalPrice) * 100
+  )
+
+  function handleAddToCart() {
+    setAddedToCart(true)
+    setTimeout(() => {
+      setAddedToCart(false)
+      onClose()
+    }, 1500)
+  }
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
+        onClick={onClose}
+      />
+
+      {/* Sheet */}
+      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white/80 backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar">
+        {/* Handle */}
+        <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/60 backdrop-blur-md">
+          <div className="h-1 w-10 rounded-full bg-gray-300" />
+          <button
+            onClick={onClose}
+            className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4 text-gray-800" />
+          </button>
+        </div>
+
+        <div className="px-5 pb-8">
+          {/* Product header */}
+          <div className="flex items-start gap-4 mb-6">
+            <div className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">
+                {product.name}
+              </h3>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-0.5">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  <span className="text-sm font-semibold text-gray-900">{product.rating}</span>
+                </div>
+                <span className="text-xs text-gray-500">
+                  {product.sold.toLocaleString()} sold
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-red-500">
+                  ${product.price.toFixed(2)}
+                </span>
+                <span className="text-sm text-gray-400 line-through">
+                  ${product.originalPrice.toFixed(2)}
+                </span>
+                <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-500">
+                  -{discount}%
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <p className="text-sm text-gray-600 leading-relaxed mb-5">
+            {product.description}
+          </p>
+
+          {/* Colors */}
+          {product.colors && (
+            <div className="mb-5">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                {'Color: '}
+                <span className="font-normal text-gray-500">
+                  {product.colors[selectedColor].name}
+                </span>
+              </h4>
+              <div className="flex items-center gap-3">
+                {product.colors.map((color, i) => (
+                  <button
+                    key={color.name}
+                    onClick={() => setSelectedColor(i)}
+                    className={`relative h-9 w-9 rounded-full transition-all duration-200 ${
+                      selectedColor === i
+                        ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-white scale-110'
+                        : 'ring-1 ring-gray-300'
+                    }`}
+                    style={{ backgroundColor: color.hex }}
+                    aria-label={color.name}
+                  >
+                    {selectedColor === i && (
+                      <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow-md" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sizes */}
+          {product.sizes && (
+            <div className="mb-5">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Size</h4>
+              <div className="flex flex-wrap gap-2">
+                {product.sizes.map((size, i) => (
+                  <button
+                    key={size}
+                    onClick={() => setSelectedSize(i)}
+                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                      selectedSize === i
+                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quantity */}
+          <div className="mb-6">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Quantity</h4>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
+                aria-label="Decrease quantity"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <span className="text-lg font-bold text-gray-900 w-8 text-center">{quantity}</span>
+              <button
+                onClick={() => setQuantity(quantity + 1)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
+                aria-label="Increase quantity"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Add to cart button */}
+          <button
+            onClick={handleAddToCart}
+            className={`w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition-all duration-300 ${
+              addedToCart
+                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                : 'bg-red-500 text-white shadow-lg shadow-red-500/40 active:scale-[0.97]'
+            }`}
+          >
+            {addedToCart ? (
+              <>
+                <Check className="h-5 w-5" />
+                Added to Cart
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-5 w-5" />
+                {'Add to Cart - $'}{(product.price * quantity).toFixed(2)}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ReelCard Component
+function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
-  const chatRefFirebase = useRef<any>(null)
+  const [playerReady, setPlayerReady] = useState(false)
+  const [showPlayButton, setShowPlayButton] = useState(true)
 
-  // ============================================
-  // Initialization Effects
-  // ============================================
-  
-  // Suppress TikTok console warnings
-  useEffect(() => {
-    const originalError = console.error
-    console.error = (...args: any[]) => {
-      if (
-        typeof args[0] === 'string' &&
-        (args[0].includes('tiktok') ||
-          args[0].includes('CSP') ||
-          args[0].includes('permissions-policy'))
-      ) {
-        return
-      }
-      originalError.apply(console, args)
-    }
-    return () => {
-      console.error = originalError
-    }
-  }, [])
-
-  // Handle login callback
-  useEffect(() => {
-    const loginParam = searchParams.get('login')
-    const sessionParam = searchParams.get('session')
-    const userIdParam = searchParams.get('userId')
-    const userNameParam = searchParams.get('userName')
-
-    if (loginParam === 'success' && sessionParam) {
-      localStorage.setItem('auth_token', sessionParam)
-      document.cookie = `auth_token=${sessionParam}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
-      
-      if (userIdParam) localStorage.setItem('userId', userIdParam)
-      if (userNameParam) localStorage.setItem('userName', userNameParam)
-      
-      setIsLoggedIn(true)
-      
-      // Clean URL
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      
-      console.log('[LivePageV2] Login success, session saved')
-    }
-  }, [searchParams])
-
-  // Check login status
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      setIsLoggedIn(true)
-    }
-  }, [])
-
-  // Load stream data
-  useEffect(() => {
-    if (!streamId) return
-
-    const loadStreamData = async () => {
-      try {
-        setLoading(true)
-        const response = await axios.get(`/api/streams/${streamId}`)
-        
-        if (!response.data.success) {
-          console.log('[LivePageV2] Stream not found in database, using demo data')
-          // Demo stream data
-          setStream({
-            id: Number(streamId),
-            title: 'UR Live 데모 스트림',
-            streamerId: 1,
-            streamerName: '데모 스트리머',
-            streamerAvatar: 'https://via.placeholder.com/100',
-            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Demo YouTube video (embeddable)
-            status: 'live',
-            viewerCount: 1234,
-            products: []
-          })
-          setLoading(false)
-          return
-        }
-        
-        const streamData = response.data.data
-        
-        setStream(streamData)
-        
-        if (streamData.products && streamData.products.length > 0) {
-          const firstProduct = streamData.products[0]
-          setCurrentProduct({
-            productId: firstProduct.id,
-            name: firstProduct.name,
-            price: firstProduct.price,
-            originalPrice: firstProduct.originalPrice,
-            image: firstProduct.image,
-            description: firstProduct.description,
-            stock: firstProduct.stock
-          })
-        }
-        
-        setLoading(false)
-        console.log('[LivePageV2] Stream loaded:', streamData)
-      } catch (error) {
-        console.error('[LivePageV2] Failed to load stream:', error)
-        // Fallback to demo data on error
-        console.log('[LivePageV2] Using demo stream data')
-        setStream({
-          id: Number(streamId),
-          title: 'UR Live 데모 스트림',
-          streamerId: 1,
-          streamerName: '데모 스트리머',
-          streamerAvatar: 'https://via.placeholder.com/100',
-          videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-          status: 'live',
-          viewerCount: 1234,
-          products: []
-        })
-        setLoading(false)
-      }
-    }
-
-    const loadCurrentProduct = async () => {
-      try {
-        const response = await axios.get(`/api/streams/${streamId}/current-product`)
-        if (response.data.success && response.data.data) {
-          const product = response.data.data
-          setCurrentProduct({
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            originalPrice: product.originalPrice,
-            image: product.image,
-            description: product.description,
-            stock: product.stock
-          })
-        }
-      } catch (error) {
-        console.log('[LivePageV2] Current product not available, using demo')
-        // Demo product data
-        setCurrentProduct({
-          productId: 1,
-          name: '프리미엄 무선 이어폰',
-          price: 89000,
-          originalPrice: 149000,
-          image: 'https://via.placeholder.com/400x400?text=Demo+Product',
-          description: '고품질 사운드와 긴 배터리 수명을 자랑하는 프리미엄 무선 이어폰',
-          stock: 100
-        })
-      }
-    }
-
-    loadStreamData()
-    loadCurrentProduct()
-    
-    // Poll current product every 3 seconds
-    const productInterval = setInterval(loadCurrentProduct, 3000)
-    
-    return () => {
-      clearInterval(productInterval)
-    }
-  }, [streamId])
-
-  // Firebase Chat Integration
-  useEffect(() => {
-    if (!streamId) return
-
-    const initializeFirebaseChat = () => {
-      try {
-        // @ts-ignore
-        const firebaseConfig = {
-          apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
-          authDomain: "urteam-live-commerce.firebaseapp.com",
-          databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "urteam-live-commerce",
-          storageBucket: "urteam-live-commerce.firebasestorage.app",
-          messagingSenderId: "1098157020294",
-          appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
-        }
-
-        // @ts-ignore
-        if (!window.firebase.apps.length) {
-          // @ts-ignore
-          window.firebase.initializeApp(firebaseConfig)
-        }
-
-        // @ts-ignore
-        const database = window.firebase.database()
-        const chatRef = database.ref(`chats/stream${streamId}`)
-        chatRefFirebase.current = chatRef
-        
-        console.log('[LivePageV2] Firebase 초기화 완료')
-        setFirebaseInitialized(true)
-
-        // 최신 10개 메시지 가져오기
-        chatRef.limitToLast(10).once('value', (snapshot: any) => {
-          const loadedMessages: ChatMessage[] = []
-          snapshot.forEach((child: any) => {
-            const msg = child.val()
-            loadedMessages.push({
-              id: child.key || Date.now().toString(),
-              username: msg.username,
-              userName: msg.username,
-              message: msg.text,
-              text: msg.text,
-              timestamp: msg.timestamp,
-              isSystem: msg.isSystem || false
-            })
-          })
-          
-          if (loadedMessages.length > 0) {
-            setMessages(loadedMessages)
-            console.log(`[LivePageV2] ${loadedMessages.length}개 메시지 로드됨`)
-          }
-        })
-
-        // 실시간 리스너 (새 메시지만)
-        let lastMessageTime = Date.now()
-        chatRef.orderByChild('timestamp').startAt(lastMessageTime).on('child_added', (snapshot: any) => {
-          const msg = snapshot.val()
-          
-          // 중복 방지
-          if (msg.timestamp > lastMessageTime) {
-            const newMessage: ChatMessage = {
-              id: snapshot.key || Date.now().toString(),
-              username: msg.username,
-              userName: msg.username,
-              message: msg.text,
-              text: msg.text,
-              timestamp: msg.timestamp,
-              isSystem: msg.isSystem || false
-            }
-            
-            setMessages(prev => [...prev, newMessage])
-            console.log('[LivePageV2] 새 메시지:', newMessage)
-          }
-        })
-      } catch (error) {
-        console.error('[LivePageV2] Firebase 초기화 실패:', error)
-      }
-    }
-
-    // @ts-ignore
-    if (typeof window.firebase !== 'undefined' && window.firebase) {
-      initializeFirebaseChat()
-    } else {
-      console.log('[LivePageV2] Waiting for Firebase SDK...')
-      const checkFirebase = setInterval(() => {
-        // @ts-ignore
-        if (typeof window.firebase !== 'undefined' && window.firebase) {
-          clearInterval(checkFirebase)
-          initializeFirebaseChat()
-        }
-      }, 500)
-      
-      return () => clearInterval(checkFirebase)
-    }
-
-    return () => {
-      if (chatRefFirebase.current) {
-        chatRefFirebase.current.off()
-      }
-    }
-  }, [streamId])
-
-  // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  const { product, stream } = reel
 
   // YouTube Player Integration
   useEffect(() => {
-    if (!stream?.videoUrl) return
-    
-    // Check if it's a YouTube video
-    const youtubeMatch = stream.videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
-    if (!youtubeMatch) return
-    
-    const videoId = youtubeMatch[1]
+    if (!stream.youtube_video_id || !isActive) return
+
     let player: any = null
     let isMounted = true
 
@@ -372,19 +590,19 @@ export default function LivePageV2() {
         if (!window.YT || !window.YT.Player) return
         if (!isMounted) return
 
-        const playerElement = document.getElementById('youtube-player')
+        const playerElement = document.getElementById(`youtube-player-${stream.id}`)
         if (!playerElement) return
 
         playerElement.innerHTML = ''
 
         // @ts-ignore
-        player = new window.YT.Player('youtube-player', {
+        player = new window.YT.Player(`youtube-player-${stream.id}`, {
           height: '100%',
           width: '100%',
-          videoId: videoId,
+          videoId: stream.youtube_video_id,
           playerVars: {
-            autoplay: 1,
-            mute: muted ? 1 : 0,
+            autoplay: 0, // Don't autoplay (user must click)
+            mute: 1,
             controls: 0,
             modestbranding: 1,
             rel: 0,
@@ -394,74 +612,33 @@ export default function LivePageV2() {
             enablejsapi: 1,
             origin: window.location.origin,
             loop: 1,
-            playlist: videoId,
+            playlist: stream.youtube_video_id,
             fs: 0,
             cc_load_policy: 0,
           },
           events: {
             onReady: (event: any) => {
               if (!isMounted) return
-              console.log('[LivePageV2] YouTube player ready')
               playerRef.current = event.target
               setPlayerReady(true)
-              setVideoStatus('playing')
-              
-              const applyIframeStyles = () => {
-                const iframe = playerElement.querySelector('iframe')
-                if (iframe) {
-                  iframe.removeAttribute('style')
-                  iframe.removeAttribute('width')
-                  iframe.removeAttribute('height')
-                  iframe.style.cssText = `
-                    position: absolute !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100% !important;
-                    height: 100% !important;
-                    max-width: 100% !important;
-                    max-height: 100% !important;
-                    pointer-events: none !important;
-                    border: none !important;
-                    z-index: 1 !important;
-                  `
-                }
-              }
-              
-              applyIframeStyles()
-              setTimeout(applyIframeStyles, 100)
-              setTimeout(applyIframeStyles, 500)
-              
-              event.target.playVideo()
+              setShowPlayButton(true) // Show play button overlay
             },
             onStateChange: (event: any) => {
               if (!isMounted) return
               // @ts-ignore
               if (event.data === window.YT.PlayerState.PLAYING) {
-                setVideoStatus('playing')
-              } else if (event.data === window.YT.PlayerState.ENDED) {
-                event.target.seekTo(0)
-                event.target.playVideo()
+                setShowPlayButton(false)
               } else if (event.data === window.YT.PlayerState.PAUSED) {
-                setTimeout(() => {
-                  if (isMounted && event.target) {
-                    event.target.playVideo()
-                  }
-                }, 100)
+                setShowPlayButton(true)
               }
-            },
-            onError: (event: any) => {
-              if (!isMounted) return
-              console.error('[LivePageV2] YouTube player error:', event.data)
-              setVideoStatus('ended')
             },
           },
         })
       } catch (error) {
-        console.error('[LivePageV2] Failed to initialize YouTube player:', error)
+        console.error('[ReelCard] Failed to initialize YouTube player:', error)
       }
     }
 
-    // Load YouTube IFrame API
     // @ts-ignore
     if (window.YT && window.YT.Player) {
       initializePlayer()
@@ -487,155 +664,243 @@ export default function LivePageV2() {
         try {
           player.destroy()
         } catch (error) {
-          console.error('[LivePageV2] Error destroying player:', error)
+          console.error('[ReelCard] Error destroying player:', error)
         }
       }
     }
-  }, [stream?.videoUrl, muted])
+  }, [stream.youtube_video_id, stream.id, isActive])
 
-  // ============================================
-  // Handler Functions
-  // ============================================
-
-  const handleLike = () => {
-    if (!isLiked) {
-      setLikes(prev => prev + 1)
-      setIsLiked(true)
-    } else {
-      setLikes(prev => prev - 1)
-      setIsLiked(false)
+  const handleVideoClick = () => {
+    if (playerRef.current && playerReady) {
+      playerRef.current.playVideo()
+      setShowPlayButton(false)
     }
   }
 
-  const handleShare = async () => {
-    const shareUrl = window.location.href
-    if (navigator.share) {
+  return (
+    <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
+      {/* Background image */}
+      <img
+        src={product.image}
+        alt={product.name}
+        className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
+          isActive ? 'scale-100' : 'scale-110'
+        }`}
+      />
+
+      {/* YouTube Player Overlay (hidden behind image) */}
+      <div
+        id={`youtube-player-${stream.id}`}
+        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+      />
+
+      {/* Play Button Overlay */}
+      {showPlayButton && playerReady && (
+        <button
+          onClick={handleVideoClick}
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[1px] transition-opacity hover:bg-black/30"
+          aria-label="Play video"
+        >
+          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center transition-transform hover:scale-110">
+            <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </button>
+      )}
+
+      {/* Subtle top vignette */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" />
+
+      {/* Product overlay */}
+      <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
+        {/* Bottom gradient */}
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+
+        {/* Spacer pushes content to bottom */}
+        <div className="flex-1" />
+
+        {/* Content area */}
+        <div className="pointer-events-auto relative flex flex-col px-4 pb-3">
+          {/* Chat + action icons row */}
+          <div className="flex items-end gap-3 mb-2.5">
+            {/* Live chat feed - left side, wide */}
+            <div className="min-w-0 flex-1">
+              <LiveChat />
+            </div>
+
+            {/* Chat + Share buttons - right side */}
+            <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
+              <button
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
+                aria-label="Chat"
+              >
+                <MessageCircle className="h-5 w-5 text-white/90" />
+              </button>
+              <button
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
+                aria-label="Share"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: product.name, url: window.location.href })
+                  }
+                }}
+              >
+                <Share2 className="h-5 w-5 text-white/90" />
+              </button>
+            </div>
+          </div>
+
+          {/* Unified bottom bar: product info + basket + buy */}
+          <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
+            {/* Product info - left side */}
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="flex flex-col items-start min-w-0 flex-1 text-left"
+            >
+              <h3 className="text-[13px] font-bold text-white leading-tight truncate w-full drop-shadow-lg">
+                {product.name}
+              </h3>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-[14px] font-extrabold text-red-400 drop-shadow-md">
+                  ${product.price.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-white/40 line-through">
+                  ${product.originalPrice.toFixed(2)}
+                </span>
+              </div>
+            </button>
+
+            {/* Basket button */}
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95"
+              aria-label="Add to basket"
+            >
+              <ShoppingBag className="h-3.5 w-3.5 text-white/80" />
+              <span className="text-[11px] font-bold text-white/90">담기</span>
+            </button>
+
+            {/* Buy button */}
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95"
+            >
+              구매하기
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Product sheet */}
+      {sheetOpen && (
+        <div className="pointer-events-auto">
+          <ProductSheet product={product} onClose={() => setSheetOpen(false)} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================
+// Main LivePageV2 Component
+// ============================================
+export default function LivePageV2() {
+  const { streamId } = useParams<{ streamId: string }>()
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [reels, setReels] = useState<ReelData[]>([])
+  const [loading, setLoading] = useState(true)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+
+  const reelRefs = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return
+    if (observerRef.current) observerRef.current.observe(node)
+  }, [])
+
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = Number(entry.target.getAttribute('data-index'))
+            setActiveIndex(index)
+          }
+        })
+      },
+      {
+        root: containerRef.current,
+        threshold: 0.6,
+      }
+    )
+
+    return () => observerRef.current?.disconnect()
+  }, [])
+
+  // Load reels data
+  useEffect(() => {
+    const loadReels = async () => {
       try {
-        await navigator.share({
-          title: stream?.title || 'UR Live',
-          url: shareUrl
+        setLoading(true)
+
+        // Try to load real streams
+        const streamsResponse = await axios.get('/api/streams')
+        let streams: Stream[] = []
+
+        if (streamsResponse.data.success && streamsResponse.data.data.length > 0) {
+          streams = streamsResponse.data.data.slice(0, 3)
+        } else {
+          // Use demo streams
+          streams = demoStreams
+        }
+
+        // Map products to streams (distribute 10 products across 3 streams)
+        const reelsData: ReelData[] = []
+        const productsPerStream = Math.ceil(demoProducts.length / streams.length)
+
+        streams.forEach((stream, streamIndex) => {
+          const startIdx = streamIndex * productsPerStream
+          const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
+          const streamProducts = demoProducts.slice(startIdx, endIdx)
+
+          streamProducts.forEach((product) => {
+            reelsData.push({
+              stream: stream,
+              product: product,
+            })
+          })
         })
-      } catch (err) {
-        console.log('[LivePageV2] Share cancelled')
-      }
-    } else {
-      navigator.clipboard.writeText(shareUrl)
-      alert('링크가 클립보드에 복사되었습니다!')
-    }
-  }
 
-  const handleAddToCart = async () => {
-    if (!currentProduct) {
-      alert('상품 정보를 불러오는 중입니다.')
-      return
-    }
+        setReels(reelsData)
+        setLoading(false)
+      } catch (error) {
+        console.error('[LivePageV2] Failed to load reels:', error)
+        
+        // Fallback to demo data
+        const reelsData: ReelData[] = []
+        const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
 
-    if (!isLoggedIn) {
-      // Save temp cart and redirect to login
-      const tempCart = {
-        productId: currentProduct.productId,
-        quantity,
-        color: selectedColor,
-        size: selectedSize,
-        timestamp: Date.now()
-      }
-      localStorage.setItem('tempCartItem', JSON.stringify(tempCart))
-      localStorage.setItem('returnPath', window.location.pathname)
-      
-      alert('로그인이 필요합니다.')
-      // Initiate Kakao login
-      window.location.href = '/api/auth/kakao'
-      return
-    }
+        demoStreams.forEach((stream, streamIndex) => {
+          const startIdx = streamIndex * productsPerStream
+          const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
+          const streamProducts = demoProducts.slice(startIdx, endIdx)
 
-    try {
-      const userId = localStorage.getItem('userId')
-      const response = await axios.post('/api/cart', {
-        userId,
-        productId: currentProduct.productId,
-        quantity,
-        color: selectedColor,
-        size: selectedSize
-      })
-
-      if (response.data.success) {
-        alert('장바구니에 추가되었습니다!')
-        setShowProductSheet(false)
-      }
-    } catch (error) {
-      console.error('[LivePageV2] Add to cart failed:', error)
-      alert('장바구니 추가에 실패했습니다.')
-    }
-  }
-
-  const handleCheckout = async () => {
-    if (!currentProduct) {
-      alert('상품 정보를 불러오는 중입니다.')
-      return
-    }
-
-    if (!isLoggedIn) {
-      alert('로그인이 필요합니다.')
-      window.location.href = '/api/auth/kakao'
-      return
-    }
-
-    // Navigate to checkout with product data
-    navigate('/checkout', {
-      state: {
-        items: [{
-          productId: currentProduct.productId,
-          name: currentProduct.name,
-          price: currentProduct.price,
-          quantity,
-          color: selectedColor,
-          size: selectedSize,
-          image: currentProduct.image
-        }]
-      }
-    })
-  }
-
-  const sendChatMessage = async () => {
-    if (!newMessage.trim() || !streamId || sendingMessage || !firebaseInitialized) return
-
-    const messageText = newMessage.trim()
-    setNewMessage('')
-    setSendingMessage(true)
-
-    try {
-      const userId = localStorage.getItem('userId') || 'anonymous'
-      const userName = localStorage.getItem('userName') || '익명'
-      
-      // Firebase에 메시지 전송
-      if (chatRefFirebase.current) {
-        await chatRefFirebase.current.push({
-          username: maskUserName(userName),
-          text: messageText,
-          timestamp: Date.now(),
-          userId: userId,
-          isSystem: false
+          streamProducts.forEach((product) => {
+            reelsData.push({
+              stream: stream,
+              product: product,
+            })
+          })
         })
-        console.log('[LivePageV2] Message sent to Firebase')
+
+        setReels(reelsData)
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('[LivePageV2] Failed to send message:', error)
-      alert('메시지 전송에 실패했습니다.')
-    } finally {
-      setSendingMessage(false)
     }
-  }
 
-  const maskUserName = (name: string): string => {
-    if (!name || name === '익명') return '익명'
-    if (name.length === 1) return name
-    if (name.length === 2) return name[0] + '*'
-    return name[0] + '*'.repeat(name.length - 1)
-  }
+    loadReels()
+  }, [streamId])
 
-  // ============================================
-  // Loading State
-  // ============================================
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
@@ -644,426 +909,32 @@ export default function LivePageV2() {
     )
   }
 
-  if (!stream) {
+  if (reels.length === 0) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-xl">스트림을 찾을 수 없습니다</div>
+        <div className="text-white text-xl">No reels available</div>
       </div>
     )
   }
 
-  // ============================================
-  // Main Render
-  // ============================================
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
-      {/* ============================================ */}
-      {/* Top Navigation */}
-      {/* ============================================ */}
-      <div className="absolute top-0 left-0 right-0 z-50 pt-safe">
-        <div className="px-4 py-3 flex items-center justify-between">
-          {/* Left: Back button */}
-          <button
-            onClick={() => navigate(-1)}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-black/50 transition-colors"
-            aria-label="뒤로가기"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          {/* Center: LIVE badge + viewer count */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/90 backdrop-blur-md animate-blink-live">
-              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              <span className="text-white text-sm font-bold tracking-wider">LIVE</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md">
-              <Eye className="w-4 h-4 text-white" />
-              <span className="text-white text-sm font-medium">
-                {stream.viewerCount.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Right: Social icons */}
-          <div className="flex items-center gap-2">
-            <a
-              href="https://www.youtube.com/@yourhannel"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-red-500 transition-colors"
-              aria-label="YouTube"
-            >
-              <Youtube className="w-5 h-5" />
-            </a>
-            <a
-              href="https://www.instagram.com/youraccount"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-pink-500 transition-colors"
-              aria-label="Instagram"
-            >
-              <Instagram className="w-5 h-5" />
-            </a>
-            <button
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white hover:bg-yellow-500 transition-colors"
-              aria-label="KakaoTalk"
-              onClick={() => window.open('https://open.kakao.com/yourlink', '_blank')}
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 01-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================ */}
-      {/* Video Player */}
-      {/* ============================================ */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black">
-        {stream.videoUrl ? (
-          <div className="w-full h-full relative">
-            {/* YouTube Player Container */}
-            <div
-              id="youtube-player"
-              className="absolute inset-0 w-full h-full"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-              }}
-            />
-            
-            {/* Mute/Unmute Button */}
-            <button
-              onClick={() => {
-                setMuted(!muted)
-                if (playerRef.current) {
-                  if (muted) {
-                    playerRef.current.unMute()
-                  } else {
-                    playerRef.current.mute()
-                  }
-                }
-              }}
-              className="absolute bottom-40 left-4 z-30 w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/50 transition-colors"
-              aria-label={muted ? '음소거 해제' : '음소거'}
-            >
-              {muted ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-              )}
-            </button>
-          </div>
-        ) : (
-          <div className="text-white text-center">
-            <div className="text-6xl mb-4">📡</div>
-            <p className="text-xl">스트림 준비 중...</p>
-          </div>
-        )}
-      </div>
-
-      {/* ============================================ */}
-      {/* Right Side Action Buttons */}
-      {/* ============================================ */}
-      <div className="absolute right-4 bottom-32 z-40 flex flex-col items-center gap-6">
-        {/* Like button */}
-        <button
-          onClick={handleLike}
-          className="flex flex-col items-center gap-1 group"
-          aria-label="좋아요"
-        >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center group-hover:bg-red-500/50 transition-all">
-            <Heart
-              className={`w-6 h-6 transition-all ${
-                isLiked ? 'fill-red-500 text-red-500 scale-110' : 'text-white'
-              }`}
-            />
-          </div>
-          <span className="text-white text-xs font-medium drop-shadow-lg">
-            {likes >= 1000 ? `${(likes / 1000).toFixed(1)}K` : likes}
-          </span>
-        </button>
-
-        {/* Comment button */}
-        <button
-          className="flex flex-col items-center gap-1 group"
-          aria-label="댓글"
-        >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center group-hover:bg-blue-500/50 transition-all">
-            <MessageCircle className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-xs font-medium drop-shadow-lg">
-            {messages.length}
-          </span>
-        </button>
-
-        {/* Share button */}
-        <button
-          onClick={handleShare}
-          className="flex flex-col items-center gap-1 group"
-          aria-label="공유"
-        >
-          <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center group-hover:bg-green-500/50 transition-all">
-            <Share2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-white text-xs font-medium drop-shadow-lg">공유</span>
-        </button>
-      </div>
-
-      {/* ============================================ */}
-      {/* Bottom Product Info & Chat */}
-      {/* ============================================ */}
-      <div className="absolute bottom-0 left-0 right-0 z-40 pb-safe">
-        {/* Chat messages */}
-        <div className="px-4 mb-3 max-h-64 overflow-y-auto no-scrollbar">
-          <div className="space-y-2">
-            {messages.slice(-5).map((msg) => (
-              <div
-                key={msg.id}
-                className="inline-block px-3 py-2 rounded-2xl bg-black/40 backdrop-blur-md animate-fade-in"
-              >
-                <span className="text-white font-medium text-sm drop-shadow-lg">
-                  {maskUserName(msg.userName || msg.username || '익명')}:
-                </span>
-                <span className="text-white/90 text-sm ml-2 drop-shadow-lg">
-                  {msg.message || msg.text || ''}
-                </span>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-        </div>
-
-        {/* Chat input (optional - can be enabled later) */}
-        {isLoggedIn && (
-          <div className="px-4 mb-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !sendingMessage) {
-                    sendChatMessage()
-                  }
-                }}
-                placeholder="채팅 메시지를 입력하세요..."
-                className="flex-1 px-4 py-2 rounded-full bg-black/40 backdrop-blur-md text-white placeholder-white/50 border border-white/10 focus:outline-none focus:border-white/30"
-                disabled={sendingMessage}
-              />
-              <button
-                onClick={sendChatMessage}
-                disabled={sendingMessage || !newMessage.trim()}
-                className="px-4 py-2 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                전송
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Product info bar */}
-        {currentProduct && (
-          <div className="mx-4 mb-4 rounded-2xl bg-black/50 backdrop-blur-xl border border-white/10 overflow-hidden">
-            <div className="p-4">
-              <div className="flex items-center gap-3">
-                {/* Product image */}
-                <img
-                  src={currentProduct.image}
-                  alt={currentProduct.name}
-                  className="w-16 h-16 rounded-xl object-cover"
-                />
-                
-                {/* Product info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-bold text-base truncate drop-shadow-lg">
-                    {currentProduct.name}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-red-400 font-bold text-lg drop-shadow-lg">
-                      ₩{currentProduct.price.toLocaleString()}
-                    </span>
-                    {currentProduct.originalPrice && (
-                      <span className="text-gray-400 text-sm line-through drop-shadow-lg">
-                        ₩{currentProduct.originalPrice.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowProductSheet(true)}
-                    className="px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-md text-white font-medium text-sm hover:bg-white/20 transition-all border border-white/20"
-                  >
-                    담기
-                  </button>
-                  <button
-                    onClick={handleCheckout}
-                    className="px-4 py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-all shadow-lg shadow-red-500/30"
-                  >
-                    구매하기
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ============================================ */}
-      {/* Product Sheet Modal */}
-      {/* ============================================ */}
-      {showProductSheet && currentProduct && (
-        <div className="fixed inset-0 z-50 flex items-end">
-          {/* Backdrop */}
+    <main className="relative h-dvh w-full overflow-hidden bg-black">
+      <TopNav viewers={reels[activeIndex]?.stream.viewerCount || 0} />
+      <div
+        ref={containerRef}
+        className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
+      >
+        {reels.map((reel, index) => (
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-overlay-in"
-            onClick={() => setShowProductSheet(false)}
-          />
-          
-          {/* Sheet */}
-          <div className="relative w-full max-h-[80vh] bg-white rounded-t-3xl animate-sheet-up overflow-y-auto">
-            <div className="p-6">
-              {/* Handle bar */}
-              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6" />
-              
-              {/* Product image */}
-              <img
-                src={currentProduct.image}
-                alt={currentProduct.name}
-                className="w-full h-64 object-cover rounded-2xl mb-6"
-              />
-              
-              {/* Product name */}
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentProduct.name}
-              </h2>
-              
-              {/* Price */}
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-3xl font-bold text-red-500">
-                  ₩{currentProduct.price.toLocaleString()}
-                </span>
-                {currentProduct.originalPrice && (
-                  <span className="text-lg text-gray-400 line-through">
-                    ₩{currentProduct.originalPrice.toLocaleString()}
-                  </span>
-                )}
-              </div>
-              
-              {/* Description */}
-              {currentProduct.description && (
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  {currentProduct.description}
-                </p>
-              )}
-              
-              {/* Color selector */}
-              {stream.products?.[0]?.colors && stream.products[0].colors.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    색상 선택
-                  </label>
-                  <div className="flex gap-2">
-                    {stream.products[0].colors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => setSelectedColor(color)}
-                        className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                          selectedColor === color
-                            ? 'border-red-500 bg-red-50 text-red-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        {color}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Size selector */}
-              {stream.products?.[0]?.sizes && stream.products[0].sizes.length > 0 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    사이즈 선택
-                  </label>
-                  <div className="flex gap-2">
-                    {stream.products[0].sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                          selectedSize === size
-                            ? 'border-red-500 bg-red-50 text-red-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Quantity selector */}
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  수량
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 rounded-lg border-2 border-gray-300 flex items-center justify-center text-gray-700 hover:border-gray-400 transition-colors"
-                  >
-                    −
-                  </button>
-                  <span className="text-xl font-medium w-12 text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="w-10 h-10 rounded-lg border-2 border-gray-300 flex items-center justify-center text-gray-700 hover:border-gray-400 transition-colors"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              
-              {/* Action buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={handleAddToCart}
-                  className="flex-1 py-4 rounded-xl bg-gray-100 text-gray-900 font-bold text-lg hover:bg-gray-200 transition-colors"
-                >
-                  <ShoppingCart className="w-5 h-5 inline mr-2" />
-                  장바구니에 담기
-                </button>
-                <button
-                  onClick={handleCheckout}
-                  className="flex-1 py-4 rounded-xl bg-red-500 text-white font-bold text-lg hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
-                >
-                  바로 구매하기
-                </button>
-              </div>
-            </div>
+            key={`${reel.stream.id}-${reel.product.id}`}
+            ref={reelRefs}
+            data-index={index}
+            className="h-dvh w-full"
+          >
+            <ReelCard reel={reel} isActive={activeIndex === index} />
           </div>
-        </div>
-      )}
-    </div>
+        ))}
+      </div>
+    </main>
   )
 }
