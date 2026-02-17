@@ -46,6 +46,13 @@ export default function ProductDetailPage() {
   useEffect(() => {
     loadProduct()
     loadOptions()
+    
+    // 로그인 전 실제 출발지 저장 (로그인/콜백 페이지가 아닌 경우만)
+    const referrer = document.referrer
+    if (referrer && !referrer.includes('/login') && !referrer.includes('/auth/kakao')) {
+      const referrerPath = new URL(referrer).pathname
+      sessionStorage.setItem('productDetailReferrer', referrerPath)
+    }
   }, [id])
 
   async function loadOptions() {
@@ -244,19 +251,18 @@ export default function ProductDetailPage() {
         <div className="flex items-center justify-between px-4 py-3">
           <button 
             onClick={() => {
-              // Check if there's a previous page in history
-              if (window.history.length > 1) {
-                // Check if the previous page was login/kakao callback
-                const referrer = document.referrer
-                if (referrer.includes('/login') || referrer.includes('/auth/kakao/callback')) {
-                  // Go to home instead
-                  navigate('/')
-                } else {
-                  // Go back normally
-                  navigate(-1)
-                }
+              // 세션 스토리지에서 실제 출발지 확인
+              const actualReferrer = sessionStorage.getItem('productDetailReferrer')
+              
+              if (actualReferrer && actualReferrer !== '/login' && !actualReferrer.includes('/auth/kakao')) {
+                // 로그인 전 실제 출발지가 있으면 그곳으로
+                navigate(actualReferrer)
+                sessionStorage.removeItem('productDetailReferrer')
+              } else if (window.history.length > 2) {
+                // 히스토리가 충분하면 뒤로가기 (로그인/콜백 페이지 건너뛰기)
+                navigate(-2)
               } else {
-                // No history, go to home
+                // 히스토리 없으면 홈으로
                 navigate('/')
               }
             }}
