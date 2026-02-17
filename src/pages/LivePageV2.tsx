@@ -159,7 +159,7 @@ export default function LivePageV2() {
             streamerId: 1,
             streamerName: '데모 스트리머',
             streamerAvatar: 'https://via.placeholder.com/100',
-            videoUrl: 'https://www.youtube.com/watch?v=jfKfPfyJRdk', // Demo YouTube video
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Demo YouTube video (embeddable)
             status: 'live',
             viewerCount: 1234,
             products: []
@@ -197,7 +197,7 @@ export default function LivePageV2() {
           streamerId: 1,
           streamerName: '데모 스트리머',
           streamerAvatar: 'https://via.placeholder.com/100',
-          videoUrl: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
+          videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
           status: 'live',
           viewerCount: 1234,
           products: []
