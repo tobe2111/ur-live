@@ -1145,11 +1145,13 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
               </h3>
               <div className="flex items-baseline gap-1.5 mt-0.5">
                 <span className="text-[14px] font-extrabold text-red-400 drop-shadow-md">
-                  ${product.price.toFixed(2)}
+                  ${(product.price || 0).toFixed(2)}
                 </span>
-                <span className="text-[10px] text-white/40 line-through">
-                  ${product.originalPrice.toFixed(2)}
-                </span>
+                {(product.originalPrice || product.original_price) && (
+                  <span className="text-[10px] text-white/40 line-through">
+                    ${(product.originalPrice || product.original_price || 0).toFixed(2)}
+                  </span>
+                )}
               </div>
             </button>
 
