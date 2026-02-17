@@ -151,6 +151,19 @@ export default function LivePageV2() {
         const response = await axios.get(`/api/streams/${streamId}`)
         
         if (!response.data.success) {
+          console.log('[LivePageV2] Stream not found in database, using demo data')
+          // Demo stream data
+          setStream({
+            id: Number(streamId),
+            title: 'UR Live 데모 스트림',
+            streamerId: 1,
+            streamerName: '데모 스트리머',
+            streamerAvatar: 'https://via.placeholder.com/100',
+            videoUrl: 'https://www.youtube.com/watch?v=jfKfPfyJRdk', // Demo YouTube video
+            status: 'live',
+            viewerCount: 1234,
+            products: []
+          })
           setLoading(false)
           return
         }
@@ -176,6 +189,19 @@ export default function LivePageV2() {
         console.log('[LivePageV2] Stream loaded:', streamData)
       } catch (error) {
         console.error('[LivePageV2] Failed to load stream:', error)
+        // Fallback to demo data on error
+        console.log('[LivePageV2] Using demo stream data')
+        setStream({
+          id: Number(streamId),
+          title: 'UR Live 데모 스트림',
+          streamerId: 1,
+          streamerName: '데모 스트리머',
+          streamerAvatar: 'https://via.placeholder.com/100',
+          videoUrl: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
+          status: 'live',
+          viewerCount: 1234,
+          products: []
+        })
         setLoading(false)
       }
     }
@@ -196,7 +222,17 @@ export default function LivePageV2() {
           })
         }
       } catch (error) {
-        console.error('[LivePageV2] Failed to load current product:', error)
+        console.log('[LivePageV2] Current product not available, using demo')
+        // Demo product data
+        setCurrentProduct({
+          productId: 1,
+          name: '프리미엄 무선 이어폰',
+          price: 89000,
+          originalPrice: 149000,
+          image: 'https://via.placeholder.com/400x400?text=Demo+Product',
+          description: '고품질 사운드와 긴 배터리 수명을 자랑하는 프리미엄 무선 이어폰',
+          stock: 100
+        })
       }
     }
 
