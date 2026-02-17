@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus } from 'lucide-react'
+import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send } from 'lucide-react'
 import axios from 'axios'
 import { getUserId } from '@/utils/auth'
 import api from '@/lib/api'
+import { useModal } from '@/components/CustomModal'
 
 // ============================================
 // TypeScript Interfaces
@@ -294,13 +295,13 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 h-[34px]">
         {sellerLinks?.youtube && (
           <a
             href={sellerLinks.youtube}
             target="_blank"
             rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity"
+            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
             aria-label="YouTube"
           >
             <YouTubeIcon className="h-[18px] w-[18px] text-white" />
@@ -311,7 +312,7 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
             href={sellerLinks.instagram}
             target="_blank"
             rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity"
+            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
             aria-label="Instagram"
           >
             <InstagramIcon className="h-[18px] w-[18px] text-white" />
@@ -322,7 +323,7 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
             href={sellerLinks.kakao}
             target="_blank"
             rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity"
+            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
             aria-label="KakaoTalk"
           >
             <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
@@ -649,12 +650,26 @@ function ProductSheet({
 
 // ReelCard Component
 function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
+  const navigate = useNavigate()
+  const { showAlert } = useModal()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
+  
+  // Cart & Purchase state
+  const [addingToCart, setAddingToCart] = useState(false)
+  const [checkingOut, setCheckingOut] = useState(false)
+  const [showNotification, setShowNotification] = useState(false)
+  const [notificationText, setNotificationText] = useState('')
+  const [currentProduct, setCurrentProduct] = useState(reel.product)
+  const [isLoggedIn, setIsLoggedIn] = useState(!!getUserId())
+  
+  // Chat input
+  const [chatMessage, setChatMessage] = useState('')
+  const [sendingMessage, setSendingMessage] = useState(false)
 
   const { product, stream } = reel
 
@@ -758,6 +773,274 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
     }
   }
 
+  // ============================================
+  // Real-time Product Updates (Poll every 3s)
+  // ============================================
+  useEffect(() => {
+    const loadCurrentProduct = async () => {
+      try {
+        const response = await axios.get(`/api/streams/${stream.id}/current-product`)
+        if (response.data.success && response.data.data) {
+          setCurrentProduct(response.data.data.product)
+        }
+      } catch (error) {
+        // Silently fail - keep showing current product
+      }
+    }
+
+    // Initial load
+    loadCurrentProduct()
+
+    // Poll every 3 seconds
+    const intervalId = setInterval(loadCurrentProduct, 3000)
+
+    return () => clearInterval(intervalId)
+  }, [stream.id])
+
+  // ============================================
+  // Mask Username Helper
+  // ============================================
+  function maskUserName(name: string): string {
+    if (!name || name.length === 0) return '익명'
+    if (name === '익명' || name === 'Anonymous') return name
+    
+    if (name.length === 1) {
+      return name + '*'
+    } else if (name.length === 2) {
+      return name[0] + '*'
+    } else if (name.length === 3) {
+      return name[0] + '*' + name[2]
+    } else {
+      return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
+    }
+  }
+
+  // ============================================
+  // Kakao Login Handler
+  // ============================================
+  async function handleKakaoLogin() {
+    try {
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      navigate('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
+    } catch (error) {
+      console.error('[Login] Exception:', error)
+      showAlert('로그인 페이지로 이동 중 오류가 발생했습니다.', 'error', '오류 발생')
+    }
+  }
+
+  // ============================================
+  // Add to Cart Handler
+  // ============================================
+  async function handleAddToCart() {
+    if (!currentProduct) return
+    if (addingToCart) return // Prevent double-click
+    
+    // Check stock
+    if ((currentProduct as any).stock === 0) {
+      setNotificationText('품절된 상품입니다')
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 2000)
+      return
+    }
+
+    // Check login first
+    if (!isLoggedIn) {
+      // Save temp cart item
+      const tempCart = {
+        productId: currentProduct.id,
+        quantity: 1,
+        priceSnapshot: currentProduct.price,
+        liveStreamId: stream.id,
+        productName: currentProduct.name,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('tempCartItem', JSON.stringify(tempCart))
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      
+      showAlert('로그인이 필요합니다!', 'warning', '로그인 필요')
+      handleKakaoLogin()
+      return
+    }
+
+    setAddingToCart(true)
+    try {
+      const userId = getUserId()
+      
+      if (!userId) {
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        
+        const tempCartData = {
+          productId: currentProduct.id,
+          productName: currentProduct.name,
+          quantity: 1,
+          priceSnapshot: currentProduct.price,
+          liveStreamId: stream.id
+        }
+        localStorage.setItem('tempCartItem', JSON.stringify(tempCartData))
+        
+        showAlert('로그인이 필요합니다. 로그인 후 자동으로 장바구니에 담아드립니다.', 'info', '로그인 필요')
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
+        return
+      }
+      
+      // POST to server
+      await axios.post('/api/cart', {
+        userId: userId,
+        productId: currentProduct.id,
+        quantity: 1,
+        priceSnapshot: currentProduct.price,
+        liveStreamId: stream.id
+      })
+      
+      // Set flag
+      localStorage.setItem('hasCartItems', 'true')
+
+      // Show notification
+      setNotificationText(`${currentProduct.name}을(를) 담았습니다!`)
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 2000)
+
+      // Add system message to Firebase chat
+      try {
+        // @ts-ignore
+        if (typeof window.firebase !== 'undefined' && window.firebase) {
+          // @ts-ignore
+          const database = window.firebase.database()
+          const chatRef = database.ref(`chats/stream${stream.id}`)
+          
+          const userName = localStorage.getItem('user_name') || '익명'
+          const maskedName = maskUserName(userName)
+          
+          chatRef.push({
+            username: '🎉 시스템',
+            text: `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
+            // @ts-ignore
+            timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+            isSystem: true
+          })
+        }
+      } catch (error) {
+        console.error('시스템 메시지 전송 실패:', error)
+      }
+    } catch (error: any) {
+      console.error('Failed to add to cart:', error)
+      const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
+      
+      if (errorMessage.includes('Insufficient stock') || errorMessage.includes('재고가 부족')) {
+        setNotificationText('재고가 부족합니다')
+        setShowNotification(true)
+        setTimeout(() => setShowNotification(false), 2500)
+      } else {
+        showAlert(errorMessage, 'error', '장바구니 추가 실패')
+      }
+    } finally {
+      setAddingToCart(false)
+    }
+  }
+
+  // ============================================
+  // Checkout Handler
+  // ============================================
+  async function handleCheckout() {
+    if (checkingOut) return // Prevent double-click
+    
+    // Check login FIRST
+    if (!isLoggedIn) {
+      showAlert('로그인이 필요합니다!', 'warning', '로그인 필요')
+      handleKakaoLogin()
+      return
+    }
+    
+    // Check if cart has items
+    const hasCartItems = localStorage.getItem('hasCartItems')
+    
+    if (!hasCartItems || hasCartItems !== 'true') {
+      showAlert('상품을 먼저 담아주세요!', 'info', '상품 담기')
+      return
+    }
+    
+    setCheckingOut(true)
+    try {
+      const userId = getUserId()
+      
+      if (!userId) {
+        localStorage.setItem('loginReturnUrl', window.location.pathname)
+        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+        setCheckingOut(false)
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1500)
+        return
+      }
+      
+      const response = await api.get('/api/cart')
+      console.log('[Checkout] Server cart response:', response.data)
+      
+      const cartData = response.data?.data || response.data
+      if (!cartData || !Array.isArray(cartData) || cartData.length === 0) {
+        showAlert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!', 'info', '장바구니 비어있음')
+        localStorage.removeItem('hasCartItems')
+        setCheckingOut(false)
+        return
+      }
+      
+      console.log('[Checkout] Navigating to cart with', cartData.length, 'items')
+      navigate('/cart')
+      
+    } catch (error: any) {
+      console.error('Failed to check cart:', error)
+      const errorMessage = error.response?.data?.error || error.message || '장바구니 확인에 실패했습니다.'
+      showAlert(errorMessage, 'error', '결제 실패')
+    } finally {
+      setCheckingOut(false)
+    }
+  }
+
+  // ============================================
+  // Send Chat Message
+  // ============================================
+  async function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!chatMessage.trim() || sendingMessage) return
+
+    setSendingMessage(true)
+    try {
+      const userId = getUserId()
+      if (!userId) {
+        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+        setSendingMessage(false)
+        return
+      }
+
+      const userName = localStorage.getItem('user_name') || '익명'
+
+      // @ts-ignore
+      if (typeof window.firebase !== 'undefined' && window.firebase) {
+        // @ts-ignore
+        const database = window.firebase.database()
+        const chatRef = database.ref(`chats/stream${stream.id}`)
+        
+        await chatRef.push({
+          username: userName,
+          text: chatMessage.trim(),
+          // @ts-ignore
+          timestamp: window.firebase.database.ServerValue.TIMESTAMP,
+          isSystem: false
+        })
+
+        setChatMessage('')
+        setChatModalOpen(false)
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      showAlert('메시지 전송에 실패했습니다.', 'error', '전송 실패')
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
       {/* Background image */}
@@ -813,6 +1096,7 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
             {/* Chat + Share buttons - right side */}
             <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
               <button
+                onClick={() => setChatModalOpen(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
                 aria-label="Chat"
               >
@@ -824,6 +1108,11 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
                 onClick={() => {
                   if (navigator.share) {
                     navigator.share({ title: product.name, url: window.location.href })
+                  } else {
+                    navigator.clipboard?.writeText(window.location.href)
+                    setNotificationText('링크가 복사되었습니다!')
+                    setShowNotification(true)
+                    setTimeout(() => setShowNotification(false), 2000)
                   }
                 }}
               >
@@ -854,20 +1143,28 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
 
             {/* Basket button */}
             <button
-              onClick={() => setSheetOpen(true)}
-              className="flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95"
+              onClick={handleAddToCart}
+              disabled={addingToCart}
+              className={`flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95 ${
+                addingToCart ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               aria-label="Add to basket"
             >
               <ShoppingBag className="h-3.5 w-3.5 text-white/80" />
-              <span className="text-[11px] font-bold text-white/90">담기</span>
+              <span className="text-[11px] font-bold text-white/90">
+                {addingToCart ? '담는 중...' : '담기'}
+              </span>
             </button>
 
             {/* Buy button */}
             <button
-              onClick={() => setSheetOpen(true)}
-              className="shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95"
+              onClick={handleCheckout}
+              disabled={checkingOut}
+              className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
+                checkingOut ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              구매하기
+              {checkingOut ? '확인 중...' : '구매하기'}
             </button>
           </div>
         </div>
@@ -878,6 +1175,59 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
         <div className="pointer-events-auto">
           <ProductSheet product={product} onClose={() => setSheetOpen(false)} />
         </div>
+      )}
+
+      {/* Toast Notification */}
+      {showNotification && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-fade-in">
+          <div className="rounded-xl bg-black/90 backdrop-blur-md px-5 py-3 text-sm font-bold text-white shadow-2xl border border-white/10">
+            {notificationText}
+          </div>
+        </div>
+      )}
+
+      {/* Chat Modal */}
+      {chatModalOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
+            onClick={() => setChatModalOpen(false)}
+          />
+          
+          {/* Chat Input Sheet */}
+          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">메시지 보내기</h3>
+                <button
+                  onClick={() => setChatModalOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
+                >
+                  <X className="h-4 w-4 text-gray-800" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSendMessage} className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  placeholder="메시지를 입력하세요..."
+                  className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-red-500 focus:outline-none"
+                  disabled={sendingMessage}
+                />
+                <button
+                  type="submit"
+                  disabled={!chatMessage.trim() || sendingMessage}
+                  className="flex items-center justify-center rounded-xl bg-red-500 px-6 py-3 text-white font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
