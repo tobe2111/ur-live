@@ -12,7 +12,7 @@ export default function IntroducePage() {
     }
   }, [navigate])
   
-  // PC에서는 아무것도 렌더링하지 않음
-  // GripFrameLayout이 자동으로 브랜딩 + iframe을 추가함
-  return null
+  // PC에서는 빈 div 렌더링 (GripFrameLayout이 감싸서 처리)
+  // null을 리턴하면 FrameWrapper가 작동하지 않음
+  return <div className="w-full h-full" />
 }
