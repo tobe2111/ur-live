@@ -19,6 +19,9 @@ interface Stream {
   status: 'live' | 'ended' | 'scheduled'
   viewerCount: number
   products?: Product[]
+  seller_youtube?: string
+  seller_instagram?: string
+  seller_kakao?: string
 }
 
 interface Product {
@@ -1274,55 +1277,77 @@ export default function LivePageV2() {
       try {
         setLoading(true)
 
-        // Try to load real streams
-        const streamsResponse = await axios.get('/api/streams')
-        let streams: Stream[] = []
-
-        if (streamsResponse.data.success && streamsResponse.data.data.length > 0) {
-          streams = streamsResponse.data.data.slice(0, 3)
-        } else {
-          // Use demo streams
-          streams = demoStreams
+        // Load specific stream by ID from URL parameter
+        let stream: Stream | null = null
+        
+        if (streamId) {
+          try {
+            const streamResponse = await axios.get(`/api/streams/${streamId}`)
+            if (streamResponse.data.success && streamResponse.data.data) {
+              stream = streamResponse.data.data
+              console.log('[LivePageV2] Loaded stream:', stream)
+            }
+          } catch (error) {
+            console.log('[LivePageV2] Stream API failed, using demo data')
+          }
         }
 
-        // Map products to streams (distribute 10 products across 3 streams)
-        const reelsData: ReelData[] = []
-        const productsPerStream = Math.ceil(demoProducts.length / streams.length)
+        // Fallback to demo stream if API fails
+        if (!stream) {
+          const demoStreamIndex = streamId ? parseInt(streamId) - 1 : 0
+          stream = demoStreams[demoStreamIndex] || demoStreams[0]
+          console.log('[LivePageV2] Using demo stream:', stream)
+        }
 
-        streams.forEach((stream, streamIndex) => {
+        // Load products for this stream
+        let products: Product[] = []
+        
+        try {
+          const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
+          if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
+            products = productsResponse.data.data
+            console.log('[LivePageV2] Loaded products:', products.length)
+          }
+        } catch (error) {
+          console.log('[LivePageV2] Products API failed, using demo products')
+        }
+
+        // Fallback to demo products
+        if (products.length === 0) {
+          // Distribute demo products based on stream ID
+          const streamIndex = stream.id - 1
+          const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
           const startIdx = streamIndex * productsPerStream
           const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
-          const streamProducts = demoProducts.slice(startIdx, endIdx)
+          products = demoProducts.slice(startIdx, endIdx)
+          console.log('[LivePageV2] Using demo products:', products.length)
+        }
 
-          streamProducts.forEach((product) => {
-            reelsData.push({
-              stream: stream,
-              product: product,
-            })
-          })
-        })
+        // Create reels from stream + products
+        const reelsData: ReelData[] = products.map((product) => ({
+          stream: stream!,
+          product: product,
+        }))
 
         setReels(reelsData)
         setLoading(false)
       } catch (error) {
         console.error('[LivePageV2] Failed to load reels:', error)
         
-        // Fallback to demo data
-        const reelsData: ReelData[] = []
+        // Complete fallback to demo data
+        const demoStreamIndex = streamId ? parseInt(streamId) - 1 : 0
+        const stream = demoStreams[demoStreamIndex] || demoStreams[0]
+        
+        const streamIndex = stream.id - 1
         const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
+        const startIdx = streamIndex * productsPerStream
+        const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
+        const products = demoProducts.slice(startIdx, endIdx)
 
-        demoStreams.forEach((stream, streamIndex) => {
-          const startIdx = streamIndex * productsPerStream
-          const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
-          const streamProducts = demoProducts.slice(startIdx, endIdx)
-
-          streamProducts.forEach((product) => {
-            reelsData.push({
-              stream: stream,
-              product: product,
-            })
-          })
-        })
+        const reelsData: ReelData[] = products.map((product) => ({
+          stream: stream,
+          product: product,
+        }))
 
         setReels(reelsData)
         setLoading(false)
@@ -1353,9 +1378,9 @@ export default function LivePageV2() {
       <TopNav 
         viewers={reels[activeIndex]?.stream.viewerCount || 0}
         sellerLinks={{
-          youtube: reels[activeIndex]?.stream.streamerName ? 'https://youtube.com' : undefined,
-          instagram: reels[activeIndex]?.stream.streamerName ? 'https://instagram.com' : undefined,
-          kakao: reels[activeIndex]?.stream.streamerName ? 'https://pf.kakao.com' : undefined,
+          youtube: (reels[activeIndex]?.stream as any)?.seller_youtube || undefined,
+          instagram: (reels[activeIndex]?.stream as any)?.seller_instagram || undefined,
+          kakao: (reels[activeIndex]?.stream as any)?.seller_kakao || undefined,
         }}
       />
       <div
@@ -1367,7 +1392,7 @@ export default function LivePageV2() {
             key={`${reel.stream.id}-${reel.product.id}`}
             ref={reelRefs}
             data-index={index}
-            className="h-dvh w-full"
+            className="h-dvh w-full snap-start snap-always"
           >
             <ReelCard reel={reel} isActive={activeIndex === index} />
           </div>
