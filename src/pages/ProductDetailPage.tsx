@@ -45,7 +45,6 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     loadProduct()
-    loadOptions()
     
     // 로그인 전 실제 출발지 저장 (로그인/콜백 페이지가 아닌 경우만)
     const referrer = document.referrer
@@ -55,23 +54,14 @@ export default function ProductDetailPage() {
     }
   }, [id])
 
-  async function loadOptions() {
-    try {
-      const response = await api.get(`/api/seller/products/${id}/options`)
-      if (response.data.success) {
-        setOptions(response.data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to load options:', err)
-    }
-  }
-
   async function loadProduct() {
     try {
       setLoading(true)
+      // Public API - 상품 정보와 옵션을 함께 조회
       const response = await api.get(`/api/products/${id}`)
-      if (response.data.success && response.data.data?.product) {
+      if (response.data.success && response.data.data) {
         setProduct(response.data.data.product)
+        setOptions(response.data.data.options || [])
       } else {
         setError('상품을 불러올 수 없습니다.')
       }
