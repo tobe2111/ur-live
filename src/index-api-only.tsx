@@ -627,37 +627,48 @@ app.get('/api/products', async (c) => {
     const category = c.req.query('category'); // 카테고리 필터
     const sort = c.req.query('sort') || 'recent'; // recent, popular, price_low, price_high
     const search = c.req.query('search'); // 검색어
+    const featured = c.req.query('featured'); // featured seller only (true/false)
 
-    // Build query
-    let whereConditions = ['is_active = 1'];
+    // Build query - JOIN with sellers table to check is_featured_seller
+    let whereConditions = ['p.is_active = 1'];
     const bindings: any[] = [];
 
+    // Featured seller filter (for "Ur 특가" section)
+    if (featured === 'true') {
+      whereConditions.push('s.is_featured_seller = 1');
+    }
+
     if (category) {
-      whereConditions.push('category = ?');
+      whereConditions.push('p.category = ?');
       bindings.push(category);
     }
 
     if (search) {
-      whereConditions.push('(name LIKE ? OR description LIKE ?)');
+      whereConditions.push('(p.name LIKE ? OR p.description LIKE ?)');
       bindings.push(`%${search}%`, `%${search}%`);
     }
 
     const whereClause = whereConditions.join(' AND ');
 
     // Sort order
-    let orderBy = 'created_at DESC'; // default: recent
+    let orderBy = 'p.created_at DESC'; // default: recent
     if (sort === 'popular') {
-      orderBy = 'sold_count DESC, created_at DESC';
+      orderBy = 'p.sold_count DESC, p.created_at DESC';
     } else if (sort === 'price_low') {
-      orderBy = 'price ASC';
+      orderBy = 'p.price ASC';
     } else if (sort === 'price_high') {
-      orderBy = 'price DESC';
+      orderBy = 'p.price DESC';
     }
 
-    // Query products
+    // Query products with seller info
     const products = await DB.prepare(`
-      SELECT id, name, price, discount_rate, image_url, category, sold_count, rating, stock, created_at
-      FROM products
+      SELECT 
+        p.id, p.name, p.price, p.original_price, p.discount_rate, 
+        p.image_url, p.category, p.sold_count, p.rating, p.stock, 
+        p.created_at, p.seller_id,
+        s.name as seller_name, s.is_featured_seller
+      FROM products p
+      LEFT JOIN sellers s ON p.seller_id = s.id
       WHERE ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ? OFFSET ?
@@ -665,7 +676,10 @@ app.get('/api/products', async (c) => {
 
     // Count total
     const countResult = await DB.prepare(`
-      SELECT COUNT(*) as total FROM products WHERE ${whereConditions.join(' AND ')}
+      SELECT COUNT(*) as total 
+      FROM products p
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE ${whereClause}
     `).bind(...bindings).first();
 
     return c.json<ApiResponse>({
@@ -1280,6 +1294,157 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
       data: {
         product,
         options: options.results,
+      },
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// Admin: 셀러별 매출 현황 조회
+app.get('/api/admin/sales/sellers', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    // Admin auth check (should be implemented)
+    // const userId = getUserIdFromToken(c)
+    // if (!isAdmin(userId)) return unauthorized response
+
+    const startDate = c.req.query('start_date'); // YYYY-MM-DD
+    const endDate = c.req.query('end_date'); // YYYY-MM-DD
+    const sellerId = c.req.query('seller_id'); // Optional: specific seller
+
+    let whereConditions = ["o.payment_status = 'approved'"];
+    const bindings: any[] = [];
+
+    if (startDate) {
+      whereConditions.push("date(o.created_at) >= ?");
+      bindings.push(startDate);
+    }
+
+    if (endDate) {
+      whereConditions.push("date(o.created_at) <= ?");
+      bindings.push(endDate);
+    }
+
+    if (sellerId) {
+      whereConditions.push("p.seller_id = ?");
+      bindings.push(sellerId);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    // 셀러별 매출 집계
+    const salesData = await DB.prepare(`
+      SELECT 
+        s.id as seller_id,
+        s.name as seller_name,
+        s.email as seller_email,
+        s.is_featured_seller,
+        COUNT(DISTINCT o.id) as total_orders,
+        SUM(oi.quantity) as total_items_sold,
+        SUM(oi.price * oi.quantity) as total_revenue,
+        MIN(o.created_at) as first_sale_date,
+        MAX(o.created_at) as latest_sale_date
+      FROM orders o
+      INNER JOIN order_items oi ON o.id = oi.order_id
+      INNER JOIN products p ON oi.product_id = p.id
+      INNER JOIN sellers s ON p.seller_id = s.id
+      WHERE ${whereClause}
+      GROUP BY s.id, s.name, s.email, s.is_featured_seller
+      ORDER BY total_revenue DESC
+    `).bind(...bindings).all();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: salesData.results || [],
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// Admin: 셀러별 상세 매출 내역 조회
+app.get('/api/admin/sales/details', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sellerId = c.req.query('seller_id');
+    const startDate = c.req.query('start_date');
+    const endDate = c.req.query('end_date');
+    const limit = parseInt(c.req.query('limit') || '50', 10);
+    const offset = parseInt(c.req.query('offset') || '0', 10);
+
+    let whereConditions = ["o.payment_status = 'approved'"];
+    const bindings: any[] = [];
+
+    if (sellerId) {
+      whereConditions.push("p.seller_id = ?");
+      bindings.push(sellerId);
+    }
+
+    if (startDate) {
+      whereConditions.push("date(o.created_at) >= ?");
+      bindings.push(startDate);
+    }
+
+    if (endDate) {
+      whereConditions.push("date(o.created_at) <= ?");
+      bindings.push(endDate);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    // 주문 상세 내역
+    const salesDetails = await DB.prepare(`
+      SELECT 
+        o.id as order_id,
+        o.order_number,
+        o.created_at as order_date,
+        o.total_amount,
+        s.id as seller_id,
+        s.name as seller_name,
+        p.id as product_id,
+        p.name as product_name,
+        oi.quantity,
+        oi.price as unit_price,
+        (oi.price * oi.quantity) as item_total,
+        u.name as customer_name,
+        o.live_stream_id,
+        ls.title as live_stream_title
+      FROM orders o
+      INNER JOIN order_items oi ON o.id = oi.order_id
+      INNER JOIN products p ON oi.product_id = p.id
+      INNER JOIN sellers s ON p.seller_id = s.id
+      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN live_streams ls ON o.live_stream_id = ls.id
+      WHERE ${whereClause}
+      ORDER BY o.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...bindings, limit, offset).all();
+
+    // Count total
+    const countResult = await DB.prepare(`
+      SELECT COUNT(*) as total
+      FROM orders o
+      INNER JOIN order_items oi ON o.id = oi.order_id
+      INNER JOIN products p ON oi.product_id = p.id
+      WHERE ${whereClause}
+    `).bind(...bindings).first();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        details: salesDetails.results || [],
+        total: countResult?.total || 0,
+        limit,
+        offset,
       },
     });
   } catch (err) {

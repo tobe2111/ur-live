@@ -105,7 +105,8 @@ export default function ProductGrid() {
 
   const loadProducts = async () => {
     try {
-      const response = await axios.get('/api/products?limit=6&sort=popular')
+      // Ur 특가 섹션은 featured seller 상품만 표시
+      const response = await axios.get('/api/products?limit=6&sort=popular&featured=true')
       if (response.data.success) {
         setProducts(response.data.data.products || [])
       }
