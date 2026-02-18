@@ -3,24 +3,23 @@
  * 모든 페이지에서 일관된 로그인/로그아웃 처리
  * 
  * localStorage 키 표준화:
- * - session: 세션 토큰 (primary)
- * - user_id: 사용자 ID (primary)
- * - user_name: 사용자 이름 (primary)
- * - user_email: 사용자 이메일 (primary)
- * - user_profile_image: 프로필 이미지 (primary)
- * 
- * 레거시 호환성을 위해 읽기 시에는 여러 키를 확인하지만,
- * 쓰기는 항상 표준 키로만 저장합니다.
+ * - user_session_token: 세션 토큰 (API 클라이언트와 동일)
+ * - user_id: 사용자 ID
+ * - user_name: 사용자 이름
+ * - user_email: 사용자 이메일
+ * - user_profile_image: 프로필 이미지
+ * - user_type: 사용자 타입 (user/seller/admin)
  */
 
 import { NavigateFunction } from 'react-router-dom'
 
-// 표준 localStorage 키
+// 표준 localStorage 키 (API 클라이언트와 완전 동일)
 const STORAGE_KEYS = {
-  SESSION: 'session',
+  SESSION: 'user_session_token',  // ✅ API 클라이언트와 동일
   USER_ID: 'user_id',
   USER_NAME: 'user_name',
   USER_EMAIL: 'user_email',
+  USER_TYPE: 'user_type',  // ✅ 추가
   USER_PROFILE_IMAGE: 'user_profile_image',
   LOGIN_RETURN_URL: 'loginReturnUrl',
   TEMP_CART_ITEM: 'tempCartItem',
@@ -29,6 +28,7 @@ const STORAGE_KEYS = {
 
 // 레거시 키 (읽기 전용, 호환성 유지)
 const LEGACY_KEYS = {
+  SESSION_OLD: 'session',  // ✅ 이전 키
   ACCESS_TOKEN: 'access_token',
   ACCESS_TOKEN_ALT: 'accessToken',
   USER_ID_ALT: 'userId',
@@ -37,10 +37,18 @@ const LEGACY_KEYS = {
 }
 
 /**
+ * 세션 토큰 가져오기 (레거시 키 호환)
+ */
+export function getSessionToken(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.SESSION) || 
+         localStorage.getItem(LEGACY_KEYS.SESSION_OLD)
+}
+
+/**
  * 로그인 상태 확인
  */
 export function isLoggedIn(): boolean {
-  const session = localStorage.getItem(STORAGE_KEYS.SESSION)
+  const session = getSessionToken()
   const userId = getUserId()
   
   return !!(session && userId)
@@ -167,7 +175,7 @@ export function logout(): void {
 /**
  * 사용자 정보 저장 (로그인 성공 후)
  * 
- * 표준 키로만 저장합니다. 레거시 키는 더 이상 사용하지 않습니다.
+ * API 클라이언트와 동일한 키로 저장합니다.
  * 
  * @param userId - 사용자 ID
  * @param userName - 사용자 이름
@@ -182,10 +190,11 @@ export function saveUserInfo(
   userEmail?: string | null,
   profileImage?: string | null
 ): void {
-  // 표준 키로 저장
+  // ✅ API 클라이언트와 동일한 키로 저장
   localStorage.setItem(STORAGE_KEYS.USER_ID, userId.toString())
   localStorage.setItem(STORAGE_KEYS.USER_NAME, userName)
-  localStorage.setItem(STORAGE_KEYS.SESSION, sessionToken)
+  localStorage.setItem(STORAGE_KEYS.SESSION, sessionToken)  // user_session_token
+  localStorage.setItem(STORAGE_KEYS.USER_TYPE, 'user')  // ✅ 사용자 타입 추가
   
   if (userEmail) {
     localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userEmail)
@@ -198,4 +207,19 @@ export function saveUserInfo(
   } else {
     localStorage.removeItem(STORAGE_KEYS.USER_PROFILE_IMAGE)
   }
+  
+  // ✅ 레거시 키 제거
+  localStorage.removeItem(LEGACY_KEYS.SESSION_OLD)
+  localStorage.removeItem(LEGACY_KEYS.ACCESS_TOKEN)
+  localStorage.removeItem(LEGACY_KEYS.ACCESS_TOKEN_ALT)
+  localStorage.removeItem(LEGACY_KEYS.USER_ID_ALT)
+  localStorage.removeItem(LEGACY_KEYS.USER_NAME_ALT)
+  localStorage.removeItem(LEGACY_KEYS.USER_EMAIL_ALT)
+  
+  console.log('[Auth] ✅ 사용자 정보 저장 완료:', {
+    userId: userId.toString(),
+    userName,
+    hasSession: !!sessionToken,
+    userType: 'user'
+  })
 }
