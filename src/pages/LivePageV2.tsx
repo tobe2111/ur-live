@@ -22,6 +22,8 @@ interface Stream {
   seller_youtube?: string
   seller_instagram?: string
   seller_kakao?: string
+  current_product_id?: number | null
+  seller_id?: number
 }
 
 interface Product {
@@ -661,7 +663,15 @@ function ProductSheet({
 }
 
 // ReelCard Component
-function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
+function ReelCard({ 
+  reel, 
+  isActive, 
+  isCurrentProduct = false 
+}: { 
+  reel: ReelData
+  isActive: boolean
+  isCurrentProduct?: boolean 
+}) {
   const navigate = useNavigate()
   const { showAlert } = useModal()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -1135,6 +1145,14 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
 
           {/* Unified bottom bar: product info + basket + buy */}
           <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
+            {/* 현재 상품 배지 (스트리머가 선택한 상품) */}
+            {isCurrentProduct && (
+              <div className="absolute -top-8 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-lg animate-pulse">
+                <Star size={14} className="fill-white text-white" />
+                <span className="text-xs font-bold text-white">지금 추천!</span>
+              </div>
+            )}
+            
             {/* Product info - left side */}
             <button
               onClick={() => setSheetOpen(true)}
@@ -1258,6 +1276,12 @@ export default function LivePageV2() {
   const [loading, setLoading] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
+  
+  // 스트리머 상품 선택 UI 상태
+  const [isStreamer, setIsStreamer] = useState(false)
+  const [showProductSelector, setShowProductSelector] = useState(false)
+  const [currentStream, setCurrentStream] = useState<Stream | null>(null)
+  const [changingProduct, setChangingProduct] = useState(false)
 
   // URL 파라미터에서 로그인 세션 정보 체크 및 localStorage 저장
   useEffect(() => {
@@ -1338,6 +1362,15 @@ export default function LivePageV2() {
             if (streamResponse.data.success && streamResponse.data.data) {
               stream = streamResponse.data.data
               console.log('[LivePageV2] Loaded stream:', stream)
+              setCurrentStream(stream)
+              
+              // 스트리머 권한 확인
+              const userType = localStorage.getItem('user_type')
+              const userId = getUserId()
+              if (userType === 'seller' && userId && stream.seller_id === parseInt(userId)) {
+                setIsStreamer(true)
+                console.log('[LivePageV2] 스트리머 권한 확인됨')
+              }
             }
           } catch (error) {
             console.log('[LivePageV2] Stream API failed, using demo data')
@@ -1409,6 +1442,48 @@ export default function LivePageV2() {
     loadReels()
   }, [streamId])
 
+  // 스트리머 전용: 상품 변경 함수
+  const handleChangeProduct = async (productId: number) => {
+    if (!currentStream || !streamId) return
+
+    try {
+      setChangingProduct(true)
+      const sessionToken = localStorage.getItem('seller_session_token') || localStorage.getItem('session')
+      
+      if (!sessionToken) {
+        alert('로그인이 필요합니다.')
+        return
+      }
+
+      const response = await api.post(
+        `/api/seller/streams/${streamId}/change-product`,
+        { productId },
+        {
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`
+          }
+        }
+      )
+
+      if (response.data.success) {
+        // 현재 스트림 정보 업데이트
+        setCurrentStream({
+          ...currentStream,
+          current_product_id: productId
+        })
+        alert('상품이 변경되었습니다!')
+        setShowProductSelector(false)
+      } else {
+        alert('상품 변경에 실패했습니다: ' + (response.data.error || '알 수 없는 오류'))
+      }
+    } catch (error) {
+      console.error('[LivePageV2] Change product error:', error)
+      alert('상품 변경 중 오류가 발생했습니다.')
+    } finally {
+      setChangingProduct(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
@@ -1435,6 +1510,116 @@ export default function LivePageV2() {
           kakao: (reels[activeIndex]?.stream as any)?.seller_kakao || undefined,
         }}
       />
+      
+      {/* 스트리머 전용: 상품 변경 버튼 */}
+      {isStreamer && (
+        <div className="fixed top-20 right-4 z-50">
+          <button
+            onClick={() => setShowProductSelector(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all"
+          >
+            <ShoppingBag size={18} />
+            <span className="font-medium">상품 변경</span>
+          </button>
+        </div>
+      )}
+      
+      {/* 스트리머 전용: 상품 선택 모달 */}
+      {showProductSelector && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-700">
+              <h2 className="text-xl font-bold text-white">상품 선택</h2>
+              <button
+                onClick={() => setShowProductSelector(false)}
+                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
+              >
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+            
+            {/* 상품 목록 */}
+            <div className="overflow-y-auto max-h-[calc(80vh-140px)] p-6">
+              {reels.length === 0 ? (
+                <div className="text-center text-gray-400 py-12">
+                  <ShoppingBag size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>등록된 상품이 없습니다</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {reels.map((reel) => {
+                    const isCurrentProduct = currentStream?.current_product_id === reel.product.id
+                    
+                    return (
+                      <button
+                        key={reel.product.id}
+                        onClick={() => handleChangeProduct(reel.product.id)}
+                        disabled={changingProduct || isCurrentProduct}
+                        className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                          isCurrentProduct
+                            ? 'border-purple-500 bg-purple-500/10'
+                            : 'border-gray-700 hover:border-purple-400 bg-gray-800/50'
+                        } ${
+                          changingProduct ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {/* 현재 상품 배지 */}
+                        {isCurrentProduct && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-purple-500 text-white text-xs font-bold rounded-full">
+                            <Check size={12} />
+                            <span>현재 상품</span>
+                          </div>
+                        )}
+                        
+                        {/* 상품 정보 */}
+                        <div className="flex gap-3">
+                          <img
+                            src={reel.product.image}
+                            alt={reel.product.name}
+                            className="w-20 h-20 object-cover rounded-lg"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-white text-sm mb-1 truncate">
+                              {reel.product.name}
+                            </h3>
+                            <div className="flex items-baseline gap-2 mb-1">
+                              <span className="text-lg font-bold text-purple-400">
+                                ${reel.product.price.toFixed(2)}
+                              </span>
+                              {reel.product.originalPrice > reel.product.price && (
+                                <span className="text-xs text-gray-400 line-through">
+                                  ${reel.product.originalPrice.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                              <div className="flex items-center gap-1">
+                                <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                                <span>{reel.product.rating}</span>
+                              </div>
+                              <span>•</span>
+                              <span>{reel.product.sold.toLocaleString()} sold</span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            
+            {/* 푸터 */}
+            <div className="p-6 border-t border-gray-700 bg-gray-900/50">
+              <p className="text-sm text-gray-400 text-center">
+                선택한 상품이 시청자들에게 강조 표시됩니다
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div
         ref={containerRef}
         className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
@@ -1446,7 +1631,11 @@ export default function LivePageV2() {
             data-index={index}
             className="h-dvh w-full snap-start snap-always"
           >
-            <ReelCard reel={reel} isActive={activeIndex === index} />
+            <ReelCard 
+              reel={reel} 
+              isActive={activeIndex === index}
+              isCurrentProduct={currentStream?.current_product_id === reel.product.id}
+            />
           </div>
         ))}
       </div>
