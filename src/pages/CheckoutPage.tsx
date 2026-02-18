@@ -514,6 +514,11 @@ export default function CheckoutPage() {
     } catch (err: any) {
       console.error('[Payment] ❌ 결제 요청 실패:', err)
       
+      // 약관 미동의 에러
+      if (err.code === 'NEED_AGREEMENT' || err.message?.includes('약관') || err.message?.includes('동의')) {
+        alert('필수 약관에 동의해주세요.')
+        return
+      }
       // Intent URL 에러 (카드사 앱 실행 실패)
       if (err.message && err.message.includes('intent://')) {
         console.log('[Payment] ⚠️ Intent URL 에러 발생 - 모바일 앱 실행 실패')
@@ -699,7 +704,7 @@ export default function CheckoutPage() {
             ></div>
             <div 
               id="agreement" 
-              className="mt-4 w-full"
+              className="mt-2 w-full"
               style={{
                 width: '100%',
                 maxWidth: '100%',
