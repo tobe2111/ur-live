@@ -37,6 +37,13 @@ export default function KakaoCallbackPage() {
           const { user, session_token } = response.data.data
 
           // 표준 함수로 사용자 정보 저장 (localStorage 키 통일)
+          console.log('[KakaoCallback] 💾 사용자 정보 저장 시작:', {
+            userId: user.id,
+            userName: user.name,
+            session_token: session_token ? '있음' : '없음',
+            email: user.email
+          })
+          
           saveUserInfo(
             user.id,
             user.name,
@@ -44,6 +51,14 @@ export default function KakaoCallbackPage() {
             user.email,
             user.profile_image
           )
+          
+          // 저장 확인
+          console.log('[KakaoCallback] ✅ localStorage 저장 완료:', {
+            session: localStorage.getItem('session') ? '있음' : '없음',
+            user_id: localStorage.getItem('user_id'),
+            user_name: localStorage.getItem('user_name'),
+            isLoggedIn: !!localStorage.getItem('session') && !!localStorage.getItem('user_id')
+          })
 
           
           // Get return URL from localStorage

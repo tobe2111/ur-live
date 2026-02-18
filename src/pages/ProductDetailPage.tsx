@@ -79,6 +79,15 @@ export default function ProductDetailPage() {
   }
 
   async function handleAddToCart() {
+    // 디버깅: 로그인 상태 확인
+    const session = localStorage.getItem('session')
+    const userId = localStorage.getItem('user_id') || localStorage.getItem('userId')
+    console.log('[ProductDetail] 장바구니 추가 시도:', { 
+      session: session ? '있음' : '없음', 
+      userId,
+      isLoggedIn: isLoggedIn()
+    })
+    
     if (!isLoggedIn()) {
       showToast('로그인이 필요합니다.', 'error')
       // 현재 페이지 경로를 저장하고 로그인 페이지로 이동
@@ -102,6 +111,15 @@ export default function ProductDetailPage() {
   }
 
   async function handleBuyNow() {
+    // 디버깅: 로그인 상태 확인
+    const session = localStorage.getItem('session')
+    const userId = localStorage.getItem('user_id') || localStorage.getItem('userId')
+    console.log('[ProductDetail] 구매하기 시도:', { 
+      session: session ? '있음' : '없음', 
+      userId,
+      isLoggedIn: isLoggedIn()
+    })
+    
     if (!isLoggedIn()) {
       showToast('로그인이 필요합니다.', 'error')
       // 현재 페이지 경로를 저장하고 로그인 페이지로 이동
