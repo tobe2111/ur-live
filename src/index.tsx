@@ -2324,9 +2324,14 @@ app.get('/api/streams/:streamId/products', async (c) => {
   const streamId = c.req.param('streamId');
 
   try {
-    const result = await DB.prepare(
-      'SELECT * FROM products WHERE live_stream_id = ? AND is_active = 1 ORDER BY created_at DESC'
-    ).bind(streamId).all();
+    // Join with live_stream_products table
+    const result = await DB.prepare(`
+      SELECT p.* 
+      FROM products p
+      INNER JOIN live_stream_products lsp ON p.id = lsp.product_id
+      WHERE lsp.live_stream_id = ? AND p.is_active = 1
+      ORDER BY lsp.created_at DESC
+    `).bind(streamId).all();
 
     return c.json<ApiResponse>({
       success: true,

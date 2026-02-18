@@ -5,6 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>유어 라이브 커머스 - 실시간 방송</title>
     
+    <!-- Suppress YouTube Errors - MUST BE FIRST -->
+    <script>
+    (function() {
+      const originalError = console.error;
+      const originalWarn = console.warn;
+      
+      console.error = function(...args) {
+        const msg = (args[0] || '').toString();
+        if (msg.includes('postMessage') || msg.includes('youtube') || msg.includes('DOMWindow')) return;
+        originalError.apply(console, args);
+      };
+      
+      console.warn = function(...args) {
+        const msg = (args[0] || '').toString();
+        if (msg.includes('passive') || msg.includes('Violation') || msg.includes('touchstart')) return;
+        originalWarn.apply(console, args);
+      };
+      
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.includes('postMessage') || e.message.includes('youtube'))) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }, true);
+    })();
+    </script>
+    
     <!-- DNS Prefetch & Preconnect - 외부 리소스 로딩 속도 향상 -->
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="https://t1.kakaocdn.net">
