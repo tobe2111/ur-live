@@ -947,144 +947,180 @@ export default function CheckoutPage() {
         onClose={() => setShowAddressModal(false)}
         title="배송지 선택"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           {addresses.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">등록된 배송지가 없습니다.</p>
+            <div className="py-12 text-center">
+              <MapPin className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-[15px] text-gray-500">등록된 배송지가 없습니다.</p>
+              <p className="text-[13px] text-gray-400 mt-1">새 배송지를 추가해주세요.</p>
+            </div>
           ) : (
             addresses.map((addr) => (
               <div
                 key={addr.id}
-                className={`border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition ${
-                  selectedAddress?.id === addr.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                className={`border rounded-2xl p-4 cursor-pointer transition-all ${
+                  selectedAddress?.id === addr.id 
+                    ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                 }`}
                 onClick={() => {
                   setSelectedAddress(addr)
                   setShowAddressModal(false)
                 }}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold">{addr.recipient_name}</p>
-                    <p className="text-sm text-gray-600 mt-1">{addr.phone}</p>
-                    <p className="text-sm text-gray-600 mt-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-[15px] font-semibold text-gray-900">{addr.recipient_name}</p>
+                      {addr.is_default === 1 && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
+                          기본
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[14px] text-gray-600 mb-1">{addr.phone}</p>
+                    <p className="text-[14px] text-gray-700 leading-relaxed">
                       [{addr.postal_code}] {addr.address}
                     </p>
                     {addr.address_detail && (
-                      <p className="text-sm text-gray-600">{addr.address_detail}</p>
+                      <p className="text-[14px] text-gray-700 leading-relaxed mt-0.5">
+                        {addr.address_detail}
+                      </p>
                     )}
                   </div>
-                  {addr.is_default === 1 && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                      기본배송지
-                    </span>
+                  {selectedAddress?.id === addr.id && (
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center mt-1">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
                   )}
                 </div>
               </div>
             ))
           )}
 
-          <Button
-            onClick={() => setShowNewAddressForm(true)}
-            className="w-full"
-            variant="outline"
+          <button
+            onClick={() => {
+              setShowAddressModal(false)
+              setShowNewAddressForm(true)
+            }}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            새 배송지 추가
-          </Button>
+            <Plus className="w-5 h-5" />
+            <span>새 배송지 추가</span>
+          </button>
         </div>
       </CustomModal>
 
       {/* 새 배송지 추가 모달 */}
       <CustomModal
         isOpen={showNewAddressForm}
-        onClose={() => setShowNewAddressForm(false)}
+        onClose={() => {
+          setShowNewAddressForm(false)
+          setShowPostcodePopup(false)
+        }}
         title="새 배송지 추가"
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">수령인 이름 *</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+              수령인 이름 <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               value={newAddress.recipient_name}
               onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder="수령인 이름"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">연락처 *</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+              연락처 <span className="text-red-500">*</span>
+            </label>
             <input
               type="tel"
               value={newAddress.phone}
               onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">우편번호 *</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+              우편번호 <span className="text-red-500">*</span>
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={newAddress.postal_code}
                 readOnly
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
                 placeholder="우편번호"
               />
-              <Button
+              <button
                 onClick={() => setShowPostcodePopup(true)}
-                variant="outline"
+                className="px-5 py-3 border border-gray-300 rounded-2xl text-[14px] font-semibold text-gray-700 hover:bg-gray-50 transition-all whitespace-nowrap"
               >
                 주소 검색
-              </Button>
+              </button>
             </div>
           </div>
 
           {showPostcodePopup && (
-            <div
-              id="daum-postcode-container"
-              style={{ width: '100%', height: '400px' }}
-            ></div>
+            <div className="rounded-2xl overflow-hidden border border-gray-200">
+              <div
+                id="daum-postcode-container"
+                style={{ width: '100%', height: '400px' }}
+              ></div>
+            </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">주소 *</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+              주소 <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               value={newAddress.address}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-              placeholder="주소"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
+              placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">상세주소</label>
+            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+              상세주소
+            </label>
             <input
               type="text"
               value={newAddress.address_detail}
               onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder="상세주소 (선택)"
+              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleSaveNewAddress} className="flex-1">
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleSaveNewAddress}
+              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:brightness-95 transition-all active:scale-[0.98]"
+            >
               저장
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={() => {
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              variant="outline"
-              className="flex-1"
+              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98]"
             >
               취소
-            </Button>
+            </button>
           </div>
         </div>
       </CustomModal>
