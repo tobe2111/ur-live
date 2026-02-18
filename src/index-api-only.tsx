@@ -4126,6 +4126,169 @@ app.get('/api/seller/products', cors(), async (c) => {
   }
 });
 
+// Create new product (Seller)
+app.post('/api/seller/products', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401);
+    }
+    
+    const sessionToken = authHeader.replace('Bearer ', '');
+    
+    // 세션 검증
+    const session = await getSession(DB, sessionToken);
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
+    }
+    
+    // 셀러인지 확인
+    if (session.user_type !== 'seller') {
+      return c.json({ success: false, error: '셀러만 접근 가능합니다.' }, 403);
+    }
+    
+    const sellerId = session.seller_id || session.user_id;
+    const { name, description, price, stock, image_url, live_stream_id, product_type } = await c.req.json();
+    
+    // 필수 필드 검증
+    if (!name || price === undefined || stock === undefined) {
+      return c.json({ success: false, error: '필수 필드가 누락되었습니다.' }, 400);
+    }
+    
+    // 상품 생성
+    const result = await DB.prepare(`
+      INSERT INTO products (
+        name, description, price, stock, image_url, 
+        seller_id, is_active, product_type, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 1, ?, datetime('now'))
+    `).bind(
+      name,
+      description || null,
+      price,
+      stock,
+      image_url || null,
+      sellerId,
+      product_type || 'featured'
+    ).run();
+    
+    return c.json({
+      success: true,
+      data: { id: result.meta.last_row_id }
+    });
+  } catch (error) {
+    console.error('Create product error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+// Get specific product (Seller)
+app.get('/api/seller/products/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const productId = c.req.param('id');
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401);
+    }
+    
+    const sessionToken = authHeader.replace('Bearer ', '');
+    
+    // 세션 검증
+    const session = await getSession(DB, sessionToken);
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
+    }
+    
+    // 셀러인지 확인
+    if (session.user_type !== 'seller') {
+      return c.json({ success: false, error: '셀러만 접근 가능합니다.' }, 403);
+    }
+    
+    const sellerId = session.seller_id || session.user_id;
+    
+    // 상품 조회 (본인 상품만)
+    const product = await DB.prepare(`
+      SELECT * FROM products
+      WHERE id = ? AND seller_id = ?
+    `).bind(productId, sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다.' }, 404);
+    }
+    
+    return c.json({ success: true, data: product });
+  } catch (error) {
+    console.error('Get product error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+// Update product (Seller)
+app.patch('/api/seller/products/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const productId = c.req.param('id');
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: '인증 토큰이 없습니다.' }, 401);
+    }
+    
+    const sessionToken = authHeader.replace('Bearer ', '');
+    
+    // 세션 검증
+    const session = await getSession(DB, sessionToken);
+    if (!session) {
+      return c.json({ success: false, error: '유효하지 않은 세션입니다.' }, 401);
+    }
+    
+    // 셀러인지 확인
+    if (session.user_type !== 'seller') {
+      return c.json({ success: false, error: '셀러만 접근 가능합니다.' }, 403);
+    }
+    
+    const sellerId = session.seller_id || session.user_id;
+    const { name, description, price, stock, image_url, is_active, detail_images, product_type } = await c.req.json();
+    
+    // 본인 상품인지 확인
+    const product = await DB.prepare(`
+      SELECT id FROM products WHERE id = ? AND seller_id = ?
+    `).bind(productId, sellerId).first();
+    
+    if (!product) {
+      return c.json({ success: false, error: '상품을 찾을 수 없거나 권한이 없습니다.' }, 404);
+    }
+    
+    // 상품 업데이트
+    await DB.prepare(`
+      UPDATE products
+      SET name = ?, description = ?, price = ?, stock = ?, 
+          image_url = ?, is_active = ?, detail_images = ?, product_type = ?,
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      name,
+      description || null,
+      price,
+      stock,
+      image_url || null,
+      is_active ? 1 : 0,
+      detail_images || null,
+      product_type || 'featured',
+      productId
+    ).run();
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Update product error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
 // Change current product in live stream (Seller)
 app.post('/api/seller/streams/:streamId/change-product', cors(), async (c) => {
   try {

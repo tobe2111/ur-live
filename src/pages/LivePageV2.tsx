@@ -1252,11 +1252,52 @@ function ReelCard({ reel, isActive }: { reel: ReelData; isActive: boolean }) {
 // ============================================
 export default function LivePageV2() {
   const { streamId } = useParams<{ streamId: string }>()
+  const navigate = useNavigate()
   const [activeIndex, setActiveIndex] = useState(0)
   const [reels, setReels] = useState<ReelData[]>([])
   const [loading, setLoading] = useState(true)
   const containerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
+
+  // URL 파라미터에서 로그인 세션 정보 체크 및 localStorage 저장
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const loginSuccess = urlParams.get('login')
+    const session = urlParams.get('session')
+    const userId = urlParams.get('userId')
+    const userName = urlParams.get('userName')
+
+    if (loginSuccess === 'success' && session && userId) {
+      console.log('[LivePageV2] 💾 로그인 성공 - localStorage 저장:', {
+        session: session ? '있음' : '없음',
+        userId,
+        userName: userName ? decodeURIComponent(userName) : null
+      })
+
+      // localStorage에 저장
+      localStorage.setItem('session', session)
+      localStorage.setItem('user_id', userId)
+      if (userName) {
+        localStorage.setItem('user_name', decodeURIComponent(userName))
+      }
+
+      // URL 파라미터 제거 (깔끔한 URL 유지)
+      urlParams.delete('login')
+      urlParams.delete('session')
+      urlParams.delete('userId')
+      urlParams.delete('userName')
+      
+      const newSearch = urlParams.toString()
+      const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
+      window.history.replaceState({}, '', newUrl)
+
+      console.log('[LivePageV2] ✅ localStorage 저장 완료:', {
+        session: localStorage.getItem('session') ? '있음' : '없음',
+        user_id: localStorage.getItem('user_id'),
+        user_name: localStorage.getItem('user_name')
+      })
+    }
+  }, [])
 
   const reelRefs = useCallback((node: HTMLDivElement | null) => {
     if (!node) return

@@ -31,7 +31,8 @@ export default function SellerProductNewPage() {
     price: '',
     stock: '',
     image_url: '',
-    live_stream_id: ''
+    live_stream_id: '',
+    product_type: 'featured' // 'live' or 'featured'
   })
 
   useEffect(() => {
@@ -89,7 +90,8 @@ export default function SellerProductNewPage() {
         price: Number(formData.price),
         stock: Number(formData.stock),
         image_url: formData.image_url,
-        live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null
+        live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
+        product_type: formData.product_type
       }
 
       const response = await api.post('/api/seller/products', payload, {
@@ -248,6 +250,54 @@ export default function SellerProductNewPage() {
             <p className="text-xs text-gray-500 mt-1">
               Unsplash, Pexels 등에서 이미지 URL을 복사하여 붙여넣으세요
             </p>
+          </div>
+
+          {/* Product Type Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              상품 타입 <span className="text-red-500">*</span>
+            </label>
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 {formData.product_type === 'live' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}">
+                <input
+                  type="radio"
+                  name="product_type"
+                  value="live"
+                  checked={formData.product_type === 'live'}
+                  onChange={handleChange}
+                  className="mt-1 w-4 h-4 text-blue-600"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Play className="w-5 h-5 text-red-600" />
+                    <span className="font-semibold text-gray-900">라이브 방송 전용 상품</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    라이브 스트리밍 중에만 판매되는 한정 상품
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 {formData.product_type === 'featured' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}">
+                <input
+                  type="radio"
+                  name="product_type"
+                  value="featured"
+                  checked={formData.product_type === 'featured'}
+                  onChange={handleChange}
+                  className="mt-1 w-4 h-4 text-blue-600"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-blue-600" />
+                    <span className="font-semibold text-gray-900">Ur 특가 상품</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    메인 페이지 "Ur 특가" 섹션에 노출되는 일반 판매 상품
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* Image Preview */}
