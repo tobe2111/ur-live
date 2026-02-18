@@ -575,238 +575,371 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        {/* 헤더 */}
-        <div className="mb-4 sm:mb-6">
-          <button
-            onClick={() => navigate('/cart')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4 text-sm sm:text-base"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>장바구니로 돌아가기</span>
-          </button>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">주문/결제</h1>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* 좌측: 주문 정보 */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-          {/* 배송지 정보 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                <h2 className="text-base sm:text-lg lg:text-xl font-bold">배송지 정보</h2>
-              </div>
-              <Button
-                onClick={() => setShowAddressModal(true)}
-                variant="outline"
-                size="sm"
-              >
-                {selectedAddress ? '변경' : '선택'}
-              </Button>
-            </div>
-
-            {!selectedAddress && (
-              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 sm:p-4">
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-red-800 font-bold text-sm sm:text-base lg:text-lg">⚠️ 배송지를 선택해주세요</p>
-                    <p className="text-red-700 text-xs sm:text-sm mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {selectedAddress && (
-              <div className="space-y-2 bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
-                <p className="font-semibold text-sm sm:text-base lg:text-lg">{selectedAddress.recipient_name}</p>
-                <p className="text-gray-700 text-sm sm:text-base">{selectedAddress.phone}</p>
-                <p className="text-gray-600 text-xs sm:text-sm">
-                  [{selectedAddress.postal_code}] {selectedAddress.address}
-                </p>
-                {selectedAddress.address_detail && (
-                  <p className="text-gray-600 text-xs sm:text-sm">{selectedAddress.address_detail}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 주문 상품 정보 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-              <h2 className="text-base sm:text-lg lg:text-xl font-bold">주문 상품</h2>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4">
-              {Object.values(sellerGroups).map((group) => (
-                <div key={group.seller_id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                  <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
-                    {group.seller_name}
-                  </p>
-                  
-                  {group.items.map((item) => (
-                    <div key={item.id} className="flex gap-2 sm:gap-4 py-2 sm:py-3 border-t border-gray-100 first:border-t-0">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">{item.product_name}</p>
-                        {item.option_value && (
-                          <p className="text-xs sm:text-sm text-gray-500">{item.option_value}</p>
-                        )}
-                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                          {item.price_snapshot.toLocaleString()}원 × {item.quantity}개
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-sm sm:text-base">
-                          {(item.price_snapshot * item.quantity).toLocaleString()}원
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* 배송비 정보 */}
-                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200 flex justify-between text-xs sm:text-sm">
-                    <span className="text-gray-600">배송비</span>
-                    <span className="font-semibold">
-                      {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
-                        ? '무료'
-                        : `${group.shipping_fee.toLocaleString()}원`}
-                    </span>
-                  </div>
-                  {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
-                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-                      {(group.free_shipping_threshold - group.subtotal).toLocaleString()}원 추가 시 무료배송
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 결제 수단 선택 */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-bold mb-3 sm:mb-4">결제 수단</h2>
-            
-            {/* 토스페이먼츠 위젯 렌더링 영역 - 모바일 최적화 */}
-            {/* 모바일: min-h-[350px], PC: min-h-[300px] */}
-            <div 
-              id="payment-method" 
-              className="min-h-[350px] sm:min-h-[300px] w-full"
-              style={{
-                minHeight: '350px', // 모바일 기본값
-                width: '100%',
-                maxWidth: '100%',
-                overflow: 'visible'
-              }}
-            ></div>
-            <div 
-              id="agreement" 
-              className="mt-2 w-full"
-              style={{
-                width: '100%',
-                maxWidth: '100%',
-                overflow: 'visible'
-              }}
-            ></div>
-            
-            {!ready && (
-              <div className="flex items-center justify-center py-8 text-gray-500 text-xs sm:text-sm">
-                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mr-3"></div>
-                <div className="text-center">
-                  <p>결제 수단 불러오는 중...</p>
-                  <p className="text-xs text-gray-400 mt-1">최대 10초 소요될 수 있습니다</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 우측: 결제 요약 */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-6">
-            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">결제 금액</h2>
-            
-            <div className="space-y-2 sm:space-y-3">
-              <div className="flex justify-between text-gray-600 text-sm sm:text-base">
-                <span>상품 금액</span>
-                <span>{subtotal.toLocaleString()}원</span>
-              </div>
-              <div className="flex justify-between text-gray-600 text-sm sm:text-base">
-                <span>배송비</span>
-                <span>{totalShippingFee.toLocaleString()}원</span>
-              </div>
-              <div className="border-t border-gray-200 pt-2 sm:pt-3 flex justify-between text-base sm:text-lg font-bold">
-                <span>총 결제 금액</span>
-                <span className="text-blue-600">{totalAmount.toLocaleString()}원</span>
-              </div>
-            </div>
-
-            <Button
-              onClick={handlePayment}
-              onTouchEnd={(e) => {
-                // 모바일 터치 이벤트 지원
-                e.preventDefault()
-                if (!isProcessing && ready && selectedAddress) {
-                  handlePayment(e)
-                }
-              }}
-              className="w-full mt-4 sm:mt-6 py-4 sm:py-6 text-base sm:text-lg font-bold touch-manipulation"
-              disabled={!ready || !selectedAddress || isProcessing || !widgets}
-              style={{
-                backgroundColor: !ready || !selectedAddress || !widgets ? '#e5e7eb' : undefined,
-                cursor: !ready || !selectedAddress || isProcessing || !widgets ? 'not-allowed' : 'pointer',
-                touchAction: 'manipulation', // 모바일 더블탭 줌 방지
-                WebkitTapHighlightColor: 'transparent' // iOS 탭 하이라이트 제거
-              }}
+    <div className="min-h-screen bg-gray-100">
+      {/* 헤더 */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="mx-auto max-w-lg lg:max-w-5xl px-5 py-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/cart')}
+              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
             >
-              {isProcessing 
-                ? '결제 진행 중...'
-                : !widgets
-                  ? '결제 시스템 로딩 중...'
-                  : !selectedAddress 
-                    ? '⚠️ 배송지를 선택해주세요'
-                    : !ready 
-                      ? '결제 UI 준비 중...'
-                      : '결제하기'}
-            </Button>
-
-            {!selectedAddress && (
-              <div className="mt-3 p-2 sm:p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                <p className="text-xs sm:text-sm text-amber-800 text-center">
-                  ⚠️ 배송지를 선택하셔야 결제가 가능합니다
-                </p>
-              </div>
-            )}
-
-            {/* 약관 링크 */}
-            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-              <p className="text-[10px] sm:text-xs text-gray-500 text-center mb-2">
-                결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
-              </p>
-              <div className="flex justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
-                <Link 
-                  to="/terms" 
-                  target="_blank"
-                  className="text-blue-600 hover:text-blue-800 underline"
-                >
-                  이용약관
-                </Link>
-                <span className="text-gray-300">|</span>
-                <Link 
-                  to="/privacy" 
-                  target="_blank"
-                  className="text-blue-600 hover:text-blue-800 underline"
-                >
-                  개인정보 처리방침
-                </Link>
-              </div>
-            </div>
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-[18px] font-bold">주문/결제</h1>
           </div>
         </div>
       </div>
+
+      <main className="mx-auto max-w-lg pb-24 lg:max-w-5xl lg:pb-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
+
+          {/* Left column */}
+          <div className="flex flex-1 flex-col lg:overflow-hidden lg:rounded-3xl">
+            {/* 배송지 정보 */}
+            <section className="bg-white px-5 py-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(true)}
+                  className="flex items-center text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                >
+                  {selectedAddress ? '변경' : '선택'}
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {!selectedAddress ? (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-red-800 font-semibold text-[14px]">⚠️ 배송지를 선택해주세요</p>
+                      <p className="text-red-700 text-[13px] mt-1">배송지를 선택하셔야 결제가 가능합니다.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[15px] font-semibold text-gray-900">{selectedAddress.recipient_name}</span>
+                    {selectedAddress.is_default === 1 && (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
+                        기본
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[14px] leading-relaxed text-gray-600">{selectedAddress.phone}</p>
+                  <p className="text-[14px] leading-relaxed text-gray-900">
+                    [{selectedAddress.postal_code}] {selectedAddress.address} {selectedAddress.address_detail}
+                  </p>
+                </div>
+              )}
+            </section>
+            
+            {/* Divider */}
+            <div className="h-2 bg-gray-100" />
+
+            {/* 주문 상품 정보 */}
+            <section className="bg-white px-5 py-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[17px] font-bold text-gray-900">주문 상품</h2>
+                <span className="text-[13px] text-gray-600">
+                  {cartItems.length}개
+                </span>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-5">
+                {Object.values(sellerGroups).map((group) => (
+                  <div key={group.seller_id} className="border border-gray-200 rounded-2xl p-4">
+                    <p className="text-[13px] font-semibold text-gray-700 mb-3">
+                      {group.seller_name}
+                    </p>
+                    
+                    {group.items.map((item) => (
+                      <div key={item.id} className="flex gap-4 py-3 border-t border-gray-100 first:border-t-0">
+                        {/* 이미지 or 아이콘 */}
+                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-100">
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.product_name}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Package className="h-7 w-7 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 상품 정보 */}
+                        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+                          <p className="truncate text-[14px] leading-snug text-gray-900">
+                            {item.product_name}
+                          </p>
+                          {item.option_value && (
+                            <p className="text-[13px] text-gray-600">
+                              {item.option_value} / {item.quantity}개
+                            </p>
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[15px] font-bold text-gray-900">
+                              {(item.price_snapshot * item.quantity).toLocaleString()}원
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* 배송비 정보 */}
+                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between text-[13px]">
+                      <span className="text-gray-600">배송비</span>
+                      <span className="font-semibold text-gray-900">
+                        {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
+                          ? <span className="text-blue-600 font-medium">무료</span>
+                          : `${group.shipping_fee.toLocaleString()}원`}
+                      </span>
+                    </div>
+                    {group.free_shipping_threshold > 0 && group.subtotal < group.free_shipping_threshold && (
+                      <p className="text-[12px] text-gray-500 mt-1">
+                        {(group.free_shipping_threshold - group.subtotal).toLocaleString()}원 추가 시 무료배송
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+            
+            {/* Divider */}
+            <div className="h-2 bg-gray-100" />
+
+            {/* 결제 수단 */}
+            <section className="bg-white px-5 py-6">
+              <h2 className="text-[17px] font-bold text-gray-900">결제 수단</h2>
+              <div className="mt-4">
+                {/* TossPayments widget - DO NOT MODIFY */}
+                <div 
+                  id="payment-method" 
+                  className="min-h-[350px] sm:min-h-[300px] w-full"
+                  style={{
+                    minHeight: '350px',
+                    width: '100%',
+                    maxWidth: '100%',
+                    overflow: 'visible'
+                  }}
+                />
+                
+                {!ready && (
+                  <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                    <div className="text-center">
+                      <p>결제 수단 불러오는 중...</p>
+                      <p className="text-xs text-gray-400 mt-1">최대 10초 소요될 수 있습니다</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+            
+            {/* Divider */}
+            <div className="h-2 bg-gray-100" />
+
+            {/* 약관 동의 */}
+            <section className="bg-white px-5 py-6">
+              <h2 className="text-[17px] font-bold text-gray-900">약관 동의</h2>
+              <div className="mt-4">
+                {/* TossPayments agreement widget - DO NOT MODIFY */}
+                <div 
+                  id="agreement" 
+                  className="min-h-[60px] w-full"
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    overflow: 'visible'
+                  }}
+                />
+              </div>
+              
+              {/* 약관 링크 */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center mb-2">
+                  결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
+                </p>
+                <div className="flex justify-center gap-3 text-xs">
+                  <Link 
+                    to="/terms" 
+                    target="_blank"
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    이용약관
+                  </Link>
+                  <span className="text-gray-300">|</span>
+                  <Link 
+                    to="/privacy" 
+                    target="_blank"
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    개인정보 처리방침
+                  </Link>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right column - Order summary (desktop only) */}
+          <div className="hidden lg:block lg:w-[360px]">
+            <div className="sticky top-20 overflow-hidden rounded-3xl">
+              <section className="bg-white px-5 py-6">
+                <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+
+                <div className="mt-5 flex flex-col gap-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] text-gray-600">상품금액</span>
+                    <span className="text-[14px] text-gray-900">
+                      {subtotal.toLocaleString()}원
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] text-gray-600">배송비</span>
+                    <span className="text-[14px] text-gray-900">
+                      {totalShippingFee === 0 ? (
+                        <span className="font-medium text-blue-600">무료</span>
+                      ) : (
+                        `${totalShippingFee.toLocaleString()}원`
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="my-5 h-px bg-gray-200" />
+
+                <div className="flex items-end justify-between">
+                  <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
+                  <div className="flex items-baseline gap-0.5">
+                    <span className="text-[26px] font-bold tracking-tight text-gray-900">
+                      {totalAmount.toLocaleString()}
+                    </span>
+                    <span className="text-[15px] font-semibold text-gray-900">원</span>
+                  </div>
+                </div>
+
+                {/* Desktop payment button */}
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={handlePayment}
+                    disabled={!ready || !selectedAddress || isProcessing || !widgets}
+                    className="flex w-full items-center justify-center rounded-2xl bg-blue-600 py-[18px] text-[16px] font-bold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {isProcessing ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        <span>결제 처리중</span>
+                      </div>
+                    ) : !widgets ? (
+                      '결제 시스템 로딩 중...'
+                    ) : !selectedAddress ? (
+                      '⚠️ 배송지를 선택해주세요'
+                    ) : !ready ? (
+                      '결제 UI 준비 중...'
+                    ) : (
+                      <span>{totalAmount.toLocaleString()}원 결제하기</span>
+                    )}
+                  </button>
+                </div>
+
+                {!selectedAddress && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-800 text-center">
+                      ⚠️ 배송지를 선택하셔야 결제가 가능합니다
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile order summary */}
+        <div className="lg:hidden">
+          <div className="h-2 bg-gray-100" />
+          <section className="bg-white px-5 py-6">
+            <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+
+            <div className="mt-5 flex flex-col gap-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] text-gray-600">상품금액</span>
+                <span className="text-[14px] text-gray-900">
+                  {subtotal.toLocaleString()}원
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[14px] text-gray-600">배송비</span>
+                <span className="text-[14px] text-gray-900">
+                  {totalShippingFee === 0 ? (
+                    <span className="font-medium text-blue-600">무료</span>
+                  ) : (
+                    `${totalShippingFee.toLocaleString()}원`
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="my-5 h-px bg-gray-200" />
+
+            <div className="flex items-end justify-between">
+              <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[26px] font-bold tracking-tight text-gray-900">
+                  {totalAmount.toLocaleString()}
+                </span>
+                <span className="text-[15px] font-semibold text-gray-900">원</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      {/* Mobile pay bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-50">
+        <button
+          type="button"
+          onClick={handlePayment}
+          onTouchEnd={(e) => {
+            // 모바일 터치 이벤트 지원
+            e.preventDefault()
+            if (!isProcessing && ready && selectedAddress) {
+              handlePayment(e)
+            }
+          }}
+          disabled={!ready || !selectedAddress || isProcessing || !widgets}
+          className="w-full flex items-center justify-center rounded-2xl bg-blue-600 py-4 text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
+          style={{
+            backgroundColor: !ready || !selectedAddress || !widgets ? '#e5e7eb' : undefined,
+            color: !ready || !selectedAddress || !widgets ? '#9ca3af' : undefined,
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent'
+          }}
+        >
+          {isProcessing ? (
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <span>결제 처리중</span>
+            </div>
+          ) : !widgets ? (
+            '결제 시스템 로딩 중...'
+          ) : !selectedAddress ? (
+            '⚠️ 배송지를 선택해주세요'
+          ) : !ready ? (
+            '결제 UI 준비 중...'
+          ) : (
+            <span>{totalAmount.toLocaleString()}원 결제하기</span>
+          )}
+        </button>
 
       {/* 배송지 선택 모달 */}
       <CustomModal

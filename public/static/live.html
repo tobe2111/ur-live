@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>유어 라이브 커머스 - 실시간 방송</title>
     
-    <!-- Suppress YouTube Errors - MUST BE FIRST -->
+    <!-- Suppress YouTube and TossPayments Errors - MUST BE FIRST -->
     <script>
     (function() {
       const originalError = console.error;
@@ -13,7 +13,14 @@
       
       console.error = function(...args) {
         const msg = (args[0] || '').toString();
-        if (msg.includes('postMessage') || msg.includes('youtube') || msg.includes('DOMWindow')) return;
+        // Filter YouTube, postMessage, and TossPayments errors
+        if (msg.includes('postMessage') || 
+            msg.includes('youtube') || 
+            msg.includes('DOMWindow') ||
+            msg.includes('tosspayments.com/v1/log') ||
+            msg.includes('log.tosspayments')) {
+          return;
+        }
         originalError.apply(console, args);
       };
       
@@ -24,11 +31,23 @@
       };
       
       window.addEventListener('error', function(e) {
-        if (e.message && (e.message.includes('postMessage') || e.message.includes('youtube'))) {
+        if (e.message && (e.message.includes('postMessage') || 
+                          e.message.includes('youtube') ||
+                          e.message.includes('tosspayments'))) {
           e.stopPropagation();
           e.preventDefault();
         }
       }, true);
+      
+      // Intercept fetch requests to suppress TossPayments logging errors
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        const url = args[0];
+        if (typeof url === 'string' && url.includes('log.tosspayments.com')) {
+          return Promise.resolve(new Response('{}', { status: 200 }));
+        }
+        return originalFetch.apply(this, args);
+      };
     })();
     </script>
     

@@ -1,21 +1,24 @@
 <!doctype html>
 <html lang="ko">
   <head>
-    <!-- TikTok Console Filter - Must be first to catch all warnings -->
+    <!-- TikTok, YouTube, and TossPayments Console Filter - Must be first to catch all warnings -->
     <script>
       (function() {
         // Save original console methods
         const originalWarn = console.warn;
         const originalError = console.error;
         
-        // Filter TikTok iframe warnings
+        // Filter TikTok iframe warnings, YouTube errors, and TossPayments errors
         console.warn = function(...args) {
           const msg = args[0]?.toString() || '';
           if (
             msg.includes('Content Security Policy') ||
             msg.includes('Permissions policy violation') ||
             msg.includes('upgrade-insecure-requests') ||
-            msg.includes('unload is not allowed')
+            msg.includes('unload is not allowed') ||
+            msg.includes('passive') ||
+            msg.includes('Violation') ||
+            msg.includes('touchstart')
           ) {
             return; // Suppress
           }
@@ -29,7 +32,12 @@
             msg.includes('Permissions policy') ||
             msg.includes('Failed to launch') ||
             msg.includes('intent://') ||
-            msg.includes('scheme does not have a registered handler')
+            msg.includes('scheme does not have a registered handler') ||
+            msg.includes('postMessage') ||
+            msg.includes('youtube') ||
+            msg.includes('DOMWindow') ||
+            msg.includes('tosspayments.com/v1/log') ||
+            msg.includes('log.tosspayments')
           ) {
             return; // Suppress
           }
@@ -47,6 +55,26 @@
             return; // Suppress
           }
           originalLog.apply(console, args);
+        };
+        
+        // Intercept window errors
+        window.addEventListener('error', function(e) {
+          if (e.message && (e.message.includes('postMessage') || 
+                            e.message.includes('youtube') ||
+                            e.message.includes('tosspayments'))) {
+            e.stopPropagation();
+            e.preventDefault();
+          }
+        }, true);
+        
+        // Intercept fetch requests to suppress TossPayments logging errors
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+          const url = args[0];
+          if (typeof url === 'string' && url.includes('log.tosspayments.com')) {
+            return Promise.resolve(new Response('{}', { status: 200 }));
+          }
+          return originalFetch.apply(this, args);
         };
       })();
     </script>
