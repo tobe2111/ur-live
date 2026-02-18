@@ -136,8 +136,8 @@ export default function ProductDetailPage() {
         quantity,
         priceSnapshot: product!.current_price || product!.price
       })
-      // 결제 페이지로 이동
-      navigate('/checkout')
+      // 장바구니 페이지로 이동 (통일된 플로우)
+      navigate('/cart')
     } catch (err) {
       console.error('Failed to proceed to checkout:', err)
       showToast('구매하기에 실패했습니다.', 'error')

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import axios from 'axios'
+import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
@@ -312,9 +312,9 @@ export default function CheckoutPage() {
 
     const loadData = async () => {
       try {
-        console.log('[CheckoutPage] 📡 장바구니 API 호출 시작: /api/cart/' + uid)
-        // 장바구니 조회
-        const cartResponse = await axios.get(`/api/cart/${uid}`)
+        console.log('[CheckoutPage] 📡 장바구니 API 호출 시작: /api/cart')
+        // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
+        const cartResponse = await api.get('/api/cart')
         console.log('[CheckoutPage] 장바구니 응답:', cartResponse.data)
         if (cartResponse.data.success && cartResponse.data.data.length > 0) {
           console.log('[CheckoutPage] ✅ 장바구니 데이터 설정:', cartResponse.data.data.length, '개 상품')
@@ -325,9 +325,9 @@ export default function CheckoutPage() {
           setTimeout(() => navigate('/cart'), 2000)
         }
 
-        // 배송지 조회
-        console.log('[CheckoutPage] 📡 배송지 API 호출 시작: /api/shipping-addresses/' + uid)
-        const addressResponse = await axios.get(`/api/shipping-addresses/${uid}`)
+        // 배송지 조회 (requireAuth 미들웨어가 userId 자동 추출)
+        console.log('[CheckoutPage] 📡 배송지 API 호출 시작: /api/shipping-addresses')
+        const addressResponse = await api.get('/api/shipping-addresses')
         console.log('[CheckoutPage] 배송지 응답:', addressResponse.data)
         if (addressResponse.data.success) {
           const addressList = addressResponse.data.data
