@@ -99,16 +99,18 @@ export default function LoginPage() {
       if (response.data.success) {
         const { user, session_token } = response.data.data
 
-        // localStorage에 저장
-        localStorage.setItem('accessToken', session_token)
-        localStorage.setItem('userId', user.id.toString())
-        localStorage.setItem('userName', user.name)
-        localStorage.setItem('userEmail', user.email || '')
-        
-        // Also save with alternative keys for compatibility
+        // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
+        localStorage.setItem('user_session_token', session_token)  // ✅ API 클라이언트가 읽는 키
+        localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
         localStorage.setItem('user_id', user.id.toString())
         localStorage.setItem('user_name', user.name)
-        localStorage.setItem('session', session_token)
+        localStorage.setItem('userEmail', user.email || '')
+        
+        // 이전 호환성 키 제거
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('session')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('userName')
 
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
@@ -146,18 +148,21 @@ export default function LoginPage() {
       })
 
       if (response.data.success) {
-        const { user, access_token } = response.data.data
+        const { user, access_token, session_token } = response.data.data
+        const token = session_token || access_token  // 토큰 우선순위
 
-        // localStorage에 저장
-        localStorage.setItem('accessToken', access_token)
-        localStorage.setItem('userId', user.id.toString())
-        localStorage.setItem('userName', user.name)
-        localStorage.setItem('userEmail', user.email || '')
-        
-        // Also save with alternative keys for compatibility
+        // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
+        localStorage.setItem('user_session_token', token)  // ✅ API 클라이언트가 읽는 키
+        localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
         localStorage.setItem('user_id', user.id.toString())
         localStorage.setItem('user_name', user.name)
-        localStorage.setItem('session', access_token)
+        localStorage.setItem('userEmail', user.email || '')
+        
+        // 이전 호환성 키 제거
+        localStorage.removeItem('userId')
+        localStorage.removeItem('userName')
+        localStorage.removeItem('session')
+        localStorage.removeItem('accessToken')
 
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'

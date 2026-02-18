@@ -133,13 +133,14 @@ export default function LivePage() {
     const userName = searchParams.get('userName')
     
     if (loginStatus === 'success' && sessionToken) {
-      // Save to localStorage
-      localStorage.setItem('session', sessionToken)
+      // CRITICAL: Save with correct keys for API client
+      localStorage.setItem('user_session_token', sessionToken)  // ✅ API client key
+      localStorage.setItem('user_type', 'user')  // ✅ User type
       localStorage.setItem('user_id', userId || '')
       localStorage.setItem('user_name', decodeURIComponent(userName || '카카오 사용자'))
       
-      // ALSO save to cookie (for API requests)
-      document.cookie = `session=${sessionToken}; path=/; max-age=86400; SameSite=Lax`
+      // Remove old keys
+      localStorage.removeItem('session')
       
       setIsLoggedIn(true)
       
