@@ -11,18 +11,37 @@ import { useModal } from '@/components/CustomModal'
 // ============================================
 if (typeof window !== 'undefined') {
   const originalError = console.error
+  const originalWarn = console.warn
+  
   console.error = (...args: any[]) => {
     const message = args[0]?.toString() || ''
-    // Filter out YouTube postMessage and touch event warnings
+    // Filter out YouTube-related errors
     if (
       message.includes('postMessage') ||
       message.includes('touchstart') ||
       message.includes('touchmove') ||
-      message.includes('www-embed-player')
+      message.includes('www-embed-player') ||
+      message.includes('www-widgetapi') ||
+      message.includes('youtube.com') ||
+      message.includes('DOMWindow')
     ) {
       return // Suppress these errors
     }
     originalError.apply(console, args)
+  }
+  
+  console.warn = (...args: any[]) => {
+    const message = args[0]?.toString() || ''
+    // Filter out YouTube-related warnings
+    if (
+      message.includes('passive event listener') ||
+      message.includes('touchstart') ||
+      message.includes('touchmove') ||
+      message.includes('[Violation]')
+    ) {
+      return // Suppress these warnings
+    }
+    originalWarn.apply(console, args)
   }
 }
 
@@ -1329,12 +1348,16 @@ export default function LivePageV2() {
         userName: userName ? decodeURIComponent(userName) : null
       })
 
-      // localStorage에 저장
-      localStorage.setItem('session', session)
+      // CRITICAL: API 클라이언트가 읽을 수 있도록 올바른 키로 저장
+      localStorage.setItem('user_session_token', session)  // ✅ 올바른 키
       localStorage.setItem('user_id', userId)
+      localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입 저장
       if (userName) {
         localStorage.setItem('user_name', decodeURIComponent(userName))
       }
+
+      // 이전 키 제거 (호환성 정리)
+      localStorage.removeItem('session')
 
       // URL 파라미터 제거 (깔끔한 URL 유지)
       urlParams.delete('login')
@@ -1347,7 +1370,8 @@ export default function LivePageV2() {
       window.history.replaceState({}, '', newUrl)
 
       console.log('[LivePageV2] ✅ localStorage 저장 완료:', {
-        session: localStorage.getItem('session') ? '있음' : '없음',
+        user_session_token: localStorage.getItem('user_session_token') ? '있음' : '없음',
+        user_type: localStorage.getItem('user_type'),
         user_id: localStorage.getItem('user_id'),
         user_name: localStorage.getItem('user_name')
       })
