@@ -7,6 +7,26 @@ import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
 
 // ============================================
+// Suppress YouTube Console Errors
+// ============================================
+if (typeof window !== 'undefined') {
+  const originalError = console.error
+  console.error = (...args: any[]) => {
+    const message = args[0]?.toString() || ''
+    // Filter out YouTube postMessage and touch event warnings
+    if (
+      message.includes('postMessage') ||
+      message.includes('touchstart') ||
+      message.includes('touchmove') ||
+      message.includes('www-embed-player')
+    ) {
+      return // Suppress these errors
+    }
+    originalError.apply(console, args)
+  }
+}
+
+// ============================================
 // TypeScript Interfaces
 // ============================================
 interface Stream {
@@ -729,6 +749,7 @@ function ReelCard({
             playsinline: 1,
             enablejsapi: 1,
             origin: window.location.origin,
+            widget_referrer: window.location.origin,
             loop: 1,
             playlist: stream.youtube_video_id,
             fs: 0,
@@ -743,17 +764,27 @@ function ReelCard({
             },
             onStateChange: (event: any) => {
               if (!isMounted) return
-              // @ts-ignore
-              if (event.data === window.YT.PlayerState.PLAYING) {
-                setShowPlayButton(false)
-              } else if (event.data === window.YT.PlayerState.PAUSED) {
-                setShowPlayButton(true)
+              try {
+                // @ts-ignore
+                if (event.data === window.YT.PlayerState.PLAYING) {
+                  setShowPlayButton(false)
+                } else if (event.data === window.YT.PlayerState.PAUSED) {
+                  setShowPlayButton(true)
+                }
+              } catch (e) {
+                // Suppress postMessage errors
               }
+            },
+            onError: (event: any) => {
+              // Suppress YouTube player errors silently
             },
           },
         })
       } catch (error) {
-        console.error('[ReelCard] Failed to initialize YouTube player:', error)
+        // Only log critical errors, suppress postMessage
+        if (error instanceof Error && !error.message.includes('postMessage')) {
+          console.error('[ReelCard] YouTube player error:', error.message)
+        }
       }
     }
 
@@ -782,7 +813,7 @@ function ReelCard({
         try {
           player.destroy()
         } catch (error) {
-          console.error('[ReelCard] Error destroying player:', error)
+          // Suppress cleanup errors
         }
       }
     }
