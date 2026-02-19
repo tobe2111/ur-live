@@ -602,7 +602,12 @@ export default function CheckoutPage() {
                 <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
                 <button
                   type="button"
-                  onClick={() => setShowAddressModal(true)}
+                  onClick={() => {
+                    console.log('[CheckoutPage] 배송지 변경 버튼 클릭')
+                    console.log('[CheckoutPage] 현재 showAddressModal:', showAddressModal)
+                    console.log('[CheckoutPage] 배송지 목록:', addresses)
+                    setShowAddressModal(true)
+                  }}
                   className="flex items-center text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900"
                 >
                   {selectedAddress ? '변경' : '선택'}
@@ -741,7 +746,7 @@ export default function CheckoutPage() {
               {/* 약관 동의 위젯 */}
               <div 
                 id="agreement" 
-                className="w-full mt-3"
+                className="w-full mt-1.5"
                 style={{
                   width: '100%',
                   maxWidth: '100%',
@@ -931,9 +936,13 @@ export default function CheckoutPage() {
       </div>
 
       {/* 배송지 선택 모달 */}
+      {console.log('[CheckoutPage] 배송지 모달 렌더링 - showAddressModal:', showAddressModal, 'addresses:', addresses.length)}
       <CustomModal
         isOpen={showAddressModal}
-        onClose={() => setShowAddressModal(false)}
+        onClose={() => {
+          console.log('[CheckoutPage] 배송지 모달 닫기')
+          setShowAddressModal(false)
+        }}
         title="배송지 선택"
       >
         <div className="space-y-3">
