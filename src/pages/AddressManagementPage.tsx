@@ -194,7 +194,7 @@ export default function AddressManagementPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link 
-              to="/mypage" 
+              to="/user/profile" 
               className="flex items-center space-x-2 text-[#9370DB] hover:text-[#6A5ACD] transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />

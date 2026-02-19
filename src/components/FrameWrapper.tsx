@@ -17,7 +17,8 @@ const EXCLUDE_PAGES = [
   '/cart',       // 장바구니
   '/checkout',   // 결제 페이지
   '/search',     // 검색
-  '/mypage',     // 마이페이지
+  '/user/profile', // 마이페이지 (통합됨)
+  '/mypage',     // 마이페이지 (리다이렉트)
   '/my-orders',  // 주문 내역
   '/orders',     // 주문 내역 (별칭)
   '/product/',   // 상품 상세

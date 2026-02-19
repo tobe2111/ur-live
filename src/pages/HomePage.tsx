@@ -243,7 +243,7 @@ export default function HomePage() {
                 주문내역
               </Link>
               {user && (
-                <Link to="/mypage" className="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                <Link to="/user/profile" className="text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors">
                   마이페이지
                 </Link>
               )}
@@ -255,7 +255,7 @@ export default function HomePage() {
                 <>
                   {/* Desktop: User Profile */}
                   <Link 
-                    to="/mypage"
+                    to="/user/profile"
                     className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold">
@@ -275,7 +275,7 @@ export default function HomePage() {
                   
                   {/* Mobile: User Profile */}
                   <Link 
-                    to="/mypage"
+                    to="/user/profile"
                     className="sm:hidden flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-white text-sm font-bold"
                   >
                     {user.name.charAt(0)}

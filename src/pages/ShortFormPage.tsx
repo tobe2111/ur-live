@@ -184,7 +184,7 @@ export default function ShortFormPage() {
           <div className="flex-1 overflow-y-auto p-4">
             {loggedIn ? (
               <div className="space-y-2">
-                <button onClick={() => { setIsSidebarOpen(false); navigate('/mypage'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
+                <button onClick={() => { setIsSidebarOpen(false); navigate('/user/profile'); }} className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg">
                   <User className="w-5 h-5 text-purple-600" />
                   <span className="font-medium">마이페이지</span>
                 </button>
@@ -234,7 +234,7 @@ export default function ShortFormPage() {
               <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/cart')}>
                 <ShoppingBag className="w-5 h-5 text-gray-600" />
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/mypage')}>
+              <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => navigate('/user/profile')}>
                 <User className="w-5 h-5 text-gray-600" />
               </button>
             </div>

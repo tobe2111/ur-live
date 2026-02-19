@@ -113,7 +113,8 @@ function App() {
             <Route path="/seller/streams/new" element={<SellerStreamNewPage />} />
             <Route path="/seller/streams/:id" element={<SellerStreamEditPage />} />
             <Route path="/seller/profile" element={<SellerProfileEditPage />} />
-            <Route path="/mypage" element={<MyPage />} />
+            {/* Redirect /mypage to /user/profile */}
+            <Route path="/mypage" element={<UserProfilePage />} />
             <Route path="/user/profile" element={<UserProfilePage />} />
             <Route path="/mypage/addresses" element={<AddressManagementPage />} />
             <Route path="/admin" element={<AdminPage />} />
