@@ -745,13 +745,24 @@ function ReelCard({
 
     const initializePlayer = () => {
       try {
+        console.log(`[ReelCard] Initializing player for stream ${stream.id}:`, stream.youtube_video_id)
         // @ts-ignore
-        if (!window.YT || !window.YT.Player) return
-        if (!isMounted) return
+        if (!window.YT || !window.YT.Player) {
+          console.log(`[ReelCard] YouTube API not ready for stream ${stream.id}`)
+          return
+        }
+        if (!isMounted) {
+          console.log(`[ReelCard] Component unmounted for stream ${stream.id}`)
+          return
+        }
 
         const playerElement = document.getElementById(`youtube-player-${stream.id}`)
-        if (!playerElement) return
+        if (!playerElement) {
+          console.log(`[ReelCard] Player element not found for stream ${stream.id}`)
+          return
+        }
 
+        console.log(`[ReelCard] Creating YouTube player for stream ${stream.id}`)
         playerElement.innerHTML = ''
 
         // @ts-ignore
@@ -778,6 +789,7 @@ function ReelCard({
           events: {
             onReady: (event: any) => {
               if (!isMounted) return
+              console.log(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
               playerRef.current = event.target
               setPlayerReady(true)
               setShowPlayButton(true) // Show play button overlay
@@ -813,10 +825,13 @@ function ReelCard({
 
     // @ts-ignore
     if (window.YT && window.YT.Player) {
+      console.log(`[ReelCard] YouTube API already loaded, initializing stream ${stream.id}`)
       initializePlayer()
     } else {
+      console.log(`[ReelCard] YouTube API not loaded, queueing callback for stream ${stream.id}`)
       const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]')
       if (!existingScript) {
+        console.log('[ReelCard] Loading YouTube IFrame API script')
         const tag = document.createElement('script')
         tag.src = 'https://www.youtube.com/iframe_api'
         tag.async = true
@@ -827,10 +842,12 @@ function ReelCard({
       // Store callback in array to support multiple reels
       // @ts-ignore
       if (!window.youtubeCallbacks) {
+        console.log('[ReelCard] Creating YouTube callbacks array')
         // @ts-ignore
         window.youtubeCallbacks = []
         // @ts-ignore
         window.onYouTubeIframeAPIReady = () => {
+          console.log('[ReelCard] YouTube IFrame API ready, executing callbacks:', window.youtubeCallbacks.length)
           // @ts-ignore
           window.youtubeCallbacks.forEach(cb => cb())
           // @ts-ignore
@@ -839,6 +856,7 @@ function ReelCard({
       }
       // @ts-ignore
       window.youtubeCallbacks.push(() => {
+        console.log(`[ReelCard] Executing queued callback for stream ${stream.id}`)
         if (isMounted) initializePlayer()
       })
     }
