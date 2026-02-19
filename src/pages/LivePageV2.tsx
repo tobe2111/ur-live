@@ -736,7 +736,9 @@ function ReelCard({
 
   // YouTube Player Integration
   useEffect(() => {
-    if (!stream.youtube_video_id || !isActive) return
+    // Initialize player for all reels (not just active one)
+    // isActive check removed - this fixes YouTube video not playing issue
+    if (!stream.youtube_video_id) return
 
     let player: any = null
     let isMounted = true
@@ -838,7 +840,7 @@ function ReelCard({
         }
       }
     }
-  }, [stream.youtube_video_id, stream.id, isActive])
+  }, [stream.youtube_video_id, stream.id])  // isActive removed from dependencies
 
   const handleVideoClick = () => {
     if (playerRef.current && playerReady) {
@@ -1126,10 +1128,10 @@ function ReelCard({
         }`}
       />
 
-      {/* YouTube Player Overlay (hidden behind image) */}
+      {/* YouTube Player Container */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+        className="absolute inset-0 w-full h-full"
       />
 
       {/* Play Button Overlay */}
