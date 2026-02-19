@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import ImageUpload from '@/components/ImageUpload'
 import { 
   ArrowLeft, 
   Package,
   Loader2,
-  Image as ImageIcon,
   DollarSign,
   Box,
   FileText,
@@ -231,26 +231,15 @@ export default function SellerProductNewPage() {
             </div>
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              상품 이미지 URL
-            </label>
-            <div className="relative">
-              <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="url"
-                name="image_url"
-                value={formData.image_url}
-                onChange={handleChange}
-                placeholder="https://images.unsplash.com/photo-..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Unsplash, Pexels 등에서 이미지 URL을 복사하여 붙여넣으세요
-            </p>
-          </div>
+          {/* Image Upload */}
+          <ImageUpload
+            value={formData.image_url}
+            onChange={(url) => setFormData({ ...formData, image_url: url })}
+            label="상품 이미지"
+            maxSizeKB={800}
+          />
+
+          {/* Image Preview - Removed as ImageUpload component handles it */}
 
           {/* Product Type Selection */}
           <div>
@@ -299,23 +288,6 @@ export default function SellerProductNewPage() {
               </label>
             </div>
           </div>
-
-          {/* Image Preview */}
-          {formData.image_url && (
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">이미지 미리보기</p>
-              <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden border">
-                <img
-                  src={formData.image_url}
-                  alt="상품 미리보기"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/128'
-                  }}
-                />
-              </div>
-            </div>
-          )}
 
           {/* Live Stream Selection */}
           {liveStreams.length > 0 && (

@@ -42,6 +42,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "axios": "^1.13.4",
+    "browser-image-compression": "^2.0.2",
     "embla-carousel-react": "^8.6.0",
     "hono": "^4.11.7",
     "react": "^19.2.4",

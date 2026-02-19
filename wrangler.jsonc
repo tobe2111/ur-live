@@ -23,4 +23,14 @@
       "id": "25ecc9ce2c464dd59edf5eb7d5fd1a10"
     }
   ]
+  // R2 버킷 설정 (활성화 후 주석 해제)
+  // 1. Cloudflare 대시보드에서 R2 활성화
+  // 2. npx wrangler r2 bucket create ur-live-images 실행
+  // 3. 아래 주석 해제
+  // "r2_buckets": [
+  //   {
+  //     "binding": "IMAGES",
+  //     "bucket_name": "ur-live-images"
+  //   }
+  // ]
 }

@@ -8,7 +8,10 @@ interface Seller {
   id: number
   email: string
   username?: string
+  name?: string
+  phone?: string
   business_name?: string
+  business_number?: string
   company_name?: string
   status: string
   commission_rate?: number
@@ -34,6 +37,7 @@ interface Stats {
 export default function AdminPage() {
   const navigate = useNavigate()
   const [sellers, setSellers] = useState<Seller[]>([])
+  const [pendingSellers, setPendingSellers] = useState<Seller[]>([])
   const [streams, setStreams] = useState<Stream[]>([])
   const [stats, setStats] = useState<Stats>({
     totalSellers: 0,
@@ -42,6 +46,9 @@ export default function AdminPage() {
     activeStreams: 0
   })
   const [loading, setLoading] = useState(true)
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   useEffect(() => {
     // Check admin session
@@ -78,8 +85,13 @@ export default function AdminPage() {
     try {
       const token = localStorage.getItem('admin_session_token')
       
-      // Load sellers
+      // Load all sellers
       const sellersRes = await api.get('/api/admin/sellers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+
+      // Load pending sellers
+      const pendingRes = await api.get('/api/admin/sellers/pending', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -87,9 +99,11 @@ export default function AdminPage() {
       const streamsRes = await api.get('/api/streams')
 
       const sellersData = sellersRes.data.data || []
+      const pendingData = pendingRes.data.data || []
       const streamsData = streamsRes.data.data || []
 
       setSellers(sellersData)
+      setPendingSellers(pendingData)
       setStreams(streamsData)
 
       // Calculate stats
@@ -113,18 +127,49 @@ export default function AdminPage() {
   }
 
   async function approveSeller(sellerId: number) {
+    if (!confirm('이 판매자를 승인하시겠습니까?')) return
+
     try {
       const token = localStorage.getItem('admin_session_token')
-      await api.post(
+      const response = await api.patch(
         `/api/admin/sellers/${sellerId}/approve`,
         {},
         { headers: { 'Authorization': `Bearer ${token}` } }
       )
-      alert('판매자 승인 완료!')
+      alert(response.data.message || '판매자 승인 완료!')
       loadData()
     } catch (err: any) {
       alert(`승인 실패: ${err.response?.data?.error || err.message}`)
     }
+  }
+
+  async function rejectSeller() {
+    if (!selectedSeller || !rejectionReason.trim()) {
+      alert('거부 사유를 입력해주세요')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('admin_session_token')
+      const response = await api.patch(
+        `/api/admin/sellers/${selectedSeller.id}/reject`,
+        { reason: rejectionReason },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      )
+      alert(response.data.message || '판매자 승인이 거부되었습니다')
+      setRejectModalOpen(false)
+      setSelectedSeller(null)
+      setRejectionReason('')
+      loadData()
+    } catch (err: any) {
+      alert(`거부 실패: ${err.response?.data?.error || err.message}`)
+    }
+  }
+
+  function openRejectModal(seller: Seller) {
+    setSelectedSeller(seller)
+    setRejectionReason('')
+    setRejectModalOpen(true)
   }
 
   async function deleteStream(streamId: number) {
@@ -243,6 +288,122 @@ export default function AdminPage() {
             <p className="text-3xl font-bold text-gray-900">{stats.activeStreams}</p>
           </div>
         </div>
+
+        {/* Pending Sellers Approval Section */}
+        {pendingSellers.length > 0 && (
+          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow mb-8">
+            <div className="p-6 border-b border-yellow-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Users className="w-6 h-6 text-yellow-600" />
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">⏳ 승인 대기 중인 판매자</h2>
+                    <p className="text-sm text-gray-600">{pendingSellers.length}명의 판매자가 승인을 기다리고 있습니다</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-yellow-100 border-b border-yellow-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">신청일시</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">이름</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">이메일</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">연락처</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">상호명</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">사업자번호</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">승인 관리</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {pendingSellers.map((seller) => (
+                    <tr key={seller.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(seller.created_at).toLocaleString('ko-KR')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{seller.name || '-'}</div>
+                        <div className="text-xs text-gray-500">{seller.username}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {seller.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {seller.phone || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {seller.business_name || seller.company_name || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {seller.business_number || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => approveSeller(seller.id)}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-1"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            승인
+                          </button>
+                          <button
+                            onClick={() => openRejectModal(seller)}
+                            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex items-center gap-1"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            거부
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Rejection Modal */}
+        {rejectModalOpen && selectedSeller && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">판매자 승인 거부</h3>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>{selectedSeller.name || selectedSeller.username}</strong>님의 승인을 거부하시겠습니까?
+                </p>
+                <p className="text-sm text-gray-500 mb-4">거부 사유를 입력해주세요:</p>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="예: 사업자등록증 확인 불가, 부적절한 상호명 등"
+                  rows={4}
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setRejectModalOpen(false)
+                    setSelectedSeller(null)
+                    setRejectionReason('')
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={rejectSeller}
+                  disabled={!rejectionReason.trim()}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  거부 확정
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Sellers Section */}
         <div className="bg-white rounded-lg shadow mb-8">

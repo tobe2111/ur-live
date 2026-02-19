@@ -4086,6 +4086,115 @@ app.get('/api/seller/stats', async (c) => {
   }
 });
 
+// Get seller sales statistics (daily/weekly/monthly)
+app.get('/api/seller/stats/sales', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const period = c.req.query('period') || 'daily'; // daily, weekly, monthly
+
+    let dateFormat: string;
+    let groupBy: string;
+    let days: number;
+
+    switch (period) {
+      case 'weekly':
+        dateFormat = '%Y-W%W'; // Year-Week
+        groupBy = 'week';
+        days = 28; // 4 weeks
+        break;
+      case 'monthly':
+        dateFormat = '%Y-%m'; // Year-Month
+        groupBy = 'month';
+        days = 180; // 6 months
+        break;
+      default: // daily
+        dateFormat = '%Y-%m-%d'; // Year-Month-Day
+        groupBy = 'day';
+        days = 30; // 30 days
+    }
+
+    // Get sales data grouped by period
+    const salesData = await DB.prepare(`
+      SELECT 
+        strftime('${dateFormat}', o.created_at) as period,
+        COUNT(DISTINCT o.id) as order_count,
+        SUM(oi.price * oi.quantity) as total_sales,
+        SUM(oi.quantity) as total_quantity
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      JOIN products p ON oi.product_id = p.id
+      WHERE p.seller_id = ?
+        AND o.created_at >= datetime('now', '-${days} days')
+        AND o.status != 'cancelled'
+      GROUP BY period
+      ORDER BY period ASC
+    `).bind(auth.sellerId).all();
+
+    return c.json({
+      success: true,
+      data: {
+        period,
+        sales: salesData.results
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get product sales ranking
+app.get('/api/seller/stats/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const limit = parseInt(c.req.query('limit') || '10');
+    const days = parseInt(c.req.query('days') || '30');
+
+    // Get top selling products
+    const topProducts = await DB.prepare(`
+      SELECT 
+        p.id,
+        p.name,
+        p.price,
+        p.image_url,
+        COUNT(DISTINCT oi.order_id) as order_count,
+        SUM(oi.quantity) as total_sold,
+        SUM(oi.price * oi.quantity) as total_revenue,
+        p.stock as current_stock
+      FROM products p
+      JOIN order_items oi ON p.id = oi.product_id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE p.seller_id = ?
+        AND o.created_at >= datetime('now', '-${days} days')
+        AND o.status != 'cancelled'
+      GROUP BY p.id
+      ORDER BY total_revenue DESC
+      LIMIT ?
+    `).bind(auth.sellerId, limit).all();
+
+    return c.json({
+      success: true,
+      data: {
+        products: topProducts.results,
+        period_days: days
+      }
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // =================================
 // 사업자 정보 관리 API (세금계산서)
 // =================================
@@ -6023,6 +6132,159 @@ app.patch('/api/admin/sellers/:id/commission', async (c) => {
 
   } catch (err) {
     console.error('수수료율 변경 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// Seller Approval System (셀러 승인 시스템)
+// =================================
+
+// Approve seller
+app.patch('/api/admin/sellers/:id/approve', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+
+    // 판매자 존재 및 상태 확인
+    const seller = await DB.prepare('SELECT id, username, email, name, status FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    if (seller.status === 'approved') {
+      return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
+    }
+
+    // 승인 처리
+    await DB.prepare(`
+      UPDATE sellers 
+      SET status = 'approved', 
+          is_active = 1,
+          approved_by = ?,
+          approved_at = datetime('now'),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(auth.adminId, sellerId).run();
+
+    console.log(`셀러 승인: ${seller.username} (ID: ${sellerId}) by Admin ID: ${auth.adminId}`);
+
+    // TODO: 이메일 알림 발송 (승인 완료)
+    // await sendEmail(seller.email, '셀러 승인 완료', '...');
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.name}'님이 승인되었습니다`,
+      data: {
+        seller_id: sellerId,
+        seller_username: seller.username,
+        seller_name: seller.name,
+        status: 'approved',
+        approved_at: new Date().toISOString()
+      }
+    });
+
+  } catch (err) {
+    console.error('셀러 승인 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Reject seller
+app.patch('/api/admin/sellers/:id/reject', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+    const { reason } = await c.req.json();
+
+    if (!reason) {
+      return c.json({ success: false, error: '거부 사유를 입력해주세요' }, 400);
+    }
+
+    // 판매자 존재 및 상태 확인
+    const seller = await DB.prepare('SELECT id, username, email, name, status FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    if (seller.status === 'rejected') {
+      return c.json({ success: false, error: '이미 거부된 판매자입니다' }, 400);
+    }
+
+    // 거부 처리
+    await DB.prepare(`
+      UPDATE sellers 
+      SET status = 'rejected', 
+          is_active = 0,
+          rejection_reason = ?,
+          approved_by = ?,
+          approved_at = datetime('now'),
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(reason, auth.adminId, sellerId).run();
+
+    console.log(`셀러 거부: ${seller.username} (ID: ${sellerId}), 사유: ${reason}`);
+
+    // TODO: 이메일 알림 발송 (거부 사유 포함)
+    // await sendEmail(seller.email, '셀러 승인 거부', reason);
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.name}'님의 승인이 거부되었습니다`,
+      data: {
+        seller_id: sellerId,
+        seller_username: seller.username,
+        seller_name: seller.name,
+        status: 'rejected',
+        rejection_reason: reason,
+        rejected_at: new Date().toISOString()
+      }
+    });
+
+  } catch (err) {
+    console.error('셀러 거부 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Get pending sellers (승인 대기 셀러 목록)
+app.get('/api/admin/sellers/pending', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const pendingSellers = await DB.prepare(`
+      SELECT id, username, name, email, phone, business_name, business_number, 
+             status, created_at
+      FROM sellers
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+    `).all();
+
+    return c.json({ 
+      success: true, 
+      data: pendingSellers.results,
+      count: pendingSellers.results.length
+    });
+  } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

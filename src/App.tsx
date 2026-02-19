@@ -30,6 +30,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const SellerPage = lazy(() => import('./pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
+const SellerDashboardPage = lazy(() => import('./pages/SellerDashboardPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
 const SellerTaxInvoicesPage = lazy(() => import('./pages/SellerTaxInvoicesPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
@@ -103,6 +104,7 @@ function App() {
             <Route path="/seller" element={<SellerPage />} />
             <Route path="/seller/login" element={<SellerLoginPage />} />
             <Route path="/seller/register" element={<SellerRegisterPage />} />
+            <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
             <Route path="/seller/business-info" element={<SellerBusinessInfoPage />} />
             <Route path="/seller/tax-invoices" element={<SellerTaxInvoicesPage />} />
             <Route path="/seller/orders" element={<SellerOrdersPage />} />

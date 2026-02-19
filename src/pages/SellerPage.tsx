@@ -373,6 +373,17 @@ export default function SellerPage() {
           </button>
 
           <button
+            onClick={() => navigate('/seller/dashboard')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left bg-gradient-to-br from-blue-50 to-indigo-50"
+          >
+            <div className="w-10 h-10 bg-blue-600/10 rounded-full flex items-center justify-center mb-3">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">📊 통계 대시보드</p>
+            <p className="text-[13px] text-[#6e6e73]">매출 및 상품 분석</p>
+          </button>
+
+          <button
             onClick={() => navigate('/seller/business-info')}
             className="apple-card p-4 hover:shadow-lg transition-all text-left"
           >
