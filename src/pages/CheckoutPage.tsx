@@ -944,6 +944,8 @@ export default function CheckoutPage() {
           setShowAddressModal(false)
         }}
         title="배송지 선택"
+        type="custom"
+        maxWidth="lg"
       >
         <div className="space-y-3">
           {addresses.length === 0 ? (
@@ -1019,6 +1021,8 @@ export default function CheckoutPage() {
           setShowPostcodePopup(false)
         }}
         title="새 배송지 추가"
+        type="custom"
+        maxWidth="lg"
       >
         <div className="space-y-4">
           <div>
