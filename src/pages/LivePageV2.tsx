@@ -794,7 +794,10 @@ function ReelCard({
               }
             },
             onError: (event: any) => {
-              // Suppress YouTube player errors silently
+              if (!isMounted) return
+              console.error(`[ReelCard] YouTube player error for video ${stream.youtube_video_id}:`, event.data)
+              // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
+              setShowPlayButton(true)
             },
           },
         })
@@ -1478,15 +1481,19 @@ export default function LivePageV2() {
         }
 
         console.log('[LivePageV2] Created reels:', reelsData.length)
-        setReels(reelsData)
         
-        // Set initial active index based on streamId
+        // Set initial active index based on streamId BEFORE setReels
+        let initialIndex = 0
         if (streamId) {
-          const initialIndex = reelsData.findIndex(r => r.stream.id === parseInt(streamId))
-          if (initialIndex !== -1) {
-            setActiveIndex(initialIndex)
+          const foundIndex = reelsData.findIndex(r => r.stream.id === parseInt(streamId))
+          if (foundIndex !== -1) {
+            initialIndex = foundIndex
+            console.log('[LivePageV2] Initial index for stream', streamId, ':', initialIndex)
           }
         }
+        
+        setActiveIndex(initialIndex)
+        setReels(reelsData)
         
         setLoading(false)
       } catch (error) {
