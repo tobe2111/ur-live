@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FileText
+  FileText,
+  Search
 } from 'lucide-react'
 
 interface BusinessInfo {
@@ -27,6 +28,13 @@ interface BusinessInfo {
   is_verified: boolean
   verified_at: string | null
   created_at: string
+}
+
+// Daum Postcode 타입 정의
+declare global {
+  interface Window {
+    daum: any
+  }
 }
 
 export default function SellerBusinessInfoPage() {
@@ -52,7 +60,15 @@ export default function SellerBusinessInfoPage() {
 
   useEffect(() => {
     loadBusinessInfo()
+    loadDaumPostcodeScript()
   }, [])
+
+  function loadDaumPostcodeScript() {
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.async = true
+    document.body.appendChild(script)
+  }
 
   async function loadBusinessInfo() {
     try {
@@ -64,9 +80,7 @@ export default function SellerBusinessInfoPage() {
         return
       }
 
-      const response = await api.get('/api/seller/business-info', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
+      const response = await api.get('/api/seller/business-info')
 
       if (response.data.success && response.data.data) {
         setBusinessInfo(response.data.data)
@@ -110,9 +124,7 @@ export default function SellerBusinessInfoPage() {
         return
       }
 
-      const response = await api.post('/api/seller/business-info', formData, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
+      const response = await api.post('/api/seller/business-info', formData)
 
       if (response.data.success) {
         setSuccess('사업자 정보가 저장되었습니다. 관리자 승인을 기다려주세요.')
@@ -129,10 +141,84 @@ export default function SellerBusinessInfoPage() {
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const { name, value } = e.target
+    
+    let formattedValue = value
+
+    // 사업자등록번호 자동 하이픈 (000-00-00000)
+    if (name === 'business_number') {
+      const numbers = value.replace(/[^\d]/g, '')
+      if (numbers.length <= 3) {
+        formattedValue = numbers
+      } else if (numbers.length <= 5) {
+        formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+      } else {
+        formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3, 5)}-${numbers.slice(5, 10)}`
+      }
+    }
+
+    // 전화번호 자동 하이픈
+    if (name === 'phone') {
+      const numbers = value.replace(/[^\d]/g, '')
+      
+      // 010, 011 등 휴대폰 번호 (010-0000-0000)
+      if (numbers.startsWith('01')) {
+        if (numbers.length <= 3) {
+          formattedValue = numbers
+        } else if (numbers.length <= 7) {
+          formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+        } else {
+          formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
+        }
+      }
+      // 02 서울 지역번호 (02-000-0000 또는 02-0000-0000)
+      else if (numbers.startsWith('02')) {
+        if (numbers.length <= 2) {
+          formattedValue = numbers
+        } else if (numbers.length <= 5) {
+          formattedValue = `${numbers.slice(0, 2)}-${numbers.slice(2)}`
+        } else if (numbers.length <= 9) {
+          formattedValue = `${numbers.slice(0, 2)}-${numbers.slice(2, 5)}-${numbers.slice(5)}`
+        } else {
+          formattedValue = `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6, 10)}`
+        }
+      }
+      // 그 외 지역번호 (031-000-0000 또는 031-0000-0000)
+      else {
+        if (numbers.length <= 3) {
+          formattedValue = numbers
+        } else if (numbers.length <= 6) {
+          formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3)}`
+        } else if (numbers.length <= 10) {
+          formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`
+        } else {
+          formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
+        }
+      }
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: formattedValue
     })
+  }
+
+  function openAddressSearch() {
+    if (!window.daum || !window.daum.Postcode) {
+      alert('주소 검색 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
+
+    new window.daum.Postcode({
+      oncomplete: function(data: any) {
+        // 우편번호와 주소 정보를 formData에 설정
+        setFormData({
+          ...formData,
+          postal_code: data.zonecode,
+          address: data.address
+        })
+      }
+    }).open()
   }
 
   if (loading) {
@@ -237,11 +323,12 @@ export default function SellerBusinessInfoPage() {
               value={formData.business_number}
               onChange={handleChange}
               placeholder="000-00-00000"
+              maxLength={12}
               required
               disabled={businessInfo?.is_verified}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
-            <p className="text-xs text-gray-500 mt-1">하이픈(-)을 포함하여 입력해주세요.</p>
+            <p className="text-xs text-gray-500 mt-1">숫자만 입력하면 자동으로 하이픈이 추가됩니다.</p>
           </div>
 
           {/* 상호명 */}
@@ -316,16 +403,29 @@ export default function SellerBusinessInfoPage() {
               사업장 소재지 <span className="text-red-500">*</span>
             </label>
             <div className="space-y-2">
-              <input
-                type="text"
-                name="postal_code"
-                value={formData.postal_code}
-                onChange={handleChange}
-                placeholder="우편번호"
-                required
-                disabled={businessInfo?.is_verified}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="postal_code"
+                  value={formData.postal_code}
+                  onChange={handleChange}
+                  placeholder="우편번호"
+                  required
+                  readOnly
+                  disabled={businessInfo?.is_verified}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+                {!businessInfo?.is_verified && (
+                  <Button
+                    type="button"
+                    onClick={openAddressSearch}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center gap-2"
+                  >
+                    <Search className="w-4 h-4" />
+                    주소 검색
+                  </Button>
+                )}
+              </div>
               <input
                 type="text"
                 name="address"
@@ -333,6 +433,7 @@ export default function SellerBusinessInfoPage() {
                 onChange={handleChange}
                 placeholder="기본 주소"
                 required
+                readOnly
                 disabled={businessInfo?.is_verified}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
@@ -360,10 +461,12 @@ export default function SellerBusinessInfoPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="02-1234-5678"
+                maxLength={13}
                 required
                 disabled={businessInfo?.is_verified}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
+              <p className="text-xs text-gray-500 mt-1">숫자만 입력하면 자동으로 하이픈이 추가됩니다.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -414,6 +517,7 @@ export default function SellerBusinessInfoPage() {
                   <li>사업자 정보는 세금계산서 발행에 사용됩니다.</li>
                   <li>승인 후에는 수정이 불가능합니다. 변경이 필요한 경우 고객센터로 문의해주세요.</li>
                   <li>허위 정보 입력 시 서비스 이용이 제한될 수 있습니다.</li>
+                  <li>주소는 "주소 검색" 버튼을 클릭하여 정확하게 입력해주세요.</li>
                 </ul>
               </div>
             </div>
