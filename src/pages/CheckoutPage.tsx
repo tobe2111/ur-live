@@ -746,7 +746,7 @@ export default function CheckoutPage() {
               {/* 약관 동의 위젯 */}
               <div 
                 id="agreement" 
-                className="w-full mt-1.5"
+                className="w-full mt-0.5"
                 style={{
                   width: '100%',
                   maxWidth: '100%',
