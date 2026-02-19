@@ -36,23 +36,26 @@ export default function SellerLoginPage() {
           const sessionToken = response.data.data.sessionToken
           const sellerId = response.data.data.user.id
           
-          localStorage.setItem('seller_session_token', sessionToken)
+          // 중요: user_type을 먼저 설정하고 나머지 정보 저장
           localStorage.setItem('user_type', 'seller')
-          localStorage.setItem('seller_id', sellerId)
+          localStorage.setItem('seller_session_token', sessionToken)
+          localStorage.setItem('seller_id', sellerId.toString())
+          localStorage.setItem('seller_name', response.data.data.user.name || '')
+          localStorage.setItem('seller_email', response.data.data.user.email || '')
           
-          console.log('[SellerLogin] ✅ Login successful:', {
-            hasSessionToken: !!sessionToken,
-            userType: localStorage.getItem('user_type'),
-            sellerId: localStorage.getItem('seller_id'),
-            session: localStorage.getItem('seller_session_token')
-          })
+          // 디버깅: localStorage 확인
+          console.log('[SellerLogin] ✅ Login successful, localStorage saved:')
+          console.log('  - user_type:', localStorage.getItem('user_type'))
+          console.log('  - seller_session_token:', localStorage.getItem('seller_session_token'))
+          console.log('  - seller_id:', localStorage.getItem('seller_id'))
+          console.log('  - seller_name:', localStorage.getItem('seller_name'))
+          console.log('All localStorage keys:', Object.keys(localStorage))
           
           alert('로그인 성공!')
           
-          // 짧은 딩레이 후 이동 (브라우저가 localStorage 반영할 시간 부여)
-          setTimeout(() => {
-            navigate('/seller')
-          }, 100)
+          // 즉시 이동 (localStorage는 동기적으로 저장됨)
+          console.log('[SellerLogin] Navigating to /seller...')
+          navigate('/seller', { replace: true })
         } else {
           setError(response.data.error || '로그인 실패')
         }
