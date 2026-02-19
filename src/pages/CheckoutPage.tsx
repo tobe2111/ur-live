@@ -591,7 +591,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-lg pb-24 lg:max-w-5xl lg:pb-6">
+      <main className="mx-auto max-w-lg pb-52 lg:max-w-5xl lg:pb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
 
           {/* Left column */}
