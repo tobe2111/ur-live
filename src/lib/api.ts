@@ -20,17 +20,33 @@ const api = axios.create({
 
 /**
  * 요청 인터셉터: 자동 인증 토큰 추가
+ * 
+ * 현재 사용자 타입에 따라 올바른 토큰 선택
  */
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // 세션 토큰 우선순위: user > seller > admin
-    const token = 
-      localStorage.getItem('user_session_token') ||
-      localStorage.getItem('seller_session_token') ||
-      localStorage.getItem('admin_session_token');
+    // 현재 사용자 타입 확인
+    const userType = localStorage.getItem('user_type')
+    let token: string | null = null
+    
+    // 사용자 타입에 따라 올바른 토큰 선택
+    if (userType === 'seller') {
+      token = localStorage.getItem('seller_session_token')
+      console.log('[API] Using seller token for request')
+    } else if (userType === 'admin') {
+      token = localStorage.getItem('admin_session_token')
+      console.log('[API] Using admin token for request')
+    } else {
+      // user 또는 기본
+      token = localStorage.getItem('user_session_token')
+      console.log('[API] Using user token for request')
+    }
     
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`
+      console.log('[API] Token attached:', token.substring(0, 20) + '...')
+    } else {
+      console.warn('[API] No token found for user_type:', userType)
     }
     
     return config;
