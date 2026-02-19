@@ -17,12 +17,7 @@ import {
   Phone,
   Mail,
   DollarSign,
-  FileText,
-  Search,
-  Filter,
-  Download,
-  ChevronLeft,
-  ChevronRight
+  FileText
 } from 'lucide-react'
 
 interface OrderItem {
@@ -53,24 +48,11 @@ interface Order {
 export default function SellerOrdersPage() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [updating, setUpdating] = useState(false)
-
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [dateFilter, setDateFilter] = useState({
-    start: '',
-    end: ''
-  })
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 20
 
   const [trackingForm, setTrackingForm] = useState({
     courier: '',
@@ -80,10 +62,6 @@ export default function SellerOrdersPage() {
   useEffect(() => {
     loadOrders()
   }, [])
-
-  useEffect(() => {
-    filterOrders()
-  }, [orders, statusFilter, searchQuery, dateFilter])
 
   async function loadOrders() {
     setLoading(true)
@@ -109,84 +87,6 @@ export default function SellerOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  function filterOrders() {
-    let result = [...orders]
-
-    // Status filter
-    if (statusFilter !== 'ALL') {
-      result = result.filter(order => order.status === statusFilter)
-    }
-
-    // Search filter (order number, customer name, phone)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(order => 
-        order.order_number.toLowerCase().includes(query) ||
-        order.shipping_name.toLowerCase().includes(query) ||
-        order.shipping_phone.includes(query)
-      )
-    }
-
-    // Date filter
-    if (dateFilter.start) {
-      const startDate = new Date(dateFilter.start)
-      result = result.filter(order => new Date(order.created_at) >= startDate)
-    }
-    if (dateFilter.end) {
-      const endDate = new Date(dateFilter.end)
-      endDate.setHours(23, 59, 59, 999) // End of day
-      result = result.filter(order => new Date(order.created_at) <= endDate)
-    }
-
-    setFilteredOrders(result)
-    setCurrentPage(1) // Reset to first page when filters change
-  }
-
-  // Pagination
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentOrders = filteredOrders.slice(startIndex, endIndex)
-
-  function goToPage(page: number) {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page)
-    }
-  }
-
-  // CSV Export
-  function exportToCSV() {
-    if (filteredOrders.length === 0) {
-      alert('내보낼 주문이 없습니다.')
-      return
-    }
-
-    const headers = ['주문번호', '주문자', '전화번호', '주소', '주문금액', '주문상태', '결제상태', '택배사', '송장번호', '주문일시']
-    const rows = filteredOrders.map(order => [
-      order.order_number,
-      order.shipping_name,
-      order.shipping_phone,
-      order.shipping_address,
-      order.total_amount,
-      getStatusText(order.status),
-      order.payment_status === 'completed' ? '결제완료' : order.payment_status,
-      order.courier || '',
-      order.tracking_number || '',
-      new Date(order.created_at).toLocaleString('ko-KR')
-    ])
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `주문목록_${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
   }
 
   async function handleStatusChange(orderNumber: string, newStatus: string) {
@@ -326,112 +226,13 @@ export default function SellerOrdersPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Title */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Package className="w-10 h-10 text-blue-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">주문 관리</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  전체 {orders.length}건 / 필터링 {filteredOrders.length}건
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={exportToCSV}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <Download className="w-4 h-4" />
-              CSV 다운로드
-            </Button>
+          <div className="flex items-center gap-3 mb-2">
+            <Package className="w-10 h-10 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900">주문 관리</h1>
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">필터</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                주문 상태
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="ALL">전체</option>
-                <option value="PAY_COMPLETE">결제완료</option>
-                <option value="PREPARING">상품준비중</option>
-                <option value="SHIPPING">배송중</option>
-                <option value="DELIVERED">배송완료</option>
-                <option value="CANCELLED">주문취소</option>
-              </select>
-            </div>
-
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                검색
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="주문번호, 주문자명, 전화번호"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Date Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                시작일
-              </label>
-              <input
-                type="date"
-                value={dateFilter.start}
-                onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                종료일
-              </label>
-              <input
-                type="date"
-                value={dateFilter.end}
-                onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Reset Filters */}
-          {(statusFilter !== 'ALL' || searchQuery || dateFilter.start || dateFilter.end) && (
-            <div className="mt-4">
-              <Button
-                onClick={() => {
-                  setStatusFilter('ALL')
-                  setSearchQuery('')
-                  setDateFilter({ start: '', end: '' })
-                }}
-                variant="outline"
-                size="sm"
-              >
-                필터 초기화
-              </Button>
-            </div>
-          )}
+          <p className="text-gray-600 mt-2">
+            주문 상태를 관리하고 배송 정보를 입력할 수 있습니다.
+          </p>
         </div>
 
         {/* Error Message */}
@@ -450,109 +251,61 @@ export default function SellerOrdersPage() {
             <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
           </div>
         ) : (
-          <>
-            {/* Orders List */}
-            <div className="bg-white rounded-lg shadow-sm border">
-              {currentOrders.length === 0 ? (
-                <div className="text-center py-20">
-                  <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">
-                    {filteredOrders.length === 0 && orders.length > 0 
-                      ? '필터 조건에 맞는 주문이 없습니다.' 
-                      : '주문이 없습니다.'}
-                  </p>
-                  <p className="text-sm text-gray-500">새 주문이 들어오면 여기에 표시됩니다.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문자</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">주문금액</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">주문상태</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">결제상태</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문일시</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상세</th>
+          /* Orders List */
+          <div className="bg-white rounded-lg shadow-sm border">
+            {orders.length === 0 ? (
+              <div className="text-center py-20">
+                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 mb-2">주문이 없습니다.</p>
+                <p className="text-sm text-gray-500">새 주문이 들어오면 여기에 표시됩니다.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문자</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">주문금액</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">주문상태</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">결제상태</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문일시</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상세</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {orders.map((order) => (
+                      <tr key={order.order_number} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          <div>{order.shipping_name}</div>
+                          <div className="text-xs text-gray-400">{order.shipping_phone}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}원</td>
+                        <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
+                        <td className="px-6 py-4 text-center">
+                          <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
+                            {order.payment_status === 'completed' ? '결제완료' : order.payment_status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {new Date(order.created_at).toLocaleString('ko-KR')}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => viewOrderDetail(order)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {currentOrders.map((order) => (
-                        <tr key={order.order_number} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            <div>{order.shipping_name}</div>
-                            <div className="text-xs text-gray-400">{order.shipping_phone}</div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}원</td>
-                          <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
-                          <td className="px-6 py-4 text-center">
-                            <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
-                              {order.payment_status === 'completed' ? '결제완료' : order.payment_status}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            {new Date(order.created_at).toLocaleString('ko-KR')}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <button
-                              onClick={() => viewOrderDetail(order)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                            >
-                              <Eye className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  {startIndex + 1}-{Math.min(endIndex, filteredOrders.length)} / 전체 {filteredOrders.length}건
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => goToPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum = Math.max(1, Math.min(currentPage - 2, totalPages - 4)) + i
-                    if (pageNum > totalPages) return null
-                    return (
-                      <Button
-                        key={pageNum}
-                        onClick={() => goToPage(pageNum)}
-                        variant={currentPage === pageNum ? 'default' : 'outline'}
-                        size="sm"
-                        className="w-10"
-                      >
-                        {pageNum}
-                      </Button>
-                    )
-                  })}
-                  <Button
-                    onClick={() => goToPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 
