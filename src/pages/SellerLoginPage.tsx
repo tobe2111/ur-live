@@ -33,11 +33,26 @@ export default function SellerLoginPage() {
         })
 
         if (response.data.success) {
-          localStorage.setItem('seller_session_token', response.data.data.sessionToken)
+          const sessionToken = response.data.data.sessionToken
+          const sellerId = response.data.data.user.id
+          
+          localStorage.setItem('seller_session_token', sessionToken)
           localStorage.setItem('user_type', 'seller')
-          localStorage.setItem('seller_id', response.data.data.user.id)
+          localStorage.setItem('seller_id', sellerId)
+          
+          console.log('[SellerLogin] ✅ Login successful:', {
+            hasSessionToken: !!sessionToken,
+            userType: localStorage.getItem('user_type'),
+            sellerId: localStorage.getItem('seller_id'),
+            session: localStorage.getItem('seller_session_token')
+          })
+          
           alert('로그인 성공!')
-          navigate('/seller')
+          
+          // 짧은 딩레이 후 이동 (브라우저가 localStorage 반영할 시간 부여)
+          setTimeout(() => {
+            navigate('/seller')
+          }, 100)
         } else {
           setError(response.data.error || '로그인 실패')
         }

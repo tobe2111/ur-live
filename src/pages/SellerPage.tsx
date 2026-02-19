@@ -78,12 +78,22 @@ export default function SellerPage() {
     // Check authentication
     const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
+    const sellerId = localStorage.getItem('seller_id')
+    
+    console.log('[SellerPage] Authentication check:', {
+      hasSessionToken: !!sessionToken,
+      userType,
+      sellerId,
+      localStorage: Object.keys(localStorage)
+    })
     
     if (!sessionToken || userType !== 'seller') {
+      console.log('[SellerPage] ❌ Auth failed, redirecting to login')
       navigate('/seller/login')
       return
     }
     
+    console.log('[SellerPage] ✅ Auth success, loading dashboard')
     loadDashboardData()
   }, [])
 

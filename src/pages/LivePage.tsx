@@ -135,7 +135,13 @@ export default function LivePage() {
     if (loginStatus === 'success' && sessionToken) {
       // CRITICAL: Save with correct keys for API client
       localStorage.setItem('user_session_token', sessionToken)  // ✅ API client key
-      localStorage.setItem('user_type', 'user')  // ✅ User type
+      
+      // user_type은 seller/admin이 아닌 경우에만 user로 설정
+      const existingUserType = localStorage.getItem('user_type')
+      if (existingUserType !== 'seller' && existingUserType !== 'admin') {
+        localStorage.setItem('user_type', 'user')  // ✅ User type
+      }
+      
       localStorage.setItem('user_id', userId || '')
       localStorage.setItem('user_name', decodeURIComponent(userName || '카카오 사용자'))
       

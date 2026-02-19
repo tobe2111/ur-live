@@ -1346,7 +1346,13 @@ export default function LivePageV2() {
       // CRITICAL: API 클라이언트가 읽을 수 있도록 올바른 키로 저장
       localStorage.setItem('user_session_token', session)  // ✅ 올바른 키
       localStorage.setItem('user_id', userId)
-      localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입 저장
+      
+      // user_type은 seller/admin이 아닌 경우에만 user로 설정
+      const existingUserType = localStorage.getItem('user_type')
+      if (existingUserType !== 'seller' && existingUserType !== 'admin') {
+        localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입 저장
+      }
+      
       if (userName) {
         localStorage.setItem('user_name', decodeURIComponent(userName))
       }

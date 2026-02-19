@@ -101,7 +101,13 @@ export default function LoginPage() {
 
         // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
         localStorage.setItem('user_session_token', session_token)  // ✅ API 클라이언트가 읽는 키
-        localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
+        
+        // user_type은 seller/admin이 아닌 경우에만 user로 설정
+        const existingUserType = localStorage.getItem('user_type')
+        if (existingUserType !== 'seller' && existingUserType !== 'admin') {
+          localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
+        }
+        
         localStorage.setItem('user_id', user.id.toString())
         localStorage.setItem('user_name', user.name)
         localStorage.setItem('userEmail', user.email || '')
@@ -153,7 +159,13 @@ export default function LoginPage() {
 
         // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
         localStorage.setItem('user_session_token', token)  // ✅ API 클라이언트가 읽는 키
-        localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
+        
+        // user_type은 seller/admin이 아닌 경우에만 user로 설정
+        const existingUserType = localStorage.getItem('user_type')
+        if (existingUserType !== 'seller' && existingUserType !== 'admin') {
+          localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
+        }
+        
         localStorage.setItem('user_id', user.id.toString())
         localStorage.setItem('user_name', user.name)
         localStorage.setItem('userEmail', user.email || '')
