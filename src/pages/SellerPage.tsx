@@ -78,24 +78,33 @@ export default function SellerPage() {
     // Check authentication
     const sessionToken = localStorage.getItem('seller_session_token')
     const userType = localStorage.getItem('user_type')
-    const sellerId = localStorage.getItem('seller_id')
+    const sellerIdStr = localStorage.getItem('seller_id')
     
-    console.log('[SellerPage] Authentication check:', {
+    console.log('[SellerPage] 🔍 Authentication check:', {
       hasSessionToken: !!sessionToken,
+      sessionTokenLength: sessionToken?.length,
       userType,
-      sellerId,
-      localStorage: Object.keys(localStorage)
+      sellerId: sellerIdStr,
+      allLocalStorageKeys: Object.keys(localStorage),
+      timestamp: new Date().toISOString()
     })
     
-    if (!sessionToken || userType !== 'seller') {
-      console.log('[SellerPage] ❌ Auth failed, redirecting to login')
-      navigate('/seller/login')
+    // 🔴 중요: user_type이 정확히 'seller'인지 확인
+    if (!sessionToken) {
+      console.log('[SellerPage] ❌ No session token found')
+      navigate('/seller/login', { replace: true })
+      return
+    }
+    
+    if (userType !== 'seller') {
+      console.log('[SellerPage] ❌ Invalid user_type:', userType, '(expected: seller)')
+      navigate('/seller/login', { replace: true })
       return
     }
     
     console.log('[SellerPage] ✅ Auth success, loading dashboard')
     loadDashboardData()
-  }, [])
+  }, [navigate])  // ✅ navigate를 의존성에 추가
 
   async function loadDashboardData() {
     try {

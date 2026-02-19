@@ -36,26 +36,52 @@ export default function SellerLoginPage() {
           const sessionToken = response.data.data.sessionToken
           const sellerId = response.data.data.user.id
           
-          // 중요: user_type을 먼저 설정하고 나머지 정보 저장
+          console.log('[SellerLogin] 🚀 Login API successful')
+          console.log('[SellerLogin] Session token:', sessionToken)
+          console.log('[SellerLogin] Seller ID:', sellerId)
+          console.log('[SellerLogin] User data:', response.data.data.user)
+          
+          // 🔴 중요: user_type을 가장 먼저 설정!
+          console.log('[SellerLogin] Step 1: Setting user_type to seller...')
           localStorage.setItem('user_type', 'seller')
+          
+          console.log('[SellerLogin] Step 2: Setting session token...')
           localStorage.setItem('seller_session_token', sessionToken)
+          
+          console.log('[SellerLogin] Step 3: Setting seller ID...')
           localStorage.setItem('seller_id', sellerId.toString())
+          
+          console.log('[SellerLogin] Step 4: Setting seller name...')
           localStorage.setItem('seller_name', response.data.data.user.name || '')
+          
+          console.log('[SellerLogin] Step 5: Setting seller email...')
           localStorage.setItem('seller_email', response.data.data.user.email || '')
           
-          // 디버깅: localStorage 확인
-          console.log('[SellerLogin] ✅ Login successful, localStorage saved:')
+          // 🔍 디버깅: localStorage 확인
+          console.log('[SellerLogin] ✅ All localStorage set successfully:')
           console.log('  - user_type:', localStorage.getItem('user_type'))
-          console.log('  - seller_session_token:', localStorage.getItem('seller_session_token'))
+          console.log('  - seller_session_token:', localStorage.getItem('seller_session_token')?.substring(0, 20) + '...')
           console.log('  - seller_id:', localStorage.getItem('seller_id'))
           console.log('  - seller_name:', localStorage.getItem('seller_name'))
-          console.log('All localStorage keys:', Object.keys(localStorage))
+          console.log('  - seller_email:', localStorage.getItem('seller_email'))
+          console.log('  - All keys:', Object.keys(localStorage))
           
-          alert('로그인 성공!')
+          // ✅ localStorage 설정 확인 후 이동
+          const verifyUserType = localStorage.getItem('user_type')
+          const verifySessionToken = localStorage.getItem('seller_session_token')
           
-          // 즉시 이동 (localStorage는 동기적으로 저장됨)
-          console.log('[SellerLogin] Navigating to /seller...')
-          navigate('/seller', { replace: true })
+          if (verifyUserType === 'seller' && verifySessionToken === sessionToken) {
+            console.log('[SellerLogin] ✅ Verification passed! Navigating to /seller...')
+            alert('로그인 성공!')
+            
+            // replace: true로 히스토리에서 로그인 페이지 제거
+            navigate('/seller', { replace: true })
+          } else {
+            console.error('[SellerLogin] ❌ Verification failed!')
+            console.error('Expected user_type: seller, got:', verifyUserType)
+            console.error('Session token match:', verifySessionToken === sessionToken)
+            alert('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
+          }
         } else {
           setError(response.data.error || '로그인 실패')
         }
