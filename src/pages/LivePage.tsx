@@ -272,7 +272,7 @@ export default function LivePage() {
             iv_load_policy: 3,
             playsinline: 1,  // Critical for iOS
             enablejsapi: 1,
-            origin: window.location.origin,
+            // origin parameter removed to fix postMessage errors
             // Loop settings for non-live videos
             loop: 1,  // Enable loop
             playlist: stream.youtube_video_id,  // Required for loop to work
