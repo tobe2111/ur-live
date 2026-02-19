@@ -729,7 +729,7 @@ export default function CheckoutPage() {
                 id="payment-method" 
                 className="w-full"
                 style={{
-                  minHeight: '280px',
+                  minHeight: '120px',
                   width: '100%',
                   maxWidth: '100%',
                   overflow: 'visible'
