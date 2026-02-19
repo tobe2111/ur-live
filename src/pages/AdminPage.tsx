@@ -47,11 +47,30 @@ export default function AdminPage() {
     // Check admin session
     const token = localStorage.getItem('admin_session_token')
     const userType = localStorage.getItem('user_type')
-    if (!token || userType !== 'admin') {
-      navigate('/admin/login')
+    const adminId = localStorage.getItem('admin_id')
+    
+    console.log('[AdminPage] 🔍 Authentication check:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      userType,
+      adminId,
+      allKeys: Object.keys(localStorage),
+      timestamp: new Date().toISOString()
+    })
+    
+    if (!token) {
+      console.log('[AdminPage] ❌ No session token found')
+      navigate('/admin/login', { replace: true })
       return
     }
-
+    
+    if (userType !== 'admin') {
+      console.log('[AdminPage] ❌ Invalid user_type:', userType, '(expected: admin)')
+      navigate('/admin/login', { replace: true })
+      return
+    }
+    
+    console.log('[AdminPage] ✅ Auth success, loading data')
     loadData()
   }, [navigate])
 

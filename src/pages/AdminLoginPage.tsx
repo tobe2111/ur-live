@@ -22,12 +22,36 @@ export default function AdminLoginPage() {
       })
 
       if (response.data.success) {
-        localStorage.setItem('admin_session_token', response.data.data.sessionToken)
+        const sessionToken = response.data.data.sessionToken
+        const adminId = response.data.data.user.id
+        
+        console.log('[AdminLogin] 🚀 Login API successful')
+        console.log('[AdminLogin] Session token:', sessionToken)
+        console.log('[AdminLogin] Admin ID:', adminId)
+        
+        // 🔴 중요: user_type을 가장 먼저 설정!
+        console.log('[AdminLogin] Step 1: Setting user_type to admin...')
         localStorage.setItem('user_type', 'admin')
-        localStorage.setItem('admin_id', response.data.data.user.id)
-        navigate('/admin')
+        
+        console.log('[AdminLogin] Step 2: Setting session token...')
+        localStorage.setItem('admin_session_token', sessionToken)
+        
+        console.log('[AdminLogin] Step 3: Setting admin ID...')
+        localStorage.setItem('admin_id', adminId.toString())
+        
+        // 🔍 검증
+        const verifyUserType = localStorage.getItem('user_type')
+        const verifySessionToken = localStorage.getItem('admin_session_token')
+        
+        if (verifyUserType === 'admin' && verifySessionToken === sessionToken) {
+          console.log('[AdminLogin] ✅ Verification passed! Navigating to /admin...')
+          navigate('/admin', { replace: true })
+        } else {
+          console.error('[AdminLogin] ❌ Verification failed!')
+          setError('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
+        }
       } else {
-        setError(response.data.error || '로그인 실패')
+        setError(response.data.error || '로귵58인 실패')
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
@@ -66,7 +90,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="admin@example.com"
+                placeholder="admin@ur-team.com"
               />
             </div>
 
@@ -97,7 +121,7 @@ export default function AdminLoginPage() {
           {/* Test Credentials Info */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-600 text-center">
-              💡 테스트 계정: admin@example.com / admin123
+              💡 테스트 계정: admin@ur-team.com / admin123
             </p>
           </div>
         </div>
