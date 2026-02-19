@@ -1549,6 +1549,19 @@ export default function LivePageV2() {
     }
   }, [activeIndex, reels])
 
+  // Scroll to initial activeIndex after reels are loaded
+  useEffect(() => {
+    if (reels.length === 0 || !containerRef.current) return
+    if (activeIndex === 0) return // Already at top, no need to scroll
+    
+    // Scroll to the active reel
+    const targetElement = containerRef.current.children[activeIndex] as HTMLElement
+    if (targetElement) {
+      console.log('[LivePageV2] Scrolling to index:', activeIndex)
+      targetElement.scrollIntoView({ behavior: 'instant' as any })
+    }
+  }, [reels])
+
   // 스트리머 전용: 상품 변경 함수
   const handleChangeProduct = async (productId: number) => {
     if (!currentStream || !streamId) return
