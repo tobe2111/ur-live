@@ -1162,7 +1162,7 @@ function ReelCard({
       {/* YouTube Player Container */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full"
+        className="absolute inset-0 w-full h-full z-[5]"
       />
 
       {/* Play Button Overlay */}
