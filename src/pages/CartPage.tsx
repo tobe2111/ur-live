@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Trash2, ShoppingBag, ArrowLeft, Minus, Plus, X, AlertCircle, CheckCircle } from 'lucide-react'
+import { Minus, Plus, X, ChevronLeft, AlertCircle, CheckCircle } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
-import MobileFooter from '@/components/MobileFooter'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
 
 interface CartItem {
   id: number
@@ -44,24 +45,20 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
         className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 animate-slideUp"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Icon */}
         <div className="flex justify-center mb-4">
           {getIcon()}
         </div>
 
-        {/* Title */}
         {title && (
           <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
             {title}
           </h3>
         )}
 
-        {/* Message */}
         <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed">
           {message}
         </p>
 
-        {/* Buttons */}
         <div className={`flex gap-3 ${isConfirm ? 'flex-row' : 'flex-col'}`}>
           {isConfirm ? (
             <>
@@ -100,8 +97,8 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
-  // Modal states
   const [modal, setModal] = useState<{
     isOpen: boolean
     title?: string
@@ -145,7 +142,6 @@ export default function CartPage() {
 
   async function loadCart() {
     try {
-      // 통합 인증 체크
       if (!isLoggedIn()) {
         requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
         return
@@ -157,12 +153,11 @@ export default function CartPage() {
         return
       }
 
-      // Use /api/cart without userId - requireAuth will get userId from session
       const response = await api.get(`/api/cart`)
       const items = response.data?.data || []
       setCartItems(items)
+      setSelectedIds(new Set(items.map((item: CartItem) => item.id)))
       
-      // Update hasCartItems flag
       localStorage.setItem('hasCartItems', items.length > 0 ? 'true' : 'false')
     } catch (error) {
       console.error('Failed to load cart:', error)
@@ -172,7 +167,33 @@ export default function CartPage() {
     }
   }
 
-  async function updateQuantity(cartItemId: number, newQuantity: number) {
+  const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(cartItems.map((item) => item.id)))
+    }
+  }, [allSelected, cartItems])
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  async function updateQuantity(cartItemId: number, delta: number) {
+    const item = cartItems.find(i => i.id === cartItemId)
+    if (!item) return
+    
+    const newQuantity = item.quantity + delta
     if (newQuantity < 1) return
     if (updating) return
 
@@ -202,7 +223,7 @@ export default function CartPage() {
         try {
           await api.delete(`/api/cart/${cartItemId}`)
           await loadCart()
-          showAlert('상품이 삭제되었습니다.', 'success')
+          showAlert('상품이 삭제되었습니다.', 'success', '삭제 완료')
         } catch (error: any) {
           console.error('Failed to remove item:', error)
           showAlert(
@@ -218,27 +239,274 @@ export default function CartPage() {
     )
   }
 
-  function handleCheckout() {
-    if (cartItems.length === 0) {
-      showAlert('장바구니가 비어있습니다.', 'alert', '장바구니 비어있음')
-      return
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedIds.size === 0) return
+
+    showConfirm(
+      `선택한 ${selectedIds.size}개의 상품을 삭제하시겠습니까?`,
+      async () => {
+        setUpdating(true)
+        try {
+          for (const id of selectedIds) {
+            await api.delete(`/api/cart/${id}`)
+          }
+          await loadCart()
+          showAlert('선택한 상품이 삭제되었습니다.', 'success', '삭제 완료')
+        } catch (error: any) {
+          console.error('Failed to delete selected:', error)
+          showAlert(
+            error.response?.data?.error || '상품 삭제에 실패했습니다.',
+            'error',
+            '삭제 실패'
+          )
+        } finally {
+          setUpdating(false)
+        }
+      },
+      '선택 삭제'
+    )
+  }, [selectedIds])
+
+  const { totalItems, subtotal } = useMemo(() => {
+    let count = 0
+    let sum = 0
+    for (const item of cartItems) {
+      if (selectedIds.has(item.id)) {
+        count += item.quantity
+        sum += item.price_snapshot * item.quantity
+      }
     }
-    navigate('/checkout')
+    return { totalItems: count, subtotal: sum }
+  }, [cartItems, selectedIds])
+
+  const shippingFee = subtotal >= 100000 ? 0 : 3000
+  const total = subtotal + shippingFee
+
+  const formatNumber = (n: number): string => {
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
   }
 
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0)
+  const handleCheckout = () => {
+    if (selectedIds.size === 0) {
+      showAlert('상품을 선택해주세요.', 'alert', '알림')
+      return
+    }
+
+    const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
+    navigate('/checkout', { 
+      state: { 
+        cartItems: selectedItems,
+        fromCart: true
+      } 
+    })
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-400 text-sm">로딩 중...</div>
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
+          <p className="mt-4 text-sm text-gray-600">로딩 중...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Custom Modal */}
+    <div className="flex min-h-screen flex-col bg-white">
+      {/* Header */}
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex h-8 w-8 items-center justify-center text-gray-900"
+          aria-label="Go back"
+        >
+          <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
+        </button>
+        <h1 className="text-base font-bold tracking-tight text-gray-900">
+          장바구니
+        </h1>
+        <div className="h-8 w-8" aria-hidden="true" />
+      </header>
+
+      {/* Select All / Delete Bar */}
+      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={allSelected}
+            onCheckedChange={toggleSelectAll}
+            className="h-[18px] w-[18px] rounded-full border-gray-400 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900"
+          />
+          <span className="text-xs font-medium text-gray-900">
+            전체선택
+          </span>
+        </div>
+        {selectedIds.size > 0 && (
+          <button
+            onClick={handleDeleteSelected}
+            className="text-xs font-medium text-gray-600 underline-offset-2 transition-colors hover:text-gray-900 hover:underline"
+          >
+            선택 삭제
+          </button>
+        )}
+      </div>
+
+      {/* Cart Items */}
+      <div className="flex-1">
+        {cartItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <p className="text-sm text-gray-500">
+              장바구니가 비어있습니다.
+            </p>
+          </div>
+        ) : (
+          <div>
+            {cartItems.map((item, index) => (
+              <div key={item.id}>
+                {/* Cart Item */}
+                <div className="relative flex items-start gap-3 py-5 px-4">
+                  {/* Checkbox */}
+                  <div className="flex items-center pt-4">
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onCheckedChange={() => toggleSelect(item.id)}
+                      className="h-[18px] w-[18px] rounded-full border-gray-400 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900"
+                    />
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-6">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">
+                          {item.option_value ? '옵션: ' + item.option_value : '일반 상품'}
+                        </p>
+                        <p className="mt-0.5 text-sm font-bold leading-snug text-gray-900 truncate">
+                          {item.product_name}
+                        </p>
+                        {item.image_url && (
+                          <img 
+                            src={item.image_url} 
+                            alt={item.product_name}
+                            className="mt-2 w-16 h-16 object-cover rounded"
+                          />
+                        )}
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        disabled={updating}
+                        className="absolute top-5 right-4 flex h-5 w-5 items-center justify-center text-gray-400 transition-colors hover:text-gray-900 disabled:opacity-50"
+                        aria-label={`Remove ${item.product_name}`}
+                      >
+                        <X className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+
+                    {/* Quantity & Price Row */}
+                    <div className="mt-2 flex items-center justify-between">
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-0 border border-gray-200 rounded">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          disabled={item.quantity <= 1 || updating}
+                          className="flex h-7 w-7 items-center justify-center text-gray-600 transition-colors hover:text-gray-900 disabled:opacity-30"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="h-3 w-3" strokeWidth={1.5} />
+                        </button>
+                        <span className="flex h-7 w-7 items-center justify-center text-xs font-medium text-gray-900">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          disabled={updating}
+                          className="flex h-7 w-7 items-center justify-center text-gray-600 transition-colors hover:text-gray-900 disabled:opacity-30"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="h-3 w-3" strokeWidth={1.5} />
+                        </button>
+                      </div>
+
+                      {/* Price */}
+                      <p className="text-sm font-bold tracking-tight text-gray-900">
+                        {formatNumber(item.price_snapshot * item.quantity)}
+                        <span className="text-xs font-medium ml-0.5">원</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {index < cartItems.length - 1 && (
+                  <Separator className="mx-4 w-auto" />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Summary + CTA */}
+      {cartItems.length > 0 && (
+        <div className="sticky bottom-0 border-t border-gray-200 bg-white">
+          {/* Summary */}
+          <div className="border-t border-gray-200 bg-white px-4 py-5">
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs tracking-wide text-gray-500">
+                  전체 상품
+                </span>
+                <span className="text-xs font-medium text-gray-900">
+                  {totalItems}개
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs tracking-wide text-gray-500">
+                  상품가
+                </span>
+                <span className="text-xs font-medium text-gray-900">
+                  {formatNumber(subtotal)}
+                  <span className="ml-0.5">원</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs tracking-wide text-gray-500">
+                  배송비
+                </span>
+                <span className="text-xs font-medium text-gray-900">
+                  {shippingFee === 0 ? "무료" : formatNumber(shippingFee) + "원"}
+                </span>
+              </div>
+            </div>
+
+            <div className="my-4 h-[1px] bg-gray-200" />
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold tracking-wide text-gray-900">
+                총 합계
+              </span>
+              <span className="text-lg font-bold tracking-tight text-gray-900">
+                {formatNumber(total)}
+                <span className="text-xs font-medium ml-0.5">원</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Order Button */}
+          <div className="px-4 pb-6">
+            <button
+              onClick={handleCheckout}
+              disabled={selectedIds.size === 0 || updating}
+              className="w-full rounded-md bg-gray-900 py-4 text-sm font-bold tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            >
+              주문하기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
       <CustomModal
         isOpen={modal.isOpen}
         onClose={closeModal}
@@ -247,166 +515,6 @@ export default function CartPage() {
         message={modal.message}
         type={modal.type}
       />
-
-      {/* Header - 미니멀 스타일 (반응형) */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-1 hover:opacity-60 transition-opacity"
-          >
-            <ArrowLeft className="w-6 h-6 text-gray-900" strokeWidth={1.5} />
-          </button>
-          <h1 className="text-base sm:text-lg font-semibold text-gray-900 tracking-tight">
-            장바구니
-          </h1>
-          <div className="w-6"></div> {/* Spacer for center alignment */}
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6 flex-1 overflow-y-auto pb-32">
-        {cartItems.length === 0 ? (
-          <div className="text-center py-24">
-            <ShoppingBag className="w-16 h-16 sm:w-20 sm:h-20 text-gray-200 mx-auto mb-4 sm:mb-6" strokeWidth={1.5} />
-            <p className="text-gray-400 text-sm sm:text-base mb-6 sm:mb-8">장바구니가 비어있습니다.</p>
-            <button
-              onClick={() => navigate('/')}
-              className="px-6 py-3 sm:px-8 sm:py-3.5 bg-gray-900 text-white text-sm sm:text-base font-medium rounded-full hover:bg-gray-800 transition-colors"
-            >
-              쇼핑 계속하기
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Cart Items - 트렌디한 카드 디자인 */}
-            <div className="space-y-4 mb-8">
-              {cartItems.map((item) => (
-                <div 
-                  key={item.id} 
-                  className="bg-[#F9F9F9] rounded-2xl p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  {/* Product Info - 썸네일 제거 */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 mb-2 text-sm sm:text-base leading-tight">
-                        {item.product_name}
-                      </h3>
-                      {item.option_value && (
-                        <p className="text-xs text-gray-500 mb-3 bg-white px-3 py-1.5 rounded-full inline-block">
-                          {item.option_value}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Delete Button */}
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      disabled={updating}
-                      className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 p-1"
-                    >
-                      <Trash2 className="w-5 h-5" strokeWidth={1.5} />
-                    </button>
-                  </div>
-
-                  {/* Price & Quantity - 나란히 배치 */}
-                  <div className="flex items-center justify-between">
-                    {/* Price */}
-                    <div>
-                      <p className="text-lg sm:text-xl font-bold text-gray-900">
-                        {(item.price_snapshot * item.quantity).toLocaleString()}
-                        <span className="text-sm font-normal ml-0.5">원</span>
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        개당 {item.price_snapshot.toLocaleString()}원
-                      </p>
-                    </div>
-
-                    {/* Quantity Controller - 원형 미니멀 스타일 */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        disabled={updating || item.quantity <= 1}
-                        className="w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
-                      >
-                        <Minus className="w-3.5 h-3.5 text-gray-700" strokeWidth={2} />
-                      </button>
-                      <span className="w-6 text-center font-semibold text-gray-900 text-sm">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        disabled={updating}
-                        className="w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-gray-900 flex items-center justify-center hover:bg-gray-800 disabled:opacity-50 transition-all shadow-sm"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-white" strokeWidth={2} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Fixed Bottom Section - 결제 섹션 */}
-            <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20 mt-auto">
-              <div className="px-4 sm:px-6 py-4 sm:py-5">
-                {/* Total Summary */}
-                <div className="flex justify-between items-end mb-4">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">
-                      총 {cartItems.length}개 상품
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      최종 결제금액
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-                      {totalAmount.toLocaleString()}
-                      <span className="text-base font-normal ml-1">원</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Checkout Button */}
-                <button
-                  onClick={handleCheckout}
-                  disabled={updating}
-                  className="w-full py-3 sm:py-4 bg-gray-900 text-white text-sm sm:text-base font-semibold rounded-full hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                >
-                  {updating ? '처리중...' : '주문하기'}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Add animations to global CSS */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        .animate-slideUp {
-          animation: slideUp 0.3s ease-out;
-        }
-      `}</style>
-
-      {/* Mobile Footer */}
-      <MobileFooter />
     </div>
   )
 }
