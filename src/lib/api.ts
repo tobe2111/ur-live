@@ -43,7 +43,8 @@ api.interceptors.request.use(
     }
     
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
+      // 서버는 X-Session-Token 헤더를 사용함
+      config.headers['X-Session-Token'] = token
       console.log('[API] Token attached:', token.substring(0, 20) + '...')
     } else {
       console.warn('[API] No token found for user_type:', userType)
