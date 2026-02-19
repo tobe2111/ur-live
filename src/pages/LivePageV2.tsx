@@ -1194,13 +1194,6 @@ function ReelCard({
 
           {/* Unified bottom bar: product info + basket + buy */}
           <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
-            {/* 현재 상품 배지 (스트리머가 선택한 상품) */}
-            {isCurrentProduct && (
-              <div className="absolute -top-8 left-3 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-lg animate-pulse">
-                <Star size={14} className="fill-white text-white" />
-                <span className="text-xs font-bold text-white">지금 추천!</span>
-              </div>
-            )}
             
             {/* Product info - left side */}
             <button
@@ -1401,92 +1394,117 @@ export default function LivePageV2() {
     return () => observerRef.current?.disconnect()
   }, [])
 
-  // Load reels data
+  // Load reels data - MODIFIED: Load ALL streams, not just one
   useEffect(() => {
     const loadReels = async () => {
       try {
         setLoading(true)
 
-        // Load specific stream by ID from URL parameter
-        let stream: Stream | null = null
-        
-        if (streamId) {
-          try {
-            const streamResponse = await axios.get(`/api/streams/${streamId}`)
-            if (streamResponse.data.success && streamResponse.data.data) {
-              stream = streamResponse.data.data
-              console.log('[LivePageV2] Loaded stream:', stream)
-              setCurrentStream(stream)
-              
-              // 스트리머 권한 확인
-              const userType = localStorage.getItem('user_type')
-              const userId = getUserId()
-              if (userType === 'seller' && userId && stream.seller_id === parseInt(userId)) {
-                setIsStreamer(true)
-                console.log('[LivePageV2] 스트리머 권한 확인됨')
-              }
-            }
-          } catch (error) {
-            console.log('[LivePageV2] Stream API failed, using demo data')
-          }
-        }
-
-        // Fallback to demo stream if API fails
-        if (!stream) {
-          const demoStreamIndex = streamId ? parseInt(streamId) - 1 : 0
-          stream = demoStreams[demoStreamIndex] || demoStreams[0]
-          console.log('[LivePageV2] Using demo stream:', stream)
-        }
-
-        // Load products for this stream
-        let products: Product[] = []
+        // Load ALL active streams
+        let streams: Stream[] = []
         
         try {
-          const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
-          if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
-            products = productsResponse.data.data
-            console.log('[LivePageV2] Loaded products:', products.length)
+          const streamsResponse = await axios.get('/api/streams')
+          if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
+            streams = streamsResponse.data.data
+            console.log('[LivePageV2] Loaded all streams:', streams.length)
+            
+            // Set current stream from URL parameter
+            if (streamId) {
+              const currentStreamData = streams.find(s => s.id === parseInt(streamId))
+              if (currentStreamData) {
+                setCurrentStream(currentStreamData)
+                
+                // Check streamer permission
+                const userType = localStorage.getItem('user_type')
+                const userId = getUserId()
+                if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
+                  setIsStreamer(true)
+                  console.log('[LivePageV2] 스트리머 권한 확인됨')
+                }
+              }
+            }
           }
         } catch (error) {
-          console.log('[LivePageV2] Products API failed, using demo products')
+          console.log('[LivePageV2] Streams API failed, using demo data')
         }
 
-        // Fallback to demo products
-        if (products.length === 0) {
-          // Distribute demo products based on stream ID
-          const streamIndex = stream.id - 1
-          const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
-          const startIdx = streamIndex * productsPerStream
-          const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
-          products = demoProducts.slice(startIdx, endIdx)
-          console.log('[LivePageV2] Using demo products:', products.length)
+        // Fallback to demo streams if API fails
+        if (streams.length === 0) {
+          streams = demoStreams
+          console.log('[LivePageV2] Using demo streams:', streams.length)
+          
+          // Set current stream from demo
+          if (streamId) {
+            const demoStreamIndex = parseInt(streamId) - 1
+            const currentStreamData = streams[demoStreamIndex] || streams[0]
+            setCurrentStream(currentStreamData)
+          }
         }
 
-        // Create reels from stream + products
-        const reelsData: ReelData[] = products.map((product) => ({
-          stream: stream!,
-          product: product,
-        }))
+        // Create reels: ONE reel per stream (not per product)
+        // Products will be shown in bottom sheet
+        const reelsData: ReelData[] = []
+        
+        for (const stream of streams) {
+          // Get first product for this stream (for display)
+          let products: Product[] = []
+          
+          try {
+            const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
+            if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
+              products = productsResponse.data.data
+            }
+          } catch (error) {
+            console.log(`[LivePageV2] Products API failed for stream ${stream.id}`)
+          }
 
+          // Fallback to demo products
+          if (products.length === 0) {
+            const streamIndex = stream.id - 1
+            const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
+            const startIdx = streamIndex * productsPerStream
+            const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
+            products = demoProducts.slice(startIdx, endIdx)
+          }
+
+          // Create ONE reel per stream with its first product
+          if (products.length > 0) {
+            reelsData.push({
+              stream: stream,
+              product: products[0], // Show first product
+            })
+          }
+        }
+
+        console.log('[LivePageV2] Created reels:', reelsData.length)
         setReels(reelsData)
+        
+        // Set initial active index based on streamId
+        if (streamId) {
+          const initialIndex = reelsData.findIndex(r => r.stream.id === parseInt(streamId))
+          if (initialIndex !== -1) {
+            setActiveIndex(initialIndex)
+          }
+        }
+        
         setLoading(false)
       } catch (error) {
         console.error('[LivePageV2] Failed to load reels:', error)
         
         // Complete fallback to demo data
-        const demoStreamIndex = streamId ? parseInt(streamId) - 1 : 0
-        const stream = demoStreams[demoStreamIndex] || demoStreams[0]
-        
-        const streamIndex = stream.id - 1
-        const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
-        const startIdx = streamIndex * productsPerStream
-        const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
-        const products = demoProducts.slice(startIdx, endIdx)
+        const reelsData: ReelData[] = demoStreams.map((stream, idx) => {
+          const streamIndex = stream.id - 1
+          const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
+          const startIdx = streamIndex * productsPerStream
+          const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
+          const products = demoProducts.slice(startIdx, endIdx)
 
-        const reelsData: ReelData[] = products.map((product) => ({
-          stream: stream,
-          product: product,
-        }))
+          return {
+            stream: stream,
+            product: products[0] || demoProducts[0],
+          }
+        })
 
         setReels(reelsData)
         setLoading(false)
@@ -1495,6 +1513,34 @@ export default function LivePageV2() {
 
     loadReels()
   }, [streamId])
+
+  // Update URL and currentStream when activeIndex changes (user scrolls)
+  useEffect(() => {
+    if (reels.length === 0 || activeIndex < 0 || activeIndex >= reels.length) return
+    
+    const activeReel = reels[activeIndex]
+    const activeStreamId = activeReel.stream.id
+    
+    // Update URL without reload
+    if (window.location.pathname !== `/live/${activeStreamId}`) {
+      window.history.replaceState(null, '', `/live/${activeStreamId}`)
+      console.log('[LivePageV2] URL updated to:', `/live/${activeStreamId}`)
+    }
+    
+    // Update currentStream
+    if (currentStream?.id !== activeStreamId) {
+      setCurrentStream(activeReel.stream)
+      
+      // Check streamer permission for new stream
+      const userType = localStorage.getItem('user_type')
+      const userId = getUserId()
+      if (userType === 'seller' && userId && activeReel.stream.seller_id === parseInt(userId)) {
+        setIsStreamer(true)
+      } else {
+        setIsStreamer(false)
+      }
+    }
+  }, [activeIndex, reels])
 
   // 스트리머 전용: 상품 변경 함수
   const handleChangeProduct = async (productId: number) => {
