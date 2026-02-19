@@ -715,76 +715,39 @@ export default function CheckoutPage() {
             {/* Divider */}
             <div className="h-2 bg-gray-100" />
 
-            {/* 결제 수단 */}
-            <section className="bg-white px-5 py-6">
-              <h2 className="text-[17px] font-bold text-gray-900">결제 수단</h2>
-              <div className="mt-4">
-                {/* TossPayments widget - DO NOT MODIFY */}
-                <div 
-                  id="payment-method" 
-                  className="min-h-[350px] sm:min-h-[300px] w-full"
-                  style={{
-                    minHeight: '350px',
-                    width: '100%',
-                    maxWidth: '100%',
-                    overflow: 'visible'
-                  }}
-                />
-                
-                {!ready && (
-                  <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                    <div className="text-center">
-                      <p>결제 수단 불러오는 중...</p>
-                      <p className="text-xs text-gray-400 mt-1">최대 10초 소요될 수 있습니다</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-            
-            {/* Divider */}
-            <div className="h-2 bg-gray-100" />
-
-            {/* 약관 동의 */}
-            <section className="bg-white px-5 py-6">
-              <h2 className="text-[17px] font-bold text-gray-900">약관 동의</h2>
-              <div className="mt-4">
-                {/* TossPayments agreement widget - DO NOT MODIFY */}
-                <div 
-                  id="agreement" 
-                  className="min-h-[60px] w-full"
-                  style={{
-                    width: '100%',
-                    maxWidth: '100%',
-                    overflow: 'visible'
-                  }}
-                />
-              </div>
+            {/* 결제 수단 및 약관 동의 (통합) */}
+            <section className="bg-white px-5 py-4">
+              <h2 className="text-[17px] font-bold text-gray-900 mb-3">결제 수단</h2>
               
-              {/* 약관 링크 */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500 text-center mb-2">
-                  결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
-                </p>
-                <div className="flex justify-center gap-3 text-xs">
-                  <Link 
-                    to="/terms" 
-                    target="_blank"
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    이용약관
-                  </Link>
-                  <span className="text-gray-300">|</span>
-                  <Link 
-                    to="/privacy" 
-                    target="_blank"
-                    className="text-blue-600 hover:text-blue-800 underline"
-                  >
-                    개인정보 처리방침
-                  </Link>
+              {/* TossPayments widget - DO NOT MODIFY */}
+              <div 
+                id="payment-method" 
+                className="w-full"
+                style={{
+                  minHeight: '280px',
+                  width: '100%',
+                  maxWidth: '100%',
+                  overflow: 'visible'
+                }}
+              />
+              
+              {!ready && (
+                <div className="flex items-center justify-center py-6 text-gray-500 text-sm">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                  <p>결제 수단 불러오는 중...</p>
                 </div>
-              </div>
+              )}
+              
+              {/* 약관 동의 위젯 */}
+              <div 
+                id="agreement" 
+                className="w-full mt-3"
+                style={{
+                  width: '100%',
+                  maxWidth: '100%',
+                  overflow: 'visible'
+                }}
+              />
             </section>
           </div>
 
@@ -940,6 +903,32 @@ export default function CheckoutPage() {
             <span>{totalAmount.toLocaleString()}원 결제하기</span>
           )}
         </button>
+
+      {/* 약관 링크 - 최하단 (모바일만) */}
+      <div className="bg-gray-50 py-4 border-t border-gray-200 lg:hidden">
+        <div className="mx-auto max-w-lg px-5">
+          <p className="text-[11px] text-gray-500 text-center mb-2">
+            결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
+          </p>
+          <div className="flex justify-center gap-2 text-[11px]">
+            <Link 
+              to="/terms" 
+              target="_blank"
+              className="text-gray-600 hover:text-blue-600 underline"
+            >
+              이용약관
+            </Link>
+            <span className="text-gray-300">|</span>
+            <Link 
+              to="/privacy" 
+              target="_blank"
+              className="text-gray-600 hover:text-blue-600 underline"
+            >
+              개인정보 처리방침
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* 배송지 선택 모달 */}
       <CustomModal
