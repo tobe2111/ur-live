@@ -51,14 +51,10 @@ export default function SellerLiveControlPage() {
       const sessionToken = localStorage.getItem('seller_session_token')
       
       // Load live streams
-      const streamsRes = await api.get('/api/seller/streams', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
+      const streamsRes = await api.get('/api/seller/streams')
       
       // Load products
-      const productsRes = await api.get('/api/seller/products', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
+      const productsRes = await api.get('/api/seller/products')
 
       const liveStreams = streamsRes.data.data.filter((s: LiveStream) => s.status === 'live')
       setStreams(liveStreams)
@@ -82,11 +78,9 @@ export default function SellerLiveControlPage() {
 
     setChanging(true)
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
       await api.post(
         `/api/seller/streams/${selectedStream.id}/change-product`,
-        { productId },
-        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
+        { productId }
       )
 
       setCurrentProductId(productId)

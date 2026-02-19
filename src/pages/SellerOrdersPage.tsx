@@ -76,9 +76,7 @@ export default function SellerOrdersPage() {
         return
       }
 
-      const response = await api.get('/api/seller/orders', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
+      const response = await api.get('/api/seller/orders')
 
       if (response.data.success) {
         setOrders(response.data.data)
@@ -105,8 +103,7 @@ export default function SellerOrdersPage() {
 
       const response = await api.patch(
         `/api/seller/orders/${orderNumber}/status`,
-        { status: newStatus },
-        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
+        { status: newStatus }
       )
 
       if (response.data.success) {
@@ -136,8 +133,7 @@ export default function SellerOrdersPage() {
 
       const response = await api.put(
         `/api/seller/orders/${orderNumber}/tracking`,
-        trackingForm,
-        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
+        trackingForm
       )
 
       if (response.data.success) {
