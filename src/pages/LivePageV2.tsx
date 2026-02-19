@@ -824,10 +824,23 @@ function ReelCard({
         firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag)
       }
 
+      // Store callback in array to support multiple reels
       // @ts-ignore
-      window.onYouTubeIframeAPIReady = () => {
-        if (isMounted) initializePlayer()
+      if (!window.youtubeCallbacks) {
+        // @ts-ignore
+        window.youtubeCallbacks = []
+        // @ts-ignore
+        window.onYouTubeIframeAPIReady = () => {
+          // @ts-ignore
+          window.youtubeCallbacks.forEach(cb => cb())
+          // @ts-ignore
+          window.youtubeCallbacks = []
+        }
       }
+      // @ts-ignore
+      window.youtubeCallbacks.push(() => {
+        if (isMounted) initializePlayer()
+      })
     }
 
     return () => {
