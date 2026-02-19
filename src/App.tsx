@@ -24,6 +24,7 @@ const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -113,6 +114,7 @@ function App() {
             <Route path="/seller/streams/:id" element={<SellerStreamEditPage />} />
             <Route path="/seller/profile" element={<SellerProfileEditPage />} />
             <Route path="/mypage" element={<MyPage />} />
+            <Route path="/user/profile" element={<UserProfilePage />} />
             <Route path="/mypage/addresses" element={<AddressManagementPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
