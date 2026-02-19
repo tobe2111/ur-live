@@ -767,8 +767,7 @@ function ReelCard({
             iv_load_policy: 3,
             playsinline: 1,
             enablejsapi: 1,
-            origin: window.location.origin,
-            widget_referrer: window.location.origin,
+            // origin and widget_referrer removed to fix postMessage errors
             loop: 1,
             playlist: stream.youtube_video_id,
             fs: 0,
