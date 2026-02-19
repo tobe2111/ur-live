@@ -483,6 +483,250 @@ function formatKRW(amount: number): string {
   }).format(amount);
 }
 
+// =================================
+// YouTube Live API Helper Functions
+// =================================
+
+/**
+ * YouTube Live API 호출 헬퍼
+ * 주의: 사용자가 직접 YouTube API Key를 환경 변수에 설정해야 합니다
+ */
+
+interface YouTubeApiConfig {
+  apiKey?: string;
+  accessToken?: string;
+}
+
+/**
+ * YouTube 라이브 방송 생성
+ * @param config - YouTube API 설정
+ * @param title - 방송 제목
+ * @param description - 방송 설명
+ * @returns 라이브 방송 ID 및 스트림 키
+ */
+async function createYouTubeLiveBroadcast(
+  config: YouTubeApiConfig,
+  title: string,
+  description: string
+): Promise<{ broadcastId: string; streamId: string; streamKey: string; streamUrl: string }> {
+  if (!config.accessToken) {
+    throw new Error('YouTube OAuth Access Token이 필요합니다');
+  }
+
+  try {
+    // 1. LiveBroadcast 생성
+    const broadcastResponse = await fetch(
+      'https://www.googleapis.com/youtube/v3/liveBroadcasts?part=snippet,status,contentDetails',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          snippet: {
+            title,
+            description,
+            scheduledStartTime: new Date().toISOString(),
+          },
+          status: {
+            privacyStatus: 'public',
+            selfDeclaredMadeForKids: false,
+          },
+          contentDetails: {
+            enableAutoStart: true,
+            enableAutoStop: true,
+          },
+        }),
+      }
+    );
+
+    if (!broadcastResponse.ok) {
+      const error = await broadcastResponse.text();
+      throw new Error(`YouTube Broadcast 생성 실패: ${error}`);
+    }
+
+    const broadcast = await broadcastResponse.json();
+    const broadcastId = broadcast.id;
+
+    // 2. LiveStream 생성
+    const streamResponse = await fetch(
+      'https://www.googleapis.com/youtube/v3/liveStreams?part=snippet,cdn',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          snippet: {
+            title: `${title} - Stream`,
+          },
+          cdn: {
+            frameRate: 'variable',
+            ingestionType: 'rtmp',
+            resolution: 'variable',
+          },
+        }),
+      }
+    );
+
+    if (!streamResponse.ok) {
+      const error = await streamResponse.text();
+      throw new Error(`YouTube Stream 생성 실패: ${error}`);
+    }
+
+    const stream = await streamResponse.json();
+    const streamId = stream.id;
+    const streamKey = stream.cdn.ingestionInfo.streamName;
+    const streamUrl = stream.cdn.ingestionInfo.ingestionAddress;
+
+    // 3. Broadcast와 Stream 연결
+    await fetch(
+      `https://www.googleapis.com/youtube/v3/liveBroadcasts/bind?id=${broadcastId}&streamId=${streamId}&part=snippet`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.accessToken}`,
+        },
+      }
+    );
+
+    return {
+      broadcastId,
+      streamId,
+      streamKey,
+      streamUrl,
+    };
+  } catch (error) {
+    console.error('[YouTube API] Live broadcast creation failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * YouTube 라이브 방송 종료
+ */
+async function endYouTubeLiveBroadcast(
+  config: YouTubeApiConfig,
+  broadcastId: string
+): Promise<void> {
+  if (!config.accessToken) {
+    throw new Error('YouTube OAuth Access Token이 필요합니다');
+  }
+
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?broadcastStatus=complete&id=${broadcastId}&part=status`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`YouTube 방송 종료 실패: ${error}`);
+    }
+  } catch (error) {
+    console.error('[YouTube API] Live broadcast end failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * YouTube 라이브 채팅 메시지 가져오기
+ */
+async function getYouTubeLiveChatMessages(
+  config: YouTubeApiConfig,
+  liveChatId: string,
+  pageToken?: string
+): Promise<{ messages: any[]; nextPageToken?: string; pollingIntervalMillis: number }> {
+  if (!config.accessToken) {
+    throw new Error('YouTube OAuth Access Token이 필요합니다');
+  }
+
+  try {
+    let url = `https://www.googleapis.com/youtube/v3/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails`;
+    if (pageToken) {
+      url += `&pageToken=${pageToken}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${config.accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`YouTube 채팅 메시지 가져오기 실패: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      messages: data.items || [],
+      nextPageToken: data.nextPageToken,
+      pollingIntervalMillis: data.pollingIntervalMillis || 5000,
+    };
+  } catch (error) {
+    console.error('[YouTube API] Get chat messages failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * YouTube 라이브 통계 가져오기
+ */
+async function getYouTubeLiveStats(
+  config: YouTubeApiConfig,
+  videoId: string
+): Promise<{ viewCount: number; likeCount: number; commentCount: number; concurrentViewers?: number }> {
+  if (!config.apiKey && !config.accessToken) {
+    throw new Error('YouTube API Key 또는 Access Token이 필요합니다');
+  }
+
+  try {
+    const authHeader = config.accessToken
+      ? { 'Authorization': `Bearer ${config.accessToken}` }
+      : {};
+    
+    const url = config.accessToken
+      ? `https://www.googleapis.com/youtube/v3/videos?part=statistics,liveStreamingDetails&id=${videoId}`
+      : `https://www.googleapis.com/youtube/v3/videos?part=statistics,liveStreamingDetails&id=${videoId}&key=${config.apiKey}`;
+
+    const response = await fetch(url, {
+      headers: authHeader,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`YouTube 통계 가져오기 실패: ${error}`);
+    }
+
+    const data = await response.json();
+    if (!data.items || data.items.length === 0) {
+      throw new Error('Video not found');
+    }
+
+    const video = data.items[0];
+    const stats = video.statistics;
+    const liveDetails = video.liveStreamingDetails;
+
+    return {
+      viewCount: parseInt(stats.viewCount || '0'),
+      likeCount: parseInt(stats.likeCount || '0'),
+      commentCount: parseInt(stats.commentCount || '0'),
+      concurrentViewers: liveDetails?.concurrentViewers ? parseInt(liveDetails.concurrentViewers) : undefined,
+    };
+  } catch (error) {
+    console.error('[YouTube API] Get live stats failed:', error);
+    throw error;
+  }
+}
+
 /**
  * Extract YouTube Video ID from various URL formats
  * Supports:
@@ -3490,6 +3734,342 @@ app.delete('/api/seller/streams/:id', async (c) => {
 
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// =================================
+// YouTube Live API Integration
+// =================================
+
+/**
+ * YouTube 라이브 방송 자동 생성
+ * POST /api/seller/youtube/create-live
+ * 
+ * 필요 환경변수:
+ * - YOUTUBE_ACCESS_TOKEN: OAuth 2.0 Access Token
+ * 
+ * Request Body:
+ * {
+ *   "title": "라이브 방송 제목",
+ *   "description": "라이브 방송 설명",
+ *   "scheduled_at": "2026-02-20T15:00:00Z" (optional)
+ * }
+ * 
+ * Response:
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "streamId": 123,
+ *     "broadcastId": "youtube_broadcast_id",
+ *     "youtubeVideoId": "youtube_video_id",
+ *     "streamKey": "xxxx-xxxx-xxxx-xxxx",
+ *     "streamUrl": "rtmp://...",
+ *     "watchUrl": "https://youtube.com/watch?v=..."
+ *   }
+ * }
+ */
+app.post('/api/seller/youtube/create-live', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { title, description, scheduled_at } = await c.req.json();
+
+    if (!title) {
+      return c.json({ 
+        success: false, 
+        error: '라이브 방송 제목은 필수입니다' 
+      }, 400);
+    }
+
+    // YouTube OAuth Access Token 확인
+    // 실제 환경에서는 사용자가 직접 설정해야 합니다
+    const accessToken = c.env.YOUTUBE_ACCESS_TOKEN;
+    if (!accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube OAuth Access Token이 설정되지 않았습니다. 환경 변수를 설정해주세요.',
+        help: 'wrangler secret put YOUTUBE_ACCESS_TOKEN'
+      }, 400);
+    }
+
+    // YouTube Live 방송 생성
+    const youtubeLive = await createYouTubeLiveBroadcast(
+      { accessToken },
+      title,
+      description || ''
+    );
+
+    // DB에 저장
+    const result = await DB.prepare(`
+      INSERT INTO live_streams (
+        title, description, youtube_video_id, platform, status, scheduled_at,
+        seller_id, youtube_broadcast_id, youtube_stream_key,
+        created_at, updated_at
+      )
+      VALUES (?, ?, ?, 'youtube', 'scheduled', ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      title,
+      description || null,
+      youtubeLive.broadcastId,  // YouTube Broadcast ID를 video_id로 저장
+      scheduled_at || null,
+      auth.sellerId,
+      youtubeLive.broadcastId,
+      youtubeLive.streamKey
+    ).run();
+
+    const streamId = result.meta.last_row_id;
+
+    // 판매자에게 알림 전송
+    await createNotification(
+      DB,
+      auth.sellerId,
+      'seller',
+      'live_created',
+      '📺 YouTube 라이브 방송이 생성되었습니다',
+      `${title} - 스트림 키와 URL을 확인하세요`,
+      `/seller/live-control?streamId=${streamId}`
+    );
+
+    return c.json({
+      success: true,
+      data: {
+        streamId,
+        broadcastId: youtubeLive.broadcastId,
+        youtubeVideoId: youtubeLive.broadcastId,
+        streamKey: youtubeLive.streamKey,
+        streamUrl: youtubeLive.streamUrl,
+        watchUrl: `https://www.youtube.com/watch?v=${youtubeLive.broadcastId}`,
+      },
+    });
+
+  } catch (err) {
+    console.error('[YouTube Live] Create broadcast error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * YouTube 라이브 방송 종료
+ * POST /api/seller/youtube/end-live/:streamId
+ */
+app.post('/api/seller/youtube/end-live/:streamId', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('streamId');
+
+    // 스트림 정보 조회
+    const stream = await DB.prepare(
+      'SELECT * FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, auth.sellerId).first();
+
+    if (!stream) {
+      return c.json({ 
+        success: false, 
+        error: '라이브 방송을 찾을 수 없습니다' 
+      }, 404);
+    }
+
+    // YouTube OAuth Access Token 확인
+    const accessToken = c.env.YOUTUBE_ACCESS_TOKEN;
+    if (!accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube OAuth Access Token이 설정되지 않았습니다.',
+      }, 400);
+    }
+
+    const broadcastId = stream.youtube_broadcast_id || stream.youtube_video_id;
+    if (!broadcastId) {
+      return c.json({
+        success: false,
+        error: 'YouTube Broadcast ID가 없습니다. 수동으로 생성된 라이브입니다.',
+      }, 400);
+    }
+
+    // YouTube 라이브 방송 종료
+    await endYouTubeLiveBroadcast(
+      { accessToken },
+      broadcastId
+    );
+
+    // DB 상태 업데이트
+    await DB.prepare(`
+      UPDATE live_streams 
+      SET status = 'ended', updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(streamId).run();
+
+    // 판매자에게 알림 전송
+    await createNotification(
+      DB,
+      auth.sellerId,
+      'seller',
+      'live_ended',
+      '✅ YouTube 라이브 방송이 종료되었습니다',
+      `${stream.title} 방송이 종료되었습니다`,
+      `/seller/streams`
+    );
+
+    return c.json({
+      success: true,
+      message: '라이브 방송이 종료되었습니다',
+    });
+
+  } catch (err) {
+    console.error('[YouTube Live] End broadcast error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * YouTube 라이브 통계 조회
+ * GET /api/seller/youtube/stats/:streamId
+ */
+app.get('/api/seller/youtube/stats/:streamId', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('streamId');
+
+    // 스트림 정보 조회
+    const stream = await DB.prepare(
+      'SELECT * FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, auth.sellerId).first();
+
+    if (!stream) {
+      return c.json({ 
+        success: false, 
+        error: '라이브 방송을 찾을 수 없습니다' 
+      }, 404);
+    }
+
+    const videoId = stream.youtube_video_id;
+    if (!videoId) {
+      return c.json({
+        success: false,
+        error: 'YouTube Video ID가 없습니다',
+      }, 400);
+    }
+
+    // API Key or Access Token
+    const apiKey = c.env.YOUTUBE_API_KEY;
+    const accessToken = c.env.YOUTUBE_ACCESS_TOKEN;
+
+    if (!apiKey && !accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube API Key 또는 Access Token이 설정되지 않았습니다',
+      }, 400);
+    }
+
+    // YouTube 통계 조회
+    const stats = await getYouTubeLiveStats(
+      { apiKey, accessToken },
+      videoId
+    );
+
+    return c.json({
+      success: true,
+      data: {
+        streamId,
+        videoId,
+        stats,
+      },
+    });
+
+  } catch (err) {
+    console.error('[YouTube Live] Get stats error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * YouTube 라이브 채팅 메시지 조회
+ * GET /api/seller/youtube/chat/:streamId
+ */
+app.get('/api/seller/youtube/chat/:streamId', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const streamId = c.req.param('streamId');
+    const pageToken = c.req.query('pageToken');
+
+    // 스트림 정보 조회
+    const stream = await DB.prepare(
+      'SELECT * FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, auth.sellerId).first();
+
+    if (!stream) {
+      return c.json({ 
+        success: false, 
+        error: '라이브 방송을 찾을 수 없습니다' 
+      }, 404);
+    }
+
+    const liveChatId = stream.youtube_live_chat_id;
+    if (!liveChatId) {
+      return c.json({
+        success: false,
+        error: 'Live Chat ID가 없습니다. 라이브 방송이 시작되지 않았습니다.',
+      }, 400);
+    }
+
+    const accessToken = c.env.YOUTUBE_ACCESS_TOKEN;
+    if (!accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube OAuth Access Token이 설정되지 않았습니다',
+      }, 400);
+    }
+
+    // YouTube 채팅 메시지 조회
+    const chatData = await getYouTubeLiveChatMessages(
+      { accessToken },
+      liveChatId,
+      pageToken
+    );
+
+    return c.json({
+      success: true,
+      data: chatData,
+    });
+
+  } catch (err) {
+    console.error('[YouTube Live] Get chat messages error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
   }
 });
 
