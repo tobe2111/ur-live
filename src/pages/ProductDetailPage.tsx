@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ShoppingCart, Heart, Share2, Minus, Plus, AlertCircle } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, isLoggedIn } from '@/utils/auth'
-import MobileFooter from '@/components/MobileFooter'
+
+// Import KREAM-style components
+import { MobileHeader } from '@/components/product/mobile-header'
+import { ProductImageCarousel } from '@/components/product/product-image-carousel'
+import { ProductHeader } from '@/components/product/product-header'
+import { FloatingActionBar } from '@/components/product/floating-action-bar'
+import { Separator } from '@/components/ui/separator'
 
 interface Product {
   id: number
@@ -46,18 +51,20 @@ export default function ProductDetailPage() {
   useEffect(() => {
     loadProduct()
     
-    // 로그인 전 실제 출발지 저장 (로그인/콜백 페이지가 아닌 경우만)
     const referrer = document.referrer
     if (referrer && !referrer.includes('/login') && !referrer.includes('/auth/kakao')) {
-      const referrerPath = new URL(referrer).pathname
-      sessionStorage.setItem('productDetailReferrer', referrerPath)
+      try {
+        const referrerPath = new URL(referrer).pathname
+        sessionStorage.setItem('productDetailReferrer', referrerPath)
+      } catch (e) {
+        console.error('Failed to parse referrer URL:', e)
+      }
     }
   }, [id])
 
   async function loadProduct() {
     try {
       setLoading(true)
-      // Public API - 상품 정보와 옵션을 함께 조회
       const response = await api.get(`/api/products/${id}`)
       if (response.data.success && response.data.data) {
         setProduct(response.data.data.product)
@@ -79,18 +86,8 @@ export default function ProductDetailPage() {
   }
 
   async function handleAddToCart() {
-    // 디버깅: 로그인 상태 확인
-    const session = localStorage.getItem('session')
-    const userId = localStorage.getItem('user_id') || localStorage.getItem('userId')
-    console.log('[ProductDetail] 장바구니 추가 시도:', { 
-      session: session ? '있음' : '없음', 
-      userId,
-      isLoggedIn: isLoggedIn()
-    })
-    
     if (!isLoggedIn()) {
       showToast('로그인이 필요합니다.', 'error')
-      // 현재 페이지 경로를 저장하고 로그인 페이지로 이동
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 1000)
       return
@@ -98,128 +95,63 @@ export default function ProductDetailPage() {
 
     try {
       await api.post('/api/cart', {
-        userId: Number(getUserId()),
-        productId: product!.id,
+        product_id: product!.id,
         quantity,
-        priceSnapshot: product!.current_price || product!.price
+        option_id: Object.values(selectedOptions)[0] || null
       })
-      showToast('장바구니에 추가되었습니다!')
-    } catch (err) {
+      showToast('장바구니에 추가되었습니다.', 'success')
+      localStorage.setItem('hasCartItems', 'true')
+    } catch (err: any) {
       console.error('Failed to add to cart:', err)
-      showToast('장바구니 추가에 실패했습니다.', 'error')
+      showToast(err.response?.data?.error || '장바구니 추가에 실패했습니다.', 'error')
     }
   }
 
   async function handleBuyNow() {
-    // 디버깅: 로그인 상태 확인
-    const session = localStorage.getItem('session')
-    const userId = localStorage.getItem('user_id') || localStorage.getItem('userId')
-    console.log('[ProductDetail] 구매하기 시도:', { 
-      session: session ? '있음' : '없음', 
-      userId,
-      isLoggedIn: isLoggedIn()
-    })
-    
     if (!isLoggedIn()) {
       showToast('로그인이 필요합니다.', 'error')
-      // 현재 페이지 경로를 저장하고 로그인 페이지로 이동
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 1000)
       return
     }
 
-    try {
-      // 장바구니에 추가
-      await api.post('/api/cart', {
-        userId: Number(getUserId()),
-        productId: product!.id,
+    navigate('/checkout', {
+      state: {
+        product: product!,
         quantity,
-        priceSnapshot: product!.current_price || product!.price
-      })
-      // 장바구니 페이지로 이동 (통일된 플로우)
-      navigate('/cart')
-    } catch (err) {
-      console.error('Failed to proceed to checkout:', err)
-      showToast('구매하기에 실패했습니다.', 'error')
-    }
-  }
-
-  function increaseQuantity() {
-    if (product && quantity < product.stock) {
-      setQuantity(quantity + 1)
-    }
-  }
-
-  function decreaseQuantity() {
-    if (quantity > 1) {
-      setQuantity(quantity - 1)
-    }
+        selectedOptions,
+        fromCart: false
+      }
+    })
   }
 
   function handleShare() {
+    if (!product) return
+
+    const shareText = `${product.name} - ${displayPrice.toLocaleString()}원`
     const shareUrl = window.location.href
-    const shareText = `${product!.name} - ${displayPrice.toLocaleString()}원`
-    
+
     if (navigator.share) {
       navigator.share({
-        title: product!.name,
+        title: product.name,
         text: shareText,
         url: shareUrl
-      }).catch(err => console.log('Share failed:', err))
+      }).catch(err => {
+        console.log('Share cancelled', err)
+      })
     } else {
-      // Fallback: Copy to clipboard
       navigator.clipboard.writeText(shareUrl).then(() => {
-        showToast('링크가 복사되었습니다!')
-      }).catch(() => {
-        showToast('링크 복사에 실패했습니다.', 'error')
+        showToast('링크가 복사되었습니다.', 'success')
       })
     }
-  }
-
-  function handleKakaoShare() {
-    if (typeof window.Kakao === 'undefined') {
-      showToast('카카오톡 공유를 사용할 수 없습니다.', 'error')
-      return
-    }
-
-    if (!window.Kakao.isInitialized()) {
-      window.Kakao.init('YOUR_KAKAO_JS_KEY') // Replace with actual key
-    }
-
-    window.Kakao.Share.sendDefault({
-      objectType: 'commerce',
-      content: {
-        title: product!.name,
-        imageUrl: product!.image_url,
-        link: {
-          mobileWebUrl: window.location.href,
-          webUrl: window.location.href
-        }
-      },
-      commerce: {
-        productName: product!.name,
-        regularPrice: product!.price,
-        discountPrice: displayPrice,
-        discountRate: product!.discount_rate
-      },
-      buttons: [
-        {
-          title: '구매하기',
-          link: {
-            mobileWebUrl: window.location.href,
-            webUrl: window.location.href
-          }
-        }
-      ]
-    })
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">상품 정보를 불러오는 중...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-foreground border-r-transparent"></div>
+          <p className="mt-4 text-sm text-muted-foreground">로딩 중...</p>
         </div>
       </div>
     )
@@ -227,16 +159,14 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">상품을 찾을 수 없습니다</h2>
-          <p className="text-gray-600 mb-6">{error || '요청하신 상품이 존재하지 않습니다.'}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+          <p className="text-sm text-muted-foreground">{error || '상품을 찾을 수 없습니다.'}</p>
+          <button 
+            onClick={() => navigate(-1)}
+            className="mt-4 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
           >
-            홈으로 돌아가기
+            돌아가기
           </button>
         </div>
       </div>
@@ -244,236 +174,161 @@ export default function ProductDetailPage() {
   }
 
   const displayPrice = product.current_price || product.price
-  
-  // Parse detail_images if it's a JSON string
-  const detailImages = product.detail_images 
-    ? (typeof product.detail_images === 'string' 
-        ? JSON.parse(product.detail_images) 
-        : product.detail_images)
-    : []
+
+  // Parse detail images
+  let detailImages: string[] = []
+  if (product.detail_images) {
+    try {
+      detailImages = typeof product.detail_images === 'string' 
+        ? JSON.parse(product.detail_images)
+        : product.detail_images
+    } catch (e) {
+      console.error('Failed to parse detail images:', e)
+      detailImages = []
+    }
+  }
+
+  // All product images for carousel (main image + detail images)
+  const allImages = [product.image_url, ...detailImages].filter(Boolean)
 
   return (
-    <div className="min-h-screen bg-white pb-28">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button 
-            onClick={() => {
-              // 세션 스토리지에서 실제 출발지 확인
-              const actualReferrer = sessionStorage.getItem('productDetailReferrer')
-              
-              if (actualReferrer && actualReferrer !== '/login' && !actualReferrer.includes('/auth/kakao')) {
-                // 로그인 전 실제 출발지가 있으면 그곳으로
-                navigate(actualReferrer)
-                sessionStorage.removeItem('productDetailReferrer')
-              } else if (window.history.length > 2) {
-                // 히스토리가 충분하면 뒤로가기 (로그인/콜백 페이지 건너뛰기)
-                navigate(-2)
-              } else {
-                // 히스토리 없으면 홈으로
-                navigate('/')
-              }
-            }}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <ArrowLeft className="w-6 h-6 text-gray-900" />
-          </button>
-          <h1 className="text-lg font-bold text-gray-900">상품 상세</h1>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={handleShare}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
-              aria-label="공유하기"
-            >
-              <Share2 className="w-5 h-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition">
-              <Heart className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="mx-auto min-h-screen max-w-md bg-background">
+      {/* Mobile Header */}
+      <MobileHeader onShare={handleShare} />
 
-      {/* Product Image */}
-      <div className="w-full aspect-square bg-gray-100 relative">
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingCart className="w-24 h-24 text-gray-300" />
-          </div>
-        )}
-        
-        {/* Discount Badge */}
-        {product.discount_rate > 0 && (
-          <div className="absolute top-4 left-4 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-lg">
-            {product.discount_rate}% OFF
-          </div>
-        )}
-      </div>
+      <main className="pb-20">
+        {/* Product Images Carousel */}
+        <ProductImageCarousel images={allImages} />
 
-      {/* Product Info */}
-      <div className="p-6 space-y-6">
-        {/* Seller */}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">{product.seller_name.charAt(0)}</span>
-          </div>
-          <span className="text-sm font-medium text-gray-700">{product.seller_name}</span>
-        </div>
+        <Separator />
 
-        {/* Product Name */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{product.name}</h2>
-          {product.description && (
-            <p className="text-gray-600 leading-relaxed">{product.description}</p>
-          )}
-        </div>
+        {/* Product Info */}
+        <ProductHeader name={product.name} price={displayPrice} />
 
-        {/* Price */}
-        <div className="space-y-2">
-          {product.original_price && product.original_price > displayPrice && (
-            <div className="flex items-center gap-2">
-              <span className="text-lg text-gray-400 line-through">
-                ₩{product.original_price.toLocaleString()}
-              </span>
-              <span className="text-red-500 font-bold">{product.discount_rate}%</span>
-            </div>
-          )}
-          <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            ₩{displayPrice.toLocaleString()}
-          </div>
-        </div>
-
-        {/* Stock & Sales */}
-        <div className="flex gap-4 text-sm">
-          <div>
-            <span className="text-gray-500">재고: </span>
-            <span className={`font-semibold ${product.stock < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-              {product.stock}개
-            </span>
-          </div>
-          {product.sold_count && product.sold_count > 0 && (
-            <div>
-              <span className="text-gray-500">판매: </span>
-              <span className="font-semibold text-gray-900">{product.sold_count}개</span>
-            </div>
-          )}
-        </div>
-
-        {/* Detail Images */}
-        {detailImages.length > 0 && (
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">상품 상세 이미지</h3>
-            <div className="space-y-2">
-              {detailImages.map((imageUrl: string, index: number) => (
-                <div key={index} className="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <img
-                    src={imageUrl}
-                    alt={`${product.name} 상세 ${index + 1}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement
-                      // Prevent infinite loop
-                      if (!target.dataset.fallbackApplied) {
-                        target.dataset.fallbackApplied = 'true'
-                        target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="800"%3E%3Crect width="800" height="800" fill="%23f3f4f6"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%239ca3af"%3E이미지 없음%3C/text%3E%3C/svg%3E'
-                      }
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Quantity Selector */}
-        <div className="border-t border-gray-200 pt-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">수량</label>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-              <button
-                onClick={decreaseQuantity}
-                disabled={quantity <= 1}
-                className="p-3 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                <Minus className="w-5 h-5" />
-              </button>
-              <span className="px-6 py-3 font-semibold text-lg">{quantity}</span>
-              <button
-                onClick={increaseQuantity}
-                disabled={quantity >= product.stock}
-                className="p-3 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">총 금액</p>
-              <p className="text-xl font-bold text-purple-600">
-                ₩{(displayPrice * quantity).toLocaleString()}
+        {/* Product Description */}
+        {product.description && (
+          <>
+            <Separator />
+            <div className="px-5 py-6">
+              <h2 className="text-sm font-bold text-foreground">상품 설명</h2>
+              <p className="mt-3 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {product.description}
               </p>
             </div>
+          </>
+        )}
+
+        {/* Product Details - Vertical Images */}
+        {detailImages.length > 0 && (
+          <>
+            <Separator />
+            <div className="px-5 py-6">
+              <h2 className="text-sm font-bold text-foreground">상세 이미지</h2>
+              <div className="mt-4 flex flex-col gap-1">
+                {detailImages.map((src, idx) => (
+                  <div key={idx} className="relative w-full">
+                    <img
+                      src={src}
+                      alt={`Product detail ${idx + 1}`}
+                      className="h-auto w-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Product Info Section */}
+        <Separator />
+        <div className="px-5 py-6">
+          <h2 className="text-sm font-bold text-foreground">상품 정보</h2>
+          <div className="mt-3 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">판매자</span>
+              <span className="text-xs font-medium text-foreground">{product.seller_name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">재고</span>
+              <span className="text-xs font-medium text-foreground">{product.stock}개</span>
+            </div>
+            {product.sold_count !== undefined && product.sold_count > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">판매량</span>
+                <span className="text-xs font-medium text-foreground">{product.sold_count}개</span>
+              </div>
+            )}
+            {product.category && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">카테고리</span>
+                <span className="text-xs font-medium text-foreground">{product.category}</span>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg lg:static lg:shadow-none">
-        <div className="flex gap-3 w-full">
-          <button
-            onClick={handleAddToCart}
-            className="flex-1 bg-white border-2 border-purple-600 text-purple-600 font-bold py-4 rounded-xl hover:bg-purple-50 transition-all duration-200"
-          >
-            <ShoppingCart className="w-5 h-5 inline mr-2" />
-            장바구니
-          </button>
-          <button
-            onClick={handleBuyNow}
-            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg"
-          >
-            구매하기
-          </button>
+        {/* 안내 정보 */}
+        <Separator />
+        <div className="px-5 py-6">
+          <h2 className="text-sm font-bold text-foreground">안내 정보</h2>
+          <div className="mt-3 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-foreground">
+                  검수 포함
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  모든 상품은 철저한 검수 과정을 거칩니다
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-foreground">
+                  배송 기간 5-7 영업일
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  판매자 발송 및 검수 완료 후 배송됩니다
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-foreground">
+                  교환/반품 안내
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  상품 수령 후 7일 이내 교환/반품 가능합니다
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Floating Cart / Purchase Bar */}
+      <FloatingActionBar 
+        onAddToCart={handleAddToCart}
+        onBuyNow={handleBuyNow}
+        disabled={product.stock === 0}
+      />
 
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slideDown">
-          <div className={`px-6 py-3 rounded-lg shadow-lg ${
+        <div 
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg max-w-sm transition-all ${
             toast.type === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
-            {toast.message}
-          </div>
+              ? 'bg-foreground text-background' 
+              : 'bg-destructive text-white'
+          }`}
+        >
+          <p className="text-sm font-medium text-center">{toast.message}</p>
         </div>
       )}
-
-      {/* Mobile Footer */}
-      <div className="pb-24 lg:pb-0">
-        <MobileFooter />
-      </div>
-
-      <style>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -20px);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, 0);
-          }
-        }
-        .animate-slideDown {
-          animation: slideDown 0.3s ease-out;
-        }
-      `}</style>
     </div>
   )
 }
