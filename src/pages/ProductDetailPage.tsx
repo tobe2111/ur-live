@@ -308,6 +308,128 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* 교환 및 반품 안내 (상세) */}
+        <Separator />
+        <div className="px-5 py-6 bg-muted/30">
+          <h2 className="text-sm font-bold text-foreground mb-4">교환 및 반품 안내</h2>
+          
+          {/* 신청 방법 */}
+          <div className="mb-5">
+            <h3 className="text-xs font-semibold text-foreground mb-2">신청 방법</h3>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              상품을 수령하신 날로부터 7일 이내 메신저 및 홈페이지 Q&A게시판 접수
+            </p>
+          </div>
+
+          {/* 배송 비용 */}
+          <div className="mb-5">
+            <h3 className="text-xs font-semibold text-foreground mb-2">배송 비용</h3>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              단순 변심은 왕복 택배비 6,000원
+            </p>
+          </div>
+
+          {/* 반품 주소 */}
+          <div className="mb-5">
+            <h3 className="text-xs font-semibold text-foreground mb-2">반품 주소</h3>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              서울특별시 강남구 테헤란로 131, 15층 (역삼동, 한국지식재산센터)
+            </p>
+          </div>
+
+          {/* 유의 사항 */}
+          <div className="mb-5">
+            <h3 className="text-xs font-semibold text-foreground mb-3">유의 사항</h3>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-[11px] text-muted-foreground">•</span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+                  단순 변심의 경우 수령일로부터 7일 이내까지 교환·반품이 가능합니다. (교환/반품비 고객 부담)
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[11px] text-muted-foreground">•</span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+                  상품 하자 또는 오배송의 경우 수령일로부터 7일 이내 교환·반품이 가능합니다. (교환/반품비 무료)
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[11px] text-muted-foreground">•</span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+                  제품 특성상 단순 변심, 부주의에 의한 제품 손상 및 파손, 사용 및 개봉한 경우 교환/반품이 불가합니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 제22조 (환불) */}
+          <div className="mb-5 pt-4 border-t border-border/50">
+            <h3 className="text-xs font-semibold text-foreground mb-3">제22조 (환불)</h3>
+            <div className="space-y-3">
+              <div className="text-[11px] text-muted-foreground leading-relaxed">
+                <p className="font-medium mb-1">1. 회원은 회사에 환불을 요구할 수 있습니다. 환불은 회사가 안내하는 정책 및 방법에 따라 진행됩니다.</p>
+              </div>
+              <div className="text-[11px] text-muted-foreground leading-relaxed">
+                <p className="font-medium mb-1">2. 회사는 다음 각 호의 방식으로 환불을 진행합니다.</p>
+                <div className="ml-3 mt-2 space-y-1.5">
+                  <p>가. 경기 결제 회원 : 환불은 서비스를 이용한 일수를 계산하고 일할 계산으로 진행됩니다. 결기간은 300일로 이용료를 일할로 나눈 금액을 환불합니다. 결제 금액의 10%를 제외한 일수만큼 금액을 제외하고 계산되니 이용자는 남은 금액만 환불받습니다. 다만 결제 이후30일 이내에 남은 기수대로 일할 계산이 이루어지며 남은 금액이 계산은 카드 수수료와 할인금액을 포함한 결제 금액의 20% 금액을 제외한 금액에, 남은 일 수에 대한 일할 계산을 포함한 결제 금액의 20% 금액을 제외한 금액에, 남은 일 수에 대한 일할 계산을 포함한 결제 금액의 20%를 제외한 금액에, 날은 일 수에 대한 일할 계산을 포함한 결제 금액의 20% 금액을 제외한 금액에, 남은 일 수에 대한 일할 계산을 처리하니다. 16일 이후 30일 이내 사용자는 환불이 불가능합니다. 일할 계산은 카드 수수료와 할인금액을 포함한 금액입니다.</p>
+                  <p className="mt-2">제시 : [(전체금액) * 0.8/30] * 남은 일수</p>
+                  <p className="mt-2">나. 연간 결제 회원 : 연 기간은 12개월이고 전년 이용료는 전액 연간결제 이용료를 12로 나누고 하루라도 이용했으면 제외합니다.</p>
+                </div>
+              </div>
+              <div className="text-[11px] text-muted-foreground leading-relaxed">
+                <p className="font-medium">3. 본 조의 환불 금액 기준은 연간 결제 회원이라 하더라도 정기결제 금액으로 계산 후 진행됩니다. 따라서 환불 시점에 따라 환불금액이 존재하지 않는 경우도 있을 수 있습니다.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 배송안내 */}
+        <Separator />
+        <div className="px-5 py-6">
+          <h2 className="text-sm font-bold text-foreground mb-4">배송안내</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-xs font-semibold text-foreground mb-2">배송 업체</h3>
+              <p className="text-[11px] text-muted-foreground">OO배송물류 (1544-7772)</p>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-foreground mb-2">배송 지역</h3>
+              <p className="text-[11px] text-muted-foreground">대한민국 전 지역</p>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-foreground mb-2">배송 비용</h3>
+              <p className="text-[11px] text-muted-foreground">3,000원 / 구매 금액 50,000원 이상 시 무료 배송/도서산간 지역 별도 추가 금액 발생</p>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-foreground mb-2">배송 기간</h3>
+              <p className="text-[11px] text-muted-foreground">주말·공휴일 제외 2-5일</p>
+            </div>
+
+            <div className="pt-3 border-t border-border/50">
+              <h3 className="text-xs font-semibold text-foreground mb-2">유의 사항</h3>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-[11px] text-muted-foreground">•</span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+                    주문 폭주 및 공휴 사정으로 인하여 지연 및 품절이 발생될 수 있습니다.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-[11px] text-muted-foreground">•</span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
+                    기본 배송기간 이상 소요되는 상품이거나, 품절 상품은 개별 연락을 드립니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
 
       {/* Floating Cart / Purchase Bar */}
