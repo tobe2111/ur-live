@@ -384,23 +384,39 @@ export default function CheckoutPage() {
 
   // 배송지 저장
   const handleSaveNewAddress = async () => {
+    console.log('[CheckoutPage] 💾 handleSaveNewAddress 함수 실행됨')
+    console.log('[CheckoutPage] userId:', userId)
+    console.log('[CheckoutPage] newAddress:', newAddress)
+    
     if (!userId) {
-      showErrorToast('로그인이 필요합니다.')
+      console.error('[CheckoutPage] ❌ userId 없음')
+      alert('로그인이 필요합니다.')
       return
     }
 
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
-      showErrorToast('모든 필수 항목을 입력해주세요.')
+      console.error('[CheckoutPage] ❌ 필수 항목 누락:', {
+        recipient_name: newAddress.recipient_name,
+        phone: newAddress.phone,
+        postal_code: newAddress.postal_code,
+        address: newAddress.address
+      })
+      alert('모든 필수 항목을 입력해주세요.')
       return
     }
+    
+    console.log('[CheckoutPage] ✅ 유효성 검사 통과, API 호출 시작')
 
     try {
+      console.log('[CheckoutPage] 📡 API 호출: /api/shipping-addresses')
       const response = await axios.post('/api/shipping-addresses', {
         user_id: userId,
         ...newAddress
       })
+      console.log('[CheckoutPage] API 응답:', response.data)
 
       if (response.data.success) {
+        console.log('[CheckoutPage] ✅ 배송지 저장 성공')
         const newId = response.data.data.id
         const savedAddress = { ...newAddress, id: newId }
         
@@ -419,6 +435,7 @@ export default function CheckoutPage() {
         })
       }
     } catch (err) {
+      console.error('[CheckoutPage] ❌ 배송지 저장 실패:', err)
       handleApiError(err, '배송지 저장 실패')
     }
   }
