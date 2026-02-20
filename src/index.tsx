@@ -245,12 +245,12 @@ const app = new Hono<{ Bindings: Bindings }>();
 // =================================
 
 /**
- * 세션에서 사용자 ID 추출
+ * 세션에서 사용자 정보 추출
  * @param SESSION_KV - Cloudflare KV namespace for sessions
  * @param sessionToken - Session token from cookie/header
- * @returns User ID or null
+ * @returns Session info (user_id, user_type) or null
  */
-async function getUserIdFromSession(SESSION_KV: KVNamespace, sessionToken: string | undefined): Promise<number | null> {
+async function getSessionInfo(SESSION_KV: KVNamespace, sessionToken: string | undefined): Promise<{ user_id: number; user_type: string } | null> {
   if (!sessionToken) return null;
   
   try {
@@ -258,7 +258,17 @@ async function getUserIdFromSession(SESSION_KV: KVNamespace, sessionToken: strin
     if (!sessionData) return null;
     
     const session = JSON.parse(sessionData);
-    return session.user_id || null;
+    
+    // expires_at 체크
+    if (session.expires_at && Date.now() > session.expires_at) {
+      await SESSION_KV.delete(`session:${sessionToken}`);
+      return null;
+    }
+    
+    return {
+      user_id: session.user_id,
+      user_type: session.user_type || 'user'
+    };
   } catch (error) {
     console.error('[Auth] Session lookup error:', error);
     return null;
@@ -290,17 +300,18 @@ async function requireAuth(c: any, next: any) {
   }
   
   // 4. 세션 검증
-  const userId = await getUserIdFromSession(SESSION_KV, sessionToken);
+  const sessionInfo = await getSessionInfo(SESSION_KV, sessionToken);
   
-  if (!userId) {
+  if (!sessionInfo) {
     return c.json({ 
       success: false, 
       error: '인증이 필요합니다. 로그인 해주세요.' 
     }, 401);
   }
   
-  // 5. Context에 userId 저장
-  c.set('userId', userId);
+  // 5. Context에 userId와 userType 저장
+  c.set('userId', sessionInfo.user_id);
+  c.set('userType', sessionInfo.user_type);
   
   await next();
 }
@@ -9095,43 +9106,12 @@ app.get('/api/seller/:sellerId/products-public', async (c) => {
 // =================================
 
 // Get notifications (셀러/사용자/관리자)
-app.get('/api/notifications', async (c) => {
+app.get('/api/notifications', requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) {
-      return c.json({ success: false, error: 'No authorization header' }, 401);
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    // Try seller session first
-    let auth = await verifySellerSession(c);
-    let userType: 'seller' | 'user' | 'admin' = 'seller';
-    let userId = auth.sellerId;
-
-    // If not seller, try user session
-    if (!auth.success) {
-      auth = await verifyUserSession(c);
-      if (auth.success) {
-        userType = 'user';
-        userId = auth.userId;
-      }
-    }
-
-    // If not user, try admin session
-    if (!auth.success) {
-      auth = await verifyAdminSession(c);
-      if (auth.success) {
-        userType = 'admin';
-        userId = auth.adminId;
-      }
-    }
-
-    if (!auth.success || !userId) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
-    }
+    const userId = c.get('userId');
+    const userType = c.get('userType');
 
     const limit = parseInt(c.req.query('limit') || '50');
     const unreadOnly = c.req.query('unread_only') === 'true';
@@ -9159,41 +9139,12 @@ app.get('/api/notifications', async (c) => {
 });
 
 // Get unread count
-app.get('/api/notifications/unread-count', async (c) => {
+app.get('/api/notifications/unread-count', requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) {
-      return c.json({ success: false, error: 'No authorization header' }, 401);
-    }
-
-    // Try seller session
-    let auth = await verifySellerSession(c);
-    let userType: 'seller' | 'user' | 'admin' = 'seller';
-    let userId = auth.sellerId;
-
-    // If not seller, try user
-    if (!auth.success) {
-      auth = await verifyUserSession(c);
-      if (auth.success) {
-        userType = 'user';
-        userId = auth.userId;
-      }
-    }
-
-    // If not user, try admin
-    if (!auth.success) {
-      auth = await verifyAdminSession(c);
-      if (auth.success) {
-        userType = 'admin';
-        userId = auth.adminId;
-      }
-    }
-
-    if (!auth.success || !userId) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
-    }
+    const userId = c.get('userId');
+    const userType = c.get('userType');
 
     const result = await DB.prepare(`
       SELECT COUNT(*) as count
@@ -9211,19 +9162,18 @@ app.get('/api/notifications/unread-count', async (c) => {
 });
 
 // Mark notification as read
-app.put('/api/notifications/:id/read', async (c) => {
+app.put('/api/notifications/:id/read', requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
     const notificationId = c.req.param('id');
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) {
-      return c.json({ success: false, error: 'No authorization header' }, 401);
-    }
+    const userId = c.get('userId');
+    const userType = c.get('userType');
 
     // Verify ownership before marking as read
-    const notification = await DB.prepare('SELECT user_id, user_type FROM notifications WHERE id = ?')
-      .bind(notificationId).first();
+    const notification = await DB.prepare(
+      'SELECT user_id, user_type FROM notifications WHERE id = ? AND user_id = ? AND user_type = ?'
+    ).bind(notificationId, userId, userType).first();
     
     if (!notification) {
       return c.json({ success: false, error: 'Notification not found' }, 404);
@@ -9239,41 +9189,12 @@ app.put('/api/notifications/:id/read', async (c) => {
 });
 
 // Mark all as read
-app.put('/api/notifications/read-all', async (c) => {
+app.put('/api/notifications/read-all', requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) {
-      return c.json({ success: false, error: 'No authorization header' }, 401);
-    }
-
-    // Try seller session
-    let auth = await verifySellerSession(c);
-    let userType: 'seller' | 'user' | 'admin' = 'seller';
-    let userId = auth.sellerId;
-
-    // If not seller, try user
-    if (!auth.success) {
-      auth = await verifyUserSession(c);
-      if (auth.success) {
-        userType = 'user';
-        userId = auth.userId;
-      }
-    }
-
-    // If not user, try admin
-    if (!auth.success) {
-      auth = await verifyAdminSession(c);
-      if (auth.success) {
-        userType = 'admin';
-        userId = auth.adminId;
-      }
-    }
-
-    if (!auth.success || !userId) {
-      return c.json({ success: false, error: 'Unauthorized' }, 401);
-    }
+    const userId = c.get('userId');
+    const userType = c.get('userType');
 
     await DB.prepare(`
       UPDATE notifications 
@@ -9288,19 +9209,18 @@ app.put('/api/notifications/read-all', async (c) => {
 });
 
 // Delete notification
-app.delete('/api/notifications/:id', async (c) => {
+app.delete('/api/notifications/:id', requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
     const notificationId = c.req.param('id');
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) {
-      return c.json({ success: false, error: 'No authorization header' }, 401);
-    }
+    const userId = c.get('userId');
+    const userType = c.get('userType');
 
     // Verify ownership before deleting
-    const notification = await DB.prepare('SELECT user_id, user_type FROM notifications WHERE id = ?')
-      .bind(notificationId).first();
+    const notification = await DB.prepare(
+      'SELECT user_id, user_type FROM notifications WHERE id = ? AND user_id = ? AND user_type = ?'
+    ).bind(notificationId, userId, userType).first();
     
     if (!notification) {
       return c.json({ success: false, error: 'Notification not found' }, 404);
