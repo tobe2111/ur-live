@@ -409,7 +409,7 @@ export default function CheckoutPage() {
 
     try {
       console.log('[CheckoutPage] 📡 API 호출: /api/shipping-addresses')
-      const response = await axios.post('/api/shipping-addresses', {
+      const response = await api.post('/api/shipping-addresses', {
         user_id: userId,
         ...newAddress
       })
