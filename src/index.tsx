@@ -1094,6 +1094,7 @@ app.post('/api/auth/user/login', cors(), async (c) => {
       success: true,
       data: {
         access_token: sessionToken,
+        session_token: sessionToken,  // ✅ 추가: LoginPage에서 session_token을 기대함
         user: {
           id: user.id,
           email: user.email,
