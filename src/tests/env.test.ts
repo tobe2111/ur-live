@@ -72,9 +72,9 @@ export async function runEnvTests(env: CloudflareBindings): Promise<TestResult[]
         details: 'Check wrangler.jsonc kv_namespaces configuration'
       });
     } else {
-      // 테스트 키로 읽기/쓰기 검증
+      // 테스트 키로 읽기/쓰기 검증 (TTL 최소 60초)
       const testKey = 'test:env:check';
-      await env.SESSION_KV.put(testKey, 'ok', { expirationTtl: 10 });
+      await env.SESSION_KV.put(testKey, 'ok', { expirationTtl: 60 });
       const value = await env.SESSION_KV.get(testKey);
       
       if (value === 'ok') {
@@ -112,9 +112,9 @@ export async function runEnvTests(env: CloudflareBindings): Promise<TestResult[]
         details: 'Check wrangler.jsonc kv_namespaces configuration'
       });
     } else {
-      // 테스트 키로 읽기/쓰기 검증
+      // 테스트 키로 읽기/쓰기 검증 (TTL 최소 60초)
       const testKey = 'test:cache:check';
-      await env.CACHE_KV.put(testKey, 'ok', { expirationTtl: 10 });
+      await env.CACHE_KV.put(testKey, 'ok', { expirationTtl: 60 });
       const value = await env.CACHE_KV.get(testKey);
       
       if (value === 'ok') {
