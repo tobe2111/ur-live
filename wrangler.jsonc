@@ -6,6 +6,28 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  
+  // ========================================
+  // 필수 환경 변수 (Cloudflare Pages Secrets)
+  // ========================================
+  // 다음 시크릿은 Cloudflare Pages에 수동으로 설정해야 합니다:
+  //
+  // 1. TOSS_SECRET_KEY (필수)
+  //    - Toss Payments API 시크릿 키 (결제 승인용)
+  //    - 설정 명령어: npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
+  //    - 테스트: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+  //    - 프로덕션: 실제 키로 교체 필요
+  //
+  // 2. TOSS_CLIENT_KEY (필수)
+  //    - Toss Payments 클라이언트 키 (프론트엔드용)
+  //    - 설정 명령어: npx wrangler pages secret put TOSS_CLIENT_KEY --project-name ur-live
+  //    - 테스트: test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm
+  //    - 프로덕션: 실제 키로 교체 필요
+  //
+  // 시크릿 확인: npx wrangler pages secret list --project-name ur-live
+  // 상세 가이드: ENV_SETUP_GUIDE.md 참고
+  // ========================================
+  
   "d1_databases": [
     {
       "binding": "DB",

@@ -2,6 +2,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
+import type { CloudflareBindings } from './types/env';
+import { validateEnv, logEnvStatus } from './types/env';
+import { handleEnvTestRequest } from './tests/env.test';
 import { issueTaxInvoiceAuto, convertToBarobillFormat, isBarobillMockMode, cancelBarobillTaxInvoice } from './services/barobill';
 import { 
   exchangeKakaoCode, 
@@ -239,6 +242,28 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // Note: Cloudflare Pages automatically handles compression (Gzip/Brotli)
 // No need for manual compression middleware
+
+// =================================
+// Environment Validation Middleware
+// =================================
+
+// 환경 변수 검증 미들웨어 (개발 모드에서만)
+app.use('*', async (c, next) => {
+  // 프로덕션에서는 스킵 (성능 최적화)
+  const isDev = c.req.url.includes('localhost') || c.req.url.includes('127.0.0.1');
+  
+  if (isDev) {
+    try {
+      validateEnv(c.env as CloudflareBindings);
+      logEnvStatus(c.env as CloudflareBindings);
+    } catch (error) {
+      console.error('[ENV] Validation failed:', error);
+      // 개발 모드에서는 경고만 출력하고 계속 진행
+    }
+  }
+  
+  await next();
+});
 
 // =================================
 // Authentication Middleware
@@ -2252,6 +2277,20 @@ app.get('/api/health', (c) => {
       hasCacheKV: !!c.env.CACHE_KV,
     }
   });
+});
+
+// Environment variables test endpoint (개발/디버깅용)
+app.get('/api/test/env', async (c) => {
+  try {
+    const testResult = await handleEnvTestRequest(c.env as CloudflareBindings);
+    return c.json(testResult);
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: '환경 변수 테스트 실행 중 오류 발생',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
+  }
 });
 
 // Live Stream API
