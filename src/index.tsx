@@ -5625,11 +5625,51 @@ app.post('/api/payments/confirm', async (c) => {
       console.error('[Payment] amount:', !!amount)
       return c.json({
         success: false,
-        error: '필수 파라미터가 누락되었습니다.'
+        error: '필수 파라미터가 누락되었습니다.',
+        details: {
+          paymentKey: !!paymentKey,
+          orderId: !!orderId,
+          amount: !!amount
+        }
       }, 400);
     }
     
     console.log('[Payment] ✅ 필수 파라미터 검증 통과')
+
+    // 🔍 주문 존재 여부 확인
+    const existingOrder = await DB.prepare(
+      'SELECT id, order_number, total_amount, status FROM orders WHERE order_number = ?'
+    ).bind(orderId).first();
+
+    if (!existingOrder) {
+      console.error('[Payment] ❌ 주문을 찾을 수 없음:', orderId)
+      return c.json({
+        success: false,
+        error: '주문을 찾을 수 없습니다. 주문이 생성되지 않았거나 이미 처리되었습니다.',
+        orderId: orderId
+      }, 404);
+    }
+
+    console.log('[Payment] ✅ 주문 확인됨:', {
+      id: existingOrder.id,
+      order_number: existingOrder.order_number,
+      total_amount: existingOrder.total_amount,
+      status: existingOrder.status
+    })
+
+    // 금액 검증
+    if (Number(amount) !== Number(existingOrder.total_amount)) {
+      console.error('[Payment] ❌ 금액 불일치!', {
+        requested: Number(amount),
+        expected: Number(existingOrder.total_amount)
+      })
+      return c.json({
+        success: false,
+        error: '결제 금액이 주문 금액과 일치하지 않습니다.',
+        requestedAmount: Number(amount),
+        expectedAmount: Number(existingOrder.total_amount)
+      }, 400);
+    }
 
     // 시크릿 키
     const secretKey = c.env.TOSS_SECRET_KEY;
@@ -5687,7 +5727,8 @@ app.post('/api/payments/confirm', async (c) => {
       return c.json({
         success: false,
         error: data.message || '결제 승인에 실패했습니다.',
-        code: data.code
+        code: data.code,
+        tossError: data
       }, response.status);
     }
 
@@ -5748,7 +5789,8 @@ app.post('/api/payments/confirm', async (c) => {
     
     return c.json({ 
       success: false, 
-      error: '결제 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.'
+      error: '결제 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.',
+      details: (err as Error).message
     }, 500);
   }
 });
