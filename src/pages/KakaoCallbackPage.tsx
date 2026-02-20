@@ -54,10 +54,11 @@ export default function KakaoCallbackPage() {
           
           // 저장 확인
           console.log('[KakaoCallback] ✅ localStorage 저장 완료:', {
-            session: localStorage.getItem('session') ? '있음' : '없음',
+            user_session_token: localStorage.getItem('user_session_token') ? '있음' : '없음',
             user_id: localStorage.getItem('user_id'),
             user_name: localStorage.getItem('user_name'),
-            isLoggedIn: !!localStorage.getItem('session') && !!localStorage.getItem('user_id')
+            user_type: localStorage.getItem('user_type'),
+            isLoggedIn: !!localStorage.getItem('user_session_token') && !!localStorage.getItem('user_id')
           })
 
           

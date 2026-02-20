@@ -91,6 +91,7 @@ function App() {
             <Route path="/browse" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
+            <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
