@@ -165,7 +165,14 @@ export default function AdminBannersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <CustomModal modal={modal} onClose={closeModal} />
+      <CustomModal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
 
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-10">
