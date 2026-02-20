@@ -4411,6 +4411,141 @@ app.get('/api/seller/products', async (c) => {
   }
 });
 
+// =================================
+// Image Upload API
+// =================================
+
+/**
+ * Upload image (supports R2 or Base64 fallback)
+ * POST /api/seller/upload-image
+ * 
+ * Request Body:
+ * - image: base64 encoded image string
+ * - filename: original filename
+ * 
+ * Response:
+ * - url: image URL (R2 URL or base64 data URL)
+ */
+app.post('/api/seller/upload-image', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { image, filename } = await c.req.json();
+
+    if (!image) {
+      return c.json({ 
+        success: false, 
+        error: 'Image data is required' 
+      }, 400);
+    }
+
+    // Check if R2 is available
+    const IMAGES = c.env.IMAGES as R2Bucket | undefined;
+
+    if (IMAGES) {
+      // ✅ R2 is available - upload to R2
+      console.log('[Image Upload] Using R2 storage');
+
+      // Extract base64 data (remove data:image/...;base64, prefix)
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+
+      // Generate unique filename
+      const ext = filename?.split('.').pop() || 'jpg';
+      const key = `products/${auth.sellerId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+
+      // Upload to R2
+      await IMAGES.put(key, imageBuffer, {
+        httpMetadata: {
+          contentType: image.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg',
+        },
+      });
+
+      // Return R2 public URL
+      const imageUrl = `/api/images/${key}`;
+      
+      return c.json({
+        success: true,
+        url: imageUrl,
+        storage: 'r2',
+      });
+
+    } else {
+      // ⚠️ R2 not available - use Base64 fallback
+      console.log('[Image Upload] R2 not available, using Base64 fallback');
+      
+      // Check image size (limit to 1MB for Base64)
+      const sizeInMB = (image.length * 0.75) / (1024 * 1024);
+      if (sizeInMB > 1) {
+        return c.json({
+          success: false,
+          error: 'Image too large. Please enable R2 for larger images (max 1MB for Base64 mode)',
+        }, 400);
+      }
+
+      // Return base64 directly
+      return c.json({
+        success: true,
+        url: image,
+        storage: 'base64',
+        warning: 'Using Base64 storage. Enable R2 for better performance.',
+      });
+    }
+
+  } catch (err) {
+    console.error('[Image Upload] Error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * Get image from R2
+ * GET /api/images/:key
+ */
+app.get('/api/images/*', async (c) => {
+  try {
+    const IMAGES = c.env.IMAGES as R2Bucket | undefined;
+
+    if (!IMAGES) {
+      return c.json({ 
+        success: false, 
+        error: 'R2 not configured' 
+      }, 503);
+    }
+
+    // Get key from path (remove /api/images/ prefix)
+    const key = c.req.path.replace('/api/images/', '');
+
+    const object = await IMAGES.get(key);
+
+    if (!object) {
+      return c.notFound();
+    }
+
+    return new Response(object.body, {
+      headers: {
+        'Content-Type': object.httpMetadata?.contentType || 'image/jpeg',
+        'Cache-Control': 'public, max-age=31536000',
+      },
+    });
+
+  } catch (err) {
+    console.error('[Image Get] Error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
 // Create product (상품 등록)
 app.post('/api/seller/products', async (c) => {
   const { DB } = c.env;

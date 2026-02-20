@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import NotificationBell from '@/components/NotificationBell'
 import { 
   ArrowLeft, 
   TrendingUp,
@@ -215,6 +216,7 @@ export default function SellerPage() {
               셀러 대시보드
             </h1>
             <div className="flex items-center gap-3">
+              <NotificationBell userType="seller" />
               <button 
                 onClick={() => navigate('/seller/profile')}
                 className="text-[#1d1d1f] hover:opacity-60 transition-opacity"

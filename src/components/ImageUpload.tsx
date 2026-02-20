@@ -5,12 +5,13 @@
  * - 파일 선택 또는 드래그 앤 드롭
  * - 자동 압축 (800KB 이하)
  * - 이미지 미리보기
- * - Base64 인코딩 (R2 미사용 시)
+ * - R2 또는 Base64 자동 선택
  */
 
 import { useState, useRef } from 'react'
 import { Upload, X, Loader2, ImageIcon } from 'lucide-react'
 import imageCompression from 'browser-image-compression'
+import api from '@/lib/api'
 
 interface ImageUploadProps {
   value: string
@@ -28,6 +29,7 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [dragActive, setDragActive] = useState(false)
+  const [storageType, setStorageType] = useState<'r2' | 'base64' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -55,24 +57,45 @@ export default function ImageUpload({
 
       const compressedFile = await imageCompression(file, options)
       
-      // Base64로 변환 (임시 방안)
-      // TODO: R2 활성화 후 실제 업로드로 변경
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const base64 = e.target?.result as string
-        onChange(base64)
-        setUploading(false)
-      }
-      reader.onerror = () => {
-        throw new Error('파일 읽기에 실패했습니다.')
-      }
-      reader.readAsDataURL(compressedFile)
-
       console.log('압축 완료:', {
         원본: `${(file.size / 1024).toFixed(2)}KB`,
         압축: `${(compressedFile.size / 1024).toFixed(2)}KB`,
         압축률: `${((1 - compressedFile.size / file.size) * 100).toFixed(1)}%`
       })
+
+      // Base64로 변환
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string
+
+        try {
+          // API 호출하여 업로드
+          const response = await api.post('/api/seller/upload-image', {
+            image: base64,
+            filename: file.name,
+          })
+
+          if (response.data.success) {
+            onChange(response.data.url)
+            setStorageType(response.data.storage)
+            
+            if (response.data.warning) {
+              console.warn('[Image Upload]', response.data.warning)
+            }
+          } else {
+            throw new Error(response.data.error || '업로드 실패')
+          }
+        } catch (apiError: any) {
+          console.error('API upload error:', apiError)
+          throw new Error(apiError.response?.data?.error || apiError.message || '업로드 실패')
+        } finally {
+          setUploading(false)
+        }
+      }
+      reader.onerror = () => {
+        throw new Error('파일 읽기에 실패했습니다.')
+      }
+      reader.readAsDataURL(compressedFile)
 
     } catch (err: any) {
       console.error('Image upload error:', err)
@@ -182,6 +205,11 @@ export default function ImageUpload({
           <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
             <ImageIcon className="w-3 h-3" />
             이미지가 업로드되었습니다
+            {storageType && (
+              <span className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-xs">
+                {storageType === 'r2' ? '✅ R2' : '⚠️ Base64'}
+              </span>
+            )}
           </p>
         </div>
       )}
@@ -190,6 +218,16 @@ export default function ImageUpload({
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      {/* R2 미활성화 경고 */}
+      {storageType === 'base64' && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-xs text-yellow-800">
+            ⚠️ R2가 활성화되지 않아 Base64 모드로 저장됩니다. 
+            R2 활성화 권장 (성능 향상, 용량 제한 없음)
+          </p>
         </div>
       )}
 
