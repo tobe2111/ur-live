@@ -11,6 +11,7 @@ export default function KakaoCallbackPage() {
     const handleKakaoCallback = async () => {
       const code = searchParams.get('code')
       const error = searchParams.get('error')
+      const state = searchParams.get('state')  // ✅ state 파라미터 읽기
 
       if (error) {
         alert('카카오 로그인에 실패했습니다.')
@@ -62,8 +63,19 @@ export default function KakaoCallbackPage() {
           })
 
           
-          // Get return URL from localStorage
-          const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
+          // ✅ returnUrl 우선순위: state > localStorage > default
+          let returnUrl = '/'
+          
+          if (state && state !== '/login') {
+            // state 파라미터가 있으면 우선 사용
+            returnUrl = decodeURIComponent(state)
+            console.log('[KakaoCallback] Using returnUrl from state:', returnUrl)
+          } else {
+            // state가 없으면 localStorage에서 가져오기
+            returnUrl = localStorage.getItem('loginReturnUrl') || '/'
+            console.log('[KakaoCallback] Using returnUrl from localStorage:', returnUrl)
+          }
+          
           localStorage.removeItem('loginReturnUrl')
           
           // 표준 함수로 임시 장바구니 복원

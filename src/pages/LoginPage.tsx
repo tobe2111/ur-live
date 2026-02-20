@@ -75,7 +75,8 @@ export default function LoginPage() {
         || localStorage.getItem('loginReturnUrl') 
         || '/'
       
-      const KAKAO_REST_API_KEY = '5dd74bccb797640b0efd070467f3bafd'
+      // ✅ 환경변수 사용 (없으면 fallback)
+      const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd'
       // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`
@@ -102,21 +103,19 @@ export default function LoginPage() {
         // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
         localStorage.setItem('user_session_token', session_token)  // ✅ API 클라이언트가 읽는 키
         
-        // user_type은 seller/admin이 아닌 경우에만 user로 설정
-        const existingUserType = localStorage.getItem('user_type')
-        if (existingUserType !== 'seller' && existingUserType !== 'admin') {
-          localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
-        }
+        // ✅ user_type은 무조건 user로 설정 (덮어쓰기)
+        localStorage.setItem('user_type', 'user')
         
         localStorage.setItem('user_id', user.id.toString())
         localStorage.setItem('user_name', user.name)
-        localStorage.setItem('userEmail', user.email || '')
+        localStorage.setItem('user_email', user.email || '')  // ✅ 키 통일
         
         // 이전 호환성 키 제거
         localStorage.removeItem('accessToken')
         localStorage.removeItem('session')
         localStorage.removeItem('userId')
         localStorage.removeItem('userName')
+        localStorage.removeItem('userEmail')  // ✅ 레거시 키 제거
 
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
@@ -160,21 +159,19 @@ export default function LoginPage() {
         // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
         localStorage.setItem('user_session_token', token)  // ✅ API 클라이언트가 읽는 키
         
-        // user_type은 seller/admin이 아닌 경우에만 user로 설정
-        const existingUserType = localStorage.getItem('user_type')
-        if (existingUserType !== 'seller' && existingUserType !== 'admin') {
-          localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입
-        }
+        // ✅ user_type은 무조건 user로 설정 (덮어쓰기)
+        localStorage.setItem('user_type', 'user')
         
         localStorage.setItem('user_id', user.id.toString())
         localStorage.setItem('user_name', user.name)
-        localStorage.setItem('userEmail', user.email || '')
+        localStorage.setItem('user_email', user.email || '')  // ✅ 키 통일
         
         // 이전 호환성 키 제거
         localStorage.removeItem('userId')
         localStorage.removeItem('userName')
         localStorage.removeItem('session')
         localStorage.removeItem('accessToken')
+        localStorage.removeItem('userEmail')  // ✅ 레거시 키 제거
 
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'

@@ -1057,7 +1057,7 @@ app.post('/api/auth/user/register', cors(), async (c) => {
 
 // 일반 사용자 로그인 API
 app.post('/api/auth/user/login', cors(), async (c) => {
-  const { DB } = c.env;
+  const { DB, SESSION_KV } = c.env;  // ✅ SESSION_KV 추가
   
   try {
     const { email, password } = await c.req.json();
@@ -1087,14 +1087,27 @@ app.post('/api/auth/user/login', cors(), async (c) => {
       'UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?'
     ).bind(user.id).run();
     
-    // 세션 토큰 생성
-    const sessionToken = `user_${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    // ✅ 보안 강화된 세션 토큰 생성 (crypto.randomUUID)
+    const sessionToken = crypto.randomUUID();
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;  // 24시간
+    
+    // ✅ SESSION_KV에 세션 저장 (백엔드 인증 시스템과 일치)
+    await SESSION_KV.put(
+      `session:${sessionToken}`,
+      JSON.stringify({
+        user_id: user.id,
+        user_type: 'user',
+        expires_at: expiresAt
+      }),
+      { expirationTtl: 24 * 60 * 60 }  // 24시간 (초 단위)
+    );
+    
+    console.log('[User Login] Session created in SESSION_KV for user:', user.id);
     
     return c.json({
       success: true,
       data: {
-        access_token: sessionToken,
-        session_token: sessionToken,  // ✅ 추가: LoginPage에서 session_token을 기대함
+        session_token: sessionToken,
         user: {
           id: user.id,
           email: user.email,
