@@ -71,7 +71,7 @@ export default function RefundPolicyPage() {
               </h3>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  서울특별시 강남구 테헤란로 131, 15층 (역삼동, 한국지식재산센터)
+                  부산광역시 금정구 놀이마당로26 1402호
                 </p>
               </div>
             </div>
