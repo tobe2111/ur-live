@@ -602,16 +602,18 @@ export default function CheckoutPage() {
                 <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
                     console.log('[CheckoutPage] 배송지 변경 버튼 클릭')
                     console.log('[CheckoutPage] 현재 showAddressModal:', showAddressModal)
                     console.log('[CheckoutPage] 배송지 목록:', addresses)
                     setShowAddressModal(true)
                   }}
-                  className="flex items-center text-[13px] sm:text-[14px] lg:text-[15px] font-medium text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer relative z-20 px-2 py-1.5 -mr-2"
+                  className="flex items-center text-[14px] sm:text-[15px] lg:text-[16px] font-semibold text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer px-3 py-2 -mr-2 touch-manipulation"
                 >
                   {selectedAddress ? '변경' : '선택'}
-                  <ChevronRight className="h-4 w-4 ml-0.5" />
+                  <ChevronRight className="h-5 w-5 ml-0.5" />
                 </button>
               </div>
 
@@ -958,12 +960,13 @@ export default function CheckoutPage() {
             addresses.map((addr) => (
               <div
                 key={addr.id}
-                className={`border rounded-2xl p-4 cursor-pointer transition-all relative z-10 ${
+                className={`border rounded-2xl p-4 cursor-pointer transition-all ${
                   selectedAddress?.id === addr.id 
                     ? 'border-blue-500 bg-blue-50 shadow-sm' 
                     : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                 }`}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation()
                   console.log('[CheckoutPage] 배송지 아이템 클릭:', addr.id)
                   setSelectedAddress(addr)
                   setShowAddressModal(false)
@@ -1003,11 +1006,13 @@ export default function CheckoutPage() {
 
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
+              console.log('[CheckoutPage] 새 배송지 추가 버튼 클릭')
               setShowAddressModal(false)
-              setShowNewAddressForm(true)
+              setTimeout(() => setShowNewAddressForm(true), 100)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer relative z-10"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
             <span>새 배송지 추가</span>
@@ -1109,21 +1114,27 @@ export default function CheckoutPage() {
             />
           </div>
 
-          <div className="flex gap-2 pt-2 relative z-30">
+          <div className="flex gap-2 pt-2">
             <button
               type="button"
-              onClick={handleSaveNewAddress}
-              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:bg-blue-700 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer relative z-30 touch-manipulation"
+              onClick={(e) => {
+                e.stopPropagation()
+                console.log('[CheckoutPage] 저장 버튼 클릭')
+                handleSaveNewAddress()
+              }}
+              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:bg-blue-700 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               저장
             </button>
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
+                console.log('[CheckoutPage] 취소 버튼 클릭')
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer relative z-10"
+              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

@@ -54,10 +54,15 @@ export function CustomModal({
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn"
-      onClick={onClose}
+      onClick={(e) => {
+        // Only close modal if clicking the overlay (not the modal content)
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
     >
       <div 
-        className={`bg-white rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp`}
+        className={`bg-white rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (
@@ -75,7 +80,7 @@ export function CustomModal({
               </button>
             </div>
             {/* Custom Modal Content */}
-            <div className="px-5 py-4 max-h-[70vh] overflow-y-auto">
+            <div className="px-5 py-4 max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               {children}
             </div>
           </>
