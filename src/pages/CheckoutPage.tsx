@@ -608,10 +608,10 @@ export default function CheckoutPage() {
                     console.log('[CheckoutPage] 배송지 목록:', addresses)
                     setShowAddressModal(true)
                   }}
-                  className="flex items-center text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+                  className="flex items-center text-[13px] sm:text-[14px] lg:text-[15px] font-medium text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer relative z-20 px-2 py-1.5 -mr-2"
                 >
                   {selectedAddress ? '변경' : '선택'}
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 ml-0.5" />
                 </button>
               </div>
 
@@ -958,12 +958,13 @@ export default function CheckoutPage() {
             addresses.map((addr) => (
               <div
                 key={addr.id}
-                className={`border rounded-2xl p-4 cursor-pointer transition-all ${
+                className={`border rounded-2xl p-4 cursor-pointer transition-all relative z-10 ${
                   selectedAddress?.id === addr.id 
                     ? 'border-blue-500 bg-blue-50 shadow-sm' 
                     : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                 }`}
                 onClick={() => {
+                  console.log('[CheckoutPage] 배송지 아이템 클릭:', addr.id)
                   setSelectedAddress(addr)
                   setShowAddressModal(false)
                 }}
@@ -1001,11 +1002,12 @@ export default function CheckoutPage() {
           )}
 
           <button
+            type="button"
             onClick={() => {
               setShowAddressModal(false)
               setShowNewAddressForm(true)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer relative z-10"
           >
             <Plus className="w-5 h-5" />
             <span>새 배송지 추가</span>
@@ -1107,19 +1109,21 @@ export default function CheckoutPage() {
             />
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 relative z-30">
             <button
+              type="button"
               onClick={handleSaveNewAddress}
-              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:brightness-95 transition-all active:scale-[0.98]"
+              className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:bg-blue-700 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer relative z-30 touch-manipulation"
             >
               저장
             </button>
             <button
+              type="button"
               onClick={() => {
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98]"
+              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer relative z-10"
             >
               취소
             </button>
