@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
 import { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ModalProps {
   isOpen: boolean
@@ -51,9 +52,9 @@ export function CustomModal({
     }
   }
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn"
       onClick={(e) => {
         // Only close modal if clicking the overlay (not the modal content)
         if (e.target === e.currentTarget) {
@@ -169,6 +170,9 @@ export function CustomModal({
       `}</style>
     </div>
   )
+
+  // Use Portal to render modal at document.body level, escaping parent overflow constraints
+  return createPortal(modalContent, document.body)
 }
 
 // Custom hook for modal management

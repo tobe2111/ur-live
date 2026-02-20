@@ -612,7 +612,7 @@ export default function CheckoutPage() {
         <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
 
           {/* Left column */}
-          <div className="flex flex-1 flex-col lg:overflow-hidden lg:rounded-3xl">
+          <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
             {/* 배송지 정보 */}
             <section className="bg-white px-5 py-6">
               <div className="flex items-center justify-between relative">
@@ -778,7 +778,7 @@ export default function CheckoutPage() {
 
           {/* Right column - Order summary (desktop only) */}
           <div className="hidden lg:block lg:w-[360px]">
-            <div className="sticky top-20 overflow-hidden rounded-3xl">
+            <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
               <section className="bg-white px-5 py-6">
                 <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
 
