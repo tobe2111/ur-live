@@ -409,10 +409,19 @@ export default function CheckoutPage() {
 
     try {
       console.log('[CheckoutPage] 📡 API 호출: /api/shipping-addresses')
-      const response = await api.post('/api/shipping-addresses', {
+      
+      // 첫 번째 배송지는 자동으로 기본 배송지로 설정
+      const isFirstAddress = addresses.length === 0
+      const addressData = {
         user_id: userId,
-        ...newAddress
-      })
+        ...newAddress,
+        is_default: isFirstAddress ? 1 : 0  // 첫 배송지면 기본으로 설정
+      }
+      
+      console.log('[CheckoutPage] 배송지 데이터:', addressData)
+      console.log('[CheckoutPage] 첫 번째 배송지 여부:', isFirstAddress)
+      
+      const response = await api.post('/api/shipping-addresses', addressData)
       console.log('[CheckoutPage] API 응답:', response.data)
 
       if (response.data.success) {
