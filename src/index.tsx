@@ -272,10 +272,15 @@ async function getUserIdFromSession(SESSION_KV: KVNamespace, sessionToken: strin
 async function requireAuth(c: any, next: any) {
   const { SESSION_KV } = c.env;
   
-  // 1. Authorization 헤더에서 토큰 추출
-  let sessionToken = c.req.header('Authorization')?.replace('Bearer ', '');
+  // 1. X-Session-Token 헤더에서 토큰 추출 (프론트엔드와 일치)
+  let sessionToken = c.req.header('X-Session-Token');
   
-  // 2. 쿠키에서 토큰 추출 (fallback)
+  // 2. Authorization 헤더에서 토큰 추출 (fallback)
+  if (!sessionToken) {
+    sessionToken = c.req.header('Authorization')?.replace('Bearer ', '');
+  }
+  
+  // 3. 쿠키에서 토큰 추출 (fallback)
   if (!sessionToken) {
     const cookieHeader = c.req.header('Cookie');
     if (cookieHeader) {
@@ -284,7 +289,7 @@ async function requireAuth(c: any, next: any) {
     }
   }
   
-  // 3. 세션 검증
+  // 4. 세션 검증
   const userId = await getUserIdFromSession(SESSION_KV, sessionToken);
   
   if (!userId) {
@@ -294,7 +299,7 @@ async function requireAuth(c: any, next: any) {
     }, 401);
   }
   
-  // 4. Context에 userId 저장
+  // 5. Context에 userId 저장
   c.set('userId', userId);
   
   await next();
@@ -954,14 +959,16 @@ app.use('/images/*', async (c, next) => {
 
 // 세션 생성 (KV에 저장) - D1 쓰기 부담 감소 ✅
 async function createSession(SESSION_KV: KVNamespace, userId: number, userType: 'admin' | 'seller', userData: any) {
-  const sessionToken = `${userType}_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  // ✅ crypto.randomUUID() 사용 (보안 강화)
+  const sessionToken = crypto.randomUUID();
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24시간 후 (timestamp)
   
+  // ✅ user_id 키로 저장 (getUserIdFromSession과 일치)
   const sessionData = {
-    userId,
-    userType,
+    user_id: userId,
+    user_type: userType,
     userData,
-    expiresAt
+    expires_at: expiresAt
   };
   
   // KV에 저장 (자동 만료 설정)
@@ -970,6 +977,8 @@ async function createSession(SESSION_KV: KVNamespace, userId: number, userType: 
     JSON.stringify(sessionData),
     { expirationTtl: 86400 } // 24시간 (초 단위)
   );
+  
+  console.log(`[createSession] ✅ Session created for ${userType} user ${userId}`);
   
   return sessionToken;
 }
@@ -985,7 +994,7 @@ async function getSession(SESSION_KV: KVNamespace, sessionToken: string) {
   const sessionData = JSON.parse(sessionDataStr);
   
   // 만료 확인 (KV의 expirationTtl이 자동으로 처리하지만 추가 체크)
-  if (sessionData.expiresAt && Date.now() > sessionData.expiresAt) {
+  if (sessionData.expires_at && Date.now() > sessionData.expires_at) {
     await SESSION_KV.delete(`session:${sessionToken}`);
     return null;
   }
@@ -993,8 +1002,8 @@ async function getSession(SESSION_KV: KVNamespace, sessionToken: string) {
   // D1 형식과 호환되도록 변환
   return {
     session_token: sessionToken,
-    [`${sessionData.userType}_id`]: sessionData.userId,
-    user_type: sessionData.userType,
+    [`${sessionData.user_type}_id`]: sessionData.user_id,
+    user_type: sessionData.user_type,
     ...sessionData.userData
   };
 }
