@@ -41,9 +41,22 @@ interface SearchSuggestion {
   text: string
 }
 
+interface Banner {
+  id: number
+  title: string
+  image_url: string
+  link_url?: string
+  description?: string
+  is_active: boolean
+  display_order: number
+  start_date?: string
+  end_date?: string
+}
+
 export default function HomePage() {
   const [streams, setStreams] = useState<Stream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
+  const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -87,6 +100,7 @@ export default function HomePage() {
     
     loadStreams()
     loadScheduledStreams()
+    loadBanners()
     loadUserInfo()
     
     // 실시간 업데이트: 30초마다 라이브 스트림 새로고침
@@ -141,6 +155,17 @@ export default function HomePage() {
       console.error('[HomePage] Failed to load streams:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadBanners() {
+    try {
+      const response = await api.get('/api/banners')
+      if (response.data.success) {
+        setBanners(response.data.data || [])
+      }
+    } catch (error) {
+      console.error('[HomePage] Failed to load banners:', error)
     }
   }
 
@@ -297,6 +322,43 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* Main Banner Section */}
+      {banners.length > 0 && (
+        <section className="relative w-full bg-white">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
+            <div className="relative overflow-hidden rounded-2xl shadow-2xl group cursor-pointer">
+              <a
+                href={banners[0].link_url || '#'}
+                onClick={(e) => {
+                  if (banners[0].link_url?.startsWith('#')) {
+                    e.preventDefault()
+                    const element = document.querySelector(banners[0].link_url)
+                    element?.scrollIntoView({ behavior: 'smooth' })
+                  }
+                }}
+                className="block"
+              >
+                <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full overflow-hidden">
+                  <LazyImage
+                    src={banners[0].image_url}
+                    alt={banners[0].title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </div>
+                {banners[0].description && (
+                  <div className="absolute bottom-6 left-6 right-6 text-white">
+                    <p className="text-lg sm:text-xl font-bold drop-shadow-lg">
+                      {banners[0].description}
+                    </p>
+                  </div>
+                )}
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Hero Section - Toon.at Style with Big Banner */}
       <section className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-white to-yellow-50">

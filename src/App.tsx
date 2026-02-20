@@ -53,6 +53,7 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'))
 const AdminSettlementPage = lazy(() => import('./pages/AdminSettlementPage'))
+const AdminBannersPage = lazy(() => import('./pages/AdminBannersPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -123,6 +124,7 @@ function App() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/settlement" element={<AdminSettlementPage />} />
+            <Route path="/admin/banners" element={<AdminBannersPage />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
