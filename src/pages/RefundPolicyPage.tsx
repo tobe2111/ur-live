@@ -23,9 +23,9 @@ export default function RefundPolicyPage() {
             <h2 className="text-lg font-bold mb-3 text-blue-900">운영 회사 정보</h2>
             <div className="space-y-2 text-sm text-gray-700">
               <p><strong>상호명:</strong> 리스터코퍼레이션 (LISTER Corporation)</p>
-              <p><strong>대표:</strong> 이원준</p>
+              <p><strong>대표:</strong> 정지원</p>
               <p><strong>고객센터:</strong> 0507-0177-0432</p>
-              <p><strong>이메일:</strong> support@ur-team.com</p>
+              <p><strong>이메일:</strong> jiwon@ur-team.com</p>
               <p><strong>운영시간:</strong> 평일 09:00 - 18:00 (주말 및 공휴일 휴무)</p>
             </div>
           </section>
@@ -199,7 +199,8 @@ export default function RefundPolicyPage() {
               {/* 배송 업체 */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-sm font-bold mb-2 text-gray-800">배송 업체</h3>
-                <p className="text-sm text-gray-700">OO배송물류 (1544-7772)</p>
+                <p className="text-sm text-gray-700">대한통운 (1588-1255)</p>
+                <p className="text-xs text-gray-500 mt-1">* 판매 환경에 따라 변경될 수 있음</p>
               </div>
 
               {/* 배송 지역 */}
@@ -359,7 +360,7 @@ export default function RefundPolicyPage() {
               </p>
               <p className="flex items-center gap-2">
                 <span className="font-semibold text-indigo-700">📧 이메일:</span> 
-                support@ur-team.com
+                jiwon@ur-team.com
               </p>
             </div>
           </section>
@@ -370,7 +371,7 @@ export default function RefundPolicyPage() {
               <strong>상호명:</strong> 리스터코퍼레이션 (LISTER Corporation)
             </p>
             <p className="text-sm text-gray-600">
-              <strong>대표:</strong> 이원준
+              <strong>대표:</strong> 정지원
             </p>
             <p className="text-xs text-gray-500 mt-3">
               시행일자: 2026년 2월 20일
