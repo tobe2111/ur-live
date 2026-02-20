@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
-import { getUserName, getUserId, saveUserInfo } from '@/utils/auth'
+import { getUserName, getUserId, saveUserInfo, logout } from '@/utils/auth'
 
 interface Stream {
   id: number
@@ -113,14 +113,10 @@ export default function HomePage() {
   }
 
   function handleLogout() {
-    localStorage.removeItem('user_id')
-    localStorage.removeItem('user_name')
-    localStorage.removeItem('session')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('userName')
-    localStorage.removeItem('userEmail')
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('accessToken')
+    // ✅ auth.ts의 표준 logout 함수 사용
+    logout()
+    
+    // 추가 장바구니 관련 키 삭제
     localStorage.removeItem('hasCartItems')
     
     setUser(null)

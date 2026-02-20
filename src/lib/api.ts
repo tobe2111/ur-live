@@ -67,12 +67,25 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.warn('[API] 인증 실패 - 로그아웃 처리');
       
-      // 모든 세션 토큰 제거
+      // ✅ 모든 인증 관련 키 제거 (표준 키)
       localStorage.removeItem('user_session_token');
       localStorage.removeItem('seller_session_token');
       localStorage.removeItem('admin_session_token');
       localStorage.removeItem('user_type');
       localStorage.removeItem('user_id');
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('seller_id');
+      localStorage.removeItem('admin_id');
+      localStorage.removeItem('hasCartItems');
+      
+      // 레거시 키도 제거
+      localStorage.removeItem('session');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('access_token');
       
       // 현재 페이지가 로그인 페이지가 아닐 때만 리다이렉트
       const currentPath = window.location.pathname;
