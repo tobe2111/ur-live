@@ -615,7 +615,7 @@ export default function CheckoutPage() {
           <div className="flex flex-1 flex-col lg:overflow-hidden lg:rounded-3xl">
             {/* 배송지 정보 */}
             <section className="bg-white px-5 py-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between relative">
                 <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
                 <button
                   type="button"
@@ -627,7 +627,8 @@ export default function CheckoutPage() {
                     console.log('[CheckoutPage] 배송지 목록:', addresses)
                     setShowAddressModal(true)
                   }}
-                  className="flex items-center text-[14px] sm:text-[15px] lg:text-[16px] font-semibold text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer px-3 py-2 -mr-2 touch-manipulation"
+                  className="flex items-center text-[14px] sm:text-[15px] lg:text-[16px] font-semibold text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer px-3 py-2 -mr-2 touch-manipulation relative z-10"
+                  style={{ pointerEvents: 'auto' }}
                 >
                   {selectedAddress ? '변경' : '선택'}
                   <ChevronRight className="h-5 w-5 ml-0.5" />
