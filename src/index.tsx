@@ -1084,42 +1084,42 @@ app.post('/api/auth/user/register', cors(), async (c) => {
       return c.json({ success: false, error: '이메일, 비밀번호, 이름은 필수입니다' }, 400);
     }
     
-    // 이메일 중복 확인
-    const existingUser = await DB.prepare(
-      'SELECT id FROM users WHERE email = ?'
-    ).bind(email).first();
-    
-    if (existingUser) {
-      return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 400);
-    }
-    
     // 비밀번호 해시 (실제로는 bcrypt 사용 권장, 여기서는 간단히 처리)
     const passwordHash = `placeholder_hash_for_${password}`;
     
-    
-    // 사용자 생성
-    const result = await DB.prepare(`
-      INSERT INTO users (email, password_hash, name, phone, created_at, last_login_at)
-      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-    `).bind(email, passwordHash, name, phone || null).run();
-    
-    const userId = result.meta.last_row_id;
-    
-    // 세션 토큰 생성
-    const sessionToken = `user_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
-    return c.json({
-      success: true,
-      data: {
-        access_token: sessionToken,
-        user: {
-          id: userId,
-          email,
-          name,
-          phone,
+    // ✅ 개선: UNIQUE 제약 조건으로 동시성 보호 (SELECT 제거)
+    // INSERT 시도 → UNIQUE 위반 시 catch에서 처리
+    try {
+      const result = await DB.prepare(`
+        INSERT INTO users (email, password_hash, name, phone, created_at, last_login_at)
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).bind(email, passwordHash, name, phone || null).run();
+      
+      const userId = result.meta.last_row_id;
+      
+      // 세션 토큰 생성
+      const sessionToken = `user_${userId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      
+      return c.json({
+        success: true,
+        data: {
+          access_token: sessionToken,
+          user: {
+            id: userId,
+            email,
+            name,
+            phone,
+          },
         },
-      },
-    });
+      });
+    } catch (insertError) {
+      // UNIQUE 제약 조건 위반 체크
+      const errorMsg = (insertError as Error).message || '';
+      if (errorMsg.includes('UNIQUE') || errorMsg.includes('unique')) {
+        return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 400);
+      }
+      throw insertError; // 다른 오류는 상위로 전파
+    }
   } catch (error) {
     console.error('[User Register] Error:', error);
     return c.json({
@@ -1317,42 +1317,45 @@ app.post('/api/seller/register', cors(), async (c) => {
       return c.json({ success: false, error: '비밀번호는 6자 이상이어야 합니다' }, 400);
     }
     
-    // 이메일 중복 확인
-    const existingSeller = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first();
-    if (existingSeller) {
-      return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 400);
-    }
-    
     // username 생성 (email의 @ 앞부분)
     const username = email.split('@')[0];
     
     // 비밀번호 해시 (간단한 형태로 저장)
     const password_hash = `placeholder_hash_for_${password}`;
     
-    // 셀러 생성 (관리자 승인 대기 상태)
-    const result = await DB.prepare(`
-      INSERT INTO sellers (
-        username, email, password_hash, name, phone, 
-        business_number, company_name, status, is_active, 
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 1, datetime('now'), datetime('now'))
-    `).bind(
-      username,
-      email,
-      password_hash,
-      name,
-      phone,
-      business_number || null,
-      company_name || null
-    ).run();
-    
-    return c.json({
-      success: true,
-      data: {
-        sellerId: result.meta.last_row_id,
-        message: '회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.'
+    // ✅ 개선: UNIQUE 제약 조건으로 동시성 보호 (SELECT 제거)
+    try {
+      const result = await DB.prepare(`
+        INSERT INTO sellers (
+          username, email, password_hash, name, phone, 
+          business_number, company_name, status, is_active, 
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 1, datetime('now'), datetime('now'))
+      `).bind(
+        username,
+        email,
+        password_hash,
+        name,
+        phone,
+        business_number || null,
+        company_name || null
+      ).run();
+      
+      return c.json({
+        success: true,
+        data: {
+          sellerId: result.meta.last_row_id,
+          message: '회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.'
+        }
+      });
+    } catch (insertError) {
+      // UNIQUE 제약 조건 위반 체크
+      const errorMsg = (insertError as Error).message || '';
+      if (errorMsg.includes('UNIQUE') || errorMsg.includes('unique')) {
+        return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 400);
       }
-    });
+      throw insertError; // 다른 오류는 상위로 전파
+    }
     
   } catch (err) {
     console.error('Seller registration error:', err);
@@ -3440,47 +3443,53 @@ app.post('/api/orders', async (c) => {
 
     // 주문 아이템 생성 및 재고 차감 (낙관적 락 적용)
     for (const item of cartItems.results) {
-      // 재고 차감 (낙관적 락 - 동시성 문제 해결)
-      const stockUpdateResult = await DB.prepare(`
-        UPDATE products 
-        SET stock = stock - ?, 
-            version = version + 1,
-            updated_at = datetime('now')
-        WHERE id = ? 
-          AND stock >= ?
-          AND is_active = 1
-      `).bind(item.quantity, item.product_id, item.quantity).run();
+      // ✅ 개선: 재고 차감 재시도 3회 (exponential backoff)
+      let stockUpdateSuccess = false;
+      let lastError = '';
+      
+      for (let attempt = 0; attempt < 3; attempt++) {
+        // 재고 차감 (낙관적 락 - 동시성 문제 해결)
+        const stockUpdateResult = await DB.prepare(`
+          UPDATE products 
+          SET stock = stock - ?, 
+              version = version + 1,
+              updated_at = datetime('now')
+          WHERE id = ? 
+            AND stock >= ?
+            AND is_active = 1
+        `).bind(item.quantity, item.product_id, item.quantity).run();
 
-      // 재고 차감 실패 시 (동시 주문 또는 재고 부족)
-      if (stockUpdateResult.meta.changes === 0) {
-        // 현재 재고 확인
+        // 재고 차감 성공
+        if (stockUpdateResult.meta.changes > 0) {
+          stockUpdateSuccess = true;
+          break;
+        }
+
+        // 재고 차감 실패 - 재고 확인
         const currentProduct = await DB.prepare(`
           SELECT stock FROM products WHERE id = ?
         `).bind(item.product_id).first();
 
         if (!currentProduct || (currentProduct.stock as number) < (item.quantity as number)) {
-          return c.json<ApiResponse>({
-            success: false,
-            error: `재고 부족: ${item.product_name} (남은 재고: ${currentProduct?.stock || 0}개)`,
-          }, 400);
-        } else {
-          // 재시도 (버전 충돌)
-          const retryResult = await DB.prepare(`
-            UPDATE products 
-            SET stock = stock - ?, 
-                version = version + 1,
-                updated_at = datetime('now')
-            WHERE id = ? 
-              AND stock >= ?
-          `).bind(item.quantity, item.product_id, item.quantity).run();
-
-          if (retryResult.meta.changes === 0) {
-            return c.json<ApiResponse>({
-              success: false,
-              error: `주문 처리 중 오류 발생. 다시 시도해주세요.`,
-            }, 409);
-          }
+          // 재고 부족 - 더 이상 재시도 불필요
+          lastError = `재고 부족: ${item.product_name} (남은 재고: ${currentProduct?.stock || 0}개)`;
+          break;
         }
+        
+        // 버전 충돌 - 재시도 (exponential backoff: 0ms, 50ms, 100ms)
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+        } else {
+          lastError = `주문 처리 중 오류 발생. 다시 시도해주세요. (동시성 충돌)`;
+        }
+      }
+
+      // 재고 차감 실패 시 오류 반환
+      if (!stockUpdateSuccess) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: lastError || '주문 처리 중 오류가 발생했습니다.',
+        }, lastError.includes('재고 부족') ? 400 : 409);
       }
 
       // 주문 아이템 INSERT 쿼리 배치에 추가
