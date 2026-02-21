@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
+import { requireLogin, getUserId, isLoggedIn, saveUserInfo } from '@/utils/auth'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
 // 🚨 중요: 결제위젯 SDK는 HTML에서 로드됨 (index.html 참고)
@@ -59,6 +59,7 @@ function generateRandomString() {
 export default function CheckoutPage() {
   console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -286,6 +287,38 @@ export default function CheckoutPage() {
       // 금액 업데이트 실패는 치명적이지 않으므로 계속 진행
     }
   }, [totalAmount, paymentMethodWidget, ready])
+
+  // 🔐 Step 0: URL 파라미터에서 로그인 정보 추출 (최우선)
+  useEffect(() => {
+    const login = searchParams.get('login')
+    const session = searchParams.get('session')
+    const urlUserId = searchParams.get('userId')
+    const userName = searchParams.get('userName')
+
+    console.log('[CheckoutPage] 🔐 URL 파라미터 체크:', { login, session, urlUserId, userName })
+
+    if (login === 'success' && session && urlUserId) {
+      console.log('[CheckoutPage] ✅ 로그인 성공 파라미터 발견 - localStorage 저장 시작')
+      
+      // localStorage에 저장
+      saveUserInfo(
+        urlUserId,
+        userName ? decodeURIComponent(userName) : '사용자',
+        session
+      )
+
+      console.log('[CheckoutPage] ✅ 로그인 정보 저장 완료:', {
+        userId: urlUserId,
+        userName: userName ? decodeURIComponent(userName) : '사용자',
+        hasSession: !!session
+      })
+
+      // URL에서 파라미터 제거 (깔끔한 URL)
+      const cleanUrl = window.location.pathname
+      window.history.replaceState({}, '', cleanUrl)
+      console.log('[CheckoutPage] ✅ URL 파라미터 제거 완료:', cleanUrl)
+    }
+  }, [searchParams])
 
   // 초기 데이터 로드
   useEffect(() => {
