@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
+import { UpdateNotification } from './components/UpdateNotification'
 
 // 초기 로딩 페이지만 즉시 로드
 import HomePage from './pages/HomePage'
@@ -79,6 +80,7 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <UpdateNotification />
         <FrameWrapper>
           <Suspense fallback={<PageLoader />}>
             <Routes>
