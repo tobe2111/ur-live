@@ -334,7 +334,36 @@ async function requireAuth(c: any, next: any) {
     }, 401);
   }
   
-  // 5. Context에 userId와 userType 저장
+  // 5. ✅ 세션 자동 갱신 로직 (만료 7일 전이면 30일로 연장)
+  try {
+    if (sessionToken) {
+      const sessionData = await SESSION_KV.get(`session:${sessionToken}`);
+      if (sessionData) {
+        const session = JSON.parse(sessionData);
+        const timeLeft = session.expires_at - Date.now();
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        
+        // 만료 7일 전이면 자동으로 30일 연장
+        if (timeLeft < sevenDays) {
+          const newExpiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // 30일
+          await SESSION_KV.put(
+            `session:${sessionToken}`,
+            JSON.stringify({
+              ...session,
+              expires_at: newExpiresAt
+            }),
+            { expirationTtl: 30 * 24 * 60 * 60 }  // 30일 (초 단위)
+          );
+          console.log('[Auth] ✅ Session auto-renewed for user:', sessionInfo.user_id, '- New expiration:', new Date(newExpiresAt).toISOString());
+        }
+      }
+    }
+  } catch (error) {
+    // 세션 갱신 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
+    console.error('[Auth] Session renewal error:', error);
+  }
+  
+  // 6. Context에 userId와 userType 저장
   c.set('userId', sessionInfo.user_id);
   c.set('userType', sessionInfo.user_type);
   
@@ -1722,7 +1751,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
     
     // 3. ✅ SESSION_KV에 세션 저장 (중요!)
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;  // 24시간
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // ✅ 30일 (24시간 → 30일로 변경)
     await c.env.SESSION_KV.put(
       `session:${sessionToken}`,
       JSON.stringify({
@@ -1730,10 +1759,10 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
         user_type: 'user',
         expires_at: expiresAt
       }),
-      { expirationTtl: 24 * 60 * 60 }  // 24시간 (초 단위)
+      { expirationTtl: 30 * 24 * 60 * 60 }  // ✅ 30일 (초 단위)
     );
     
-    console.log('[Kakao Callback] ✅ Session saved to SESSION_KV for user:', user.id);
+    console.log('[Kakao Callback] ✅ Session saved to SESSION_KV for user:', user.id, '- Expires:', new Date(expiresAt).toISOString());
     
     return c.json({
       success: true,
@@ -1786,7 +1815,7 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
     
     // ✅ SESSION_KV에 세션 저장 (중요!)
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;  // 24시간
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // ✅ 30일
     await c.env.SESSION_KV.put(
       `session:${sessionToken}`,
       JSON.stringify({
@@ -1794,10 +1823,10 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
         user_type: 'user',
         expires_at: expiresAt
       }),
-      { expirationTtl: 24 * 60 * 60 }  // 24시간 (초 단위)
+      { expirationTtl: 30 * 24 * 60 * 60 }  // ✅ 30일 (초 단위)
     );
     
-    console.log('[Kakao Sync] ✅ Session saved to SESSION_KV for user:', user.id);
+    console.log('[Kakao Sync] ✅ Session saved to SESSION_KV for user:', user.id, '- Expires:', new Date(expiresAt).toISOString());
     console.log('[Kakao Sync] Login successful');
     
     return c.json({

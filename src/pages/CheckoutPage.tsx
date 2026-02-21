@@ -64,6 +64,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
+  const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
   
   // 토스페이먼츠 위젯 상태
   const [widgets, setWidgets] = useState<any>(null)
@@ -318,10 +319,19 @@ export default function CheckoutPage() {
       window.history.replaceState({}, '', cleanUrl)
       console.log('[CheckoutPage] ✅ URL 파라미터 제거 완료:', cleanUrl)
     }
+    
+    // ✅ URL 파라미터 처리 완료 표시 (로그인 정보가 있든 없든)
+    setUrlParamsProcessed(true)
   }, [searchParams])
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 (URL 파라미터 처리 완료 후에만 실행)
   useEffect(() => {
+    // ⏳ URL 파라미터 처리가 완료될 때까지 대기
+    if (!urlParamsProcessed) {
+      console.log('[CheckoutPage] ⏳ URL 파라미터 처리 대기 중...')
+      return
+    }
+    
     console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
     const uid = getUserId()
     console.log('[CheckoutPage] userId:', uid)
@@ -392,7 +402,7 @@ export default function CheckoutPage() {
     script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
     script.async = true
     document.head.appendChild(script)
-  }, [navigate])
+  }, [navigate, urlParamsProcessed])  // ✅ urlParamsProcessed 추가
 
   // Daum 우편번호 팝업
   useEffect(() => {
