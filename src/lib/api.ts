@@ -15,6 +15,9 @@ const api = axios.create({
   timeout: 10000, // 10초 타임아웃
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   },
 });
 
