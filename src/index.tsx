@@ -1863,6 +1863,54 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
 });
 
 // 카카오 로그아웃
+// 세션 유효성 검증 API
+app.get('/api/auth/validate', cors(), async (c) => {
+  const { SESSION_KV } = c.env;
+  
+  try {
+    // 세션 토큰 가져오기
+    const sessionToken = c.req.header('X-Session-Token') || 
+                        c.req.header('Authorization')?.replace('Bearer ', '') ||
+                        '';
+    
+    if (!sessionToken) {
+      return c.json({ 
+        success: false, 
+        error: 'No session token provided',
+        code: 'NO_TOKEN'
+      }, 401);
+    }
+    
+    // 세션 검증
+    const sessionInfo = await getSessionInfo(SESSION_KV, sessionToken);
+    
+    if (!sessionInfo) {
+      return c.json({ 
+        success: false, 
+        error: 'Session expired or invalid',
+        code: 'SESSION_EXPIRED'
+      }, 401);
+    }
+    
+    // 세션 유효함
+    return c.json({ 
+      success: true,
+      data: {
+        user_id: sessionInfo.user_id,
+        user_type: sessionInfo.user_type,
+        session_valid: true
+      }
+    });
+  } catch (error) {
+    console.error('[Auth Validate] Error:', error);
+    return c.json({ 
+      success: false, 
+      error: 'Validation failed',
+      code: 'VALIDATION_ERROR'
+    }, 500);
+  }
+});
+
 app.post('/api/auth/kakao/logout', cors(), async (c) => {
   const { DB } = c.env;
   
