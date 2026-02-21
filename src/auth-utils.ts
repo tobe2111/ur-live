@@ -95,39 +95,28 @@ export async function upsertUser(
   profileImage: string | null
 ): Promise<User> {
   try {
-    // STEP 1: INSERT OR IGNORE (중복 시 무시)
-    await DB.prepare(`
-      INSERT OR IGNORE INTO users (
+    // ✅ 최적화: 단일 쿼리로 UPSERT (3개 쿼리 → 1개 쿼리)
+    // INSERT ... ON CONFLICT DO UPDATE ... RETURNING 사용
+    const user = await DB.prepare(`
+      INSERT INTO users (
         kakao_id, name, email, profile_image, 
         created_at, last_login_at, updated_at
       )
       VALUES (?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
-    `).bind(kakaoId, nickname, email, profileImage).run();
-    
-    // STEP 2: 항상 UPDATE (로그인 시간, 프로필 정보)
-    await DB.prepare(`
-      UPDATE users 
-      SET name = ?, 
-          email = ?, 
-          profile_image = ?,
-          last_login_at = datetime('now'),
-          updated_at = datetime('now')
-      WHERE kakao_id = ?
-    `).bind(nickname, email, profileImage, kakaoId).run();
-    
-    // STEP 3: 업데이트된 사용자 조회 (필요한 컬럼만)
-    const user = await DB.prepare(`
-      SELECT id, kakao_id, name, email, profile_image
-      FROM users
-      WHERE kakao_id = ?
-      LIMIT 1
-    `).bind(kakaoId).first<User>();
+      ON CONFLICT(kakao_id) DO UPDATE SET
+        name = excluded.name,
+        email = excluded.email,
+        profile_image = excluded.profile_image,
+        last_login_at = datetime('now'),
+        updated_at = datetime('now')
+      RETURNING id, kakao_id, name, email, profile_image
+    `).bind(kakaoId, nickname, email, profileImage).first<User>();
     
     if (!user) {
-      throw new AuthError('Failed to retrieve user after upsert', 500, 'UPSERT_FAILED');
+      throw new AuthError('Failed to upsert user', 500, 'UPSERT_FAILED');
     }
     
-    console.log('[Auth] User upserted successfully:', user.id);
+    console.log('[Auth] ⚡ User upserted successfully (optimized):', user.id);
     return user;
     
   } catch (error) {
