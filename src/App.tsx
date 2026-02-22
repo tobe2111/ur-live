@@ -79,7 +79,8 @@ const PageLoader = () => (
   </div>
 )
 
-function App() {
+// ✅ Router 내부에서 실행될 컴포넌트
+function AppContent() {
   // 🔒 세션 검증: 5분마다 자동 세션 유효성 검증
   useSessionValidation()
   
@@ -87,12 +88,11 @@ function App() {
   useMultiTabSync()
   
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
-        <UpdateNotification />
-        <FrameWrapper>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
+    <>
+      <UpdateNotification />
+      <FrameWrapper>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
             {/* 소개 페이지 - 브랜딩 + 메인 페이지 iframe */}
             <Route path="/introduce" element={<IntroducePage />} />
             {/* KREAM 스타일 메인 페이지 */}
@@ -154,8 +154,18 @@ function App() {
           </Routes>
         </Suspense>
       </FrameWrapper>
-    </BrowserRouter>
-  </ErrorBoundary>
+    </>
+  )
+}
+
+// ✅ App 컴포넌트: BrowserRouter를 최상위에 배치
+function App() {
+  return (
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
 
