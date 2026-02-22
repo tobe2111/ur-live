@@ -27,6 +27,14 @@ export function useSessionValidation() {
 
   useEffect(() => {
     const validateSession = async () => {
+      // ⚠️ 로그인 URL 파라미터 처리 중이면 세션 검증 스킵
+      // (로그인 직후 새 세션이 아직 localStorage에 저장되지 않았을 수 있음)
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('login') === 'success' && urlParams.get('session')) {
+        console.log('[SessionValidation] ⏳ 로그인 파라미터 처리 중, 세션 검증 스킵')
+        return
+      }
+
       const token = getSessionToken()
       
       // 토큰이 없으면 검증 스킵 (로그인 안 한 상태)
@@ -66,13 +74,16 @@ export function useSessionValidation() {
       }
     }
 
-    // 초기 검증 (페이지 로드 시)
-    validateSession()
+    // 초기 검증 (페이지 로드 시) - 500ms 지연으로 로그인 파라미터 처리 시간 확보
+    const initialValidationTimeout = setTimeout(validateSession, 500)
 
     // 5분마다 주기적 검증
     const interval = setInterval(validateSession, 5 * 60 * 1000) // 5분
 
     // Cleanup
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(initialValidationTimeout)
+      clearInterval(interval)
+    }
   }, [navigate])
 }
