@@ -1,15 +1,31 @@
 /**
- * 판매자 통계 대시보드 페이지
+ * 판매자 통계 대시보드 페이지 (Recharts 통합)
  * 
  * 기능:
- * - 일/주/월별 매출 차트
- * - 상품별 매출 순위
+ * - 일별 매출 차트 (Line Chart)
+ * - 상품별 매출 순위 (Bar Chart)
  * - 주요 통계 카드
+ * - 기간 선택 (7일, 30일, 90일)
  */
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
+} from 'recharts'
 import { 
   TrendingUp, 
   Package, 
@@ -17,44 +33,50 @@ import {
   DollarSign,
   ArrowLeft,
   Calendar,
-  Loader2
+  Loader2,
+  CheckCircle,
+  Clock,
+  XCircle
 } from 'lucide-react'
 
-interface Stats {
-  totalProducts: number
-  activeProducts: number
-  totalStock: number
-  totalOrders: number
-  totalRevenue: number
-  activeStreams: number
-  totalViewers: number
+interface DailyStats {
+  date: string
+  orders: number
+  sales: number
+  completed_orders: number
 }
 
-interface SalesData {
-  period: string
-  order_count: number
+interface Summary {
+  total_orders: number
   total_sales: number
-  total_quantity: number
+  avg_order_value: number
+  completed_orders: number
+  pending_orders: number
+  cancelled_orders: number
 }
 
-interface ProductSales {
-  id: number
-  name: string
-  price: number
-  image_url: string
+interface TopProduct {
+  product_id: number
+  product_name: string
   order_count: number
-  total_sold: number
+  total_quantity: number
   total_revenue: number
-  current_stock: number
 }
+
+interface DashboardData {
+  period: string
+  daily: DailyStats[]
+  summary: Summary
+  topProducts: TopProduct[]
+}
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
 
 export default function SellerDashboardPage() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [salesData, setSalesData] = useState<SalesData[]>([])
-  const [topProducts, setTopProducts] = useState<ProductSales[]>([])
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('seller_session_token')
@@ -65,32 +87,19 @@ export default function SellerDashboardPage() {
       return
     }
     
-    loadAllData()
+    loadDashboardData()
   }, [period])
 
-  async function loadAllData() {
+  async function loadDashboardData() {
     try {
       setLoading(true)
       const sessionToken = localStorage.getItem('seller_session_token')
 
-      // Load basic stats
-      const statsRes = await api.get('/api/seller/stats', {
+      const response = await api.get(`/api/seller/dashboard/stats?period=${period}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
-      // Load sales data
-      const salesRes = await api.get(`/api/seller/stats/sales?period=${period}`, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      // Load top products
-      const productsRes = await api.get('/api/seller/stats/products?limit=10&days=30', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      setStats(statsRes.data.data)
-      setSalesData(salesRes.data.data.sales)
-      setTopProducts(productsRes.data.data.products)
+      setData(response.data.data)
       setLoading(false)
     } catch (err: any) {
       console.error('Failed to load dashboard data:', err)
@@ -104,25 +113,22 @@ export default function SellerDashboardPage() {
   function formatPrice(price: number) {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
-      currency: 'KRW'
-    }).format(price)
+      currency: 'KRW',
+      maximumFractionDigits: 0
+    }).format(price || 0)
   }
 
   function formatNumber(num: number) {
-    return new Intl.NumberFormat('ko-KR').format(num)
+    return new Intl.NumberFormat('ko-KR').format(num || 0)
   }
 
-  function getPeriodLabel(period: string) {
-    switch (period) {
-      case 'daily':
-        return '일별'
-      case 'weekly':
-        return '주별'
-      case 'monthly':
-        return '월별'
-      default:
-        return period
+  function formatShortPrice(price: number) {
+    if (price >= 1000000) {
+      return `${(price / 1000000).toFixed(1)}M`
+    } else if (price >= 1000) {
+      return `${(price / 1000).toFixed(1)}K`
     }
+    return price.toString()
   }
 
   if (loading) {
@@ -135,6 +141,24 @@ export default function SellerDashboardPage() {
       </div>
     )
   }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">데이터를 불러올 수 없습니다.</p>
+          <button
+            onClick={loadDashboardData}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const { daily, summary, topProducts } = data
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -159,228 +183,233 @@ export default function SellerDashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+        {/* Period Selector */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setPeriod('7d')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              period === '7d'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border'
+            }`}
+          >
+            최근 7일
+          </button>
+          <button
+            onClick={() => setPeriod('30d')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              period === '30d'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border'
+            }`}
+          >
+            최근 30일
+          </button>
+          <button
+            onClick={() => setPeriod('90d')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              period === '90d'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50 border'
+            }`}
+          >
+            최근 90일
+          </button>
+        </div>
+
         {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
-            <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-              <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <Package className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600" />
-                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-              </div>
-              <p className="text-xs sm:text-sm text-gray-600">총 상품</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{stats.totalProducts}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-                활성: {stats.activeProducts}개
-              </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-2">
+              <ShoppingCart className="w-8 h-8 text-blue-600" />
             </div>
-
-            <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-              <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-green-600" />
-                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-              </div>
-              <p className="text-xs sm:text-sm text-gray-600">총 주문</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{formatNumber(stats.totalOrders)}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-                누적 주문 수
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-              <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-yellow-600" />
-                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-              </div>
-              <p className="text-xs sm:text-sm text-gray-600">총 매출</p>
-              <p className="text-base sm:text-xl lg:text-2xl font-bold text-gray-900">
-                {formatPrice(stats.totalRevenue)}
-              </p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-                누적 매출액
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
-              <div className="flex items-center justify-between mb-1 sm:mb-2">
-                <Package className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-600" />
-              </div>
-              <p className="text-xs sm:text-sm text-gray-600">재고</p>
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{formatNumber(stats.totalStock)}</p>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">
-                전체 재고 수량
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Sales Chart */}
-        <div className="bg-white rounded-lg shadow mb-4 sm:mb-6 lg:mb-8">
-          <div className="p-3 sm:p-4 lg:p-6 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-                <div>
-                  <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">매출 추이</h2>
-                  <p className="text-xs sm:text-sm text-gray-600">기간별 매출 분석</p>
-                </div>
-              </div>
-              <div className="flex gap-1 sm:gap-2">
-                <button
-                  onClick={() => setPeriod('daily')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base font-medium ${
-                    period === 'daily'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  일별
-                </button>
-                <button
-                  onClick={() => setPeriod('weekly')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base font-medium ${
-                    period === 'weekly'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  주별
-                </button>
-                <button
-                  onClick={() => setPeriod('monthly')}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-sm sm:text-base font-medium ${
-                    period === 'monthly'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  월별
-                </button>
-              </div>
-            </div>
+            <p className="text-sm text-gray-600">총 주문</p>
+            <p className="text-2xl lg:text-3xl font-bold text-gray-900">{formatNumber(summary.total_orders)}</p>
+            <p className="text-xs text-green-600 mt-1">
+              완료: {formatNumber(summary.completed_orders)}건
+            </p>
           </div>
 
-          {/* Simple Bar Chart (CSS-based) */}
-          <div className="p-3 sm:p-4 lg:p-6">
-            {salesData.length > 0 ? (
-              <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-                {salesData.map((data, idx) => {
-                  const maxSales = Math.max(...salesData.map(d => d.total_sales))
-                  const percentage = (data.total_sales / maxSales) * 100
+          <div className="bg-white rounded-lg shadow p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-2">
+              <DollarSign className="w-8 h-8 text-green-600" />
+            </div>
+            <p className="text-sm text-gray-600">총 매출</p>
+            <p className="text-xl lg:text-2xl font-bold text-gray-900">
+              {formatPrice(summary.total_sales)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              평균: {formatPrice(summary.avg_order_value)}/건
+            </p>
+          </div>
 
-                  return (
-                    <div key={idx} className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-                      <div className="w-16 sm:w-20 lg:w-24 text-xs sm:text-sm font-medium text-gray-700 flex-shrink-0">
-                        {data.period}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="relative h-6 sm:h-7 lg:h-8 bg-gray-100 rounded-lg overflow-hidden">
-                          <div
-                            className="absolute inset-y-0 left-0 bg-blue-600 rounded-lg transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          />
-                          <div className="absolute inset-0 flex items-center px-2 sm:px-3">
-                            <span className="text-xs sm:text-sm font-medium text-gray-900 truncate">
-                              {formatPrice(data.total_sales)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="w-12 sm:w-16 lg:w-20 text-xs sm:text-sm text-gray-600 text-right flex-shrink-0">
-                        {data.order_count}건
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 sm:py-10 lg:py-12 text-sm sm:text-base text-gray-500">
-                매출 데이터가 없습니다
-              </div>
-            )}
+          <div className="bg-white rounded-lg shadow p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Clock className="w-8 h-8 text-yellow-600" />
+            </div>
+            <p className="text-sm text-gray-600">대기 중</p>
+            <p className="text-2xl lg:text-3xl font-bold text-gray-900">{formatNumber(summary.pending_orders)}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              처리 필요
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-2">
+              <XCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <p className="text-sm text-gray-600">취소</p>
+            <p className="text-2xl lg:text-3xl font-bold text-gray-900">{formatNumber(summary.cancelled_orders)}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              취소율: {summary.total_orders > 0 ? ((summary.cancelled_orders / summary.total_orders) * 100).toFixed(1) : 0}%
+            </p>
           </div>
         </div>
 
-        {/* Top Products */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-3 sm:p-4 lg:p-6 border-b border-gray-200">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-              <div>
-                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">인기 상품 TOP 10</h2>
-                <p className="text-xs sm:text-sm text-gray-600">최근 30일 기준</p>
-              </div>
+        {/* Sales Trend Chart */}
+        <div className="bg-white rounded-lg shadow mb-6 p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            일별 매출 추이
+          </h2>
+          
+          {daily && daily.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={daily} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => {
+                    const date = new Date(value)
+                    return `${date.getMonth() + 1}/${date.getDate()}`
+                  }}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => formatShortPrice(value)}
+                />
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="right"
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip 
+                  formatter={(value: any, name: string) => {
+                    if (name === '매출액') return formatPrice(value)
+                    return formatNumber(value)
+                  }}
+                  labelFormatter={(label) => {
+                    const date = new Date(label)
+                    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+                  }}
+                />
+                <Legend />
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="sales" 
+                  stroke="#3B82F6" 
+                  strokeWidth={2}
+                  name="매출액"
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="orders" 
+                  stroke="#10B981" 
+                  strokeWidth={2}
+                  name="주문 수"
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              데이터가 없습니다
             </div>
-          </div>
+          )}
+        </div>
 
-          <div className="overflow-x-auto">
-            {topProducts.length > 0 ? (
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-700 uppercase">순위</th>
-                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-700 uppercase">상품</th>
-                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-700 uppercase hidden sm:table-cell">판매량</th>
-                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-700 uppercase hidden md:table-cell">주문수</th>
-                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-700 uppercase">매출액</th>
-                    <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-700 uppercase hidden lg:table-cell">재고</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {topProducts.map((product, idx) => (
-                    <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap">
-                        <div className="flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-blue-100 text-blue-700 text-xs sm:text-sm font-bold">
-                          {idx + 1}
-                        </div>
-                      </td>
-                      <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <img
-                            src={product.image_url || 'https://via.placeholder.com/64'}
-                            alt={product.name}
-                            className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 object-cover rounded-lg flex-shrink-0"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64'
-                            }}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                            <p className="text-[10px] sm:text-xs text-gray-500">{formatPrice(product.price)}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-right hidden sm:table-cell">
-                        <span className="text-xs sm:text-sm font-medium text-gray-900">
-                          {formatNumber(product.total_sold)}개
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-right hidden md:table-cell">
-                        <span className="text-xs sm:text-sm text-gray-600">
-                          {formatNumber(product.order_count)}건
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-right">
-                        <span className="text-xs sm:text-sm font-bold text-green-600">
-                          {formatPrice(product.total_revenue)}
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-right hidden lg:table-cell">
-                        <span className={`text-xs sm:text-sm font-medium ${
-                          product.current_stock < 10 ? 'text-red-600' : 'text-gray-900'
-                        }`}>
-                          {formatNumber(product.current_stock)}
-                        </span>
-                      </td>
+        {/* Top Products Bar Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5 text-purple-600" />
+            상품별 매출 Top 5
+          </h2>
+          
+          {topProducts && topProducts.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={topProducts.slice(0, 5)} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="product_name" 
+                    tick={{ fontSize: 12 }}
+                    angle={-15}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => formatShortPrice(value)}
+                  />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => {
+                      if (name === '매출액') return formatPrice(value)
+                      return formatNumber(value)
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="total_revenue" fill="#8B5CF6" name="매출액" />
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Product Table */}
+              <div className="mt-6 overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">순위</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">주문 수</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">판매량</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">매출액</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-8 sm:py-10 lg:py-12 text-sm sm:text-base text-gray-500">
-                판매 데이터가 없습니다
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {topProducts.map((product, index) => (
+                      <tr key={product.product_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {index + 1}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {product.product_name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                          {formatNumber(product.order_count)}건
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                          {formatNumber(product.total_quantity)}개
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                          {formatPrice(product.total_revenue)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              판매 데이터가 없습니다
+            </div>
+          )}
         </div>
       </div>
     </div>

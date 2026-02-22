@@ -3708,6 +3708,128 @@ app.get('/api/streams/:streamId/product-wait', async (c) => {
 });
 
 // =================================
+// Seller Dashboard & Analytics APIs
+// =================================
+
+// Seller: Get dashboard statistics
+app.get('/api/seller/dashboard/stats', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = auth.sellerId;
+    const period = c.req.query('period') || '7d'; // 7d, 30d, 90d
+    
+    // 기간 계산
+    let daysAgo = 7;
+    if (period === '30d') daysAgo = 30;
+    else if (period === '90d') daysAgo = 90;
+    
+    // 일별 매출 및 주문 통계
+    const dailyStats = await DB.prepare(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as orders,
+        SUM(total_amount) as sales,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders
+      FROM orders
+      WHERE seller_id = ?
+        AND created_at >= datetime('now', ?)
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `).bind(sellerId, `-${daysAgo} days`).all();
+    
+    // 전체 요약 통계
+    const summary = await DB.prepare(`
+      SELECT 
+        COUNT(*) as total_orders,
+        SUM(total_amount) as total_sales,
+        AVG(total_amount) as avg_order_value,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_orders,
+        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_orders
+      FROM orders
+      WHERE seller_id = ?
+        AND created_at >= datetime('now', ?)
+    `).bind(sellerId, `-${daysAgo} days`).first();
+    
+    // 상품별 판매 순위
+    const topProducts = await DB.prepare(`
+      SELECT 
+        oi.product_id,
+        p.name as product_name,
+        COUNT(*) as order_count,
+        SUM(oi.quantity) as total_quantity,
+        SUM(oi.price * oi.quantity) as total_revenue
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.seller_id = ?
+        AND o.created_at >= datetime('now', ?)
+      GROUP BY oi.product_id, p.name
+      ORDER BY total_revenue DESC
+      LIMIT 5
+    `).bind(sellerId, `-${daysAgo} days`).all();
+
+    return c.json({
+      success: true,
+      data: {
+        period,
+        daily: dailyStats.results || [],
+        summary: summary || {},
+        topProducts: topProducts.results || []
+      }
+    });
+  } catch (error: any) {
+    console.error('Error loading seller dashboard stats:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// Seller: Get product performance analytics
+app.get('/api/seller/analytics/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = auth.sellerId;
+    
+    const products = await DB.prepare(`
+      SELECT 
+        p.id,
+        p.name,
+        p.price,
+        p.stock,
+        COALESCE(SUM(oi.quantity), 0) as total_sold,
+        COALESCE(SUM(oi.price * oi.quantity), 0) as total_revenue,
+        COUNT(DISTINCT o.id) as order_count
+      FROM products p
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id
+      WHERE p.seller_id = ?
+      GROUP BY p.id, p.name, p.price, p.stock
+      ORDER BY total_revenue DESC
+    `).bind(sellerId).all();
+
+    return c.json({
+      success: true,
+      data: products.results || []
+    });
+  } catch (error: any) {
+    console.error('Error loading product analytics:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// =================================
 // Seller Stream Management APIs
 // =================================
 
