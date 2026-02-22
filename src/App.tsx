@@ -28,6 +28,7 @@ const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
+const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -131,6 +132,8 @@ function App() {
             <Route path="/mypage" element={<UserProfilePage />} />
             <Route path="/user/profile" element={<UserProfilePage />} />
             <Route path="/mypage/addresses" element={<AddressManagementPage />} />
+            <Route path="/mypage/wishlist" element={<WishlistPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/settlement" element={<AdminSettlementPage />} />

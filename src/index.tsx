@@ -4581,6 +4581,255 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
 });
 
 // =================================
+// Wishlist API (찜하기)
+// =================================
+
+// 위시리스트 추가 (찜하기)
+app.post('/api/wishlists', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { userId, productId } = await c.req.json();
+
+    // 입력 검증
+    if (!userId || !productId) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '사용자 ID와 상품 ID가 필요합니다.',
+      }, 400);
+    }
+
+    // 사용자 확인
+    const user = await DB.prepare('SELECT id FROM users WHERE id = ?')
+      .bind(userId)
+      .first();
+
+    if (!user) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '존재하지 않는 사용자입니다.',
+      }, 404);
+    }
+
+    // 상품 확인
+    const product = await DB.prepare('SELECT id, name FROM products WHERE id = ? AND is_active = 1')
+      .bind(productId)
+      .first();
+
+    if (!product) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '존재하지 않는 상품이거나 판매가 중단된 상품입니다.',
+      }, 404);
+    }
+
+    // 이미 찜한 상품인지 확인
+    const existing = await DB.prepare('SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?')
+      .bind(userId, productId)
+      .first();
+
+    if (existing) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '이미 찜한 상품입니다.',
+      }, 409);
+    }
+
+    // 위시리스트 추가
+    const result = await DB.prepare(`
+      INSERT INTO wishlists (user_id, product_id)
+      VALUES (?, ?)
+    `).bind(userId, productId).run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        id: result.meta.last_row_id,
+        userId,
+        productId,
+        productName: product.name,
+      },
+    });
+  } catch (err) {
+    console.error('[Wishlist] Add error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 위시리스트 삭제 (찜 취소)
+app.delete('/api/wishlists/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const id = c.req.param('id');
+    const { userId } = c.req.query();
+
+    if (!userId) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '사용자 ID가 필요합니다.',
+      }, 400);
+    }
+
+    // 위시리스트 항목 확인 (본인 소유 확인)
+    const wishlist = await DB.prepare('SELECT id FROM wishlists WHERE id = ? AND user_id = ?')
+      .bind(id, userId)
+      .first();
+
+    if (!wishlist) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '찜 목록에서 찾을 수 없습니다.',
+      }, 404);
+    }
+
+    // 위시리스트 삭제
+    await DB.prepare('DELETE FROM wishlists WHERE id = ? AND user_id = ?')
+      .bind(id, userId)
+      .run();
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: '찜 목록에서 삭제되었습니다.',
+    });
+  } catch (err) {
+    console.error('[Wishlist] Delete error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 상품별 찜하기 삭제 (상품 ID로 삭제)
+app.delete('/api/wishlists/product/:productId', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const productId = c.req.param('productId');
+    const { userId } = c.req.query();
+
+    if (!userId) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '사용자 ID가 필요합니다.',
+      }, 400);
+    }
+
+    // 위시리스트 삭제
+    const result = await DB.prepare('DELETE FROM wishlists WHERE user_id = ? AND product_id = ?')
+      .bind(userId, productId)
+      .run();
+
+    if (result.meta.changes === 0) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: '찜 목록에서 찾을 수 없습니다.',
+      }, 404);
+    }
+
+    return c.json<ApiResponse>({
+      success: true,
+      message: '찜 목록에서 삭제되었습니다.',
+    });
+  } catch (err) {
+    console.error('[Wishlist] Delete by product error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 위시리스트 조회 (사용자별)
+app.get('/api/wishlists/:userId', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const userId = c.req.param('userId');
+    const limit = parseInt(c.req.query('limit') || '20');
+    const offset = parseInt(c.req.query('offset') || '0');
+
+    // 위시리스트 조회 (상품 정보 포함)
+    const { results } = await DB.prepare(`
+      SELECT 
+        w.id,
+        w.user_id,
+        w.product_id,
+        w.created_at,
+        p.name as product_name,
+        p.price,
+        p.original_price,
+        p.discount_rate,
+        p.image_url,
+        p.stock,
+        p.category,
+        p.is_active,
+        s.display_name as seller_name,
+        s.id as seller_id
+      FROM wishlists w
+      JOIN products p ON w.product_id = p.id
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      WHERE w.user_id = ?
+      ORDER BY w.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(userId, limit, offset).all();
+
+    // 전체 개수 조회
+    const countResult = await DB.prepare('SELECT COUNT(*) as count FROM wishlists WHERE user_id = ?')
+      .bind(userId)
+      .first<{ count: number }>();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        items: results,
+        total: countResult?.count || 0,
+        limit,
+        offset,
+      },
+    });
+  } catch (err) {
+    console.error('[Wishlist] Get error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// 위시리스트 확인 (특정 상품이 찜되어 있는지 확인)
+app.get('/api/wishlists/check/:userId/:productId', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const userId = c.req.param('userId');
+    const productId = c.req.param('productId');
+
+    const wishlist = await DB.prepare('SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?')
+      .bind(userId, productId)
+      .first();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: {
+        isWishlisted: !!wishlist,
+        wishlistId: wishlist?.id || null,
+      },
+    });
+  } catch (err) {
+    console.error('[Wishlist] Check error:', err);
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
+// =================================
 // Frontend Routes
 // =================================
 
