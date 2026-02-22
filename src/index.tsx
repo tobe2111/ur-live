@@ -1388,7 +1388,7 @@ app.post('/api/auth/user/login', cors(), async (c) => {
     
     // 사용자 조회 (✅ 명시적 컬럼 선택 - 비밀번호 검증용)
     const user = await DB.prepare(`
-      SELECT id, email, name, kakao_id, role, password_hash, created_at
+      SELECT id, email, name, kakao_id, password_hash, created_at
       FROM users 
       WHERE email = ?
     `).bind(email).first();
@@ -1877,7 +1877,7 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     
     try {
       const existingUser = await DB.prepare(`
-        SELECT id, kakao_id, name, email, profile_image, role, created_at
+        SELECT id, kakao_id, name, email, profile_image, created_at
         FROM users 
         WHERE kakao_id = ?
       `).bind(kakaoId).first();
@@ -2326,7 +2326,7 @@ app.post('/webhooks/kakao/unlink', async (c) => {
     
     // Kakao ID로 사용자 조회 (✅ 명시적 컬럼)
     const user = await DB.prepare(`
-      SELECT id, kakao_id, email, name, role, created_at
+      SELECT id, kakao_id, email, name, created_at
       FROM users 
       WHERE kakao_id = ?
     `).bind(user_id.toString()).first();
@@ -2389,7 +2389,7 @@ app.get('/api/auth/user/verify', cors(), async (c) => {
     
     // 사용자 정보 조회 (✅ 명시적 컬럼 - password_hash 제외)
     const user = await DB.prepare(`
-      SELECT id, email, name, kakao_id, role, profile_image, created_at
+      SELECT id, email, name, kakao_id, profile_image, created_at
       FROM users 
       WHERE id = ?
     `).bind(userId).first();
