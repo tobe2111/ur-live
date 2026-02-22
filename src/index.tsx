@@ -11676,23 +11676,8 @@ app.get('/api/push/vapid-public-key', cors(), async (c) => {
 })
 
 /**
- * Cron Trigger Handler
- * 매월 1일 00:00 UTC에 자동 실행
+ * Export Hono app for Cloudflare Pages
+ * Note: Cron triggers are not supported in Pages
+ * For scheduled tasks, use Cloudflare Workers separately
  */
-export default {
-  async fetch(request: Request, env: any) {
-    return app.fetch(request, env)
-  },
-  
-  async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext) {
-    console.log('[Cron] Scheduled event triggered:', event.cron)
-    
-    try {
-      // 매월 정산 자동 실행
-      await runMonthlySettlement(env)
-      console.log('[Cron] Settlement automation completed')
-    } catch (error) {
-      console.error('[Cron] Settlement automation failed:', error)
-    }
-  }
-}
+export default app

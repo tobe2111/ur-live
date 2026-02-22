@@ -1,0 +1,34 @@
+name = "ur-live"
+compatibility_date = "2026-02-01"
+pages_build_output_dir = "./dist"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "3b522e69651f4d4f84a0cdf9430eeb72"
+
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "25ecc9ce2c464dd59edf5eb7d5fd1a10"
+
+[[kv_namespaces]]
+binding = "LIVE_CACHE"
+id = "e6667599e01d4af8b4687560eb39394c"
+preview_id = "750e3b6ed7714a8999abe19d8771be00"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "bf9d3b4e6a314004aaa58fc38c3b5837"
+preview_id = "8c265378d3c34f04aab63df360e3b157"
+
+# Cron Triggers (Scheduled Events) - Workers only, not supported in Pages
+# For Pages, use Cloudflare Workers cron triggers or external schedulers
+# [triggers]
+# crons = ["0 0 1 * *"]
