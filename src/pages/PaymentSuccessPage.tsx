@@ -201,45 +201,46 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center px-4 py-6 sm:p-6 lg:p-8">
       <div className="max-w-2xl w-full">
-        <div className="bg-white rounded-2xl p-8 shadow-lg border border-[#e5e5e7]">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7]">
           {/* 성공 아이콘 */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
-              <CheckCircle className="h-12 w-12 text-green-600" />
+          <div className="text-center mb-5 sm:mb-6 lg:mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 mb-3 sm:mb-4">
+              <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold text-[#1d1d1f] mb-2">결제 완료!</h1>
-            <p className="text-[#6e6e73]">주문이 성공적으로 완료되었습니다.</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#1d1d1f] mb-1 sm:mb-2">결제 완료!</h1>
+            <p className="text-xs sm:text-sm lg:text-base text-[#6e6e73]">주문이 성공적으로 완료되었습니다.</p>
           </div>
 
           {/* 주문 정보 */}
           {orderInfo && (
-            <div className="space-y-6">
-              <div className="bg-[#f5f5f7] rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-[#1d1d1f] mb-4 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-[#007aff]" />
+            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+              <div className="bg-[#f5f5f7] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
+                <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] mb-3 sm:mb-4 flex items-center gap-2">
+                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-[#007aff]" />
                   주문 정보
                 </h2>
                 
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-[#6e6e73]">주문번호</span>
-                    <span className="text-sm font-semibold text-[#1d1d1f] font-mono">
+                <div className="space-y-2.5 sm:space-y-3">
+                  {/* 주문번호 - 모바일에서 세로 배치, 데스크톱에서 가로 배치 */}
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">주문번호</span>
+                    <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#007aff] font-mono tracking-tight">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
                   
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-[#6e6e73]">결제 방법</span>
-                    <span className="text-sm font-semibold text-[#1d1d1f]">
-                      {orderInfo.method || '카드'}
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">결제 방법</span>
+                    <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f]">
+                      {orderInfo.method || '테스트'}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center pt-3 border-t border-[#d2d2d7]">
-                    <span className="text-base font-medium text-[#1d1d1f]">결제 금액</span>
-                    <span className="text-2xl font-bold text-[#007aff]">
+                  <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7]">
+                    <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f]">결제 금액</span>
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-[#007aff]">
                       {parseInt(amount || '0').toLocaleString()}원
                     </span>
                   </div>
@@ -248,15 +249,15 @@ export default function PaymentSuccessPage() {
 
               {/* 안내 메시지 */}
               {orderInfo?.status === 'demo' ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <p className="text-sm text-yellow-900">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm lg:text-base text-yellow-900 leading-relaxed">
                     🎭 <strong>데모 모드</strong>: 실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요.
                   </p>
                 </div>
               ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="text-sm text-blue-900">
-                    🎉 주문이 접수되었습니다. 배송은 영업일 기준 3~5일 소요됩니다.
+                <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm lg:text-base text-blue-900 leading-relaxed">
+                    🎉 <strong>데모 모드</strong>: 실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요.
                   </p>
                 </div>
               )}
@@ -264,18 +265,18 @@ export default function PaymentSuccessPage() {
           )}
 
           {/* 액션 버튼 */}
-          <div className="mt-8 flex gap-3">
+          <div className="mt-5 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             {orderInfo?.status === 'demo' ? (
               <>
                 <Button
                   onClick={() => navigate('/payment/demo')}
-                  className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12"
+                  className="w-full sm:flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   다시 테스트하기
                 </Button>
                 <Button
                   onClick={() => navigate('/')}
-                  className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12"
+                  className="w-full sm:flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-all"
                 >
                   메인으로
                 </Button>
@@ -284,13 +285,12 @@ export default function PaymentSuccessPage() {
               <>
                 <Button
                   onClick={() => navigate('/my-orders')}
-                  className="flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-12"
+                  className="w-full sm:flex-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   주문 내역 보기
                 </Button>
                 <Button
                   onClick={() => {
-                    // 마지막으로 본 라이브 페이지로 복귀
                     const lastLiveId = localStorage.getItem('lastViewedLiveId')
                     if (lastLiveId) {
                       navigate(`/live/${lastLiveId}`)
@@ -298,7 +298,7 @@ export default function PaymentSuccessPage() {
                       navigate('/')
                     }
                   }}
-                  className="flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-12"
+                  className="w-full sm:flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-all"
                 >
                   쇼핑 계속하기
                 </Button>
@@ -307,14 +307,14 @@ export default function PaymentSuccessPage() {
           </div>
 
           {/* 고객센터 정보 */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-[#86868b] mb-1">
+          <div className="mt-5 sm:mt-6 lg:mt-8 pt-5 sm:pt-6 border-t border-[#e5e5e7] text-center">
+            <p className="text-xs sm:text-sm text-[#86868b] mb-2">
               궁금한 점이 있으신가요?
             </p>
-            <p className="text-sm font-semibold text-[#1d1d1f]">
+            <p className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] mb-1.5">
               📞 고객센터: 0507-0177-0432
             </p>
-            <p className="text-xs text-[#86868b] mt-1">
+            <p className="text-xs sm:text-sm text-[#86868b]">
               평일 09:00 - 18:00
             </p>
           </div>

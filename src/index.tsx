@@ -3353,10 +3353,14 @@ app.post('/api/orders', async (c) => {
         });
       }
 
-      // 주문 번호 생성 (이미 제공되었으면 사용, 없으면 생성)
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const orderNumber = providedOrderNo || `ORDER_${timestamp}_${random}`;
+      // 주문 번호 생성 (간결한 형식: ORD-YYMMDD-XXXXX)
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const day = now.getDate().toString().padStart(2, '0');
+      const dateStr = `${year}${month}${day}`;
+      const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const orderNumber = providedOrderNo || `ORD-${dateStr}-${random}`;
 
       // 주문 생성
       const fullAddress = shippingAddressDetail 
@@ -8493,10 +8497,16 @@ app.post('/api/orders/create', async (c) => {
     
     const finalUserId = userId;
     
-    // 주문번호 생성 (ORDER_timestamp_random)
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const orderNumber = `ORDER_${timestamp}_${random}`;
+    // 주문번호 생성 (간결한 형식: ORD-YYMMDD-XXXXX)
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2); // 26
+    const month = (now.getMonth() + 1).toString().padStart(2, '0'); // 02
+    const day = now.getDate().toString().padStart(2, '0'); // 22
+    const dateStr = `${year}${month}${day}`; // 260222
+    
+    // 5자리 랜덤 영숫자 (36^5 = 60,466,176 조합)
+    const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const orderNumber = `ORD-${dateStr}-${random}`; // 예: ORD-260222-A3B4C
     
     // 재고 확인
     for (const item of cartItems) {
