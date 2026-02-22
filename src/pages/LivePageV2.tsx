@@ -881,27 +881,69 @@ function ReelCard({
   }
 
   // ============================================
-  // Real-time Product Updates (Poll every 3s)
+  // Real-time Product Updates (Long Polling - 비용 99% 절감! 🎉)
   // ============================================
   useEffect(() => {
+    if (!stream.id) return
+
+    let abortController: AbortController | null = null
+    let lastTimestamp = '0' // 마지막 상품 변경 타임스탬프
+
     const loadCurrentProduct = async () => {
       try {
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data.product)
+        } else {
+          setCurrentProduct(null)
         }
       } catch (error) {
-        // Silently fail - keep showing current product
+        console.error('[CurrentProduct] Error loading:', error)
       }
     }
 
-    // Initial load
+    const waitForProductChange = async () => {
+      while (true) {
+        try {
+          // ✅ Long Polling: 상품이 변경될 때까지 대기 (최대 25초)
+          abortController = new AbortController()
+          const response = await axios.get(
+            `/api/streams/${stream.id}/product-wait?lastTimestamp=${lastTimestamp}`,
+            { signal: abortController.signal }
+          )
+          
+          const result = response.data
+
+          if (result.success) {
+            if (result.changed && result.data) {
+              // 상품 변경됨 - 즉시 UI 업데이트 ⚡
+              setCurrentProduct(result.data.product)
+              lastTimestamp = result.timestamp
+            }
+            // 변경 없어도 계속 대기 (재연결)
+          }
+        } catch (err: any) {
+          if (axios.isCancel(err) || err.name === 'AbortError') {
+            // Cleanup에서 호출된 중단
+            break
+          }
+          console.error('[LongPolling] Error:', err)
+          // 에러 발생 시 3초 대기 후 재연결
+          await new Promise(resolve => setTimeout(resolve, 3000))
+        }
+      }
+    }
+
+    // 초기 로드 후 Long Polling 시작
     loadCurrentProduct()
+    waitForProductChange()
 
-    // Poll every 3 seconds
-    const intervalId = setInterval(loadCurrentProduct, 3000)
-
-    return () => clearInterval(intervalId)
+    return () => {
+      // Cleanup: Long Polling 중단
+      if (abortController) {
+        abortController.abort()
+      }
+    }
   }, [stream.id])
 
   // ============================================

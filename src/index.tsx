@@ -3625,6 +3625,56 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
   }
 });
 
+// ✅ Long Polling: 상품 변경 대기 API (효율적!)
+app.get('/api/streams/:streamId/product-wait', async (c) => {
+  const { LIVE_CACHE } = c.env;
+  const streamId = c.req.param('streamId');
+  const lastTimestamp = c.req.query('lastTimestamp') || '0';
+
+  try {
+    const timestampKey = `product-timestamp:${streamId}`;
+    const cacheKey = `current-product:${streamId}`;
+    
+    // 최대 25초 대기 (Cloudflare Workers 제한 고려)
+    const maxWaitTime = 25000;
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      // 타임스탬프 확인
+      const currentTimestamp = await LIVE_CACHE.get(timestampKey) || '0';
+      
+      // 상품이 변경되었으면 즉시 반환
+      if (currentTimestamp !== lastTimestamp) {
+        const currentProduct = await getCached(LIVE_CACHE, cacheKey, 30);
+        
+        return c.json({
+          success: true,
+          timestamp: currentTimestamp,
+          data: currentProduct,
+          changed: true,
+        });
+      }
+      
+      // 1초 대기 후 다시 확인
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // 타임아웃 - 변경 없음
+    return c.json({
+      success: true,
+      timestamp: lastTimestamp,
+      data: null,
+      changed: false,
+    });
+    
+  } catch (err) {
+    return c.json({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // =================================
 // Seller Stream Management APIs
 // =================================
@@ -4422,9 +4472,20 @@ app.post('/api/seller/streams/:streamId/change-product', async (c) => {
       'UPDATE live_streams SET current_product_id = ?, updated_at = datetime("now") WHERE id = ?'
     ).bind(productId, streamId).run();
 
-    // ✅ 캐시 무효화 (현재 상품 변경됨)
+    // ✅ Long Polling: 타임스탬프 업데이트 + 캐시 무효화
     const { LIVE_CACHE } = c.env;
-    await invalidateCache(LIVE_CACHE, `current-product:${streamId}`);
+    const timestampKey = `product-timestamp:${streamId}`;
+    const cacheKey = `current-product:${streamId}`;
+    const newTimestamp = Date.now().toString();
+    
+    // 타임스탬프 업데이트 (Long Polling 클라이언트에게 변경 알림)
+    await LIVE_CACHE.put(timestampKey, newTimestamp);
+    
+    // 새 상품 데이터를 캐시에 저장 (즉시 반환용)
+    await setCached(LIVE_CACHE, cacheKey, {
+      product,
+      options: options.results,
+    }, 30); // 30초 TTL
 
     return c.json<ApiResponse>({
       success: true,
@@ -4489,9 +4550,20 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
       'UPDATE live_streams SET current_product_id = ?, updated_at = datetime("now") WHERE id = ?'
     ).bind(productId, streamId).run();
 
-    // ✅ 캐시 무효화
+    // ✅ Long Polling: 타임스탬프 업데이트 + 캐시 저장
     const { LIVE_CACHE } = c.env;
-    await invalidateCache(LIVE_CACHE, `current-product:${streamId}`);
+    const timestampKey = `product-timestamp:${streamId}`;
+    const cacheKey = `current-product:${streamId}`;
+    const newTimestamp = Date.now().toString();
+    
+    // 타임스탬프 업데이트 (Long Polling 클라이언트에게 변경 알림)
+    await LIVE_CACHE.put(timestampKey, newTimestamp);
+    
+    // 새 상품 데이터를 캐시에 저장 (즉시 반환용)
+    await setCached(LIVE_CACHE, cacheKey, {
+      product,
+      options: options.results,
+    }, 30); // 30초 TTL
 
     return c.json<ApiResponse>({
       success: true,
