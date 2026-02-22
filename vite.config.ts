@@ -52,59 +52,57 @@ export default defineConfig({
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
-          // 🔴 CRITICAL FIX: React 로딩 순서 보장
-          // ⚠️ WARNING: 이 설정을 수정하면 /admin 페이지 흰 화면 오류 발생!
-          // React Core는 반드시 먼저 로드되어야 함 (forwardRef 에러 방지)
+          // 🔴 CRITICAL: React must be in ONE chunk ONLY to prevent duplicate instances
+          // Multiple React instances cause: "Cannot set properties of undefined (setting 'Children')"
           if (id.includes('node_modules')) {
-            // 1. React Core (최우선 - 단일 청크로 통합)
-            // ⚠️ DO NOT MERGE with other vendors!
-            if (id.includes('react/') || id.includes('react-dom/')) {
+            // 1. React Core - MUST be single instance
+            if (id.includes('node_modules/react/') || 
+                id.includes('node_modules/react-dom/') ||
+                id.includes('node_modules/scheduler/')) {
               return 'react-core'
             }
-            // 2. React 의존 라이브러리 (React 이후 로드)
-            if (id.includes('react-router') || 
-                id.includes('@radix-ui') ||
-                id.includes('lucide-react') ||
-                id.includes('recharts')) {
+            
+            // 2. React ecosystem - depends on react-core
+            if (id.includes('node_modules/react-router') || 
+                id.includes('node_modules/@radix-ui') ||
+                id.includes('node_modules/lucide-react') ||
+                id.includes('node_modules/recharts')) {
               return 'react-deps'
             }
-            // 3. Sentry (독립 청크)
-            if (id.includes('@sentry')) {
+            
+            // 3. Sentry
+            if (id.includes('node_modules/@sentry')) {
               return 'sentry-vendor'
             }
-            // 4. 유틸리티 (axios 등)
-            if (id.includes('axios')) {
+            
+            // 4. Utilities
+            if (id.includes('node_modules/axios')) {
               return 'utils-vendor'
             }
-            // 5. 기타 node_modules
+            
+            // 5. Other node_modules (excluding React to prevent duplicates)
             return 'vendor'
           }
           
-          // 페이지별 청크 (더 세분화)
+          // Page-level chunks
           if (id.includes('/src/pages/')) {
-            // 인증 관련 (로그인, 카카오 콜백)
             if (id.includes('Login') || id.includes('Callback')) {
               return 'auth-pages'
             }
-            // Seller 페이지들
             if (id.includes('/src/pages/Seller')) {
               return 'seller-pages'
             }
-            // Admin 페이지들
             if (id.includes('/src/pages/Admin')) {
               return 'admin-pages'
             }
-            // User 페이지들 (MyPage, MyOrders)
             if (id.includes('/src/pages/My')) {
               return 'user-pages'
             }
-            // 쇼핑 관련 (Cart, Checkout, Live)
             if (id.includes('/src/pages/Cart') || 
                 id.includes('/src/pages/Checkout') || 
                 id.includes('/src/pages/Live')) {
               return 'shopping-pages'
             }
-            // 결제 관련
             if (id.includes('/src/pages/Payment')) {
               return 'payment-pages'
             }
