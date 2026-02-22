@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>유어 라이브 커머스 - 실시간 방송</title>
+    
+    <!-- Suppress YouTube and TossPayments Errors - MUST BE FIRST -->
+    <script>
+    (function() {
+      const originalError = console.error;
+      const originalWarn = console.warn;
+      
+      console.error = function(...args) {
+        const msg = (args[0] || '').toString();
+        // Filter YouTube, postMessage, and TossPayments errors
+        if (msg.includes('postMessage') || 
+            msg.includes('youtube') || 
+            msg.includes('DOMWindow') ||
+            msg.includes('tosspayments.com/v1/log') ||
+            msg.includes('log.tosspayments')) {
+          return;
+        }
+        originalError.apply(console, args);
+      };
+      
+      console.warn = function(...args) {
+        const msg = (args[0] || '').toString();
+        if (msg.includes('passive') || msg.includes('Violation') || msg.includes('touchstart')) return;
+        originalWarn.apply(console, args);
+      };
+      
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.includes('postMessage') || 
+                          e.message.includes('youtube') ||
+                          e.message.includes('tosspayments'))) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }, true);
+      
+      // Intercept fetch requests to suppress TossPayments logging errors
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        const url = args[0];
+        if (typeof url === 'string' && url.includes('log.tosspayments.com')) {
+          return Promise.resolve(new Response('{}', { status: 200 }));
+        }
+        return originalFetch.apply(this, args);
+      };
+    })();
+    </script>
+    
+    <!-- DNS Prefetch & Preconnect - 외부 리소스 로딩 속도 향상 -->
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://t1.kakaocdn.net">
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://www.youtube.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Kakao SDK -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        /* YouTube Background */
+        #youtube-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            background: #000;
+        }
+        
+        #youtube-player {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Gradient Overlay */
+        .gradient-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60%;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        /* Top Header */
+        .top-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 12px 16px;
+            padding-top: calc(12px + env(safe-area-inset-top));
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+        }
+        
+        .live-badge {
+            background: #ff4757;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        
+        .close-btn {
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: white;
+        }
+        
+        .user-info .user-name {
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .logout-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+        }
+        
+        /* Right Actions */
+        .right-actions {
+            position: fixed;
+            right: 16px;
+            bottom: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 50;
+        }
+        
+        .action-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        /* Product Card */
+        .product-card {
+            position: fixed;
+            bottom: 80px;
+            left: 16px;
+            right: 16px;
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            z-index: 50;
+        }
+        
+        .product-card.show {
+            display: block;
+        }
+        
+        .product-card.hidden {
+            display: none;
+        }
+        
+        .product-main {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .product-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        .product-info {
+            flex: 1;
+        }
+        
+        .product-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .product-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ff4757;
+        }
+        
+        .product-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        
+        .btn-add {
+            background: #3182F6;
+            color: white;
+        }
+        
+        .btn-checkout {
+            background: #ff4757;
+            color: white;
+        }
+        
+        .btn:disabled {
+            background: #ccc !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+        }
+        
+        .stock-warning {
+            color: #ff4757 !important;
+            font-weight: 700;
+        }
+        
+        .stock-low {
+            color: #ff9800 !important;
+            font-weight: 600;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 16px;
+            z-index: 200;
+        }
+    </style>
+    <!-- Build: 2026-02-22T09:34:09.481Z | ID: 3c1eb469ee0f5a07 -->
+</head>
+<body>
+    <!-- YouTube Container -->
+    <div id="youtube-container">
+        <div id="youtube-player"></div>
+    </div>
+    
+    <!-- Gradient Overlay -->
+    <div class="gradient-overlay"></div>
+    
+    <!-- Top Header -->
+    <div class="top-header">
+        <div class="live-badge">🔴 LIVE</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="user-info" id="user-info" style="display: none;">
+                <span class="user-name" id="user-name-display"></span>
+                <button class="logout-btn" id="logout-btn">로그아웃</button>
+            </div>
+            <button class="close-btn" onclick="window.location.href='/'">✕</button>
+        </div>
+    </div>
+    
+    <!-- Right Actions -->
+    <div class="right-actions">
+        <button class="action-btn" id="like-btn">
+            <i class="fas fa-heart"></i>
+        </button>
+        <button class="action-btn" id="share-btn">
+            <i class="fas fa-share-alt"></i>
+        </button>
+    </div>
+    
+    <!-- Product Card -->
+    <div class="product-card" id="product-card">
+        <div class="product-main">
+            <img id="product-image" class="product-image" src="" alt="">
+            <div class="product-info">
+                <div class="product-name" id="product-name"></div>
+                <div class="product-price" id="product-price"></div>
+                <div class="product-stock" id="product-stock" style="font-size: 13px; color: #666; margin-top: 4px;"></div>
+            </div>
+        </div>
+        <div class="product-buttons">
+            <button class="btn btn-add" id="add-to-cart-btn">
+                <i class="fas fa-shopping-bag"></i> 담기
+            </button>
+            <button class="btn btn-checkout" id="checkout-btn">
+                <i class="fas fa-credit-card"></i> 결제
+            </button>
+        </div>
+    </div>
+    
+    <!-- Loading -->
+    <div class="loading" id="loading">로딩 중...</div>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
+    <script>
+        // ==========================================
+        // 설정
+        // ==========================================
+        const API_BASE = '/api';
+        
+        // URL에서 streamId 추출
+        // /live/20 형식의 경로에서 ID 파싱
+        const pathParts = window.location.pathname.split('/');
+        const pathStreamId = pathParts[pathParts.length - 1];
+        
+        // URL 파라미터에서도 확인 (폴백)
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramStreamId = urlParams.get('streamId');
+        
+        // 경로 우선, 파라미터 폴백, 최종 기본값 '1'
+        const STREAM_ID = pathStreamId && !isNaN(pathStreamId) ? pathStreamId : (paramStreamId || '1');
+        
+        console.log('🎬 Stream ID:', STREAM_ID, '(from path:', pathStreamId, ', from param:', paramStreamId, ')');
+        
+        // ==========================================
+        // Firebase 초기화
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
+            authDomain: "urteam-live-commerce.firebaseapp.com",
+            databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "urteam-live-commerce",
+            storageBucket: "urteam-live-commerce.firebasestorage.app",
+            messagingSenderId: "1098157020294",
+            appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
+        };
+        
+        let firebaseApp = null;
+        let firebaseDatabase = null;
+        
+        if (window.firebase) {
+            try {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                firebaseDatabase = firebase.database();
+                console.log('✅ Firebase 초기화 완료');
+            } catch (error) {
+                console.error('❌ Firebase 초기화 실패:', error);
+            }
+        }
+        
+        // ==========================================
+        // Kakao SDK 초기화
+        // ==========================================
+        if (window.Kakao && !Kakao.isInitialized()) {
+            // 환경 변수로 주입된 KAKAO_JS_KEY 사용 (폴백: 하드코딩 값)
+            const KAKAO_JS_KEY = window.KAKAO_JS_KEY || '975a2e7f97254b08f15dba4d177a2865';
+            Kakao.init(KAKAO_JS_KEY);
+            console.log('✅ Kakao SDK 초기화 완료');
+        }
+        
+        // ==========================================
+        // 전역 변수
+        // ==========================================
+        let player = null;
+        let currentProduct = null;
+        
+        // ==========================================
+        // YouTube Player 초기화
+        // ==========================================
+        function onYouTubeIframeAPIReady() {
+            loadStreamData();
+        }
+        
+        async function loadStreamData() {
+            try {
+                const response = await axios.get(API_BASE + '/streams/' + STREAM_ID);
+                
+                if (response.data.success) {
+                    const stream = response.data.data;
+                    
+                    // YouTube Player 생성
+                    if (stream.youtube_video_id) {
+                        player = new YT.Player('youtube-player', {
+                            videoId: stream.youtube_video_id,
+                            playerVars: {
+                                autoplay: 1,
+                                controls: 0,
+                                mute: 1,
+                                playsinline: 1
+                            }
+                        });
+                    }
+                    
+                    // 현재 상품 로드
+                    if (stream.current_product_id) {
+                        await loadProduct(stream.current_product_id);
+                    }
+                    
+                    document.getElementById('loading').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('스트림 로드 실패:', error);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        async function loadProduct(productId) {
+            try {
+                const response = await axios.get(API_BASE + '/products/' + productId);
+                
+                if (response.data.success) {
+                    currentProduct = response.data.data;
+                    
+                    console.log('✅ 상품 로드 완료:', currentProduct);
+                    
+                    document.getElementById('product-image').src = currentProduct.image_url || 'https://via.placeholder.com/80';
+                    document.getElementById('product-name').textContent = currentProduct.name || '상품명';
+                    
+                    // price가 없으면 기본값 사용
+                    const price = currentProduct.price || currentProduct.current_price || 0;
+                    document.getElementById('product-price').textContent = price.toLocaleString() + '원';
+                    
+                    // 재고 표시
+                    const stock = currentProduct.stock || 0;
+                    const stockElement = document.getElementById('product-stock');
+                    const addToCartBtn = document.getElementById('add-to-cart-btn');
+                    
+                    if (stock === 0) {
+                        stockElement.textContent = '품절';
+                        stockElement.className = 'product-stock stock-warning';
+                        addToCartBtn.disabled = true;
+                        addToCartBtn.innerHTML = '<i class="fas fa-ban"></i> 품절';
+                    } else if (stock <= 5) {
+                        stockElement.textContent = `재고 ${stock}개 남음`;
+                        stockElement.className = 'product-stock stock-low';
+                        addToCartBtn.disabled = false;
+                        addToCartBtn.innerHTML = '<i class="fas fa-shopping-bag"></i> 담기';
+                    } else {
+                        stockElement.textContent = `재고 ${stock}개`;
+                        stockElement.className = 'product-stock';
+                        addToCartBtn.disabled = false;
+                        addToCartBtn.innerHTML = '<i class="fas fa-shopping-bag"></i> 담기';
+                    }
+                    
+                    document.getElementById('product-card').classList.add('show');
+                    console.log('✅ 상품 카드 표시됨');
+                }
+            } catch (error) {
+                console.error('상품 로드 실패:', error);
+            }
+        }
+        
+        // ==========================================
+        // 로그인 처리 (URL 파라미터)
+        // ==========================================
+        const loginStatus = urlParams.get('login');
+        const sessionToken = urlParams.get('session');
+        const userId = urlParams.get('userId');
+        const userName = urlParams.get('userName');
+        
+        if (loginStatus === 'success' && sessionToken) {
+            localStorage.setItem('session', sessionToken);
+            localStorage.setItem('userId', userId);
+            localStorage.setItem('userName', decodeURIComponent(userName || '카카오 사용자'));
+            
+            console.log('✅ 로그인 성공:', { userId, userName });
+            
+            // URL 정리 (streamId 유지!)
+            const cleanUrl = window.location.pathname + '?streamId=' + STREAM_ID;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
+            alert('로그인 되었습니다!');
+        }
+        
+        // ==========================================
+        // 사용자 정보 표시
+        // ==========================================
+        function updateUserDisplay() {
+            const storedUserName = localStorage.getItem('userName');
+            const storedSession = localStorage.getItem('session');
+            
+            if (storedUserName && storedSession) {
+                document.getElementById('user-name-display').textContent = storedUserName;
+                document.getElementById('user-info').style.display = 'flex';
+            } else {
+                document.getElementById('user-info').style.display = 'none';
+            }
+        }
+        
+        // 페이지 로드 시 사용자 정보 표시
+        updateUserDisplay();
+        
+        // ==========================================
+        // 로그아웃 기능
+        // ==========================================
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            if (!confirm('로그아웃 하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                const session = localStorage.getItem('session');
+                
+                if (session) {
+                    // 서버에 로그아웃 요청
+                    await axios.post(API_BASE + '/auth/kakao/logout', {}, {
+                        headers: {
+                            'X-Session-Token': session
+                        }
+                    });
+                }
+                
+                // 로컬 스토리지 정리
+                localStorage.removeItem('session');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('hasCartItems');
+                
+                // UI 업데이트
+                updateUserDisplay();
+                
+                alert('로그아웃 되었습니다.');
+                
+            } catch (error) {
+                console.error('로그아웃 실패:', error);
+                // 에러가 발생해도 로컬 데이터는 삭제
+                localStorage.removeItem('session');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('hasCartItems');
+                updateUserDisplay();
+            }
+        });
+        
+        // ==========================================
+        // Kakao 로그인
+        // ==========================================
+        function kakaoLogin() {
+            if (!window.Kakao || !Kakao.isInitialized()) {
+                alert('카카오 SDK가 초기화되지 않았습니다.');
+                return;
+            }
+            
+            const currentPath = window.location.pathname + '?streamId=' + STREAM_ID;
+            const redirectUri = window.location.origin + '/auth/kakao/sync/callback';
+            
+            console.log('Starting Kakao login:', { currentPath, redirectUri });
+            
+            Kakao.Auth.authorize({
+                redirectUri: redirectUri,
+                state: currentPath,
+                throughTalk: true  // 카카오톡 간편로그인 활성화 (모바일 UX 개선)
+            });
+        }
+        
+        // ==========================================
+        // 담기 버튼
+        // ==========================================
+        document.getElementById('add-to-cart-btn').addEventListener('click', async () => {
+            console.log('🛍️ 담기 버튼 클릭');
+            
+            if (!currentProduct) {
+                alert('상품이 선택되지 않았습니다.');
+                return;
+            }
+            
+            // 재고 확인
+            const stock = currentProduct.stock || 0;
+            if (stock === 0) {
+                alert('품절된 상품입니다.');
+                return;
+            }
+            
+            const userId = localStorage.getItem('userId');
+            
+            if (!userId) {
+                console.log('로그인 필요');
+                alert('로그인이 필요합니다.');
+                kakaoLogin();
+                return;
+            }
+            
+            try {
+                console.log('장바구니에 추가 중...', { userId, productId: currentProduct.id });
+                
+                const response = await axios.post(API_BASE + '/cart', {
+                    userId: userId,
+                    productId: currentProduct.id,
+                    quantity: 1,
+                    priceSnapshot: currentProduct.price,
+                    liveStreamId: parseInt(STREAM_ID)
+                });
+                
+                console.log('장바구니 응답:', response.data);
+                
+                if (response.data.success) {
+                    localStorage.setItem('hasCartItems', 'true');
+                    alert('장바구니에 추가되었습니다!');
+                    
+                    // 재고 감소 반영 (UI 업데이트)
+                    currentProduct.stock = stock - 1;
+                    const stockElement = document.getElementById('product-stock');
+                    const addToCartBtn = document.getElementById('add-to-cart-btn');
+                    
+                    if (currentProduct.stock === 0) {
+                        stockElement.textContent = '품절';
+                        stockElement.className = 'product-stock stock-warning';
+                        addToCartBtn.disabled = true;
+                        addToCartBtn.innerHTML = '<i class="fas fa-ban"></i> 품절';
+                    } else if (currentProduct.stock <= 5) {
+                        stockElement.textContent = `재고 ${currentProduct.stock}개 남음`;
+                        stockElement.className = 'product-stock stock-low';
+                    } else {
+                        stockElement.textContent = `재고 ${currentProduct.stock}개`;
+                        stockElement.className = 'product-stock';
+                    }
+                } else {
+                    const errorMsg = response.data.error || '알 수 없는 오류';
+                    if (errorMsg.includes('Insufficient stock')) {
+                        alert('재고가 부족합니다. 다시 시도해주세요.');
+                        // 상품 정보 재로드
+                        loadProductForStream(streamId);
+                    } else {
+                        alert('장바구니 추가 실패: ' + errorMsg);
+                    }
+                }
+            } catch (error) {
+                console.error('장바구니 추가 에러:', error);
+                const errorMsg = error.response?.data?.error || error.message;
+                if (errorMsg.includes('Insufficient stock')) {
+                    alert('재고가 부족합니다. 다시 시도해주세요.');
+                    // 상품 정보 재로드
+                    loadProductForStream(streamId);
+                } else {
+                    alert('장바구니 추가 실패: ' + errorMsg);
+                }
+            }
+        });
+        
+        // ==========================================
+        // 결제 버튼
+        // ==========================================
+        document.getElementById('checkout-btn').addEventListener('click', async () => {
+            console.log('🛒 결제 버튼 클릭');
+            
+            const userId = localStorage.getItem('userId');
+            const hasCartItems = localStorage.getItem('hasCartItems');
+            
+            console.log('상태:', { userId, hasCartItems });
+            
+            // 1. 장바구니 확인
+            if (!hasCartItems || hasCartItems !== 'true') {
+                alert('상품을 먼저 담아주세요!');
+                return;
+            }
+            
+            // 2. 로그인 확인
+            if (!userId) {
+                alert('로그인이 필요합니다.');
+                kakaoLogin();
+                return;
+            }
+            
+            // 3. 서버 장바구니 확인
+            try {
+                const response = await axios.get(API_BASE + '/cart/' + userId);
+                const cartItems = response.data.data || [];
+                
+                if (cartItems.length === 0) {
+                    alert('상품을 먼저 담아주세요!');
+                    localStorage.removeItem('hasCartItems');
+                    return;
+                }
+                
+                // 4. 결제 페이지로 이동 (강제 전체 페이지 리로드)
+                window.location.replace('/cart');
+            } catch (error) {
+                console.error('장바구니 확인 에러:', error);
+                alert('결제를 진행할 수 없습니다.');
+            }
+        });
+        
+        // ==========================================
+        // 하트 버튼
+        // ==========================================
+        let liked = false;
+        document.getElementById('like-btn').addEventListener('click', () => {
+            liked = !liked;
+            document.getElementById('like-btn').style.color = liked ? '#ff4757' : 'white';
+        });
+        
+        // ==========================================
+        // 공유 버튼
+        // ==========================================
+        document.getElementById('share-btn').addEventListener('click', () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: '유어 라이브 커머스',
+                    text: '실시간 라이브 방송',
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert('링크가 복사되었습니다!');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -53,9 +53,11 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
           // 🔴 CRITICAL FIX: React 로딩 순서 보장
-          // React Core는 반드시 먼저 로드되어야 함
+          // ⚠️ WARNING: 이 설정을 수정하면 /admin 페이지 흰 화면 오류 발생!
+          // React Core는 반드시 먼저 로드되어야 함 (forwardRef 에러 방지)
           if (id.includes('node_modules')) {
             // 1. React Core (최우선 - 단일 청크로 통합)
+            // ⚠️ DO NOT MERGE with other vendors!
             if (id.includes('react/') || id.includes('react-dom/')) {
               return 'react-core'
             }

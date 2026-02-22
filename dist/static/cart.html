@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>장바구니 - 유어 라이브 커머스</title>
+    
+    <!-- DNS Prefetch & Preconnect - 외부 리소스 로딩 속도 향상 -->
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://pay.nicepay.co.kr">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://pay.nicepay.co.kr" crossorigin>
+    
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- NicePay SDK -->
+    <script src="https://pay.nicepay.co.kr/v1/js/"></script>
+    <!-- 환경 변수 주입 -->
+    <script>
+        window.NICEPAY_CLIENT_ID = '%%NICEPAY_CLIENT_ID%%';
+        window.NICEPAY_MID = '%%NICEPAY_MID%%';
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+            background: #f5f5f5;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: white;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        
+        .cart-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 12px;
+        }
+        
+        .item-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        
+        .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .item-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #191F28;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .item-option {
+            font-size: 13px;
+            color: #6B7684;
+            margin-bottom: 8px;
+        }
+        
+        .item-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #3182F6;
+            margin-bottom: 8px;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .quantity-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #E5E8EB;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #4E5968;
+        }
+        
+        .quantity-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .quantity-value {
+            min-width: 30px;
+            text-align: center;
+            font-weight: 600;
+            color: #191F28;
+        }
+        
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #8B95A1;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        .delete-btn:hover {
+            color: #ff4757;
+        }
+        
+        .empty-cart {
+            text-align: center;
+            padding: 80px 20px;
+            color: #8B95A1;
+        }
+        
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        
+        .shipping-form {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .form-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #191F28;
+            margin-bottom: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: #4E5968;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #E5E8EB;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #191F28;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3182F6;
+        }
+        
+        .summary-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        
+        .summary-label {
+            color: #6B7684;
+        }
+        
+        .summary-value {
+            color: #191F28;
+            font-weight: 600;
+        }
+        
+        .summary-divider {
+            height: 1px;
+            background: #E5E8EB;
+            margin: 16px 0;
+        }
+        
+        .summary-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .total-label {
+            color: #191F28;
+        }
+        
+        .total-value {
+            color: #3182F6;
+        }
+        
+        .checkout-btn {
+            width: 100%;
+            padding: 16px;
+            background: #3182F6;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .checkout-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .checkout-btn:disabled {
+            background: #E5E8EB;
+            color: #8B95A1;
+            cursor: not-allowed;
+        }
+    </style>
+    <!-- Build: 2026-02-22T09:34:09.481Z | ID: 3c1eb469ee0f5a07 -->
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <button onclick="window.history.back()" style="background: none; border: none; cursor: pointer; padding: 8px;">
+                <i class="fas fa-arrow-left" style="font-size: 20px; color: #191F28;"></i>
+            </button>
+            <h1 style="font-size: 18px; font-weight: 700; color: #191F28;">장바구니</h1>
+            <div style="width: 36px;"></div>
+        </div>
+    </div>
+
+    <!-- Container -->
+    <div class="container">
+        <!-- Loading -->
+        <div id="loading" style="text-align: center; padding: 40px; color: #8B95A1;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 32px;"></i>
+            <p style="margin-top: 12px;">로딩 중...</p>
+        </div>
+
+        <!-- Empty Cart -->
+        <div id="empty-cart" class="empty-cart" style="display: none;">
+            <div class="empty-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <p style="font-size: 16px; font-weight: 600; color: #4E5968; margin-bottom: 8px;">
+                장바구니가 비어있습니다
+            </p>
+            <p style="font-size: 14px; color: #8B95A1;">
+                라이브 방송에서 상품을 담아보세요!
+            </p>
+            <button onclick="window.location.href='/'" 
+                    style="margin-top: 24px; padding: 12px 24px; background: #3182F6; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                홈으로 가기
+            </button>
+        </div>
+
+        <!-- Cart Items -->
+        <div id="cart-items" style="display: none;"></div>
+
+        <!-- Shipping Form -->
+        <div id="shipping-form" class="shipping-form" style="display: none;">
+            <div class="form-title">배송지 정보</div>
+            <div class="form-group">
+                <label class="form-label">받는 분</label>
+                <input type="text" id="recipient-name" class="form-input" placeholder="이름을 입력하세요" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">연락처</label>
+                <input type="tel" id="recipient-phone" class="form-input" placeholder="010-0000-0000" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">주소</label>
+                <input type="text" id="recipient-address" class="form-input" placeholder="주소를 입력하세요" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">상세주소</label>
+                <input type="text" id="recipient-address-detail" class="form-input" placeholder="상세주소를 입력하세요">
+            </div>
+            <div class="form-group">
+                <label class="form-label">배송 메모 (선택)</label>
+                <input type="text" id="delivery-memo" class="form-input" placeholder="배송 시 요청사항을 입력하세요">
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div id="summary-box" class="summary-box" style="display: none;">
+            <div class="summary-row">
+                <span class="summary-label">상품 금액</span>
+                <span class="summary-value" id="subtotal">0원</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">배송비</span>
+                <span class="summary-value" id="shipping-fee">3,000원</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-total">
+                <span class="total-label">총 결제금액</span>
+                <span class="total-value" id="total">0원</span>
+            </div>
+        </div>
+
+        <!-- Checkout Button -->
+        <button id="checkout-btn" class="checkout-btn" style="display: none;">
+            결제하기
+        </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script>
+        const API_BASE = '/api';
+        let cartItems = [];
+        let userId = null;
+        const SHIPPING_FEE = 3000; // 배송비 고정 3,000원
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check login
+            userId = localStorage.getItem('userId');
+            if (!userId) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/';
+                return;
+            }
+
+            // Load cart items
+            await loadCartItems();
+        });
+
+        // Load cart items
+        async function loadCartItems() {
+            try {
+                const response = await axios.get(`${API_BASE}/cart/${userId}`);
+                cartItems = response.data.data || [];
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (cartItems.length === 0) {
+                    document.getElementById('empty-cart').style.display = 'block';
+                } else {
+                    document.getElementById('cart-items').style.display = 'block';
+                    document.getElementById('shipping-form').style.display = 'block';
+                    document.getElementById('summary-box').style.display = 'block';
+                    document.getElementById('checkout-btn').style.display = 'block';
+                    
+                    renderCartItems();
+                    updateSummary();
+                }
+            } catch (error) {
+                console.error('Failed to load cart:', error);
+                document.getElementById('loading').style.display = 'none';
+                alert('장바구니를 불러오는데 실패했습니다.\n' + (error.response?.data?.error || error.message));
+            }
+        }
+
+        // Render cart items
+        function renderCartItems() {
+            const container = document.getElementById('cart-items');
+            container.innerHTML = '';
+
+            cartItems.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'cart-item';
+                itemEl.innerHTML = `
+                    <img src="${item.image_url || 'https://via.placeholder.com/80'}" 
+                         alt="${item.product_name}" 
+                         class="item-image"
+                         onerror="this.src='https://via.placeholder.com/80'">
+                    <div class="item-info">
+                        <div class="item-name">${item.product_name}</div>
+                        ${item.option_value ? `<div class="item-option">옵션: ${item.option_value}</div>` : ''}
+                        <div class="item-price">${formatPrice(item.price_snapshot)}원</div>
+                        <div class="quantity-controls">
+                            <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <span class="quantity-value">${item.quantity}</span>
+                            <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="delete-btn" onclick="deleteItem(${item.id})">
+                                <i class="fas fa-trash"></i> 삭제
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(itemEl);
+            });
+        }
+
+        // Update quantity
+        async function updateQuantity(cartItemId, newQuantity) {
+            if (newQuantity < 1) {
+                if (!confirm('상품을 삭제하시겠습니까?')) {
+                    return;
+                }
+                await deleteItem(cartItemId);
+                return;
+            }
+
+            try {
+                const response = await axios.put(`${API_BASE}/cart/${cartItemId}`, {
+                    quantity: newQuantity
+                });
+
+                if (response.data.success) {
+                    // Update local data
+                    const item = cartItems.find(i => i.id === cartItemId);
+                    if (item) {
+                        item.quantity = newQuantity;
+                    }
+                    
+                    renderCartItems();
+                    updateSummary();
+                } else {
+                    throw new Error(response.data.error || '수량 변경에 실패했습니다');
+                }
+            } catch (error) {
+                console.error('Failed to update quantity:', error);
+                alert('수량 변경에 실패했습니다.\n' + (error.response?.data?.error || error.message));
+            }
+        }
+
+        // Delete item
+        async function deleteItem(cartItemId) {
+            try {
+                const response = await axios.delete(`${API_BASE}/cart/${cartItemId}`);
+
+                if (response.data.success) {
+                    // Remove from local data
+                    cartItems = cartItems.filter(i => i.id !== cartItemId);
+                    
+                    if (cartItems.length === 0) {
+                        document.getElementById('cart-items').style.display = 'none';
+                        document.getElementById('shipping-form').style.display = 'none';
+                        document.getElementById('summary-box').style.display = 'none';
+                        document.getElementById('checkout-btn').style.display = 'none';
+                        document.getElementById('empty-cart').style.display = 'block';
+                    } else {
+                        renderCartItems();
+                        updateSummary();
+                    }
+                } else {
+                    throw new Error(response.data.error || '상품 삭제에 실패했습니다');
+                }
+            } catch (error) {
+                console.error('Failed to delete item:', error);
+                alert('상품 삭제에 실패했습니다.\n' + (error.response?.data?.error || error.message));
+            }
+        }
+
+        // Update summary
+        function updateSummary() {
+            const subtotal = cartItems.reduce((sum, item) => {
+                return sum + (item.price_snapshot * item.quantity);
+            }, 0);
+
+            const total = subtotal + SHIPPING_FEE;
+
+            document.getElementById('subtotal').textContent = formatPrice(subtotal) + '원';
+            document.getElementById('total').textContent = formatPrice(total) + '원';
+        }
+
+        // Format price
+        function formatPrice(price) {
+            return new Intl.NumberFormat('ko-KR').format(price);
+        }
+
+        // Checkout
+        document.getElementById('checkout-btn').addEventListener('click', async () => {
+            // Validate form
+            const recipientName = document.getElementById('recipient-name').value.trim();
+            const recipientPhone = document.getElementById('recipient-phone').value.trim();
+            const recipientAddress = document.getElementById('recipient-address').value.trim();
+            const recipientAddressDetail = document.getElementById('recipient-address-detail').value.trim();
+            const deliveryMemo = document.getElementById('delivery-memo').value.trim();
+
+            if (!recipientName) {
+                alert('받는 분 이름을 입력해주세요.');
+                document.getElementById('recipient-name').focus();
+                return;
+            }
+
+            if (!recipientPhone) {
+                alert('연락처를 입력해주세요.');
+                document.getElementById('recipient-phone').focus();
+                return;
+            }
+
+            if (!recipientAddress) {
+                alert('주소를 입력해주세요.');
+                document.getElementById('recipient-address').focus();
+                return;
+            }
+
+            // Calculate total
+            const subtotal = cartItems.reduce((sum, item) => {
+                return sum + (item.price_snapshot * item.quantity);
+            }, 0);
+            const totalAmount = subtotal + SHIPPING_FEE;
+
+            // Create order
+            try {
+                const orderData = {
+                    userId: userId,
+                    items: cartItems.map(item => ({
+                        productId: item.product_id,
+                        optionId: item.option_id || null,
+                        quantity: item.quantity,
+                        price: item.price_snapshot
+                    })),
+                    shippingAddress: recipientAddress,
+                    shippingAddressDetail: recipientAddressDetail,
+                    recipientName: recipientName,
+                    recipientPhone: recipientPhone,
+                    deliveryMemo: deliveryMemo,
+                    totalAmount: totalAmount,
+                    shippingFee: SHIPPING_FEE
+                };
+
+                console.log('Creating order:', orderData);
+
+                const response = await axios.post(`${API_BASE}/api/orders`, orderData);
+
+                if (response.data.success) {
+                    const order = response.data.data;
+                    const orderNo = order.orderNo;
+                    
+                    console.log('✅ 주문 생성 완료:', orderNo);
+                    
+                    // NicePay 결제 시작
+                    initiateNicePayPayment(order, {
+                        recipientName: recipientName,
+                        recipientPhone: recipientPhone,
+                        address: recipientAddress + ' ' + recipientAddressDetail
+                    });
+                } else {
+                    throw new Error(response.data.error || '주문 생성에 실패했습니다');
+                }
+            } catch (error) {
+                console.error('Failed to create order:', error);
+                alert('주문 생성에 실패했습니다.\n' + (error.response?.data?.error || error.message));
+            }
+        });
+        
+        // NicePay 결제 함수
+        function initiateNicePayPayment(order, shippingInfo) {
+            console.log('🔵 NicePay 결제 시작:', order);
+            
+            // Client ID 설정 (Worker에서 주입된 환경 변수 사용)
+            const NICEPAY_CLIENT_ID = window.NICEPAY_CLIENT_ID || 'S2_d5ec29558e9d46419bf01eb828ca0834';  // 폴백: 테스트 Client ID
+            
+            console.log('🔑 NicePay Client ID:', NICEPAY_CLIENT_ID.substring(0, 10) + '...');
+            
+            // 상품명 생성 (첫 번째 상품명 + 외 N건)
+            const goodsName = cartItems.length > 1 
+                ? `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
+                : cartItems[0].product_name;
+            
+            // NicePay 결제 요청
+            AUTHNICE.requestPay({
+                clientId: NICEPAY_CLIENT_ID,
+                method: 'card',  // 결제 수단: card(카드), vbank(가상계좌), bank(계좌이체)
+                orderId: order.orderNo,
+                amount: order.totalAmount,
+                goodsName: goodsName,
+                returnUrl: window.location.origin + '/payment-result',  // 결제 결과 페이지
+                fnError: function(result) {
+                    // 결제 실패
+                    console.error('❌ NicePay 결제 실패:', result);
+                    alert('결제에 실패했습니다.\n' + (result.errorMsg || '알 수 없는 오류'));
+                }
+            });
+        }
+    </script>
+
+    <!-- Footer -->
+    <footer style="background: #f8f9fa; border-top: 1px solid #e9ecef; padding: 32px 20px; margin-top: 40px;">
+        <div style="max-width: 600px; margin: 0 auto;">
+            <!-- Footer Links -->
+            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+                <a href="/terms" style="color: #6B7684; font-size: 13px; text-decoration: none;">서비스 이용약관</a>
+                <a href="/privacy" style="color: #6B7684; font-size: 13px; text-decoration: none;">개인정보처리방침</a>
+                <a href="http://pf.kakao.com/_AITdn/chat" target="_blank" rel="noopener noreferrer" style="color: #6B7684; font-size: 13px; text-decoration: none;">고객센터</a>
+            </div>
+
+            <!-- Company Information -->
+            <div style="text-align: center; color: #6B7684; font-size: 12px; line-height: 1.6; margin-bottom: 16px;">
+                <div style="margin-bottom: 8px;">
+                    <span style="font-weight: 600;">서비스명:</span> 유어 라이브 | 
+                    <span style="font-weight: 600;">대표자:</span> 정지원
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <span style="font-weight: 600;">사업자등록번호:</span> 479-09-02930 | 
+                    <span style="font-weight: 600;">통신판매업신고:</span> 2025-부산금정-0540
+                </div>
+                <div>
+                    <span style="font-weight: 600;">이메일:</span> 
+                    <a href="mailto:jiwon@ur-team.com" style="color: #6B7684; text-decoration: none;">jiwon@ur-team.com</a>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div style="text-align: center; color: #8B95A1; font-size: 12px;">
+                © 2026 유어 라이브. All rights reserved.
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
