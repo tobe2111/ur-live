@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Play } from 'lucide-react'
@@ -13,6 +14,7 @@ declare global {
 }
 
 export default function LoginPage() {
+  const { loginWithCredentials } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [kakaoReady, setKakaoReady] = useState(false)
@@ -100,23 +102,14 @@ export default function LoginPage() {
       if (response.data.success) {
         const { user, session_token } = response.data.data
 
-        // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
-        localStorage.setItem('user_session_token', session_token)  // ✅ API 클라이언트가 읽는 키
+        // ✅ AuthContext를 통한 통합 로그인 처리
+        loginWithCredentials(
+          user.id.toString(),
+          user.name,
+          session_token,
+          'user'
+        )
         
-        // ✅ user_type은 무조건 user로 설정 (덮어쓰기)
-        localStorage.setItem('user_type', 'user')
-        
-        localStorage.setItem('user_id', user.id.toString())
-        localStorage.setItem('user_name', user.name)
-        localStorage.setItem('user_email', user.email || '')  // ✅ 키 통일
-        
-        // 이전 호환성 키 제거
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('session')
-        localStorage.removeItem('userId')
-        localStorage.removeItem('userName')
-        localStorage.removeItem('userEmail')  // ✅ 레거시 키 제거
-
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
         localStorage.removeItem('loginReturnUrl')
@@ -156,27 +149,18 @@ export default function LoginPage() {
         const { user, access_token, session_token } = response.data.data
         const token = session_token || access_token  // 토큰 우선순위
 
-        // CRITICAL: localStorage에 API 클라이언트가 읽을 수 있는 키로 저장
-        localStorage.setItem('user_session_token', token)  // ✅ API 클라이언트가 읽는 키
+        // ✅ AuthContext를 통한 통합 로그인 처리
+        loginWithCredentials(
+          user.id.toString(),
+          user.name,
+          token,
+          'user'
+        )
         
-        // ✅ user_type은 무조건 user로 설정 (덮어쓰기)
-        localStorage.setItem('user_type', 'user')
-        
-        localStorage.setItem('user_id', user.id.toString())
-        localStorage.setItem('user_name', user.name)
-        localStorage.setItem('user_email', user.email || '')  // ✅ 키 통일
-        
-        // 이전 호환성 키 제거
-        localStorage.removeItem('userId')
-        localStorage.removeItem('userName')
-        localStorage.removeItem('session')
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('userEmail')  // ✅ 레거시 키 제거
-
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
         localStorage.removeItem('loginReturnUrl')
-        
+
         // 로그인 성공 메시지
         alert(`환영합니다, ${user.name}님!`)
         
@@ -186,8 +170,7 @@ export default function LoginPage() {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || '이메일 또는 비밀번호가 올바르지 않습니다.')
-    } finally {
+      setError(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
       setLoading(false)
     }
   }

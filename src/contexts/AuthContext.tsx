@@ -8,10 +8,14 @@ import { saveUserInfo, isLoggedIn, getSessionToken } from '@/utils/auth'
  * 목적:
  * - 로그인 파라미터 처리와 세션 검증의 순서를 명확히 보장
  * - 타이밍 이슈로 인한 무한 리디렉션 루프 완전 차단
+ * - 모든 로그인 방식(카카오, 이메일, 셀러, 어드민) 통합 관리
  * 
  * 상태:
  * - isProcessingLogin: 로그인 파라미터 처리 중 (true일 때 세션 검증 차단)
  * - isAuthReady: 인증 초기화 완료 (true일 때만 앱 렌더링)
+ * 
+ * 메서드:
+ * - loginWithCredentials: 직접 로그인 (이메일, 셀러, 어드민)
  */
 
 interface AuthContextType {
@@ -19,6 +23,7 @@ interface AuthContextType {
   isAuthReady: boolean
   isLoggedIn: boolean
   sessionToken: string | null
+  loginWithCredentials: (userId: string, userName: string, sessionToken: string, userType?: 'user' | 'seller' | 'admin') => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -34,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // Step 1: URL 파라미터 체크
+      // Step 1: URL 파라미터 체크 (카카오 로그인)
       const login = searchParams.get('login')
       const session = searchParams.get('session')
       const urlUserId = searchParams.get('userId')
@@ -45,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentPath: window.location.pathname
       })
 
-      // Step 2: 로그인 파라미터가 있으면 처리
+      // Step 2: 로그인 파라미터가 있으면 처리 (카카오 OAuth 콜백)
       if (login === 'success' && session && urlUserId) {
         setIsProcessingLogin(true) // ✅ 세션 검증 차단
         
@@ -97,13 +102,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth()
   }, [searchParams])
 
+  // ✅ 직접 로그인 메서드 (이메일, 셀러, 어드민 로그인용)
+  const loginWithCredentials = (
+    userId: string, 
+    userName: string, 
+    sessionToken: string,
+    userType: 'user' | 'seller' | 'admin' = 'user'
+  ) => {
+    setIsProcessingLogin(true) // ✅ 세션 검증 차단
+    
+    console.log('[AuthContext] 🔐 직접 로그인 처리 시작:', {
+      userId,
+      userName,
+      userType,
+      hasSession: !!sessionToken
+    })
+
+    try {
+      // localStorage에 저장 (saveUserInfo는 user만 지원하므로 직접 저장)
+      if (userType === 'user') {
+        saveUserInfo(userId, userName, sessionToken)
+      } else {
+        // 셀러/어드민은 별도 키 사용
+        localStorage.setItem(`${userType}_session_token`, sessionToken)
+        localStorage.setItem(`${userType}_id`, userId)
+        localStorage.setItem('user_type', userType)
+        localStorage.setItem('user_name', userName)
+      }
+
+      console.log('[AuthContext] ✅ 직접 로그인 정보 저장 완료')
+
+      // 인증 상태 업데이트
+      setAuthState({
+        isLoggedIn: true,
+        sessionToken: sessionToken
+      })
+    } catch (error) {
+      console.error('[AuthContext] ❌ 직접 로그인 처리 실패:', error)
+    } finally {
+      setIsProcessingLogin(false) // ✅ 세션 검증 허용
+      console.log('[AuthContext] ✅ 직접 로그인 처리 완료')
+    }
+  }
+
   return (
     <AuthContext.Provider 
       value={{ 
         isProcessingLogin, 
         isAuthReady,
         isLoggedIn: authState.isLoggedIn,
-        sessionToken: authState.sessionToken
+        sessionToken: authState.sessionToken,
+        loginWithCredentials
       }}
     >
       {children}
