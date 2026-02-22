@@ -360,10 +360,11 @@ const app = new Hono<{ Bindings: Bindings }>();
  * Note: Cloudflare Pages는 정적 파일을 자동 압축하므로
  * 이 미들웨어는 API 응답(/api/*)에만 적용
  */
-app.use('/api/*', compress({
-  encoding: 'gzip', // 'gzip' | 'deflate' | 'br' (brotli)
-  threshold: 1024,  // 1KB 이상만 압축
-}));
+// Temporarily disabled compress - causing browser fetch issues
+// app.use('/api/*', compress({
+//   encoding: 'gzip', // 'gzip' | 'deflate' | 'br' (brotli)
+//   threshold: 1024,  // 1KB 이상만 압축
+// }));
 
 // =================================
 // Environment Validation Middleware
