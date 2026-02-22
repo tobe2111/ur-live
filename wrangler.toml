@@ -9,7 +9,7 @@ binding = "DB"
 database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
-# KV Namespaces
+# KV Namespaces (최적화됨 - RATE_LIMIT_KV 제거)
 [[kv_namespaces]]
 binding = "SESSION_KV"
 id = "3b522e69651f4d4f84a0cdf9430eeb72"
@@ -23,10 +23,8 @@ binding = "LIVE_CACHE"
 id = "e6667599e01d4af8b4687560eb39394c"
 preview_id = "750e3b6ed7714a8999abe19d8771be00"
 
-[[kv_namespaces]]
-binding = "RATE_LIMIT_KV"
-id = "bf9d3b4e6a314004aaa58fc38c3b5837"
-preview_id = "8c265378d3c34f04aab63df360e3b157"
+# ❌ RATE_LIMIT_KV 제거됨 (Task 4: Code Cleanup)
+# 사용하지 않는 KV 네임스페이스로 리소스 낭비 제거
 
 # Cron Triggers (Scheduled Events) - Workers only, not supported in Pages
 # For Pages, use Cloudflare Workers cron triggers or external schedulers
