@@ -43,6 +43,11 @@
     {
       "binding": "CACHE_KV",
       "id": "25ecc9ce2c464dd59edf5eb7d5fd1a10"
+    },
+    {
+      "binding": "LIVE_CACHE",
+      "id": "e6667599e01d4af8b4687560eb39394c",
+      "preview_id": "750e3b6ed7714a8999abe19d8771be00"
     }
   ]
   // R2 버킷 설정 (활성화 후 주석 해제)

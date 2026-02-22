@@ -11,6 +11,7 @@ import {
   processKakaoLogin, 
   AuthError 
 } from './auth-utils';
+import { getCached, setCached, invalidateCache, getCacheKey } from './utils/cache';
 
 // Logging utilities (inline - prevent bundling issues)
 interface ApiLogContext {
@@ -3563,16 +3564,31 @@ app.post('/api/orders', async (c) => {
 
 // 현재 상품 조회 API (폴링용)
 app.get('/api/streams/:streamId/current-product', async (c) => {
-  const { DB } = c.env;
+  const { DB, LIVE_CACHE } = c.env;
   const streamId = c.req.param('streamId');
 
   try {
+    // ✅ KV Cache 조회 (TTL 3초 - 실시간성 중요)
+    const cacheKey = `current-product:${streamId}`;
+    const cached = await getCached(LIVE_CACHE, cacheKey, 3);
+    
+    if (cached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: cached,
+      });
+    }
+
+    // 캐시 미스 - DB 조회
     // 라이브 스트림의 현재 상품 ID 조회
     const stream = await DB.prepare(
       'SELECT current_product_id FROM live_streams WHERE id = ?'
     ).bind(streamId).first();
 
     if (!stream || !stream.current_product_id) {
+      // null 결과도 캐시 (불필요한 DB 조회 방지)
+      await setCached(LIVE_CACHE, cacheKey, null, 3);
+      
       return c.json<ApiResponse>({
         success: true,
         data: null,
@@ -3589,12 +3605,17 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
       'SELECT * FROM product_options WHERE product_id = ?'
     ).bind(stream.current_product_id).all();
 
+    const result = {
+      product,
+      options: options.results,
+    };
+
+    // ✅ 결과 캐시 저장 (3초 TTL)
+    await setCached(LIVE_CACHE, cacheKey, result, 3);
+
     return c.json<ApiResponse>({
       success: true,
-      data: {
-        product,
-        options: options.results,
-      },
+      data: result,
     });
   } catch (err) {
     return c.json<ApiResponse>({
@@ -4401,6 +4422,10 @@ app.post('/api/seller/streams/:streamId/change-product', async (c) => {
       'UPDATE live_streams SET current_product_id = ?, updated_at = datetime("now") WHERE id = ?'
     ).bind(productId, streamId).run();
 
+    // ✅ 캐시 무효화 (현재 상품 변경됨)
+    const { LIVE_CACHE } = c.env;
+    await invalidateCache(LIVE_CACHE, `current-product:${streamId}`);
+
     return c.json<ApiResponse>({
       success: true,
       data: {
@@ -4463,6 +4488,10 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
     await DB.prepare(
       'UPDATE live_streams SET current_product_id = ?, updated_at = datetime("now") WHERE id = ?'
     ).bind(productId, streamId).run();
+
+    // ✅ 캐시 무효화
+    const { LIVE_CACHE } = c.env;
+    await invalidateCache(LIVE_CACHE, `current-product:${streamId}`);
 
     return c.json<ApiResponse>({
       success: true,
