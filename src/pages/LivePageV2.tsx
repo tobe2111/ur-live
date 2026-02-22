@@ -400,12 +400,8 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
       style={{ gap: '2px' }}
       onClick={onChatClick}
     >
-      {/* 연결 상태 표시 */}
-      {!isConnected && (
-        <p className="text-[10px] text-yellow-300/80 animate-pulse">
-          {error || '연결 중...'}
-        </p>
-      )}
+      {/* 연결 상태 표시 - 사용자에게 보이지 않음 (백그라운드 자동 재연결) */}
+      {/* SSE 연결이 끊어져도 자동으로 재연결되므로 알림 표시 안 함 */}
       
       {/* SSE 메시지 렌더링 */}
       {messages.map((msg) => (
