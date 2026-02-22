@@ -40,6 +40,13 @@ export interface CloudflareBindings {
    */
   CACHE_KV: KVNamespace;
   
+  /**
+   * Rate Limiting 저장소 (KV)
+   * @description API 요청 제한을 위한 저장소
+   * @required true
+   */
+  RATE_LIMIT_KV: KVNamespace;
+  
   // ========================================
   // 환경 변수 (Secrets)
   // ========================================

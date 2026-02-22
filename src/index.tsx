@@ -12,6 +12,16 @@ import {
   AuthError 
 } from './auth-utils';
 import { getCached, setCached, invalidateCache, getCacheKey } from './utils/cache';
+import { rateLimit, RateLimitPolicies } from './middleware/rateLimit';
+import {
+  validate,
+  UserRegistrationRules,
+  ProductCreationRules,
+  OrderCreationRules,
+  PaymentConfirmRules,
+  AlimtalkSendRules,
+  SearchQueryRules
+} from './lib/validation';
 
 // Logging utilities (inline - prevent bundling issues)
 interface ApiLogContext {
@@ -965,6 +975,24 @@ app.use('*', async (c, next) => {
 app.use('/api/*', cors());
 
 // =================================
+// Rate Limiting Middleware
+// =================================
+// 인증 엔드포인트 - 무차별 대입 공격 방지 (분당 5회)
+app.use(rateLimit(RateLimitPolicies.auth));
+
+// 알림톡 발송 - 비용 발생 방지 (분당 10회)
+app.use(rateLimit(RateLimitPolicies.alimtalk));
+
+// 주문 엔드포인트 (분당 10회)
+app.use(rateLimit(RateLimitPolicies.order));
+
+// 파일 업로드 (분당 5회)
+app.use(rateLimit(RateLimitPolicies.upload));
+
+// 일반 API 엔드포인트 (분당 60회, 인증 시 120회)
+app.use('/api/*', rateLimit(RateLimitPolicies.api));
+
+// =================================
 // Performance Monitoring Middleware
 // =================================
 app.use('/api/*', async (c, next) => {
@@ -1075,15 +1103,12 @@ async function getSession(SESSION_KV: KVNamespace, sessionToken: string) {
 }
 
 // 일반 사용자 회원가입 API
-app.post('/api/auth/user/register', cors(), async (c) => {
+app.post('/api/auth/user/register', cors(), validate(UserRegistrationRules), async (c) => {
   const { DB } = c.env;
   
   try {
-    const { email, password, name, phone } = await c.req.json();
-    
-    if (!email || !password || !name) {
-      return c.json({ success: false, error: '이메일, 비밀번호, 이름은 필수입니다' }, 400);
-    }
+    // 검증된 데이터 가져오기
+    const { email, password, name, phone } = c.get('validatedData');
     
     // 비밀번호 해시 (실제로는 bcrypt 사용 권장, 여기서는 간단히 처리)
     const passwordHash = `placeholder_hash_for_${password}`;

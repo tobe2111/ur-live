@@ -48,6 +48,11 @@
       "binding": "LIVE_CACHE",
       "id": "e6667599e01d4af8b4687560eb39394c",
       "preview_id": "750e3b6ed7714a8999abe19d8771be00"
+    },
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "bf9d3b4e6a314004aaa58fc38c3b5837",
+      "preview_id": "8c265378d3c34f04aab63df360e3b157"
     }
   ]
   // R2 버킷 설정 (활성화 후 주석 해제)
