@@ -114,8 +114,8 @@ export default function LoginPage() {
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
         localStorage.removeItem('loginReturnUrl')
         
-        // 로그인 성공 메시지
-        alert(`환영합니다, ${user.name}님!`)
+        // ✅ 로그인 성공 - alert 제거로 UX 개선
+        console.log('[Login] Success:', user.name)
         
         // Navigate to return URL
         navigate(savedReturnUrl)
@@ -161,8 +161,8 @@ export default function LoginPage() {
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
         localStorage.removeItem('loginReturnUrl')
 
-        // 로그인 성공 메시지
-        alert(`환영합니다, ${user.name}님!`)
+        // ✅ 로그인 성공 - alert 제거로 UX 개선
+        console.log('[Login] Success:', user.name)
         
         // Navigate to return URL
         navigate(savedReturnUrl)

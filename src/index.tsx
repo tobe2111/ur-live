@@ -1815,11 +1815,18 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     
     console.log('[Kakao Sync] Verifying access token');
     
+    // ✅ 카카오 로그인 처리 시작 시간 기록
+    const startTime = Date.now();
+    
     // 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
     const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
     
+    console.log('[Kakao Sync] ProcessKakaoLogin completed in', Date.now() - startTime, 'ms');
+    
     // ✅ SESSION_KV에 세션 저장 (중요!)
     const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // ✅ 30일
+    const kvStartTime = Date.now();
+    
     await c.env.SESSION_KV.put(
       `session:${sessionToken}`,
       JSON.stringify({
@@ -1830,8 +1837,8 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
       { expirationTtl: 30 * 24 * 60 * 60 }  // ✅ 30일 (초 단위)
     );
     
-    console.log('[Kakao Sync] ✅ Session saved to SESSION_KV for user:', user.id, '- Expires:', new Date(expiresAt).toISOString());
-    console.log('[Kakao Sync] Login successful');
+    console.log('[Kakao Sync] ✅ Session saved to SESSION_KV in', Date.now() - kvStartTime, 'ms');
+    console.log('[Kakao Sync] Total login time:', Date.now() - startTime, 'ms');
     
     return c.json({
       success: true,
