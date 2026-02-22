@@ -24,11 +24,32 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      
+      - name: Check build environment
+        run: |
+          echo "Node version: $(node -v)"
+          echo "NPM version: $(npm -v)"
+          echo "Memory: $(free -h)"
+          echo "Disk: $(df -h)"
 
       - name: Build
+        id: build
         run: npm run build
+        timeout-minutes: 15
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+        continue-on-error: true
+      
+      - name: Check build status
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "❌ Build failed. Common causes:"
+          echo "  1. Out of memory (increase NODE_OPTIONS)"
+          echo "  2. TypeScript errors (run 'npm run type-check' locally)"
+          echo "  3. Missing dependencies (check package.json)"
+          echo "  4. Build timeout (currently 15 minutes)"
+          ls -lh dist/ 2>/dev/null || echo "  - dist/ folder not created"
+          exit 1
 
       - name: Deploy to Cloudflare Pages
         id: deploy
@@ -37,3 +58,13 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=ur-live
+        continue-on-error: true
+      
+      - name: Check deployment status
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "⚠️ Cloudflare deployment failed. Check if secrets are configured:"
+          echo "  - CLOUDFLARE_API_TOKEN"
+          echo "  - CLOUDFLARE_ACCOUNT_ID"
+          echo "Configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+          exit 1
