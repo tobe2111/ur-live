@@ -23,6 +23,11 @@ import {
   SearchQueryRules
 } from './lib/validation';
 import { sendOrderConfirmation, sendShippingNotification, sendDeliveryCompleted } from './lib/alimtalk-auto';
+import { sendBulkAlimtalk, sendOrderAlimtalk, sendBulkFromFile, type AlimtalkRecipient, type BulkRecipientRow } from './lib/alimtalk-sender';
+import { runMonthlySettlement, generateSettlementReport, saveSettlementReport, getSettlementReport, getCurrentSettlementPeriod, getLastMonthSettlementPeriod } from './lib/settlement-automation';
+import { handleLiveStreamSSE, handleChatSSE, handleOrderNotificationSSE, handleStockAlertSSE } from './lib/sse-realtime';
+import { savePushSubscription, deletePushSubscription, sendOrderNotification, sendLiveStartNotification, sendLowStockNotification } from './lib/push-notification';
+import { imageOptimizationMiddleware } from './lib/image-optimization';
 
 // Logging utilities (inline - prevent bundling issues)
 interface ApiLogContext {
@@ -11169,4 +11174,525 @@ app.get('/api/seller/alimtalk/statistics', cors(), async (c) => {
   }
 });
 
-export default app;
+/**
+ * ====================================
+ * 알림톡 발송 API (셀러)
+ * ====================================
+ */
+
+/**
+ * POST /api/seller/alimtalk/send
+ * 알림톡 수동 발송
+ */
+app.post('/api/seller/alimtalk/send', cors(), async (c) => {
+  try {
+    const sellerId = c.req.header('X-Seller-ID')
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const body = await c.req.json()
+    const { templateId, recipients, variables } = body
+
+    if (!templateId || !Array.isArray(recipients) || recipients.length === 0) {
+      return c.json({ 
+        success: false, 
+        error: 'templateId and recipients are required' 
+      }, 400)
+    }
+
+    // 셀러의 알림톡 계정 조회
+    const account = await c.env.DB.prepare(`
+      SELECT id FROM alimtalk_accounts 
+      WHERE seller_id = ? AND status = 'active'
+    `).bind(parseInt(sellerId)).first<{ id: number }>()
+
+    if (!account) {
+      return c.json({ 
+        success: false, 
+        error: 'No active alimtalk account found' 
+      }, 404)
+    }
+
+    // 발송 실행
+    const result = await sendBulkAlimtalk(c.env as any, {
+      accountId: account.id,
+      templateId: parseInt(templateId),
+      recipients: recipients.map((r: any) => ({
+        phone: r.phone,
+        name: r.name,
+        variables: r.variables || {}
+      })),
+      variables: variables || {}
+    })
+
+    return c.json({
+      success: result.success,
+      data: {
+        total: result.totalRecipients,
+        sent: result.successCount,
+        failed: result.failedCount,
+        refunded: result.refundedAmount
+      },
+      messages: result.messages
+    })
+  } catch (error: any) {
+    console.error('[Alimtalk Send] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * POST /api/seller/alimtalk/send/order
+ * 주문 연동 알림톡 발송
+ */
+app.post('/api/seller/alimtalk/send/order', cors(), async (c) => {
+  try {
+    const sellerId = c.req.header('X-Seller-ID')
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const body = await c.req.json()
+    const { templateId, orderId, customMessage } = body
+
+    if (!templateId || !orderId) {
+      return c.json({ 
+        success: false, 
+        error: 'templateId and orderId are required' 
+      }, 400)
+    }
+
+    // 셀러의 알림톡 계정 조회
+    const account = await c.env.DB.prepare(`
+      SELECT id FROM alimtalk_accounts 
+      WHERE seller_id = ? AND status = 'active'
+    `).bind(parseInt(sellerId)).first<{ id: number }>()
+
+    if (!account) {
+      return c.json({ 
+        success: false, 
+        error: 'No active alimtalk account found' 
+      }, 404)
+    }
+
+    // 주문 소유권 확인
+    const order = await c.env.DB.prepare(`
+      SELECT id FROM orders WHERE id = ? AND seller_id = ?
+    `).bind(parseInt(orderId), parseInt(sellerId)).first()
+
+    if (!order) {
+      return c.json({ 
+        success: false, 
+        error: 'Order not found or unauthorized' 
+      }, 404)
+    }
+
+    // 발송 실행
+    const result = await sendOrderAlimtalk(
+      c.env as any,
+      account.id,
+      parseInt(templateId),
+      parseInt(orderId),
+      customMessage
+    )
+
+    return c.json({
+      success: result.success,
+      data: {
+        total: result.totalRecipients,
+        sent: result.successCount,
+        failed: result.failedCount,
+        refunded: result.refundedAmount
+      },
+      messages: result.messages
+    })
+  } catch (error: any) {
+    console.error('[Alimtalk Send Order] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * POST /api/seller/alimtalk/send/bulk
+ * CSV/Excel 대량 발송
+ */
+app.post('/api/seller/alimtalk/send/bulk', cors(), async (c) => {
+  try {
+    const sellerId = c.req.header('X-Seller-ID')
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const body = await c.req.json()
+    const { templateId, rows, variables } = body
+
+    if (!templateId || !Array.isArray(rows) || rows.length === 0) {
+      return c.json({ 
+        success: false, 
+        error: 'templateId and rows are required' 
+      }, 400)
+    }
+
+    // 셀러의 알림톡 계정 조회
+    const account = await c.env.DB.prepare(`
+      SELECT id FROM alimtalk_accounts 
+      WHERE seller_id = ? AND status = 'active'
+    `).bind(parseInt(sellerId)).first<{ id: number }>()
+
+    if (!account) {
+      return c.json({ 
+        success: false, 
+        error: 'No active alimtalk account found' 
+      }, 404)
+    }
+
+    // 발송 실행
+    const result = await sendBulkFromFile(
+      c.env as any,
+      account.id,
+      parseInt(templateId),
+      rows as BulkRecipientRow[],
+      variables || {}
+    )
+
+    return c.json({
+      success: result.success,
+      data: {
+        total: result.totalRecipients,
+        sent: result.successCount,
+        failed: result.failedCount,
+        refunded: result.refundedAmount
+      },
+      messages: result.messages
+    })
+  } catch (error: any) {
+    console.error('[Alimtalk Send Bulk] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * POST /api/seller/alimtalk/templates/:id/preview
+ * 템플릿 미리보기 (변수 치환 결과)
+ */
+app.post('/api/seller/alimtalk/templates/:id/preview', cors(), async (c) => {
+  try {
+    const sellerId = c.req.header('X-Seller-ID')
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const templateId = c.req.param('id')
+    const body = await c.req.json()
+    const { variables } = body
+
+    // 템플릿 조회
+    const template = await c.env.DB.prepare(`
+      SELECT 
+        t.template_content,
+        t.template_name
+      FROM alimtalk_templates t
+      JOIN alimtalk_accounts a ON t.account_id = a.id
+      WHERE t.id = ? AND a.seller_id = ?
+    `).bind(parseInt(templateId), parseInt(sellerId)).first<{
+      template_content: string
+      template_name: string
+    }>()
+
+    if (!template) {
+      return c.json({ 
+        success: false, 
+        error: 'Template not found' 
+      }, 404)
+    }
+
+    // 변수 치환
+    let preview = template.template_content
+    if (variables) {
+      Object.entries(variables).forEach(([key, value]) => {
+        const pattern = new RegExp(`#{${key}}`, 'g')
+        preview = preview.replace(pattern, value as string)
+      })
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        template_name: template.template_name,
+        original: template.template_content,
+        preview: preview,
+        required_variables: Array.from(
+          template.template_content.matchAll(/#{(\w+)}/g),
+          match => match[1]
+        )
+      }
+    })
+  } catch (error: any) {
+    console.error('[Alimtalk Preview] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * ====================================
+ * 정산 자동화 API
+ * ====================================
+ */
+
+/**
+ * GET /api/admin/settlements
+ * 정산 목록 조회
+ */
+app.get('/api/admin/settlements', cors(), async (c) => {
+  try {
+    const settlements = await c.env.DB.prepare(`
+      SELECT * FROM settlements
+      ORDER BY period_start DESC
+      LIMIT 50
+    `).all()
+
+    return c.json({
+      success: true,
+      data: settlements.results
+    })
+  } catch (error: any) {
+    console.error('[Admin Settlements] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * GET /api/admin/settlements/:id
+ * 정산 상세 조회
+ */
+app.get('/api/admin/settlements/:id', cors(), async (c) => {
+  try {
+    const settlementId = parseInt(c.req.param('id'))
+    const report = await getSettlementReport(c.env.DB, settlementId)
+
+    if (!report) {
+      return c.json({ success: false, error: 'Settlement not found' }, 404)
+    }
+
+    return c.json({
+      success: true,
+      data: report
+    })
+  } catch (error: any) {
+    console.error('[Admin Settlement Detail] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * POST /api/admin/settlements/generate
+ * 정산 수동 생성 (테스트용)
+ */
+app.post('/api/admin/settlements/generate', cors(), async (c) => {
+  try {
+    const body = await c.req.json()
+    const { startDate, endDate } = body
+
+    const period = startDate && endDate
+      ? { startDate, endDate }
+      : getLastMonthSettlementPeriod()
+
+    const report = await generateSettlementReport(c.env.DB, period)
+    await saveSettlementReport(c.env.DB, report)
+
+    return c.json({
+      success: true,
+      data: report
+    })
+  } catch (error: any) {
+    console.error('[Admin Generate Settlement] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * GET /api/seller/settlements
+ * 셀러 정산 내역 조회
+ */
+app.get('/api/seller/settlements', cors(), async (c) => {
+  try {
+    const sellerId = c.req.header('X-Seller-ID')
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const settlements = await c.env.DB.prepare(`
+      SELECT 
+        s.id,
+        s.period_start,
+        s.period_end,
+        sd.total_sales,
+        sd.total_orders,
+        sd.platform_fee,
+        sd.shipping_fee,
+        sd.refund_amount,
+        sd.settlement_amount,
+        sd.status,
+        sd.paid_at
+      FROM settlements s
+      JOIN settlement_details sd ON s.id = sd.settlement_id
+      WHERE sd.seller_id = ?
+      ORDER BY s.period_start DESC
+      LIMIT 50
+    `).bind(parseInt(sellerId)).all()
+
+    return c.json({
+      success: true,
+      data: settlements.results
+    })
+  } catch (error: any) {
+    console.error('[Seller Settlements] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * ====================================
+ * SSE 실시간 통신 API
+ * ====================================
+ */
+
+/**
+ * GET /api/live/:streamId/sse
+ * 라이브 스트림 실시간 업데이트
+ */
+app.get('/api/live/:streamId/sse', async (c) => {
+  const streamId = c.req.param('streamId')
+  return handleLiveStreamSSE(streamId, c.env as any)
+})
+
+/**
+ * GET /api/live/:streamId/chat/sse
+ * 실시간 채팅 스트림
+ */
+app.get('/api/live/:streamId/chat/sse', async (c) => {
+  const streamId = c.req.param('streamId')
+  return handleChatSSE(streamId, c.env as any)
+})
+
+/**
+ * GET /api/seller/orders/sse
+ * 셀러 주문 알림 (실시간)
+ */
+app.get('/api/seller/orders/sse', async (c) => {
+  const sellerId = c.req.header('X-Seller-ID')
+  if (!sellerId) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401)
+  }
+  return handleOrderNotificationSSE(sellerId, c.env as any)
+})
+
+/**
+ * GET /api/seller/stock/sse
+ * 셀러 재고 알림 (실시간)
+ */
+app.get('/api/seller/stock/sse', async (c) => {
+  const sellerId = c.req.header('X-Seller-ID')
+  if (!sellerId) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401)
+  }
+  return handleStockAlertSSE(sellerId, c.env as any)
+})
+
+/**
+ * ====================================
+ * Push Notification API
+ * ====================================
+ */
+
+/**
+ * POST /api/push/subscribe
+ * Push 알림 구독
+ */
+app.post('/api/push/subscribe', cors(), async (c) => {
+  try {
+    const userId = c.req.header('X-User-ID')
+    const userType = c.req.header('X-User-Type') as 'user' | 'seller' | 'admin'
+
+    if (!userId || !userType) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const subscription = await c.req.json()
+    
+    await savePushSubscription(
+      c.env.DB,
+      parseInt(userId),
+      userType,
+      subscription
+    )
+
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('[Push Subscribe] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * POST /api/push/unsubscribe
+ * Push 알림 구독 해제
+ */
+app.post('/api/push/unsubscribe', cors(), async (c) => {
+  try {
+    const { endpoint } = await c.req.json()
+
+    if (!endpoint) {
+      return c.json({ success: false, error: 'Endpoint required' }, 400)
+    }
+
+    await deletePushSubscription(c.env.DB, endpoint)
+
+    return c.json({ success: true })
+  } catch (error: any) {
+    console.error('[Push Unsubscribe] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * GET /api/push/vapid-public-key
+ * VAPID 공개 키 조회
+ */
+app.get('/api/push/vapid-public-key', cors(), async (c) => {
+  try {
+    // VAPID 키는 환경 변수에 저장되어 있어야 함
+    const publicKey = c.env.VAPID_PUBLIC_KEY || ''
+    
+    return c.json({
+      success: true,
+      publicKey: publicKey
+    })
+  } catch (error: any) {
+    console.error('[Push VAPID Key] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
+ * Cron Trigger Handler
+ * 매월 1일 00:00 UTC에 자동 실행
+ */
+export default {
+  async fetch(request: Request, env: any) {
+    return app.fetch(request, env)
+  },
+  
+  async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext) {
+    console.log('[Cron] Scheduled event triggered:', event.cron)
+    
+    try {
+      // 매월 정산 자동 실행
+      await runMonthlySettlement(env)
+      console.log('[Cron] Settlement automation completed')
+    } catch (error) {
+      console.error('[Cron] Settlement automation failed:', error)
+    }
+  }
+}
