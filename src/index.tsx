@@ -1384,10 +1384,12 @@ app.post('/api/auth/user/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
     }
     
-    // 사용자 조회
-    const user = await DB.prepare(
-      'SELECT * FROM users WHERE email = ?'
-    ).bind(email).first();
+    // 사용자 조회 (✅ 명시적 컬럼 선택 - 비밀번호 검증용)
+    const user = await DB.prepare(`
+      SELECT id, email, name, kakao_id, role, password_hash, created_at
+      FROM users 
+      WHERE email = ?
+    `).bind(email).first();
     
     if (!user) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
@@ -1877,9 +1879,11 @@ app.get('/auth/kakao/sync/callback', async (c) => {
     });
     
     try {
-      const existingUser = await DB.prepare(
-        'SELECT * FROM users WHERE kakao_id = ?'
-      ).bind(kakaoId).first();
+      const existingUser = await DB.prepare(`
+        SELECT id, kakao_id, name, email, profile_image, role, created_at
+        FROM users 
+        WHERE kakao_id = ?
+      `).bind(kakaoId).first();
       
       console.log('[Kakao Sync] Existing user check:', !!existingUser);
       
@@ -2213,9 +2217,11 @@ app.post('/api/auth/kakao/unlink', cors(), async (c) => {
       }, 401);
     }
     
-    // 2. 사용자 정보 조회 (access_token 포함)
+    // 2. 사용자 정보 조회 (✅ 명시적 컬럼 - password_hash 제외)
     const user = await DB.prepare(`
-      SELECT * FROM users WHERE id = (
+      SELECT u.id, u.email, u.name, u.kakao_id, u.role, u.profile_image, u.created_at
+      FROM users u
+      WHERE u.id = (
         SELECT user_id FROM admin_sessions WHERE session_token = ?
       )
     `).bind(sessionToken).first();
@@ -2321,9 +2327,11 @@ app.post('/webhooks/kakao/unlink', async (c) => {
       }, 400);
     }
     
-    // Kakao ID로 사용자 조회
+    // Kakao ID로 사용자 조회 (✅ 명시적 컬럼)
     const user = await DB.prepare(`
-      SELECT * FROM users WHERE kakao_id = ?
+      SELECT id, kakao_id, email, name, role, created_at
+      FROM users 
+      WHERE kakao_id = ?
     `).bind(user_id.toString()).first();
     
     if (!user) {
@@ -2382,9 +2390,12 @@ app.get('/api/auth/user/verify', cors(), async (c) => {
       return c.json({ success: false, error: '유효하지 않은 세션입니다' }, 401);
     }
     
-    // 사용자 정보 조회 (session에서 user_id 추출)
-    const userId = parseInt(sessionToken.split('_')[1]); // user_{id}_{timestamp}_{random} 형식
-    const user = await DB.prepare(`SELECT * FROM users WHERE id = ?`).bind(userId).first();
+    // 사용자 정보 조회 (✅ 명시적 컬럼 - password_hash 제외)
+    const user = await DB.prepare(`
+      SELECT id, email, name, kakao_id, role, profile_image, created_at
+      FROM users 
+      WHERE id = ?
+    `).bind(userId).first();
     
     if (!user) {
       return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
@@ -2888,72 +2899,34 @@ app.get('/api/products', async (c) => {
     // 캐시 키 생성
     const cacheKey = `products:list:${featured || 'all'}:${limit}:${offset}`;
 
-    // 캐시 확인
-    const cached = await getCachedData(CACHE_KV, cacheKey);
-    if (cached) {
+    // ✅ Stale-While-Revalidate: 메모리 캐시 우선 확인
+    const memCached = getFromMemoryCache(cacheKey);
+    if (memCached) {
+      // 캐시 히트: 즉시 반환하고 백그라운드에서 갱신
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const freshData = await fetchProductsList(DB, featured, limit, offset);
+            setToMemoryCache(cacheKey, freshData, 3600); // 1시간 TTL
+            await setCachedData(CACHE_KV, cacheKey, freshData, 300);
+          } catch (err) {
+            console.error('[Cache Revalidate] Products error:', err);
+          }
+        })()
+      );
+      
       return c.json<ApiResponse>({
         success: true,
-        data: cached,
+        data: memCached,
         cached: true,
       });
     }
 
-    // featured 파라미터가 있으면 featured seller의 상품만 조회
-    let query;
-    if (featured === 'true') {
-      query = `
-        SELECT 
-          p.id,
-          p.name,
-          p.description,
-          p.price,
-          p.original_price,
-          p.discount_rate,
-          p.image_url,
-          p.stock,
-          p.category,
-          p.seller_id,
-          s.display_name as seller_name,
-          COALESCE(SUM(oi.quantity), 0) as sold_count
-        FROM products p
-        JOIN sellers s ON p.seller_id = s.id
-        LEFT JOIN order_items oi ON p.id = oi.product_id
-        LEFT JOIN orders o ON oi.order_id = o.id
-        WHERE p.is_active = 1 
-          AND p.stock > 0 
-          AND s.is_featured_seller = 1
-        GROUP BY p.id
-        ORDER BY sold_count DESC, p.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
-    } else {
-      query = `
-        SELECT 
-          p.id,
-          p.name,
-          p.description,
-          p.price,
-          p.original_price,
-          p.discount_rate,
-          p.image_url,
-          p.stock,
-          p.category,
-          p.seller_id,
-          COALESCE(SUM(oi.quantity), 0) as sold_count
-        FROM products p
-        LEFT JOIN order_items oi ON p.id = oi.product_id
-        LEFT JOIN orders o ON oi.order_id = o.id
-        WHERE p.is_active = 1 AND p.stock > 0
-        GROUP BY p.id
-        ORDER BY sold_count DESC, p.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
-    }
-
-    const result = await DB.prepare(query).bind(limit, offset).all();
-    const products = result.results || [];
-
-    // 캐시 저장 (5분)
+    // 캐시 미스: DB 조회 후 캐시 저장
+    const products = await fetchProductsList(DB, featured, limit, offset);
+    
+    // 메모리 캐시 + KV 캐시 저장
+    setToMemoryCache(cacheKey, products, 3600);
     await setCachedData(CACHE_KV, cacheKey, products, 300);
 
     return c.json<ApiResponse>({
@@ -2970,33 +2943,50 @@ app.get('/api/products', async (c) => {
   }
 });
 
-// Popular Products API - 인기 상품 목록
-app.get('/api/products/popular', async (c) => {
-  const { DB, CACHE_KV } = c.env;
-
-  try {
-    // 캐시 확인
-    const cached = await getCachedData(CACHE_KV, 'products:popular');
-    if (cached) {
-      return c.json<ApiResponse>({
-        success: true,
-        data: cached,
-        cached: true,
-      });
-    }
-
-    // 인기 상품 조회 (주문이 많은 순서대로, 최대 20개)
-    const products = await DB.prepare(`
+/**
+ * 상품 목록 조회 헬퍼 함수
+ */
+async function fetchProductsList(DB: D1Database, featured: string | undefined, limit: number, offset: number) {
+  let query;
+  if (featured === 'true') {
+    query = `
       SELECT 
         p.id,
         p.name,
         p.description,
-        p.price as current_price,
+        p.price,
         p.original_price,
         p.discount_rate,
         p.image_url,
         p.stock,
         p.category,
+        p.seller_id,
+        s.display_name as seller_name,
+        COALESCE(SUM(oi.quantity), 0) as sold_count
+      FROM products p
+      JOIN sellers s ON p.seller_id = s.id
+      LEFT JOIN order_items oi ON p.id = oi.product_id
+      LEFT JOIN orders o ON oi.order_id = o.id
+      WHERE p.is_active = 1 
+        AND p.stock > 0 
+        AND s.is_featured_seller = 1
+      GROUP BY p.id
+      ORDER BY sold_count DESC, p.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+  } else {
+    query = `
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.price,
+        p.original_price,
+        p.discount_rate,
+        p.image_url,
+        p.stock,
+        p.category,
+        p.seller_id,
         COALESCE(SUM(oi.quantity), 0) as sold_count
       FROM products p
       LEFT JOIN order_items oi ON p.id = oi.product_id
@@ -3004,13 +2994,50 @@ app.get('/api/products/popular', async (c) => {
       WHERE p.is_active = 1 AND p.stock > 0
       GROUP BY p.id
       ORDER BY sold_count DESC, p.created_at DESC
-      LIMIT 20
-    `).all();
+      LIMIT ? OFFSET ?
+    `;
+  }
 
-    const popularProducts = products.results || [];
+  const result = await DB.prepare(query).bind(limit, offset).all();
+  return result.results || [];
+}
 
-    // 캐시 저장 (10분)
-    await setCachedData(CACHE_KV, 'products:popular', popularProducts, 600);
+// Popular Products API - 인기 상품 목록
+app.get('/api/products/popular', async (c) => {
+  const { DB, CACHE_KV } = c.env;
+
+  try {
+    const cacheKey = 'products:popular';
+    
+    // ✅ Stale-While-Revalidate: 메모리 캐시 우선
+    const memCached = getFromMemoryCache(cacheKey);
+    if (memCached) {
+      // 백그라운드 갱신
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const freshData = await fetchPopularProducts(DB);
+            setToMemoryCache(cacheKey, freshData, 3600);
+            await setCachedData(CACHE_KV, cacheKey, freshData, 600);
+          } catch (err) {
+            console.error('[Cache Revalidate] Popular products error:', err);
+          }
+        })()
+      );
+      
+      return c.json<ApiResponse>({
+        success: true,
+        data: memCached,
+        cached: true,
+      });
+    }
+
+    // 캐시 미스: DB 조회
+    const popularProducts = await fetchPopularProducts(DB);
+    
+    // 캐시 저장
+    setToMemoryCache(cacheKey, popularProducts, 3600);
+    await setCachedData(CACHE_KV, cacheKey, popularProducts, 600);
 
     return c.json<ApiResponse>({
       success: true,
@@ -3025,6 +3052,34 @@ app.get('/api/products/popular', async (c) => {
     }, 500);
   }
 });
+
+/**
+ * 인기 상품 조회 헬퍼 함수
+ */
+async function fetchPopularProducts(DB: D1Database) {
+  const products = await DB.prepare(`
+    SELECT 
+      p.id,
+      p.name,
+      p.description,
+      p.price as current_price,
+      p.original_price,
+      p.discount_rate,
+      p.image_url,
+      p.stock,
+      p.category,
+      COALESCE(SUM(oi.quantity), 0) as sold_count
+    FROM products p
+    LEFT JOIN order_items oi ON p.id = oi.product_id
+    LEFT JOIN orders o ON oi.order_id = o.id
+    WHERE p.is_active = 1 AND p.stock > 0
+    GROUP BY p.id
+    ORDER BY sold_count DESC, p.created_at DESC
+    LIMIT 20
+  `).all();
+
+  return products.results || [];
+}
 
 // 상품 검색 API
 // 검색 자동완성 API
@@ -3215,34 +3270,47 @@ app.get('/api/products/:id', async (c) => {
   const id = c.req.param('id');
 
   try {
-    // 상품 정보 조회 (seller 정보 포함)
-    const product = await DB.prepare(`
-      SELECT 
-        p.*,
-        COALESCE(s.name, s.username, 'UR Live') as seller_name
-      FROM products p
-      LEFT JOIN sellers s ON p.seller_id = s.id
-      WHERE p.id = ? AND p.is_active = 1
-    `).bind(id).first();
+    const cacheKey = `product:detail:${id}`;
+    
+    // ✅ Stale-While-Revalidate: 메모리 캐시 우선
+    const memCached = getFromMemoryCache(cacheKey);
+    if (memCached) {
+      // 백그라운드 갱신
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const freshData = await fetchProductDetail(DB, id);
+            setToMemoryCache(cacheKey, freshData, 1800); // 30분 TTL
+          } catch (err) {
+            console.error('[Cache Revalidate] Product detail error:', err);
+          }
+        })()
+      );
+      
+      return c.json<ApiResponse>({
+        success: true,
+        data: memCached,
+        cached: true,
+      });
+    }
 
-    if (!product) {
+    // 캐시 미스: DB 조회
+    const productData = await fetchProductDetail(DB, id);
+    
+    if (!productData) {
       return c.json<ApiResponse>({
         success: false,
         error: 'Product not found',
       }, 404);
     }
-
-    // 상품 옵션 조회
-    const options = await DB.prepare(
-      'SELECT * FROM product_options WHERE product_id = ?'
-    ).bind(id).all();
-
+    
+    // 캐시 저장
+    setToMemoryCache(cacheKey, productData, 1800);
+    
     return c.json<ApiResponse>({
       success: true,
-      data: {
-        product,
-        options: options.results,
-      },
+      data: productData,
+      cached: false,
     });
   } catch (err) {
     return c.json<ApiResponse>({
@@ -3251,6 +3319,35 @@ app.get('/api/products/:id', async (c) => {
     }, 500);
   }
 });
+
+/**
+ * 상품 상세 조회 헬퍼 함수
+ */
+async function fetchProductDetail(DB: D1Database, id: string) {
+  // 상품 정보 조회 (seller 정보 포함)
+  const product = await DB.prepare(`
+    SELECT 
+      p.*,
+      COALESCE(s.name, s.username, 'UR Live') as seller_name
+    FROM products p
+    LEFT JOIN sellers s ON p.seller_id = s.id
+    WHERE p.id = ? AND p.is_active = 1
+  `).bind(id).first();
+
+  if (!product) {
+    return null;
+  }
+
+  // 상품 옵션 조회
+  const options = await DB.prepare(
+    'SELECT * FROM product_options WHERE product_id = ?'
+  ).bind(id).all();
+
+  return {
+    product,
+    options: options.results,
+  };
+}
 
 // 실시간 재고 확인 API
 app.get('/api/products/:id/stock', async (c) => {
@@ -4020,10 +4117,13 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
       });
     }
 
-    // 상품 정보 조회
-    const product = await DB.prepare(
-      'SELECT * FROM products WHERE id = ?'
-    ).bind(stream.current_product_id).first();
+    // 상품 정보 조회 (✅ 명시적 컬럼 선택)
+    const product = await DB.prepare(`
+      SELECT id, name, description, price, original_price, discount_rate,
+             image_url, stock, category, seller_id, is_active
+      FROM products 
+      WHERE id = ?
+    `).bind(stream.current_product_id).first();
 
     // 상품 옵션 조회
     const options = await DB.prepare(
@@ -4997,10 +5097,13 @@ app.post('/api/seller/streams/:streamId/change-product', async (c) => {
       return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
     }
 
-    // Get product info (allow any active product from this seller)
-    const product = await DB.prepare(
-      'SELECT * FROM products WHERE id = ? AND seller_id = ? AND is_active = 1'
-    ).bind(productId, auth.sellerId).first();
+    // Get product info (✅ 명시적 컬럼 선택)
+    const product = await DB.prepare(`
+      SELECT id, name, description, price, original_price, discount_rate,
+             image_url, stock, category, seller_id, is_active
+      FROM products 
+      WHERE id = ? AND seller_id = ? AND is_active = 1
+    `).bind(productId, auth.sellerId).first();
 
     if (!product) {
       return c.json({
@@ -6600,10 +6703,13 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
     const body = await c.req.json();
     const cancelReason = body.reason || '사유 없음';
 
-    // Get order
-    const order = await DB.prepare(
-      'SELECT * FROM orders WHERE id = ?'
-    ).bind(orderId).first();
+    // Get order (✅ 명시적 컬럼 선택)
+    const order = await DB.prepare(`
+      SELECT id, order_number, user_id, status, total_amount, 
+             payment_key, payment_status, created_at
+      FROM orders 
+      WHERE id = ?
+    `).bind(orderId).first();
 
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
@@ -7982,7 +8088,13 @@ app.post('/api/orders/:orderNumber/refund', async (c) => {
   const { reason } = await c.req.json();
 
   try {
-    const order = await DB.prepare('SELECT * FROM orders WHERE order_number = ?').bind(orderNumber).first();
+    const order = await DB.prepare(`
+      SELECT id, order_number, user_id, status, total_amount,
+             payment_key, payment_status, shipping_address, shipping_name,
+             shipping_phone, created_at, updated_at
+      FROM orders 
+      WHERE order_number = ?
+    `).bind(orderNumber).first();
 
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
@@ -8046,23 +8158,40 @@ app.get('/api/sellers', async (c) => {
   const { limit = '20', offset = '0' } = c.req.query();
   
   try {
-    // 활성 셀러만 조회 (is_active = 1)
-    const query = `
-      SELECT id, business_name, name as display_name, 
-             commission_rate, created_at
-      FROM sellers 
-      WHERE is_active = 1
-      ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
-    `;
+    const cacheKey = `sellers:list:${limit}:${offset}`;
     
-    const { results } = await DB.prepare(query)
-      .bind(parseInt(limit), parseInt(offset))
-      .all();
+    // ✅ Stale-While-Revalidate: 메모리 캐시 우선
+    const memCached = getFromMemoryCache(cacheKey);
+    if (memCached) {
+      // 백그라운드 갱신
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const freshData = await fetchSellersList(DB, parseInt(limit), parseInt(offset));
+            setToMemoryCache(cacheKey, freshData, 3600);
+          } catch (err) {
+            console.error('[Cache Revalidate] Sellers error:', err);
+          }
+        })()
+      );
+      
+      return c.json<ApiResponse>({
+        success: true,
+        data: memCached,
+        cached: true,
+      });
+    }
+
+    // 캐시 미스: DB 조회
+    const sellers = await fetchSellersList(DB, parseInt(limit), parseInt(offset));
+    
+    // 캐시 저장
+    setToMemoryCache(cacheKey, sellers, 3600);
     
     return c.json<ApiResponse>({
       success: true,
-      data: results,
+      data: sellers,
+      cached: false,
     });
   } catch (err) {
     console.error('[API] Sellers list error:', err);
@@ -8072,6 +8201,26 @@ app.get('/api/sellers', async (c) => {
     }, 500);
   }
 });
+
+/**
+ * 셀러 목록 조회 헬퍼 함수
+ */
+async function fetchSellersList(DB: D1Database, limit: number, offset: number) {
+  const query = `
+    SELECT id, business_name, name as display_name, 
+           commission_rate, created_at
+    FROM sellers 
+    WHERE is_active = 1
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+  
+  const { results } = await DB.prepare(query)
+    .bind(limit, offset)
+    .all();
+  
+  return results;
+}
 
 // =================================
 // Seller Management APIs (Admin only)
