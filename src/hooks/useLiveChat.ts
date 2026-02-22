@@ -141,7 +141,23 @@ export function useLiveChat(
             return;
           }
 
-          // 채팅 메시지 추가
+          // SSE 서버 형식: { type: 'chat', data: [...messages], timestamp }
+          if (data.type === 'chat' && data.data && Array.isArray(data.data)) {
+            // 메시지 배열을 개별 메시지로 변환
+            const formattedMessages = data.data.map((msg: any) => ({
+              id: msg.id.toString(),
+              userId: msg.user_id,
+              userName: msg.user_name,
+              userType: msg.is_seller ? 'streamer' : (msg.is_admin ? 'system' : 'viewer'),
+              message: msg.message,
+              timestamp: new Date(msg.created_at).getTime()
+            }));
+            
+            setMessages(prev => [...prev, ...formattedMessages]);
+            return;
+          }
+
+          // 레거시 형식 지원: { type: 'message', message: {...} }
           if (data.type === 'message' && data.message) {
             setMessages(prev => [...prev, data.message]);
           }
