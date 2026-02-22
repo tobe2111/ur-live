@@ -29,6 +29,7 @@ import { runMonthlySettlement, generateSettlementReport, saveSettlementReport, g
 import { handleLiveStreamSSE, handleChatSSE, handleOrderNotificationSSE, handleStockAlertSSE } from './lib/sse-realtime';
 import { savePushSubscription, deletePushSubscription, sendOrderNotification, sendLiveStartNotification, sendLowStockNotification } from './lib/push-notification';
 import { imageOptimizationMiddleware } from './lib/image-optimization';
+import { AppError, ErrorFactory } from './lib/errors';
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -10972,6 +10973,29 @@ app.notFound((c) => {
 // Global error handler
 app.onError((err, c) => {
   const path = c.req.path;
+  
+  // AppError 인스턴스인지 확인
+  if (err instanceof AppError) {
+    console.error('[AppError]', {
+      path,
+      method: c.req.method,
+      code: err.code,
+      message: err.message,
+      statusCode: err.statusCode
+    });
+    
+    return c.json({ 
+      success: false,
+      error: {
+        code: err.code,
+        message: err.message,
+        ...(err.details && { details: err.details }),
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+      }
+    }, err.statusCode);
+  }
+  
+  // 일반 에러 로깅
   console.error('[Global Error Handler]', {
     path,
     method: c.req.method,

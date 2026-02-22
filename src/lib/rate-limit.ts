@@ -1,7 +1,7 @@
 /**
  * Rate Limiting Middleware
  * 
- * Cloudflare Workers에서 KV를 사용한 Rate Limiting 구현
+ * 메모리 기반 Rate Limiting 구현 (Cloudflare Workers 최적화)
  * IP 기반 + 사용자 ID 기반 제한 지원
  */
 
@@ -11,6 +11,24 @@ interface RateLimitConfig {
   keyPrefix?: string;    // 키 접두사
   skipSuccessfulRequests?: boolean;  // 성공 요청 제외 여부
 }
+
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
+}
+
+// 전역 메모리 캐시 (Cloudflare Workers isolate 내에서 공유)
+const rateLimitCache = new Map<string, RateLimitEntry>();
+
+// 주기적 정리 (1분마다)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimitCache.entries()) {
+    if (entry.resetTime < now) {
+      rateLimitCache.delete(key);
+    }
+  }
+}, 60 * 1000);
 
 /**
  * Rate Limit 미들웨어 생성
@@ -24,27 +42,27 @@ export function createRateLimiter(config: RateLimitConfig) {
   } = config;
 
   return async (c: any, next: any) => {
-    const { RATE_LIMIT_KV } = c.env;
-    
-    if (!RATE_LIMIT_KV) {
-      // KV가 없으면 제한 없이 통과
-      console.warn('[Rate Limit] RATE_LIMIT_KV not configured');
-      return next();
-    }
-
     // 키 생성: IP 주소 우선, 없으면 사용자 ID
     const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
     const userId = c.get('userId'); // requireAuth 미들웨어에서 설정된 userId
     const identifier = userId ? `user:${userId}` : `ip:${ip}`;
     const key = `${keyPrefix}:${identifier}`;
 
-    // 현재 요청 수 조회
-    const currentCount = await RATE_LIMIT_KV.get(key);
-    const count = currentCount ? parseInt(currentCount) : 0;
+    const now = Date.now();
+    const resetTime = now + windowMs;
 
-    if (count >= maxRequests) {
+    // 현재 요청 수 조회
+    let entry = rateLimitCache.get(key);
+    
+    // 만료되었거나 없으면 새로 생성
+    if (!entry || entry.resetTime < now) {
+      entry = { count: 0, resetTime };
+      rateLimitCache.set(key, entry);
+    }
+
+    if (entry.count >= maxRequests) {
       // 제한 초과
-      const retryAfter = Math.ceil(windowMs / 1000);
+      const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
       return c.json({
         success: false,
         error: {
@@ -56,7 +74,7 @@ export function createRateLimiter(config: RateLimitConfig) {
         'Retry-After': retryAfter.toString(),
         'X-RateLimit-Limit': maxRequests.toString(),
         'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': new Date(Date.now() + windowMs).toISOString()
+        'X-RateLimit-Reset': new Date(entry.resetTime).toISOString()
       });
     }
 
@@ -69,14 +87,12 @@ export function createRateLimiter(config: RateLimitConfig) {
     }
 
     // 카운터 증가
-    const newCount = count + 1;
-    const ttl = Math.ceil(windowMs / 1000);
-    await RATE_LIMIT_KV.put(key, newCount.toString(), { expirationTtl: ttl });
+    entry.count++;
 
     // Rate limit 정보를 헤더에 추가
     c.res.headers.set('X-RateLimit-Limit', maxRequests.toString());
-    c.res.headers.set('X-RateLimit-Remaining', Math.max(0, maxRequests - newCount).toString());
-    c.res.headers.set('X-RateLimit-Reset', new Date(Date.now() + windowMs).toISOString());
+    c.res.headers.set('X-RateLimit-Remaining', Math.max(0, maxRequests - entry.count).toString());
+    c.res.headers.set('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
   };
 }
 

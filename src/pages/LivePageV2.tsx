@@ -384,7 +384,7 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
   const scrollRef = useRef<HTMLDivElement>(null)
   
   // 🔥 SSE 기반 실시간 채팅
-  const { messages, isConnected, error } = useLiveChat(streamId, !!streamId)
+  const { messages, isConnected, error, sendMessage } = useLiveChat(streamId, !!streamId)
 
   // 자동 스크롤
   useEffect(() => {
@@ -656,6 +656,9 @@ function ReelCard({
   const [sendingMessage, setSendingMessage] = useState(false)
 
   const { product, stream } = reel
+  
+  // 🔥 SSE 기반 실시간 채팅 (메시지 전송용)
+  const { sendMessage: sendChatMessage } = useLiveChat(stream.id, true)
 
   // YouTube Player Integration
   useEffect(() => {
@@ -974,25 +977,17 @@ function ReelCard({
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
 
-      // Add system message to Firebase chat
+      // 🔥 SSE 기반 시스템 메시지 전송
       try {
-        // @ts-ignore
-        if (typeof window.firebase !== 'undefined' && window.firebase) {
-          // @ts-ignore
-          const database = window.firebase.database()
-          const chatRef = database.ref(`chats/stream${stream.id}`)
-          
-          const userName = localStorage.getItem('user_name') || '익명'
-          const maskedName = maskUserName(userName)
-          
-          chatRef.push({
-            username: '🎉 시스템',
-            text: `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
-            // @ts-ignore
-            timestamp: window.firebase.database.ServerValue.TIMESTAMP,
-            isSystem: true
-          })
-        }
+        const userName = localStorage.getItem('user_name') || '익명'
+        const maskedName = maskUserName(userName)
+        
+        await sendChatMessage(
+          `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
+          0, // System user ID
+          '🎉 시스템',
+          'viewer'
+        )
       } catch (error) {
         console.error('시스템 메시지 전송 실패:', error)
       }
@@ -1088,23 +1083,16 @@ function ReelCard({
 
       const userName = localStorage.getItem('user_name') || '익명'
 
-      // @ts-ignore
-      if (typeof window.firebase !== 'undefined' && window.firebase) {
-        // @ts-ignore
-        const database = window.firebase.database()
-        const chatRef = database.ref(`chats/stream${stream.id}`)
-        
-        await chatRef.push({
-          username: userName,
-          text: chatMessage.trim(),
-          // @ts-ignore
-          timestamp: window.firebase.database.ServerValue.TIMESTAMP,
-          isSystem: false
-        })
+      // 🔥 SSE 기반 메시지 전송
+      await sendChatMessage(
+        chatMessage.trim(),
+        Number(userId),
+        userName,
+        'viewer'
+      )
 
-        setChatMessage('')
-        setChatModalOpen(false)
-      }
+      setChatMessage('')
+      setChatModalOpen(false)
     } catch (error) {
       console.error('Failed to send message:', error)
       showAlert('메시지 전송에 실패했습니다.', 'error', '전송 실패')
