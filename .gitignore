@@ -8,3 +8,10 @@ node_modules/
 .next/
 .env*.local
 .DS_Store
+
+# 🔒 CRITICAL: DO NOT ignore these React version protection files
+# These files prevent React 19 upgrades that cause forwardRef errors
+# - REACT_VERSION_POLICY.md
+# - scripts/check-react-version.js
+# - scripts/verify-react-version.js
+# - .npmrc

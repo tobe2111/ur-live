@@ -21,9 +21,37 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+      
+      - name: Verify React Version (Protection Layer)
+        run: |
+          echo "🔒 Verifying React version before installation..."
+          REACT_VERSION=$(node -p "require('./package.json').dependencies.react")
+          echo "React version in package.json: $REACT_VERSION"
+          if [[ "$REACT_VERSION" != "18.3.1" && "$REACT_VERSION" != "^18.3.1" ]]; then
+            echo "❌ CRITICAL ERROR: Wrong React version detected!"
+            echo "   Expected: 18.3.1"
+            echo "   Found: $REACT_VERSION"
+            echo "   This will cause forwardRef errors and white screens!"
+            exit 1
+          fi
+          echo "✅ React version check passed"
 
       - name: Install dependencies
         run: npm ci
+      
+      - name: Verify Installed React Version (Post-Install)
+        run: |
+          echo "🔍 Verifying installed React version in node_modules..."
+          INSTALLED_VERSION=$(node -p "require('./node_modules/react/package.json').version")
+          echo "Installed React version: $INSTALLED_VERSION"
+          if [[ "$INSTALLED_VERSION" != "18.3.1" ]]; then
+            echo "❌ ERROR: Wrong React version installed!"
+            echo "   Expected: 18.3.1"
+            echo "   Installed: $INSTALLED_VERSION"
+            echo "   Build will fail with forwardRef errors!"
+            exit 1
+          fi
+          echo "✅ Post-install verification passed"
       
       - name: Check build environment
         run: |
