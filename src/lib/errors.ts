@@ -1,179 +1,245 @@
 /**
- * 표준화된 에러 응답 타입 및 헬퍼 함수
+ * Standardized Error Handling for Hono Application
+ * 
+ * Provides consistent error responses across all 177+ API endpoints
+ * Improves debugging and user experience with clear error codes
  */
 
+import type { Context } from 'hono';
+
 /**
- * API 에러 코드
+ * Custom Application Error Class
  */
-export enum ErrorCode {
-  // 인증/권한 관련
-  AUTH_REQUIRED = 'AUTH_REQUIRED',
-  INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
-  SESSION_EXPIRED = 'SESSION_EXPIRED',
-  ADMIN_ONLY = 'ADMIN_ONLY',
-  SELLER_ONLY = 'SELLER_ONLY',
-  
-  // 리소스 관련
-  PRODUCT_NOT_FOUND = 'PRODUCT_NOT_FOUND',
-  STREAM_NOT_FOUND = 'STREAM_NOT_FOUND',
-  ORDER_NOT_FOUND = 'ORDER_NOT_FOUND',
-  USER_NOT_FOUND = 'USER_NOT_FOUND',
-  
-  // 비즈니스 로직 관련
-  INSUFFICIENT_STOCK = 'INSUFFICIENT_STOCK',
-  PAYMENT_FAILED = 'PAYMENT_FAILED',
-  SELLER_NOT_APPROVED = 'SELLER_NOT_APPROVED',
-  DUPLICATE_EMAIL = 'DUPLICATE_EMAIL',
-  INVALID_INPUT = 'INVALID_INPUT',
-  
-  // 시스템 관련
-  DATABASE_ERROR = 'DATABASE_ERROR',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    public code: string,
+    message: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'AppError';
+    Error.captureStackTrace(this, this.constructor);
+  }
 }
 
 /**
- * 표준 에러 응답 인터페이스
+ * Error Response Interface
  */
 export interface ErrorResponse {
   success: false;
   error: {
-    code: ErrorCode | string;
+    code: string;
     message: string;
-    details?: string; // 개발 환경에서만 포함
+    details?: any;
   };
 }
 
 /**
- * 표준 성공 응답 인터페이스
+ * Error Codes Enum
  */
-export interface SuccessResponse<T = any> {
-  success: true;
-  data: T;
-  cached?: boolean;
-}
+export const ErrorCode = {
+  // Authentication Errors (AUTH_*)
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  AUTH_INVALID_TOKEN: 'AUTH_INVALID_TOKEN',
+  AUTH_INVALID_CREDENTIALS: 'AUTH_INVALID_CREDENTIALS',
+  AUTH_FORBIDDEN: 'AUTH_FORBIDDEN',
+  AUTH_SESSION_EXPIRED: 'AUTH_SESSION_EXPIRED',
+  
+  // Resource Errors (RESOURCE_*)
+  RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
+  RESOURCE_CONFLICT: 'RESOURCE_CONFLICT',
+  RESOURCE_ALREADY_EXISTS: 'RESOURCE_ALREADY_EXISTS',
+  
+  // Validation Errors (VALIDATION_*)
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  VALIDATION_MISSING_FIELD: 'VALIDATION_MISSING_FIELD',
+  VALIDATION_INVALID_FORMAT: 'VALIDATION_INVALID_FORMAT',
+  VALIDATION_OUT_OF_RANGE: 'VALIDATION_OUT_OF_RANGE',
+  
+  // Business Logic Errors (BUSINESS_*)
+  BUSINESS_INSUFFICIENT_STOCK: 'BUSINESS_INSUFFICIENT_STOCK',
+  BUSINESS_ORDER_CANCELLED: 'BUSINESS_ORDER_CANCELLED',
+  BUSINESS_PAYMENT_FAILED: 'BUSINESS_PAYMENT_FAILED',
+  BUSINESS_REFUND_NOT_ALLOWED: 'BUSINESS_REFUND_NOT_ALLOWED',
+  BUSINESS_DUPLICATE_ACTION: 'BUSINESS_DUPLICATE_ACTION',
+  BUSINESS_INVALID_STATUS: 'BUSINESS_INVALID_STATUS',
+  
+  // System Errors (SYSTEM_*)
+  SYSTEM_DB_ERROR: 'SYSTEM_DB_ERROR',
+  SYSTEM_EXTERNAL_API_ERROR: 'SYSTEM_EXTERNAL_API_ERROR',
+  SYSTEM_INTERNAL_ERROR: 'SYSTEM_INTERNAL_ERROR',
+  SYSTEM_TIMEOUT: 'SYSTEM_TIMEOUT',
+  
+  // Rate Limiting (RATE_*)
+  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
+} as const;
 
 /**
- * 에러 코드별 사용자 친화적 메시지 매핑
+ * Pre-defined Error Factories
  */
-const ERROR_MESSAGES: Record<ErrorCode, string> = {
-  // 인증/권한
-  [ErrorCode.AUTH_REQUIRED]: '로그인이 필요합니다',
-  [ErrorCode.INVALID_CREDENTIALS]: '이메일 또는 비밀번호가 일치하지 않습니다',
-  [ErrorCode.SESSION_EXPIRED]: '세션이 만료되었습니다. 다시 로그인해주세요',
-  [ErrorCode.ADMIN_ONLY]: '관리자 권한이 필요합니다',
-  [ErrorCode.SELLER_ONLY]: '판매자 권한이 필요합니다',
+export const ErrorFactory = {
+  // Authentication
+  authRequired: (message = '인증이 필요합니다') =>
+    new AppError(401, ErrorCode.AUTH_REQUIRED, message),
   
-  // 리소스
-  [ErrorCode.PRODUCT_NOT_FOUND]: '상품을 찾을 수 없습니다',
-  [ErrorCode.STREAM_NOT_FOUND]: '라이브 스트림을 찾을 수 없습니다',
-  [ErrorCode.ORDER_NOT_FOUND]: '주문을 찾을 수 없습니다',
-  [ErrorCode.USER_NOT_FOUND]: '사용자를 찾을 수 없습니다',
+  invalidToken: (message = '유효하지 않은 토큰입니다') =>
+    new AppError(401, ErrorCode.AUTH_INVALID_TOKEN, message),
   
-  // 비즈니스 로직
-  [ErrorCode.INSUFFICIENT_STOCK]: '재고가 부족합니다',
-  [ErrorCode.PAYMENT_FAILED]: '결제에 실패했습니다',
-  [ErrorCode.SELLER_NOT_APPROVED]: '승인 대기 중인 판매자입니다',
-  [ErrorCode.DUPLICATE_EMAIL]: '이미 가입된 이메일입니다',
-  [ErrorCode.INVALID_INPUT]: '입력값이 올바르지 않습니다',
+  invalidCredentials: (message = '이메일 또는 비밀번호가 일치하지 않습니다') =>
+    new AppError(401, ErrorCode.AUTH_INVALID_CREDENTIALS, message),
   
-  // 시스템
-  [ErrorCode.DATABASE_ERROR]: '데이터베이스 오류가 발생했습니다',
-  [ErrorCode.NETWORK_ERROR]: '네트워크 오류가 발생했습니다',
-  [ErrorCode.UNKNOWN_ERROR]: '알 수 없는 오류가 발생했습니다',
+  forbidden: (message = '접근 권한이 없습니다') =>
+    new AppError(403, ErrorCode.AUTH_FORBIDDEN, message),
+  
+  sessionExpired: (message = '세션이 만료되었습니다') =>
+    new AppError(401, ErrorCode.AUTH_SESSION_EXPIRED, message),
+  
+  // Resource
+  notFound: (resource: string, message?: string) =>
+    new AppError(
+      404, 
+      ErrorCode.RESOURCE_NOT_FOUND, 
+      message || `${resource}을(를) 찾을 수 없습니다`
+    ),
+  
+  conflict: (message = '리소스 충돌이 발생했습니다') =>
+    new AppError(409, ErrorCode.RESOURCE_CONFLICT, message),
+  
+  alreadyExists: (resource: string, message?: string) =>
+    new AppError(
+      409,
+      ErrorCode.RESOURCE_ALREADY_EXISTS,
+      message || `${resource}이(가) 이미 존재합니다`
+    ),
+  
+  // Validation
+  validationFailed: (details?: any, message = '입력값 검증에 실패했습니다') =>
+    new AppError(400, ErrorCode.VALIDATION_FAILED, message, details),
+  
+  missingField: (fieldName: string) =>
+    new AppError(
+      400, 
+      ErrorCode.VALIDATION_MISSING_FIELD, 
+      `필수 필드가 누락되었습니다: ${fieldName}`
+    ),
+  
+  invalidFormat: (fieldName: string, expectedFormat?: string) =>
+    new AppError(
+      400,
+      ErrorCode.VALIDATION_INVALID_FORMAT,
+      `잘못된 형식입니다: ${fieldName}${expectedFormat ? ` (예상 형식: ${expectedFormat})` : ''}`
+    ),
+  
+  // Business Logic
+  insufficientStock: (productName: string, available: number) =>
+    new AppError(
+      400,
+      ErrorCode.BUSINESS_INSUFFICIENT_STOCK,
+      `재고가 부족합니다: ${productName} (사용 가능: ${available}개)`,
+      { available }
+    ),
+  
+  orderCancelled: (message = '이미 취소된 주문입니다') =>
+    new AppError(400, ErrorCode.BUSINESS_ORDER_CANCELLED, message),
+  
+  paymentFailed: (message = '결제에 실패했습니다', details?: any) =>
+    new AppError(400, ErrorCode.BUSINESS_PAYMENT_FAILED, message, details),
+  
+  refundNotAllowed: (message = '환불이 불가능한 주문 상태입니다') =>
+    new AppError(400, ErrorCode.BUSINESS_REFUND_NOT_ALLOWED, message),
+  
+  duplicateAction: (message = '중복된 요청입니다') =>
+    new AppError(409, ErrorCode.BUSINESS_DUPLICATE_ACTION, message),
+  
+  invalidStatus: (currentStatus: string, allowedStatuses: string[]) =>
+    new AppError(
+      400,
+      ErrorCode.BUSINESS_INVALID_STATUS,
+      `잘못된 상태입니다: ${currentStatus} (허용된 상태: ${allowedStatuses.join(', ')})`
+    ),
+  
+  // System
+  dbError: (message = '데이터베이스 오류가 발생했습니다', details?: any) =>
+    new AppError(500, ErrorCode.SYSTEM_DB_ERROR, message, details),
+  
+  externalApiError: (service: string, message?: string) =>
+    new AppError(
+      502,
+      ErrorCode.SYSTEM_EXTERNAL_API_ERROR,
+      message || `외부 서비스 연동 오류: ${service}`
+    ),
+  
+  internalError: (message = '서버 내부 오류가 발생했습니다') =>
+    new AppError(500, ErrorCode.SYSTEM_INTERNAL_ERROR, message),
+  
+  timeout: (message = '요청 시간이 초과되었습니다') =>
+    new AppError(504, ErrorCode.SYSTEM_TIMEOUT, message),
+  
+  // Rate Limiting
+  rateLimitExceeded: (retryAfter: number) =>
+    new AppError(
+      429,
+      ErrorCode.RATE_LIMIT_EXCEEDED,
+      `너무 많은 요청이 발생했습니다. ${retryAfter}초 후에 다시 시도해주세요.`,
+      { retryAfter }
+    ),
 };
 
 /**
- * 표준화된 에러 응답 생성
- * 
- * @param code 에러 코드
- * @param customMessage 커스텀 메시지 (선택)
- * @param details 디버그 정보 (개발 환경에서만 포함)
- * @returns ErrorResponse 객체
+ * Global Error Handler for Hono
  */
-export function createErrorResponse(
-  code: ErrorCode,
-  customMessage?: string,
-  details?: string
-): ErrorResponse {
-  const message = customMessage || ERROR_MESSAGES[code];
-  
-  const response: ErrorResponse = {
-    success: false,
-    error: {
-      code,
-      message,
-    },
+export function createErrorHandler() {
+  return async (err: Error, c: Context) => {
+    // Log error for debugging
+    console.error('[ERROR]', {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      path: c.req.path,
+      method: c.req.method,
+      timestamp: new Date().toISOString()
+    });
+
+    // Handle AppError (known errors)
+    if (err instanceof AppError) {
+      const response: ErrorResponse = {
+        success: false,
+        error: {
+          code: err.code,
+          message: err.message,
+          ...(err.details && { details: err.details })
+        }
+      };
+      
+      return c.json(response, err.statusCode);
+    }
+
+    // Handle unexpected errors
+    const response: ErrorResponse = {
+      success: false,
+      error: {
+        code: ErrorCode.SYSTEM_INTERNAL_ERROR,
+        message: process.env.NODE_ENV === 'production' 
+          ? '서버 오류가 발생했습니다.' 
+          : err.message
+      }
+    };
+    
+    return c.json(response, 500);
   };
-  
-  // 개발 환경에서만 details 포함
-  if (details && process.env.NODE_ENV === 'development') {
-    response.error.details = details;
-  }
-  
-  return response;
 }
 
 /**
- * 표준화된 성공 응답 생성
- * 
- * @param data 응답 데이터
- * @param cached 캐시 여부
- * @returns SuccessResponse 객체
+ * Async Error Wrapper
+ * Wraps async handlers to automatically catch and forward errors
  */
-export function createSuccessResponse<T>(
-  data: T,
-  cached?: boolean
-): SuccessResponse<T> {
-  const response: SuccessResponse<T> = {
-    success: true,
-    data,
+export function asyncHandler(handler: Function) {
+  return async (c: Context, ...args: any[]) => {
+    try {
+      return await handler(c, ...args);
+    } catch (err) {
+      throw err; // Will be caught by global error handler
+    }
   };
-  
-  if (cached !== undefined) {
-    response.cached = cached;
-  }
-  
-  return response;
-}
-
-/**
- * HTTP 상태 코드 매핑
- */
-export const ERROR_STATUS_CODES: Record<ErrorCode, number> = {
-  // 400 Bad Request
-  [ErrorCode.INVALID_INPUT]: 400,
-  [ErrorCode.DUPLICATE_EMAIL]: 400,
-  
-  // 401 Unauthorized
-  [ErrorCode.AUTH_REQUIRED]: 401,
-  [ErrorCode.INVALID_CREDENTIALS]: 401,
-  [ErrorCode.SESSION_EXPIRED]: 401,
-  
-  // 403 Forbidden
-  [ErrorCode.ADMIN_ONLY]: 403,
-  [ErrorCode.SELLER_ONLY]: 403,
-  [ErrorCode.SELLER_NOT_APPROVED]: 403,
-  
-  // 404 Not Found
-  [ErrorCode.PRODUCT_NOT_FOUND]: 404,
-  [ErrorCode.STREAM_NOT_FOUND]: 404,
-  [ErrorCode.ORDER_NOT_FOUND]: 404,
-  [ErrorCode.USER_NOT_FOUND]: 404,
-  
-  // 422 Unprocessable Entity
-  [ErrorCode.INSUFFICIENT_STOCK]: 422,
-  [ErrorCode.PAYMENT_FAILED]: 422,
-  
-  // 500 Internal Server Error
-  [ErrorCode.DATABASE_ERROR]: 500,
-  [ErrorCode.NETWORK_ERROR]: 500,
-  [ErrorCode.UNKNOWN_ERROR]: 500,
-};
-
-/**
- * 에러 응답과 함께 적절한 HTTP 상태 코드 반환
- */
-export function getStatusCode(code: ErrorCode): number {
-  return ERROR_STATUS_CODES[code] || 500;
 }
