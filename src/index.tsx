@@ -10024,4 +10024,866 @@ app.onError((err, c) => {
   `, 500);
 });
 
+// ============================================================================
+// 알림톡 API
+// ============================================================================
+
+import * as aligo from './lib/aligo';
+
+// ----------------------------------------------------------------------------
+// 어드민 - 알림톡 요금제 관리
+// ----------------------------------------------------------------------------
+
+/**
+ * GET /api/admin/alimtalk/pricing
+ * 알림톡 요금제 목록 조회
+ */
+app.get('/api/admin/alimtalk/pricing', cors(), async (c) => {
+  const { env } = c;
+
+  try {
+    const pricingList = await env.DB.prepare(`
+      SELECT * FROM alimtalk_pricing
+      ORDER BY min_quantity ASC
+    `).all();
+
+    return c.json({
+      success: true,
+      pricing: pricingList.results
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Pricing] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * POST /api/admin/alimtalk/pricing
+ * 알림톡 요금제 생성
+ */
+app.post('/api/admin/alimtalk/pricing', cors(), async (c) => {
+  const { env } = c;
+
+  try {
+    const { plan_name, min_quantity, max_quantity, unit_price } = await c.req.json();
+
+    if (!plan_name || !min_quantity || !unit_price) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    const result = await env.DB.prepare(`
+      INSERT INTO alimtalk_pricing (plan_name, min_quantity, max_quantity, unit_price, is_active)
+      VALUES (?, ?, ?, ?, TRUE)
+    `).bind(plan_name, min_quantity, max_quantity || null, unit_price).run();
+
+    return c.json({
+      success: true,
+      pricing_id: result.meta.last_row_id
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Pricing Create] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * PUT /api/admin/alimtalk/pricing/:id
+ * 알림톡 요금제 수정 (가격 조정)
+ */
+app.put('/api/admin/alimtalk/pricing/:id', cors(), async (c) => {
+  const { env } = c;
+  const pricingId = c.req.param('id');
+
+  try {
+    const { plan_name, min_quantity, max_quantity, unit_price, is_active } = await c.req.json();
+
+    const result = await env.DB.prepare(`
+      UPDATE alimtalk_pricing 
+      SET plan_name = ?,
+          min_quantity = ?,
+          max_quantity = ?,
+          unit_price = ?,
+          is_active = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(plan_name, min_quantity, max_quantity || null, unit_price, is_active ? 1 : 0, pricingId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ success: false, error: 'Pricing not found' }, 404);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Pricing updated successfully'
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Pricing Update] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * DELETE /api/admin/alimtalk/pricing/:id
+ * 알림톡 요금제 삭제
+ */
+app.delete('/api/admin/alimtalk/pricing/:id', cors(), async (c) => {
+  const { env } = c;
+  const pricingId = c.req.param('id');
+
+  try {
+    const result = await env.DB.prepare(`
+      DELETE FROM alimtalk_pricing WHERE id = ?
+    `).bind(pricingId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ success: false, error: 'Pricing not found' }, 404);
+    }
+
+    return c.json({
+      success: true,
+      message: 'Pricing deleted successfully'
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Pricing Delete] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/alimtalk/accounts
+ * 알림톡 계정 목록 조회 (어드민)
+ */
+app.get('/api/admin/alimtalk/accounts', cors(), async (c) => {
+  const { env } = c;
+
+  try {
+    const accounts = await env.DB.prepare(`
+      SELECT 
+        a.*,
+        s.name as seller_name,
+        s.email as seller_email
+      FROM alimtalk_accounts a
+      JOIN sellers s ON a.seller_id = s.id
+      ORDER BY a.created_at DESC
+    `).all();
+
+    return c.json({
+      success: true,
+      accounts: accounts.results
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Accounts] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * PATCH /api/admin/alimtalk/accounts/:id/status
+ * 알림톡 계정 상태 변경 (승인/정지)
+ */
+app.patch('/api/admin/alimtalk/accounts/:id/status', cors(), async (c) => {
+  const { env } = c;
+  const accountId = c.req.param('id');
+
+  try {
+    const { status } = await c.req.json();
+
+    if (!['active', 'suspended', 'rejected'].includes(status)) {
+      return c.json({ success: false, error: 'Invalid status' }, 400);
+    }
+
+    const result = await env.DB.prepare(`
+      UPDATE alimtalk_accounts 
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(status, accountId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ success: false, error: 'Account not found' }, 404);
+    }
+
+    return c.json({
+      success: true,
+      message: `Account ${status} successfully`
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Account Status] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/alimtalk/statistics
+ * 알림톡 통계 (어드민)
+ */
+app.get('/api/admin/alimtalk/statistics', cors(), async (c) => {
+  const { env } = c;
+
+  try {
+    const { start_date, end_date } = c.req.query();
+
+    // 총 발송 건수 & 성공률
+    const totalStats = await env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total_sent,
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as total_success,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as total_failed,
+        SUM(cost) as total_revenue
+      FROM alimtalk_messages
+      WHERE created_at >= ? AND created_at <= ?
+    `).bind(start_date || '2000-01-01', end_date || '2100-01-01').first();
+
+    // 셀러별 발송 통계
+    const sellerStats = await env.DB.prepare(`
+      SELECT 
+        s.id,
+        s.name as seller_name,
+        COUNT(m.id) as messages_sent,
+        SUM(m.cost) as revenue,
+        a.balance
+      FROM sellers s
+      JOIN alimtalk_accounts a ON s.id = a.seller_id
+      LEFT JOIN alimtalk_messages m ON a.id = m.account_id
+      WHERE m.created_at >= ? AND m.created_at <= ?
+      GROUP BY s.id
+      ORDER BY revenue DESC
+      LIMIT 10
+    `).bind(start_date || '2000-01-01', end_date || '2100-01-01').all();
+
+    return c.json({
+      success: true,
+      statistics: {
+        total: totalStats,
+        by_seller: sellerStats.results
+      }
+    });
+  } catch (error: any) {
+    console.error('[Admin Alimtalk Statistics] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 셀러 - 알림톡 계정 관리
+// ----------------------------------------------------------------------------
+
+/**
+ * GET /api/seller/alimtalk/account
+ * 셀러 알림톡 계정 조회
+ */
+app.get('/api/seller/alimtalk/account', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts
+      WHERE seller_id = ?
+    `).bind(session.user_id).first();
+
+    return c.json({
+      success: true,
+      account: account
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Account] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/alimtalk/register
+ * 셀러 알림톡 계정 등록
+ */
+app.post('/api/seller/alimtalk/register', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const { channel_id, phone_number } = await c.req.json();
+
+    if (!channel_id || !phone_number) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    // 전화번호 정규화
+    const normalizedPhone = aligo.normalizePhoneNumber(phone_number);
+
+    // 알리고 API: 카카오 채널 등록
+    const aligoResult = await aligo.registerKakaoChannel(env, {
+      channelId: channel_id,
+      phoneNumber: normalizedPhone
+    });
+
+    if (!aligoResult.success) {
+      return c.json({ success: false, error: 'Failed to register Kakao channel' }, 500);
+    }
+
+    // DB에 계정 정보 저장
+    const result = await env.DB.prepare(`
+      INSERT INTO alimtalk_accounts 
+      (seller_id, kakao_channel_id, channel_name, sender_key, phone_number, status)
+      VALUES (?, ?, ?, ?, ?, 'active')
+    `).bind(
+      session.user_id,
+      channel_id,
+      channel_id, // 임시로 channel_id를 channel_name으로 사용
+      aligoResult.senderKey,
+      normalizedPhone
+    ).run();
+
+    return c.json({
+      success: true,
+      account_id: result.meta.last_row_id,
+      sender_key: aligoResult.senderKey,
+      message: 'Kakao channel registered successfully'
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Register] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 셀러 - 알림톡 템플릿 관리
+// ----------------------------------------------------------------------------
+
+/**
+ * GET /api/seller/alimtalk/templates
+ * 셀러 템플릿 목록 조회
+ */
+app.get('/api/seller/alimtalk/templates', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    // 계정 조회
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts WHERE seller_id = ?
+    `).bind(session.user_id).first();
+
+    if (!account) {
+      return c.json({ success: false, error: 'Alimtalk account not found' }, 404);
+    }
+
+    // 템플릿 목록 조회
+    const templates = await env.DB.prepare(`
+      SELECT * FROM alimtalk_templates
+      WHERE account_id = ?
+      ORDER BY created_at DESC
+    `).bind(account.id).all();
+
+    return c.json({
+      success: true,
+      templates: templates.results
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Templates] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/alimtalk/templates
+ * 셀러 템플릿 등록
+ */
+app.post('/api/seller/alimtalk/templates', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const { template_code, template_name, template_content, template_type } = await c.req.json();
+
+    if (!template_code || !template_name || !template_content) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    // 계정 조회
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts WHERE seller_id = ? AND status = 'active'
+    `).bind(session.user_id).first();
+
+    if (!account) {
+      return c.json({ success: false, error: 'Active alimtalk account not found' }, 404);
+    }
+
+    // 알리고 API: 템플릿 등록
+    const aligoResult = await aligo.registerTemplate(env, account.sender_key, {
+      name: template_name,
+      content: template_content,
+      templateCode: template_code
+    });
+
+    if (!aligoResult.success) {
+      return c.json({ success: false, error: 'Failed to register template' }, 500);
+    }
+
+    // DB에 템플릿 저장
+    const result = await env.DB.prepare(`
+      INSERT INTO alimtalk_templates 
+      (account_id, template_code, template_name, template_content, template_type, status)
+      VALUES (?, ?, ?, ?, ?, 'pending')
+    `).bind(
+      account.id,
+      template_code,
+      template_name,
+      template_content,
+      template_type || 'basic'
+    ).run();
+
+    return c.json({
+      success: true,
+      template_id: result.meta.last_row_id,
+      message: 'Template registered successfully. Approval pending (1-2 days)'
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Template Register] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 셀러 - 알림톡 충전
+// ----------------------------------------------------------------------------
+
+/**
+ * GET /api/seller/alimtalk/pricing
+ * 셀러 요금제 조회
+ */
+app.get('/api/seller/alimtalk/pricing', cors(), async (c) => {
+  const { env } = c;
+
+  try {
+    const pricingList = await env.DB.prepare(`
+      SELECT * FROM alimtalk_pricing
+      WHERE is_active = TRUE
+      ORDER BY min_quantity ASC
+    `).all();
+
+    return c.json({
+      success: true,
+      pricing: pricingList.results
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Pricing] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/alimtalk/charge
+ * 셀러 알림톡 충전 (TossPayments)
+ */
+app.post('/api/seller/alimtalk/charge', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const { amount, pricing_id } = await c.req.json();
+
+    if (!amount || !pricing_id) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    // 계정 조회
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts WHERE seller_id = ?
+    `).bind(session.user_id).first();
+
+    if (!account) {
+      return c.json({ success: false, error: 'Alimtalk account not found' }, 404);
+    }
+
+    // 요금제 조회
+    const pricing = await env.DB.prepare(`
+      SELECT * FROM alimtalk_pricing WHERE id = ? AND is_active = TRUE
+    `).bind(pricing_id).first();
+
+    if (!pricing) {
+      return c.json({ success: false, error: 'Pricing not found' }, 404);
+    }
+
+    // 가격 계산
+    const totalPrice = amount * pricing.unit_price;
+
+    // TossPayments 주문 ID 생성
+    const orderId = `alimtalk_${account.id}_${Date.now()}`;
+
+    // 충전 내역 생성 (pending 상태)
+    const result = await env.DB.prepare(`
+      INSERT INTO alimtalk_charges 
+      (account_id, amount, price, unit_price, payment_method, payment_status, order_id)
+      VALUES (?, ?, ?, ?, 'card', 'pending', ?)
+    `).bind(account.id, amount, totalPrice, pricing.unit_price, orderId).run();
+
+    // TossPayments 결제 URL 생성 (실제 구현 시 TossPayments SDK 사용)
+    const paymentUrl = `https://api.tosspayments.com/v1/payment/${orderId}`;
+
+    return c.json({
+      success: true,
+      charge_id: result.meta.last_row_id,
+      order_id: orderId,
+      amount: amount,
+      price: totalPrice,
+      unit_price: pricing.unit_price,
+      payment_url: paymentUrl
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Charge] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/alimtalk/charge/complete
+ * 셀러 알림톡 충전 완료 (결제 완료 후 호출)
+ */
+app.post('/api/seller/alimtalk/charge/complete', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const { order_id, payment_id } = await c.req.json();
+
+    if (!order_id) {
+      return c.json({ success: false, error: 'Missing order_id' }, 400);
+    }
+
+    // 충전 내역 조회
+    const charge = await env.DB.prepare(`
+      SELECT * FROM alimtalk_charges WHERE order_id = ? AND payment_status = 'pending'
+    `).bind(order_id).first();
+
+    if (!charge) {
+      return c.json({ success: false, error: 'Charge not found or already completed' }, 404);
+    }
+
+    // 충전 완료 처리
+    await env.DB.prepare(`
+      UPDATE alimtalk_charges 
+      SET payment_status = 'completed', 
+          payment_id = ?,
+          completed_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(payment_id || null, charge.id).run();
+
+    // 잔액 증가
+    await env.DB.prepare(`
+      UPDATE alimtalk_accounts 
+      SET balance = balance + ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(charge.amount, charge.account_id).run();
+
+    return c.json({
+      success: true,
+      message: 'Charge completed successfully',
+      charged_amount: charge.amount
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Charge Complete] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+// ----------------------------------------------------------------------------
+// 셀러 - 알림톡 발송
+// ----------------------------------------------------------------------------
+
+/**
+ * POST /api/seller/alimtalk/send
+ * 셀러 알림톡 발송
+ */
+app.post('/api/seller/alimtalk/send', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const { template_id, recipient_phone, variables, order_id } = await c.req.json();
+
+    if (!template_id || !recipient_phone) {
+      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    }
+
+    // 계정 조회
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts WHERE seller_id = ? AND status = 'active'
+    `).bind(session.user_id).first();
+
+    if (!account) {
+      return c.json({ success: false, error: 'Active alimtalk account not found' }, 404);
+    }
+
+    // 잔액 확인
+    if (account.balance < 1) {
+      return c.json({ success: false, error: 'Insufficient balance. Please charge first.' }, 400);
+    }
+
+    // 템플릿 조회
+    const template = await env.DB.prepare(`
+      SELECT * FROM alimtalk_templates 
+      WHERE id = ? AND account_id = ? AND status = 'approved'
+    `).bind(template_id, account.id).first();
+
+    if (!template) {
+      return c.json({ success: false, error: 'Template not found or not approved' }, 404);
+    }
+
+    // 템플릿 변수 치환
+    const message = aligo.replaceTemplateVariables(template.template_content, variables || {});
+
+    // 전화번호 정규화
+    const normalizedPhone = aligo.normalizePhoneNumber(recipient_phone);
+
+    // 알리고 API: 알림톡 발송
+    const aligoResult = await aligo.sendAlimtalk(env, {
+      senderKey: account.sender_key,
+      templateCode: template.template_code,
+      to: normalizedPhone,
+      message: message
+    });
+
+    if (!aligoResult.success) {
+      // 발송 실패 내역 저장
+      await env.DB.prepare(`
+        INSERT INTO alimtalk_messages 
+        (account_id, template_id, order_id, recipient_phone, message_content, status, failed_reason, cost)
+        VALUES (?, ?, ?, ?, ?, 'failed', ?, 0)
+      `).bind(
+        account.id,
+        template_id,
+        order_id || null,
+        normalizedPhone,
+        message,
+        aligoResult.error
+      ).run();
+
+      return c.json({ success: false, error: aligoResult.error }, 500);
+    }
+
+    // 발송 성공 내역 저장
+    const messageResult = await env.DB.prepare(`
+      INSERT INTO alimtalk_messages 
+      (account_id, template_id, order_id, recipient_phone, message_content, status, sent_at, cost, aligo_message_id)
+      VALUES (?, ?, ?, ?, ?, 'sent', CURRENT_TIMESTAMP, ?, ?)
+    `).bind(
+      account.id,
+      template_id,
+      order_id || null,
+      normalizedPhone,
+      message,
+      15, // 임시 비용 (실제로는 pricing 테이블에서 조회)
+      aligoResult.messageId
+    ).run();
+
+    // 잔액 차감 & 통계 업데이트
+    await env.DB.prepare(`
+      UPDATE alimtalk_accounts 
+      SET balance = balance - 1,
+          total_sent = total_sent + 1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(account.id).run();
+
+    return c.json({
+      success: true,
+      message_id: messageResult.meta.last_row_id,
+      aligo_message_id: aligoResult.messageId,
+      status: 'sent',
+      remaining_balance: account.balance - 1
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Send] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/alimtalk/messages
+ * 셀러 알림톡 발송 내역 조회
+ */
+app.get('/api/seller/alimtalk/messages', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const { page = '1', limit = '20', status } = c.req.query();
+
+    // 계정 조회
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts WHERE seller_id = ?
+    `).bind(session.user_id).first();
+
+    if (!account) {
+      return c.json({ success: false, error: 'Alimtalk account not found' }, 404);
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // 발송 내역 조회
+    let query = `
+      SELECT 
+        m.*,
+        t.template_name
+      FROM alimtalk_messages m
+      JOIN alimtalk_templates t ON m.template_id = t.id
+      WHERE m.account_id = ?
+    `;
+
+    const params = [account.id];
+
+    if (status) {
+      query += ` AND m.status = ?`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY m.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), offset);
+
+    const messages = await env.DB.prepare(query).bind(...params).all();
+
+    // 총 개수 조회
+    const countResult = await env.DB.prepare(`
+      SELECT COUNT(*) as total FROM alimtalk_messages WHERE account_id = ?
+    `).bind(account.id).first();
+
+    return c.json({
+      success: true,
+      messages: messages.results,
+      pagination: {
+        total: countResult.total,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Messages] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/alimtalk/statistics
+ * 셀러 알림톡 통계
+ */
+app.get('/api/seller/alimtalk/statistics', cors(), async (c) => {
+  const { env } = c;
+  
+  try {
+    const sessionToken = c.req.header('X-Session-Token');
+    const session = await getSessionInfo(env, sessionToken);
+    
+    if (!session || session.user_type !== 'seller') {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const { start_date, end_date } = c.req.query();
+
+    // 계정 조회
+    const account = await env.DB.prepare(`
+      SELECT * FROM alimtalk_accounts WHERE seller_id = ?
+    `).bind(session.user_id).first();
+
+    if (!account) {
+      return c.json({ success: false, error: 'Alimtalk account not found' }, 404);
+    }
+
+    // 통계 조회
+    const stats = await env.DB.prepare(`
+      SELECT 
+        COUNT(*) as total_sent,
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as total_success,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as total_failed,
+        SUM(cost) as total_cost
+      FROM alimtalk_messages
+      WHERE account_id = ?
+        AND created_at >= ?
+        AND created_at <= ?
+    `).bind(
+      account.id,
+      start_date || '2000-01-01',
+      end_date || '2100-01-01'
+    ).first();
+
+    // 템플릿별 발송 통계
+    const templateStats = await env.DB.prepare(`
+      SELECT 
+        t.template_name,
+        COUNT(m.id) as count
+      FROM alimtalk_messages m
+      JOIN alimtalk_templates t ON m.template_id = t.id
+      WHERE m.account_id = ?
+        AND m.created_at >= ?
+        AND m.created_at <= ?
+      GROUP BY t.id
+      ORDER BY count DESC
+    `).bind(
+      account.id,
+      start_date || '2000-01-01',
+      end_date || '2100-01-01'
+    ).all();
+
+    // 성공률 계산
+    const successRate = stats.total_sent > 0 
+      ? ((stats.total_success / stats.total_sent) * 100).toFixed(2)
+      : 0;
+
+    return c.json({
+      success: true,
+      statistics: {
+        total_sent: stats.total_sent,
+        total_success: stats.total_success,
+        total_failed: stats.total_failed,
+        success_rate: successRate,
+        total_cost: stats.total_cost,
+        by_template: templateStats.results
+      }
+    });
+  } catch (error: any) {
+    console.error('[Seller Alimtalk Statistics] Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 export default app;
