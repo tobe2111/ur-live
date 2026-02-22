@@ -22,6 +22,7 @@ import {
   AlimtalkSendRules,
   SearchQueryRules
 } from './lib/validation';
+import { sendOrderConfirmation, sendShippingNotification, sendDeliveryCompleted } from './lib/alimtalk-auto';
 
 // Logging utilities (inline - prevent bundling issues)
 interface ApiLogContext {
@@ -6399,6 +6400,22 @@ app.post('/api/payments/confirm', async (c) => {
 
       console.log('[Payment] ✅ 재고 차감 완료');
       
+      // 3️⃣ 알림톡 자동 발송 (주문 확인)
+      try {
+        const orderIdNum = existingOrder.id as number
+        const alimtalkResult = await sendOrderConfirmation(c.env as any, orderIdNum)
+        
+        if (alimtalkResult.success) {
+          console.log(`[Payment] ✅ 알림톡 발송 성공 (주문 ${orderIdNum})`)
+        } else {
+          console.warn(`[Payment] ⚠️ 알림톡 발송 실패 (주문 ${orderIdNum}):`, alimtalkResult.reason || alimtalkResult.error)
+          // 알림톡 실패해도 결제는 성공했으므로 계속 진행
+        }
+      } catch (alimtalkErr) {
+        console.error('[Payment] ⚠️ 알림톡 발송 중 오류:', alimtalkErr)
+        // 알림톡 실패해도 결제는 성공했으므로 계속 진행
+      }
+      
     } catch (dbErr) {
       console.error('[Payment] ⚠️ DB 업데이트 실패 (결제는 성공):', dbErr);
       // DB 실패해도 결제는 성공했으므로 성공 응답 반환
@@ -6980,6 +6997,125 @@ app.get('/api/seller/orders', async (c) => {
     return c.json({ success: true, data: ordersWithItems });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Export orders as CSV (Seller only)
+app.get('/api/seller/orders/export', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const format = c.req.query('format') || 'csv' // csv or excel (future)
+    const startDate = c.req.query('start_date')
+    const endDate = c.req.query('end_date')
+
+    let query = `
+      SELECT 
+        o.order_number,
+        o.created_at,
+        o.status,
+        o.payment_status,
+        o.total_amount,
+        o.shipping_address,
+        o.shipping_name,
+        o.shipping_phone,
+        o.tracking_number,
+        o.carrier,
+        u.name as buyer_name,
+        u.email as buyer_email,
+        u.phone as buyer_phone
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE oi.seller_id = ?
+    `
+
+    const bindings: any[] = [auth.sellerId]
+
+    if (startDate) {
+      query += ` AND date(o.created_at) >= ?`
+      bindings.push(startDate)
+    }
+
+    if (endDate) {
+      query += ` AND date(o.created_at) <= ?`
+      bindings.push(endDate)
+    }
+
+    query += ` GROUP BY o.id ORDER BY o.created_at DESC`
+
+    const orders = await DB.prepare(query).bind(...bindings).all()
+
+    if (format === 'csv') {
+      // CSV 생성
+      const headers = [
+        '주문번호',
+        '주문일시',
+        '주문상태',
+        '결제상태',
+        '주문금액',
+        '배송지',
+        '수령인',
+        '연락처',
+        '택배사',
+        '운송장번호',
+        '구매자명',
+        '구매자이메일',
+        '구매자연락처'
+      ]
+
+      const rows = orders.results.map((order: any) => [
+        order.order_number || '',
+        order.created_at ? new Date(order.created_at).toLocaleString('ko-KR') : '',
+        order.status || '',
+        order.payment_status || '',
+        order.total_amount || 0,
+        order.shipping_address || '',
+        order.shipping_name || '',
+        order.shipping_phone || '',
+        order.carrier || '',
+        order.tracking_number || '',
+        order.buyer_name || '',
+        order.buyer_email || '',
+        order.buyer_phone || ''
+      ])
+
+      // CSV 문자열 생성 (UTF-8 BOM 포함 - Excel에서 한글 깨짐 방지)
+      const bom = '\uFEFF'
+      const csvContent = bom + [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => {
+          // 쉼표나 줄바꿈이 포함된 경우 따옴표로 감싸기
+          const cellStr = String(cell)
+          if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(','))
+      ].join('\n')
+
+      // 파일명 생성 (한국 시간 기준)
+      const now = new Date()
+      const filename = `orders_${now.toISOString().split('T')[0]}_${now.getTime()}.csv`
+
+      return new Response(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
+          'Cache-Control': 'no-cache'
+        }
+      })
+    } else {
+      return c.json({ success: false, error: 'Unsupported format' }, 400)
+    }
+  } catch (err) {
+    console.error('Export error:', err)
+    return c.json({ success: false, error: (err as Error).message }, 500)
   }
 });
 
