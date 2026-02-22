@@ -232,54 +232,62 @@
   <body>
     <div id="root"></div>
     
-    <!-- Kakao SDK - Load before React app with error handling -->
-    <script>
+    <!-- 🔴 FIX: React 앱을 먼저 로드하고, SDK는 동적으로 로드 -->
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Kakao SDK - Load AFTER React with defer -->
+    <script defer>
       (function() {
-        console.log('[Kakao SDK] Starting to load...');
-        
-        // Create script element
-        var script = document.createElement('script');
-        script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
-        script.crossOrigin = 'anonymous';
-        
-        script.onload = function() {
-          console.log('[Kakao SDK] Script loaded successfully');
-          if (window.Kakao) {
-            try {
-              if (!window.Kakao.isInitialized()) {
-                window.Kakao.init('975a2e7f97254b08f15dba4d177a2865');
-                console.log('[Kakao SDK] Initialized:', window.Kakao.isInitialized());
+        // React 로드 후 실행 보장
+        window.addEventListener('DOMContentLoaded', function() {
+          console.log('[Kakao SDK] Starting to load...');
+          
+          // Create script element
+          var script = document.createElement('script');
+          script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
+          script.crossOrigin = 'anonymous';
+          
+          script.onload = function() {
+            console.log('[Kakao SDK] Script loaded successfully');
+            if (window.Kakao) {
+              try {
+                if (!window.Kakao.isInitialized()) {
+                  window.Kakao.init('975a2e7f97254b08f15dba4d177a2865');
+                  console.log('[Kakao SDK] Initialized:', window.Kakao.isInitialized());
+                }
+              } catch (e) {
+                console.error('[Kakao SDK] Initialization error:', e);
               }
-            } catch (e) {
-              console.error('[Kakao SDK] Initialization error:', e);
+            } else {
+              console.error('[Kakao SDK] window.Kakao is undefined after load');
             }
-          } else {
-            console.error('[Kakao SDK] window.Kakao is undefined after load');
-          }
-        };
-        
-        script.onerror = function(e) {
-          console.error('[Kakao SDK] Failed to load script:', e);
-          console.error('[Kakao SDK] Check network/firewall settings');
-        };
-        
-        document.head.appendChild(script);
+          };
+          
+          script.onerror = function(e) {
+            console.error('[Kakao SDK] Failed to load script:', e);
+            console.error('[Kakao SDK] Check network/firewall settings');
+          };
+          
+          document.head.appendChild(script);
+        });
       })();
     </script>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <script>
-      console.log('[Firebase] SDK loaded');
+    <!-- Firebase SDK - Load AFTER React with defer -->
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script defer>
+      window.addEventListener('load', function() {
+        console.log('[Firebase] SDK loaded');
+      });
     </script>
     
-    <!-- TossPayments 결제위젯 SDK (Version 1) - MUST use for widget keys (test_gck_/test_gsk_) -->
-    <script src="https://js.tosspayments.com/v1/payment-widget"></script>
-    <script>
-      console.log('[TossPayments] 결제위젯 SDK v1 loaded - window.PaymentWidget:', typeof window.PaymentWidget);
+    <!-- TossPayments 결제위젯 SDK - Load AFTER React with defer -->
+    <script defer src="https://js.tosspayments.com/v1/payment-widget"></script>
+    <script defer>
+      window.addEventListener('load', function() {
+        console.log('[TossPayments] 결제위젯 SDK v1 loaded - window.PaymentWidget:', typeof window.PaymentWidget);
+      });
     </script>
-    
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

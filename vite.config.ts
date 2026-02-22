@@ -52,29 +52,29 @@ export default defineConfig({
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
-          // node_modules 의존성 분리
+          // 🔴 CRITICAL FIX: React 로딩 순서 보장
+          // React Core는 반드시 먼저 로드되어야 함
           if (id.includes('node_modules')) {
-            // React 관련 (가장 자주 사용, 별도 캐시)
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'react-vendor'
+            // 1. React Core (최우선 - 단일 청크로 통합)
+            if (id.includes('react/') || id.includes('react-dom/')) {
+              return 'react-core'
             }
-            // React Router (라우팅)
-            if (id.includes('react-router')) {
-              return 'router-vendor'
+            // 2. React 의존 라이브러리 (React 이후 로드)
+            if (id.includes('react-router') || 
+                id.includes('@radix-ui') ||
+                id.includes('lucide-react') ||
+                id.includes('recharts')) {
+              return 'react-deps'
             }
-            // UI 라이브러리
-            if (id.includes('lucide-react')) {
-              return 'ui-vendor'
-            }
-            // HTTP 클라이언트
-            if (id.includes('axios')) {
-              return 'utils-vendor'
-            }
-            // Sentry
+            // 3. Sentry (독립 청크)
             if (id.includes('@sentry')) {
               return 'sentry-vendor'
             }
-            // 기타 node_modules
+            // 4. 유틸리티 (axios 등)
+            if (id.includes('axios')) {
+              return 'utils-vendor'
+            }
+            // 5. 기타 node_modules
             return 'vendor'
           }
           
