@@ -3692,14 +3692,25 @@ app.post('/api/orders', async (c) => {
 
     // 직접 전달된 items가 있으면 새로운 방식으로 처리
     if (items && items.length > 0) {
+      // ✅ N+1 최적화: 모든 상품 정보를 한 번에 조회
+      const productIds = items.map(i => i.productId);
+      const placeholders = productIds.map(() => '?').join(',');
+      
+      const productsResult = await DB.prepare(`
+        SELECT id, name, price, stock 
+        FROM products 
+        WHERE id IN (${placeholders})
+      `).bind(...productIds).all();
+
+      // 상품 정보를 Map으로 변환
+      const productMap = new Map(
+        productsResult.results.map((p: any) => [p.id, p])
+      );
+
       // 재고 확인 및 상품 정보 조회
       const itemsWithDetails = [];
       for (const item of items) {
-        const product = await DB.prepare(`
-          SELECT id, name, price, stock 
-          FROM products 
-          WHERE id = ?
-        `).bind(item.productId).first();
+        const product = productMap.get(item.productId);
 
         if (!product) {
           return c.json<ApiResponse>({
@@ -3934,19 +3945,19 @@ app.post('/api/orders', async (c) => {
 
     // 알림: 셀러에게 신규 주문 알림 보내기
     try {
-      // 주문의 상품들로부터 셀러 ID 추출
-      const sellerIds = new Set<number>();
-      for (const item of cartItems.results) {
-        // 상품의 셀러 ID 조회
-        const product = await DB.prepare('SELECT seller_id FROM products WHERE id = ?')
-          .bind(item.product_id).first();
-        if (product && product.seller_id) {
-          sellerIds.add(product.seller_id as number);
-        }
-      }
+      // ✅ N+1 최적화: 모든 셀러 ID를 한 번에 조회
+      const productIds = cartItems.results.map((item: any) => item.product_id);
+      const sellerPlaceholders = productIds.map(() => '?').join(',');
+      
+      const sellersResult = await DB.prepare(`
+        SELECT DISTINCT seller_id 
+        FROM products 
+        WHERE id IN (${sellerPlaceholders}) AND seller_id IS NOT NULL
+      `).bind(...productIds).all();
 
       // 각 셀러에게 알림 전송
-      for (const sellerId of sellerIds) {
+      for (const row of sellersResult.results) {
+        const sellerId = row.seller_id as number;
         await notifyNewOrder(
           DB,
           sellerId,
@@ -6611,11 +6622,13 @@ app.post('/api/orders/:orderId/cancel', async (c) => {
       'SELECT product_id, quantity FROM order_items WHERE order_id = ?'
     ).bind(orderId).all();
 
-    // Restore stock for each item
-    for (const item of orderItems.results) {
-      await DB.prepare(
-        'UPDATE products SET stock = stock + ? WHERE id = ?'
-      ).bind(item.quantity, item.product_id).run();
+    // ✅ N+1 최적화: 재고 복원을 배치로 처리
+    if (orderItems.results.length > 0) {
+      const batchQueries = orderItems.results.map((item: any) =>
+        DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?')
+          .bind(item.quantity, item.product_id)
+      );
+      await DB.batch(batchQueries);
     }
 
     // Update order status to cancelled with reason
@@ -6891,17 +6904,26 @@ app.post('/api/payments/confirm', async (c) => {
         'SELECT product_id, quantity FROM order_items WHERE order_id = (SELECT id FROM orders WHERE order_number = ?)'
       ).bind(orderId).all();
 
-      for (const item of orderItems.results) {
-        const stockUpdateResult = await DB.prepare(`
-          UPDATE products 
-          SET stock = stock - ?
-          WHERE id = ? AND stock >= ?
-        `).bind(item.quantity, item.product_id, item.quantity).run();
-
-        if (stockUpdateResult.meta.changes === 0) {
-          console.error(`[Payment] ⚠️ 재고 부족: product_id=${item.product_id}`);
-          // 재고 부족 시에도 결제는 성공했으므로 주문은 유지
-          // 관리자가 수동으로 처리해야 함
+      // ✅ N+1 최적화: 재고 차감을 배치로 처리
+      if (orderItems.results.length > 0) {
+        const batchQueries = orderItems.results.map((item: any) =>
+          DB.prepare(`
+            UPDATE products 
+            SET stock = stock - ?
+            WHERE id = ? AND stock >= ?
+          `).bind(item.quantity, item.product_id, item.quantity)
+        );
+        
+        const batchResults = await DB.batch(batchQueries);
+        
+        // 재고 부족 경고 (결제는 이미 성공했으므로 주문 유지)
+        for (let i = 0; i < batchResults.length; i++) {
+          if (batchResults[i].meta.changes === 0) {
+            const item = orderItems.results[i];
+            console.error(`[Payment] ⚠️ 재고 부족: product_id=${item.product_id}`);
+            // 재고 부족 시에도 결제는 성공했으므로 주문은 유지
+            // 관리자가 수동으로 처리해야 함
+          }
         }
       }
 
@@ -7812,25 +7834,29 @@ app.patch('/api/seller/orders/:orderNumber/status', async (c) => {
 
             const taxInvoiceId = taxInvoiceResult.meta.last_row_id;
 
-            // 세금계산서 항목 저장
-            for (const item of orderItems.results) {
-              const itemSupplyPrice = Math.floor(Number(item.price) * Number(item.quantity) / 1.1);
-              const itemTaxAmount = Number(item.price) * Number(item.quantity) - itemSupplyPrice;
+            // ✅ N+1 최적화: 세금계산서 항목을 배치로 저장
+            if (orderItems.results.length > 0) {
+              const invoiceItemQueries = orderItems.results.map((item: any) => {
+                const itemSupplyPrice = Math.floor(Number(item.price) * Number(item.quantity) / 1.1);
+                const itemTaxAmount = Number(item.price) * Number(item.quantity) - itemSupplyPrice;
 
-              await DB.prepare(`
-                INSERT INTO tax_invoice_items (
-                  tax_invoice_id, product_name, quantity, unit_price,
-                  supply_price, tax_amount, description, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-              `).bind(
-                taxInvoiceId,
-                item.product_name || '상품명 없음',
-                item.quantity,
-                item.price,
-                itemSupplyPrice,
-                itemTaxAmount,
-                item.option_name || ''
-              ).run();
+                return DB.prepare(`
+                  INSERT INTO tax_invoice_items (
+                    tax_invoice_id, product_name, quantity, unit_price,
+                    supply_price, tax_amount, description, created_at
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                `).bind(
+                  taxInvoiceId,
+                  item.product_name || '상품명 없음',
+                  item.quantity,
+                  item.price,
+                  itemSupplyPrice,
+                  itemTaxAmount,
+                  item.option_name || ''
+                );
+              });
+              
+              await DB.batch(invoiceItemQueries);
             }
 
             // 자동 발행 성공 로그 기록
@@ -9046,17 +9072,27 @@ app.post('/api/orders/create', async (c) => {
     const random = Math.random().toString(36).substring(2, 7).toUpperCase();
     const orderNumber = `ORD-${dateStr}-${random}`; // 예: ORD-260222-A3B4C
     
+    // ✅ N+1 최적화: 모든 상품의 재고를 한 번에 조회
+    const productIds = cartItems.map((item: any) => item.product_id);
+    const stockPlaceholders = productIds.map(() => '?').join(',');
+    
+    const stockResults = await DB.prepare(`
+      SELECT id, stock FROM products WHERE id IN (${stockPlaceholders})
+    `).bind(...productIds).all();
+    
+    const stockMap = new Map(
+      stockResults.results.map((p: any) => [p.id, p.stock])
+    );
+    
     // 재고 확인
     for (const item of cartItems) {
-      const product = await DB.prepare(`
-        SELECT stock FROM products WHERE id = ?
-      `).bind(item.product_id).first();
+      const stock = stockMap.get(item.product_id);
       
-      if (!product) {
+      if (stock === undefined) {
         return c.json({ success: false, error: `상품을 찾을 수 없습니다 (ID: ${item.product_id})` }, 400);
       }
       
-      if (product.stock < item.quantity) {
+      if (stock < item.quantity) {
         return c.json({ success: false, error: `재고가 부족합니다 (상품 ID: ${item.product_id})` }, 400);
       }
     }
@@ -9091,9 +9127,9 @@ app.post('/api/orders/create', async (c) => {
     
     const orderId = orderResult.meta.last_row_id;
     
-    // 주문 아이템 생성
-    for (const item of cartItems) {
-      await DB.prepare(`
+    // ✅ N+1 최적화: 주문 아이템 생성 및 재고 차감을 배치로 처리
+    const itemInsertQueries = cartItems.map((item: any) =>
+      DB.prepare(`
         INSERT INTO order_items (order_id, product_id, option_id, quantity, price)
         VALUES (?, ?, ?, ?, ?)
       `).bind(
@@ -9102,40 +9138,47 @@ app.post('/api/orders/create', async (c) => {
         item.option_id || null,
         item.quantity,
         item.price_snapshot || item.price
-      ).run();
-      
-      // 재고 차감
-      await DB.prepare(`
+      )
+    );
+    
+    const stockUpdateQueries = cartItems.map((item: any) =>
+      DB.prepare(`
         UPDATE products SET stock = stock - ? WHERE id = ?
-      `).bind(item.quantity, item.product_id).run();
+      `).bind(item.quantity, item.product_id)
+    );
+    
+    // 모든 쿼리를 배치로 실행
+    await DB.batch([...itemInsertQueries, ...stockUpdateQueries]);
 
-      // 저재고 알림 체크
-      try {
-        const product = await DB.prepare(`
-          SELECT id, name, stock, stock_alert_threshold, seller_id 
-          FROM products 
-          WHERE id = ?
-        `).bind(item.product_id).first();
+    // 저재고 알림 체크 (배치 조회 후 처리)
+    try {
+      const productIdsForAlert = cartItems.map((item: any) => item.product_id);
+      const alertPlaceholders = productIdsForAlert.map(() => '?').join(',');
+      
+      const productsForAlert = await DB.prepare(`
+        SELECT id, name, stock, stock_alert_threshold, seller_id 
+        FROM products 
+        WHERE id IN (${alertPlaceholders})
+      `).bind(...productIdsForAlert).all();
 
-        if (product) {
-          const threshold = product.stock_alert_threshold || 5; // 기본값 5개
-          const currentStock = product.stock as number;
-          
-          if (currentStock <= threshold && product.seller_id) {
-            await notifyLowStock(
-              DB,
-              product.seller_id as number,
-              product.name as string,
-              currentStock,
-              threshold
-            );
-            console.log(`[Low Stock Alert] ${product.name}: ${currentStock} <= ${threshold}`);
-          }
+      for (const product of productsForAlert.results) {
+        const threshold = product.stock_alert_threshold || 5; // 기본값 5개
+        const currentStock = product.stock as number;
+        
+        if (currentStock <= threshold && product.seller_id) {
+          await notifyLowStock(
+            DB,
+            product.seller_id as number,
+            product.name as string,
+            currentStock,
+            threshold
+          );
+          console.log(`[Low Stock Alert] ${product.name}: ${currentStock} <= ${threshold}`);
         }
-      } catch (stockAlertError) {
-        console.error('[Low Stock Alert] Error:', stockAlertError);
-        // 알림 실패해도 주문은 계속 진행
       }
+    } catch (stockAlertError) {
+      console.error('[Low Stock Alert] Error:', stockAlertError);
+      // 알림 실패해도 주문은 계속 진행
     }
     
     console.log('주문 생성 완료:', { orderId, orderNumber });
@@ -9242,18 +9285,22 @@ app.post('/api/orders/:orderNumber/refund', cors(), async (c) => {
       SELECT product_id, quantity FROM order_items WHERE order_id = ?
     `).bind(order.id).all();
     
-    for (const item of orderItems.results) {
-      await DB.prepare(`
-        UPDATE products 
-        SET stock = stock + ?,
-            version = version + 1,
-            updated_at = datetime('now')
-        WHERE id = ?
-      `).bind(item.quantity, item.product_id).run();
+    // ✅ N+1 최적화: 재고 복구를 배치로 처리
+    if (orderItems.results.length > 0) {
+      const stockRestoreQueries = orderItems.results.map((item: any) =>
+        DB.prepare(`
+          UPDATE products 
+          SET stock = stock + ?,
+              version = version + 1,
+              updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(item.quantity, item.product_id)
+      );
       
-      console.log('[Order Refund] 재고 복구:', {
-        productId: item.product_id,
-        quantity: item.quantity
+      await DB.batch(stockRestoreQueries);
+      
+      console.log('[Order Refund] 재고 복구 완료:', {
+        items: orderItems.results.length
       });
     }
     

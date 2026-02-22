@@ -5,6 +5,7 @@ import axios from 'axios'
 import { getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
+import { useLiveChat } from '@/hooks/useLiveChat'
 
 // ============================================
 // Suppress YouTube Console Errors
@@ -378,105 +379,19 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
   )
 }
 
-// LiveChat Component
+// LiveChat Component with SSE
 function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: () => void }) {
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: '1', username: 'minjae_92', message: '방송 시작했다!' },
-    { id: '2', username: 'yuna_shop', message: '오늘 뭐 파나요?' },
-    { id: '3', username: 'hyejin.k', message: '와 기대된다' },
-  ])
-  const nextId = useRef(4)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const chatRefFirebase = useRef<any>(null)
+  
+  // 🔥 SSE 기반 실시간 채팅
+  const { messages, isConnected, error } = useLiveChat(streamId, !!streamId)
 
-  // Firebase 실시간 채팅
-  useEffect(() => {
-    if (!streamId) return
-
-    const initFirebaseChat = () => {
-      try {
-        // @ts-ignore
-        const firebaseConfig = {
-          apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
-          authDomain: "urteam-live-commerce.firebaseapp.com",
-          databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "urteam-live-commerce",
-          storageBucket: "urteam-live-commerce.firebasestorage.app",
-          messagingSenderId: "1098157020294",
-          appId: "1:1098157020294:web:5f527d8e3e9f941cedad07"
-        }
-
-        // @ts-ignore
-        if (!window.firebase.apps.length) {
-          // @ts-ignore
-          window.firebase.initializeApp(firebaseConfig)
-        }
-
-        // @ts-ignore
-        const database = window.firebase.database()
-        const chatRef = database.ref(`chats/stream${streamId}`)
-        chatRefFirebase.current = chatRef
-
-        // Load last 5 messages
-        chatRef.limitToLast(5).once('value', (snapshot: any) => {
-          const loaded: ChatMessage[] = []
-          snapshot.forEach((child: any) => {
-            const msg = child.val()
-            loaded.push({
-              id: child.key || String(Date.now()),
-              username: msg.username,
-              message: msg.text || msg.message,
-            })
-          })
-          if (loaded.length > 0) {
-            setChatMessages(loaded)
-          }
-        })
-
-        // Real-time listener
-        let lastTime = Date.now()
-        chatRef.orderByChild('timestamp').startAt(lastTime).on('child_added', (snapshot: any) => {
-          const msg = snapshot.val()
-          if (msg.timestamp > lastTime) {
-            setChatMessages(prev => [...prev.slice(-4), {
-              id: snapshot.key || String(Date.now()),
-              username: msg.username,
-              message: msg.text || msg.message,
-            }])
-          }
-        })
-      } catch (error) {
-        console.error('[LiveChat] Firebase error:', error)
-      }
-    }
-
-    // @ts-ignore
-    if (window.firebase) {
-      initFirebaseChat()
-    } else {
-      const checkFirebase = setInterval(() => {
-        // @ts-ignore
-        if (window.firebase) {
-          clearInterval(checkFirebase)
-          initFirebaseChat()
-        }
-      }, 500)
-      
-      setTimeout(() => clearInterval(checkFirebase), 10000)
-    }
-
-    return () => {
-      if (chatRefFirebase.current) {
-        chatRefFirebase.current.off()
-      }
-    }
-  }, [streamId])
-
+  // 자동 스크롤
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [chatMessages])
+  }, [messages])
 
   return (
     <div
@@ -485,7 +400,15 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
       style={{ gap: '2px' }}
       onClick={onChatClick}
     >
-      {chatMessages.map((msg) => (
+      {/* 연결 상태 표시 */}
+      {!isConnected && (
+        <p className="text-[10px] text-yellow-300/80 animate-pulse">
+          {error || '연결 중...'}
+        </p>
+      )}
+      
+      {/* SSE 메시지 렌더링 */}
+      {messages.map((msg) => (
         <p
           key={msg.id}
           className="text-[11px] leading-[1.3] animate-fade-in"
@@ -493,7 +416,7 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
             textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)',
           }}
         >
-          <span className="font-bold text-white/90">{msg.username}</span>
+          <span className="font-bold text-white/90">{msg.userName}</span>
           <span className="text-white/70">{' '}{msg.message}</span>
         </p>
       ))}
