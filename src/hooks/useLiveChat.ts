@@ -120,7 +120,7 @@ export function useLiveChat(
     }
 
     try {
-      const eventSource = new EventSource(`/api/live/${liveId}/chat/stream`);
+      const eventSource = new EventSource(`/api/live/${liveId}/chat/sse`);
       eventSourceRef.current = eventSource;
 
       // 연결 성공
