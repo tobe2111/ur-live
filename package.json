@@ -42,16 +42,22 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@sentry/react": "^10.38.0",
     "@tosspayments/tosspayments-sdk": "^2.5.0",
-    "@types/react": "^19.2.10",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
     "axios": "^1.13.4",
     "browser-image-compression": "^2.0.2",
     "embla-carousel-react": "^8.6.0",
     "hono": "^4.11.7",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.1",
     "recharts": "^3.7.0"
+  },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260128.0",
