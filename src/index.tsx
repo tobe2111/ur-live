@@ -1503,8 +1503,7 @@ app.post('/api/auth/login', cors(), async (c) => {
       username: user.username,
       name: user.name,
       email: user.email,
-      businessName: user.business_name,
-      role: user.role
+      businessName: user.business_name
     });
     
     // 마지막 로그인 시간 업데이트
@@ -1520,8 +1519,7 @@ app.post('/api/auth/login', cors(), async (c) => {
           name: user.name,
           email: user.email,
           type: userType,
-          businessName: user.business_name,
-          role: user.role
+          businessName: user.business_name
         }
       }
     });
@@ -1647,8 +1645,7 @@ app.post('/api/admin/login', cors(), async (c) => {
     const sessionToken = await createSession(c.env.SESSION_KV, admin.id, 'admin', {
       username: admin.username,
       email: admin.email,
-      name: admin.name,
-      role: admin.role
+      name: admin.name
     });
     
     // Update last login time
@@ -1662,8 +1659,7 @@ app.post('/api/admin/login', cors(), async (c) => {
           id: admin.id,
           username: admin.username,
           email: admin.email,
-          name: admin.name,
-          role: admin.role
+          name: admin.name
         }
       }
     });
@@ -1710,8 +1706,7 @@ app.get('/api/auth/verify', cors(), async (c) => {
           username: user.username,
           name: user.name,
           email: user.email,
-          businessName: user.business_name,
-          role: user.role
+          businessName: user.business_name
         }
       }
     });
@@ -2221,7 +2216,7 @@ app.post('/api/auth/kakao/unlink', cors(), async (c) => {
     
     // 2. 사용자 정보 조회 (✅ 명시적 컬럼 - password_hash 제외)
     const user = await DB.prepare(`
-      SELECT u.id, u.email, u.name, u.kakao_id, u.role, u.profile_image, u.created_at
+      SELECT u.id, u.email, u.name, u.kakao_id, u.profile_image, u.created_at
       FROM users u
       WHERE u.id = (
         SELECT user_id FROM admin_sessions WHERE session_token = ?
