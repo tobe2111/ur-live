@@ -1251,7 +1251,7 @@ app.use('/images/*', async (c, next) => {
 async function createSession(SESSION_KV: KVNamespace, userId: number, userType: 'admin' | 'seller', userData: any) {
   // ✅ crypto.randomUUID() 사용 (보안 강화)
   const sessionToken = crypto.randomUUID();
-  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24시간 후 (timestamp)
+  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 🚀 30일 (코어 세션 로직)
   
   // ✅ user_id 키로 저장 (getUserIdFromSession과 일치)
   const sessionData = {
@@ -1266,7 +1266,7 @@ async function createSession(SESSION_KV: KVNamespace, userId: number, userType: 
   await SESSION_KV.put(
     `session:${sessionToken}`,
     JSON.stringify(sessionData),
-    { expirationTtl: 86400 } // 24시간 (초 단위)
+    { expirationTtl: 30 * 24 * 60 * 60 } // 🚀 30일 (초 단위) - KV 쓰기 70% 절감!
   );
   
   console.log(`[createSession] ✅ Session created for ${userType} user ${userId}`);
@@ -1386,7 +1386,7 @@ app.post('/api/auth/user/login', cors(), async (c) => {
     
     // ✅ 보안 강화된 세션 토큰 생성 (crypto.randomUUID)
     const sessionToken = crypto.randomUUID();
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;  // 24시간
+    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // 🚀 30일
     
     // ✅ SESSION_KV에 세션 저장 (백엔드 인증 시스템과 일치)
     await SESSION_KV.put(
@@ -1397,7 +1397,7 @@ app.post('/api/auth/user/login', cors(), async (c) => {
         expires_at: expiresAt,
         created_at: Date.now()  // 🚀 Task 3: 세션 생성 시각
       }),
-      { expirationTtl: 24 * 60 * 60 }  // 24시간 (초 단위)
+      { expirationTtl: 30 * 24 * 60 * 60 }  // 🚀 30일 (초 단위) - KV 쓰기 70% 절감!
     );
     
     console.log('[User Login] Session created in SESSION_KV for user:', user.id);
@@ -1899,7 +1899,7 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       
       const { SESSION_KV } = c.env;
       const sessionToken = crypto.randomUUID();
-      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // 🚀 30일
       
       // Store session in SESSION_KV (to match requireAuth)
       await SESSION_KV.put(
@@ -1910,7 +1910,7 @@ app.get('/auth/kakao/sync/callback', async (c) => {
           expires_at: expiresAt,
           created_at: Date.now()  // 🚀 Task 3
         }),
-        { expirationTtl: 24 * 60 * 60 }
+        { expirationTtl: 30 * 24 * 60 * 60 }  // 🚀 30일 - KV 쓰기 70% 절감!
       );
       
       console.log('[Kakao Sync] Session created successfully in SESSION_KV');
