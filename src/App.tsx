@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { UpdateNotification } from './components/UpdateNotification'
+import { AuthProvider } from './contexts/AuthContext'
 import { useSessionValidation } from './hooks/useSessionValidation'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 
@@ -158,12 +159,14 @@ function AppContent() {
   )
 }
 
-// ✅ App 컴포넌트: BrowserRouter를 최상위에 배치
+// ✅ App 컴포넌트: BrowserRouter와 AuthProvider를 최상위에 배치
 function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
   )

@@ -2,7 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { useLoginUrlParams } from '@/hooks/useLoginUrlParams'
+import { useAuth } from '@/contexts/AuthContext'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Seller {
@@ -37,7 +37,7 @@ interface Stats {
 
 export default function AdminPage() {
   const navigate = useNavigate()
-  const { isProcessed } = useLoginUrlParams()  // ✅ URL 파라미터 처리 Hook 추가
+  const { isAuthReady } = useAuth()  // ✅ URL 파라미터 처리 Hook 추가
   const [sellers, setSellers] = useState<Seller[]>([])
   const [pendingSellers, setPendingSellers] = useState<Seller[]>([])
   const [streams, setStreams] = useState<Stream[]>([])
@@ -54,7 +54,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     // ⏳ URL 파라미터 처리가 완료될 때까지 대기
-    if (!isProcessed) {
+    if (!isAuthReady) {
       console.log('[AdminPage] ⏳ URL 파라미터 처리 대기 중...')
       return
     }
@@ -87,7 +87,7 @@ export default function AdminPage() {
     
     console.log('[AdminPage] ✅ Auth success, loading data')
     loadData()
-  }, [navigate, isProcessed])  // ✅ isProcessed 추가
+  }, [navigate, isAuthReady])  // ✅ isProcessed 추가
 
   async function loadData() {
     try {

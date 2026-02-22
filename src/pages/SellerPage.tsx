@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import NotificationBell from '@/components/NotificationBell'
-import { useLoginUrlParams } from '@/hooks/useLoginUrlParams'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   ArrowLeft, 
   TrendingUp,
@@ -60,7 +60,7 @@ interface Product {
 
 export default function SellerPage() {
   const navigate = useNavigate()
-  const { isProcessed } = useLoginUrlParams()  // ✅ URL 파라미터 처리 Hook 추가
+  const { isAuthReady } = useAuth()  // ✅ AuthContext 사용
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalOrders: 0,
@@ -78,9 +78,9 @@ export default function SellerPage() {
   const sellerEmail = 'seller@yourlive.com'
 
   useEffect(() => {
-    // ⏳ URL 파라미터 처리가 완료될 때까지 대기
-    if (!isProcessed) {
-      console.log('[SellerPage] ⏳ URL 파라미터 처리 대기 중...')
+    // ⏳ 인증 초기화가 완료될 때까지 대기
+    if (!isAuthReady) {
+      console.log('[SellerPage] ⏳ 인증 초기화 대기 중...')
       return
     }
     
@@ -113,7 +113,7 @@ export default function SellerPage() {
     
     console.log('[SellerPage] ✅ Auth success, loading dashboard')
     loadDashboardData()
-  }, [navigate, isProcessed])  // ✅ isProcessed 추가
+  }, [navigate, isAuthReady])  // ✅ isAuthReady로 변경
 
   async function loadDashboardData() {
     try {
