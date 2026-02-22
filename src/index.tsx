@@ -12230,7 +12230,20 @@ app.get('/api/push/vapid-public-key', cors(), async (c) => {
  * 메모리 캐시 통계 조회 (KV 최적화 효과 확인)
  * GET /api/cache/stats
  */
+// 🔒 Cache Stats (Admin only - 보안 강화)
+// Secret token으로 접근 제한: /api/cache/stats?token=SECRET_KEY
 app.get('/api/cache/stats', async (c) => {
+  const token = c.req.query('token');
+  const STATS_SECRET_TOKEN = c.env.STATS_SECRET_TOKEN || 'your-secret-token-here';
+  
+  // 🔒 보안: Secret token 검증
+  if (token !== STATS_SECRET_TOKEN) {
+    return c.json({
+      success: false,
+      error: '접근 권한이 없습니다. 올바른 token을 제공해주세요.'
+    }, 403);
+  }
+  
   const hitRate = cacheStats.hits + cacheStats.misses > 0
     ? ((cacheStats.hits / (cacheStats.hits + cacheStats.misses)) * 100).toFixed(2)
     : '0.00';
@@ -12238,16 +12251,37 @@ app.get('/api/cache/stats', async (c) => {
   return c.json({
     success: true,
     data: {
-      ...cacheStats,
-      hitRate: `${hitRate}%`,
-      cacheSize: globalMemoryCache.size,
+      // Cache 통계
+      cache: {
+        ...cacheStats,
+        hitRate: `${hitRate}%`,
+        cacheSize: globalMemoryCache.size,
+        maxSize: 1000,
+        memoryUsage: `${((globalMemoryCache.size / 1000) * 100).toFixed(1)}%`
+      },
+      // 설명
       description: {
         hits: 'Memory cache로 처리된 요청 (KV 읽기 0회)',
         misses: 'Memory cache 미스로 KV 조회한 요청',
         writes: 'Memory cache에 저장된 항목 수',
         evictions: 'Memory cache에서 삭제된 항목 수 (만료 또는 크기 제한)',
         hitRate: 'Cache hit 비율 (높을수록 KV 사용량 감소)',
-        cacheSize: '현재 Memory cache에 저장된 항목 수'
+        cacheSize: '현재 Memory cache에 저장된 항목 수',
+        maxSize: 'Memory cache 최대 크기',
+        memoryUsage: 'Memory cache 사용률 (cacheSize / maxSize)'
+      },
+      // KV 사용량 가이드
+      kvUsageGuide: {
+        currentHitRate: `${hitRate}%`,
+        recommendation: parseFloat(hitRate) >= 90 
+          ? '✅ 캐시가 매우 효과적으로 작동하고 있습니다.'
+          : parseFloat(hitRate) >= 70
+          ? '⚠️ 캐시 히트율이 낮습니다. TTL 조정을 고려하세요.'
+          : '❌ 캐시 히트율이 매우 낮습니다. 캐시 설정을 확인하세요.',
+        kvDailyReadsLimit: '100,000 reads/day (free tier)',
+        kvDailyWritesLimit: '1,000 writes/day (free tier)',
+        estimatedDailyReads: Math.round((cacheStats.misses / (cacheStats.hits + cacheStats.misses || 1)) * 10000),
+        estimatedDailyWrites: Math.round((cacheStats.writes / (cacheStats.hits + cacheStats.misses || 1)) * 1000)
       }
     }
   });
