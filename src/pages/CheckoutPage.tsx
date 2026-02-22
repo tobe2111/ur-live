@@ -528,6 +528,19 @@ export default function CheckoutPage() {
       return
     }
 
+    // ✅ 약관 동의 자동 체크 (결제하기 버튼 클릭 시)
+    try {
+      const agreementCheckbox = document.querySelector('#agreement input[type="checkbox"]') as HTMLInputElement
+      if (agreementCheckbox && !agreementCheckbox.checked) {
+        console.log('[Payment] ✅ 약관 동의 자동 체크')
+        agreementCheckbox.checked = true
+        // 체크박스 변경 이벤트 트리거 (Toss Payments 위젯에 알림)
+        agreementCheckbox.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+    } catch (err) {
+      console.warn('[Payment] 약관 체크박스 자동 체크 실패:', err)
+    }
+
     // 처리 중 플래그 설정
     setIsProcessing(true)
     console.log('[Payment] ✅ 결제 시작:', { totalAmount, selectedAddress })
