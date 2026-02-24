@@ -1620,8 +1620,21 @@ app.post('/api/auth/login', cors(), async (c) => {
     let user;
     let table = userType === 'admin' ? 'admins' : 'sellers';
     
-    // 사용자 조회 (username 또는 email로 조회)
-    user = await DB.prepare(`SELECT * FROM ${table} WHERE username = ? OR email = ?`).bind(username, username).first();
+    // 사용자 조회 (username 또는 email로 조회, 로그인 시 필요한 필드만)
+    user = await DB.prepare(`
+      SELECT 
+        id, 
+        username, 
+        email, 
+        password_hash, 
+        name, 
+        is_active, 
+        status, 
+        last_login_at, 
+        business_name
+      FROM ${table} 
+      WHERE username = ? OR email = ?
+    `).bind(username, username).first();
     
     if (!user) {
       // 🔴 로그인 실패 - Discord 알림
@@ -1844,8 +1857,19 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
     }
     
-    // Find admin by email
-    const admin = await DB.prepare('SELECT * FROM admins WHERE email = ?').bind(email).first();
+    // Find admin by email (로그인 필요 필드)
+    const admin = await DB.prepare(`
+      SELECT 
+        id, 
+        username, 
+        email, 
+        password_hash, 
+        name, 
+        is_active, 
+        last_login_at
+      FROM admins 
+      WHERE email = ?
+    `).bind(email).first();
     
     if (!admin) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
@@ -1926,7 +1950,18 @@ app.get('/api/auth/verify', cors(), async (c) => {
     const table = session.user_type === 'admin' ? 'admins' : 'sellers';
     const userId = session.user_type === 'admin' ? session.admin_id : session.seller_id;
     
-    const user = await DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(userId).first();
+    const user = await DB.prepare(`
+      SELECT 
+        id, 
+        username, 
+        email, 
+        name, 
+        business_name, 
+        is_active, 
+        status
+      FROM ${table} 
+      WHERE id = ?
+    `).bind(userId).first();
     
     if (!user) {
       return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
@@ -2723,7 +2758,20 @@ app.get('/api/shipping-addresses', cors(), requireAuth, async (c) => {
   
   try {
     const addresses = await DB.prepare(`
-      SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC
+      SELECT 
+        id, 
+        user_id, 
+        recipient_name, 
+        phone, 
+        postal_code, 
+        address, 
+        address_detail, 
+        is_default, 
+        created_at, 
+        updated_at 
+      FROM shipping_addresses 
+      WHERE user_id = ? 
+      ORDER BY is_default DESC, created_at DESC
     `).bind(userId).all();
     
     return c.json({
@@ -2753,7 +2801,20 @@ app.get('/api/shipping-addresses/:userId', cors(), requireAuth, async (c) => {
     }
     
     const addresses = await DB.prepare(`
-      SELECT * FROM shipping_addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC
+      SELECT 
+        id, 
+        user_id, 
+        recipient_name, 
+        phone, 
+        postal_code, 
+        address, 
+        address_detail, 
+        is_default, 
+        created_at, 
+        updated_at 
+      FROM shipping_addresses 
+      WHERE user_id = ? 
+      ORDER BY is_default DESC, created_at DESC
     `).bind(authenticatedUserId).all();
     
     return c.json({
@@ -2947,9 +3008,24 @@ app.get('/api/streams', async (c) => {
     }
     
     // \uce90\uc2dc \ubbf8\uc2a4 \uc2dc D1 \uc870\ud68c
-    const result = await DB.prepare(
-      'SELECT * FROM live_streams WHERE status = ? ORDER BY created_at DESC'
-    ).bind('live').all();
+    const result = await DB.prepare(`
+      SELECT 
+        id, 
+        title, 
+        description, 
+        youtube_video_id, 
+        status, 
+        current_product_id, 
+        seller_id,
+        scheduled_at, 
+        started_at, 
+        ended_at, 
+        created_at, 
+        updated_at
+      FROM live_streams 
+      WHERE status = ? 
+      ORDER BY created_at DESC
+    `).bind('live').all();
 
     // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (10\ubd84 TTL)
     await CACHE_KV.put(cacheKey, JSON.stringify(result.results), {
@@ -3632,7 +3708,7 @@ async function fetchProductDetail(DB: D1Database, id: string) {
 
   // 상품 옵션 조회
   const options = await DB.prepare(
-    'SELECT * FROM product_options WHERE product_id = ?'
+    'SELECT id, product_id, option_type, option_value, price_adjustment, stock, created_at FROM product_options WHERE product_id = ?'
   ).bind(id).all();
 
   return {
@@ -4419,7 +4495,7 @@ app.get('/api/streams/:streamId/current-product', async (c) => {
 
     // 상품 옵션 조회
     const options = await DB.prepare(
-      'SELECT * FROM product_options WHERE product_id = ?'
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock, created_at FROM product_options WHERE product_id = ?'
     ).bind(stream.current_product_id).all();
 
     const result = {
@@ -4630,9 +4706,22 @@ app.get('/api/seller/streams', async (c) => {
   try {
     const sellerId = auth.sellerId;
     
-    // Get all streams for this seller
+    // Get all streams for this seller (필요한 컬럼만)
     const result = await DB.prepare(`
-      SELECT * FROM live_streams 
+      SELECT 
+        id, 
+        title, 
+        description, 
+        youtube_video_id, 
+        status, 
+        current_product_id, 
+        seller_id,
+        scheduled_at, 
+        started_at, 
+        ended_at, 
+        created_at, 
+        updated_at
+      FROM live_streams 
       WHERE seller_id = ?
       ORDER BY created_at DESC
     `).bind(sellerId).all();
@@ -4736,10 +4825,24 @@ app.post('/api/seller/streams', async (c) => {
       finalThumbnailUrl || null
     ).run();
 
-    // Get created stream
-    const stream = await DB.prepare(
-      'SELECT * FROM live_streams WHERE id = ?'
-    ).bind(result.meta.last_row_id).first();
+    // Get created stream (필요한 컬럼만 조회)
+    const stream = await DB.prepare(`
+      SELECT 
+        id, 
+        title, 
+        description, 
+        youtube_video_id, 
+        status, 
+        current_product_id, 
+        seller_id,
+        scheduled_at, 
+        started_at, 
+        ended_at, 
+        created_at, 
+        updated_at
+      FROM live_streams 
+      WHERE id = ?
+    `).bind(result.meta.last_row_id).first();
 
     // 판매자 정보 가져오기
     const seller = await DB.prepare(
@@ -5069,7 +5172,7 @@ app.post('/api/seller/youtube/end-live/:streamId', async (c) => {
 
     // 스트림 정보 조회
     const stream = await DB.prepare(
-      'SELECT * FROM live_streams WHERE id = ? AND seller_id = ?'
+      'SELECT id, seller_id FROM live_streams WHERE id = ? AND seller_id = ?'
     ).bind(streamId, auth.sellerId).first();
 
     if (!stream) {
@@ -5151,7 +5254,7 @@ app.get('/api/seller/youtube/stats/:streamId', async (c) => {
 
     // 스트림 정보 조회
     const stream = await DB.prepare(
-      'SELECT * FROM live_streams WHERE id = ? AND seller_id = ?'
+      'SELECT id, seller_id FROM live_streams WHERE id = ? AND seller_id = ?'
     ).bind(streamId, auth.sellerId).first();
 
     if (!stream) {
@@ -5222,7 +5325,7 @@ app.get('/api/seller/youtube/chat/:streamId', async (c) => {
 
     // 스트림 정보 조회
     const stream = await DB.prepare(
-      'SELECT * FROM live_streams WHERE id = ? AND seller_id = ?'
+      'SELECT id, seller_id FROM live_streams WHERE id = ? AND seller_id = ?'
     ).bind(streamId, auth.sellerId).first();
 
     if (!stream) {
@@ -5406,7 +5509,7 @@ app.post('/api/seller/streams/:streamId/change-product', async (c) => {
 
     // Get product options
     const options = await DB.prepare(
-      'SELECT * FROM product_options WHERE product_id = ?'
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock, created_at FROM product_options WHERE product_id = ?'
     ).bind(productId).all();
 
     // Update live stream current product
@@ -5470,9 +5573,9 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
   try {
     const { productId } = await c.req.json();
 
-    // 상품 정보 조회
+    // 상품 정보 조회 (상세 정보)
     const product = await DB.prepare(
-      'SELECT * FROM products WHERE id = ? AND is_active = 1'
+      'SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category, is_active, seller_id FROM products WHERE id = ? AND is_active = 1'
     ).bind(productId).first();
 
     if (!product) {
@@ -5484,7 +5587,7 @@ app.post('/api/admin/streams/:streamId/change-product', async (c) => {
 
     // 상품 옵션 조회
     const options = await DB.prepare(
-      'SELECT * FROM product_options WHERE product_id = ?'
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock FROM product_options WHERE product_id = ?'
     ).bind(productId).all();
 
     // 라이브 스트림 업데이트
@@ -6122,7 +6225,7 @@ app.post('/api/seller/products', async (c) => {
 
     // Get created product
     const product = await DB.prepare(
-      'SELECT * FROM products WHERE id = ?'
+      'SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category, is_active, seller_id, created_at FROM products WHERE id = ?'
     ).bind(result.meta.last_row_id).first();
 
     // \uce90\uc2dc \ubb34\ud6a8\ud654 (Cache Invalidation) \u2705
@@ -6176,8 +6279,8 @@ app.put('/api/seller/products/:id', async (c) => {
   try {
     const id = c.req.param('id');
     
-    // Verify ownership
-    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
+    // Verify ownership (소유권 확인용 - id, seller_id만 필요)
+    const product = await DB.prepare('SELECT id, seller_id FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
     
     if (!product) {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
@@ -6240,7 +6343,7 @@ app.put('/api/seller/products/:id', async (c) => {
     ).bind(...values).run();
 
     // Get updated product
-    const updatedProduct = await DB.prepare('SELECT * FROM products WHERE id = ?').bind(id).first();
+    const updatedProduct = await DB.prepare('SELECT id, name, description, price, original_price, discount_rate, image_url, stock, category, is_active, seller_id, created_at FROM products WHERE id = ?').bind(id).first();
 
     // \uce90\uc2dc \ubb34\ud6a8\ud654 (Cache Invalidation) \u2705
     await deleteCachedData(c.env.CACHE_KV, `seller:${auth.sellerId}:products`, `public:seller:${auth.sellerId}`);
@@ -6264,7 +6367,7 @@ app.delete('/api/seller/products/:id', async (c) => {
     const id = c.req.param('id');
 
     // Verify ownership
-    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
+    const product = await DB.prepare('SELECT id, seller_id FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
     
     if (!product) {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
@@ -6317,14 +6420,14 @@ app.get('/api/seller/products/:id/options', async (c) => {
     const id = c.req.param('id');
 
     // Verify ownership
-    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
+    const product = await DB.prepare('SELECT id, seller_id FROM products WHERE id = ? AND seller_id = ?').bind(id, auth.sellerId).first();
     
     if (!product) {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
     }
 
     const result = await DB.prepare(
-      'SELECT * FROM product_options WHERE product_id = ? ORDER BY id'
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock, created_at FROM product_options WHERE product_id = ? ORDER BY id'
     ).bind(id).all();
 
     return c.json({ success: true, data: result.results });
@@ -6346,7 +6449,7 @@ app.post('/api/seller/products/:id/options', async (c) => {
     const product_id = c.req.param('id');
 
     // Verify ownership
-    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(product_id, auth.sellerId).first();
+    const product = await DB.prepare('SELECT id, seller_id FROM products WHERE id = ? AND seller_id = ?').bind(product_id, auth.sellerId).first();
     
     if (!product) {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
@@ -6392,7 +6495,7 @@ app.delete('/api/seller/products/:productId/options/:optionId', async (c) => {
     const optionId = c.req.param('optionId');
 
     // Verify ownership
-    const product = await DB.prepare('SELECT * FROM products WHERE id = ? AND seller_id = ?').bind(productId, auth.sellerId).first();
+    const product = await DB.prepare('SELECT id, seller_id FROM products WHERE id = ? AND seller_id = ?').bind(productId, auth.sellerId).first();
     
     if (!product) {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
@@ -7753,9 +7856,26 @@ app.post('/api/payments/:paymentKey/cancel', async (c) => {
       }, 400);
     }
 
-    // 결제 정보 조회
+    // 결제 정보 조회 (필요한 필드만)
     const payment = await DB.prepare(`
-      SELECT * FROM payments WHERE pg_payment_key = ?
+      SELECT 
+        id, 
+        order_id, 
+        pg_provider, 
+        pg_payment_key, 
+        pg_transaction_id,
+        method, 
+        amount, 
+        status,
+        card_company,
+        card_number,
+        installment_months,
+        requested_at,
+        approved_at,
+        cancelled_at,
+        created_at
+      FROM payments 
+      WHERE pg_payment_key = ?
     `).bind(paymentKey).first();
 
     if (!payment) {
@@ -7905,7 +8025,25 @@ app.get('/api/payments/order/:orderId', async (c) => {
     const orderId = c.req.param('orderId');
     
     const payments = await DB.prepare(`
-      SELECT * FROM payments WHERE order_id = ? ORDER BY created_at DESC
+      SELECT 
+        id, 
+        order_id, 
+        pg_provider, 
+        pg_payment_key, 
+        pg_transaction_id,
+        method, 
+        amount, 
+        status,
+        card_company,
+        card_number,
+        installment_months,
+        requested_at,
+        approved_at,
+        cancelled_at,
+        created_at
+      FROM payments 
+      WHERE order_id = ? 
+      ORDER BY created_at DESC
     `).bind(orderId).all();
 
     return c.json({
@@ -9520,7 +9658,19 @@ app.post('/api/orders/create', requireAuth, async (c) => {
     let shippingInfo = null;
     if (shippingAddressId) {
       const addressResult = await DB.prepare(`
-        SELECT * FROM shipping_addresses WHERE id = ? AND user_id = ?
+        SELECT 
+          id, 
+          user_id, 
+          recipient_name, 
+          phone, 
+          postal_code, 
+          address, 
+          address_detail, 
+          is_default, 
+          created_at, 
+          updated_at 
+        FROM shipping_addresses 
+        WHERE id = ? AND user_id = ?
       `).bind(shippingAddressId, userId).first();
       
       if (!addressResult) {
