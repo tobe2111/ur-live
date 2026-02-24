@@ -1340,32 +1340,42 @@ app.use('/images/*', async (c, next) => {
 // =================================
 // API Protection Middleware
 // =================================
-// 🔒 모든 Admin API에 인증 + Admin 권한 체크 적용 (로그인 제외)
-app.use('/api/admin/*', async (c, next) => {
+// 🔒 Admin API 보호: /api/admin으로 시작하는 모든 경로
+app.use('/api/admin*', async (c, next) => {
   // 로그인 엔드포인트는 인증 제외
   if (c.req.path === '/api/admin/login') {
-    await next();
-    return;
+    return next();
   }
   
-  // 나머지는 인증 + Admin 권한 필수
-  await requireAuth(c, async () => {
-    await requireAdmin(c, next);
-  });
+  // requireAuth 실행
+  const authResult = await requireAuth(c, () => Promise.resolve());
+  if (authResult) return authResult; // 401 응답 반환
+  
+  // requireAdmin 실행
+  const adminResult = await requireAdmin(c, () => Promise.resolve());
+  if (adminResult) return adminResult; // 403 응답 반환
+  
+  // 모든 체크 통과, 다음 핸들러로
+  return next();
 });
 
-// 🔒 모든 Seller API에 인증 + Seller 권한 체크 적용 (회원가입 제외)
-app.use('/api/seller/*', async (c, next) => {
+// 🔒 Seller API 보호: /api/seller로 시작하는 모든 경로
+app.use('/api/seller*', async (c, next) => {
   // 회원가입 엔드포인트는 인증 제외
   if (c.req.path === '/api/seller/register') {
-    await next();
-    return;
+    return next();
   }
   
-  // 나머지는 인증 + Seller 권한 필수
-  await requireAuth(c, async () => {
-    await requireSeller(c, next);
-  });
+  // requireAuth 실행
+  const authResult = await requireAuth(c, () => Promise.resolve());
+  if (authResult) return authResult; // 401 응답 반환
+  
+  // requireSeller 실행
+  const sellerResult = await requireSeller(c, () => Promise.resolve());
+  if (sellerResult) return sellerResult; // 403 응답 반환
+  
+  // 모든 체크 통과, 다음 핸들러로
+  return next();
 });
 
 // =================================
