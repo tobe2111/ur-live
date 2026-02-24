@@ -586,6 +586,71 @@ async function requireAuth(c: any, next: any) {
   await next();
 }
 
+// ==================== Admin Authorization Middleware ====================
+async function requireAdmin(c: any, next: any) {
+  const userType = c.get('userType');
+  const userId = c.get('userId');
+  
+  if (userType !== 'admin') {
+    console.warn('[Security] Unauthorized admin access attempt:', { userId, userType });
+    return c.json({ 
+      success: false, 
+      error: '관리자 권한이 필요합니다.' 
+    }, 403);
+  }
+  
+  await next();
+}
+
+// ==================== Seller Authorization Middleware ====================
+async function requireSeller(c: any, next: any) {
+  const userType = c.get('userType');
+  const userId = c.get('userId');
+  
+  if (userType !== 'seller') {
+    console.warn('[Security] Unauthorized seller access attempt:', { userId, userType });
+    return c.json({ 
+      success: false, 
+      error: '판매자 권한이 필요합니다.' 
+    }, 403);
+  }
+  
+  await next();
+}
+
+// ==================== Resource Ownership Middleware ====================
+// 장바구니, 주문 등의 리소스가 현재 사용자 소유인지 확인
+async function requireOwnership(resourceType: 'cart' | 'order' | 'address') {
+  return async (c: any, next: any) => {
+    const userId = c.get('userId');
+    const userType = c.get('userType');
+    
+    // Admin은 모든 리소스에 접근 가능
+    if (userType === 'admin') {
+      await next();
+      return;
+    }
+    
+    // URL에서 userId 파라미터 추출
+    const paramUserId = c.req.param('userId');
+    
+    // userId 파라미터가 있고, 현재 로그인 사용자와 다르면 거부
+    if (paramUserId && paramUserId !== String(userId)) {
+      console.warn('[Security] Unauthorized resource access attempt:', { 
+        resourceType, 
+        requestedUserId: paramUserId, 
+        actualUserId: userId 
+      });
+      return c.json({ 
+        success: false, 
+        error: '본인의 정보만 조회할 수 있습니다.' 
+      }, 403);
+    }
+    
+    await next();
+  };
+}
+
 // =================================
 // Utility Functions
 // =================================
@@ -1205,6 +1270,12 @@ app.use(rateLimit(RateLimitPolicies.alimtalk));
 // 주문 엔드포인트 (분당 10회)
 app.use(rateLimit(RateLimitPolicies.order));
 
+// 환불 요청 - 악용 방지 (시간당 3회)
+app.use(rateLimit(RateLimitPolicies.refund));
+
+// 장바구니 엔드포인트 (분당 20회)
+app.use(rateLimit(RateLimitPolicies.cart));
+
 // 파일 업로드 (분당 5회)
 app.use(rateLimit(RateLimitPolicies.upload));
 
@@ -1548,6 +1619,21 @@ app.post('/api/auth/logout', cors(), async (c) => {
   }
 });
 
+// ==================== Seller API Protection ====================
+// 모든 Seller API에 인증 + Seller 권한 체크 적용 (회원가입 제외)
+app.use('/api/seller/*', async (c, next) => {
+  // 회원가입 엔드포인트는 인증 제외
+  if (c.req.path === '/api/seller/register') {
+    await next();
+    return;
+  }
+  
+  // 나머지는 인증 + Seller 권한 필수
+  await requireAuth(c, async () => {
+    await requireSeller(c, next);
+  });
+});
+
 // 셀러 회원가입 API
 app.post('/api/seller/register', cors(), async (c) => {
   const { DB } = c.env;
@@ -1608,6 +1694,21 @@ app.post('/api/seller/register', cors(), async (c) => {
     console.error('Seller registration error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
+});
+
+// ==================== Admin API Protection ====================
+// 모든 Admin API에 인증 + Admin 권한 체크 적용 (로그인 제외)
+app.use('/api/admin/*', async (c, next) => {
+  // 로그인 엔드포인트는 인증 제외
+  if (c.req.path === '/api/admin/login') {
+    await next();
+    return;
+  }
+  
+  // 나머지는 인증 + Admin 권한 필수
+  await requireAuth(c, async () => {
+    await requireAdmin(c, next);
+  });
 });
 
 // Admin login API (email-based)
@@ -2472,7 +2573,7 @@ app.get('/api/shipping-addresses/:userId', cors(), requireAuth, async (c) => {
 });
 
 // 배송지 추가
-app.post('/api/shipping-addresses', cors(), async (c) => {
+app.post('/api/shipping-addresses', cors(), requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
@@ -2517,7 +2618,7 @@ app.post('/api/shipping-addresses', cors(), async (c) => {
 });
 
 // 배송지 수정
-app.put('/api/shipping-addresses/:id', cors(), async (c) => {
+app.put('/api/shipping-addresses/:id', cors(), requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
@@ -3556,7 +3657,7 @@ app.post('/api/users', async (c) => {
   }
 });
 
-app.post('/api/cart', async (c) => {
+app.post('/api/cart', requireAuth, async (c) => {
   const { DB } = c.env;
 
   try {
@@ -3663,7 +3764,7 @@ app.post('/api/cart', async (c) => {
   }
 });
 
-app.delete('/api/cart/:cartItemId', async (c) => {
+app.delete('/api/cart/:cartItemId', requireAuth, async (c) => {
   const { DB } = c.env;
   const cartItemId = c.req.param('cartItemId');
 
@@ -3684,7 +3785,7 @@ app.delete('/api/cart/:cartItemId', async (c) => {
 });
 
 // 장바구니 전체 비우기 (결제 완료 시 사용)
-app.delete('/api/cart/clear/:userId', async (c) => {
+app.delete('/api/cart/clear/:userId', requireAuth, requireOwnership('cart'), async (c) => {
   const { DB } = c.env;
   const userId = c.req.param('userId');
 
@@ -3706,7 +3807,7 @@ app.delete('/api/cart/clear/:userId', async (c) => {
 });
 
 // 장바구니 아이템 수량 변경
-app.put('/api/cart/:cartItemId', async (c) => {
+app.put('/api/cart/:cartItemId', requireAuth, async (c) => {
   const { DB } = c.env;
   const cartItemId = c.req.param('cartItemId');
 
@@ -3760,7 +3861,7 @@ app.put('/api/cart/:cartItemId', async (c) => {
 });
 
 // Order API
-app.post('/api/orders', async (c) => {
+app.post('/api/orders', requireAuth, async (c) => {
   const { DB } = c.env;
 
   try {
@@ -6616,7 +6717,7 @@ app.get('/api/orders/user/:userId', requireAuth, async (c) => {
 });
 
 // Get order by order number
-app.get('/api/orders/:orderNumber', async (c) => {
+app.get('/api/orders/:orderNumber', requireAuth, async (c) => {
   const { DB } = c.env;
   const orderNumber = c.req.param('orderNumber');
 
@@ -6691,7 +6792,7 @@ app.get('/api/orders/:orderNumber', async (c) => {
 });
 
 // Cancel order (User only - only for pending status)
-app.post('/api/orders/:orderId/cancel', async (c) => {
+app.post('/api/orders/:orderId/cancel', requireAuth, async (c) => {
   const { DB } = c.env;
   const orderId = c.req.param('orderId');
 
@@ -8079,7 +8180,7 @@ app.put('/api/seller/orders/:orderNumber/tracking', async (c) => {
 });
 
 // Request refund (Customer)
-app.post('/api/orders/:orderNumber/refund', async (c) => {
+app.post('/api/orders/:orderNumber/refund', requireAuth, async (c) => {
   const { DB } = c.env;
   const orderNumber = c.req.param('orderNumber');
   const { reason } = await c.req.json();
@@ -9152,7 +9253,7 @@ app.get('/api/admin/settlement/export-csv', async (c) => {
 // =================================
 
 // 1. 주문 생성 API (결제 전)
-app.post('/api/orders/create', async (c) => {
+app.post('/api/orders/create', requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {
@@ -9381,7 +9482,7 @@ app.post('/api/orders/create', async (c) => {
  * Request Body:
  * - reason: 취소/환불 사유
  */
-app.post('/api/orders/:orderNumber/refund', cors(), async (c) => {
+app.post('/api/orders/:orderNumber/refund', cors(), requireAuth, async (c) => {
   const { DB } = c.env;
   
   try {

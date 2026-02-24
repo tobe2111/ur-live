@@ -245,6 +245,14 @@ export const RateLimitPolicies = {
     authenticatedMultiplier: 2
   },
 
+  /** 환불 요청 (시간당 3회) - 악용 방지 */
+  refund: {
+    windowMs: 3600, // 1시간
+    maxRequests: 3,
+    message: '환불 요청 횟수를 초과했습니다. 1시간 후 다시 시도해주세요.',
+    pathPattern: /^\/api\/orders\/.*\/refund/
+  },
+
   /** 검색 엔드포인트 (분당 30회) */
   search: {
     windowMs: 60,
