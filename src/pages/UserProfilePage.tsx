@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { getUserId, getUserName, logout } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { LogoutButton } from '@/components/my-page/logout-button'
@@ -7,42 +9,45 @@ import { Footer } from '@/components/my-page/footer'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { isLoggedIn, isAuthReady } = useAuth()
   const [userName, setUserName] = useState('')
 
   useEffect(() => {
-    // Check if user is logged in
-    const sessionToken = localStorage.getItem('user_session_token')
-    const storedUserName = localStorage.getItem('user_name')
-    
-    if (sessionToken) {
-      setIsLoggedIn(true)
-      setUserName(storedUserName || '게스트')
-    } else {
-      // Redirect to login if not authenticated
-      navigate('/login')
+    // ✅ JWT 인증 확인
+    if (!isAuthReady) {
+      return // 인증 초기화 대기
     }
-  }, [navigate])
+
+    if (!isLoggedIn) {
+      // JWT 토큰 없으면 로그인 페이지로 리다이렉트
+      console.log('[UserProfilePage] 로그인 필요 - /login으로 리다이렉트')
+      navigate('/login?returnUrl=/user/profile')
+      return
+    }
+
+    // ✅ JWT에서 사용자 정보 가져오기
+    const name = getUserName()
+    setUserName(name || '게스트')
+    
+    console.log('[UserProfilePage] 사용자 정보 로드:', {
+      userId: getUserId(),
+      userName: name,
+      isLoggedIn
+    })
+  }, [isAuthReady, isLoggedIn, navigate])
 
   const handleLogout = () => {
-    // Clear all user data from localStorage
-    const keysToRemove = [
-      'user_session_token',
-      'user_id',
-      'user_name',
-      'user_email',
-      'user_type',
-      'user_profile_image'
-    ]
+    console.log('[UserProfilePage] 로그아웃 처리')
     
-    keysToRemove.forEach(key => localStorage.removeItem(key))
+    // ✅ JWT 로그아웃 (auth.ts의 logout 함수 사용)
+    logout()
     
-    // Redirect to home page
+    // 홈페이지로 리다이렉트
     navigate('/')
   }
 
-  if (!isLoggedIn) {
-    return null // Will redirect to login
+  if (!isAuthReady || !isLoggedIn) {
+    return null // 로그인 페이지로 리다이렉트 중
   }
 
   return (
