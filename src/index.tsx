@@ -48,6 +48,8 @@ import { sendBulkAlimtalk, sendOrderAlimtalk, sendBulkFromFile, type AlimtalkRec
 import { runMonthlySettlement, generateSettlementReport, saveSettlementReport, getSettlementReport, getCurrentSettlementPeriod, getLastMonthSettlementPeriod } from './lib/settlement-automation';
 import { handleLiveStreamSSE, handleChatSSE, handleOrderNotificationSSE, handleStockAlertSSE } from './lib/sse-realtime';
 import { savePushSubscription, deletePushSubscription, sendOrderNotification, sendLiveStartNotification, sendLowStockNotification } from './lib/push-notification';
+import { edgeCache, CACHE_PRESETS, purgeCache } from './lib/edge-cache';
+import { parsePaginationParams, generatePaginationMeta, buildPaginationQuery, parseCursorParams, generateNextCursor } from './lib/pagination';
 import { imageOptimizationMiddleware } from './lib/image-optimization';
 import { AppError, ErrorFactory } from './lib/errors';
 
@@ -2990,8 +2992,8 @@ app.get('/api/test/env', async (c) => {
   }
 });
 
-// Live Stream API
-app.get('/api/streams', async (c) => {
+// Live Stream API (엣지 캐싱 적용 - 30초 TTL)
+app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
   const { DB, CACHE_KV } = c.env;
   try {
     // \uce90\uc2dc \ud0a4
@@ -3255,8 +3257,8 @@ async function fetchLiveStreamById(DB: D1Database, id: string) {
   return stream;
 }
 
-// Products List API - 상품 목록 조회 (featured, limit 지원)
-app.get('/api/products', async (c) => {
+// Products List API - 상품 목록 조회 (엣지 캐싱 5분 + 페이지네이션)
+app.get('/api/products', edgeCache(CACHE_PRESETS.products), async (c) => {
   const { DB, CACHE_KV } = c.env;
 
   try {
