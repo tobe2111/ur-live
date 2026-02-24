@@ -8,6 +8,10 @@ module.exports = {
     './src/**/*.{ts,tsx}',
     './index.html',
   ],
+  safelist: [
+    'max-w-md',
+    'mx-auto',
+  ],
   prefix: "",
   theme: {
     container: {
