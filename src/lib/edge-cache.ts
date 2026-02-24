@@ -225,5 +225,26 @@ export const CACHE_PRESETS = {
     ttl: 1800,
     sMaxAge: 3600,
     staleWhileRevalidate: 7200
+  },
+
+  // ✨ 유저 프로필 (1시간) - 수정 시 캐시 무효화
+  userProfile: {
+    ttl: 3600,      // 브라우저 캐시: 1시간
+    sMaxAge: 3600,  // 엣지 캐시: 1시간
+    staleWhileRevalidate: 7200 // 2시간
+  },
+
+  // ✨ 정적 문서 (24시간) - 공지사항, 약관 등
+  staticDocuments: {
+    ttl: 86400,     // 브라우저 캐시: 24시간
+    sMaxAge: 86400, // 엣지 캐시: 24시간
+    staleWhileRevalidate: 604800 // 7일
+  },
+
+  // ✨ Micro-caching (10초) - 재고 관련 데이터
+  microCache: {
+    ttl: 10,        // 브라우저 캐시: 10초
+    sMaxAge: 10,    // 엣지 캐시: 10초
+    staleWhileRevalidate: 30 // 30초
   }
 } as const;

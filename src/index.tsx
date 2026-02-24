@@ -3720,7 +3720,9 @@ async function fetchProductDetail(DB: D1Database, id: string) {
 }
 
 // 실시간 재고 확인 API
-app.get('/api/products/:id/stock', async (c) => {
+// ✨ 재고 조회 API (Micro-caching: 10초 TTL)
+// 실시간성을 보장하면서 서버 부하를 막기 위한 짧은 캐싱
+app.get('/api/products/:id/stock', edgeCache(CACHE_PRESETS.microCache), async (c) => {
   const { DB } = c.env;
   const id = c.req.param('id');
 
