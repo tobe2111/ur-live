@@ -54,8 +54,29 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Deploy to Cloudflare Pages
+        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=ur-live --commit-dirty=true
+          command: pages deploy dist --project-name=ur-live --branch=main --commit-dirty=true
+      
+      - name: Verify Deployment
+        run: |
+          echo "⏳ Waiting 30 seconds for deployment to propagate..."
+          sleep 30
+          
+          echo "🔍 Checking production version..."
+          PROD_VERSION=$(curl -s https://live.ur-team.com/version.json | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+          LOCAL_VERSION=$(cat dist/version.json | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+          
+          echo "Local version:  $LOCAL_VERSION"
+          echo "Production version: $PROD_VERSION"
+          
+          if [[ "$PROD_VERSION" == "$LOCAL_VERSION" ]]; then
+            echo "✅ Deployment verified! Production is up to date."
+          else
+            echo "⚠️ Version mismatch detected!"
+            echo "This might be due to CDN caching. Please wait a few minutes and check again."
+            echo "Or manually purge Cloudflare cache."
+          fi
