@@ -10,6 +10,7 @@ import {
   generateRefreshToken, 
   verifyToken, 
   verifyCachedToken,
+  refreshAccessToken,
   getJwtSecret,
   type TokenPayload 
 } from './lib/jwt-auth';
@@ -2173,26 +2174,29 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     const accessToken = await exchangeKakaoCode(code, redirectUri, c.env.KAKAO_REST_API_KEY);
     
     // 2. 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
-    const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
+    const { user } = await processKakaoLogin(DB, accessToken);
     
-    // 3. ✅ SESSION_KV에 세션 저장 (중요!)
-    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // ✅ 30일 (24시간 → 30일로 변경)
-    await c.env.SESSION_KV.put(
-      `session:${sessionToken}`,
-      JSON.stringify({
-        user_id: user.id,
-        user_type: 'user',
-        expires_at: expiresAt
-      }),
-      { expirationTtl: 30 * 24 * 60 * 60 }  // ✅ 30일 (초 단위)
-    );
+    // 3. ✅ JWT 토큰 발급 (세션 대체)
+    const jwtSecret = getJwtSecret(c.env);
+    const jwtAccessToken = await generateAccessToken({
+      userId: user.id,
+      userType: 'user',
+      email: user.email || undefined
+    }, jwtSecret);
     
-    console.log('[Kakao Callback] ✅ Session saved to SESSION_KV for user:', user.id, '- Expires:', new Date(expiresAt).toISOString());
+    const jwtRefreshToken = await generateRefreshToken({
+      userId: user.id,
+      userType: 'user',
+      email: user.email || undefined
+    }, jwtSecret);
+    
+    console.log('[Kakao Callback] ✅ JWT 토큰 발급 완료 for user:', user.id);
     
     return c.json({
       success: true,
       data: {
-        session_token: sessionToken,
+        accessToken: jwtAccessToken,
+        refreshToken: jwtRefreshToken,
         user: {
           id: user.id,
           name: user.name,
@@ -2367,7 +2371,7 @@ app.post('/api/auth/refresh', cors(), async (c) => {
     }
     
     // Refresh Token으로 새 Access Token 발급
-    const jwtSecret = getJwtSecret(c.env.JWT_SECRET)
+    const jwtSecret = getJwtSecret(c.env)
     const newAccessToken = await refreshAccessToken(refreshToken, jwtSecret)
     
     if (!newAccessToken) {

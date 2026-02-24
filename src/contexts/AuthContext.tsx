@@ -58,51 +58,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Step 2: 로그인 파라미터가 있으면 처리 (카카오 OAuth 콜백)
       if (login === 'success' && session && urlUserId) {
-        setIsProcessingLogin(true) // ✅ 세션 검증 차단
+        setIsProcessingLogin(true)
         
-        console.log('[AuthContext] ✅ 카카오 로그인 파라미터 발견 - JWT 처리 시작')
+        console.warn('[AuthContext] ⚠️ 카카오 OAuth 콜백 감지 - 레거시 세션 ID는 JWT로 사용 불가')
+        console.warn('[AuthContext] → 백엔드에서 JWT 발급 필요. 임시로 로그인 페이지로 리다이렉트')
 
-        try {
-          // JWT 전환 후: session을 accessToken으로 처리 (카카오 콜백에서 제공)
-          // refreshToken은 카카오 콜백에서 제공되지 않으므로 임시로 빈 문자열 처리
-          // (실제 서비스에서는 카카오 로그인 후 백엔드에서 JWT 발급 필요)
-          const tempRefreshToken = session // 카카오 콜백에서는 refreshToken 미제공
-          
-          saveJwtTokens(
-            session, // accessToken
-            tempRefreshToken, // refreshToken (임시)
-            urlUserId,
-            userName ? decodeURIComponent(userName) : '사용자',
-            'user', // 카카오 로그인은 user 타입
-            null // userEmail (카카오 콜백에서 미제공)
-          )
-
-          console.log('[AuthContext] ✅ JWT 로그인 정보 저장 완료:', {
-            userId: urlUserId,
-            userName: userName ? decodeURIComponent(userName) : '사용자',
-            hasAccessToken: !!session
-          })
-
-          // URL에서 파라미터 제거 (깔끔한 URL)
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, '', cleanUrl)
-          console.log('[AuthContext] ✅ URL 파라미터 제거 완료:', cleanUrl)
-
-          // 인증 상태 업데이트
-          setAuthState({
-            isLoggedIn: true,
-            accessToken: session
-          })
-        } catch (error) {
-          console.error('[AuthContext] ❌ JWT 로그인 파라미터 처리 실패:', error)
-          setAuthState({
-            isLoggedIn: false,
-            accessToken: null
-          })
-        } finally {
-          setIsProcessingLogin(false)
-          setIsAuthReady(true)
-        }
+        // URL 파라미터 제거
+        window.history.replaceState({}, '', window.location.pathname)
+        
+        // 로그인 페이지로 리다이렉트 (카카오 로그인 재시도)
+        setAuthState({
+          isLoggedIn: false,
+          accessToken: null
+        })
+        setIsProcessingLogin(false)
+        setIsAuthReady(true)
       } else {
         // Step 3: URL 파라미터 없으면 기존 JWT 세션 체크
         console.log('[AuthContext] ℹ️ 로그인 파라미터 없음 (기존 JWT 세션 사용)')

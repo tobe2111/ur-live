@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { saveUserInfo, getTempCartItem, clearTempCartItem } from '@/utils/auth'
+import { saveJwtTokens, getTempCartItem, clearTempCartItem } from '@/utils/auth'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -35,31 +35,34 @@ export default function KakaoCallbackPage() {
         })
 
         if (response.data.success) {
-          const { user, session_token } = response.data.data
+          const { user, accessToken, refreshToken } = response.data.data
 
-          // 표준 함수로 사용자 정보 저장 (localStorage 키 통일)
-          console.log('[KakaoCallback] 💾 사용자 정보 저장 시작:', {
+          // JWT 토큰 저장 (localStorage 키 통일)
+          console.log('[KakaoCallback] 💾 JWT 토큰 저장 시작:', {
             userId: user.id,
             userName: user.name,
-            session_token: session_token ? '있음' : '없음',
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
             email: user.email
           })
           
-          saveUserInfo(
-            user.id,
+          saveJwtTokens(
+            accessToken,
+            refreshToken,
+            user.id.toString(),
             user.name,
-            session_token,
-            user.email,
-            user.profile_image
+            'user',
+            user.email
           )
           
           // 저장 확인
           console.log('[KakaoCallback] ✅ localStorage 저장 완료:', {
-            user_session_token: localStorage.getItem('user_session_token') ? '있음' : '없음',
+            access_token: localStorage.getItem('access_token') ? '있음' : '없음',
+            refresh_token: localStorage.getItem('refresh_token') ? '있음' : '없음',
             user_id: localStorage.getItem('user_id'),
             user_name: localStorage.getItem('user_name'),
             user_type: localStorage.getItem('user_type'),
-            isLoggedIn: !!localStorage.getItem('user_session_token') && !!localStorage.getItem('user_id')
+            isLoggedIn: !!localStorage.getItem('access_token') && !!localStorage.getItem('user_id')
           })
 
           
