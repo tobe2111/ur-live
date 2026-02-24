@@ -146,7 +146,7 @@ export default function AdminBannersPage() {
   }
 
   function handleLogout() {
-    localStorage.removeItem('admin_session_token')
+    localStorage.removeItem('access_token')
     localStorage.removeItem('user_type')
     localStorage.removeItem('admin_id')
     navigate('/admin/login')

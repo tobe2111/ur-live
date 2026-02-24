@@ -60,7 +60,7 @@ export default function AdminPage() {
     }
     
     // Check admin session
-    const token = localStorage.getItem('admin_session_token')
+    const token = localStorage.getItem('access_token')
     const userType = localStorage.getItem('user_type')
     const adminId = localStorage.getItem('admin_id')
     
@@ -91,7 +91,7 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const token = localStorage.getItem('admin_session_token')
+      const token = localStorage.getItem('access_token')
       
       // Load all sellers
       const sellersRes = await api.get('/api/admin/sellers', {
@@ -126,7 +126,7 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error('Failed to load data:', err)
       if (err.response?.status === 401) {
-        localStorage.removeItem('admin_session_token')
+        localStorage.removeItem('access_token')
         localStorage.removeItem('user_type')
         navigate('/admin/login')
       }
@@ -138,7 +138,7 @@ export default function AdminPage() {
     if (!confirm('이 판매자를 승인하시겠습니까?')) return
 
     try {
-      const token = localStorage.getItem('admin_session_token')
+      const token = localStorage.getItem('access_token')
       const response = await api.patch(
         `/api/admin/sellers/${sellerId}/approve`,
         {},
@@ -158,7 +158,7 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('admin_session_token')
+      const token = localStorage.getItem('access_token')
       const response = await api.patch(
         `/api/admin/sellers/${selectedSeller.id}/reject`,
         { reason: rejectionReason },
@@ -184,7 +184,7 @@ export default function AdminPage() {
     if (!confirm('정말 이 라이브를 삭제하시겠습니까?')) return
 
     try {
-      const token = localStorage.getItem('admin_session_token')
+      const token = localStorage.getItem('access_token')
       await api.delete(`/api/admin/streams/${streamId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -206,7 +206,7 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('admin_session_token')
+      const token = localStorage.getItem('access_token')
       await api.patch(
         `/api/admin/sellers/${sellerId}/commission`,
         { commission_rate: rate },
@@ -220,7 +220,7 @@ export default function AdminPage() {
   }
 
   function logout() {
-    localStorage.removeItem('admin_session_token')
+    localStorage.removeItem('access_token')
     localStorage.removeItem('user_type')
     localStorage.removeItem('admin_id')
     navigate('/admin/login')

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getAccessToken } from '@/utils/auth';
 
 /**
  * 채팅 메시지 타입
@@ -78,11 +79,19 @@ export function useLiveChat(
     userType: 'viewer' | 'streamer'
   ) => {
     try {
+      const accessToken = getAccessToken()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      // JWT 토큰이 있으면 Authorization 헤더 추가
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+      
       const response = await fetch(`/api/live/${liveId}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           user_id: userId,
           user_name: userName,
@@ -120,7 +129,14 @@ export function useLiveChat(
     }
 
     try {
-      const eventSource = new EventSource(`/api/live/${liveId}/chat/sse`);
+      // JWT 토큰을 쿼리 파라미터로 추가 (EventSource는 헤더를 지원하지 않음)
+      const accessToken = getAccessToken()
+      const sseUrl = accessToken 
+        ? `/api/live/${liveId}/chat/sse?token=${encodeURIComponent(accessToken)}`
+        : `/api/live/${liveId}/chat/sse`
+      
+      console.log('[useLiveChat] Connecting to SSE:', sseUrl.replace(/token=[^&]+/, 'token=***'))
+      const eventSource = new EventSource(sseUrl);
       eventSourceRef.current = eventSource;
 
       // 연결 성공

@@ -692,6 +692,7 @@ function ReelCard({
           height: '100%',
           width: '100%',
           videoId: stream.youtube_video_id,
+          host: 'https://www.youtube.com',
           playerVars: {
             autoplay: 0, // Don't autoplay (user must click)
             mute: 1,
@@ -702,7 +703,7 @@ function ReelCard({
             iv_load_policy: 3,
             playsinline: 1,
             enablejsapi: 1,
-            // origin and widget_referrer removed to fix postMessage errors
+            origin: window.location.origin,
             loop: 1,
             playlist: stream.youtube_video_id,
             fs: 0,
@@ -1396,6 +1397,8 @@ export default function LivePageV2() {
         
         try {
           const streamsResponse = await axios.get('/api/streams')
+          console.log('[LivePageV2] Streams API response:', streamsResponse.data)
+          
           if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
             streams = streamsResponse.data.data
             console.log('[LivePageV2] Loaded all streams:', streams.length)
@@ -1415,22 +1418,13 @@ export default function LivePageV2() {
                 }
               }
             }
+          } else {
+            console.error('[LivePageV2] No streams found in API response')
+            throw new Error('No streams available')
           }
         } catch (error) {
-          console.log('[LivePageV2] Streams API failed, using demo data')
-        }
-
-        // Fallback to demo streams if API fails
-        if (streams.length === 0) {
-          streams = demoStreams
-          console.log('[LivePageV2] Using demo streams:', streams.length)
-          
-          // Set current stream from demo
-          if (streamId) {
-            const demoStreamIndex = parseInt(streamId) - 1
-            const currentStreamData = streams[demoStreamIndex] || streams[0]
-            setCurrentStream(currentStreamData)
-          }
+          console.error('[LivePageV2] Streams API failed:', error)
+          throw error // Re-throw to outer catch block
         }
 
         // Create reels: ONE reel per stream (not per product)
@@ -1443,29 +1437,23 @@ export default function LivePageV2() {
           
           try {
             const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
+            console.log(`[LivePageV2] Products API response for stream ${stream.id}:`, productsResponse.data)
+            
             if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
               products = productsResponse.data.data
+              console.log(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
+            } else {
+              console.warn(`[LivePageV2] No products found for stream ${stream.id}`)
             }
           } catch (error) {
-            console.log(`[LivePageV2] Products API failed for stream ${stream.id}`)
+            console.error(`[LivePageV2] Products API failed for stream ${stream.id}:`, error)
           }
 
-          // Fallback to demo products
-          if (products.length === 0) {
-            const streamIndex = stream.id - 1
-            const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
-            const startIdx = streamIndex * productsPerStream
-            const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
-            products = demoProducts.slice(startIdx, endIdx)
-          }
-
-          // Create ONE reel per stream with its first product
-          if (products.length > 0) {
-            reelsData.push({
-              stream: stream,
-              product: products[0], // Show first product
-            })
-          }
+          // Create ONE reel per stream with its first product (or null if no products)
+          reelsData.push({
+            stream: stream,
+            product: products[0] || null, // null if no products
+          })
         }
 
         console.log('[LivePageV2] Created reels:', reelsData.length)
@@ -1485,24 +1473,14 @@ export default function LivePageV2() {
         
         setLoading(false)
       } catch (error) {
-        console.error('[LivePageV2] Failed to load reels:', error)
+        console.error('[LivePageV2] Fatal error loading reels:', error)
         
-        // Complete fallback to demo data
-        const reelsData: ReelData[] = demoStreams.map((stream, idx) => {
-          const streamIndex = stream.id - 1
-          const productsPerStream = Math.ceil(demoProducts.length / demoStreams.length)
-          const startIdx = streamIndex * productsPerStream
-          const endIdx = Math.min(startIdx + productsPerStream, demoProducts.length)
-          const products = demoProducts.slice(startIdx, endIdx)
-
-          return {
-            stream: stream,
-            product: products[0] || demoProducts[0],
-          }
-        })
-
-        setReels(reelsData)
+        // Show error state instead of demo data
+        setReels([])
         setLoading(false)
+        
+        // Could show an error message to user here
+        // For now, just log and show empty state
       }
     }
 
