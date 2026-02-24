@@ -968,7 +968,7 @@ function ReelCard({
       }
       
       // POST to server
-      await axios.post('/api/cart', {
+      await api.post('/api/cart', {
         userId: userId,
         productId: currentProduct.id,
         quantity: 1,
