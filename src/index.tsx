@@ -4041,39 +4041,21 @@ app.post('/api/cart', requireAuth, async (c) => {
   const { DB } = c.env;
 
   try {
+    // ✅ JWT에서 userId 추출 (requireAuth 미들웨어에서 설정됨)
+    const authenticatedUserId = c.get('userId');
+    
+    if (!authenticatedUserId) {
+      return c.json<ApiResponse>({
+        success: false,
+        error: 'Authentication required',
+      }, 401);
+    }
+
     const body = await c.req.json();
-    const { userId, kakaoId, productId, optionId, quantity, priceSnapshot, liveStreamId } = body;
+    const { productId, optionId, quantity, priceSnapshot, liveStreamId } = body;
     
-    // userId 또는 kakaoId 중 하나를 사용
-    const userIdToUse = kakaoId || userId;
-    
-    if (!userIdToUse) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'userId or kakaoId is required',
-      }, 400);
-    }
-
-    // 사용자 ID 조회 (kakao_id 기반)
-    let user = await DB.prepare(
-      'SELECT id FROM users WHERE id = ?'
-    ).bind(userIdToUse).first();
-    
-    // id로 못 찾으면 kakao_id로 찾기
-    if (!user) {
-      user = await DB.prepare(
-        'SELECT id FROM users WHERE kakao_id = ?'
-      ).bind(userIdToUse).first();
-    }
-
-    if (!user) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'User not found',
-      }, 404);
-    }
-
-    const dbUserId = user.id as number;
+    // ✅ body의 userId는 무시하고 JWT의 userId 사용
+    const dbUserId = authenticatedUserId;
 
     // 상품 재고 확인
     const product = await DB.prepare(

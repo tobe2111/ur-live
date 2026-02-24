@@ -713,12 +713,12 @@ function ReelCard({
             iv_load_policy: 3,
             playsinline: 1,
             enablejsapi: 1,
-            origin: window.location.origin,
             loop: 1,
             playlist: stream.youtube_video_id,
             fs: 0,
             cc_load_policy: 0,
           },
+          origin: window.location.origin, // ✅ playerVars 밖으로 이동
           events: {
             onReady: (event: any) => {
               if (!isMounted) return
@@ -967,9 +967,8 @@ function ReelCard({
         return
       }
       
-      // POST to server
+      // POST to server (JWT에서 userId 자동 추출)
       await api.post('/api/cart', {
-        userId: userId,
         productId: currentProduct.id,
         quantity: 1,
         priceSnapshot: currentProduct.price,
