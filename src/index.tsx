@@ -2340,31 +2340,32 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
     const startTime = Date.now();
     
     // 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
-    const { user, sessionToken } = await processKakaoLogin(DB, accessToken);
+    const { user } = await processKakaoLogin(DB, accessToken);
     
     console.log('[Kakao Sync] ProcessKakaoLogin completed in', Date.now() - startTime, 'ms');
     
-    // ✅ SESSION_KV에 세션 저장 (중요!)
-    const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // ✅ 30일
-    const kvStartTime = Date.now();
+    // ✅ JWT 토큰 발급 (세션 대체)
+    const jwtSecret = getJwtSecret(c.env);
+    const jwtAccessToken = await generateAccessToken({
+      userId: user.id,
+      userType: 'user',
+      email: user.email || undefined
+    }, jwtSecret);
     
-    await c.env.SESSION_KV.put(
-      `session:${sessionToken}`,
-      JSON.stringify({
-        user_id: user.id,
-        user_type: 'user',
-        expires_at: expiresAt
-      }),
-      { expirationTtl: 30 * 24 * 60 * 60 }  // ✅ 30일 (초 단위)
-    );
+    const jwtRefreshToken = await generateRefreshToken({
+      userId: user.id,
+      userType: 'user',
+      email: user.email || undefined
+    }, jwtSecret);
     
-    console.log('[Kakao Sync] ✅ Session saved to SESSION_KV in', Date.now() - kvStartTime, 'ms');
+    console.log('[Kakao Sync] ✅ JWT 토큰 발급 완료 for user:', user.id);
     console.log('[Kakao Sync] Total login time:', Date.now() - startTime, 'ms');
     
     return c.json({
       success: true,
       data: {
-        session_token: sessionToken,
+        accessToken: jwtAccessToken,
+        refreshToken: jwtRefreshToken,
         user: {
           id: user.id,
           name: user.name,

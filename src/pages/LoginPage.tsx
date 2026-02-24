@@ -94,31 +94,54 @@ export default function LoginPage() {
   async function processKakaoLogin(accessToken: string) {
     try {
       
-      // 백엔드로 액세스 토큰 전송하여 검증 및 사용자 정보 저장
+      // 백엔드로 액세스 토큰 전송하여 검증 및 JWT 발급
       const response = await api.post('/api/auth/kakao/sync', {
         accessToken: accessToken
       })
 
       if (response.data.success) {
-        const { user, session_token } = response.data.data
+        const { user, accessToken: jwtAccessToken, refreshToken } = response.data.data
 
-        // ✅ AuthContext를 통한 통합 로그인 처리
-        loginWithCredentials(
+        console.log('[Kakao Login] JWT 토큰 받기 완료:', {
+          userId: user.id,
+          userName: user.name,
+          hasAccessToken: !!jwtAccessToken,
+          hasRefreshToken: !!refreshToken
+        })
+
+        // ✅ JWT 토큰 저장 (saveJwtTokens 사용)
+        const { saveJwtTokens } = await import('@/utils/auth')
+        saveJwtTokens(
+          jwtAccessToken,
+          refreshToken,
           user.id.toString(),
           user.name,
-          session_token,
-          'user'
+          'user',
+          user.email
         )
+
+        // Sentry 사용자 설정
+        try {
+          const { setSentryUser } = await import('@/lib/sentry')
+          setSentryUser({
+            id: user.id.toString(),
+            email: user.email || undefined,
+            username: user.name,
+            userType: 'user'
+          })
+        } catch (e) {
+          // Sentry 초기화 실패 시 무시
+        }
         
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
         localStorage.removeItem('loginReturnUrl')
         
-        // ✅ 로그인 성공 - alert 제거로 UX 개선
-        console.log('[Login] Success:', user.name)
+        // ✅ 로그인 성공
+        console.log('[Kakao Login] Success:', user.name)
         
         // Navigate to return URL
-        navigate(savedReturnUrl)
+        navigate(savedReturnUrl, { replace: true })
       } else {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }

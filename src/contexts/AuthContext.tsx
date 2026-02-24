@@ -45,18 +45,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // Step 1: URL 파라미터 체크 (카카오 로그인)
+      // Step 1: URL 파라미터 체크
       const login = searchParams.get('login')
-      const session = searchParams.get('session')
-      const urlUserId = searchParams.get('userId')
-      const userName = searchParams.get('userName')
+      const token = searchParams.get('token')        // ✨ JWT 토큰 (신규)
+      const refreshToken = searchParams.get('refresh_token')  // ✨ Refresh 토큰 (신규)
+      const session = searchParams.get('session')    // 🗑️ 레거시 세션 ID
+      const urlUserId = searchParams.get('userId')   // 🗑️ 레거시 유저 ID
+      const userName = searchParams.get('userName')  // 🗑️ 레거시 유저 이름
 
       console.log('[AuthContext] 🔐 JWT 인증 초기화 시작:', {
         hasLoginParams: !!(login && session && urlUserId),
+        hasJwtToken: !!token,
+        hasRefreshToken: !!refreshToken,
         currentPath: window.location.pathname
       })
 
-      // Step 2: 레거시 로그인 파라미터가 있으면 URL에서 제거 (JWT는 localStorage에 있음)
+      // Step 2: JWT 토큰이 URL에 있으면 저장 (신규 방식)
+      if (token && refreshToken && urlUserId && userName) {
+        console.log('[AuthContext] ✨ URL에서 JWT 토큰 수신 - localStorage 저장')
+        
+        // JWT 토큰 저장
+        saveJwtTokens(
+          token,
+          refreshToken,
+          urlUserId,
+          decodeURIComponent(userName),
+          'user',
+          searchParams.get('userEmail') || null
+        )
+
+        // URL 파라미터 제거
+        window.history.replaceState({}, '', window.location.pathname)
+
+        // 인증 상태 업데이트
+        setAuthState({
+          isLoggedIn: true,
+          accessToken: token
+        })
+        setIsAuthReady(true)
+        return
+      }
+
+      // Step 3: 레거시 로그인 파라미터가 있으면 URL에서 제거 (JWT는 localStorage에 있음)
       if (login === 'success' && session && urlUserId) {
         console.log('[AuthContext] ℹ️ 레거시 로그인 파라미터 감지 - URL에서 제거')
         
@@ -64,20 +94,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.history.replaceState({}, '', window.location.pathname)
       }
 
-      // Step 3: localStorage에서 JWT 세션 체크
-      const token = getAccessToken()
+      // Step 4: localStorage에서 JWT 세션 체크
+      const existingToken = getAccessToken()
       const userType = getUserType()
       const loggedIn = isLoggedIn()
 
       console.log('[AuthContext] JWT 세션 상태:', {
-        hasAccessToken: !!token,
+        hasAccessToken: !!existingToken,
         userType,
         isLoggedIn: loggedIn
       })
 
       setAuthState({
         isLoggedIn: loggedIn,
-        accessToken: token
+        accessToken: existingToken
       })
       setIsAuthReady(true)
     }
