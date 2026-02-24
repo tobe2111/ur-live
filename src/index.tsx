@@ -1786,21 +1786,32 @@ app.post('/api/auth/login', cors(), async (c) => {
       return c.json({ success: false, error: '승인 대기 중인 계정입니다' }, 403);
     }
     
-    // 세션 생성 (KV에 저장) ✅
-    const sessionToken = await createSession(c.env.SESSION_KV, user.id, userType, {
-      username: user.username,
-      name: user.name,
-      email: user.email,
-      businessName: user.business_name
-    });
+    // ✅ JWT 토큰 발급 (KV Write 0회!)
+    const { generateAccessToken, generateRefreshToken, getJwtSecret } = await import('./lib/jwt-auth');
+    const jwtSecret = getJwtSecret(c.env);
+    
+    const accessToken = await generateAccessToken({
+      userId: user.id,
+      userType: userType as 'admin' | 'seller',
+      email: user.email
+    }, jwtSecret);
+    
+    const refreshToken = await generateRefreshToken({
+      userId: user.id,
+      userType: userType as 'admin' | 'seller',
+      email: user.email
+    }, jwtSecret);
     
     // 마지막 로그인 시간 업데이트
     await DB.prepare(`UPDATE ${table} SET last_login_at = datetime('now') WHERE id = ?`).bind(user.id).run();
     
+    console.log(`[JWT Login] ✅ ${userType} ${user.username} logged in with JWT (KV Write: 0)`);
+    
     return c.json({
       success: true,
       data: {
-        sessionToken,
+        accessToken,
+        refreshToken,
         user: {
           id: user.id,
           username: user.username,
@@ -1929,20 +1940,32 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
     }
     
-    // Create session in KV
-    const sessionToken = await createSession(c.env.SESSION_KV, admin.id, 'admin', {
-      username: admin.username,
-      email: admin.email,
-      name: admin.name
-    });
+    // ✅ JWT 토큰 발급 (KV Write 0회!)
+    const { generateAccessToken, generateRefreshToken, getJwtSecret } = await import('./lib/jwt-auth');
+    const jwtSecret = getJwtSecret(c.env);
+    
+    const accessToken = await generateAccessToken({
+      userId: admin.id,
+      userType: 'admin',
+      email: admin.email
+    }, jwtSecret);
+    
+    const refreshToken = await generateRefreshToken({
+      userId: admin.id,
+      userType: 'admin',
+      email: admin.email
+    }, jwtSecret);
     
     // Update last login time
     await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?').bind(admin.id).run();
     
+    console.log(`[JWT Login] ✅ Admin ${admin.email} logged in with JWT (KV Write: 0)`);
+    
     return c.json({
       success: true,
       data: {
-        token: sessionToken,
+        accessToken,
+        refreshToken,
         admin: {
           id: admin.id,
           username: admin.username,
@@ -3193,7 +3216,7 @@ app.get('/api/products', async (c) => {
           try {
             const freshData = await fetchProductsList(DB, featured, limit, offset);
             setToMemoryCache(cacheKey, freshData, 3600); // 1시간 TTL
-            await setCachedData(CACHE_KV, cacheKey, freshData, 300);
+            await setCachedData(CACHE_KV, cacheKey, freshData, 300, false); // 메모리 전용
           } catch (err) {
             console.error('[Cache Revalidate] Products error:', err);
           }
@@ -3210,9 +3233,9 @@ app.get('/api/products', async (c) => {
     // 캐시 미스: DB 조회 후 캐시 저장
     const products = await fetchProductsList(DB, featured, limit, offset);
     
-    // 메모리 캐시 + KV 캐시 저장
+    // 메모리 캐시 저장 (KV Write 절약)
     setToMemoryCache(cacheKey, products, 3600);
-    await setCachedData(CACHE_KV, cacheKey, products, 300);
+    await setCachedData(CACHE_KV, cacheKey, products, 300, false); // 메모리 전용
 
     return c.json<ApiResponse>({
       success: true,
@@ -3303,7 +3326,7 @@ app.get('/api/products/popular', async (c) => {
           try {
             const freshData = await fetchPopularProducts(DB);
             setToMemoryCache(cacheKey, freshData, 3600);
-            await setCachedData(CACHE_KV, cacheKey, freshData, 600);
+            await setCachedData(CACHE_KV, cacheKey, freshData, 600, false); // 메모리 전용
           } catch (err) {
             console.error('[Cache Revalidate] Popular products error:', err);
           }
@@ -3320,9 +3343,9 @@ app.get('/api/products/popular', async (c) => {
     // 캐시 미스: DB 조회
     const popularProducts = await fetchPopularProducts(DB);
     
-    // 캐시 저장
+    // 캐시 저장 (메모리 전용)
     setToMemoryCache(cacheKey, popularProducts, 3600);
-    await setCachedData(CACHE_KV, cacheKey, popularProducts, 600);
+    await setCachedData(CACHE_KV, cacheKey, popularProducts, 600, false); // 메모리 전용
 
     return c.json<ApiResponse>({
       success: true,
@@ -9047,8 +9070,8 @@ app.get('/api/public/seller/:sellerId', async (c) => {
       stats: stats
     };
 
-    // 캐시 저장 (60초 TTL)
-    await setCachedData(CACHE_KV, cacheKey, responseData, 60);
+    // 캐시 저장 (60초 TTL, 메모리 전용)
+    await setCachedData(CACHE_KV, cacheKey, responseData, 60, false); // 메모리 전용
 
     return c.json({
       success: true,

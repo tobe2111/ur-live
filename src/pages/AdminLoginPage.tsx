@@ -22,36 +22,39 @@ export default function AdminLoginPage() {
       })
 
       if (response.data.success) {
-        const sessionToken = response.data.data.sessionToken
+        // ✅ JWT 토큰 저장
+        const { accessToken, refreshToken } = response.data.data
         const adminId = response.data.data.user.id
         
-        console.log('[AdminLogin] 🚀 Login API successful')
-        console.log('[AdminLogin] Session token:', sessionToken)
+        console.log('[AdminLogin] 🚀 JWT Login successful')
+        console.log('[AdminLogin] Access token:', accessToken?.substring(0, 20) + '...')
+        console.log('[AdminLogin] Refresh token:', refreshToken?.substring(0, 20) + '...')
         console.log('[AdminLogin] Admin ID:', adminId)
         
-        // 🔴 중요: user_type을 가장 먼저 설정!
+        // ✅ JWT 토큰 저장
         console.log('[AdminLogin] Step 1: Setting user_type to admin...')
         localStorage.setItem('user_type', 'admin')
         
-        console.log('[AdminLogin] Step 2: Setting session token...')
-        localStorage.setItem('admin_session_token', sessionToken)
+        console.log('[AdminLogin] Step 2: Setting JWT tokens...')
+        localStorage.setItem('access_token', accessToken)
+        localStorage.setItem('refresh_token', refreshToken)
         
         console.log('[AdminLogin] Step 3: Setting admin ID...')
         localStorage.setItem('admin_id', adminId.toString())
         
         // 🔍 검증
         const verifyUserType = localStorage.getItem('user_type')
-        const verifySessionToken = localStorage.getItem('admin_session_token')
+        const verifyAccessToken = localStorage.getItem('access_token')
         
-        if (verifyUserType === 'admin' && verifySessionToken === sessionToken) {
-          console.log('[AdminLogin] ✅ Verification passed! Navigating to /admin...')
+        if (verifyUserType === 'admin' && verifyAccessToken === accessToken) {
+          console.log('[AdminLogin] ✅ JWT verification passed! Navigating to /admin...')
           navigate('/admin', { replace: true })
         } else {
-          console.error('[AdminLogin] ❌ Verification failed!')
+          console.error('[AdminLogin] ❌ JWT verification failed!')
           setError('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
         }
       } else {
-        setError(response.data.error || '로귵58인 실패')
+        setError(response.data.error || '로그인 실패')
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')

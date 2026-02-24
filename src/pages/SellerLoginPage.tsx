@@ -33,20 +33,23 @@ export default function SellerLoginPage() {
         })
 
         if (response.data.success) {
-          const sessionToken = response.data.data.sessionToken
+          // ✅ JWT 토큰 저장
+          const { accessToken, refreshToken } = response.data.data
           const sellerId = response.data.data.user.id
           
-          console.log('[SellerLogin] 🚀 Login API successful')
-          console.log('[SellerLogin] Session token:', sessionToken)
+          console.log('[SellerLogin] 🚀 JWT Login successful')
+          console.log('[SellerLogin] Access token:', accessToken?.substring(0, 20) + '...')
+          console.log('[SellerLogin] Refresh token:', refreshToken?.substring(0, 20) + '...')
           console.log('[SellerLogin] Seller ID:', sellerId)
           console.log('[SellerLogin] User data:', response.data.data.user)
           
-          // 🔴 중요: user_type을 가장 먼저 설정!
+          // ✅ JWT 토큰 저장
           console.log('[SellerLogin] Step 1: Setting user_type to seller...')
           localStorage.setItem('user_type', 'seller')
           
-          console.log('[SellerLogin] Step 2: Setting session token...')
-          localStorage.setItem('seller_session_token', sessionToken)
+          console.log('[SellerLogin] Step 2: Setting JWT tokens...')
+          localStorage.setItem('access_token', accessToken)
+          localStorage.setItem('refresh_token', refreshToken)
           
           console.log('[SellerLogin] Step 3: Setting seller ID...')
           localStorage.setItem('seller_id', sellerId.toString())
@@ -60,7 +63,7 @@ export default function SellerLoginPage() {
           // 🔍 디버깅: localStorage 확인
           console.log('[SellerLogin] ✅ All localStorage set successfully:')
           console.log('  - user_type:', localStorage.getItem('user_type'))
-          console.log('  - seller_session_token:', localStorage.getItem('seller_session_token')?.substring(0, 20) + '...')
+          console.log('  - access_token:', localStorage.getItem('access_token')?.substring(0, 20) + '...')
           console.log('  - seller_id:', localStorage.getItem('seller_id'))
           console.log('  - seller_name:', localStorage.getItem('seller_name'))
           console.log('  - seller_email:', localStorage.getItem('seller_email'))
@@ -68,18 +71,18 @@ export default function SellerLoginPage() {
           
           // ✅ localStorage 설정 확인 후 이동
           const verifyUserType = localStorage.getItem('user_type')
-          const verifySessionToken = localStorage.getItem('seller_session_token')
+          const verifyAccessToken = localStorage.getItem('access_token')
           
-          if (verifyUserType === 'seller' && verifySessionToken === sessionToken) {
-            console.log('[SellerLogin] ✅ Verification passed! Navigating to /seller...')
+          if (verifyUserType === 'seller' && verifyAccessToken === accessToken) {
+            console.log('[SellerLogin] ✅ JWT verification passed! Navigating to /seller...')
             alert('로그인 성공!')
             
             // replace: true로 히스토리에서 로그인 페이지 제거
             navigate('/seller', { replace: true })
           } else {
-            console.error('[SellerLogin] ❌ Verification failed!')
+            console.error('[SellerLogin] ❌ JWT verification failed!')
             console.error('Expected user_type: seller, got:', verifyUserType)
-            console.error('Session token match:', verifySessionToken === sessionToken)
+            console.error('Access token match:', verifyAccessToken === accessToken)
             alert('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
           }
         } else {

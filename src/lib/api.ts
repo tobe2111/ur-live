@@ -22,35 +22,22 @@ const api = axios.create({
 });
 
 /**
- * 요청 인터셉터: 자동 인증 토큰 추가
+ * 요청 인터셉터: 자동 JWT 토큰 추가
  * 
- * 현재 사용자 타입에 따라 올바른 토큰 선택
+ * JWT Access Token을 Authorization Bearer 헤더로 전송
+ * 토큰 만료 시 Refresh Token으로 자동 갱신
  */
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // 현재 사용자 타입 확인
-    const userType = localStorage.getItem('user_type')
-    let token: string | null = null
+    // ✅ JWT Access Token 사용
+    const accessToken = localStorage.getItem('access_token')
     
-    // 사용자 타입에 따라 올바른 토큰 선택
-    if (userType === 'seller') {
-      token = localStorage.getItem('seller_session_token')
-      console.log('[API] Using seller token for request')
-    } else if (userType === 'admin') {
-      token = localStorage.getItem('admin_session_token')
-      console.log('[API] Using admin token for request')
+    if (accessToken && config.headers) {
+      // Bearer 토큰 형식으로 전송
+      config.headers['Authorization'] = `Bearer ${accessToken}`
+      console.log('[API] JWT token attached:', accessToken.substring(0, 20) + '...')
     } else {
-      // user 또는 기본
-      token = localStorage.getItem('user_session_token')
-      console.log('[API] Using user token for request')
-    }
-    
-    if (token && config.headers) {
-      // 서버는 X-Session-Token 헤더를 사용함
-      config.headers['X-Session-Token'] = token
-      console.log('[API] Token attached:', token.substring(0, 20) + '...')
-    } else {
-      console.warn('[API] No token found for user_type:', userType)
+      console.warn('[API] No JWT token found')
     }
     
     return config;
@@ -61,34 +48,64 @@ api.interceptors.request.use(
 );
 
 /**
- * 응답 인터셉터: 401 에러 시 자동 로그아웃
+ * 응답 인터셉터: 401 에러 시 JWT 토큰 갱신 또는 로그아웃
  */
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    // 401 Unauthorized: 세션 만료
-    if (error.response?.status === 401) {
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    
+    // 401 Unauthorized: 토큰 만료
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // ✅ Refresh Token으로 새 Access Token 발급 시도
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      if (refreshToken) {
+        try {
+          console.log('[API] Access token expired, refreshing...');
+          
+          // Refresh Token으로 새 Access Token 발급
+          const response = await axios.post('/api/auth/refresh', {
+            refreshToken
+          });
+          
+          if (response.data.success) {
+            const newAccessToken = response.data.data.accessToken;
+            localStorage.setItem('access_token', newAccessToken);
+            
+            console.log('[API] ✅ Token refreshed successfully');
+            
+            // 원래 요청에 새 토큰 적용하여 재시도
+            if (originalRequest.headers) {
+              originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+            }
+            
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          console.error('[API] ❌ Token refresh failed:', refreshError);
+          // Refresh 실패 시 로그아웃
+        }
+      }
+      
+      // Refresh Token이 없거나 갱신 실패 시 로그아웃
       console.warn('[API] 인증 실패 - 로그아웃 처리');
       
-      // ✅ 모든 인증 관련 키 제거 (표준 키)
-      localStorage.removeItem('user_session_token');
-      localStorage.removeItem('seller_session_token');
-      localStorage.removeItem('admin_session_token');
+      // ✅ JWT 토큰 제거
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_type');
       localStorage.removeItem('user_id');
-      localStorage.removeItem('user_name');
-      localStorage.removeItem('user_email');
       localStorage.removeItem('seller_id');
       localStorage.removeItem('admin_id');
       localStorage.removeItem('hasCartItems');
       
       // 레거시 키도 제거
-      localStorage.removeItem('session');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_session_token');
+      localStorage.removeItem('seller_session_token');
+      localStorage.removeItem('admin_session_token');
       
       // 현재 페이지가 로그인 페이지가 아닐 때만 리다이렉트
       const currentPath = window.location.pathname;
