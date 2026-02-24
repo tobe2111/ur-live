@@ -88,54 +88,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] ✅ 로그인 파라미터 처리 완료')
         }
       } else {
-        // 로그인 파라미터가 없으면 기존 세션 체크
-        const token = getSessionToken()
+        // 로그인 파라미터가 없으면 기존 JWT 토큰 체크
+        const accessToken = localStorage.getItem('access_token')
+        const userType = localStorage.getItem('user_type')
+        
         setAuthState({
-          isLoggedIn: isLoggedIn(),
-          sessionToken: token
+          isLoggedIn: !!accessToken && !!userType,
+          sessionToken: accessToken
         })
         setIsAuthReady(true)
-        console.log('[AuthContext] ℹ️ 로그인 파라미터 없음 (기존 세션 사용)')
+        console.log('[AuthContext] ℹ️ 로그인 파라미터 없음 (기존 JWT 토큰 사용)', {
+          hasAccessToken: !!accessToken,
+          userType
+        })
       }
     }
 
     initializeAuth()
   }, [searchParams])
 
-  // ✅ 직접 로그인 메서드 (이메일, 셀러, 어드민 로그인용)
+  // ✅ 직접 로그인 메서드 (이메일, 셀러, 어드민 로그인용) - JWT 지원
   const loginWithCredentials = (
     userId: string, 
     userName: string, 
-    sessionToken: string,
+    accessToken: string,
     userType: 'user' | 'seller' | 'admin' = 'user'
   ) => {
     setIsProcessingLogin(true) // ✅ 세션 검증 차단
     
-    console.log('[AuthContext] 🔐 직접 로그인 처리 시작:', {
+    console.log('[AuthContext] 🔐 직접 로그인 처리 시작 (JWT):', {
       userId,
       userName,
       userType,
-      hasSession: !!sessionToken
+      hasAccessToken: !!accessToken
     })
 
     try {
-      // localStorage에 저장 (saveUserInfo는 user만 지원하므로 직접 저장)
-      if (userType === 'user') {
-        saveUserInfo(userId, userName, sessionToken)
-      } else {
-        // 셀러/어드민은 별도 키 사용
-        localStorage.setItem(`${userType}_session_token`, sessionToken)
-        localStorage.setItem(`${userType}_id`, userId)
-        localStorage.setItem('user_type', userType)
-        localStorage.setItem('user_name', userName)
+      // JWT 토큰을 localStorage에 저장
+      localStorage.setItem('access_token', accessToken)
+      localStorage.setItem('user_type', userType)
+      localStorage.setItem('user_id', userId)
+      localStorage.setItem('user_name', userName)
+      
+      // 타입별 추가 ID 저장 (기존 코드와의 호환성)
+      if (userType === 'seller') {
+        localStorage.setItem('seller_id', userId)
+      } else if (userType === 'admin') {
+        localStorage.setItem('admin_id', userId)
       }
 
-      console.log('[AuthContext] ✅ 직접 로그인 정보 저장 완료')
+      console.log('[AuthContext] ✅ JWT 로그인 정보 저장 완료')
 
       // 인증 상태 업데이트
       setAuthState({
         isLoggedIn: true,
-        sessionToken: sessionToken
+        sessionToken: accessToken
       })
     } catch (error) {
       console.error('[AuthContext] ❌ 직접 로그인 처리 실패:', error)

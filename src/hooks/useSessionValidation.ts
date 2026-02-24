@@ -40,29 +40,33 @@ export function useSessionValidation() {
     }
 
     const validateSession = async () => {
-      const token = getSessionToken()
+      // JWT 토큰 확인 (access_token)
+      const accessToken = localStorage.getItem('access_token')
       
       // 토큰이 없으면 검증 스킵 (로그인 안 한 상태)
-      if (!token) {
+      if (!accessToken) {
         return
       }
 
       try {
-        // 세션 유효성 검증 API 호출
+        // JWT 세션 유효성 검증 (API client가 자동으로 Authorization 헤더 추가)
         await api.get('/api/auth/validate')
         
-        console.log('[SessionValidation] ✅ 세션 유효함')
+        console.log('[SessionValidation] ✅ JWT 세션 유효함')
       } catch (error: any) {
-        // 401 에러: 세션 만료
+        // 401 에러: JWT 토큰 만료 (Refresh token도 만료됨)
         if (error.response?.status === 401) {
-          console.warn('[SessionValidation] ⚠️ 세션 만료 감지, 자동 로그아웃')
+          console.warn('[SessionValidation] ⚠️ JWT 토큰 만료 감지, 자동 로그아웃')
           
           // 현재 페이지를 returnUrl로 저장
           const currentPath = window.location.pathname + window.location.search
           localStorage.setItem('loginReturnUrl', currentPath)
           
-          // 로그아웃 처리
-          logout()
+          // JWT 토큰 제거
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('user_type')
+          localStorage.removeItem('user_id')
           
           // 로그인 페이지로 이동 (페이지 타입에 따라 분기)
           if (currentPath.includes('/seller')) {
@@ -74,7 +78,7 @@ export function useSessionValidation() {
           }
         } else {
           // 네트워크 오류 등은 무시 (서버 일시적 문제일 수 있음)
-          console.warn('[SessionValidation] 세션 검증 실패 (네트워크 오류):', error.message)
+          console.warn('[SessionValidation] JWT 세션 검증 실패 (네트워크 오류):', error.message)
         }
       }
     }
