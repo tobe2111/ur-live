@@ -653,6 +653,16 @@ function ReelCard({
 
   const { product, stream } = reel
   
+  // Handle null product case
+  const safeProduct = product || {
+    name: stream.title || '상품 정보 없음',
+    image: stream.thumbnail_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
+    image_url: stream.thumbnail_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
+    price: 0,
+    originalPrice: 0,
+    original_price: 0
+  }
+  
   // 🔥 SSE 기반 실시간 채팅 (메시지 전송용)
   const { sendMessage: sendChatMessage } = useLiveChat(stream.id, true)
 
@@ -1102,8 +1112,8 @@ function ReelCard({
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
       {/* Background image */}
       <img
-        src={product.image || product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
-        alt={product.name}
+        src={safeProduct.image || safeProduct.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
+        alt={safeProduct.name}
         className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
           isActive ? 'scale-100' : 'scale-110'
         }`}
@@ -1164,7 +1174,7 @@ function ReelCard({
                 aria-label="Share"
                 onClick={() => {
                   if (navigator.share) {
-                    navigator.share({ title: product.name, url: window.location.href })
+                    navigator.share({ title: safeProduct.name, url: window.location.href })
                   } else {
                     navigator.clipboard?.writeText(window.location.href)
                     setNotificationText('링크가 복사되었습니다!')
@@ -1187,15 +1197,15 @@ function ReelCard({
               className="flex flex-col items-start min-w-0 flex-1 text-left"
             >
               <h3 className="text-[13px] font-bold text-white leading-tight truncate w-full drop-shadow-lg">
-                {product.name}
+                {safeProduct.name}
               </h3>
               <div className="flex items-baseline gap-1.5 mt-0.5">
                 <span className="text-[14px] font-extrabold text-red-400 drop-shadow-md">
-                  ${(product.price || 0).toFixed(2)}
+                  ${(safeProduct.price || 0).toFixed(2)}
                 </span>
-                {(product.originalPrice || product.original_price) && (
+                {(safeProduct.originalPrice || safeProduct.original_price) && (
                   <span className="text-[10px] text-white/40 line-through">
-                    ${(product.originalPrice || product.original_price || 0).toFixed(2)}
+                    ${(safeProduct.originalPrice || safeProduct.original_price || 0).toFixed(2)}
                   </span>
                 )}
               </div>
@@ -1204,9 +1214,9 @@ function ReelCard({
             {/* Basket button */}
             <button
               onClick={handleAddToCart}
-              disabled={addingToCart}
+              disabled={addingToCart || !product}
               className={`flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95 ${
-                addingToCart ? 'opacity-50 cursor-not-allowed' : ''
+                addingToCart || !product ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               aria-label="Add to basket"
             >
@@ -1219,9 +1229,9 @@ function ReelCard({
             {/* Buy button */}
             <button
               onClick={handleCheckout}
-              disabled={checkingOut}
+              disabled={checkingOut || !product}
               className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
-                checkingOut ? 'opacity-50 cursor-not-allowed' : ''
+                checkingOut || !product ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
               {checkingOut ? '확인 중...' : '구매하기'}
@@ -1231,7 +1241,7 @@ function ReelCard({
       </div>
 
       {/* Product sheet */}
-      {sheetOpen && (
+      {sheetOpen && product && (
         <div className="pointer-events-auto">
           <ProductSheet product={product} onClose={() => setSheetOpen(false)} />
         </div>
