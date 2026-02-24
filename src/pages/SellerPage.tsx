@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import NotificationBell from '@/components/NotificationBell'
 import { useAuth } from '@/contexts/AuthContext'
+import { getSellerToken, isSellerAuthenticated, getSellerId, redirectToLogin, logoutSeller } from '@/lib/seller-auth'
 import { 
   ArrowLeft, 
   TrendingUp,
@@ -84,53 +85,39 @@ export default function SellerPage() {
       return
     }
     
-    // Check authentication
-    const sessionToken = localStorage.getItem('seller_session_token')
-    const userType = localStorage.getItem('user_type')
-    const sellerIdStr = localStorage.getItem('seller_id')
+    // ✅ JWT 기반 인증 확인
+    if (!isSellerAuthenticated()) {
+      console.log('[SellerPage] ❌ Not authenticated')
+      redirectToLogin(navigate)
+      return
+    }
     
-    console.log('[SellerPage] 🔍 Authentication check:', {
-      hasSessionToken: !!sessionToken,
-      sessionTokenLength: sessionToken?.length,
-      userType,
+    const token = getSellerToken()
+    const sellerIdStr = getSellerId()
+    
+    console.log('[SellerPage] ✅ JWT Auth success:', {
+      hasToken: !!token,
       sellerId: sellerIdStr,
-      allLocalStorageKeys: Object.keys(localStorage),
-      timestamp: new Date().toISOString()
+      userType: localStorage.getItem('user_type')
     })
     
-    // 🔴 중요: user_type이 정확히 'seller'인지 확인
-    if (!sessionToken) {
-      console.log('[SellerPage] ❌ No session token found')
-      navigate('/seller/login', { replace: true })
-      return
-    }
-    
-    if (userType !== 'seller') {
-      console.log('[SellerPage] ❌ Invalid user_type:', userType, '(expected: seller)')
-      navigate('/seller/login', { replace: true })
-      return
-    }
-    
-    console.log('[SellerPage] ✅ Auth success, loading dashboard')
     loadDashboardData()
-  }, [navigate, isAuthReady])  // ✅ isAuthReady로 변경
+  }, [navigate, isAuthReady])
 
   async function loadDashboardData() {
     try {
-      // Get session token from localStorage
-      const sessionToken = localStorage.getItem('seller_session_token')
-      const userId = localStorage.getItem('seller_id')
+      // ✅ JWT 토큰 사용
+      const token = getSellerToken()
+      const userId = getSellerId()
       
-      // Load seller ID from localStorage or API
       if (userId) {
         setSellerId(parseInt(userId))
       }
 
-      // Load real stats if session exists
-      if (sessionToken) {
+      if (token) {
         try {
           const statsResponse = await api.get('/api/seller/stats', {
-            headers: { 'Authorization': `Bearer ${sessionToken}` }
+            headers: { 'Authorization': `Bearer ${token}` }
           })
           
           if (statsResponse.data.success) {
@@ -138,7 +125,6 @@ export default function SellerPage() {
           }
         } catch (error) {
           console.error('Failed to load stats:', error)
-          // Fallback to demo data if API fails
           setStats({
             totalRevenue: 0,
             totalOrders: 0,
@@ -146,27 +132,19 @@ export default function SellerPage() {
             totalViewers: 0
           })
         }
-      } else {
-        // Demo data for non-logged-in users
-        setStats({
-          totalRevenue: 12450000,
-          totalOrders: 342,
-          activeStreams: 2,
-          totalViewers: 1523
-        })
       }
 
       // Load streams
       const streamsResponse = await api.get('/api/seller/streams', {
         headers: {
-          'Authorization': `Bearer ${sessionToken}`
+          'Authorization': `Bearer ${token}`
         }
       })
       if (streamsResponse.data.success) {
         setStreams(streamsResponse.data.data || [])
       }
 
-      // Load real products from actual streams
+      // Load products from first stream
       if (streamsResponse.data.success && streamsResponse.data.data.length > 0) {
         const firstStream = streamsResponse.data.data[0]
         try {
@@ -179,7 +157,6 @@ export default function SellerPage() {
           setProducts([])
         }
       } else {
-        // No demo products - keep empty
         setProducts([])
       }
     } catch (error) {
@@ -190,10 +167,7 @@ export default function SellerPage() {
   }
 
   function logout() {
-    localStorage.removeItem('seller_session_token')
-    localStorage.removeItem('user_type')
-    localStorage.removeItem('seller_id')
-    navigate('/seller/login')
+    logoutSeller(navigate)
   }
 
   if (loading) {

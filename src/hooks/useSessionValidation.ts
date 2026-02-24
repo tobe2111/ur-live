@@ -22,7 +22,16 @@ export function useSessionValidation() {
   const { isProcessingLogin, isAuthReady } = useAuth()
 
   useEffect(() => {
+    let validateTimeout: NodeJS.Timeout | null = null
+    let isValidating = false  // 중복 호출 방지 플래그
+    
     const validateJwtSession = async () => {
+      // 중복 호출 방지
+      if (isValidating) {
+        console.log('[SessionValidation] ⏸️ 이미 검증 중, 스킵')
+        return
+      }
+      
       // 1. 로그인 처리 중이거나 인증 초기화 전에는 검증 스킵
       if (isProcessingLogin || !isAuthReady) {
         console.log('[SessionValidation] ⏳ 인증 초기화 대기 중, JWT 세션 검증 스킵')
@@ -36,6 +45,8 @@ export function useSessionValidation() {
         return
       }
 
+      isValidating = true
+      
       try {
         // 3. JWT 토큰 검증 (백엔드 /api/auth/validate 엔드포인트)
         const response = await api.get('/api/auth/validate')
@@ -71,6 +82,8 @@ export function useSessionValidation() {
           // 5. 429 Too Many Requests: 너무 많은 요청, 조용히 스킵
           console.warn('[SessionValidation] ⚠️ 429 Too Many Requests - 다음 검증까지 대기')
         }
+      } finally {
+        isValidating = false
       }
     }
 
@@ -81,15 +94,15 @@ export function useSessionValidation() {
       return
     }
 
-    // 7. 5분마다 JWT 세션 검증 실행
-    const interval = setInterval(validateJwtSession, 5 * 60 * 1000)
+    // 7. 10분마다 JWT 세션 검증 실행 (5분 → 10분으로 변경하여 429 방지)
+    const interval = setInterval(validateJwtSession, 10 * 60 * 1000)
 
-    // 8. 컴포넌트 마운트 시 1회 실행 (3초 지연 - 초기 로딩 완료 대기)
-    const initialTimeout = setTimeout(validateJwtSession, 3000)
+    // 8. 컴포넌트 마운트 시 1회 실행 (10초 지연 - 초기 로딩 완료 대기, 3초 → 10초로 변경)
+    validateTimeout = setTimeout(validateJwtSession, 10000)
 
     return () => {
       clearInterval(interval)
-      clearTimeout(initialTimeout)
+      if (validateTimeout) clearTimeout(validateTimeout)
     }
   }, [isAuthReady]) // ✅ 의존성을 isAuthReady만 포함 (한 번만 실행)
 }
