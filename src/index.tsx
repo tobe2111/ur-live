@@ -3104,8 +3104,6 @@ app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
         ls.current_product_id, 
         ls.seller_id,
         ls.scheduled_at, 
-        ls.started_at, 
-        ls.ended_at, 
         ls.created_at, 
         ls.updated_at,
         s.display_name as seller_name,
