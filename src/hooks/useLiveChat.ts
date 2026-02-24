@@ -89,14 +89,15 @@ export function useLiveChat(
         headers['Authorization'] = `Bearer ${accessToken}`
       }
       
-      const response = await fetch(`/api/live/${liveId}/chat`, {
+      const response = await fetch(`/api/chat/${liveId}/messages`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          user_id: userId,
-          user_name: userName,
-          user_type: userType,
-          message: message.trim()
+          userId: userId,
+          userName: userName,
+          message: message.trim(),
+          isSeller: userType === 'streamer',
+          isAdmin: false
         })
       });
 
