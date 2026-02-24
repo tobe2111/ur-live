@@ -534,14 +534,15 @@ async function requireAuth(c: any, next: any) {
   }
   
   // 5. 🚀 Task 3: Write-Throttling - 세션 갱신 최소화
-  // 세션 생성 후 23일이 지났을 때만 갱신 (KV 쓰기 95% 절감!)
+  // ⚠️ EMERGENCY FIX: 세션 갱신을 거의 비활성화 (KV Write 한도 보호)
+  // 세션 생성 후 29일이 지났을 때만 갱신 (만료 직전에만!)
   try {
     if (sessionToken && sessionInfo.created_at) {
       const sessionAge = Date.now() - sessionInfo.created_at;
-      const twentyThreeDays = 23 * 24 * 60 * 60 * 1000;  // 23일 (전체 30일의 75%)
+      const twentyNineDays = 29 * 24 * 60 * 60 * 1000;  // 29일 (전체 30일의 97%)
       
-      // 23일 이상 경과한 세션만 갱신
-      if (sessionAge > twentyThreeDays) {
+      // 🚨 긴급: 29일 이상 경과한 세션만 갱신 (KV Write 최소화)
+      if (sessionAge > twentyNineDays) {
         const cacheKey = `session:${sessionToken}`;
         const sessionData = await SESSION_KV.get(cacheKey);
         
@@ -803,18 +804,33 @@ async function getCachedData(CACHE_KV: KVNamespace, key: string): Promise<any> {
 
 /**
  * 🚀 최적화된 Cache Helper - Memory Cache에도 저장
+ * ⚠️ EMERGENCY FIX: KV Write를 최소화 (메모리 캐시 우선 전략)
  * @param CACHE_KV - Cloudflare KV namespace for caching
  * @param key - Cache key
  * @param data - Data to cache
  * @param ttl - Time to live in seconds (default: 60s)
+ * @param forceKvWrite - KV에도 저장할지 여부 (기본값: false, KV Write 절약)
  */
-async function setCachedData(CACHE_KV: KVNamespace, key: string, data: any, ttl: number = 60): Promise<void> {
+async function setCachedData(
+  CACHE_KV: KVNamespace, 
+  key: string, 
+  data: any, 
+  ttl: number = 60,
+  forceKvWrite: boolean = false  // 🚨 긴급: 기본값 false로 변경!
+): Promise<void> {
   try {
-    // Memory Cache에 즉시 저장 (KV 쓰기 전에!)
+    // 1. Memory Cache에 항상 저장 (무료, 빠름!)
     setToMemoryCache(key, data, ttl);
     
-    // KV에 비동기 저장 (응답 지연 최소화)
-    await CACHE_KV.put(key, JSON.stringify(data), { expirationTtl: ttl });
+    // 2. KV에는 forceKvWrite가 true일 때만 저장 (KV Write 절약!)
+    // 대부분의 캐시는 메모리에만 저장하고, 중요한 데이터만 KV에 저장
+    if (forceKvWrite) {
+      await CACHE_KV.put(key, JSON.stringify(data), { expirationTtl: ttl });
+      console.log(`[Cache] ✅ Saved to both Memory + KV: ${key}`);
+    } else {
+      // 메모리 캐시에만 저장 (KV Write 0회!)
+      console.log(`[Cache] ✅ Saved to Memory only (KV Write skipped): ${key}`);
+    }
   } catch (error) {
     console.error('[Cache] Write error:', error);
   }
@@ -12826,5 +12842,64 @@ app.get('/api/cache/stats', async (c) => {
 
 // Mount JWT API routes
 app.route('/', jwtApiRoutes);
+
+// ==================== KV Usage Monitoring API (긴급 디버깅용) ====================
+/**
+ * KV 사용량 모니터링 API
+ * 어떤 키가 가장 많이 사용되는지 추적
+ */
+let kvWriteStats: Record<string, number> = {};
+let kvReadStats: Record<string, number> = {};
+
+app.get('/api/debug/kv-usage', cors(), async (c) => {
+  try {
+    const sortedWrites = Object.entries(kvWriteStats)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20);
+    
+    const sortedReads = Object.entries(kvReadStats)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20);
+    
+    const totalWrites = Object.values(kvWriteStats).reduce((a, b) => a + b, 0);
+    const totalReads = Object.values(kvReadStats).reduce((a, b) => a + b, 0);
+    
+    return c.json({
+      success: true,
+      stats: {
+        total_writes: totalWrites,
+        total_reads: totalReads,
+        daily_write_limit: 1000,
+        daily_read_limit: 100000,
+        write_usage_percent: ((totalWrites / 1000) * 100).toFixed(2) + '%',
+        read_usage_percent: ((totalReads / 100000) * 100).toFixed(2) + '%',
+        top_writes: sortedWrites,
+        top_reads: sortedReads
+      },
+      recommendations: totalWrites > 500 ? [
+        '⚠️ KV Write 사용량이 높습니다!',
+        '1. 세션 갱신 주기를 늘리세요 (현재 29일)',
+        '2. 캐시를 메모리에만 저장하세요 (forceKvWrite: false)',
+        '3. JWT 인증으로 전환하세요 (KV 사용량 90% 감소)'
+      ] : [
+        '✅ KV 사용량이 정상 범위입니다.'
+      ]
+    });
+  } catch (error: any) {
+    return c.json({
+      success: false,
+      error: error.message
+    }, 500);
+  }
+});
+
+// KV Write 추적 헬퍼 (기존 setCachedData에서 호출)
+function trackKvWrite(key: string) {
+  kvWriteStats[key] = (kvWriteStats[key] || 0) + 1;
+}
+
+function trackKvRead(key: string) {
+  kvReadStats[key] = (kvReadStats[key] || 0) + 1;
+}
 
 export default app
