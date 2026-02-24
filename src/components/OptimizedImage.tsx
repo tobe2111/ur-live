@@ -1,20 +1,21 @@
 /**
- * OptimizedImage Component
+ * OptimizedImage Component (무료 버전)
  * 
- * Cloudflare Image Resizing을 활용한 최적화된 이미지 컴포넌트
- * - 자동 WebP 변환
- * - 반응형 srcset
- * - Lazy loading
- * - 플레이스홀더 지원
+ * 무료 플랜에서 사용 가능한 이미지 최적화 컴포넌트
+ * - Lazy loading (화면에 보일 때만 로드)
+ * - 로딩 플레이스홀더
+ * - 에러 처리
+ * 
+ * 참고: Cloudflare Image Resizing은 사용하지 않음 (Pro 플랜 필요)
  */
 
 import React, { useState } from 'react';
-import { optimizeImage, generateSrcSet, type ImageSize } from '../lib/image-optimizer';
+import { optimizeImage, type ImageSize } from '../lib/image-optimizer';
 
 interface OptimizedImageProps {
   src: string | null | undefined;
   alt: string;
-  size?: ImageSize;
+  size?: ImageSize; // 호환성 유지용 (실제로는 사용 안 함)
   className?: string;
   width?: number;
   height?: number;
@@ -26,7 +27,7 @@ interface OptimizedImageProps {
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
   alt,
-  size = 'medium',
+  size = 'medium', // 호환성 유지용
   className = '',
   width,
   height,
@@ -71,8 +72,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     );
   }
 
-  const optimizedSrc = optimizeImage(src, size);
-  const srcSet = generateSrcSet(src);
+  const imageSrc = optimizeImage(src, size);
 
   return (
     <div className={`relative ${className}`}>
@@ -84,8 +84,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
       
       <img
-        src={optimizedSrc}
-        srcSet={srcSet}
+        src={imageSrc}
         alt={alt}
         width={width}
         height={height}
