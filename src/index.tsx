@@ -3109,7 +3109,7 @@ app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
         ls.created_at, 
         ls.updated_at,
         s.display_name as seller_name,
-        s.profile_image_url as seller_profile_image
+        s.profile_image as seller_profile_image
       FROM live_streams ls
       LEFT JOIN sellers s ON ls.seller_id = s.id
     `;

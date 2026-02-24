@@ -50,7 +50,8 @@ export default function SellerProductEditPage() {
     live_stream_id: '',
     is_active: true,
     detail_images: [] as string[],
-    product_type: 'featured' // 'live' or 'featured'
+    product_type: 'featured', // 'live' or 'featured'
+    category: 'lifestyle' // 카테고리 기본값
   })
 
   useEffect(() => {
@@ -101,7 +102,8 @@ export default function SellerProductEditPage() {
           live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
           is_active: productData.is_active,
           detail_images: detailImages,
-          product_type: productData.product_type || 'featured'
+          product_type: productData.product_type || 'featured',
+          category: productData.category || 'lifestyle'
         })
       }
     } catch (error: any) {
@@ -152,7 +154,8 @@ export default function SellerProductEditPage() {
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
         is_active: formData.is_active,
         detail_images: JSON.stringify(formData.detail_images),
-        product_type: formData.product_type
+        product_type: formData.product_type,
+        category: formData.category
       }
 
       const response = await api.patch(`/api/seller/products/${id}`, payload, {
@@ -350,6 +353,27 @@ export default function SellerProductEditPage() {
             label="상품 이미지"
             maxSizeKB={800}
           />
+
+          {/* Category Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              카테고리 <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="fashion">패션</option>
+              <option value="beauty">뷰티</option>
+              <option value="food">식품</option>
+              <option value="electronics">전자기기</option>
+              <option value="lifestyle">라이프스타일</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">상품이 속할 카테고리를 선택하세요</p>
+          </div>
 
           {/* Product Type Selection */}
           <div>

@@ -428,7 +428,7 @@ ${o}
         ls.created_at, 
         ls.updated_at,
         s.display_name as seller_name,
-        s.profile_image_url as seller_profile_image
+        s.profile_image as seller_profile_image
       FROM live_streams ls
       LEFT JOIN sellers s ON ls.seller_id = s.id
     `;t==="live"?o+=" WHERE ls.status = 'live'":t==="scheduled"?o+=" WHERE ls.status = 'scheduled'":t==="ended"?o+=" WHERE ls.status = 'ended'":o+=" WHERE ls.status IN ('live', 'scheduled')",o+=` ORDER BY 
