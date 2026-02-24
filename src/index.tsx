@@ -435,7 +435,7 @@ async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; e
     }
     
     // JWT 검증 (메모리 캐시 사용, KV 읽기 0회)
-    const jwtSecret = getJwtSecret(c.env.JWT_SECRET)
+    const jwtSecret = getJwtSecret(c.env)
     const payload = await verifyCachedToken(token, jwtSecret)
     
     if (!payload) {
@@ -2317,8 +2317,13 @@ app.get('/api/auth/validate', cors(), async (c) => {
     }
     
     // JWT 검증 (verifyCachedToken: 메모리 캐시 사용, KV 읽기 최소화)
-    const jwtSecret = getJwtSecret(c.env.JWT_SECRET)
+    const jwtSecret = getJwtSecret(c.env)
+    console.log('[JWT Validate] Secret (first 20 chars):', jwtSecret.substring(0, 20))
+    console.log('[JWT Validate] Token (first 50 chars):', token.substring(0, 50))
+    
     const payload = await verifyCachedToken(token, jwtSecret)
+    
+    console.log('[JWT Validate] Payload:', payload ? 'Valid' : 'Invalid/Expired')
     
     if (!payload) {
       return c.json({ 

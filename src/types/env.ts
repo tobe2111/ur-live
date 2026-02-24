@@ -68,6 +68,15 @@ export interface CloudflareBindings {
    * @setup npx wrangler pages secret put TOSS_CLIENT_KEY --project-name ur-live
    */
   TOSS_CLIENT_KEY: string;
+  
+  /**
+   * JWT Secret Key
+   * @description JWT 토큰 서명 및 검증에 사용
+   * @required true
+   * @example (64+ 바이트 랜덤 문자열)
+   * @setup npx wrangler pages secret put JWT_SECRET --project-name ur-live
+   */
+  JWT_SECRET: string;
 }
 
 /**
