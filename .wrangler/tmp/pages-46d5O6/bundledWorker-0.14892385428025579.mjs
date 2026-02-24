@@ -1016,7 +1016,7 @@ var nt = /* @__PURE__ */ __name((e, s) => {
   }
   return null;
 }, "nt");
-var Ns = /* @__PURE__ */ __name((e, s) => {
+var Cs = /* @__PURE__ */ __name((e, s) => {
   try {
     return s(e);
   } catch {
@@ -1028,8 +1028,8 @@ var Ns = /* @__PURE__ */ __name((e, s) => {
       }
     });
   }
-}, "Ns");
-var ot = /* @__PURE__ */ __name((e) => Ns(e, decodeURI), "ot");
+}, "Cs");
+var ot = /* @__PURE__ */ __name((e) => Cs(e, decodeURI), "ot");
 var fr = /* @__PURE__ */ __name((e) => {
   const s = e.url, r = s.indexOf("/", s.indexOf(":") + 4);
   let t = r;
@@ -1060,7 +1060,7 @@ var Er = /* @__PURE__ */ __name((e) => {
     } else t += "/" + a;
   }), r.filter((a, n, o) => o.indexOf(a) === n);
 }, "Er");
-var Is = /* @__PURE__ */ __name((e) => /[%+]/.test(e) ? (e.indexOf("+") !== -1 && (e = e.replace(/\+/g, " ")), e.indexOf("%") !== -1 ? Ns(e, gr) : e) : e, "Is");
+var Is = /* @__PURE__ */ __name((e) => /[%+]/.test(e) ? (e.indexOf("+") !== -1 && (e = e.replace(/\+/g, " ")), e.indexOf("%") !== -1 ? Cs(e, gr) : e) : e, "Is");
 var hr = /* @__PURE__ */ __name((e, s, r) => {
   let t;
   if (!r && s && !/[%+]/.test(s)) {
@@ -1093,7 +1093,7 @@ var hr = /* @__PURE__ */ __name((e, s, r) => {
 var ct = hr;
 var ut = /* @__PURE__ */ __name((e, s) => hr(e, s, true), "ut");
 var gr = decodeURIComponent;
-var Ys = /* @__PURE__ */ __name((e) => Ns(e, gr), "Ys");
+var Ys = /* @__PURE__ */ __name((e) => Cs(e, gr), "Ys");
 var qe;
 var Z;
 var pe;
@@ -1214,7 +1214,7 @@ var is;
 var cs;
 var ae;
 var Pe;
-var Cs;
+var Ns;
 var ur;
 var pt = (ur = class {
   static {
@@ -1257,8 +1257,8 @@ var pt = (ur = class {
     b(this, "get", (e2) => _(this, ce) ? _(this, ce).get(e2) : void 0);
     b(this, "newResponse", (...e2) => A(this, ae, Pe).call(this, ...e2));
     b(this, "body", (e2, s2, r) => A(this, ae, Pe).call(this, e2, s2, r));
-    b(this, "text", (e2, s2, r) => A(this, ae, Cs).call(this) && !s2 && !r ? Le(e2) : A(this, ae, Pe).call(this, e2, s2, vs(dt, r)));
-    b(this, "json", (e2, s2, r) => A(this, ae, Cs).call(this) && !s2 && !r ? Response.json(e2) : A(this, ae, Pe).call(this, JSON.stringify(e2), s2, vs("application/json", r)));
+    b(this, "text", (e2, s2, r) => A(this, ae, Ns).call(this) && !s2 && !r ? Le(e2) : A(this, ae, Pe).call(this, e2, s2, vs(dt, r)));
+    b(this, "json", (e2, s2, r) => A(this, ae, Ns).call(this) && !s2 && !r ? Response.json(e2) : A(this, ae, Pe).call(this, JSON.stringify(e2), s2, vs("application/json", r)));
     b(this, "html", (e2, s2, r) => {
       const t = /* @__PURE__ */ __name((a) => A(this, ae, Pe).call(this, a, s2, vs("text/html; charset=UTF-8", r)), "t");
       return typeof e2 == "object" ? Tr(e2, lt.Stringify, false, {}).then(t) : t(e2);
@@ -1311,9 +1311,9 @@ var pt = (ur = class {
   }
   const a = typeof s == "number" ? s : (s == null ? void 0 : s.status) ?? _(this, Fe);
   return Le(e, { status: a, headers: t });
-}, "Pe"), Cs = /* @__PURE__ */ __name(function() {
+}, "Pe"), Ns = /* @__PURE__ */ __name(function() {
   return !_(this, be) && !_(this, Fe) && !this.finalized;
-}, "Cs"), ur);
+}, "Ns"), ur);
 var K = "ALL";
 var mt = "all";
 var _t = ["get", "post", "put", "delete", "options", "patch"];
@@ -1784,15 +1784,15 @@ var At = (Ve = class {
         const y = n[g], j = _(y, X)[m];
         j && (T(j, J, _(y, J)), E ? (_(j, X)["*"] && A(this, de, Te).call(this, t, _(j, X)["*"], s, _(y, J)), A(this, de, Te).call(this, t, j, s, _(y, J))) : f.push(j));
         for (let O = 0, M = _(y, ve).length; O < M; O++) {
-          const $ = _(y, ve)[O], C = _(y, J) === Ge ? {} : { ..._(y, J) };
+          const $ = _(y, ve)[O], N = _(y, J) === Ge ? {} : { ..._(y, J) };
           if ($ === "*") {
             const L = _(y, X)["*"];
-            L && (A(this, de, Te).call(this, t, L, s, _(y, J)), T(L, J, C), f.push(L));
+            L && (A(this, de, Te).call(this, t, L, s, _(y, J)), T(L, J, N), f.push(L));
             continue;
           }
           const [v, U, P] = $;
           if (!m && !(P instanceof RegExp)) continue;
-          const N = _(y, X)[v];
+          const C = _(y, X)[v];
           if (P instanceof RegExp) {
             if (u === null) {
               u = new Array(c);
@@ -1801,15 +1801,15 @@ var At = (Ve = class {
             }
             const L = r.substring(u[p]), q = P.exec(L);
             if (q) {
-              if (C[U] = q[0], A(this, de, Te).call(this, t, N, s, _(y, J), C), Dt(_(N, X))) {
-                T(N, J, C);
+              if (N[U] = q[0], A(this, de, Te).call(this, t, C, s, _(y, J), N), Dt(_(C, X))) {
+                T(C, J, N);
                 const z = ((l = q[0].match(/\//)) == null ? void 0 : l.length) ?? 0;
-                (i[z] || (i[z] = [])).push(N);
+                (i[z] || (i[z] = [])).push(C);
               }
               continue;
             }
           }
-          (P === true || P.test(m)) && (C[U] = m, E ? (A(this, de, Te).call(this, t, N, s, C, _(y, J)), _(N, X)["*"] && A(this, de, Te).call(this, t, _(N, X)["*"], s, C, _(y, J))) : (T(N, J, C), f.push(N)));
+          (P === true || P.test(m)) && (N[U] = m, E ? (A(this, de, Te).call(this, t, C, s, N, _(y, J)), _(C, X)["*"] && A(this, de, Te).call(this, t, _(C, X)["*"], s, N, _(y, J))) : (T(C, J, N), f.push(C)));
         }
       }
       const h = i.shift();
@@ -1886,17 +1886,17 @@ function jt(e) {
   return `upload_${r}_${t}.${s}`;
 }
 __name(jt, "jt");
-async function Ct(e) {
+async function Nt(e) {
   const s = new Uint8Array(e);
   return s[0] === 255 && s[1] === 216 && s[2] === 255 ? { valid: true, detectedType: "image/jpeg" } : s[0] === 137 && s[1] === 80 && s[2] === 78 && s[3] === 71 ? { valid: true, detectedType: "image/png" } : s[0] === 71 && s[1] === 73 && s[2] === 70 && s[3] === 56 ? { valid: true, detectedType: "image/gif" } : s[0] === 82 && s[1] === 73 && s[2] === 70 && s[3] === 70 && s[8] === 87 && s[9] === 69 && s[10] === 66 && s[11] === 80 ? { valid: true, detectedType: "image/webp" } : { valid: false };
 }
-__name(Ct, "Ct");
-function Nt(e) {
+__name(Nt, "Nt");
+function Ct(e) {
   let s = "";
   for (let r = 0; r < e.byteLength; r++) s += String.fromCharCode(e[r]);
   return s;
 }
-__name(Nt, "Nt");
+__name(Ct, "Ct");
 function Ar(e) {
   let s = new Uint8Array(e.length);
   for (let r = 0; r < e.length; r++) s[r] = e.charCodeAt(r);
@@ -1904,7 +1904,7 @@ function Ar(e) {
 }
 __name(Ar, "Ar");
 function Lt(e) {
-  return btoa(Nt(new Uint8Array(e)));
+  return btoa(Ct(new Uint8Array(e)));
 }
 __name(Lt, "Lt");
 function kr(e) {
@@ -1948,29 +1948,29 @@ async function qt(e, s, r) {
   return await crypto.subtle.importKey("pkcs8", jr(e), s, true, r);
 }
 __name(qt, "qt");
-async function Cr(e, s, r) {
+async function Nr(e, s, r) {
   if (typeof e == "object") return $t(e, s, r);
   if (typeof e != "string") throw new Error("Unsupported key type!");
   return e.includes("PUBLIC") ? Ht(e, s, r) : e.includes("PRIVATE") ? qt(e, s, r) : Pt(e, s, r);
 }
-__name(Cr, "Cr");
+__name(Nr, "Nr");
 function Xs(e) {
   const s = Array.from(atob(e), (t) => t.charCodeAt(0)), r = new TextDecoder("utf-8").decode(new Uint8Array(s));
   return JSON.parse(r);
 }
 __name(Xs, "Xs");
 if (typeof crypto > "u" || !crypto.subtle) throw new Error("SubtleCrypto not supported!");
-var Nr = { none: { name: "none" }, ES256: { name: "ECDSA", namedCurve: "P-256", hash: { name: "SHA-256" } }, ES384: { name: "ECDSA", namedCurve: "P-384", hash: { name: "SHA-384" } }, ES512: { name: "ECDSA", namedCurve: "P-521", hash: { name: "SHA-512" } }, HS256: { name: "HMAC", hash: { name: "SHA-256" } }, HS384: { name: "HMAC", hash: { name: "SHA-384" } }, HS512: { name: "HMAC", hash: { name: "SHA-512" } }, RS256: { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-256" } }, RS384: { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-384" } }, RS512: { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-512" } } };
+var Cr = { none: { name: "none" }, ES256: { name: "ECDSA", namedCurve: "P-256", hash: { name: "SHA-256" } }, ES384: { name: "ECDSA", namedCurve: "P-384", hash: { name: "SHA-384" } }, ES512: { name: "ECDSA", namedCurve: "P-521", hash: { name: "SHA-512" } }, HS256: { name: "HMAC", hash: { name: "SHA-256" } }, HS384: { name: "HMAC", hash: { name: "SHA-384" } }, HS512: { name: "HMAC", hash: { name: "SHA-512" } }, RS256: { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-256" } }, RS384: { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-384" } }, RS512: { name: "RSASSA-PKCS1-v1_5", hash: { name: "SHA-512" } } };
 async function Ft(e, s, r = "HS256") {
   if (typeof r == "string" && (r = { algorithm: r }), r = { algorithm: "HS256", header: { typ: "JWT", ...r.header ?? {} }, ...r }, !e || typeof e != "object") throw new Error("payload must be an object");
   if (r.algorithm !== "none" && (!s || typeof s != "string" && typeof s != "object")) throw new Error("secret must be a string, a JWK object or a CryptoKey object");
   if (typeof r.algorithm != "string") throw new Error("options.algorithm must be a string");
-  const t = Nr[r.algorithm];
+  const t = Cr[r.algorithm];
   if (!t) throw new Error("algorithm not found");
   e.iat || (e.iat = Math.floor(Date.now() / 1e3));
   const a = `${zs(JSON.stringify({ ...r.header, alg: r.algorithm }))}.${zs(JSON.stringify(e))}`;
   if (r.algorithm === "none") return a;
-  const n = s instanceof CryptoKey ? s : await Cr(s, t, ["sign"]), o = await crypto.subtle.sign(t, n, Ms(a));
+  const n = s instanceof CryptoKey ? s : await Nr(s, t, ["sign"]), o = await crypto.subtle.sign(t, n, Ms(a));
   return `${a}.${Mt(o)}`;
 }
 __name(Ft, "Ft");
@@ -1981,7 +1981,7 @@ async function xt(e, s, r = "HS256") {
   if (typeof r.algorithm != "string") throw new Error("options.algorithm must be a string");
   const t = e.split(".", 3);
   if (t.length < 2) throw new Error("token must consist of 2 or more parts");
-  const [a, n, o] = t, i = Nr[r.algorithm];
+  const [a, n, o] = t, i = Cr[r.algorithm];
   if (!i) throw new Error("algorithm not found");
   const c = Lr(e);
   try {
@@ -1992,7 +1992,7 @@ async function xt(e, s, r = "HS256") {
       if (c.payload.exp && c.payload.exp <= p && p - c.payload.exp > (r.clockTolerance ?? 0)) throw new Error("EXPIRED");
     }
     if (i.name === "none") return c;
-    const l = s instanceof CryptoKey ? s : await Cr(s, i, ["verify"]);
+    const l = s instanceof CryptoKey ? s : await Nr(s, i, ["verify"]);
     if (!await crypto.subtle.verify(i, l, Ut(o), Ms(`${a}.${n}`))) throw new Error("INVALID_SIGNATURE");
     return c;
   } catch (l) {
@@ -2757,12 +2757,12 @@ function ja(e, s = 0.1) {
   return Math.floor(e * s);
 }
 __name(ja, "ja");
-function Ca() {
+function Na() {
   const e = /* @__PURE__ */ new Date(), s = new Date(e.getFullYear(), e.getMonth() - 1, 1), r = s.getFullYear(), t = String(s.getMonth() + 1).padStart(2, "0"), a = new Date(r, s.getMonth() + 1, 0).getDate();
   return { startDate: `${r}-${t}-01`, endDate: `${r}-${t}-${a}` };
 }
-__name(Ca, "Ca");
-async function Na(e, s, r) {
+__name(Na, "Na");
+async function Ca(e, s, r) {
   try {
     const t = await e.prepare(`
       SELECT id, business_name FROM sellers WHERE id = ?
@@ -2806,7 +2806,7 @@ async function Na(e, s, r) {
     return console.error(`Failed to calculate settlement for seller ${s}:`, t), null;
   }
 }
-__name(Na, "Na");
+__name(Ca, "Ca");
 async function La(e, s) {
   console.log(`[Settlement] Generating report for ${s.startDate} ~ ${s.endDate}`);
   const r = await e.prepare(`
@@ -2818,7 +2818,7 @@ async function La(e, s) {
   `).bind(s.startDate, s.endDate).all(), t = [];
   let a = 0, n = 0, o = 0;
   for (const c of r.results) {
-    const u = await Na(e, c.id, s);
+    const u = await Ca(e, c.id, s);
     u && (t.push(u), a += u.total_sales, n += u.platform_fee, o += u.settlement_amount);
   }
   const i = { period: s, generated_at: (/* @__PURE__ */ new Date()).toISOString(), total_sales: a, total_platform_fee: n, total_settlement: o, sellers: t };
@@ -3158,7 +3158,7 @@ async function Ye(e, s) {
   }
 }
 __name(Ye, "Ye");
-var Je = { LIVE_STREAMS: ["streams:live", "live_streams:live:all:20:0", "live_streams:"], PRODUCTS: ["products:", "featured_products"], CART: /* @__PURE__ */ __name((e) => [`cart:${e}`], "CART"), ORDERS: /* @__PURE__ */ __name((e) => [`orders:${e}`], "ORDERS"), ALL: ["streams:", "live_streams:", "products:", "cart:", "orders:"] };
+var Je = { LIVE_STREAMS: ["streams:live", "streams:all", "streams:scheduled", "live_streams:live:all:20:0", "live_streams:"], PRODUCTS: ["products:", "featured_products"], CART: /* @__PURE__ */ __name((e) => [`cart:${e}`], "CART"), ORDERS: /* @__PURE__ */ __name((e) => [`orders:${e}`], "ORDERS"), ALL: ["streams:", "live_streams:", "products:", "cart:", "orders:"] };
 function Ja(e) {
   const s = e.status >= 500 ? "error" : e.status >= 400 ? "warn" : "info";
   console.log(JSON.stringify({ timestamp: (/* @__PURE__ */ new Date()).toISOString(), level: s, message: "API Request", context: e, duration: e.duration }));
@@ -3225,7 +3225,7 @@ async function Ga(e) {
   }
 }
 __name(Ga, "Ga");
-async function Ce(e, s, r) {
+async function Ne(e, s, r) {
   if (!s) return null;
   const t = `session:${s}`;
   try {
@@ -3241,7 +3241,7 @@ async function Ce(e, s, r) {
     return console.error("[Auth] Session lookup error:", a), null;
   }
 }
-__name(Ce, "Ce");
+__name(Ne, "Ne");
 async function k(e, s) {
   const r = await Ga(e);
   if (!r) return e.json({ success: false, error: "Authentication required", code: "AUTH_REQUIRED" }, 401);
@@ -3585,9 +3585,9 @@ d.post("/api/auth/login", w(), async (e) => {
     }
     const u = a === "admin" && (r === "admin" || r === "admin@example.com") && t === "admin123", l = a === "seller" && (r === "seller1" && t === "seller123" || r === "seller2" && t === "seller123"), p = i.password_hash && i.password_hash.includes(`placeholder_hash_for_${t}`);
     if (!(u || l || p)) {
-      const { sendDiscordAlert: U, addLoginHistory: P, detectSuspiciousLogin: N, getLoginHistory: L } = await Promise.resolve().then(() => ks);
+      const { sendDiscordAlert: U, addLoginHistory: P, detectSuspiciousLogin: C, getLoginHistory: L } = await Promise.resolve().then(() => ks);
       P(n, false);
-      const q = L(n), z = N(n, o, a, q);
+      const q = L(n), z = C(n, o, a, q);
       return await U({ type: z ? "suspicious_login" : "login_failure", userId: i.id, username: i.username, userType: a, ip: n, userAgent: o, timestamp: (/* @__PURE__ */ new Date()).toISOString(), details: z ? "\u26A0\uFE0F 5\uBD84 \uB0B4 3\uD68C \uC774\uC0C1 \uC2E4\uD328 \uB610\uB294 \uC758\uC2EC\uC2A4\uB7EC\uC6B4 \uD328\uD134" : "\uBE44\uBC00\uBC88\uD638 \uBD88\uC77C\uCE58", metadata: { "\uCD5C\uADFC \uC2E4\uD328 \uD69F\uC218": q.filter((R) => !R.success).length.toString() } }, e.env.DISCORD_WEBHOOK_URL), e.json({ success: false, error: "\uC544\uC774\uB514 \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4" }, 401);
     }
     if (!i.is_active) return e.json({ success: false, error: "\uBE44\uD65C\uC131\uD654\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4" }, 403);
@@ -3596,7 +3596,7 @@ d.post("/api/auth/login", w(), async (e) => {
     await s.prepare(`UPDATE ${c} SET last_login_at = datetime('now') WHERE id = ?`).bind(i.id).run();
     const { sendDiscordAlert: j, addLoginHistory: O, detectSuspiciousLogin: M, getLoginHistory: $ } = await Promise.resolve().then(() => ks);
     O(n, true);
-    const C = $(n), v = M(n, o, a, C);
+    const N = $(n), v = M(n, o, a, N);
     return (a === "admin" || v) && await j({ type: v ? "suspicious_login" : "login_success", userId: i.id, username: i.username, userType: a, ip: n, userAgent: o, timestamp: (/* @__PURE__ */ new Date()).toISOString(), details: v ? "\u26A0\uFE0F \uC758\uC2EC\uC2A4\uB7EC\uC6B4 \uD328\uD134 \uAC10\uC9C0 (\uAD00\uB9AC\uC790 \uB85C\uADF8\uC778 \uB610\uB294 \uBE44\uC815\uC0C1 User Agent)" : void 0 }, e.env.DISCORD_WEBHOOK_URL), console.log(`[JWT Login] \u2705 ${a} ${i.username} logged in with JWT (KV Write: 0)`), e.json({ success: true, data: { accessToken: S, refreshToken: y, user: { id: i.id, username: i.username, name: i.name, email: i.email, type: a, businessName: i.business_name } } });
   } catch (r) {
     return console.error("Login error:", r), e.json({ success: false, error: r.message }, 500);
@@ -3707,15 +3707,15 @@ d.get("/auth/kakao/sync/callback", async (e) => {
     console.log("[Kakao Sync] Access token obtained successfully"), console.log("[Kakao Sync] Step 2: Fetching user info...");
     const $ = await fetch("https://kapi.kakao.com/v2/user/me", { headers: { Authorization: `Bearer ${M.access_token}` } });
     console.log("[Kakao Sync] User response status:", $.status);
-    const C = await $.json();
-    if (console.log("[Kakao Sync] User data received:", { hasId: !!C.id, id: C.id, hasNickname: !!((r = C.properties) != null && r.nickname || (a = (t = C.kakao_account) == null ? void 0 : t.profile) != null && a.nickname) }), !C.id) return console.error("[Kakao Sync] Failed to get user info:", C), e.redirect(`${g}?error=user_info_failed`);
+    const N = await $.json();
+    if (console.log("[Kakao Sync] User data received:", { hasId: !!N.id, id: N.id, hasNickname: !!((r = N.properties) != null && r.nickname || (a = (t = N.kakao_account) == null ? void 0 : t.profile) != null && a.nickname) }), !N.id) return console.error("[Kakao Sync] Failed to get user info:", N), e.redirect(`${g}?error=user_info_failed`);
     console.log("[Kakao Sync] User info obtained successfully"), console.log("[Kakao Sync] Step 2.5: Fetching service terms...");
     const v = await fetch("https://kapi.kakao.com/v2/user/service_terms", { headers: { Authorization: `Bearer ${M.access_token}` } });
     console.log("[Kakao Sync] Terms response status:", v.status);
     let U = null;
     if (v.ok ? (U = await v.json(), console.log("[Kakao Sync] Service terms received:", { allowedServiceTerms: ((n = U.allowed_service_terms) == null ? void 0 : n.length) || 0, tags: (o = U.allowed_service_terms) == null ? void 0 : o.map((B) => B.tag) })) : console.warn("[Kakao Sync] Failed to fetch service terms (non-critical)"), console.log("[Kakao Sync] Step 3: Saving user to database..."), !s) return console.error("[Kakao Sync] DB is not available!"), e.redirect(`${g}?error=db_not_available`);
-    const P = C.id.toString(), N = ((i = C.properties) == null ? void 0 : i.nickname) || ((u = (c = C.kakao_account) == null ? void 0 : c.profile) == null ? void 0 : u.nickname) || "Kakao User", L = ((l = C.kakao_account) == null ? void 0 : l.email) || "", q = ((p = C.properties) == null ? void 0 : p.profile_image) || ((E = (m = C.kakao_account) == null ? void 0 : m.profile) == null ? void 0 : E.profile_image_url) || "", z = M.access_token, R = ((f = U == null ? void 0 : U.allowed_service_terms) == null ? void 0 : f.map((B) => B.tag)) || [], we = JSON.stringify(R);
-    console.log("[Kakao Sync] User data:", { kakaoId: P, nickname: N, email: L ? "exists" : "none", serviceTerms: R });
+    const P = N.id.toString(), C = ((i = N.properties) == null ? void 0 : i.nickname) || ((u = (c = N.kakao_account) == null ? void 0 : c.profile) == null ? void 0 : u.nickname) || "Kakao User", L = ((l = N.kakao_account) == null ? void 0 : l.email) || "", q = ((p = N.properties) == null ? void 0 : p.profile_image) || ((E = (m = N.kakao_account) == null ? void 0 : m.profile) == null ? void 0 : E.profile_image_url) || "", z = M.access_token, R = ((f = U == null ? void 0 : U.allowed_service_terms) == null ? void 0 : f.map((B) => B.tag)) || [], we = JSON.stringify(R);
+    console.log("[Kakao Sync] User data:", { kakaoId: P, nickname: C, email: L ? "exists" : "none", serviceTerms: R });
     try {
       const B = await s.prepare(`
         SELECT id, kakao_id, name, email, profile_image, created_at
@@ -3732,7 +3732,7 @@ d.get("/auth/kakao/sync/callback", async (e) => {
               updated_at = CURRENT_TIMESTAMP,
               last_login_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).bind(N, L, q, H).run(), console.log("[Kakao Sync] Updated user:", H)) : (H = (await s.prepare(`
+        `).bind(C, L, q, H).run(), console.log("[Kakao Sync] Updated user:", H)) : (H = (await s.prepare(`
           INSERT INTO users (
             kakao_id, 
             name, 
@@ -3741,10 +3741,10 @@ d.get("/auth/kakao/sync/callback", async (e) => {
             created_at,
             last_login_at
           ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-        `).bind(P, N, L || null, q || null).run()).meta.last_row_id, console.log("[Kakao Sync] Created user:", H)), console.log("[Kakao Sync] User saved successfully, userId:", H), console.log("[Kakao Sync] Step 4: Generating JWT tokens...");
+        `).bind(P, C, L || null, q || null).run()).meta.last_row_id, console.log("[Kakao Sync] Created user:", H)), console.log("[Kakao Sync] User saved successfully, userId:", H), console.log("[Kakao Sync] Step 4: Generating JWT tokens...");
       const ie = ne(e.env), me = await Ae({ userId: H, userType: "user", email: L || void 0 }, ie), bs = await ls({ userId: H, userType: "user", email: L || void 0 }, ie);
       console.log("[Kakao Sync] \u2705 JWT \uD1A0\uD070 \uBC1C\uAE09 \uC644\uB8CC for user:", H), console.log("[Kakao Sync] Step 5: Redirecting with JWT...");
-      const Xe = g.includes("?") ? `${g}&access_token=${encodeURIComponent(me)}&refresh_token=${encodeURIComponent(bs)}&userId=${H}&userName=${encodeURIComponent(N)}&userEmail=${encodeURIComponent(L || "")}` : `${g}?access_token=${encodeURIComponent(me)}&refresh_token=${encodeURIComponent(bs)}&userId=${H}&userName=${encodeURIComponent(N)}&userEmail=${encodeURIComponent(L || "")}`;
+      const Xe = g.includes("?") ? `${g}&access_token=${encodeURIComponent(me)}&refresh_token=${encodeURIComponent(bs)}&userId=${H}&userName=${encodeURIComponent(C)}&userEmail=${encodeURIComponent(L || "")}` : `${g}?access_token=${encodeURIComponent(me)}&refresh_token=${encodeURIComponent(bs)}&userId=${H}&userName=${encodeURIComponent(C)}&userEmail=${encodeURIComponent(L || "")}`;
       return console.log("[Kakao Sync] Redirect URL (JWT):", Xe.substring(0, 100) + "..."), e.redirect(Xe);
     } catch (B) {
       return console.error("[Kakao Sync] Database error:", B), console.error("[Kakao Sync] DB error details:", { message: B.message, name: B.name }), e.redirect(`${g}?error=database_error&detail=${encodeURIComponent(B.message)}`);
@@ -3994,27 +3994,39 @@ d.get("/api/test/env", async (e) => {
 d.get("/api/streams", Fs(xs.liveStreams), async (e) => {
   const { DB: s, CACHE_KV: r } = e.env;
   try {
-    const t = "streams:live", a = await r.get(t, "json");
-    if (a) return e.json({ success: true, data: a, cached: true });
-    const n = await s.prepare(`
+    const t = e.req.query("status") || "all", a = `streams:${t}`, n = await r.get(a, "json");
+    if (n) return e.json({ success: true, data: n, cached: true });
+    let o = `
       SELECT 
-        id, 
-        title, 
-        description, 
-        youtube_video_id, 
-        status, 
-        current_product_id, 
-        seller_id,
-        scheduled_at, 
-        started_at, 
-        ended_at, 
-        created_at, 
-        updated_at
-      FROM live_streams 
-      WHERE status = ? 
-      ORDER BY created_at DESC
-    `).bind("live").all();
-    return await r.put(t, JSON.stringify(n.results), { expirationTtl: 600 }), e.json({ success: true, data: n.results });
+        ls.id, 
+        ls.title, 
+        ls.description, 
+        ls.youtube_video_id,
+        ls.platform,
+        ls.tiktok_username,
+        ls.thumbnail_url,
+        ls.status, 
+        ls.current_product_id, 
+        ls.seller_id,
+        ls.scheduled_at, 
+        ls.started_at, 
+        ls.ended_at, 
+        ls.created_at, 
+        ls.updated_at,
+        s.display_name as seller_name,
+        s.profile_image_url as seller_profile_image
+      FROM live_streams ls
+      LEFT JOIN sellers s ON ls.seller_id = s.id
+    `;
+    t === "live" ? o += " WHERE ls.status = 'live'" : t === "scheduled" ? o += " WHERE ls.status = 'scheduled'" : t === "ended" ? o += " WHERE ls.status = 'ended'" : o += " WHERE ls.status IN ('live', 'scheduled')", o += ` ORDER BY 
+      CASE ls.status 
+        WHEN 'live' THEN 1 
+        WHEN 'scheduled' THEN 2 
+        ELSE 3 
+      END,
+      ls.created_at DESC`;
+    const i = await s.prepare(o).all();
+    return await r.put(a, JSON.stringify(i.results), { expirationTtl: 600 }), e.json({ success: true, data: i.results });
   } catch (t) {
     return e.json({ success: false, error: t.message }, 500);
   }
@@ -4491,12 +4503,12 @@ d.post("/api/orders", k, async (e) => {
         SELECT id, name, price, stock 
         FROM products 
         WHERE id IN (${U})
-      `).bind(...v).all(), N = new Map(P.results.map((W) => [W.id, W])), L = [];
+      `).bind(...v).all(), C = new Map(P.results.map((W) => [W.id, W])), L = [];
       for (const W of o) {
-        const Ne = N.get(W.productId);
-        if (!Ne) return e.json({ success: false, error: `\uC0C1\uD488\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4 (ID: ${W.productId})` }, 400);
-        if (Ne.stock < W.quantity) return e.json({ success: false, error: `\uC7AC\uACE0 \uBD80\uC871: ${Ne.name} (\uB0A8\uC740 \uC7AC\uACE0: ${Ne.stock}\uAC1C)` }, 400);
-        L.push({ product_id: W.productId, option_id: W.optionId || null, quantity: W.quantity, price: W.price, product_name: Ne.name, product_stock: Ne.stock });
+        const Ce = C.get(W.productId);
+        if (!Ce) return e.json({ success: false, error: `\uC0C1\uD488\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4 (ID: ${W.productId})` }, 400);
+        if (Ce.stock < W.quantity) return e.json({ success: false, error: `\uC7AC\uACE0 \uBD80\uC871: ${Ce.name} (\uB0A8\uC740 \uC7AC\uACE0: ${Ce.stock}\uAC1C)` }, 400);
+        L.push({ product_id: W.productId, option_id: W.optionId || null, quantity: W.quantity, price: W.price, product_name: Ce.name, product_stock: Ce.stock });
       }
       const q = /* @__PURE__ */ new Date(), z = q.getFullYear().toString().slice(-2), R = (q.getMonth() + 1).toString().padStart(2, "0"), we = q.getDate().toString().padStart(2, "0"), B = `${z}${R}${we}`, H = Math.random().toString(36).substring(2, 7).toUpperCase(), ie = f || `ORD-${B}-${H}`, me = c ? `${i} ${c}` : i, Xe = (await s.prepare(`
         INSERT INTO orders (
@@ -4529,10 +4541,10 @@ d.post("/api/orders", k, async (e) => {
         order_number, user_id, total_amount,
         shipping_address, shipping_name, shipping_phone
       ) VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(O, t, j, n.address, n.name, n.phone).run()).meta.last_row_id, C = [];
+    `).bind(O, t, j, n.address, n.name, n.phone).run()).meta.last_row_id, N = [];
     for (const v of y.results) {
       let U = false, P = "";
-      for (let N = 0; N < 3; N++) {
+      for (let C = 0; C < 3; C++) {
         if ((await s.prepare(`
           UPDATE products 
           SET stock = stock - ?, 
@@ -4552,24 +4564,24 @@ d.post("/api/orders", k, async (e) => {
           P = `\uC7AC\uACE0 \uBD80\uC871: ${v.product_name} (\uB0A8\uC740 \uC7AC\uACE0: ${(q == null ? void 0 : q.stock) || 0}\uAC1C)`;
           break;
         }
-        N < 2 ? await new Promise((z) => setTimeout(z, 50 * N)) : P = "\uC8FC\uBB38 \uCC98\uB9AC \uC911 \uC624\uB958 \uBC1C\uC0DD. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694. (\uB3D9\uC2DC\uC131 \uCDA9\uB3CC)";
+        C < 2 ? await new Promise((z) => setTimeout(z, 50 * C)) : P = "\uC8FC\uBB38 \uCC98\uB9AC \uC911 \uC624\uB958 \uBC1C\uC0DD. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694. (\uB3D9\uC2DC\uC131 \uCDA9\uB3CC)";
       }
       if (!U) return e.json({ success: false, error: P || "\uC8FC\uBB38 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4." }, P.includes("\uC7AC\uACE0 \uBD80\uC871") ? 400 : 409);
-      C.push(s.prepare(`
+      N.push(s.prepare(`
           INSERT INTO order_items (
             order_id, product_id, option_id, quantity, price, product_name
           ) VALUES (?, ?, ?, ?, ?, ?)
         `).bind($, v.product_id, v.option_id, v.quantity, v.price_snapshot, v.product_name));
     }
-    C.push(s.prepare(`DELETE FROM cart_items WHERE id IN (${S})`).bind(...a)), await s.batch(C);
+    N.push(s.prepare(`DELETE FROM cart_items WHERE id IN (${S})`).bind(...a)), await s.batch(N);
     try {
-      const v = y.results.map((N) => N.product_id), U = v.map(() => "?").join(","), P = await s.prepare(`
+      const v = y.results.map((C) => C.product_id), U = v.map(() => "?").join(","), P = await s.prepare(`
         SELECT DISTINCT seller_id 
         FROM products 
         WHERE id IN (${U}) AND seller_id IS NOT NULL
       `).bind(...v).all();
-      for (const N of P.results) {
-        const L = N.seller_id;
+      for (const C of P.results) {
+        const L = C.seller_id;
         await rn(s, L, O, buyerName || shippingName || "\uACE0\uAC1D", j);
       }
     } catch (v) {
@@ -5069,7 +5081,7 @@ d.post("/api/seller/upload-image", async (e) => {
     }
     const u = 10 * 1024 * 1024;
     if (c.length > u) return e.json({ success: false, error: `\uD30C\uC77C \uD06C\uAE30\uAC00 \uB108\uBB34 \uD07D\uB2C8\uB2E4. \uCD5C\uB300 ${u / 1024 / 1024}MB\uAE4C\uC9C0 \uD5C8\uC6A9\uB429\uB2C8\uB2E4.` }, 400);
-    const l = await Ct(c.buffer);
+    const l = await Nt(c.buffer);
     if (!l.valid) return e.json({ success: false, error: "\uC720\uD6A8\uD558\uC9C0 \uC54A\uC740 \uC774\uBBF8\uC9C0 \uD30C\uC77C\uC785\uB2C8\uB2E4." }, 400);
     const p = e.env.IMAGES;
     if (p) {
@@ -6542,9 +6554,9 @@ d.post("/api/orders/create", k, async (e) => {
       f = R;
     }
     if (!r) return e.json({ success: false, error: "User ID is required. Please login with Kakao first." }, 401);
-    const h = r, g = /* @__PURE__ */ new Date(), S = g.getFullYear().toString().slice(-2), y = (g.getMonth() + 1).toString().padStart(2, "0"), j = g.getDate().toString().padStart(2, "0"), O = `${S}${y}${j}`, M = Math.random().toString(36).substring(2, 7).toUpperCase(), $ = `ORD-${O}-${M}`, C = t.map((R) => R.product_id), v = C.map(() => "?").join(","), U = await s.prepare(`
+    const h = r, g = /* @__PURE__ */ new Date(), S = g.getFullYear().toString().slice(-2), y = (g.getMonth() + 1).toString().padStart(2, "0"), j = g.getDate().toString().padStart(2, "0"), O = `${S}${y}${j}`, M = Math.random().toString(36).substring(2, 7).toUpperCase(), $ = `ORD-${O}-${M}`, N = t.map((R) => R.product_id), v = N.map(() => "?").join(","), U = await s.prepare(`
       SELECT id, stock FROM products WHERE id IN (${v})
-    `).bind(...C).all(), P = new Map(U.results.map((R) => [R.id, R.stock]));
+    `).bind(...N).all(), P = new Map(U.results.map((R) => [R.id, R.stock]));
     for (const R of t) {
       const we = P.get(R.product_id);
       if (we === void 0) return e.json({ success: false, error: `\uC0C1\uD488\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4 (ID: ${R.product_id})` }, 400);
@@ -7465,7 +7477,7 @@ d.get("/api/seller/alimtalk/account", w(), async (e) => {
 d.post("/api/seller/alimtalk/register", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const { channel_id: a, phone_number: n } = await e.req.json();
     if (!a || !n) return e.json({ success: false, error: "Missing required fields" }, 400);
@@ -7484,7 +7496,7 @@ d.post("/api/seller/alimtalk/register", w(), async (e) => {
 d.get("/api/seller/alimtalk/templates", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const a = await s.DB.prepare(`
       SELECT * FROM alimtalk_accounts WHERE seller_id = ?
@@ -7503,7 +7515,7 @@ d.get("/api/seller/alimtalk/templates", w(), async (e) => {
 d.post("/api/seller/alimtalk/templates", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const { template_code: a, template_name: n, template_content: o, template_type: i } = await e.req.json();
     if (!a || !n || !o) return e.json({ success: false, error: "Missing required fields" }, 400);
@@ -7538,7 +7550,7 @@ d.get("/api/seller/alimtalk/pricing", w(), async (e) => {
 d.post("/api/seller/alimtalk/charge", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const { amount: a, pricing_id: n } = await e.req.json();
     if (!a || !n) return e.json({ success: false, error: "Missing required fields" }, 400);
@@ -7587,7 +7599,7 @@ d.post("/api/seller/alimtalk/charge/complete", w(), async (e) => {
 d.post("/api/seller/alimtalk/send", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const { template_id: a, recipient_phone: n, variables: o, order_id: i } = await e.req.json();
     if (!a || !n) return e.json({ success: false, error: "Missing required fields" }, 400);
@@ -7626,7 +7638,7 @@ d.post("/api/seller/alimtalk/send", w(), async (e) => {
 d.get("/api/seller/alimtalk/messages", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const { page: a = "1", limit: n = "20", status: o } = e.req.query(), i = await s.DB.prepare(`
       SELECT * FROM alimtalk_accounts WHERE seller_id = ?
@@ -7654,7 +7666,7 @@ d.get("/api/seller/alimtalk/messages", w(), async (e) => {
 d.get("/api/seller/alimtalk/statistics", w(), async (e) => {
   const { env: s } = e;
   try {
-    const r = e.req.header("X-Session-Token"), t = await Ce(s, r);
+    const r = e.req.header("X-Session-Token"), t = await Ne(s, r);
     if (!t || t.user_type !== "seller") return e.json({ success: false, error: "Unauthorized" }, 401);
     const { start_date: a, end_date: n } = e.req.query(), o = await s.DB.prepare(`
       SELECT * FROM alimtalk_accounts WHERE seller_id = ?
@@ -7785,7 +7797,7 @@ d.get("/api/admin/settlements/:id", w(), async (e) => {
 });
 d.post("/api/admin/settlements/generate", w(), async (e) => {
   try {
-    const s = await e.req.json(), { startDate: r, endDate: t } = s, a = r && t ? { startDate: r, endDate: t } : Ca(), n = await La(e.env.DB, a);
+    const s = await e.req.json(), { startDate: r, endDate: t } = s, a = r && t ? { startDate: r, endDate: t } : Na(), n = await La(e.env.DB, a);
     return await Ma(e.env.DB, n), e.json({ success: true, data: n });
   } catch (s) {
     return console.error("[Admin Generate Settlement] Error:", s), e.json({ success: false, error: s.message }, 500);
@@ -8171,7 +8183,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-dEhLkf/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-vBfNNT/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8203,7 +8215,7 @@ function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-dEhLkf/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-vBfNNT/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
@@ -8303,4 +8315,4 @@ export {
   __INTERNAL_WRANGLER_MIDDLEWARE__,
   middleware_loader_entry_default as default
 };
-//# sourceMappingURL=bundledWorker-0.32482167155923025.mjs.map
+//# sourceMappingURL=bundledWorker-0.14892385428025579.mjs.map

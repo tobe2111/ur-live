@@ -181,7 +181,7 @@ async function invalidateAllCaches(
  */
 const CACHE_KEYS = {
   // 라이브 스트림 관련
-  LIVE_STREAMS: ['streams:live', 'live_streams:live:all:20:0', 'live_streams:'],
+  LIVE_STREAMS: ['streams:live', 'streams:all', 'streams:scheduled', 'live_streams:live:all:20:0', 'live_streams:'],
   
   // 상품 관련
   PRODUCTS: ['products:', 'featured_products'],
@@ -3058,10 +3058,13 @@ app.get('/api/test/env', async (c) => {
 app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
   const { DB, CACHE_KV } = c.env;
   try {
-    // \uce90\uc2dc \ud0a4
-    const cacheKey = 'streams:live';
+    // Query parameter로 status 필터링 (기본값: 모든 active 스트림)
+    const statusFilter = c.req.query('status') || 'all';
     
-    // \uce90\uc2dc\uc5d0\uc11c \uba3c\uc800 \uc870\ud68c (10\ubd84 TTL) \u2705
+    // 캐시 키 (status별로 다른 캐시)
+    const cacheKey = `streams:${statusFilter}`;
+    
+    // 캐시에서 먼저 조회 (10분 TTL) ✅
     const cached = await CACHE_KV.get(cacheKey, 'json');
     if (cached) {
       return c.json<ApiResponse>({
@@ -3071,29 +3074,55 @@ app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
       });
     }
     
-    // \uce90\uc2dc \ubbf8\uc2a4 \uc2dc D1 \uc870\ud68c
-    const result = await DB.prepare(`
+    // 캐시 미스 시 D1 조회
+    let query = `
       SELECT 
-        id, 
-        title, 
-        description, 
-        youtube_video_id, 
-        status, 
-        current_product_id, 
-        seller_id,
-        scheduled_at, 
-        started_at, 
-        ended_at, 
-        created_at, 
-        updated_at
-      FROM live_streams 
-      WHERE status = ? 
-      ORDER BY created_at DESC
-    `).bind('live').all();
+        ls.id, 
+        ls.title, 
+        ls.description, 
+        ls.youtube_video_id,
+        ls.platform,
+        ls.tiktok_username,
+        ls.thumbnail_url,
+        ls.status, 
+        ls.current_product_id, 
+        ls.seller_id,
+        ls.scheduled_at, 
+        ls.started_at, 
+        ls.ended_at, 
+        ls.created_at, 
+        ls.updated_at,
+        s.display_name as seller_name,
+        s.profile_image_url as seller_profile_image
+      FROM live_streams ls
+      LEFT JOIN sellers s ON ls.seller_id = s.id
+    `;
+    
+    // Status 필터링
+    if (statusFilter === 'live') {
+      query += ` WHERE ls.status = 'live'`;
+    } else if (statusFilter === 'scheduled') {
+      query += ` WHERE ls.status = 'scheduled'`;
+    } else if (statusFilter === 'ended') {
+      query += ` WHERE ls.status = 'ended'`;
+    } else {
+      // 'all' 또는 기타: live와 scheduled만 표시 (ended 제외)
+      query += ` WHERE ls.status IN ('live', 'scheduled')`;
+    }
+    
+    query += ` ORDER BY 
+      CASE ls.status 
+        WHEN 'live' THEN 1 
+        WHEN 'scheduled' THEN 2 
+        ELSE 3 
+      END,
+      ls.created_at DESC`;
 
-    // \uacb0\uacfc\ub97c \uce90\uc2dc\uc5d0 \uc800\uc7a5 (10\ubd84 TTL)
+    const result = await DB.prepare(query).all();
+
+    // 결과를 캐시에 저장 (10분 TTL)
     await CACHE_KV.put(cacheKey, JSON.stringify(result.results), {
-      expirationTtl: 600 // 10\ubd84
+      expirationTtl: 600 // 10분
     });
 
     return c.json<ApiResponse>({
@@ -3107,6 +3136,7 @@ app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
     }, 500);
   }
 });
+
 
 app.get('/api/streams/:id', async (c) => {
   const { DB } = c.env;

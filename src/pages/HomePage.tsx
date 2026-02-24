@@ -142,14 +142,16 @@ export default function HomePage() {
     try {
       console.log('[HomePage] Loading streams...')
       setLoading(true)
+      // status 파라미터 없이 호출하면 live와 scheduled 모두 가져옴
       const response = await api.get('/api/streams')
       console.log('[HomePage] API Response:', response.data)
       if (response.data.success) {
-        const liveStreams = (response.data.data || []).filter(
-          (s: Stream) => !s.status || s.status === 'live'
+        // status가 'live' 또는 'scheduled'인 스트림 표시
+        const activeStreams = (response.data.data || []).filter(
+          (s: Stream) => s.status === 'live' || s.status === 'scheduled'
         )
-        console.log('[HomePage] Filtered live streams:', liveStreams.length)
-        setStreams(liveStreams)
+        console.log('[HomePage] Active streams (live + scheduled):', activeStreams.length)
+        setStreams(activeStreams)
       }
     } catch (error) {
       console.error('[HomePage] Failed to load streams:', error)
