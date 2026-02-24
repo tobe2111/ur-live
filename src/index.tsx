@@ -2188,35 +2188,32 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       
       console.log('[Kakao Sync] User saved successfully, userId:', userId);
       
-      // 4. Create session (24 hours) in SESSION_KV
-      console.log('[Kakao Sync] Step 4: Creating session...');
+      // 4. ✅ JWT 토큰 발급 (세션 대체)
+      console.log('[Kakao Sync] Step 4: Generating JWT tokens...');
       
-      const { SESSION_KV } = c.env;
-      const sessionToken = crypto.randomUUID();
-      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // 🚀 30일
+      const jwtSecret = getJwtSecret(c.env);
+      const jwtAccessToken = await generateAccessToken({
+        userId: userId,
+        userType: 'user',
+        email: email || undefined
+      }, jwtSecret);
       
-      // Store session in SESSION_KV (to match requireAuth)
-      await SESSION_KV.put(
-        `session:${sessionToken}`,
-        JSON.stringify({
-          user_id: userId,
-          user_type: 'user',
-          expires_at: expiresAt,
-          created_at: Date.now()  // 🚀 Task 3
-        }),
-        { expirationTtl: 30 * 24 * 60 * 60 }  // 🚀 30일 - KV 쓰기 70% 절감!
-      );
+      const jwtRefreshToken = await generateRefreshToken({
+        userId: userId,
+        userType: 'user',
+        email: email || undefined
+      }, jwtSecret);
       
-      console.log('[Kakao Sync] Session created successfully in SESSION_KV');
+      console.log('[Kakao Sync] ✅ JWT 토큰 발급 완료 for user:', userId);
       
-      // 5. Redirect back with session info
-      console.log('[Kakao Sync] Step 5: Redirecting...');
+      // 5. ✅ Redirect back with JWT tokens (URL 파라미터)
+      console.log('[Kakao Sync] Step 5: Redirecting with JWT...');
       
       const redirectUrl = state.includes('?') 
-        ? `${state}&login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`
-        : `${state}?login=success&session=${sessionToken}&userId=${userId}&userName=${encodeURIComponent(nickname)}`;
+        ? `${state}&access_token=${encodeURIComponent(jwtAccessToken)}&refresh_token=${encodeURIComponent(jwtRefreshToken)}&userId=${userId}&userName=${encodeURIComponent(nickname)}&userEmail=${encodeURIComponent(email || '')}`
+        : `${state}?access_token=${encodeURIComponent(jwtAccessToken)}&refresh_token=${encodeURIComponent(jwtRefreshToken)}&userId=${userId}&userName=${encodeURIComponent(nickname)}&userEmail=${encodeURIComponent(email || '')}`;
       
-      console.log('[Kakao Sync] Redirect URL:', redirectUrl);
+      console.log('[Kakao Sync] Redirect URL (JWT):', redirectUrl.substring(0, 100) + '...');
       return c.redirect(redirectUrl);
       
     } catch (dbError) {

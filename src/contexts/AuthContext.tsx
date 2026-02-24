@@ -46,52 +46,104 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       // Step 1: URL 파라미터 체크
+      const accessToken = searchParams.get('access_token')   // ✨ JWT Access Token (신규)
+      const refreshToken = searchParams.get('refresh_token') // ✨ JWT Refresh Token (신규)
+      const urlUserId = searchParams.get('userId')           // 유저 ID
+      const userName = searchParams.get('userName')          // 유저 이름
+      const userEmail = searchParams.get('userEmail')        // 유저 이메일 (선택)
+      
+      // 레거시 파라미터
       const login = searchParams.get('login')
-      const token = searchParams.get('token')        // ✨ JWT 토큰 (신규)
-      const refreshToken = searchParams.get('refresh_token')  // ✨ Refresh 토큰 (신규)
-      const session = searchParams.get('session')    // 🗑️ 레거시 세션 ID
-      const urlUserId = searchParams.get('userId')   // 🗑️ 레거시 유저 ID
-      const userName = searchParams.get('userName')  // 🗑️ 레거시 유저 이름
+      const session = searchParams.get('session')
 
       console.log('[AuthContext] 🔐 JWT 인증 초기화 시작:', {
-        hasLoginParams: !!(login && session && urlUserId),
-        hasJwtToken: !!token,
+        hasAccessToken: !!accessToken,
         hasRefreshToken: !!refreshToken,
+        hasUserId: !!urlUserId,
         currentPath: window.location.pathname
       })
 
-      // Step 2: JWT 토큰이 URL에 있으면 저장 (신규 방식)
-      if (token && refreshToken && urlUserId && userName) {
+      // Step 2: ✨ JWT 토큰이 URL에 있으면 즉시 저장 (신규 방식)
+      if (accessToken && refreshToken && urlUserId && userName) {
         console.log('[AuthContext] ✨ URL에서 JWT 토큰 수신 - localStorage 저장')
+        console.log('[AuthContext] 🔑 토큰 정보:', {
+          accessTokenLength: accessToken.length,
+          refreshTokenLength: refreshToken.length,
+          userId: urlUserId,
+          userName: decodeURIComponent(userName)
+        })
         
         // JWT 토큰 저장
         saveJwtTokens(
-          token,
+          accessToken,
           refreshToken,
           urlUserId,
           decodeURIComponent(userName),
           'user',
-          searchParams.get('userEmail') || null
+          userEmail ? decodeURIComponent(userEmail) : null
         )
 
-        // URL 파라미터 제거
-        window.history.replaceState({}, '', window.location.pathname)
+        // Sentry 사용자 설정
+        try {
+          const { setSentryUser } = await import('@/lib/sentry')
+          setSentryUser({
+            id: urlUserId,
+            email: userEmail ? decodeURIComponent(userEmail) : undefined,
+            username: decodeURIComponent(userName),
+            userType: 'user'
+          })
+        } catch (e) {
+          // Sentry 초기화 실패 시 무시
+        }
+
+        // ✅ 보안: URL 파라미터 즉시 제거 (모든 OAuth 관련 파라미터)
+        const cleanUrl = window.location.pathname
+        console.log('[AuthContext] 🧹 URL 파라미터 제거:', {
+          before: window.location.href,
+          after: cleanUrl
+        })
+        window.history.replaceState({}, '', cleanUrl)
 
         // 인증 상태 업데이트
         setAuthState({
           isLoggedIn: true,
-          accessToken: token
+          accessToken: accessToken
         })
         setIsAuthReady(true)
+        
+        // ✅ 버전 충돌 방지: 강제 새로고침 (한 번만)
+        if (!sessionStorage.getItem('jwt_login_refreshed')) {
+          sessionStorage.setItem('jwt_login_refreshed', 'true')
+          console.log('[AuthContext] 🔄 JWT 로그인 완료 - 페이지 강제 새로고침 (캐시 무효화)')
+          // 강제 캐시 무효화를 위해 location.reload(true) 대신 캐시 헤더 추가
+          window.location.reload()
+        }
         return
       }
 
-      // Step 3: 레거시 로그인 파라미터가 있으면 URL에서 제거 (JWT는 localStorage에 있음)
-      if (login === 'success' && session && urlUserId) {
-        console.log('[AuthContext] ℹ️ 레거시 로그인 파라미터 감지 - URL에서 제거')
+      // Step 3: 레거시 로그인 파라미터가 있으면 URL에서 제거하고 경고 (호환성)
+      if ((login === 'success' && session && urlUserId) || session) {
+        console.warn('[AuthContext] ⚠️ 레거시 세션 파라미터 감지 - 즉시 제거')
+        console.warn('[AuthContext] ⚠️ 이 파라미터는 더 이상 사용되지 않습니다. JWT를 사용하세요.')
         
-        // URL 파라미터 제거 (JWT는 이미 localStorage에 저장되어 있음)
-        window.history.replaceState({}, '', window.location.pathname)
+        // URL 파라미터 제거
+        const cleanUrl = window.location.pathname
+        window.history.replaceState({}, '', cleanUrl)
+        
+        // localStorage에 JWT가 있는지 확인
+        const hasStoredToken = !!getAccessToken()
+        console.log('[AuthContext] localStorage JWT 확인:', { hasStoredToken })
+        
+        // JWT가 없으면 로그인 필요
+        if (!hasStoredToken) {
+          console.error('[AuthContext] ❌ JWT 토큰 없음 - 로그인 페이지로 리다이렉트')
+          setAuthState({
+            isLoggedIn: false,
+            accessToken: null
+          })
+          setIsAuthReady(true)
+          return
+        }
       }
 
       // Step 4: localStorage에서 JWT 세션 체크
