@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
+import { getUserType } from '@/utils/auth'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Play, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 export default function SellerLoginPage() {
   const navigate = useNavigate()
+  const { isLoggedIn, isAuthReady } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
@@ -18,6 +21,21 @@ export default function SellerLoginPage() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // ✅ 이미 로그인되어 있고 판매자면 리다이렉트
+  useEffect(() => {
+    if (isAuthReady && isLoggedIn) {
+      const userType = getUserType()
+      if (userType === 'seller') {
+        console.log('[SellerLoginPage] 이미 판매자 로그인됨 - /seller로 리다이렉트')
+        navigate('/seller', { replace: true })
+      } else {
+        console.log('[SellerLoginPage] 다른 사용자 타입으로 로그인됨:', userType)
+        // 판매자가 아닌 경우 로그아웃 필요
+        setError('판매자 계정으로 로그인해주세요.')
+      }
+    }
+  }, [isAuthReady, isLoggedIn, navigate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

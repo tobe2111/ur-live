@@ -14,7 +14,7 @@ declare global {
 }
 
 export default function LoginPage() {
-  const { loginWithCredentials } = useAuth()
+  const { loginWithCredentials, isLoggedIn, isAuthReady } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [kakaoReady, setKakaoReady] = useState(false)
@@ -26,6 +26,14 @@ export default function LoginPage() {
   
   // Get return URL from query params or localStorage
   const returnUrl = searchParams.get('returnUrl') || localStorage.getItem('loginReturnUrl') || '/'
+
+  // ✅ 이미 로그인되어 있으면 리다이렉트
+  useEffect(() => {
+    if (isAuthReady && isLoggedIn) {
+      console.log('[LoginPage] 이미 로그인됨 - 리다이렉트:', returnUrl)
+      navigate(returnUrl, { replace: true })
+    }
+  }, [isAuthReady, isLoggedIn, returnUrl, navigate])
 
   useEffect(() => {
     // Save returnUrl to localStorage if provided
