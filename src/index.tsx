@@ -3,6 +3,8 @@ import { cors } from 'hono/cors';
 import { compress } from 'hono/compress';
 import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
+import { validateUploadFile, generateSecureFilename, validateFileMagicBytes } from './lib/upload-security';
+import { sendSecurityAlert, logSecurityEvent, type SecurityEvent } from './lib/security-monitoring';
 import type { CloudflareBindings } from './types/env';
 import { validateEnv, logEnvStatus } from './types/env';
 import { handleEnvTestRequest } from './tests/env.test';
@@ -1281,6 +1283,49 @@ app.use(rateLimit(RateLimitPolicies.upload));
 
 // 일반 API 엔드포인트 (분당 60회, 인증 시 120회)
 app.use('/api/*', rateLimit(RateLimitPolicies.api));
+
+// =================================
+// Security Headers Middleware
+// =================================
+app.use('*', async (c, next) => {
+  await next();
+  
+  // HSTS: HTTPS 강제 적용 (1년)
+  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  
+  // CSP: XSS 공격 방어
+  c.header('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+    "img-src 'self' data: https: blob:; " +
+    "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
+    "connect-src 'self' https:; " +
+    "frame-src 'self' https://www.youtube.com; " +
+    "media-src 'self' https:; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'; " +
+    "frame-ancestors 'none';"
+  );
+  
+  // 클릭재킹 방어
+  c.header('X-Frame-Options', 'DENY');
+  
+  // MIME 타입 스니핑 방지
+  c.header('X-Content-Type-Options', 'nosniff');
+  
+  // XSS 필터 활성화
+  c.header('X-XSS-Protection', '1; mode=block');
+  
+  // Referrer 정책
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // 권한 정책
+  c.header('Permissions-Policy', 
+    'geolocation=(), microphone=(), camera=(), payment=(self), usb=()'
+  );
+});
 
 // =================================
 // Performance Monitoring Middleware
@@ -5739,6 +5784,47 @@ app.post('/api/seller/upload-image', async (c) => {
       }, 400);
     }
 
+    // 🔒 보안: Content-Type 추출 및 검증
+    const contentTypeMatch = image.match(/^data:(image\/[\w+]+);base64,/);
+    if (!contentTypeMatch) {
+      return c.json({
+        success: false,
+        error: '잘못된 이미지 형식입니다.'
+      }, 400);
+    }
+    
+    const contentType = contentTypeMatch[1];
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    
+    // 🔒 보안: Base64 디코딩
+    let imageBuffer: Uint8Array;
+    try {
+      imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    } catch (e) {
+      return c.json({
+        success: false,
+        error: '이미지 디코딩 실패'
+      }, 400);
+    }
+    
+    // 🔒 보안: 파일 크기 검증 (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (imageBuffer.length > MAX_FILE_SIZE) {
+      return c.json({
+        success: false,
+        error: `파일 크기가 너무 큽니다. 최대 ${MAX_FILE_SIZE / 1024 / 1024}MB까지 허용됩니다.`
+      }, 400);
+    }
+    
+    // 🔒 보안: 매직 바이트 검증 (실제 이미지 파일인지 확인)
+    const magicValidation = await validateFileMagicBytes(imageBuffer.buffer);
+    if (!magicValidation.valid) {
+      return c.json({
+        success: false,
+        error: '유효하지 않은 이미지 파일입니다.'
+      }, 400);
+    }
+
     // Check if R2 is available
     const IMAGES = c.env.IMAGES as R2Bucket | undefined;
 
@@ -5746,18 +5832,14 @@ app.post('/api/seller/upload-image', async (c) => {
       // ✅ R2 is available - upload to R2
       console.log('[Image Upload] Using R2 storage');
 
-      // Extract base64 data (remove data:image/...;base64, prefix)
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-      const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-
-      // Generate unique filename
-      const ext = filename?.split('.').pop() || 'jpg';
-      const key = `products/${auth.sellerId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      // 🔒 보안: 안전한 파일명 생성 (UUID 사용)
+      const secureFilename = generateSecureFilename(filename || 'upload.jpg');
+      const key = `products/${auth.sellerId}/${secureFilename}`;
 
       // Upload to R2
       await IMAGES.put(key, imageBuffer, {
         httpMetadata: {
-          contentType: image.match(/^data:(image\/\w+);base64,/)?.[1] || 'image/jpeg',
+          contentType: magicValidation.detectedType || contentType,
         },
       });
 

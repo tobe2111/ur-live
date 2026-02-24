@@ -1,0 +1,141 @@
+/**
+ * 파일 업로드 보안 유틸리티
+ */
+
+// 허용된 이미지 MIME 타입
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml'
+];
+
+// 최대 파일 크기: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+/**
+ * 파일 검증
+ */
+export interface FileValidationResult {
+  valid: boolean;
+  error?: string;
+  sanitizedFilename?: string;
+}
+
+export function validateUploadFile(
+  file: File | Blob,
+  filename: string,
+  contentType: string
+): FileValidationResult {
+  // 1. 파일 크기 검증
+  if (file.size > MAX_FILE_SIZE) {
+    return {
+      valid: false,
+      error: `파일 크기가 너무 큽니다. 최대 ${MAX_FILE_SIZE / 1024 / 1024}MB까지 허용됩니다.`
+    };
+  }
+
+  // 2. MIME 타입 검증
+  if (!ALLOWED_IMAGE_TYPES.includes(contentType.toLowerCase())) {
+    return {
+      valid: false,
+      error: `지원하지 않는 파일 형식입니다. 허용: ${ALLOWED_IMAGE_TYPES.join(', ')}`
+    };
+  }
+
+  // 3. 파일 확장자 검증
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+  
+  if (!ext || !allowedExtensions.includes(ext)) {
+    return {
+      valid: false,
+      error: '지원하지 않는 파일 확장자입니다.'
+    };
+  }
+
+  // 4. 파일명 sanitize (보안상 위험한 문자 제거)
+  const sanitizedFilename = sanitizeFilename(filename);
+
+  return {
+    valid: true,
+    sanitizedFilename
+  };
+}
+
+/**
+ * 안전한 파일명 생성
+ */
+export function generateSecureFilename(originalFilename: string): string {
+  const ext = originalFilename.split('.').pop()?.toLowerCase() || 'jpg';
+  const timestamp = Date.now();
+  const randomId = crypto.randomUUID().substring(0, 8);
+  
+  return `upload_${timestamp}_${randomId}.${ext}`;
+}
+
+/**
+ * 파일명 sanitize (위험한 문자 제거)
+ */
+function sanitizeFilename(filename: string): string {
+  // 경로 순회 공격 방지: ../ 제거
+  let sanitized = filename.replace(/\.\.\//g, '');
+  
+  // 특수문자 제거 (알파벳, 숫자, -, _, . 만 허용)
+  sanitized = sanitized.replace(/[^a-zA-Z0-9\-_.]/g, '_');
+  
+  // 연속된 언더스코어 제거
+  sanitized = sanitized.replace(/_+/g, '_');
+  
+  return sanitized;
+}
+
+/**
+ * Content-Type에서 파일 확장자 추출
+ */
+export function getExtensionFromContentType(contentType: string): string {
+  const typeMap: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/svg+xml': 'svg'
+  };
+  
+  return typeMap[contentType.toLowerCase()] || 'jpg';
+}
+
+/**
+ * 파일 매직 바이트 검증 (실제 파일 타입 확인)
+ */
+export async function validateFileMagicBytes(
+  arrayBuffer: ArrayBuffer
+): Promise<{ valid: boolean; detectedType?: string }> {
+  const bytes = new Uint8Array(arrayBuffer);
+  
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+    return { valid: true, detectedType: 'image/jpeg' };
+  }
+  
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+    return { valid: true, detectedType: 'image/png' };
+  }
+  
+  // GIF: 47 49 46 38
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+    return { valid: true, detectedType: 'image/gif' };
+  }
+  
+  // WebP: 52 49 46 46 ... 57 45 42 50
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+    return { valid: true, detectedType: 'image/webp' };
+  }
+  
+  return { valid: false };
+}
