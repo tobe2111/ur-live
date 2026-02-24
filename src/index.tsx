@@ -1687,20 +1687,36 @@ app.post('/api/auth/login', cors(), async (c) => {
     let table = userType === 'admin' ? 'admins' : 'sellers';
     
     // 사용자 조회 (username 또는 email로 조회, 로그인 시 필요한 필드만)
-    user = await DB.prepare(`
-      SELECT 
-        id, 
-        username, 
-        email, 
-        password_hash, 
-        name, 
-        is_active, 
-        status, 
-        last_login_at, 
-        business_name
-      FROM ${table} 
-      WHERE username = ? OR email = ?
-    `).bind(username, username).first();
+    // admins 테이블에는 status, business_name이 없음
+    if (userType === 'admin') {
+      user = await DB.prepare(`
+        SELECT 
+          id, 
+          username, 
+          email, 
+          password_hash, 
+          name, 
+          is_active, 
+          last_login_at
+        FROM ${table} 
+        WHERE username = ? OR email = ?
+      `).bind(username, username).first();
+    } else {
+      user = await DB.prepare(`
+        SELECT 
+          id, 
+          username, 
+          email, 
+          password_hash, 
+          name, 
+          is_active, 
+          status, 
+          last_login_at, 
+          business_name
+        FROM ${table} 
+        WHERE username = ? OR email = ?
+      `).bind(username, username).first();
+    }
     
     if (!user) {
       // 🔴 로그인 실패 - Discord 알림
