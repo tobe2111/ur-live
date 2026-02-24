@@ -23,13 +23,13 @@ export interface TokenPayload {
   exp?: number;
 }
 
-// Access Token 생성 (15분 유효)
+// Access Token 생성 (1시간 유효)
 export async function generateAccessToken(payload: TokenPayload, secret: string): Promise<string> {
   return await jwt.sign({
     userId: payload.userId,
     userType: payload.userType,
     email: payload.email,
-    exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15분
+    exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1시간
     type: 'access'
   }, secret);
 }

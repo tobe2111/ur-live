@@ -412,7 +412,51 @@ app.use('*', async (c, next) => {
 // =================================
 
 /**
+ * ✅ JWT 인증 미들웨어 (KV 세션 완전 대체)
+ * 
+ * - Authorization: Bearer <token> 헤더에서 JWT 토큰 추출
+ * - JWT 검증 (verifyCachedToken: 메모리 캐시 사용)
+ * - 페이로드에서 userId, userType 추출
+ * - **KV 읽기/쓰기 0회 (완전 stateless)**
+ * 
+ * @param c - Hono context
+ * @returns JWT 페이로드 (userId, userType, email) or null
+ */
+async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; email?: string } | null> {
+  try {
+    // JWT 토큰 추출 (Authorization: Bearer <token>)
+    const authHeader = c.req.header('Authorization')
+    const token = authHeader?.replace('Bearer ', '') || ''
+    
+    if (!token) {
+      console.warn('[JWT Auth] No token provided')
+      return null
+    }
+    
+    // JWT 검증 (메모리 캐시 사용, KV 읽기 0회)
+    const jwtSecret = getJwtSecret(c.env.JWT_SECRET)
+    const payload = await verifyCachedToken(token, jwtSecret)
+    
+    if (!payload) {
+      console.warn('[JWT Auth] Invalid or expired token')
+      return null
+    }
+    
+    return {
+      userId: payload.userId,
+      userType: payload.userType,
+      email: payload.email
+    }
+  } catch (error) {
+    console.error('[JWT Auth Error]', error)
+    return null
+  }
+}
+
+/**
  * 🚀 최적화된 세션 조회 함수 (3단계 계층: Context -> Memory -> KV)
+ * 
+ * ⚠️ DEPRECATED: JWT 전환 후 이 함수는 getJwtAuth로 대체됩니다.
  * 
  * Task 1 & 2: Request-Level + Global Memory Caching
  * - Level 1: Request Context (c.get) - 동일 요청 내 중복 제거
@@ -493,215 +537,35 @@ async function getSessionInfo(
 }
 
 /**
- * 🚀 최적화된 인증 미들웨어
+ * ✅ JWT 인증 미들웨어 (KV 세션 완전 대체)
  * 
- * Task 1: Request Context Caching - 동일 요청 내 세션 재사용
- * Task 3: Write-Throttling - 세션 갱신 최소화 (23일 기준)
+ * - Authorization: Bearer <token> 헤더에서 JWT 검증
+ * - KV 읽기/쓰기 0회 (완전 stateless)
+ * - 메모리 캐시 사용 (verifyCachedToken)
  * 
- * 최적화:
- * - Context에 세션 저장 → 동일 요청 내 중복 조회 0회
- * - Memory Cache 활용 → Worker 인스턴스 내 재사용
- * - 세션 갱신 최소화 → 23일 후에만 갱신 (쓰기 95% 절감)
+ * @param c - Hono context
+ * @param next - Next middleware
  */
 async function requireAuth(c: any, next: any) {
-  const { SESSION_KV } = c.env;
+  // JWT 인증 (KV 읽기 0회)
+  const auth = await getJwtAuth(c)
   
-  // 1. X-Session-Token 헤더에서 토큰 추출 (프론트엔드와 일치)
-  let sessionToken = c.req.header('X-Session-Token');
-  
-  // 2. Authorization 헤더에서 토큰 추출 (fallback)
-  if (!sessionToken) {
-    sessionToken = c.req.header('Authorization')?.replace('Bearer ', '');
-  }
-  
-  // 3. 쿠키에서 토큰 추출 (fallback)
-  if (!sessionToken) {
-    const cookieHeader = c.req.header('Cookie');
-    if (cookieHeader) {
-      const match = cookieHeader.match(/session=([^;]+)/);
-      sessionToken = match ? match[1] : undefined;
-    }
-  }
-  
-  // 4. 🚀 세션 검증 (Context + Memory + KV 3단계 캐싱)
-  const sessionInfo = await getSessionInfo(SESSION_KV, sessionToken, c);
-  
-  if (!sessionInfo) {
+  if (!auth) {
     return c.json({ 
       success: false, 
-      error: '인증이 필요합니다. 로그인 해주세요.' 
-    }, 401);
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED'
+    }, 401)
   }
   
-  // 5. 🚀 Task 3: Write-Throttling - 세션 갱신 최소화
-  // ⚠️ EMERGENCY FIX: 세션 갱신을 거의 비활성화 (KV Write 한도 보호)
-  // 세션 생성 후 29일이 지났을 때만 갱신 (만료 직전에만!)
-  try {
-    if (sessionToken && sessionInfo.created_at) {
-      const sessionAge = Date.now() - sessionInfo.created_at;
-      const twentyNineDays = 29 * 24 * 60 * 60 * 1000;  // 29일 (전체 30일의 97%)
-      
-      // 🚨 긴급: 29일 이상 경과한 세션만 갱신 (KV Write 최소화)
-      if (sessionAge > twentyNineDays) {
-        const cacheKey = `session:${sessionToken}`;
-        const sessionData = await SESSION_KV.get(cacheKey);
-        
-        if (sessionData) {
-          const session = JSON.parse(sessionData);
-          const newExpiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000;  // 30일
-          const newCreatedAt = Date.now();  // 갱신 시점을 새로운 생성 시각으로
-          
-          // 비동기 갱신 (응답 지연 없음)
-          // @ts-ignore
-          if (c.executionCtx) {
-            // @ts-ignore
-            c.executionCtx.waitUntil(
-              SESSION_KV.put(
-                cacheKey,
-                JSON.stringify({
-                  ...session,
-                  expires_at: newExpiresAt,
-                  created_at: newCreatedAt
-                }),
-                { expirationTtl: 30 * 24 * 60 * 60 }  // 30일 (초 단위)
-              ).then(() => {
-                // Memory Cache 갱신
-                setToMemoryCache(cacheKey, {
-                  user_id: session.user_id,
-                  user_type: session.user_type || 'user',
-                  created_at: newCreatedAt
-                }, 60);
-                console.log('[Auth] ✅ Session auto-renewed (23+ days old) for user:', sessionInfo.user_id);
-              })
-            );
-          } else {
-            // fallback: 동기 갱신
-            await SESSION_KV.put(
-              cacheKey,
-              JSON.stringify({
-                ...session,
-                expires_at: newExpiresAt,
-                created_at: newCreatedAt
-              }),
-              { expirationTtl: 30 * 24 * 60 * 60 }
-            );
-            setToMemoryCache(cacheKey, {
-              user_id: session.user_id,
-              user_type: session.user_type || 'user',
-              created_at: newCreatedAt
-            }, 60);
-          }
-        }
-      }
-    }
-  } catch (error) {
-    // 세션 갱신 실패는 치명적이지 않으므로 로그만 남기고 계속 진행
-    console.error('[Auth] Session renewal error:', error);
-  }
+  // Context에 사용자 정보 저장 (동일 요청 내 재사용)
+  c.set('user', {
+    userId: auth.userId,
+    userType: auth.userType,
+    email: auth.email
+  })
   
-  // 6. Context에 userId와 userType 저장 (다른 핸들러에서 재사용)
-  c.set('userId', sessionInfo.user_id);
-  c.set('userType', sessionInfo.user_type);
-  
-  await next();
-}
-
-// ==================== JWT-Based Authentication Middleware ====================
-/**
- * JWT 기반 인증 미들웨어 (KV 사용량 90% 감소)
- * 
- * - KV Read: 매 요청 → 0회 (JWT 검증은 메모리에서만!)
- * - 응답 속도: ~100ms → ~10ms
- * - Free Tier 사용률: 50% → 5%
- * 
- * 사용법: app.use('/api/protected/*', requireAuthJWT)
- */
-async function requireAuthJWT(c: any, next: any) {
-  const jwtSecret = getJwtSecret(c.env);
-  
-  // 1. Authorization 헤더에서 토큰 추출
-  let token = c.req.header('Authorization')?.replace('Bearer ', '');
-  
-  // 2. X-Auth-Token 헤더에서 토큰 추출 (fallback)
-  if (!token) {
-    token = c.req.header('X-Auth-Token');
-  }
-  
-  if (!token) {
-    return c.json({ 
-      success: false, 
-      error: '인증이 필요합니다. JWT 토큰을 제공해주세요.' 
-    }, 401);
-  }
-  
-  // 3. JWT 토큰 검증 (캐시 활용으로 성능 극대화)
-  const payload = await verifyCachedToken(token, jwtSecret);
-  
-  if (!payload) {
-    return c.json({ 
-      success: false, 
-      error: '유효하지 않은 토큰입니다.' 
-    }, 401);
-  }
-  
-  // 4. Blacklist 체크 (로그아웃된 토큰)
-  if (c.env.SESSION_KV) {
-    const isBlacklisted = await c.env.SESSION_KV.get(`blacklist:token:${token}`);
-    if (isBlacklisted) {
-      return c.json({ 
-        success: false, 
-        error: '로그아웃된 토큰입니다.' 
-      }, 401);
-    }
-  }
-  
-  // 5. Context에 사용자 정보 저장
-  c.set('userId', payload.userId);
-  c.set('userType', payload.userType);
-  c.set('jwtToken', token);
-  
-  await next();
-}
-
-// ==================== Hybrid Authentication Middleware ====================
-/**
- * 하이브리드 인증: JWT 또는 KV 세션 모두 지원
- * 점진적 JWT 전환을 위한 임시 미들웨어
- */
-async function requireAuthHybrid(c: any, next: any) {
-  // 1. JWT 토큰 확인
-  const jwtToken = c.req.header('Authorization')?.replace('Bearer ', '') || 
-                   c.req.header('X-Auth-Token');
-  
-  if (jwtToken) {
-    const jwtSecret = getJwtSecret(c.env);
-    const payload = await verifyCachedToken(jwtToken, jwtSecret);
-    
-    if (payload) {
-      c.set('userId', payload.userId);
-      c.set('userType', payload.userType);
-      c.set('authMethod', 'jwt');
-      return await next();
-    }
-  }
-  
-  // 2. KV 세션 확인 (fallback)
-  const sessionToken = c.req.header('X-Session-Token');
-  if (sessionToken && c.env.SESSION_KV) {
-    const sessionInfo = await getSessionInfo(c.env.SESSION_KV, sessionToken, c);
-    
-    if (sessionInfo) {
-      c.set('userId', sessionInfo.user_id);
-      c.set('userType', sessionInfo.user_type);
-      c.set('authMethod', 'session');
-      return await next();
-    }
-  }
-  
-  return c.json({ 
-    success: false, 
-    error: '인증이 필요합니다.' 
-  }, 401);
+  await next()
 }
 
 // ==================== Admin Authorization Middleware ====================
@@ -2482,6 +2346,49 @@ app.get('/api/auth/validate', cors(), async (c) => {
     return c.json({ 
       success: false, 
       valid: false,
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR'
+    }, 500)
+  }
+})
+
+// JWT Refresh Token API (액세스 토큰 자동 갱신)
+app.post('/api/auth/refresh', cors(), async (c) => {
+  try {
+    const body = await c.req.json()
+    const { refreshToken } = body
+    
+    if (!refreshToken) {
+      return c.json({ 
+        success: false, 
+        error: 'No refresh token provided',
+        code: 'NO_REFRESH_TOKEN'
+      }, 400)
+    }
+    
+    // Refresh Token으로 새 Access Token 발급
+    const jwtSecret = getJwtSecret(c.env.JWT_SECRET)
+    const newAccessToken = await refreshAccessToken(refreshToken, jwtSecret)
+    
+    if (!newAccessToken) {
+      return c.json({ 
+        success: false, 
+        error: 'Refresh token expired or invalid',
+        code: 'REFRESH_TOKEN_EXPIRED'
+      }, 401)
+    }
+    
+    // 새 Access Token 반환
+    return c.json({ 
+      success: true, 
+      data: {
+        accessToken: newAccessToken
+      }
+    })
+  } catch (error) {
+    console.error('[JWT Refresh Error]', error)
+    return c.json({ 
+      success: false, 
       error: 'Internal server error',
       code: 'INTERNAL_ERROR'
     }, 500)
@@ -9830,7 +9737,8 @@ app.post('/api/orders/:orderNumber/refund', cors(), requireAuth, async (c) => {
   }
 });
 
-// ==================== Seller APIs ====================
+// ==================== Seller APIs (JWT 인증 적용) ====================
+app.use('/api/seller/*', requireAuth)
 
 // 셀러 매출 조회 API
 app.get('/api/seller/sales', cors(), async (c) => {
@@ -11680,21 +11588,24 @@ app.get('/api/admin/alimtalk/statistics', cors(), async (c) => {
  * GET /api/seller/alimtalk/account
  * 셀러 알림톡 계정 조회
  */
+// ==================== Seller Alimtalk API (JWT 인증 적용) ====================
+app.use('/api/seller/alimtalk/*', requireAuth)
+
 app.get('/api/seller/alimtalk/account', cors(), async (c) => {
   const { env } = c;
   
   try {
-    const sessionToken = c.req.header('X-Session-Token');
-    const session = await getSessionInfo(env, sessionToken);
+    // JWT 인증 (requireAuth 미들웨어에서 c.get('user') 설정)
+    const user = c.get('user')
     
-    if (!session || session.user_type !== 'seller') {
+    if (!user || user.userType !== 'seller') {
       return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
 
     const account = await env.DB.prepare(`
       SELECT * FROM alimtalk_accounts
       WHERE seller_id = ?
-    `).bind(session.user_id).first();
+    `).bind(user.userId).first();
 
     return c.json({
       success: true,
