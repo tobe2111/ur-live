@@ -1634,7 +1634,7 @@ export default function LivePageV2() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {reels.map((reel) => {
+                  {reels.filter(reel => reel.product !== null).map((reel) => {
                     const isCurrentProduct = currentStream?.current_product_id === reel.product.id
                     
                     return (
@@ -1712,7 +1712,7 @@ export default function LivePageV2() {
       >
         {reels.map((reel, index) => (
           <div
-            key={`${reel.stream.id}-${reel.product.id}`}
+            key={`${reel.stream.id}-${reel.product?.id || 'no-product'}`}
             ref={reelRefs}
             data-index={index}
             className="h-dvh w-full snap-start snap-always"
@@ -1720,7 +1720,7 @@ export default function LivePageV2() {
             <ReelCard 
               reel={reel} 
               isActive={activeIndex === index}
-              isCurrentProduct={currentStream?.current_product_id === reel.product.id}
+              isCurrentProduct={currentStream?.current_product_id === reel.product?.id}
             />
           </div>
         ))}
