@@ -201,7 +201,7 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center px-4 py-6 sm:p-6 lg:p-8">
+    <div className="mx-auto min-h-screen max-w-md bg-[#fbfbfd] flex items-center justify-center px-4 py-6">
       <div className="max-w-2xl w-full">
         <div className="bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7]">
           {/* 성공 아이콘 */}
