@@ -48,7 +48,9 @@ jobs:
           echo "✅ Correct React version installed"
 
       - name: Build
-        run: npm run build
+        run: |
+          rm -rf dist .vite node_modules/.vite
+          npm run build
         timeout-minutes: 15
         env:
           NODE_OPTIONS: --max-old-space-size=4096
