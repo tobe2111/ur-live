@@ -27,7 +27,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-bold mb-4">제1조 (목적)</h2>
             <p className="text-gray-700 leading-relaxed mb-4">
               본 약관은 리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")이 제공하는 
-              유어 라이브 라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 
+              라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 
               회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
             </p>
             <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm text-gray-700">
