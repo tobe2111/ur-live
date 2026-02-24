@@ -30,6 +30,7 @@ const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
+const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 
 // Seller 페이지들
 const SellerPage = lazy(() => import('./pages/SellerPage'))
@@ -101,7 +102,7 @@ function AppContent() {
             {/* ShortForm 페이지 - 요고 스타일 */}
             <Route path="/shortform" element={<ShortFormPage />} />
             {/* 기존 홈페이지는 /browse로 이동 */}
-            <Route path="/browse" element={<HomePage />} />
+            <Route path="/browse" element={<BrowsePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />

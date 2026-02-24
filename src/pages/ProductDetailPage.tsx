@@ -163,10 +163,10 @@ export default function ProductDetailPage() {
         <div className="text-center">
           <p className="text-sm text-muted-foreground">{error || '상품을 찾을 수 없습니다.'}</p>
           <button 
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             className="mt-4 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
           >
-            돌아가기
+            홈으로 돌아가기
           </button>
         </div>
       </div>

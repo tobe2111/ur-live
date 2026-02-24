@@ -1,13 +1,20 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Search, Bell, User } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function TopNav() {
   const navigate = useNavigate()
+  const { isLoggedIn } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const handleProfileClick = () => {
-    navigate('/user/profile')
+    if (isLoggedIn) {
+      navigate('/user/profile')
+    } else {
+      // 로그인되지 않은 경우 로그인 페이지로
+      navigate('/login?returnUrl=/user/profile')
+    }
   }
 
   const handleSearchClick = () => {
@@ -15,8 +22,14 @@ export default function TopNav() {
   }
 
   const handleNotificationClick = () => {
-    // TODO: 알림 페이지 또는 모달 구현
-    console.log('알림 클릭')
+    if (isLoggedIn) {
+      // TODO: 알림 페이지 또는 모달 구현
+      console.log('알림 클릭')
+      // 임시로 알림 표시
+      alert('알림 기능은 준비 중입니다.')
+    } else {
+      navigate('/login?returnUrl=/')
+    }
   }
 
   return (

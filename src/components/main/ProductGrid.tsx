@@ -191,7 +191,7 @@ export default function ProductGrid() {
           Ur 특가
         </h3>
         <a 
-          href="/browse" 
+          href="/browse?category=all" 
           className="text-xs font-medium text-gray-600 hover:text-foreground transition-colors"
         >
           See All
