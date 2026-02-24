@@ -44,6 +44,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@sentry/react": "^10.38.0",
     "@tosspayments/tosspayments-sdk": "^2.5.0",
+    "@tsndr/cloudflare-worker-jwt": "3.2.1",
     "axios": "^1.13.4",
     "browser-image-compression": "^2.0.2",
     "embla-carousel-react": "^8.6.0",
@@ -51,7 +52,8 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.28.1",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "zod": "4.3.6"
   },
   "overrides": {
     "react": "18.3.1",
