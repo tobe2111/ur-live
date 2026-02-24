@@ -21,6 +21,7 @@ import {
   ShippingAddressSchema,
   validateOrError
 } from './lib/validation-schemas';
+import jwtApiRoutes from './routes/jwt-api';
 import type { CloudflareBindings } from './types/env';
 import { validateEnv, logEnvStatus } from './types/env';
 import { handleEnvTestRequest } from './tests/env.test';
@@ -12815,5 +12816,15 @@ app.get('/api/cache/stats', async (c) => {
  * Export Hono app for Cloudflare Pages
  * Note: Cron triggers are not supported in Pages
  * For scheduled tasks, use Cloudflare Workers separately
+ * 
+ * JWT API Routes mounted at /api/auth/*
+ * - POST /api/auth/refresh - Refresh Token으로 새 Access Token 발급
+ * - POST /api/auth/logout - JWT 토큰 블랙리스트 추가
+ * - POST /api/auth/login-jwt - JWT 기반 로그인
+ * - GET /api/auth/verify - JWT 토큰 검증 (디버깅용)
  */
+
+// Mount JWT API routes
+app.route('/', jwtApiRoutes);
+
 export default app
