@@ -562,11 +562,15 @@ async function requireAuth(c: any, next: any) {
   }
   
   // Context에 사용자 정보 저장 (동일 요청 내 재사용)
+  // 개별 필드로도 저장하여 c.get('userId') 접근 가능하도록 함
   c.set('user', {
     userId: auth.userId,
     userType: auth.userType,
     email: auth.email
   })
+  c.set('userId', auth.userId)      // ✅ 개별 저장
+  c.set('userType', auth.userType)  // ✅ 개별 저장
+  c.set('email', auth.email)        // ✅ 개별 저장
   
   await next()
 }

@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext'
  * JWT 전환 후 변경사항:
  * - sessionToken → accessToken 검증
  * - /api/auth/validate → JWT 기반 검증
+ * - 429 에러 방지: interval 중복 생성 방지
  */
 export function useSessionValidation() {
   const navigate = useNavigate()
@@ -66,16 +67,29 @@ export function useSessionValidation() {
 
           // 로그인 페이지로 리다이렉트 (returnUrl 포함)
           navigate(`${loginPath}?returnUrl=${encodeURIComponent(returnUrl)}`)
+        } else if (error.response?.status === 429) {
+          // 5. 429 Too Many Requests: 너무 많은 요청, 조용히 스킵
+          console.warn('[SessionValidation] ⚠️ 429 Too Many Requests - 다음 검증까지 대기')
         }
       }
     }
 
-    // 5. 5분마다 JWT 세션 검증 실행
+    // 6. ✅ interval은 한 번만 생성 (의존성 없음)
+    // 인증 준비 완료 후에만 검증 시작
+    if (!isAuthReady) {
+      console.log('[SessionValidation] ⏸️ 인증 초기화 대기 중')
+      return
+    }
+
+    // 7. 5분마다 JWT 세션 검증 실행
     const interval = setInterval(validateJwtSession, 5 * 60 * 1000)
 
-    // 6. 컴포넌트 마운트 시 1회 실행
-    validateJwtSession()
+    // 8. 컴포넌트 마운트 시 1회 실행 (3초 지연 - 초기 로딩 완료 대기)
+    const initialTimeout = setTimeout(validateJwtSession, 3000)
 
-    return () => clearInterval(interval)
-  }, [navigate, location, isProcessingLogin, isAuthReady])
+    return () => {
+      clearInterval(interval)
+      clearTimeout(initialTimeout)
+    }
+  }, [isAuthReady]) // ✅ 의존성을 isAuthReady만 포함 (한 번만 실행)
 }
