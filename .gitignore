@@ -15,3 +15,5 @@ node_modules/
 # - scripts/check-react-version.js
 # - scripts/verify-react-version.js
 # - .npmrc
+# Local development environment variables
+.dev.vars
