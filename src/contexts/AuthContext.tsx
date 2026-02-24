@@ -56,43 +56,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentPath: window.location.pathname
       })
 
-      // Step 2: 로그인 파라미터가 있으면 처리 (카카오 OAuth 콜백)
+      // Step 2: 레거시 로그인 파라미터가 있으면 URL에서 제거 (JWT는 localStorage에 있음)
       if (login === 'success' && session && urlUserId) {
-        setIsProcessingLogin(true)
+        console.log('[AuthContext] ℹ️ 레거시 로그인 파라미터 감지 - URL에서 제거')
         
-        console.warn('[AuthContext] ⚠️ 카카오 OAuth 콜백 감지 - 레거시 세션 ID는 JWT로 사용 불가')
-        console.warn('[AuthContext] → 백엔드에서 JWT 발급 필요. 임시로 로그인 페이지로 리다이렉트')
-
-        // URL 파라미터 제거
+        // URL 파라미터 제거 (JWT는 이미 localStorage에 저장되어 있음)
         window.history.replaceState({}, '', window.location.pathname)
-        
-        // 로그인 페이지로 리다이렉트 (카카오 로그인 재시도)
-        setAuthState({
-          isLoggedIn: false,
-          accessToken: null
-        })
-        setIsProcessingLogin(false)
-        setIsAuthReady(true)
-      } else {
-        // Step 3: URL 파라미터 없으면 기존 JWT 세션 체크
-        console.log('[AuthContext] ℹ️ 로그인 파라미터 없음 (기존 JWT 세션 사용)')
-
-        const token = getAccessToken()
-        const userType = getUserType()
-        const loggedIn = isLoggedIn()
-
-        console.log('[AuthContext] JWT 세션 상태:', {
-          hasAccessToken: !!token,
-          userType,
-          isLoggedIn: loggedIn
-        })
-
-        setAuthState({
-          isLoggedIn: loggedIn,
-          accessToken: token
-        })
-        setIsAuthReady(true)
       }
+
+      // Step 3: localStorage에서 JWT 세션 체크
+      const token = getAccessToken()
+      const userType = getUserType()
+      const loggedIn = isLoggedIn()
+
+      console.log('[AuthContext] JWT 세션 상태:', {
+        hasAccessToken: !!token,
+        userType,
+        isLoggedIn: loggedIn
+      })
+
+      setAuthState({
+        isLoggedIn: loggedIn,
+        accessToken: token
+      })
+      setIsAuthReady(true)
     }
 
     initializeAuth()
