@@ -978,12 +978,7 @@ function ReelCard({
       // Set flag
       localStorage.setItem('hasCartItems', 'true')
 
-      // Show notification
-      setNotificationText(`${currentProduct.name}을(를) 담았습니다!`)
-      setShowNotification(true)
-      setTimeout(() => setShowNotification(false), 2000)
-
-      // 🔥 SSE 기반 시스템 메시지 전송
+      // 🔥 SSE 기반 시스템 메시지 전송 (채팅창에 표시)
       try {
         const userName = localStorage.getItem('user_name') || '익명'
         const maskedName = maskUserName(userName)

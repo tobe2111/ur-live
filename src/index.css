@@ -300,3 +300,20 @@ html {
     padding-right: max(0px, env(safe-area-inset-right));
   }
 }
+
+/* ============================================
+   Mobile Ratio Layout (max-w-md)
+   Force include these classes in build
+   ============================================ */
+@layer utilities {
+  /* Mobile container: 448px max width, centered */
+  .max-w-md {
+    max-width: 28rem !important; /* 448px */
+  }
+  
+  /* Center horizontally */
+  .mx-auto {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
