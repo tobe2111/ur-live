@@ -136,6 +136,66 @@ function invalidateMemoryCache(pattern: string): number {
   return count;
 }
 
+/**
+ * 🚀 통합 캐시 무효화 시스템
+ * 메모리 캐시 + KV 캐시를 동시에 무효화
+ * 
+ * @param env Cloudflare 환경 (CACHE_KV 포함)
+ * @param keys 삭제할 캐시 키 배열 또는 단일 키
+ * 
+ * 사용 예시:
+ * ```typescript
+ * // 라이브 스트림 생성/수정/삭제 후
+ * await invalidateAllCaches(c.env, ['streams:live', 'live_streams']);
+ * 
+ * // 상품 생성/수정/삭제 후
+ * await invalidateAllCaches(c.env, ['products', 'featured_products']);
+ * ```
+ */
+async function invalidateAllCaches(
+  env: { CACHE_KV: KVNamespace },
+  keys: string | string[]
+): Promise<void> {
+  const keyArray = Array.isArray(keys) ? keys : [keys];
+  
+  for (const key of keyArray) {
+    // 1. 메모리 캐시 무효화 (패턴 매칭)
+    const memoryCount = invalidateMemoryCache(key);
+    if (memoryCount > 0) {
+      console.log(`[Cache] 🧹 메모리 캐시 삭제: ${key} (${memoryCount}개)`);
+    }
+    
+    // 2. KV 캐시 무효화 (정확한 키)
+    try {
+      await env.CACHE_KV.delete(key);
+      console.log(`[Cache] 🧹 KV 캐시 삭제: ${key}`);
+    } catch (err) {
+      console.error(`[Cache] ❌ KV 캐시 삭제 실패: ${key}`, err);
+    }
+  }
+}
+
+/**
+ * 🎯 캐시 키 패턴 정의
+ * 모든 캐시 키를 중앙에서 관리하여 일관성 유지
+ */
+const CACHE_KEYS = {
+  // 라이브 스트림 관련
+  LIVE_STREAMS: ['streams:live', 'live_streams:live:all:20:0', 'live_streams:'],
+  
+  // 상품 관련
+  PRODUCTS: ['products:', 'featured_products'],
+  
+  // 장바구니 관련
+  CART: (userId: number) => [`cart:${userId}`],
+  
+  // 주문 관련
+  ORDERS: (userId: number) => [`orders:${userId}`],
+  
+  // 모든 캐시 (비상용)
+  ALL: ['streams:', 'live_streams:', 'products:', 'cart:', 'orders:']
+} as const;
+
 // Logging utilities (inline - prevent bundling issues)
 interface ApiLogContext {
   method: string;
@@ -4881,6 +4941,9 @@ app.post('/api/seller/streams', async (c) => {
       console.error('[Email] Failed to send live stream notification:', emailError);
     }
 
+    // ✅ 캐시 무효화 (메모리 + KV)
+    await invalidateAllCaches(c.env, CACHE_KEYS.LIVE_STREAMS);
+
     return c.json({
       success: true,
       data: stream
@@ -5005,6 +5068,9 @@ app.put('/api/seller/streams/:id', async (c) => {
       UPDATE live_streams SET ${updates.join(', ')} WHERE id = ?
     `).bind(...values, streamId).run();
 
+    // ✅ 캐시 무효화 (메모리 + KV)
+    await invalidateAllCaches(c.env, CACHE_KEYS.LIVE_STREAMS);
+
     return c.json({ success: true });
 
   } catch (err) {
@@ -5034,6 +5100,9 @@ app.delete('/api/seller/streams/:id', async (c) => {
     }
 
     await DB.prepare('DELETE FROM live_streams WHERE id = ?').bind(streamId).run();
+
+    // ✅ 캐시 무효화 (메모리 + KV)
+    await invalidateAllCaches(c.env, CACHE_KEYS.LIVE_STREAMS);
 
     return c.json({ success: true });
 
@@ -5423,6 +5492,9 @@ app.post('/api/admin/streams', async (c) => {
       auth.sellerId || null
     ).run();
 
+    // ✅ 캐시 무효화 (메모리 + KV)
+    await invalidateAllCaches(c.env, CACHE_KEYS.LIVE_STREAMS);
+
     return c.json({
       success: true,
       data: {
@@ -5468,6 +5540,9 @@ app.put('/api/admin/streams/:id', async (c) => {
       status, 
       streamId
     ).run();
+
+    // ✅ 캐시 무효화 (메모리 + KV)
+    await invalidateAllCaches(c.env, CACHE_KEYS.LIVE_STREAMS);
 
     return c.json({ success: true });
 
@@ -5563,6 +5638,9 @@ app.delete('/api/admin/streams/:id', async (c) => {
     const streamId = c.req.param('id');
 
     await DB.prepare('DELETE FROM live_streams WHERE id = ?').bind(streamId).run();
+
+    // ✅ 캐시 무효화 (메모리 + KV)
+    await invalidateAllCaches(c.env, CACHE_KEYS.LIVE_STREAMS);
 
     return c.json({ success: true });
 
