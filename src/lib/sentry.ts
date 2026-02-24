@@ -97,3 +97,10 @@ export function captureError(error: Error, context?: Record<string, any>) {
 export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
   Sentry.captureMessage(message, level);
 }
+
+/**
+ * 에러 로그 (레거시 호환용)
+ */
+export function logError(error: Error, context?: Record<string, any>) {
+  captureError(error, context);
+}
