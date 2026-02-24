@@ -2432,52 +2432,60 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
 
 // 카카오 로그아웃
 // 세션 유효성 검증 API
+// JWT 검증 엔드포인트 (JWT 전환 후)
 app.get('/api/auth/validate', cors(), async (c) => {
-  const { SESSION_KV } = c.env;
-  
   try {
-    // 세션 토큰 가져오기
-    const sessionToken = c.req.header('X-Session-Token') || 
-                        c.req.header('Authorization')?.replace('Bearer ', '') ||
-                        '';
+    // JWT 토큰 가져오기 (Authorization: Bearer <token>)
+    const authHeader = c.req.header('Authorization')
+    const token = authHeader?.replace('Bearer ', '') || ''
     
-    if (!sessionToken) {
+    if (!token) {
       return c.json({ 
         success: false, 
-        error: 'No session token provided',
+        valid: false,
+        error: 'No JWT token provided',
         code: 'NO_TOKEN'
-      }, 401);
+      }, 401)
     }
     
-    // 세션 검증
-    const sessionInfo = await getSessionInfo(SESSION_KV, sessionToken);
+    // JWT 검증 (verifyCachedToken: 메모리 캐시 사용, KV 읽기 최소화)
+    const payload = await verifyCachedToken(token)
     
-    if (!sessionInfo) {
+    if (!payload) {
       return c.json({ 
         success: false, 
-        error: 'Session expired or invalid',
-        code: 'SESSION_EXPIRED'
-      }, 401);
+        valid: false,
+        error: 'JWT token expired or invalid',
+        code: 'TOKEN_EXPIRED'
+      }, 401)
     }
     
-    // 세션 유효함
+    // JWT 토큰 유효함
     return c.json({ 
-      success: true,
+      success: true, 
+      valid: true,
       data: {
-        user_id: sessionInfo.user_id,
-        user_type: sessionInfo.user_type,
+        user_id: payload.userId,
+        user_type: payload.userType,
+        email: payload.email,
         session_valid: true
+      },
+      user: {
+        userId: payload.userId,
+        userType: payload.userType,
+        email: payload.email
       }
-    });
+    })
   } catch (error) {
-    console.error('[Auth Validate] Error:', error);
+    console.error('[JWT Validate Error]', error)
     return c.json({ 
       success: false, 
-      error: 'Validation failed',
-      code: 'VALIDATION_ERROR'
-    }, 500);
+      valid: false,
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR'
+    }, 500)
   }
-});
+})
 
 app.post('/api/auth/kakao/logout', cors(), async (c) => {
   const { DB } = c.env;
