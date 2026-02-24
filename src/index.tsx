@@ -1609,6 +1609,10 @@ app.post('/api/auth/login', cors(), async (c) => {
   try {
     const { username, password, userType } = await c.req.json();
     
+    // IP 주소 및 User Agent 추출
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'Unknown';
+    const userAgent = c.req.header('User-Agent') || 'Unknown';
+    
     if (!username || !password || !userType) {
       return c.json({ success: false, error: '아이디와 비밀번호를 입력해주세요' }, 400);
     }
@@ -1620,6 +1624,20 @@ app.post('/api/auth/login', cors(), async (c) => {
     user = await DB.prepare(`SELECT * FROM ${table} WHERE username = ? OR email = ?`).bind(username, username).first();
     
     if (!user) {
+      // 🔴 로그인 실패 - Discord 알림
+      const { sendDiscordAlert, addLoginHistory } = await import('./lib/discord-monitoring');
+      addLoginHistory(ip, false);
+      
+      await sendDiscordAlert({
+        type: 'login_failure',
+        username,
+        userType: userType as any,
+        ip,
+        userAgent,
+        timestamp: new Date().toISOString(),
+        details: '존재하지 않는 계정'
+      }, c.env.DISCORD_WEBHOOK_URL);
+      
       return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
     
@@ -1638,6 +1656,27 @@ app.post('/api/auth/login', cors(), async (c) => {
     const validPassword = isDefaultAdmin || isDefaultSeller || isCustomAccount;
     
     if (!validPassword) {
+      // 🔴 로그인 실패 - Discord 알림
+      const { sendDiscordAlert, addLoginHistory, detectSuspiciousLogin, getLoginHistory } = await import('./lib/discord-monitoring');
+      addLoginHistory(ip, false);
+      
+      const loginHistory = getLoginHistory(ip);
+      const isSuspicious = detectSuspiciousLogin(ip, userAgent, userType as any, loginHistory);
+      
+      await sendDiscordAlert({
+        type: isSuspicious ? 'suspicious_login' : 'login_failure',
+        userId: user.id,
+        username: user.username,
+        userType: userType as any,
+        ip,
+        userAgent,
+        timestamp: new Date().toISOString(),
+        details: isSuspicious ? '⚠️ 5분 내 3회 이상 실패 또는 의심스러운 패턴' : '비밀번호 불일치',
+        metadata: {
+          '최근 실패 횟수': loginHistory.filter(h => !h.success).length.toString()
+        }
+      }, c.env.DISCORD_WEBHOOK_URL);
+      
       return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
     
@@ -1669,6 +1708,26 @@ app.post('/api/auth/login', cors(), async (c) => {
     
     // 마지막 로그인 시간 업데이트
     await DB.prepare(`UPDATE ${table} SET last_login_at = datetime('now') WHERE id = ?`).bind(user.id).run();
+    
+    // ✅ 로그인 성공 - Discord 알림 (관리자만)
+    const { sendDiscordAlert, addLoginHistory, detectSuspiciousLogin, getLoginHistory } = await import('./lib/discord-monitoring');
+    addLoginHistory(ip, true);
+    
+    const loginHistory = getLoginHistory(ip);
+    const isSuspicious = detectSuspiciousLogin(ip, userAgent, userType as any, loginHistory);
+    
+    if (userType === 'admin' || isSuspicious) {
+      await sendDiscordAlert({
+        type: isSuspicious ? 'suspicious_login' : 'login_success',
+        userId: user.id,
+        username: user.username,
+        userType: userType as any,
+        ip,
+        userAgent,
+        timestamp: new Date().toISOString(),
+        details: isSuspicious ? '⚠️ 의심스러운 패턴 감지 (관리자 로그인 또는 비정상 User Agent)' : undefined
+      }, c.env.DISCORD_WEBHOOK_URL);
+    }
     
     console.log(`[JWT Login] ✅ ${userType} ${user.username} logged in with JWT (KV Write: 0)`);
     

@@ -115,6 +115,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // JWT 토큰 및 사용자 정보 저장
     saveJwtTokens(accessToken, refreshToken, userId, userName, userType, userEmail)
 
+    // Sentry 사용자 컨텍스트 설정
+    try {
+      const { setSentryUser } = require('@/lib/sentry')
+      setSentryUser({
+        id: userId,
+        email: userEmail || undefined,
+        username: userName,
+        userType
+      })
+    } catch (e) {
+      // Sentry 초기화 실패 시 무시
+    }
+
     // 인증 상태 업데이트
     setAuthState({
       isLoggedIn: true,

@@ -77,6 +77,15 @@ export interface CloudflareBindings {
    * @setup npx wrangler pages secret put JWT_SECRET --project-name ur-live
    */
   JWT_SECRET: string;
+  
+  /**
+   * Discord Webhook URL (보안 모니터링)
+   * @description 로그인 알림, 보안 이벤트를 Discord로 전송
+   * @required false (설정하지 않으면 콘솔 로그만 출력)
+   * @example https://discord.com/api/webhooks/...
+   * @setup npx wrangler pages secret put DISCORD_WEBHOOK_URL --project-name ur-live
+   */
+  DISCORD_WEBHOOK_URL?: string;
 }
 
 /**

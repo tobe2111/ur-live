@@ -188,6 +188,14 @@ export function logout(): void {
     localStorage.removeItem(key)
   })
   
+  // Sentry 사용자 컨텍스트 제거
+  try {
+    const { clearSentryUser } = require('@/lib/sentry')
+    clearSentryUser()
+  } catch (e) {
+    // Sentry 초기화 실패 시 무시
+  }
+  
   console.log('[Auth JWT] 🚪 로그아웃 완료 (JWT + 레거시 키 모두 삭제)')
 }
 
