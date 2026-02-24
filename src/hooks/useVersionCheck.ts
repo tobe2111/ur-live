@@ -40,18 +40,18 @@ export function useVersionCheck() {
       // Get stored version
       const currentVersion = localStorage.getItem(STORAGE_KEY);
 
-      console.log('[VersionCheck] Current:', currentVersion, 'New:', newVersion, 'Idle:', isIdle);
+      // console.log('[VersionCheck] Current:', currentVersion, 'New:', newVersion, 'Idle:', isIdle);
 
       if (currentVersion && currentVersion !== newVersion) {
-        console.warn('[VersionCheck] ⚠️ New version detected!');
+        console.log('[VersionCheck] ⚠️ New version detected:', newVersion);
         setNeedsUpdate(true);
         
         // ✅ 사용자가 idle 상태일 때만 알림 표시
         if (isIdle) {
-          console.log('[VersionCheck] 📢 Showing notification (user is idle)');
+          console.log('[VersionCheck] 📢 Showing update notification');
           setShowNotification(true);
         } else {
-          console.log('[VersionCheck] ⏸️ Notification deferred (user is active)');
+          // console.log('[VersionCheck] ⏸️ Notification deferred (user is active)');
         }
       } else if (!currentVersion) {
         // First visit - store version
@@ -94,28 +94,38 @@ export function useVersionCheck() {
   };
 
   useEffect(() => {
-    // ✅ 사용자 활동 추적
+    // ✅ 사용자 활동 추적 (throttled)
+    let activityTimeout: NodeJS.Timeout;
     const updateActivity = () => {
+      // Throttle: 1초에 한 번만 업데이트
+      if (activityTimeout) return;
+      activityTimeout = setTimeout(() => {
+        activityTimeout = null as any;
+      }, 1000);
+      
       setLastActivity(Date.now());
       
       // 활동 중일 때 알림이 떠 있으면 자동으로 숨김
-      if (showNotification) {
-        console.log('[VersionCheck] 👤 User became active, hiding notification');
-        setShowNotification(false);
-      }
+      setShowNotification(prev => {
+        if (prev) {
+          // console.log('[VersionCheck] 👤 User became active, hiding notification');
+          return false;
+        }
+        return prev;
+      });
     };
 
-    // 사용자 활동 이벤트
-    window.addEventListener('mousemove', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('scroll', updateActivity);
-    window.addEventListener('click', updateActivity);
-    window.addEventListener('touchstart', updateActivity);
+    // 사용자 활동 이벤트 (passive로 성능 개선)
+    window.addEventListener('mousemove', updateActivity, { passive: true });
+    window.addEventListener('keydown', updateActivity, { passive: true });
+    window.addEventListener('scroll', updateActivity, { passive: true });
+    window.addEventListener('click', updateActivity, { passive: true });
+    window.addEventListener('touchstart', updateActivity, { passive: true });
 
     // ✅ 페이지 포커스 복귀 시 체크 (가장 효율적)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[VersionCheck] 👁️ Page focused, checking version...');
+        // console.log('[VersionCheck] 👁️ Page focused, checking version...');
         checkVersion();
       }
     };
@@ -129,7 +139,7 @@ export function useVersionCheck() {
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[ServiceWorker] New version installed in background');
+                // console.log('[ServiceWorker] New version installed in background');
                 checkVersion(); // SW가 새 버전 감지 시 체크
               }
             });
@@ -153,7 +163,7 @@ export function useVersionCheck() {
       window.removeEventListener('click', updateActivity);
       window.removeEventListener('touchstart', updateActivity);
     };
-  }, [lastActivity, showNotification]);
+  }, []); // ✅ 의존성 배열 비우기 (한 번만 실행)
 
   return { 
     needsUpdate, 

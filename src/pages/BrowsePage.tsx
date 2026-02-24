@@ -117,9 +117,9 @@ export default function BrowsePage() {
                     
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-bold text-lg text-foreground">
-                        {product.current_price.toLocaleString()}원
+                        {(product.current_price || product.price || 0).toLocaleString()}원
                       </span>
-                      {product.original_price && product.original_price > product.current_price && (
+                      {product.original_price && product.original_price > (product.current_price || product.price || 0) && (
                         <span className="text-xs text-muted-foreground line-through">
                           {product.original_price.toLocaleString()}원
                         </span>

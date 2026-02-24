@@ -101,6 +101,9 @@ export default function ProductDetailPage() {
       })
       showToast('장바구니에 추가되었습니다.', 'success')
       localStorage.setItem('hasCartItems', 'true')
+      
+      // ✅ 장바구니 페이지로 이동
+      setTimeout(() => navigate('/cart'), 1000)
     } catch (err: any) {
       console.error('Failed to add to cart:', err)
       showToast(err.response?.data?.error || '장바구니 추가에 실패했습니다.', 'error')
