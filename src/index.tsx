@@ -2449,7 +2449,8 @@ app.get('/api/auth/validate', cors(), async (c) => {
     }
     
     // JWT 검증 (verifyCachedToken: 메모리 캐시 사용, KV 읽기 최소화)
-    const payload = await verifyCachedToken(token)
+    const jwtSecret = getJwtSecret(c.env.JWT_SECRET)
+    const payload = await verifyCachedToken(token, jwtSecret)
     
     if (!payload) {
       return c.json({ 
