@@ -65,6 +65,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)  // 개인정보 수집 동의
   
   // 토스페이먼츠 위젯 상태
   const [widgets, setWidgets] = useState<any>(null)
@@ -525,6 +526,13 @@ export default function CheckoutPage() {
       console.log('[Payment] ⚠️ 배송지 미선택')
       alert('배송지를 선택해주세요.')
       setShowAddressModal(true)  // 자동으로 배송지 선택 모달 열기
+      return
+    }
+
+    // 개인정보 수집 동의 확인
+    if (!agreedToPrivacy) {
+      console.log('[Payment] ⚠️ 개인정보 수집 동의 미체크')
+      alert('개인정보 수집 및 이용에 동의해주세요.')
       return
     }
 
@@ -997,9 +1005,24 @@ export default function CheckoutPage() {
       {/* 약관 링크 - 최하단 (모바일만) */}
       <div className="bg-gray-50 py-4 border-t border-gray-200 lg:hidden">
         <div className="mx-auto max-w-lg px-5">
-          <p className="text-[11px] text-gray-500 text-center mb-2">
-            결제 진행 시 아래 약관에 동의한 것으로 간주됩니다
+          {/* 약관 및 개인정보 수집 동의 */}
+          <p className="text-[11px] text-gray-500 text-center mb-3">
+            결제 진행 시 아래 약관 및 개인정보 수집에 동의한 것으로 간주됩니다
           </p>
+          
+          {/* 개인정보 수집 동의 체크박스 */}
+          <label className="flex items-start gap-2 justify-center mb-3 cursor-pointer group px-4">
+            <input
+              type="checkbox"
+              checked={agreedToPrivacy}
+              onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <span className="text-[12px] text-gray-700 group-hover:text-gray-900 transition-colors">
+              <span className="font-medium text-red-600">(필수)</span> 개인정보 수집 및 이용에 동의합니다
+            </span>
+          </label>
+          
           <div className="flex justify-center gap-2 text-[11px]">
             <Link 
               to="/terms" 

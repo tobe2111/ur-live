@@ -23,10 +23,22 @@ export default function PrivacyPolicyPage() {
 
         {/* 본문 */}
         <div className="bg-white rounded-lg border border-gray-200 p-8 space-y-8">
+          {/* 사업자 정보 */}
+          <section className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm text-gray-700">
+            <p><strong>사업자 정보</strong></p>
+            <p>• 상호명: 리스터코퍼레이션</p>
+            <p>• 대표자: 정지원</p>
+            <p>• 사업자등록번호: 479-09-02930</p>
+            <p>• 통신판매업신고번호: 2025-부산금정-0540</p>
+            <p>• 사업장주소: 부산광역시 금정구 놀이마당로26 1402호</p>
+            <p>• 대표전화: 0507-0177-0432</p>
+            <p>• 대표이메일: jiwon@ur-team.com</p>
+          </section>
+
           <section>
             <h2 className="text-2xl font-bold mb-4">1. 개인정보의 처리 목적</h2>
             <div className="space-y-3 text-gray-700 leading-relaxed">
-              <p>유어 라이브(이하 "회사")는 다음의 목적을 위하여 개인정보를 처리합니다. 
+              <p>리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")는 다음의 목적을 위하여 개인정보를 처리합니다. 
                 처리하고 있는 개인정보는 다음의 목적 이외의 용도로는 이용되지 않으며, 
                 이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.</p>
               

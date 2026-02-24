@@ -8,6 +8,7 @@ export default function SellerLoginPage() {
   const navigate = useNavigate()
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -89,6 +90,12 @@ export default function SellerLoginPage() {
           setError(response.data.error || '로그인 실패')
         }
       } else {
+        // 회원가입: 약관 동의 확인
+        if (!agreedToTerms) {
+          setError('서비스 이용약관 및 개인정보처리방침에 동의해주세요.')
+          return
+        }
+        
         // Redirect to registration page
         navigate('/seller/register')
       }
@@ -309,18 +316,44 @@ export default function SellerLoginPage() {
 
         {/* Terms - Signup only */}
         {!isLogin && (
-          <div className="mt-6 text-center">
-            <p className="text-[12px] text-[#8e8e93] leading-relaxed px-4">
-              가입하시면 유어 라이브의{' '}
-              <Link to="/terms" className="text-[#007aff] hover:opacity-60">
-                이용약관
-              </Link>
-              {' '}및{' '}
-              <Link to="/privacy" className="text-[#007aff] hover:opacity-60">
-                개인정보처리방침
-              </Link>
-              에 동의하는 것으로 간주됩니다.
-            </p>
+          <div className="mt-6 space-y-4">
+            {/* 약관 동의 체크박스 */}
+            <label className="flex items-start gap-3 px-4 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-1 w-5 h-5 rounded border-gray-300 text-[#007aff] focus:ring-[#007aff] cursor-pointer"
+                required
+              />
+              <span className="text-[13px] text-[#6e6e73] leading-relaxed group-hover:text-[#1d1d1f] transition-colors">
+                <span className="font-medium text-[#1d1d1f]">(필수)</span>{' '}
+                리스터코퍼레이션의{' '}
+                <Link 
+                  to="/terms" 
+                  className="text-[#007aff] hover:opacity-60 underline"
+                  target="_blank"
+                >
+                  서비스 이용약관
+                </Link>
+                {' '}및{' '}
+                <Link 
+                  to="/privacy" 
+                  className="text-[#007aff] hover:opacity-60 underline"
+                  target="_blank"
+                >
+                  개인정보처리방침
+                </Link>
+                에 동의합니다.
+              </span>
+            </label>
+            
+            {/* 약관 미동의 시 경고 */}
+            {!agreedToTerms && (
+              <p className="text-[11px] text-red-500 px-4">
+                ⚠️ 회원가입을 위해서는 약관에 동의해야 합니다.
+              </p>
+            )}
           </div>
         )}
       </main>

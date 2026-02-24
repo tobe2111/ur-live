@@ -25,10 +25,21 @@ export default function TermsOfServicePage() {
         <div className="bg-white rounded-lg border border-gray-200 p-8 space-y-8">
           <section>
             <h2 className="text-2xl font-bold mb-4">제1조 (목적)</h2>
-            <p className="text-gray-700 leading-relaxed">
-              본 약관은 유어 라이브(이하 "회사")가 제공하는 라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 
+            <p className="text-gray-700 leading-relaxed mb-4">
+              본 약관은 리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")이 제공하는 
+              유어 라이브 라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 
               회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
             </p>
+            <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm text-gray-700">
+              <p><strong>사업자 정보</strong></p>
+              <p>• 상호명: 리스터코퍼레이션</p>
+              <p>• 대표자: 정지원</p>
+              <p>• 사업자등록번호: 479-09-02930</p>
+              <p>• 통신판매업신고번호: 2025-부산금정-0540</p>
+              <p>• 사업장주소: 부산광역시 금정구 놀이마당로26 1402호</p>
+              <p>• 대표전화: 0507-0177-0432</p>
+              <p>• 대표이메일: jiwon@ur-team.com</p>
+            </div>
           </section>
 
           <section>
