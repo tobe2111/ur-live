@@ -1338,6 +1338,37 @@ app.use('/images/*', async (c, next) => {
 // =================================
 
 // =================================
+// API Protection Middleware
+// =================================
+// 🔒 모든 Admin API에 인증 + Admin 권한 체크 적용 (로그인 제외)
+app.use('/api/admin/*', async (c, next) => {
+  // 로그인 엔드포인트는 인증 제외
+  if (c.req.path === '/api/admin/login') {
+    await next();
+    return;
+  }
+  
+  // 나머지는 인증 + Admin 권한 필수
+  await requireAuth(c, async () => {
+    await requireAdmin(c, next);
+  });
+});
+
+// 🔒 모든 Seller API에 인증 + Seller 권한 체크 적용 (회원가입 제외)
+app.use('/api/seller/*', async (c, next) => {
+  // 회원가입 엔드포인트는 인증 제외
+  if (c.req.path === '/api/seller/register') {
+    await next();
+    return;
+  }
+  
+  // 나머지는 인증 + Seller 권한 필수
+  await requireAuth(c, async () => {
+    await requireSeller(c, next);
+  });
+});
+
+// =================================
 // Authentication APIs
 // =================================
 
@@ -1619,21 +1650,6 @@ app.post('/api/auth/logout', cors(), async (c) => {
   }
 });
 
-// ==================== Seller API Protection ====================
-// 모든 Seller API에 인증 + Seller 권한 체크 적용 (회원가입 제외)
-app.use('/api/seller/*', async (c, next) => {
-  // 회원가입 엔드포인트는 인증 제외
-  if (c.req.path === '/api/seller/register') {
-    await next();
-    return;
-  }
-  
-  // 나머지는 인증 + Seller 권한 필수
-  await requireAuth(c, async () => {
-    await requireSeller(c, next);
-  });
-});
-
 // 셀러 회원가입 API
 app.post('/api/seller/register', cors(), async (c) => {
   const { DB } = c.env;
@@ -1694,21 +1710,6 @@ app.post('/api/seller/register', cors(), async (c) => {
     console.error('Seller registration error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
-});
-
-// ==================== Admin API Protection ====================
-// 모든 Admin API에 인증 + Admin 권한 체크 적용 (로그인 제외)
-app.use('/api/admin/*', async (c, next) => {
-  // 로그인 엔드포인트는 인증 제외
-  if (c.req.path === '/api/admin/login') {
-    await next();
-    return;
-  }
-  
-  // 나머지는 인증 + Admin 권한 필수
-  await requireAuth(c, async () => {
-    await requireAdmin(c, next);
-  });
 });
 
 // Admin login API (email-based)
