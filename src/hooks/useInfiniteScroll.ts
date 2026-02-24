@@ -13,6 +13,7 @@ export interface UseInfiniteScrollOptions<T> {
   threshold?: number; // Intersection Observer threshold (0.0 ~ 1.0)
   rootMargin?: string; // Intersection Observer rootMargin
   enabled?: boolean; // 무한 스크롤 활성화 여부
+  mobileOptimized?: boolean; // 모바일 최적화 모드 (기본: true)
 }
 
 export interface UseInfiniteScrollReturn<T> {
@@ -35,7 +36,8 @@ export function useInfiniteScroll<T>(
     pageSize = 20,
     threshold = 0.5,
     rootMargin = '100px',
-    enabled = true
+    enabled = true,
+    mobileOptimized = true  // 기본: 모바일 최적화 활성화
   } = options;
 
   const [data, setData] = useState<T[]>([]);
@@ -47,6 +49,9 @@ export function useInfiniteScroll<T>(
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isFirstLoad = useRef(true);
+  
+  // 🔥 모바일 최적화: 디바운스를 위한 타이머
+  const loadMoreTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 데이터 로드 함수
   const loadData = useCallback(
@@ -98,10 +103,20 @@ export function useInfiniteScroll<T>(
     (entries: IntersectionObserverEntry[]) => {
       const target = entries[0];
       if (target.isIntersecting && hasMore && !isLoadingMore && !isLoading && enabled) {
-        loadData(page);
+        // 🔥 모바일 최적화: 디바운스 적용 (저사양 기기에서 중복 호출 방지)
+        if (mobileOptimized) {
+          if (loadMoreTimerRef.current) {
+            clearTimeout(loadMoreTimerRef.current);
+          }
+          loadMoreTimerRef.current = setTimeout(() => {
+            loadData(page);
+          }, 300); // 300ms 디바운스
+        } else {
+          loadData(page);
+        }
       }
     },
-    [hasMore, isLoadingMore, isLoading, page, loadData, enabled]
+    [hasMore, isLoadingMore, isLoading, page, loadData, enabled, mobileOptimized]
   );
 
   // Intersection Observer 설정
@@ -148,6 +163,10 @@ export function useInfiniteScroll<T>(
     return () => {
       if (observerRef.current) {
         observerRef.current.disconnect();
+      }
+      // 🔥 모바일 최적화: 타이머 정리
+      if (loadMoreTimerRef.current) {
+        clearTimeout(loadMoreTimerRef.current);
       }
     };
   }, []);

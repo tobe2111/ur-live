@@ -9,7 +9,7 @@
  * 참고: Cloudflare Image Resizing은 사용하지 않음 (Pro 플랜 필요)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { optimizeImage, type ImageSize } from '../lib/image-optimizer';
 
 interface OptimizedImageProps {
@@ -22,6 +22,8 @@ interface OptimizedImageProps {
   priority?: boolean;
   onLoad?: () => void;
   onError?: () => void;
+  // 🔥 모바일 최적화 옵션
+  mobileOptimized?: boolean; // 기본: true
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -33,10 +35,43 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   height,
   priority = false,
   onLoad,
-  onError
+  onError,
+  mobileOptimized = true  // 기본: 모바일 최적화 활성화
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  // 🔥 모바일 최적화: Intersection Observer로 화면에 보일 때만 로드
+  const [shouldLoad, setShouldLoad] = useState(priority); // priority면 즉시 로드
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (!mobileOptimized || priority || shouldLoad) {
+      return;
+    }
+
+    // 🔥 모바일 최적화: Intersection Observer로 지연 로딩
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setShouldLoad(true);
+            observer.disconnect();
+          }
+        });
+      },
+      {
+        rootMargin: '50px' // 화면에 50px 전에 미리 로드
+      }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [mobileOptimized, priority, shouldLoad]);
 
   const handleLoad = () => {
     setIsLoading(false);
@@ -74,6 +109,19 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   const imageSrc = optimizeImage(src, size);
 
+  // 🔥 모바일 최적화: 화면에 보이지 않으면 placeholder만 표시
+  if (mobileOptimized && !shouldLoad) {
+    return (
+      <div 
+        ref={imgRef}
+        className={`relative ${className}`}
+        style={{ width, height }}
+      >
+        <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${className}`}>
       {isLoading && (
@@ -84,6 +132,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       )}
       
       <img
+        ref={imgRef}
         src={imageSrc}
         alt={alt}
         width={width}

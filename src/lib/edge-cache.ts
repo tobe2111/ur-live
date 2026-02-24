@@ -35,6 +35,35 @@ function isCacheable(c: Context): boolean {
     return false;
   }
 
+  // ⚠️ 실시간성이 중요한 데이터는 캐시하지 않음
+  const url = new URL(c.req.url);
+  const pathname = url.pathname;
+
+  // 1. 재고 조회 API (실시간 재고 확인 필요)
+  if (pathname.includes('/api/products/') && pathname.includes('/stock')) {
+    return false;
+  }
+
+  // 2. 라이브 스트림 상태 API (실시간 상태 확인 필요)
+  if (pathname.includes('/api/streams/') && pathname.includes('/status')) {
+    return false;
+  }
+
+  // 3. 현재 상품 API (라이브 중 상품 전환 실시간 반영)
+  if (pathname.includes('/current-product')) {
+    return false;
+  }
+
+  // 4. 실시간 채팅 API (SSE)
+  if (pathname.includes('/api/chat') || pathname.includes('/api/sse')) {
+    return false;
+  }
+
+  // 5. 주문 생성/결제 API (당연히 캐시 안 됨, POST이지만 명시)
+  if (pathname.includes('/api/orders') || pathname.includes('/api/payment')) {
+    return false;
+  }
+
   return true;
 }
 
@@ -170,25 +199,25 @@ export const CACHE_PRESETS = {
     staleWhileRevalidate: 86400 // 24시간
   },
   
-  // 상품 목록 (5분)
+  // 상품 목록 (1분) - 재고 변동 반영
   products: {
-    ttl: 60,
-    sMaxAge: 300,
-    staleWhileRevalidate: 600
-  },
-  
-  // 라이브 스트림 목록 (30초)
-  liveStreams: {
     ttl: 10,
-    sMaxAge: 30,
-    staleWhileRevalidate: 60
+    sMaxAge: 60,  // 1분으로 단축
+    staleWhileRevalidate: 120
   },
   
-  // 상품 상세 (10분)
+  // 라이브 스트림 목록 (10초) - 실시간성 중요
+  liveStreams: {
+    ttl: 5,
+    sMaxAge: 10,  // 10초로 단축
+    staleWhileRevalidate: 30
+  },
+  
+  // 상품 상세 (30초) - 재고 실시간 반영
   productDetail: {
-    ttl: 300,
-    sMaxAge: 600,
-    staleWhileRevalidate: 1800
+    ttl: 10,
+    sMaxAge: 30,  // 30초로 단축
+    staleWhileRevalidate: 60
   },
   
   // 카테고리/태그 (1시간)
