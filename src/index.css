@@ -303,17 +303,14 @@ html {
 
 /* ============================================
    Mobile Ratio Layout (max-w-md)
-   Force include these classes in build
+   CRITICAL: Outside @layer to prevent purging
+   These classes MUST be included in every build
    ============================================ */
-@layer utilities {
-  /* Mobile container: 448px max width, centered */
-  .max-w-md {
-    max-width: 28rem !important; /* 448px */
-  }
-  
-  /* Center horizontally */
-  .mx-auto {
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
+.max-w-md {
+  max-width: 28rem !important; /* 448px */
+}
+
+.mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
