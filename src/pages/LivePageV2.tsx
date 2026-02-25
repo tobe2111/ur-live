@@ -2076,7 +2076,15 @@ export default function LivePageV2() {
       {isStreamer && (
         <div className="fixed top-20 right-4 z-50">
           <button
-            onClick={() => setShowProductSelector(true)}
+            onClick={() => {
+              console.log('[LivePageV2] 🔧 상품 변경 버튼 클릭:', {
+                showProductSelector,
+                reelsCount: reels.length,
+                productsInReels: reels.filter(r => r.product !== null).length,
+                currentStream: currentStream?.id
+              })
+              setShowProductSelector(true)
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all"
           >
             <ShoppingBag size={18} />
