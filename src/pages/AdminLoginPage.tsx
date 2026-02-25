@@ -111,7 +111,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="admin@ur-team.com"
+                placeholder="관리자 이메일을 입력하세요"
               />
             </div>
 
@@ -139,12 +139,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Test Credentials Info */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 text-center">
-              💡 테스트 계정: admin@ur-team.com / admin123
-            </p>
-          </div>
+
         </div>
 
         {/* Back to Home */}

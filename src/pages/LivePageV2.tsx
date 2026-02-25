@@ -650,6 +650,12 @@ function ReelCard({
   // Chat input
   const [chatMessage, setChatMessage] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+  
+  // Seller control
+  const [changingProduct, setChangingProduct] = useState(false)
+  const userId = getUserId()
+  const userType = localStorage.getItem('user_type')
+  const isSeller = userType === 'seller' && userId && stream.seller_id === parseInt(userId)
 
   const { product, stream } = reel
   
@@ -1069,6 +1075,32 @@ function ReelCard({
   }
 
   // ============================================
+  // Seller: Change Current Product
+  // ============================================
+  async function handleChangeProduct() {
+    if (!isSeller || !product || changingProduct) return
+
+    setChangingProduct(true)
+    try {
+      await api.post(`/api/seller/streams/${stream.id}/change-product`, {
+        productId: product.id
+      })
+
+      // Show success notification
+      setNotificationText('✅ 이 상품을 지금 소개 중입니다!')
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 2000)
+
+      console.log('[Seller] Product changed successfully to:', product.id)
+    } catch (error: any) {
+      console.error('[Seller] Failed to change product:', error)
+      showAlert(error.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
+    } finally {
+      setChangingProduct(false)
+    }
+  }
+
+  // ============================================
   // Send Chat Message
   // ============================================
   async function handleSendMessage(e: React.FormEvent) {
@@ -1221,6 +1253,26 @@ function ReelCard({
                 {addingToCart ? '담는 중...' : '담기'}
               </span>
             </button>
+
+            {/* Seller: Change Product Button (Only visible to seller) */}
+            {isSeller && product && (
+              <button
+                onClick={handleChangeProduct}
+                disabled={changingProduct || isCurrentProduct}
+                className={`flex items-center gap-1.5 shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                  isCurrentProduct
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                    : changingProduct
+                    ? 'bg-orange-500/20 text-orange-400 opacity-50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/30'
+                }`}
+                aria-label="Change to this product"
+              >
+                <span>
+                  {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔥 지금 이 상품 소개하기'}
+                </span>
+              </button>
+            )}
 
             {/* Buy button */}
             <button

@@ -34,11 +34,11 @@ export default function SellerLiveControlPage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   useEffect(() => {
-    // Check seller session
-    const sessionToken = localStorage.getItem('seller_session_token')
+    // Check seller session (JWT-based)
+    const accessToken = localStorage.getItem('access_token')
     const userType = localStorage.getItem('user_type')
     
-    if (!sessionToken || userType !== 'seller') {
+    if (!accessToken || userType !== 'seller') {
       navigate('/seller/login')
       return
     }
@@ -48,8 +48,6 @@ export default function SellerLiveControlPage() {
 
   async function loadData() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
-      
       // Load live streams
       const streamsRes = await api.get('/api/seller/streams')
       

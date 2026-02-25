@@ -200,6 +200,14 @@ export default function SellerPage() {
             <div className="flex items-center gap-3">
               <NotificationBell userType="seller" />
               <button 
+                onClick={() => navigate('/seller/live-control')}
+                className="flex items-center gap-1.5 text-[#007aff] hover:opacity-60 transition-opacity"
+                title="라이브 컨트롤"
+              >
+                <Play className="h-5 w-5" />
+                <span className="text-[14px] font-medium hidden sm:inline">라이브 컨트롤</span>
+              </button>
+              <button 
                 onClick={() => navigate('/seller/profile')}
                 className="text-[#1d1d1f] hover:opacity-60 transition-opacity"
                 title="프로필 편집"
@@ -409,6 +417,17 @@ export default function SellerPage() {
             </div>
             <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">상품 관리</p>
             <p className="text-[13px] text-[#6e6e73]">상품 등록 및 수정</p>
+          </button>
+
+          <button
+            onClick={() => navigate('/seller/live-control')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-[#ff3b30] to-[#ff9500] rounded-full flex items-center justify-center mb-3">
+              <Play className="h-5 w-5 text-white" />
+            </div>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">🎥 라이브 컨트롤</p>
+            <p className="text-[13px] text-[#6e6e73]">실시간 상품 전환</p>
           </button>
         </div>
 
