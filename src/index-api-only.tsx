@@ -2972,14 +2972,68 @@ app.post('/api/orders/:orderNumber/refund', async (c) => {
       return c.json({ success: false, error: 'This order cannot be refunded' }, 400);
     }
 
-    // Update status to cancelled/refund requested
-    await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
-    ).bind('REFUND_REQUESTED', orderNumber).run();
-
-    // TODO: Call Toss Pay refund API
-
-    return c.json({ success: true, message: 'Refund request submitted' });
+    // ✅ Call Toss Pay refund API
+    const tossSecretKey = c.env.TOSS_SECRET_KEY || 'test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6';
+    
+    try {
+      const refundResponse = await fetch(
+        `https://api.tosspayments.com/v1/payments/${order.payment_key}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(tossSecretKey + ':')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            cancelReason: reason || '고객 요청',
+            cancelAmount: order.total_amount
+          })
+        }
+      );
+      
+      const refundData = await refundResponse.json();
+      
+      if (!refundResponse.ok) {
+        console.error('[Refund] Toss API error:', refundData);
+        return c.json({ 
+          success: false, 
+          error: refundData.message || '환불 처리 중 오류가 발생했습니다.' 
+        }, 400);
+      }
+      
+      // Update order status to REFUNDED
+      await DB.prepare(
+        `UPDATE orders 
+         SET status = ?, 
+             refund_reason = ?,
+             refunded_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE order_number = ?`
+      ).bind('REFUNDED', reason || '고객 요청', orderNumber).run();
+      
+      return c.json({ 
+        success: true, 
+        message: '환불이 완료되었습니다.',
+        refund: {
+          orderId: refundData.orderId,
+          canceledAmount: refundData.cancelAmount,
+          canceledAt: refundData.canceledAt
+        }
+      });
+      
+    } catch (refundErr) {
+      console.error('[Refund] Request failed:', refundErr);
+      
+      // 환불 요청은 실패했지만 주문 상태는 업데이트
+      await DB.prepare(
+        'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
+      ).bind('REFUND_REQUESTED', orderNumber).run();
+      
+      return c.json({ 
+        success: false, 
+        error: '환불 요청이 제출되었으나 결제 취소 처리 중 오류가 발생했습니다. 관리자에게 문의하세요.' 
+      }, 500);
+    }
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }

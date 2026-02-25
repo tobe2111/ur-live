@@ -6661,9 +6661,14 @@ app.get('/api/seller/stats', async (c) => {
       WHERE seller_id = ? AND status = 'live'
     `).bind(auth.sellerId).first();
 
-    // TODO: Add viewer_count column to live_streams table
-    // For now, return 0 for totalViewers
-    const totalViewers = 0;
+    // ✅ viewer_count 컬럼 추가 완료 - 실제 값 조회
+    const viewerCount = await DB.prepare(`
+      SELECT SUM(viewer_count) as total
+      FROM live_streams 
+      WHERE seller_id = ? AND status = 'live'
+    `).bind(auth.sellerId).first();
+    
+    const totalViewers = viewerCount?.total || 0;
 
     const stats = {
       totalProducts: products.count || 0,

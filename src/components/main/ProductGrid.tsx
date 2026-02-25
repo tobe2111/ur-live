@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bookmark } from 'lucide-react'
-import axios from 'axios'
+import api from '@/lib/api'
 
 interface Product {
   id: number
@@ -18,15 +18,62 @@ interface Product {
 function ProductCard({ product }: { product: Product }) {
   const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  // 위시리스트 상태 확인
+  useEffect(() => {
+    const checkWishlist = async () => {
+      try {
+        const userId = localStorage.getItem('userId')
+        if (!userId) return
+        
+        const response = await api.get(`/api/wishlists/check/${userId}/${product.id}`)
+        if (response.data.success) {
+          setSaved(response.data.data.isSaved)
+        }
+      } catch (err) {
+        console.error('위시리스트 확인 실패:', err)
+      }
+    }
+    checkWishlist()
+  }, [product.id])
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`)
   }
 
-  const handleSaveClick = (e: React.MouseEvent) => {
+  const handleSaveClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    setSaved(!saved)
-    // TODO: 저장 API 호출
+    
+    const userId = localStorage.getItem('userId')
+    if (!userId) {
+      alert('로그인이 필요합니다.')
+      navigate('/login')
+      return
+    }
+    
+    if (loading) return
+    setLoading(true)
+    
+    try {
+      if (saved) {
+        // 위시리스트에서 제거
+        await api.delete(`/api/wishlists/product/${product.id}`)
+        setSaved(false)
+      } else {
+        // 위시리스트에 추가
+        await api.post('/api/wishlists', {
+          user_id: parseInt(userId),
+          product_id: product.id
+        })
+        setSaved(true)
+      }
+    } catch (err) {
+      console.error('위시리스트 처리 실패:', err)
+      alert('저장 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getTag = () => {

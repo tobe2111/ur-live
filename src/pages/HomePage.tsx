@@ -142,19 +142,20 @@ export default function HomePage() {
     try {
       console.log('[HomePage] Loading streams...')
       setLoading(true)
-      // status 파라미터 없이 호출하면 live와 scheduled 모두 가져옴
       const response = await api.get('/api/streams')
       console.log('[HomePage] API Response:', response.data)
       if (response.data.success) {
-        // status가 'live' 또는 'scheduled'인 스트림 표시
         const activeStreams = (response.data.data || []).filter(
           (s: Stream) => s.status === 'live' || s.status === 'scheduled'
         )
         console.log('[HomePage] Active streams (live + scheduled):', activeStreams.length)
         setStreams(activeStreams)
+      } else {
+        showAlert('라이브 방송 목록을 불러오지 못했습니다.', 'error')
       }
     } catch (error) {
       console.error('[HomePage] Failed to load streams:', error)
+      showAlert('라이브 방송 목록을 불러오는 중 오류가 발생했습니다.', 'error')
     } finally {
       setLoading(false)
     }
@@ -165,9 +166,12 @@ export default function HomePage() {
       const response = await api.get('/api/banners')
       if (response.data.success) {
         setBanners(response.data.data || [])
+      } else {
+        console.error('[HomePage] Failed to load banners:', response.data.error)
       }
     } catch (error) {
       console.error('[HomePage] Failed to load banners:', error)
+      // 배너는 필수가 아니므로 조용히 실패 처리
     }
   }
 
@@ -189,9 +193,12 @@ export default function HomePage() {
           .filter((s: Stream) => s.status === 'scheduled')
           .slice(0, 4)
         setScheduledStreams(scheduled)
+      } else {
+        console.error('[HomePage] Failed to load scheduled streams:', response.data.error)
       }
     } catch (error) {
-      console.error('Failed to load scheduled streams:', error)
+      console.error('[HomePage] Failed to load scheduled streams:', error)
+      // 예약 방송은 필수가 아니므로 조용히 실패 처리
     }
   }
 
