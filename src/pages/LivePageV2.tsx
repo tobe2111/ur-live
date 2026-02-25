@@ -420,18 +420,155 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
   )
 }
 
-// ProductSheet Component
+// ProductListSheet Component (KREAM Style - Product Grid)
+function ProductListSheet({
+  products,
+  currentProductId,
+  onClose,
+  onSelectProduct,
+  loading,
+}: {
+  products: Product[]
+  currentProductId: number | null
+  onClose: () => void
+  onSelectProduct: (product: Product) => void
+  loading: boolean
+}) {
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
+        onClick={onClose}
+      />
+
+      {/* Sheet - 60% height */}
+      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
+        {/* Handle */}
+        <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100">
+          <div className="h-1 w-10 rounded-full bg-gray-300" />
+          <button
+            onClick={onClose}
+            className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4 text-gray-800" />
+          </button>
+        </div>
+
+        {/* Header */}
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100">
+          <h3 className="text-lg font-bold text-gray-900">라이브 상품 ({products.length}개)</h3>
+          <p className="text-sm text-gray-500 mt-1">상품을 선택해서 구매하세요</p>
+        </div>
+
+        {/* Product Grid */}
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-8 w-8 border-3 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingBag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">등록된 상품이 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {products.map((product) => {
+                const isCurrentProduct = product.id === currentProductId
+                const discount = product.original_price && product.original_price > product.price
+                  ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+                  : 0
+
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => onSelectProduct(product)}
+                    className={`relative bg-white rounded-2xl overflow-hidden transition-all duration-200 active:scale-[0.98] ${
+                      isCurrentProduct
+                        ? 'ring-4 ring-red-500 shadow-xl shadow-red-500/30'
+                        : 'hover:shadow-lg border border-gray-200'
+                    }`}
+                  >
+                    {/* LIVE Badge for current product */}
+                    {isCurrentProduct && (
+                      <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-full shadow-lg">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        <span className="text-white font-bold text-[10px] tracking-wider">LIVE</span>
+                      </div>
+                    )}
+
+                    {/* Product Image */}
+                    <div className="relative aspect-square bg-gray-100">
+                      <img
+                        src={product.image_url || product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {discount > 0 && (
+                        <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                          -{discount}%
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Product Info */}
+                    <div className="p-3 text-left">
+                      <h4 className="text-sm font-bold text-gray-900 line-clamp-2 mb-1.5">
+                        {product.name}
+                      </h4>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-base font-extrabold text-gray-900">
+                          ₩{(product.price || 0).toLocaleString()}
+                        </span>
+                        {product.original_price && product.original_price > product.price && (
+                          <span className="text-xs text-gray-400 line-through">
+                            ₩{product.original_price.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      {product.stock !== undefined && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          재고: {product.stock}개
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Animated border for current product */}
+                    {isCurrentProduct && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute inset-0 border-2 border-yellow-400 animate-pulse" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ProductSheet Component (KREAM Style)
 function ProductSheet({
   product,
   onClose,
+  onAddToCart,
+  onBuyNow,
 }: {
   product: Product
   onClose: () => void
+  onAddToCart: (quantity: number) => Promise<void>
+  onBuyNow: (quantity: number) => Promise<void>
 }) {
   const [selectedColor, setSelectedColor] = useState(0)
   const [selectedSize, setSelectedSize] = useState(0)
   const [quantity, setQuantity] = useState(1)
-  const [addedToCart, setAddedToCart] = useState(false)
+  const [addingToCart, setAddingToCart] = useState(false)
+  const [buyingNow, setBuyingNow] = useState(false)
 
   const originalPrice = product.originalPrice || product.original_price || product.price
   const currentPrice = product.price || 0
@@ -440,12 +577,29 @@ function ProductSheet({
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
     : 0
 
-  function handleAddToCart() {
-    setAddedToCart(true)
-    setTimeout(() => {
-      setAddedToCart(false)
-      onClose()
-    }, 1500)
+  async function handleAddToCart() {
+    if (addingToCart || buyingNow) return
+    setAddingToCart(true)
+    try {
+      await onAddToCart(quantity)
+      // onClose() will be called by parent after showing toast
+    } catch (error) {
+      console.error('Failed to add to cart:', error)
+    } finally {
+      setAddingToCart(false)
+    }
+  }
+
+  async function handleBuyNow() {
+    if (addingToCart || buyingNow) return
+    setBuyingNow(true)
+    try {
+      await onBuyNow(quantity)
+      // Navigation will be handled by parent
+    } catch (error) {
+      console.error('Failed to buy now:', error)
+      setBuyingNow(false)
+    }
   }
 
   return (
@@ -456,8 +610,8 @@ function ProductSheet({
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar">
+      {/* Sheet - KREAM Style with 60% max height */}
+      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
         {/* Handle */}
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/60 backdrop-blur-md">
           <div className="h-1 w-10 rounded-full bg-gray-300" />
@@ -593,27 +747,53 @@ function ProductSheet({
             </div>
           </div>
 
-          {/* Add to cart button */}
-          <button
-            onClick={handleAddToCart}
-            className={`w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition-all duration-300 ${
-              addedToCart
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                : 'bg-red-500 text-white shadow-lg shadow-red-500/40 active:scale-[0.97]'
-            }`}
-          >
-            {addedToCart ? (
-              <>
-                <Check className="h-5 w-5" />
-                Added to Cart
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="h-5 w-5" />
-                {'Add to Cart - $'}{(product.price * quantity).toFixed(2)}
-              </>
-            )}
-          </button>
+          {/* Action Buttons - KREAM Style Split Buttons */}
+          <div className="flex gap-2">
+            {/* 담기 버튼 */}
+            <button
+              onClick={handleAddToCart}
+              disabled={addingToCart || buyingNow}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 border-2 ${
+                addingToCart
+                  ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border-gray-900 text-gray-900 active:scale-[0.98] hover:bg-gray-50'
+              }`}
+            >
+              {addingToCart ? (
+                <>
+                  <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  담는 중...
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="h-5 w-5" />
+                  담기
+                </>
+              )}
+            </button>
+
+            {/* 구매하기 버튼 */}
+            <button
+              onClick={handleBuyNow}
+              disabled={addingToCart || buyingNow}
+              className={`flex-[1.5] flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 ${
+                buyingNow
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-gray-900 text-white active:scale-[0.98] hover:bg-gray-800 shadow-lg'
+              }`}
+            >
+              {buyingNow ? (
+                <>
+                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  처리 중...
+                </>
+              ) : (
+                <>
+                  ₩{((product.price || 0) * quantity).toLocaleString()} 구매하기
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </>
@@ -633,6 +813,9 @@ function ReelCard({
   const navigate = useNavigate()
   const { showAlert } = useModal()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [productListSheetOpen, setProductListSheetOpen] = useState(false)
+  const [streamProducts, setStreamProducts] = useState<Product[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(false)
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
@@ -1075,6 +1258,40 @@ function ReelCard({
   }
 
   // ============================================
+  // Load Stream Products
+  // ============================================
+  async function loadStreamProducts() {
+    if (loadingProducts || streamProducts.length > 0) return
+    
+    setLoadingProducts(true)
+    try {
+      const response = await api.get(`/api/streams/${stream.id}/products`)
+      if (response.data.success) {
+        const products = response.data.data || []
+        // Sort: current product first, then others
+        const sorted = products.sort((a: Product, b: Product) => {
+          if (a.id === stream.current_product_id) return -1
+          if (b.id === stream.current_product_id) return 1
+          return 0
+        })
+        setStreamProducts(sorted)
+      }
+    } catch (error) {
+      console.error('Failed to load stream products:', error)
+    } finally {
+      setLoadingProducts(false)
+    }
+  }
+
+  // ============================================
+  // Open Product List Sheet
+  // ============================================
+  function openProductListSheet() {
+    loadStreamProducts()
+    setProductListSheetOpen(true)
+  }
+
+  // ============================================
   // Seller: Change Current Product
   // ============================================
   async function handleChangeProduct() {
@@ -1138,6 +1355,23 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
+      {/* LIVE Border Animation - Only for current product */}
+      {isCurrentProduct && (
+        <>
+          {/* Animated border */}
+          <div className="absolute inset-0 z-[100] pointer-events-none">
+            <div className="absolute inset-0 border-[6px] border-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.8)]" />
+            <div className="absolute inset-2 border-[3px] border-yellow-400 animate-pulse delay-100 shadow-[0_0_20px_rgba(250,204,21,0.6)]" />
+          </div>
+          
+          {/* LIVE Badge */}
+          <div className="absolute top-4 left-4 z-[101] flex items-center gap-2 bg-red-600 px-4 py-2 rounded-full shadow-2xl animate-bounce">
+            <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+            <span className="text-white font-black text-sm tracking-wider">LIVE 소개 중</span>
+          </div>
+        </>
+      )}
+      
       {/* Background image */}
       <img
         src={safeProduct.image || safeProduct.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
@@ -1239,18 +1473,18 @@ function ReelCard({
               </div>
             </button>
 
-            {/* Basket button */}
+            {/* Basket button - Opens product list */}
             <button
-              onClick={handleAddToCart}
-              disabled={addingToCart || !product}
+              onClick={openProductListSheet}
+              disabled={!product}
               className={`flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95 ${
-                addingToCart || !product ? 'opacity-50 cursor-not-allowed' : ''
+                !product ? 'opacity-50 cursor-not-allowed' : ''
               }`}
-              aria-label="Add to basket"
+              aria-label="Open product list"
             >
               <ShoppingBag className="h-3.5 w-3.5 text-white/80" />
               <span className="text-[11px] font-bold text-white/90">
-                {addingToCart ? '담는 중...' : '담기'}
+                담기
               </span>
             </button>
 
@@ -1274,24 +1508,99 @@ function ReelCard({
               </button>
             )}
 
-            {/* Buy button */}
+            {/* Buy button - Opens product list */}
             <button
-              onClick={handleCheckout}
-              disabled={checkingOut || !product}
+              onClick={openProductListSheet}
+              disabled={!product}
               className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
-                checkingOut || !product ? 'opacity-50 cursor-not-allowed' : ''
+                !product ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              {checkingOut ? '확인 중...' : '구매하기'}
+              구매하기
             </button>
           </div>
         </div>
       </div>
 
+      {/* Product List Sheet */}
+      {productListSheetOpen && (
+        <div className="pointer-events-auto">
+          <ProductListSheet
+            products={streamProducts}
+            currentProductId={stream.current_product_id || null}
+            onClose={() => setProductListSheetOpen(false)}
+            onSelectProduct={(selectedProduct) => {
+              setProductListSheetOpen(false)
+              setCurrentProduct(selectedProduct)
+              setSheetOpen(true)
+            }}
+            loading={loadingProducts}
+          />
+        </div>
+      )}
+
       {/* Product sheet */}
       {sheetOpen && product && (
         <div className="pointer-events-auto">
-          <ProductSheet product={product} onClose={() => setSheetOpen(false)} />
+          <ProductSheet 
+            product={product} 
+            onClose={() => setSheetOpen(false)}
+            onAddToCart={async (quantity) => {
+              // 담기: 장바구니에 추가만 하고 토스트 표시
+              try {
+                const userId = getUserId()
+                if (!userId) {
+                  showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+                  return
+                }
+                
+                await api.post('/api/cart', {
+                  userId: parseInt(userId),
+                  productId: product.id,
+                  quantity,
+                  priceSnapshot: product.price,
+                  liveStreamId: stream.id
+                })
+                
+                localStorage.setItem('hasCartItems', 'true')
+                
+                // 토스트 표시
+                setNotificationText(`✅ 장바구니에 ${quantity}개 담았습니다`)
+                setShowNotification(true)
+                setTimeout(() => setShowNotification(false), 2000)
+                
+                // 시트 닫기
+                setSheetOpen(false)
+              } catch (error: any) {
+                showAlert(error.response?.data?.error || '장바구니 담기 실패', 'error', '오류')
+              }
+            }}
+            onBuyNow={async (quantity) => {
+              // 구매하기: 장바구니에 추가 후 즉시 /cart로 이동
+              try {
+                const userId = getUserId()
+                if (!userId) {
+                  showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+                  return
+                }
+                
+                await api.post('/api/cart', {
+                  userId: parseInt(userId),
+                  productId: product.id,
+                  quantity,
+                  priceSnapshot: product.price,
+                  liveStreamId: stream.id
+                })
+                
+                localStorage.setItem('hasCartItems', 'true')
+                
+                // 즉시 장바구니 페이지로 이동
+                navigate('/cart')
+              } catch (error: any) {
+                showAlert(error.response?.data?.error || '구매 진행 실패', 'error', '오류')
+              }
+            }}
+          />
         </div>
       )}
 
