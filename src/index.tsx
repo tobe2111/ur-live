@@ -3024,14 +3024,36 @@ async function verifyAdminSession(c: any) {
 }
 
 async function verifySellerSession(c: any) {
-  const sessionToken = c.req.header('X-Session-Token');
+  // 1. Try JWT token first (Authorization: Bearer xxx)
+  const authHeader = c.req.header('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = await verifyJWT(token, c.env.JWT_SECRET);
+      
+      // Check if user is seller
+      if (decoded.userType !== 'seller') {
+        return { success: false, error: '판매자 권한이 필요합니다' };
+      }
+      
+      return { 
+        success: true, 
+        sellerId: decoded.userId,  // For sellers, userId IS sellerId
+        userData: decoded 
+      };
+    } catch (err) {
+      console.error('[verifySellerSession] JWT verification failed:', err);
+      // Fall through to try session token
+    }
+  }
   
+  // 2. Fallback to session token (X-Session-Token)
+  const sessionToken = c.req.header('X-Session-Token');
   if (!sessionToken) {
     return { success: false, error: '인증 토큰이 없습니다' };
   }
   
   const session = await getSession(c.env.SESSION_KV, sessionToken);
-  
   if (!session || session.user_type !== 'seller') {
     return { success: false, error: '판매자 권한이 필요합니다' };
   }

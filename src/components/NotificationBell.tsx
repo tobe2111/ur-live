@@ -23,6 +23,7 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [errorCount, setErrorCount] = useState(0) // 🔧 연속 에러 카운트
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // 알림 조회
@@ -34,9 +35,16 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
       if (response.data.success) {
         setNotifications(response.data.data || [])
         setUnreadCount(response.data.unread_count || 0)
+        setErrorCount(0) // 🔧 성공 시 에러 카운트 리셋
       }
     } catch (err) {
       console.error('[Notifications] Load error:', err)
+      setErrorCount(prev => prev + 1) // 🔧 에러 카운트 증가
+      
+      // 🔧 3번 이상 연속 에러 시 polling 중지 (console에 경고)
+      if (errorCount >= 2) {
+        console.warn('[Notifications] ⚠️ Too many errors, stopping auto-refresh')
+      }
     } finally {
       setLoading(false)
     }
@@ -92,14 +100,20 @@ export default function NotificationBell({ userType }: NotificationBellProps) {
     loadNotifications()
   }, [])
 
-  // 5초마다 자동 갱신
+  // 5초마다 자동 갱신 (단, 3번 이상 연속 에러 시 중지)
   useEffect(() => {
+    // 🔧 에러가 3번 이상이면 polling 중지
+    if (errorCount >= 3) {
+      console.warn('[Notifications] ⚠️ Polling disabled due to repeated errors')
+      return
+    }
+    
     const interval = setInterval(() => {
       loadNotifications()
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [errorCount]) // 🔧 errorCount 의존성 추가
 
   // 외부 클릭 감지
   useEffect(() => {
