@@ -1530,22 +1530,23 @@ function ReelCard({
               </span>
             </button>
 
-            {/* Seller: Change Product Button (Only visible to seller) */}
+            {/* Seller: Change Product Button - 셀러 전용 상품 변경 버튼 */}
             {isSeller && product && (
               <button
                 onClick={handleChangeProduct}
                 disabled={changingProduct || isCurrentProduct}
-                className={`flex items-center gap-1.5 shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                className={`flex items-center gap-1.5 shrink-0 rounded-lg px-4 py-2 text-xs font-bold transition-all active:scale-95 ${
                   isCurrentProduct
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 cursor-default'
                     : changingProduct
                     ? 'bg-orange-500/20 text-orange-400 opacity-50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/30'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl'
                 }`}
                 aria-label="Change to this product"
               >
+                <ShoppingBag size={14} />
                 <span>
-                  {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔥 지금 이 상품 소개하기'}
+                  {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 현재 소개 중' : '이 상품으로 변경'}
                 </span>
               </button>
             )}
@@ -2072,33 +2073,13 @@ export default function LivePageV2() {
         }}
       />
       
-      {/* 스트리머 전용: 상품 변경 버튼 */}
-      {isStreamer && (
-        <div className="fixed top-20 right-4 z-50">
-          <button
-            onClick={() => {
-              console.log('[LivePageV2] 🔧 상품 변경 버튼 클릭:', {
-                showProductSelector,
-                reelsCount: reels.length,
-                productsInReels: reels.filter(r => r.product !== null).length,
-                currentStream: currentStream?.id
-              })
-              setShowProductSelector(true)
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all"
-          >
-            <ShoppingBag size={18} />
-            <span className="font-medium">상품 변경</span>
-          </button>
-        </div>
-      )}
+      {/* 우측 상단 "상품 변경" 버튼 제거 - 각 릴 카드 내부 버튼으로 통일 */}
       
-      {/* 스트리머 전용: 상품 선택 모달 */}
-      {showProductSelector && (
+      {/* 상품 선택 모달도 제거 - 필요 없음 */}
+      {false && showProductSelector && (
         <div 
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           onClick={(e) => {
-            // 배경 클릭 시에만 닫기
             if (e.target === e.currentTarget) {
               console.log('[LivePageV2] 배경 클릭으로 모달 닫기')
               setShowProductSelector(false)
