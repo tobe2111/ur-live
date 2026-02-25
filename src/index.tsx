@@ -3101,6 +3101,107 @@ app.get('/api/health', (c) => {
   });
 });
 
+// ⏰ 만료된 재고 예약 자동 정리 (Cron Job)
+app.get('/api/cleanup/expired-reservations', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    console.log('========================================');
+    console.log('[Cleanup] ⏰ 만료된 재고 예약 정리 시작');
+    console.log('========================================');
+    
+    const now = new Date().toISOString();
+    console.log('[Cleanup] 현재 시간:', now);
+    
+    // 1️⃣ 만료된 주문 조회 (10분 초과)
+    const expiredOrders: any = await DB.prepare(`
+      SELECT id, order_number, reservation_expires_at
+      FROM orders
+      WHERE status = 'pending'
+        AND reservation_expires_at IS NOT NULL
+        AND reservation_expires_at < ?
+      LIMIT 100
+    `).bind(now).all();
+    
+    if (expiredOrders.results.length === 0) {
+      console.log('[Cleanup] ✅ 만료된 예약 없음');
+      return c.json({
+        success: true,
+        message: '만료된 예약이 없습니다.',
+        cleaned: 0
+      });
+    }
+    
+    console.log(`[Cleanup] 📦 만료된 주문 ${expiredOrders.results.length}개 발견`);
+    
+    let totalCleaned = 0;
+    
+    // 2️⃣ 각 주문의 예약 해제
+    for (const order of expiredOrders.results) {
+      try {
+        // 주문 아이템 조회
+        const orderItems: any = await DB.prepare(`
+          SELECT product_id, quantity
+          FROM order_items
+          WHERE order_id = ?
+        `).bind(order.id).all();
+        
+        if (orderItems.results.length === 0) {
+          console.warn(`[Cleanup] ⚠️ 주문 ${order.order_number}: 아이템 없음`);
+          continue;
+        }
+        
+        // 예약 해제 (배치 처리)
+        const batchQueries = orderItems.results.map((item: any) =>
+          DB.prepare(`
+            UPDATE products 
+            SET reserved_stock = CASE 
+              WHEN reserved_stock >= ? THEN reserved_stock - ?
+              ELSE 0
+            END
+            WHERE id = ?
+          `).bind(item.quantity, item.quantity, item.product_id)
+        );
+        
+        await DB.batch(batchQueries);
+        
+        // 주문 취소
+        await DB.prepare(`
+          UPDATE orders
+          SET status = 'cancelled',
+              payment_status = 'expired',
+              reservation_expires_at = NULL,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(order.id).run();
+        
+        console.log(`[Cleanup] ✅ ${order.order_number}: ${orderItems.results.length}개 상품 예약 해제`);
+        totalCleaned++;
+        
+      } catch (itemErr) {
+        console.error(`[Cleanup] ❌ ${order.order_number} 처리 실패:`, itemErr);
+      }
+    }
+    
+    console.log(`[Cleanup] ✅ 정리 완료: ${totalCleaned}/${expiredOrders.results.length}개`);
+    
+    return c.json({
+      success: true,
+      message: `${totalCleaned}개의 만료된 예약을 정리했습니다.`,
+      cleaned: totalCleaned,
+      total: expiredOrders.results.length
+    });
+    
+  } catch (err) {
+    console.error('[Cleanup] ❌ 정리 실패:', err);
+    return c.json({
+      success: false,
+      error: '만료된 예약 정리 중 오류가 발생했습니다.',
+      details: (err as Error).message
+    }, 500);
+  }
+});
+
 // Environment variables test endpoint (개발/디버깅용)
 app.get('/api/test/env', async (c) => {
   try {
@@ -4309,33 +4410,76 @@ app.post('/api/orders', requireAuth, async (c) => {
         productsResult.results.map((p: any) => [p.id, p])
       );
 
-      // 재고 확인 및 상품 정보 조회
+      // 🔒 재고 확인 및 예약 (Pessimistic Lock)
       const itemsWithDetails = [];
-      for (const item of items) {
-        const product = productMap.get(item.productId);
+      const reservedItems = []; // 롤백용
+      
+      try {
+        for (const item of items) {
+          const product = productMap.get(item.productId);
 
-        if (!product) {
-          return c.json<ApiResponse>({
-            success: false,
-            error: `상품을 찾을 수 없습니다 (ID: ${item.productId})`,
-          }, 400);
+          if (!product) {
+            throw new Error(`상품을 찾을 수 없습니다 (ID: ${item.productId})`);
+          }
+
+          // 사용 가능한 재고 계산: stock - reserved_stock
+          const availableStock = (product.stock as number) - (product.reserved_stock as number || 0);
+          
+          if (availableStock < item.quantity) {
+            throw new Error(`죄송합니다. 방금 상품이 모두 판매되었습니다. (${product.name})`);
+          }
+
+          // 🔒 재고 예약 (atomic operation)
+          const reserveResult = await DB.prepare(`
+            UPDATE products 
+            SET reserved_stock = reserved_stock + ?
+            WHERE id = ? AND (stock - reserved_stock) >= ?
+          `).bind(item.quantity, item.productId, item.quantity).run();
+
+          if (reserveResult.meta.changes === 0) {
+            // 다른 사용자가 동시에 예약하여 재고 부족
+            throw new Error(`죄송합니다. 방금 상품이 모두 판매되었습니다. (${product.name})`);
+          }
+
+          console.log(`[Stock] ✅ 재고 예약 성공: ${product.name} (${item.quantity}개)`);
+          
+          // 롤백용 데이터 저장
+          reservedItems.push({
+            product_id: item.productId,
+            quantity: item.quantity
+          });
+
+          itemsWithDetails.push({
+            product_id: item.productId,
+            option_id: item.optionId || null,
+            quantity: item.quantity,
+            price: item.price,
+            product_name: product.name as string,
+            product_stock: product.stock as number
+          });
         }
-
-        if ((product.stock as number) < item.quantity) {
-          return c.json<ApiResponse>({
-            success: false,
-            error: `재고 부족: ${product.name} (남은 재고: ${product.stock}개)`,
-          }, 400);
+      } catch (reserveError: any) {
+        // ❌ 재고 예약 실패 시 이미 예약한 상품 롤백
+        console.error('[Stock] ❌ 재고 예약 실패:', reserveError.message);
+        
+        if (reservedItems.length > 0) {
+          console.log(`[Stock] 🔄 ${reservedItems.length}개 상품 예약 롤백 시작...`);
+          
+          for (const reserved of reservedItems) {
+            await DB.prepare(`
+              UPDATE products 
+              SET reserved_stock = reserved_stock - ?
+              WHERE id = ?
+            `).bind(reserved.quantity, reserved.product_id).run();
+          }
+          
+          console.log('[Stock] ✅ 예약 롤백 완료');
         }
-
-        itemsWithDetails.push({
-          product_id: item.productId,
-          option_id: item.optionId || null,
-          quantity: item.quantity,
-          price: item.price,
-          product_name: product.name as string,
-          product_stock: product.stock as number
-        });
+        
+        return c.json<ApiResponse>({
+          success: false,
+          error: reserveError.message,
+        }, 400);
       }
 
       // 주문 번호 생성 (간결한 형식: ORD-YYMMDD-XXXXX)
@@ -4352,12 +4496,15 @@ app.post('/api/orders', requireAuth, async (c) => {
         ? `${shippingAddress} ${shippingAddressDetail}` 
         : shippingAddress;
       
+      // ⏰ 예약 만료 시간 설정 (10분 후)
+      const reservationExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
           order_number, user_id, total_amount, payment_status, status,
           shipping_address, shipping_name, shipping_phone, shipping_memo,
-          payment_key, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          payment_key, reservation_expires_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
         orderNumber,
         userId || null,
@@ -4368,16 +4515,14 @@ app.post('/api/orders', requireAuth, async (c) => {
         recipientName || null,
         recipientPhone || null,
         deliveryMemo || null,
-        paymentKey || null
+        paymentKey || null,
+        reservationExpiresAt
       ).run();
 
       const orderId = orderResult.meta.last_row_id;
 
-      // 주문 아이템 생성 (⚠️ 재고 차감 제거 - 결제 승인 시 처리)
+      // 주문 아이템 생성
       for (const item of itemsWithDetails) {
-        // ❌ 재고 차감 제거 (Before: 여기서 차감했음)
-        // ✅ 결제 승인 API에서 처리함
-
         // 주문 아이템 생성
         await DB.prepare(`
           INSERT INTO order_items (
@@ -4392,6 +4537,8 @@ app.post('/api/orders', requireAuth, async (c) => {
           item.product_name
         ).run();
       }
+      
+      console.log(`[Order] ✅ 주문 생성 완료: ${orderNumber} (예약 만료: ${reservationExpiresAt})`);
 
       return c.json<ApiResponse>({
         success: true,
@@ -7602,49 +7749,58 @@ app.post('/api/payments/confirm', async (c) => {
     console.log('[Payment] ✅ 결제 승인 성공! paymentKey:', paymentKey);
     console.log('[Payment] ✅ 주문 번호:', orderId);
 
-    // 주문 상태 업데이트 + 재고 차감
+    // 주문 상태 업데이트 + 재고 확정
     try {
-      // 1️⃣ 주문 상태 업데이트
+      // 1️⃣ 주문 상태 업데이트 + 예약 만료 시간 제거
       await DB.prepare(`
         UPDATE orders 
         SET payment_key = ?,
             payment_status = 'approved',
             status = 'paid',
+            reservation_expires_at = NULL,
             updated_at = CURRENT_TIMESTAMP 
         WHERE order_number = ?
       `).bind(paymentKey, orderId).run();
       
       console.log('[Payment] ✅ 주문 상태 업데이트 완료');
 
-      // 2️⃣ 재고 차감 (✅ 결제 승인 후에만 차감)
+      // 2️⃣ 재고 확정 (예약 → 실제 차감)
       const orderItems: any = await DB.prepare(
         'SELECT product_id, quantity FROM order_items WHERE order_id = (SELECT id FROM orders WHERE order_number = ?)'
       ).bind(orderId).all();
 
-      // ✅ N+1 최적화: 재고 차감을 배치로 처리
+      // 🔒 배치 처리: reserved_stock 감소 + stock 감소
       if (orderItems.results.length > 0) {
+        console.log(`[Stock] 🔒 재고 확정 시작: ${orderItems.results.length}개 상품`);
+        
         const batchQueries = orderItems.results.map((item: any) =>
           DB.prepare(`
             UPDATE products 
-            SET stock = stock - ?
-            WHERE id = ? AND stock >= ?
-          `).bind(item.quantity, item.product_id, item.quantity)
+            SET stock = stock - ?,
+                reserved_stock = reserved_stock - ?
+            WHERE id = ?
+          `).bind(item.quantity, item.quantity, item.product_id)
         );
         
         const batchResults = await DB.batch(batchQueries);
         
-        // 재고 부족 경고 (결제는 이미 성공했으므로 주문 유지)
+        // 확정 결과 확인
+        let successCount = 0;
         for (let i = 0; i < batchResults.length; i++) {
-          if (batchResults[i].meta.changes === 0) {
+          if (batchResults[i].meta.changes > 0) {
+            successCount++;
             const item = orderItems.results[i];
-            console.error(`[Payment] ⚠️ 재고 부족: product_id=${item.product_id}`);
-            // 재고 부족 시에도 결제는 성공했으므로 주문은 유지
+            console.log(`[Stock] ✅ 재고 확정: product_id=${item.product_id}, quantity=${item.quantity}`);
+          } else {
+            const item = orderItems.results[i];
+            console.error(`[Stock] ⚠️ 재고 확정 실패: product_id=${item.product_id}`);
+            // 결제는 이미 성공했으므로 주문은 유지
             // 관리자가 수동으로 처리해야 함
           }
         }
+        
+        console.log(`[Stock] ✅ 재고 확정 완료: ${successCount}/${orderItems.results.length}개 성공`);
       }
-
-      console.log('[Payment] ✅ 재고 차감 완료');
       
       // 3️⃣ 알림톡 자동 발송 (주문 확인)
       try {
@@ -7682,6 +7838,128 @@ app.post('/api/payments/confirm', async (c) => {
     return c.json({ 
       success: false, 
       error: '결제 처리 중 오류가 발생했습니다. 고객센터로 문의해주세요.',
+      details: (err as Error).message
+    }, 500);
+  }
+});
+
+// 🔄 결제 실패 시 재고 예약 해제 (Rollback)
+app.post('/api/payments/rollback', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { orderId, reason } = await c.req.json();
+    
+    console.log('========================================');
+    console.log('[Rollback] 🔄 재고 예약 해제 시작');
+    console.log('========================================');
+    console.log('[Rollback] 주문 번호:', orderId);
+    console.log('[Rollback] 사유:', reason || '결제 실패');
+    
+    if (!orderId) {
+      return c.json({
+        success: false,
+        error: '주문 번호가 필요합니다.'
+      }, 400);
+    }
+    
+    // 주문 존재 여부 확인
+    const order = await DB.prepare(
+      'SELECT id, order_number, status FROM orders WHERE order_number = ?'
+    ).bind(orderId).first();
+    
+    if (!order) {
+      console.warn('[Rollback] ⚠️ 주문을 찾을 수 없음:', orderId);
+      return c.json({
+        success: false,
+        error: '주문을 찾을 수 없습니다.'
+      }, 404);
+    }
+    
+    // 이미 결제 완료된 주문은 롤백 불가
+    if (order.status === 'paid') {
+      console.warn('[Rollback] ⚠️ 이미 결제 완료된 주문:', orderId);
+      return c.json({
+        success: false,
+        error: '이미 결제가 완료된 주문입니다.'
+      }, 400);
+    }
+    
+    console.log('[Rollback] ✅ 주문 확인됨:', order.order_number);
+    
+    // 주문 아이템 조회
+    const orderItems: any = await DB.prepare(`
+      SELECT product_id, quantity 
+      FROM order_items 
+      WHERE order_id = ?
+    `).bind(order.id).all();
+    
+    if (orderItems.results.length === 0) {
+      console.warn('[Rollback] ⚠️ 주문 아이템 없음');
+      return c.json({
+        success: false,
+        error: '주문 아이템을 찾을 수 없습니다.'
+      }, 404);
+    }
+    
+    console.log(`[Rollback] 📦 ${orderItems.results.length}개 상품 예약 해제 시작...`);
+    
+    // 🔄 예약 해제: reserved_stock 감소 (배치 처리)
+    const batchQueries = orderItems.results.map((item: any) =>
+      DB.prepare(`
+        UPDATE products 
+        SET reserved_stock = CASE 
+          WHEN reserved_stock >= ? THEN reserved_stock - ?
+          ELSE 0
+        END
+        WHERE id = ?
+      `).bind(item.quantity, item.quantity, item.product_id)
+    );
+    
+    const batchResults = await DB.batch(batchQueries);
+    
+    // 결과 확인
+    let successCount = 0;
+    for (let i = 0; i < batchResults.length; i++) {
+      if (batchResults[i].meta.changes > 0) {
+        successCount++;
+        const item = orderItems.results[i];
+        console.log(`[Rollback] ✅ 예약 해제: product_id=${item.product_id}, quantity=${item.quantity}`);
+      }
+    }
+    
+    console.log(`[Rollback] ✅ 예약 해제 완료: ${successCount}/${orderItems.results.length}개 성공`);
+    
+    // 주문 상태 업데이트
+    await DB.prepare(`
+      UPDATE orders 
+      SET status = 'cancelled',
+          payment_status = 'failed',
+          reservation_expires_at = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE order_number = ?
+    `).bind(orderId).run();
+    
+    console.log('[Rollback] ✅ 주문 취소 완료:', orderId);
+    
+    return c.json({
+      success: true,
+      message: '재고 예약이 해제되었습니다.',
+      data: {
+        orderId: orderId,
+        releasedItems: successCount
+      }
+    });
+    
+  } catch (err) {
+    console.error('[Rollback] ❌ 예약 해제 실패:', {
+      error: (err as Error).message,
+      stack: (err as Error).stack?.substring(0, 500)
+    });
+    
+    return c.json({
+      success: false,
+      error: '재고 예약 해제 중 오류가 발생했습니다.',
       details: (err as Error).message
     }, 500);
   }

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { XCircle, Home, RotateCcw } from 'lucide-react'
+import api from '@/lib/api'
 
 export default function PaymentFailPage() {
   const navigate = useNavigate()
@@ -15,13 +16,50 @@ export default function PaymentFailPage() {
   useEffect(() => {
     console.error('결제 실패:', { code, message, orderId })
     
-    // 🔴 결제 실패 시 주문 자동 취소 (재고 복원 불필요 - 이미 차감 안 했음)
+    // 🔄 결제 실패 시 재고 예약 해제 (자동 롤백)
     if (orderId && code !== 'PAY_PROCESS_CANCELED') {
-      // 사용자 취소가 아닌 실패인 경우만 자동 취소
-      // PAY_PROCESS_CANCELED는 사용자가 직접 취소한 것이므로 별도 처리 불필요
+      // 사용자 취소가 아닌 실패인 경우 재고 예약 해제
+      const rollbackReservation = async () => {
+        try {
+          console.log('[PaymentFail] 🔄 재고 예약 해제 시작:', orderId);
+          
+          const response = await api.post('/api/payments/rollback', {
+            orderId: orderId,
+            reason: `결제 실패: ${message || code}`
+          });
+          
+          if (response.data.success) {
+            console.log('[PaymentFail] ✅ 재고 예약 해제 완료:', response.data);
+          } else {
+            console.error('[PaymentFail] ❌ 재고 예약 해제 실패:', response.data.error);
+          }
+        } catch (error: any) {
+          console.error('[PaymentFail] ❌ 재고 예약 해제 중 오류:', error.message);
+          // 롤백 실패해도 사용자에게는 결제 실패 화면만 표시
+        }
+      };
       
-      // 참고: 재고는 결제 승인 시에만 차감되므로, 결제 실패 시 복원 불필요
-      // 주문 상태만 'cancelled'로 변경
+      rollbackReservation();
+    } else if (code === 'PAY_PROCESS_CANCELED') {
+      // 사용자가 직접 취소한 경우에도 예약 해제
+      const rollbackReservation = async () => {
+        try {
+          console.log('[PaymentFail] 🔄 사용자 취소로 인한 예약 해제:', orderId);
+          
+          await api.post('/api/payments/rollback', {
+            orderId: orderId,
+            reason: '사용자 취소'
+          });
+          
+          console.log('[PaymentFail] ✅ 예약 해제 완료');
+        } catch (error) {
+          console.error('[PaymentFail] ❌ 예약 해제 실패:', error);
+        }
+      };
+      
+      if (orderId) {
+        rollbackReservation();
+      }
     }
   }, [code, message, orderId])
 
