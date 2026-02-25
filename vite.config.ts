@@ -46,6 +46,8 @@ export default defineConfig({
       },
     },
     rollupOptions: {
+      // 🔧 순환 참조 및 TDZ 에러 방지
+      preserveEntrySignatures: 'strict',
       output: {
         // 🔧 해시 기반 파일명으로 캐시 무효화
         entryFileNames: 'assets/[name]-[hash].js',
@@ -98,9 +100,14 @@ export default defineConfig({
             if (id.includes('/src/pages/My')) {
               return 'user-pages'
             }
+            // 🔧 LivePage를 별도 청크로 분리 (TDZ 에러 방지)
+            if (id.includes('/src/pages/Live')) {
+              return 'live-pages'
+            }
             if (id.includes('/src/pages/Cart') || 
                 id.includes('/src/pages/Checkout') || 
-                id.includes('/src/pages/Live')) {
+                id.includes('/src/pages/Browse') ||
+                id.includes('/src/pages/Product')) {
               return 'shopping-pages'
             }
             if (id.includes('/src/pages/Payment')) {
