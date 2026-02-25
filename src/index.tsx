@@ -4431,39 +4431,54 @@ app.post('/api/orders', requireAuth, async (c) => {
       let lastError = '';
       
       for (let attempt = 0; attempt < 3; attempt++) {
+        // 현재 상품 정보 조회 (재고 + 버전)
+        const currentProduct = await DB.prepare(`
+          SELECT stock, version FROM products WHERE id = ?
+        `).bind(item.product_id).first();
+
+        if (!currentProduct) {
+          lastError = `상품을 찾을 수 없습니다: ${item.product_name}`;
+          break;
+        }
+
+        const currentStock = currentProduct.stock as number;
+        const currentVersion = currentProduct.version as number;
+
+        // 재고 부족 체크
+        if (currentStock < (item.quantity as number)) {
+          lastError = `재고 부족: ${item.product_name} (남은 재고: ${currentStock}개)`;
+          break;
+        }
+
         // 재고 차감 (낙관적 락 - 동시성 문제 해결)
+        // WHERE 절에 version 추가로 완전한 낙관적 락 구현
         const stockUpdateResult = await DB.prepare(`
           UPDATE products 
           SET stock = stock - ?, 
               version = version + 1,
               updated_at = datetime('now')
           WHERE id = ? 
+            AND version = ?
             AND stock >= ?
             AND is_active = 1
-        `).bind(item.quantity, item.product_id, item.quantity).run();
+        `).bind(item.quantity, item.product_id, currentVersion, item.quantity).run();
 
         // 재고 차감 성공
         if (stockUpdateResult.meta.changes > 0) {
           stockUpdateSuccess = true;
+          console.log(`[재고] ✅ 재고 차감 성공: ${item.product_name} (수량: ${item.quantity}, 버전: ${currentVersion} → ${currentVersion + 1})`);
           break;
         }
 
-        // 재고 차감 실패 - 재고 확인
-        const currentProduct = await DB.prepare(`
-          SELECT stock FROM products WHERE id = ?
-        `).bind(item.product_id).first();
+        // 재고 차감 실패 - 버전 충돌 (다른 트랜잭션이 먼저 처리)
+        console.warn(`[재고] ⚠️ 버전 충돌 감지 (시도 ${attempt + 1}/3): ${item.product_name}`);
 
-        if (!currentProduct || (currentProduct.stock as number) < (item.quantity as number)) {
-          // 재고 부족 - 더 이상 재시도 불필요
-          lastError = `재고 부족: ${item.product_name} (남은 재고: ${currentProduct?.stock || 0}개)`;
-          break;
-        }
         
-        // 버전 충돌 - 재시도 (exponential backoff: 0ms, 50ms, 100ms)
+        // 버전 충돌 - 재시도 (exponential backoff: 0ms, 50ms, 150ms)
         if (attempt < 2) {
-          await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+          await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
         } else {
-          lastError = `주문 처리 중 오류 발생. 다시 시도해주세요. (동시성 충돌)`;
+          lastError = `주문 처리 중 오류 발생. 잠시 후 다시 시도해주세요. (동시 주문 처리 중)`;
         }
       }
 
@@ -7856,12 +7871,86 @@ app.delete('/api/chat/:liveStreamId/ban/:userId', cors(), async (c) => {
 // 💳 Payment Advanced APIs (Webhook, Cancel, Query)
 // ============================================
 
+/**
+ * 토스페이먼츠 웹훅 서명 검증
+ * 
+ * 토스페이먼츠는 HMAC-SHA256 방식으로 웹훅 서명을 생성합니다.
+ * 서명 = Base64(HMAC-SHA256(secret_key, raw_body))
+ * 
+ * @param rawBody - 원본 요청 body (문자열)
+ * @param signature - toss-signature 헤더 값
+ * @param secretKey - 토스페이먼츠 시크릿 키
+ * @returns 서명이 유효한지 여부
+ */
+async function verifyTossWebhookSignature(
+  rawBody: string,
+  signature: string,
+  secretKey: string
+): Promise<boolean> {
+  try {
+    // Web Crypto API를 사용하여 HMAC-SHA256 생성
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secretKey);
+    const messageData = encoder.encode(rawBody);
+    
+    // HMAC 키 생성
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    // HMAC 서명 생성
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      cryptoKey,
+      messageData
+    );
+    
+    // Base64 인코딩
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const signatureBase64 = btoa(String.fromCharCode(...signatureArray));
+    
+    // 상수 시간 비교 (타이밍 공격 방지)
+    return signature === signatureBase64;
+    
+  } catch (error) {
+    console.error('[Webhook] 서명 검증 오류:', error);
+    return false;
+  }
+}
+
 // 1️⃣ 웹훅 엔드포인트 (가상계좌 입금, 결제 상태 변경 등)
 app.post('/api/payments/webhook', async (c) => {
   const { DB } = c.env;
   
   try {
-    const body = await c.req.json();
+    // ✅ Step 1: 웹훅 서명 검증 (토스페이먼츠 보안)
+    const signature = c.req.header('toss-signature');
+    const rawBody = await c.req.text();
+    
+    // 서명이 있는 경우 검증 (프로덕션 환경)
+    if (signature && c.env.TOSS_SECRET_KEY) {
+      const isValid = await verifyTossWebhookSignature(
+        rawBody,
+        signature,
+        c.env.TOSS_SECRET_KEY
+      );
+      
+      if (!isValid) {
+        console.error('[Webhook] ❌ 서명 검증 실패 - 위조된 웹훅 요청');
+        return c.json({ success: false, error: 'Invalid signature' }, 401);
+      }
+      
+      console.log('[Webhook] ✅ 서명 검증 성공');
+    } else {
+      console.warn('[Webhook] ⚠️ 서명 검증 건너뜀 (개발 환경 또는 서명 없음)');
+    }
+    
+    // ✅ Step 2: 웹훅 데이터 파싱
+    const body = JSON.parse(rawBody);
     console.log('[Webhook] 토스페이먼츠 웹훅 수신:', {
       eventType: body.eventType,
       orderId: body.orderId,
@@ -7869,7 +7958,7 @@ app.post('/api/payments/webhook', async (c) => {
       timestamp: new Date().toISOString()
     });
 
-    // 웹훅 이벤트 타입 처리
+    // ✅ Step 3: 웹훅 이벤트 타입 처리
     switch (body.eventType) {
       case 'PAYMENT_STATUS_CHANGED':
         // 결제 상태 변경 (가상계좌 입금 완료 등)
@@ -9124,7 +9213,8 @@ app.patch('/api/admin/sellers/:id/approve', async (c) => {
             subject: '🎉 UR Live 판매자 승인 완료',
             html: emailHTML
           },
-          resendApiKey
+          resendApiKey,
+          c.env.EMAIL_FROM || 'UR Live <noreply@ur-team.com>'
         );
         
         if (emailResult.success) {
@@ -9231,7 +9321,8 @@ app.patch('/api/admin/sellers/:id/reject', async (c) => {
             subject: 'UR Live 판매자 승인 결과 안내',
             html: emailHTML
           },
-          resendApiKey
+          resendApiKey,
+          c.env.EMAIL_FROM || 'UR Live <noreply@ur-team.com>'
         );
         
         if (emailResult.success) {

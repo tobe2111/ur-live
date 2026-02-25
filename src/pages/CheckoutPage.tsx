@@ -66,6 +66,7 @@ export default function CheckoutPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)  // 개인정보 수집 동의
+  const [tokenRefreshing, setTokenRefreshing] = useState(false)  // 토큰 갱신 중 플래그
   
   // 토스페이먼츠 위젯 상태
   const [widgets, setWidgets] = useState<any>(null)
@@ -126,6 +127,54 @@ export default function CheckoutPage() {
   }, 0)
 
   const totalAmount = subtotal + totalShippingFee
+
+  // 🔐 Step 0: 토큰 유효성 사전 체크 및 자동 갱신 (결제 도중 세션 만료 방지)
+  useEffect(() => {
+    async function checkAndRefreshToken() {
+      if (!isLoggedIn()) {
+        console.log('[토큰 체크] 로그인되지 않음, 로그인 페이지로 이동')
+        requireLogin(navigate)
+        return
+      }
+
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (!refreshToken) {
+        console.warn('[토큰 체크] Refresh token 없음, 로그인 페이지로 이동')
+        requireLogin(navigate)
+        return
+      }
+
+      setTokenRefreshing(true)
+      
+      try {
+        // Refresh Token으로 새 Access Token 발급 (사전 갱신)
+        console.log('[토큰 체크] 결제 페이지 진입 - 토큰 사전 갱신 시도')
+        
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken })
+        })
+        
+        const data = await response.json()
+        
+        if (data.success && data.access_token) {
+          // 새 토큰 저장
+          localStorage.setItem('access_token', data.access_token)
+          console.log('[토큰 체크] ✅ 토큰 사전 갱신 성공 - 결제 프로세스 안전 (유효기간: 15분)')
+        } else {
+          console.warn('[토큰 체크] ⚠️ 토큰 갱신 실패, 기존 토큰 사용')
+        }
+      } catch (error) {
+        console.error('[토큰 체크] ❌ 토큰 갱신 오류:', error)
+        // 오류 발생해도 계속 진행 (기존 토큰이 아직 유효할 수 있음)
+      } finally {
+        setTokenRefreshing(false)
+      }
+    }
+
+    checkAndRefreshToken()
+  }, [navigate]) // 컴포넌트 마운트 시 한 번만 실행
 
   // 🎯 Step 1: 토스페이먼츠 SDK 초기화 및 위젯 인스턴스 생성
   useEffect(() => {
@@ -634,12 +683,14 @@ export default function CheckoutPage() {
     }
   }
 
-  if (loading) {
+  if (loading || tokenRefreshing) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">로딩 중...</p>
+          <p className="mt-4 text-gray-600">
+            {tokenRefreshing ? '보안 인증 중...' : '로딩 중...'}
+          </p>
         </div>
       </div>
     )

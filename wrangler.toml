@@ -3,6 +3,19 @@ compatibility_date = "2026-02-01"
 pages_build_output_dir = "./dist"
 compatibility_flags = ["nodejs_compat"]
 
+# Environment Variables (Set via Cloudflare Pages Dashboard or wrangler secret)
+# Required secrets:
+# - RESEND_API_KEY: Resend API key for email notifications
+# - JWT_SECRET: Secret key for JWT token generation
+# - TOSS_SECRET_KEY: Toss Payments secret key (production)
+# - EMAIL_FROM: Email sender address (e.g., "UR Live <noreply@ur-team.com>")
+#
+# Set production secrets:
+# npx wrangler pages secret put RESEND_API_KEY
+# npx wrangler pages secret put JWT_SECRET
+# npx wrangler pages secret put TOSS_SECRET_KEY
+# npx wrangler pages secret put EMAIL_FROM
+
 # D1 Database
 [[d1_databases]]
 binding = "DB"

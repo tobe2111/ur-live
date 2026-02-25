@@ -21,9 +21,19 @@ interface SendEmailParams {
 
 /**
  * Send email using Resend API
+ * 
+ * @param params - Email parameters (to, subject, html, from)
+ * @param apiKey - Resend API key
+ * @param defaultFrom - Default FROM address (optional, falls back to onboarding@resend.dev)
  */
-export async function sendEmail(params: SendEmailParams, apiKey: string): Promise<{ success: boolean; error?: string }> {
-  const { to, subject, html, from = 'UR Live <onboarding@resend.dev>' } = params
+export async function sendEmail(
+  params: SendEmailParams, 
+  apiKey: string, 
+  defaultFrom?: string
+): Promise<{ success: boolean; error?: string }> {
+  // Priority: 1) params.from, 2) defaultFrom (env var), 3) fallback
+  const fromAddress = params.from || defaultFrom || 'UR Live <onboarding@resend.dev>'
+  const { to, subject, html } = params
   
   if (!apiKey) {
     console.warn('[Email] RESEND_API_KEY not configured, skipping email')
@@ -31,6 +41,8 @@ export async function sendEmail(params: SendEmailParams, apiKey: string): Promis
   }
   
   try {
+    console.log('[Email] Sending email:', { to, subject, from: fromAddress })
+    
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -38,7 +50,7 @@ export async function sendEmail(params: SendEmailParams, apiKey: string): Promis
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from,
+        from: fromAddress,
         to,
         subject,
         html
