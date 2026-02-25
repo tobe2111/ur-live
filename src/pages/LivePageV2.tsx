@@ -2095,7 +2095,16 @@ export default function LivePageV2() {
       
       {/* 스트리머 전용: 상품 선택 모달 */}
       {showProductSelector && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          onClick={(e) => {
+            // 배경 클릭 시에만 닫기
+            if (e.target === e.currentTarget) {
+              console.log('[LivePageV2] 배경 클릭으로 모달 닫기')
+              setShowProductSelector(false)
+            }
+          }}
+        >
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
             {/* 헤더 */}
             <div className="flex items-center justify-between p-6 border-b border-gray-700">
