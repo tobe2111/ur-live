@@ -21,6 +21,7 @@ interface LiveStream {
   status: string
   current_product_id: number | null
   created_at: string
+  viewer_count?: number
 }
 
 export default function SellerLiveControlPage() {
@@ -32,6 +33,7 @@ export default function SellerLiveControlPage() {
   const [loading, setLoading] = useState(true)
   const [changing, setChanging] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [viewerCounts, setViewerCounts] = useState<Record<number, number>>({})
 
   useEffect(() => {
     // Check seller session (JWT-based)
@@ -45,6 +47,34 @@ export default function SellerLiveControlPage() {
 
     loadData()
   }, [navigate])
+
+  // 실시간 시청자 수 업데이트 (10초마다)
+  useEffect(() => {
+    if (streams.length === 0) return
+
+    const fetchViewerCounts = async () => {
+      try {
+        const counts: Record<number, number> = {}
+        for (const stream of streams) {
+          const response = await api.get(`/api/streams/${stream.id}/viewer-count`)
+          if (response.data.success) {
+            counts[stream.id] = response.data.data.viewer_count
+          }
+        }
+        setViewerCounts(counts)
+      } catch (error) {
+        console.error('[SellerLiveControl] Failed to fetch viewer counts:', error)
+      }
+    }
+
+    // 초기 로드
+    fetchViewerCounts()
+
+    // 10초마다 업데이트
+    const interval = setInterval(fetchViewerCounts, 10000)
+
+    return () => clearInterval(interval)
+  }, [streams])
 
   async function loadData() {
     try {
@@ -158,7 +188,18 @@ export default function SellerLiveControlPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">🔴 라이브 상품 컨트롤</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">🔴 라이브 상품 컨트롤</h1>
+              {selectedStream && (
+                <div className="flex items-center gap-2 mt-2 text-gray-600">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-semibold">{viewerCounts[selectedStream.id] || 0}명 시청 중</span>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => navigate('/seller')}
               className="text-gray-600 hover:text-gray-900"

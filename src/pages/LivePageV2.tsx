@@ -1198,6 +1198,9 @@ function ReelCard({
       
       // Set flag
       localStorage.setItem('hasCartItems', 'true')
+      
+      // 🎯 장바구니 아이템 추가 이벤트 발생 (아이콘 애니메이션용)
+      window.dispatchEvent(new CustomEvent('cartItemAdded'))
 
       // 🔥 SSE 기반 시스템 메시지 전송 (채팅창에 표시)
       try {
@@ -1275,6 +1278,9 @@ function ReelCard({
       
       await api.post('/api/cart', cartData)
       localStorage.setItem('hasCartItems', 'true')
+      
+      // 🎯 장바구니 아이템 추가 이벤트 발생
+      window.dispatchEvent(new CustomEvent('cartItemAdded'))
       
       // ✅ 장바구니 페이지로 이동
       console.log('[Checkout] Navigating to cart')
@@ -1605,6 +1611,9 @@ function ReelCard({
                 
                 localStorage.setItem('hasCartItems', 'true')
                 
+                // 🎯 장바구니 아이템 추가 이벤트 발생
+                window.dispatchEvent(new CustomEvent('cartItemAdded'))
+                
                 // 토스트 표시
                 setNotificationText(`✅ 장바구니에 ${quantity}개 담았습니다`)
                 setShowNotification(true)
@@ -1634,6 +1643,9 @@ function ReelCard({
                 })
                 
                 localStorage.setItem('hasCartItems', 'true')
+                
+                // 🎯 장바구니 아이템 추가 이벤트 발생
+                window.dispatchEvent(new CustomEvent('cartItemAdded'))
                 
                 // 즉시 장바구니 페이지로 이동
                 navigate('/cart')
@@ -1718,6 +1730,9 @@ export default function LivePageV2() {
   const [showProductSelector, setShowProductSelector] = useState(false)
   const [currentStream, setCurrentStream] = useState<Stream | null>(null)
   const [changingProduct, setChangingProduct] = useState(false)
+  
+  // 실시간 시청자 수
+  const [viewerCount, setViewerCount] = useState<number>(0)
 
   // URL 파라미터에서 로그인 세션 정보 체크 및 localStorage 저장
   useEffect(() => {
@@ -1936,6 +1951,30 @@ export default function LivePageV2() {
     }
   }, [reels])
 
+  // 실시간 시청자 수 업데이트 (10초마다)
+  useEffect(() => {
+    if (!currentStream?.id) return
+
+    const fetchViewerCount = async () => {
+      try {
+        const response = await axios.get(`/api/streams/${currentStream.id}/viewer-count`)
+        if (response.data.success) {
+          setViewerCount(response.data.data.viewer_count)
+        }
+      } catch (error) {
+        console.error('[LivePageV2] Failed to fetch viewer count:', error)
+      }
+    }
+
+    // 초기 로드
+    fetchViewerCount()
+
+    // 10초마다 업데이트
+    const interval = setInterval(fetchViewerCount, 10000)
+
+    return () => clearInterval(interval)
+  }, [currentStream?.id])
+
   // 스트리머 전용: 상품 변경 함수
   const handleChangeProduct = async (productId: number) => {
     if (!currentStream || !streamId) return
@@ -1997,7 +2036,7 @@ export default function LivePageV2() {
   return (
     <main className="relative h-dvh overflow-hidden bg-black">
       <TopNav 
-        viewers={reels[activeIndex]?.stream.viewerCount || 0}
+        viewers={viewerCount}
         sellerLinks={{
           youtube: (reels[activeIndex]?.stream as any)?.seller_youtube || undefined,
           instagram: (reels[activeIndex]?.stream as any)?.seller_instagram || undefined,

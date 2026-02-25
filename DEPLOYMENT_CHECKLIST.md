@@ -1,201 +1,220 @@
-# 🚀 배포 체크리스트 (Deployment Checklist)
+# 🚀 Deployment Checklist for UR Live
 
-## ⚠️ **배포 전 필수 확인**
+## 📋 환경 변수 (Environment Variables)
 
-### 1️⃣ **Cloudflare Pages Secrets 확인**
+### 1. Cloudflare Pages Secrets (Production)
+
+다음 명령어로 프로덕션 환경에 시크릿을 설정하세요:
 
 ```bash
-# Secret 목록 확인
+# JWT Secret (토큰 생성 키)
+npx wrangler pages secret put JWT_SECRET --project-name ur-live
+
+# Kakao REST API Key (카카오 로그인)
+npx wrangler pages secret put KAKAO_REST_API_KEY --project-name ur-live
+
+# Resend API Key (이메일 알림)
+npx wrangler pages secret put RESEND_API_KEY --project-name ur-live
+
+# Toss Payments Secret Key (결제)
+npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
+
+# Email From Address (이메일 발신 주소)
+npx wrangler pages secret put EMAIL_FROM --project-name ur-live
+# 예: "UR Live <noreply@live.ur-team.com>"
+
+# Discord Webhook URL (알림 - 선택사항)
+npx wrangler pages secret put DISCORD_WEBHOOK_URL --project-name ur-live
+```
+
+### 2. Local Development (.dev.vars)
+
+로컬 개발 환경용 `.dev.vars` 파일:
+
+```env
+JWT_SECRET=your-local-jwt-secret-key-here
+KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+RESEND_API_KEY=your-resend-api-key-here
+TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R
+EMAIL_FROM="UR Live Dev <dev@ur-team.com>"
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-url
+```
+
+**⚠️ 주의:** `.dev.vars`는 `.gitignore`에 포함되어 있어 커밋되지 않습니다.
+
+### 3. Frontend Environment Variables (Vite)
+
+`.env` 파일 (로컬 개발):
+
+```env
+VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+VITE_SENTRY_DSN=your-sentry-dsn-here
+VITE_SENTRY_ENVIRONMENT=development
+VITE_APP_VERSION=1.0.0
+```
+
+프로덕션에서는 Cloudflare Pages Dashboard의 Environment Variables에서 설정:
+
+- `VITE_KAKAO_REST_API_KEY`: 카카오 REST API 키
+- `VITE_SENTRY_DSN`: Sentry 오류 추적 DSN
+- `VITE_SENTRY_ENVIRONMENT`: production
+- `VITE_APP_VERSION`: 버전 번호
+
+---
+
+## 🗄️ Cloudflare Services Configuration
+
+### D1 Database
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+```
+
+**마이그레이션 실행:**
+```bash
+# 로컬 개발
+npx wrangler d1 migrations apply toss-live-commerce-db --local
+
+# 프로덕션
+npx wrangler d1 migrations apply toss-live-commerce-db
+```
+
+### KV Namespaces
+
+1. **SESSION_KV** (세션 저장소)
+   - binding: `SESSION_KV`
+   - id: `3b522e69651f4d4f84a0cdf9430eeb72`
+
+2. **CACHE_KV** (일반 캐시)
+   - binding: `CACHE_KV`
+   - id: `25ecc9ce2c464dd59edf5eb7d5fd1a10`
+
+3. **LIVE_CACHE** (라이브 실시간 캐시)
+   - binding: `LIVE_CACHE`
+   - id: `e6667599e01d4af8b4687560eb39394c`
+   - preview_id: `750e3b6ed7714a8999abe19d8771be00`
+
+---
+
+## 🌐 Domain & DNS Configuration
+
+### Production Domain
+- **Primary**: `https://live.ur-team.com`
+- **Cloudflare Pages**: `https://ur-live.pages.dev`
+
+### DNS Records (Cloudflare DNS)
+```
+CNAME live ur-live.pages.dev (Proxied)
+```
+
+---
+
+## 🔒 Security Checklist
+
+- [x] JWT_SECRET은 강력한 랜덤 키 사용 (최소 32자)
+- [x] TOSS_SECRET_KEY는 실제 Toss Payments에서 발급받은 키 사용
+- [x] KAKAO_REST_API_KEY는 프로덕션 앱 키 사용
+- [x] 모든 시크릿은 Cloudflare Pages Secrets로 관리 (환경 변수 X)
+- [x] `.dev.vars` 파일은 `.gitignore`에 포함
+- [x] GitHub Actions에서 시크릿은 Repository Secrets로 관리
+
+---
+
+## 📊 Performance & Monitoring
+
+### Sentry Error Tracking
+- **DSN**: Sentry 대시보드에서 발급
+- **Environment**: development / production 구분
+- **Source Maps**: 프로덕션 빌드 시 업로드
+
+### Discord Notifications (Optional)
+- 주문 알림
+- 에러 알림
+- 라이브 시작/종료 알림
+
+---
+
+## 🚀 Deployment Steps
+
+### 1. 로컬 빌드 테스트
+```bash
+npm run build
+npx wrangler pages dev dist --d1=toss-live-commerce-db --local
+```
+
+### 2. 프로덕션 배포
+```bash
+# 자동 배포 (GitHub Push)
+git push origin main
+
+# 수동 배포
+npm run deploy
+# 또는
+npx wrangler pages deploy dist --project-name ur-live
+```
+
+### 3. 배포 후 확인 사항
+- [x] 라이브 페이지 접속 확인
+- [x] 로그인/회원가입 테스트
+- [x] 상품 추가/수정 테스트
+- [x] 결제 플로우 테스트 (Toss Payments)
+- [x] 실시간 시청자 수 업데이트 확인
+- [x] 채팅 기능 확인
+- [x] 품절 처리 확인
+- [x] 관리자/셀러 대시보드 확인
+
+---
+
+## 🐛 Troubleshooting
+
+### 환경 변수가 작동하지 않을 때
+```bash
+# 시크릿 목록 확인
 npx wrangler pages secret list --project-name ur-live
 
-# 필수 Secret 확인 항목:
-□ TOSS_SECRET_KEY (토스페이먼츠 시크릿 키)
+# 시크릿 삭제 후 재설정
+npx wrangler pages secret delete JWT_SECRET --project-name ur-live
+npx wrangler pages secret put JWT_SECRET --project-name ur-live
 ```
 
-**Secret이 없으면 추가:**
+### D1 마이그레이션 실패 시
 ```bash
-# TOSS_SECRET_KEY 추가 (테스트용)
-echo "test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY" | npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
+# 마이그레이션 상태 확인
+npx wrangler d1 migrations list toss-live-commerce-db
 
-# TOSS_SECRET_KEY 추가 (프로덕션용 - 실제 키 사용)
-echo "live_gsk_YOUR_ACTUAL_KEY" | npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live
+# 로컬 데이터베이스 초기화
+rm -rf .wrangler/state/v3/d1
+npx wrangler d1 migrations apply toss-live-commerce-db --local
+```
+
+### 캐시 문제 시
+```bash
+# KV 네임스페이스 전체 삭제 (주의: 모든 데이터 삭제)
+npx wrangler kv:bulk delete --namespace-id=e6667599e01d4af8b4687560eb39394c --force
 ```
 
 ---
 
-### 2️⃣ **로컬 빌드 테스트**
+## 📝 Notes
 
-```bash
-# 빌드 성공 확인
-npm run build
+1. **JWT_SECRET**: 프로덕션 환경에서는 반드시 강력한 랜덤 키를 사용하세요.
+   ```bash
+   # 랜덤 키 생성 (예시)
+   openssl rand -base64 32
+   ```
 
-# 빌드 파일 확인
-ls -lh dist/_worker.js
-ls -lh dist/assets/
-```
+2. **Toss Payments**: 테스트 키와 프로덕션 키를 구분하여 사용하세요.
+   - 테스트: `test_sk_*`
+   - 프로덕션: `live_sk_*`
 
----
+3. **Kakao Login**: 프로덕션 앱 등록 후 Redirect URI를 `https://live.ur-team.com/auth/callback/kakao`로 설정하세요.
 
-### 3️⃣ **D1 마이그레이션 확인**
-
-```bash
-# 로컬 DB에 적용된 마이그레이션 확인
-npx wrangler d1 migrations list toss-live-commerce-db --local
-
-# 프로덕션 DB에 적용된 마이그레이션 확인
-npx wrangler d1 migrations list toss-live-commerce-db --remote
-
-# 새 마이그레이션이 있으면 적용
-npx wrangler d1 migrations apply toss-live-commerce-db --remote
-```
+4. **Resend Email**: 발신 도메인을 Resend에 등록하고 DNS 레코드를 설정하세요.
 
 ---
 
-### 4️⃣ **Git 커밋 상태 확인**
-
-```bash
-# 모든 변경사항 커밋 확인
-git status
-
-# 마지막 커밋 확인
-git log -1 --oneline
-```
-
----
-
-### 5️⃣ **배포 실행**
-
-```bash
-# GitHub에 푸시
-git push origin main
-
-# Cloudflare Pages에 배포
-npx wrangler pages deploy dist --project-name ur-live
-```
-
----
-
-### 6️⃣ **배포 후 검증**
-
-```bash
-# 배포 URL 확인 (Cloudflare 응답에서 확인)
-# 예: https://xxxxx.ur-live.pages.dev
-
-# 1. 메인 페이지 확인
-curl -I https://live.ur-team.com
-
-# 2. API 헬스 체크 (있다면)
-curl https://live.ur-team.com/api/streams
-
-# 3. 인증 필요한 API 테스트 (브라우저에서)
-# - 로그인 테스트
-# - 결제 테스트
-# - 장바구니 추가 테스트
-```
-
----
-
-## 🔴 **자주 발생하는 문제 및 해결**
-
-### 문제 1: 결제 시 400 에러
-```bash
-❌ 증상: POST /api/payments/confirm 400 Bad Request
-✅ 원인: TOSS_SECRET_KEY가 설정되지 않음
-✅ 해결:
-npx wrangler pages secret list --project-name ur-live | grep TOSS_SECRET_KEY
-# 없으면 위의 1️⃣ 단계 실행
-```
-
-### 문제 2: 로그인 후 401 에러
-```bash
-❌ 증상: 로그인 성공 → API 호출 시 401 Unauthorized
-✅ 원인: SESSION_KV에 세션 저장 안 됨
-✅ 해결: AUTH_SYSTEM_LOCK.md 참고하여 인증 로직 확인
-```
-
-### 문제 3: 데이터베이스 에러
-```bash
-❌ 증상: no such table: xxx
-✅ 원인: 마이그레이션이 프로덕션에 적용 안 됨
-✅ 해결:
-npx wrangler d1 migrations apply toss-live-commerce-db --remote
-```
-
-### 문제 4: 정적 파일 404
-```bash
-❌ 증상: /static/app.js 404 Not Found
-✅ 원인: 빌드 시 파일이 누락됨
-✅ 해결: npm run build 다시 실행 후 dist/ 확인
-```
-
----
-
-## 📋 **체크리스트 요약**
-
-배포 전에 이 항목들을 순서대로 확인하세요:
-
-- [ ] 1. Cloudflare Secrets 확인 (`TOSS_SECRET_KEY`)
-- [ ] 2. 로컬 빌드 성공 (`npm run build`)
-- [ ] 3. D1 마이그레이션 확인 (필요 시 적용)
-- [ ] 4. Git 커밋 완료 (`git status`)
-- [ ] 5. GitHub 푸시 (`git push origin main`)
-- [ ] 6. Cloudflare Pages 배포 (`wrangler pages deploy`)
-- [ ] 7. 배포 URL 확인
-- [ ] 8. 주요 기능 테스트 (로그인, 결제, 장바구니)
-
----
-
-## 🎯 **배포 자동화 스크립트 (선택 사항)**
-
-`deploy.sh` 파일을 만들어 사용하면 편리합니다:
-
-```bash
-#!/bin/bash
-set -e  # 에러 발생 시 중단
-
-echo "🚀 UR-Live 배포 시작..."
-
-echo "1️⃣ Secrets 확인..."
-if ! npx wrangler pages secret list --project-name ur-live | grep TOSS_SECRET_KEY > /dev/null; then
-    echo "❌ TOSS_SECRET_KEY가 설정되지 않았습니다!"
-    echo "실행: echo 'YOUR_KEY' | npx wrangler pages secret put TOSS_SECRET_KEY --project-name ur-live"
-    exit 1
-fi
-echo "✅ Secrets 확인 완료"
-
-echo "2️⃣ 빌드 중..."
-npm run build
-echo "✅ 빌드 완료"
-
-echo "3️⃣ Git 푸시..."
-git push origin main
-echo "✅ Git 푸시 완료"
-
-echo "4️⃣ Cloudflare Pages 배포 중..."
-npx wrangler pages deploy dist --project-name ur-live
-echo "✅ 배포 완료"
-
-echo ""
-echo "🎉 배포 성공!"
-echo "📍 URL: https://live.ur-team.com"
-```
-
-사용법:
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
----
-
-## 📚 **관련 문서**
-
-- `AUTH_SYSTEM_LOCK.md` - 인증 시스템 설정 (절대 변경 금지)
-- `WHY_PROBLEMS_REPEAT.md` - 문제 반복 원인 및 해결책
-- `README.md` - 프로젝트 전체 문서
-- `wrangler.jsonc` - Cloudflare 설정
-
----
-
-**마지막 업데이트**: 2026-02-20  
-**작성자**: Claude (AI Assistant)
+**Last Updated**: 2024-02-25
+**Version**: 1.0.0
