@@ -1,0 +1,17 @@
+# Cloudflare Workers Cron Job Configuration
+# This file is separate from the main Pages project
+
+name = "ur-live-cleanup-cron"
+main = "workers/cleanup-cron.ts"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron Triggers - Runs every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]
+
+# D1 Database binding (same as main app)
+[[d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
