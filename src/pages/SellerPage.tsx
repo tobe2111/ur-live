@@ -76,7 +76,7 @@ export default function SellerPage() {
 
   // Mock seller info (in production, get from session)
   const sellerName = '유어 라이브 셀러'
-  const sellerEmail = 'seller@yourlive.com'
+  const sellerEmail = 'seller@listercorp.com'
 
   useEffect(() => {
     // ⏳ 인증 초기화가 완료될 때까지 대기

@@ -1402,21 +1402,12 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
-      {/* LIVE Border Animation - Only for current product */}
-      {isCurrentProduct && (
-        <>
-          {/* Animated border */}
-          <div className="absolute inset-0 z-[100] pointer-events-none">
-            <div className="absolute inset-0 border-[6px] border-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.8)]" />
-            <div className="absolute inset-2 border-[3px] border-yellow-400 animate-pulse delay-100 shadow-[0_0_20px_rgba(250,204,21,0.6)]" />
-          </div>
-          
-          {/* LIVE Badge */}
-          <div className="absolute top-4 left-4 z-[101] flex items-center gap-2 bg-red-600 px-4 py-2 rounded-full shadow-2xl animate-bounce">
-            <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
-            <span className="text-white font-black text-sm tracking-wider">LIVE 소개 중</span>
-          </div>
-        </>
+      {/* LIVE Badge - Only for seller viewing their own stream */}
+      {isCurrentProduct && isSeller && (
+        <div className="absolute top-4 left-4 z-[101] flex items-center gap-2 bg-red-600 px-4 py-2 rounded-full shadow-2xl">
+          <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+          <span className="text-white font-black text-sm tracking-wider">Live 상품 (셀러 계정)</span>
+        </div>
       )}
       
       {/* Background image */}
@@ -1930,8 +1921,18 @@ export default function LivePageV2() {
       // Check streamer permission for new stream
       const userType = localStorage.getItem('user_type')
       const userId = getUserId()
+      const accessToken = localStorage.getItem('access_token')
+      
+      console.log('[LivePageV2] Checking seller permission:', {
+        userType,
+        userId,
+        hasAccessToken: !!accessToken,
+        streamSellerId: activeReel.stream.seller_id
+      })
+      
       if (userType === 'seller' && userId && activeReel.stream.seller_id === parseInt(userId)) {
         setIsStreamer(true)
+        console.log('[LivePageV2] ✅ User is seller of this stream')
       } else {
         setIsStreamer(false)
       }
@@ -1981,9 +1982,11 @@ export default function LivePageV2() {
 
     try {
       setChangingProduct(true)
-      const sessionToken = localStorage.getItem('seller_session_token') || localStorage.getItem('session')
       
-      if (!sessionToken) {
+      // JWT 기반 인증 토큰 사용
+      const accessToken = localStorage.getItem('access_token')
+      
+      if (!accessToken) {
         alert('로그인이 필요합니다.')
         return
       }

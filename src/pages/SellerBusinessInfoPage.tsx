@@ -341,7 +341,7 @@ export default function SellerBusinessInfoPage() {
               name="business_name"
               value={formData.business_name}
               onChange={handleChange}
-              placeholder="예: (주)유어라이브"
+              placeholder="예: (주)리스터코퍼레이션"
               required
               disabled={businessInfo?.is_verified}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"

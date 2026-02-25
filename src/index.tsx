@@ -1607,7 +1607,7 @@ app.post('/api/auth/user/login', cors(), async (c) => {
     
     // 사용자 조회 (✅ 명시적 컬럼 선택 - 비밀번호 검증용)
     const user = await DB.prepare(`
-      SELECT id, email, name, kakao_id, password_hash, created_at
+      SELECT id, email, name, kakao_id, password_hash, password, created_at
       FROM users 
       WHERE email = ?
     `).bind(email).first();
@@ -1617,7 +1617,8 @@ app.post('/api/auth/user/login', cors(), async (c) => {
     }
     
     // 비밀번호 검증
-    const validPassword = user.password_hash && user.password_hash.includes(`placeholder_hash_for_${password}`);
+    const validPassword = (user.password_hash && user.password_hash.includes(`placeholder_hash_for_${password}`)) ||
+                         (user.password && user.password === password);
     
     if (!validPassword) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);

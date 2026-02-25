@@ -60,7 +60,7 @@ export async function sendDiscordAlert(event: SecurityEvent, webhookUrl?: string
         }
       ],
       footer: {
-        text: 'UR LIVE Security Monitoring'
+        text: '리스터코퍼레이션 Security Monitoring'
       },
       timestamp: new Date().toISOString()
     };
