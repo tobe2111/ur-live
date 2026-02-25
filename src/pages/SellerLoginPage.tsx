@@ -52,7 +52,11 @@ export default function SellerLoginPage() {
         })
 
         if (response.data.success) {
-          // ✅ JWT 토큰 저장
+          // ✅ 1단계: 기존 세션 완전 삭제 (admin 세션 등)
+          console.log('[SellerLogin] Step 0: Clearing old sessions...')
+          localStorage.clear()  // 모든 localStorage 클리어
+          
+          // ✅ 2단계: JWT 토큰 저장
           const { accessToken, refreshToken } = response.data.data
           const sellerId = response.data.data.user.id
           
@@ -62,7 +66,6 @@ export default function SellerLoginPage() {
           console.log('[SellerLogin] Seller ID:', sellerId)
           console.log('[SellerLogin] User data:', response.data.data.user)
           
-          // ✅ JWT 토큰 저장
           console.log('[SellerLogin] Step 1: Setting user_type to seller...')
           localStorage.setItem('user_type', 'seller')
           

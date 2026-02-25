@@ -55,11 +55,38 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
-    // 401 Unauthorized: 토큰 만료
+    // 401 Unauthorized: 토큰 만료 또는 권한 부족
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      // ✅ Refresh Token으로 새 Access Token 발급 시도
+      // 🔧 1. 먼저 에러 응답에서 권한 문제인지 확인
+      const errorData = error.response?.data as any;
+      const errorMessage = errorData?.error || '';
+      
+      // 🔧 2. 권한 문제(userType 불일치)인 경우 토큰 갱신하지 않고 로그아웃
+      if (errorMessage.includes('권한') || errorMessage.includes('admin') || errorMessage.includes('seller')) {
+        console.error('[API] ❌ Permission denied (userType mismatch):', errorMessage);
+        console.warn('[API] 권한 불일치 - 로그아웃 처리');
+        
+        // localStorage 완전 클리어
+        localStorage.clear();
+        
+        // 현재 페이지에 따라 리다이렉트
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/admin')) {
+          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/admin/login';
+        } else if (currentPath.includes('/seller')) {
+          alert('판매자 권한이 필요합니다. 다시 로그인해주세요.');
+          window.location.href = '/seller/login';
+        } else {
+          window.location.href = '/login';
+        }
+        
+        return Promise.reject(error);
+      }
+      
+      // 🔧 3. 토큰 만료인 경우에만 갱신 시도
       const refreshToken = localStorage.getItem('refresh_token');
       
       if (refreshToken) {
@@ -93,19 +120,8 @@ api.interceptors.response.use(
       // Refresh Token이 없거나 갱신 실패 시 로그아웃
       console.warn('[API] 인증 실패 - 로그아웃 처리');
       
-      // ✅ JWT 토큰 제거
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user_type');
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('seller_id');
-      localStorage.removeItem('admin_id');
-      localStorage.removeItem('hasCartItems');
-      
-      // 레거시 키도 제거
-      localStorage.removeItem('user_session_token');
-      localStorage.removeItem('seller_session_token');
-      localStorage.removeItem('admin_session_token');
+      // localStorage 완전 클리어
+      localStorage.clear();
       
       // 현재 페이지가 로그인 페이지가 아닐 때만 리다이렉트
       const currentPath = window.location.pathname;
