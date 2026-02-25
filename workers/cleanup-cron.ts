@@ -5,13 +5,10 @@
  * 
  * Setup:
  * 1. Deploy this worker: npx wrangler deploy workers/cleanup-cron.ts
- * 2. Set up cron trigger in Cloudflare Dashboard:
- *    Workers & Pages → [worker-name] → Triggers → Cron Triggers
- *    Schedule: "*/5 * * * *" (every 5 minutes)
+ * 2. Set up cron trigger in Cloudflare Dashboard
+ * 3. Schedule: every 5 minutes
  * 
- * Or configure via wrangler.toml:
- * [triggers]
- * crons = ["*/5 * * * *"]
+ * Or configure via wrangler.toml with crons triggers
  */
 
 interface Env {
