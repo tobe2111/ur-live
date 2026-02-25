@@ -6,6 +6,7 @@ import { getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
 import { useLiveChat } from '@/hooks/useLiveChat'
+import Toast from '@/components/Toast'
 
 // ============================================
 // Suppress YouTube Console Errors
@@ -878,6 +879,9 @@ function ReelCard({
   const userType = localStorage.getItem('user_type')
   const isSeller = userType === 'seller' && userId && stream.seller_id === parseInt(userId)
   
+  // Toast notification state
+  const [productChangeToast, setProductChangeToast] = useState<string | null>(null)
+  
   // Handle null product case
   const safeProduct = product || {
     name: stream.title || '상품 정보 없음',
@@ -1075,8 +1079,14 @@ function ReelCard({
           if (result.success) {
             if (result.changed && result.data) {
               // 상품 변경됨 - 즉시 UI 업데이트 ⚡
-              setCurrentProduct(result.data.product)
+              const newProduct = result.data.product
+              setCurrentProduct(newProduct)
               lastTimestamp = result.timestamp
+              
+              // 🎉 상품 변경 알림 Toast 표시 (셀러 제외)
+              if (!isSeller && newProduct?.name) {
+                setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
+              }
             }
             // 변경 없어도 계속 대기 (재연결)
           }
@@ -1406,6 +1416,16 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
+      {/* 🎉 상품 변경 Toast 알림 */}
+      {productChangeToast && (
+        <Toast
+          message={productChangeToast}
+          type="info"
+          onClose={() => setProductChangeToast(null)}
+          duration={3000}
+        />
+      )}
+      
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
         <div className="absolute top-20 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
@@ -1498,7 +1518,8 @@ function ReelCard({
             {/* Product info - left side */}
             <button
               onClick={() => setSheetOpen(true)}
-              className="flex flex-col items-start min-w-0 flex-1 text-left"
+              className="flex flex-col items-start min-w-0 flex-1 text-left animate-fade-in"
+              key={currentProduct?.id || 'default'}
             >
               <h3 className="text-[13px] font-bold text-white leading-tight truncate w-full drop-shadow-lg">
                 {safeProduct.name}
