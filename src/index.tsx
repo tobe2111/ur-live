@@ -8634,6 +8634,47 @@ app.get('/api/seller/orders', async (c) => {
   }
 
   try {
+    // 필터 파라미터 추출
+    const status = c.req.query('status'); // 예: 'pending', 'paid', 'shipped', 'delivered', 'cancelled'
+    const startDate = c.req.query('start_date'); // 예: '2026-02-01'
+    const endDate = c.req.query('end_date'); // 예: '2026-02-28'
+    const minAmount = c.req.query('min_amount'); // 예: '10000'
+    const maxAmount = c.req.query('max_amount'); // 예: '100000'
+    const page = parseInt(c.req.query('page') || '1'); // 페이지네이션
+    const limit = parseInt(c.req.query('limit') || '50'); // 페이지당 결과 수
+    const offset = (page - 1) * limit;
+
+    // 동적 WHERE 절 구성
+    const whereClauses: string[] = ['oi.seller_id = ?'];
+    const queryParams: any[] = [auth.sellerId];
+
+    if (status) {
+      whereClauses.push('o.status = ?');
+      queryParams.push(status);
+    }
+
+    if (startDate) {
+      whereClauses.push('DATE(o.created_at) >= ?');
+      queryParams.push(startDate);
+    }
+
+    if (endDate) {
+      whereClauses.push('DATE(o.created_at) <= ?');
+      queryParams.push(endDate);
+    }
+
+    if (minAmount) {
+      whereClauses.push('o.total_amount >= ?');
+      queryParams.push(parseInt(minAmount));
+    }
+
+    if (maxAmount) {
+      whereClauses.push('o.total_amount <= ?');
+      queryParams.push(parseInt(maxAmount));
+    }
+
+    const whereClause = whereClauses.join(' AND ');
+
     // ⚡ 최적화: N+1 쿼리 제거 - 단일 JOIN 쿼리로 모든 주문 및 아이템 조회
     const result = await DB.prepare(`
       SELECT 
@@ -8653,9 +8694,21 @@ app.get('/api/seller/orders', async (c) => {
       LEFT JOIN users u ON o.user_id = u.id
       LEFT JOIN products p ON oi.product_id = p.id
       LEFT JOIN product_options po ON oi.option_id = po.id
-      WHERE oi.seller_id = ?
+      WHERE ${whereClause}
       ORDER BY o.created_at DESC, oi.id ASC
-    `).bind(auth.sellerId).all();
+      LIMIT ? OFFSET ?
+    `).bind(...queryParams, limit, offset).all();
+
+    // 총 개수 조회 (페이지네이션용)
+    const countResult = await DB.prepare(`
+      SELECT COUNT(DISTINCT o.id) as total
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      WHERE ${whereClause}
+    `).bind(...queryParams).first();
+
+    const totalOrders = (countResult?.total as number) || 0;
+    const totalPages = Math.ceil(totalOrders / limit);
 
     // 플랫한 결과를 주문별로 그룹핑
     const ordersMap = new Map<number, any>();
@@ -8701,7 +8754,23 @@ app.get('/api/seller/orders', async (c) => {
 
     const ordersWithItems = Array.from(ordersMap.values());
 
-    return c.json({ success: true, data: ordersWithItems });
+    return c.json({ 
+      success: true, 
+      data: ordersWithItems,
+      pagination: {
+        page,
+        limit,
+        total: totalOrders,
+        totalPages
+      },
+      filters: {
+        status: status || null,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        minAmount: minAmount ? parseInt(minAmount) : null,
+        maxAmount: maxAmount ? parseInt(maxAmount) : null
+      }
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
