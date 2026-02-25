@@ -1022,7 +1022,6 @@ function ReelCard({
     }
     
     // ✅ 현재 상품이 없으면 담기 불가
-    const currentProduct = currentStream?.product
     if (!currentProduct) {
       showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
       return
@@ -1048,7 +1047,7 @@ function ReelCard({
         productId: currentProduct.id,
         quantity: 1,
         priceSnapshot: currentProduct.price,
-        liveStreamId: currentStream.id
+        liveStreamId: reel.stream.id  // ✅ Fixed: currentStream → reel.stream
       }
       
       console.log('[Checkout] Adding current product to cart:', cartData)

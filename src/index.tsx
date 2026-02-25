@@ -6411,7 +6411,7 @@ app.put('/api/seller/products/:id', async (c) => {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
     }
 
-    const { name, description, price, original_price, image_url, stock, category, is_active } = await c.req.json();
+    const { name, description, price, original_price, image_url, stock, category, is_active, live_stream_id } = await c.req.json();
 
     const updates: string[] = [];
     const values: any[] = [];
@@ -6454,6 +6454,10 @@ app.put('/api/seller/products/:id', async (c) => {
     if (is_active !== undefined) {
       updates.push('is_active = ?');
       values.push(is_active ? 1 : 0);
+    }
+    if (live_stream_id !== undefined) {
+      updates.push('live_stream_id = ?');
+      values.push(live_stream_id || null);  // ✅ Added: 라이브 스트림 연결
     }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
