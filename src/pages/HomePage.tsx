@@ -348,7 +348,7 @@ export default function HomePage() {
                 }}
                 className="block"
               >
-                <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full overflow-hidden">
+                <div className="relative aspect-[16/9] w-full overflow-hidden">
                   <LazyImage
                     src={banners[0].image_url}
                     alt={banners[0].title}
