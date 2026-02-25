@@ -9137,6 +9137,22 @@ app.patch('/api/admin/sellers/:id/approve', async (c) => {
         // 이메일 실패해도 승인은 성공 처리
       }
     }
+    
+    // ✅ 알림 생성 (DB)
+    try {
+      const { createNotification, NotificationTemplates } = await import('./lib/notifications');
+      const notifTemplate = NotificationTemplates.seller_approved(seller.name as string);
+      
+      await createNotification(DB, {
+        userId: parseInt(sellerId),
+        type: 'seller_approved',
+        title: notifTemplate.title,
+        message: notifTemplate.message,
+        linkUrl: notifTemplate.linkUrl
+      });
+    } catch (notifError) {
+      console.error('[셀러 승인] 알림 생성 오류:', notifError);
+    }
 
     return c.json({ 
       success: true, 
@@ -9227,6 +9243,22 @@ app.patch('/api/admin/sellers/:id/reject', async (c) => {
         console.error('[셀러 거부] 이메일 발송 오류:', emailError);
         // 이메일 실패해도 거부는 성공 처리
       }
+    }
+    
+    // ✅ 알림 생성 (DB)
+    try {
+      const { createNotification, NotificationTemplates } = await import('./lib/notifications');
+      const notifTemplate = NotificationTemplates.seller_rejected(reason);
+      
+      await createNotification(DB, {
+        userId: parseInt(sellerId),
+        type: 'seller_rejected',
+        title: notifTemplate.title,
+        message: notifTemplate.message,
+        linkUrl: notifTemplate.linkUrl
+      });
+    } catch (notifError) {
+      console.error('[셀러 거부] 알림 생성 오류:', notifError);
     }
 
     return c.json({ 
