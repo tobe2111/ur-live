@@ -9080,48 +9080,8 @@ app.put('/api/seller/orders/:orderNumber/tracking', async (c) => {
 });
 
 // Request refund (Customer)
-app.post('/api/orders/:orderNumber/refund', requireAuth, async (c) => {
-  const { DB } = c.env;
-  const orderNumber = c.req.param('orderNumber');
-  const { reason } = await c.req.json();
-
-  try {
-    const order = await DB.prepare(`
-      SELECT id, order_number, user_id, status, total_amount,
-             payment_key, payment_status, shipping_address, shipping_name,
-             shipping_phone, created_at, updated_at
-      FROM orders 
-      WHERE order_number = ?
-    `).bind(orderNumber).first();
-
-    if (!order) {
-      return c.json({ success: false, error: 'Order not found' }, 404);
-    }
-
-    // Check if order can be refunded (소문자 상태값 사용)
-    if (!['paid', 'preparing', 'shipped', 'delivered'].includes(order.status)) {
-      return c.json({ success: false, error: '환불이 불가능한 주문 상태입니다.' }, 400);
-    }
-
-    // Check if order is already refunded or cancelled
-    if (order.status === 'refunded' || order.status === 'cancelled') {
-      return c.json({ success: false, error: '이미 환불 또는 취소된 주문입니다.' }, 400);
-    }
-
-    // Update order status to refund requested (manual processing required)
-    await DB.prepare(
-      'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?'
-    ).bind('refunded', orderNumber).run();
-
-    return c.json({ 
-      success: true, 
-      message: '환불 요청이 접수되었습니다. 고객센터(0507-0177-0432)에서 처리 예정입니다.',
-      requiresManualProcessing: true
-    });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
+// ⚠️ DEPRECATED: 10482줄의 CORS 지원 버전 사용 권장 (이 코드는 제거 예정)
+// app.post('/api/orders/:orderNumber/refund', requireAuth, async (c) => { ... });
 
 // Get all orders (Admin only)
 app.get('/api/admin/orders', async (c) => {
@@ -10243,7 +10203,31 @@ app.get('/api/admin/settlement/export-csv', async (c) => {
 // =================================
 
 // 1. 주문 생성 API (결제 전)
+/**
+ * ⚠️ DEPRECATED: 이 엔드포인트는 사용 중단 예정입니다.
+ * 
+ * **문제점**:
+ * - ❌ 재고 예약 로직 없음 (reserved_stock 증가 없음)
+ * - ❌ reservation_expires_at 설정 없음 (Cron Worker 미작동)
+ * - ❌ 동시 주문 시 오버셀링 위험 존재
+ * 
+ * **대안**:
+ * - ✅ `/api/orders` (POST, 4372줄) 사용 권장
+ *   - 재고 예약 + Toss Payments 결제 연동 완비
+ *   - 동시성 제어 (비관적 잠금)
+ *   - 10분 만료 시간 자동 설정
+ * 
+ * **세금계산서 기능이 필요한 경우**:
+ * - 향후 `/api/orders/with-tax-invoice` 신규 엔드포인트 추가 예정
+ * - 기존 `/api/orders` 호출 후 세금계산서 필드 업데이트 방식
+ * 
+ * @deprecated Use `/api/orders` instead (see line 4372)
+ * @see IMPACT_ANALYSIS_REPORT.md for details
+ */
 app.post('/api/orders/create', requireAuth, async (c) => {
+  // ⚠️ WARNING: This endpoint does NOT reserve stock (reserved_stock)
+  // It may cause overselling under concurrent order scenarios
+  
   const { DB } = c.env;
   
   try {
@@ -10256,7 +10240,7 @@ app.post('/api/orders/create', requireAuth, async (c) => {
       buyerCeoName
     } = await c.req.json();
     
-    console.log('주문 생성 요청:', { userId, cartItems: cartItems?.length, totalAmount, shippingAddressId, sellerId, issueTaxInvoice });
+    console.log('[DEPRECATED /api/orders/create] 주문 생성 요청:', { userId, cartItems: cartItems?.length, totalAmount, shippingAddressId, sellerId, issueTaxInvoice });
     
     // 셀러별 수수료율 조회 (기본값 10%)
     let commissionRate = 10.00;
