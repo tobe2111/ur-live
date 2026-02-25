@@ -31,23 +31,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    // 소스맵 비활성화 (프로덕션)
-    sourcemap: false,
-    // 최소화 설정
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false, // 🔧 console.log 보존 (디버깅용)
-        drop_debugger: true,
-      },
-      format: {
-        ascii_only: false, // 🔧 한글 유니코드 이스케이프 방지
-        beautify: false,
-      },
-    },
+    // 소스맵 활성화 (에러 디버깅용)
+    sourcemap: true,
+    // 🔧 esbuild 사용 (terser보다 안전하고 빠름)
+    minify: 'esbuild',
     rollupOptions: {
       // 🔧 순환 참조 및 TDZ 에러 방지
-      preserveEntrySignatures: 'strict',
+      preserveEntrySignatures: 'allow-extension',
       output: {
         // 🔧 해시 기반 파일명으로 캐시 무효화
         entryFileNames: 'assets/[name]-[hash].js',
@@ -55,7 +45,6 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
           // 🔴 CRITICAL: React must be in ONE chunk ONLY to prevent duplicate instances
-          // Multiple React instances cause: "Cannot set properties of undefined (setting 'Children')"
           if (id.includes('node_modules')) {
             // 1. React Core - MUST be single instance
             if (id.includes('node_modules/react/') || 
@@ -82,37 +71,22 @@ export default defineConfig({
               return 'utils-vendor'
             }
             
-            // 5. Other node_modules (excluding React to prevent duplicates)
+            // 5. Other node_modules
             return 'vendor'
           }
           
-          // Page-level chunks
+          // 🔧 SIMPLIFIED: 3개 청크로 단순화 (순환 참조 방지)
           if (id.includes('/src/pages/')) {
-            if (id.includes('Login') || id.includes('Callback')) {
-              return 'auth-pages'
-            }
-            if (id.includes('/src/pages/Seller')) {
-              return 'seller-pages'
-            }
-            if (id.includes('/src/pages/Admin')) {
-              return 'admin-pages'
-            }
-            if (id.includes('/src/pages/My')) {
-              return 'user-pages'
-            }
-            // 🔧 LivePage를 별도 청크로 분리 (TDZ 에러 방지)
+            // LivePage만 별도 분리 (가장 복잡한 페이지)
             if (id.includes('/src/pages/Live')) {
               return 'live-pages'
             }
-            if (id.includes('/src/pages/Cart') || 
-                id.includes('/src/pages/Checkout') || 
-                id.includes('/src/pages/Browse') ||
-                id.includes('/src/pages/Product')) {
-              return 'shopping-pages'
+            // Seller pages
+            if (id.includes('/src/pages/Seller')) {
+              return 'seller-pages'
             }
-            if (id.includes('/src/pages/Payment')) {
-              return 'payment-pages'
-            }
+            // 나머지 모든 페이지는 하나로 묶음
+            return 'app-pages'
           }
         },
       },
