@@ -13267,3 +13267,134 @@ function trackKvRead(key: string) {
 }
 
 export default app
+
+// =================================
+// Notification APIs
+// =================================
+
+// Get user notifications
+app.get('/api/notifications', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const userId = c.req.query('userId');
+    const limit = parseInt(c.req.query('limit') || '20');
+    const offset = parseInt(c.req.query('offset') || '0');
+    
+    if (!userId) {
+      return c.json({ success: false, error: 'userId is required' }, 400);
+    }
+    
+    // Get notifications
+    const notifications = await DB.prepare(`
+      SELECT id, type, title, message, link_url, is_read, created_at
+      FROM notifications
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(userId, limit, offset).all();
+    
+    // Get unread count
+    const unreadCount = await DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM notifications
+      WHERE user_id = ? AND is_read = 0
+    `).bind(userId).first();
+    
+    return c.json({
+      success: true,
+      data: {
+        notifications: notifications.results || [],
+        unread_count: unreadCount?.count || 0,
+        total: notifications.results?.length || 0
+      }
+    });
+  } catch (err) {
+    console.error('[Notifications] Get error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Mark notification as read
+app.patch('/api/notifications/:id/read', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const notificationId = c.req.param('id');
+    const { userId } = await c.req.json();
+    
+    if (!userId) {
+      return c.json({ success: false, error: 'userId is required' }, 400);
+    }
+    
+    // Verify ownership and mark as read
+    const result = await DB.prepare(`
+      UPDATE notifications
+      SET is_read = 1
+      WHERE id = ? AND user_id = ?
+    `).bind(notificationId, userId).run();
+    
+    if (result.meta.changes === 0) {
+      return c.json({ success: false, error: 'Notification not found' }, 404);
+    }
+    
+    return c.json({ success: true, message: 'Notification marked as read' });
+  } catch (err) {
+    console.error('[Notifications] Mark read error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Mark all notifications as read
+app.patch('/api/notifications/read-all', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { userId } = await c.req.json();
+    
+    if (!userId) {
+      return c.json({ success: false, error: 'userId is required' }, 400);
+    }
+    
+    await DB.prepare(`
+      UPDATE notifications
+      SET is_read = 1
+      WHERE user_id = ? AND is_read = 0
+    `).bind(userId).run();
+    
+    return c.json({ success: true, message: 'All notifications marked as read' });
+  } catch (err) {
+    console.error('[Notifications] Mark all read error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete notification
+app.delete('/api/notifications/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const notificationId = c.req.param('id');
+    const userId = c.req.query('userId');
+    
+    if (!userId) {
+      return c.json({ success: false, error: 'userId is required' }, 400);
+    }
+    
+    // Verify ownership and delete
+    const result = await DB.prepare(`
+      DELETE FROM notifications
+      WHERE id = ? AND user_id = ?
+    `).bind(notificationId, userId).run();
+    
+    if (result.meta.changes === 0) {
+      return c.json({ success: false, error: 'Notification not found' }, 404);
+    }
+    
+    return c.json({ success: true, message: 'Notification deleted' });
+  } catch (err) {
+    console.error('[Notifications] Delete error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+

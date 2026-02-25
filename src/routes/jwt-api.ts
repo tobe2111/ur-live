@@ -158,10 +158,18 @@ jwtApi.post('/api/auth/login-jwt', cors(), async (c) => {
       }, 401);
     }
     
-    // 비밀번호 검증 (bcrypt 사용)
-    // Note: Cloudflare Workers에서는 bcrypt 대신 Web Crypto API 사용 권장
-    // 임시로 password_hash와 직접 비교 (실제로는 bcrypt 사용 필요)
-    if (user.password_hash !== password) {
+    // ✅ 비밀번호 검증 (Web Crypto API - PBKDF2)
+    if (!user.password_hash) {
+      return c.json({
+        success: false,
+        error: '비밀번호가 설정되지 않았습니다.'
+      }, 401);
+    }
+    
+    const { verifyPassword } = await import('../lib/password');
+    const isValidPassword = await verifyPassword(password, user.password_hash as string);
+    
+    if (!isValidPassword) {
       return c.json({
         success: false,
         error: '이메일 또는 비밀번호가 일치하지 않습니다.'

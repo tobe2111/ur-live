@@ -653,3 +653,41 @@ wrangler secret put RESEND_API_KEY
 - Default sender: `onboarding@resend.dev`
 - Custom domain (optional): Add your domain in Resend dashboard
 
+
+## 🔍 Sentry Error Monitoring (Optional)
+
+### Free Plan
+- 5,000 errors/month
+- 30-day data retention
+- 1 team member
+
+### Setup
+1. Create account at https://sentry.io
+2. Create new project (select "Browser JavaScript" or "Node.js")
+3. Copy DSN (Data Source Name)
+4. Add to environment:
+
+**Local development:**
+```bash
+# .env
+VITE_SENTRY_DSN=https://your-dsn@sentry.io/project-id
+```
+
+**Production:**
+```bash
+wrangler secret put SENTRY_DSN
+# Enter your DSN when prompted
+```
+
+5. Install Sentry SDK:
+```bash
+npm install @sentry/browser
+# or for Cloudflare Workers:
+npm install toucan-js
+```
+
+6. Initialize in `src/main.tsx` (frontend) or `src/index.tsx` (backend)
+
+### Implementation
+See `src/lib/sentry-config.ts` for example setup
+
