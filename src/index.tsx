@@ -13511,6 +13511,421 @@ app.get('/api/seller/settlements', cors(), async (c) => {
 })
 
 /**
+ * GET /api/admin/settlements/calculate
+ * 
+ * 셀러 정산 자동 계산 (관리자 전용)
+ * 
+ * Query Parameters:
+ * - seller_id: 셀러 ID (필수)
+ * - period: 'weekly', 'monthly', 'custom' (기본: 'monthly')
+ * - start_date: 시작일 (custom일 때 필수, YYYY-MM-DD)
+ * - end_date: 종료일 (custom일 때 필수, YYYY-MM-DD)
+ * - format: 'json' or 'csv' (기본: 'json')
+ */
+app.get('/api/admin/settlements/calculate', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  // 관리자 인증 확인
+  const auth = await verifyAdminSession(c);
+  if (!auth.success) {
+    return c.json({ success: false, error: '관리자 권한이 필요합니다' }, 401);
+  }
+  
+  try {
+    const sellerId = c.req.query('seller_id');
+    const period = c.req.query('period') || 'monthly';
+    const format = c.req.query('format') || 'json';
+    let startDate = c.req.query('start_date');
+    let endDate = c.req.query('end_date');
+    
+    if (!sellerId) {
+      return c.json({ success: false, error: 'seller_id가 필요합니다' }, 400);
+    }
+    
+    // 기간 자동 계산
+    const now = new Date();
+    if (period === 'weekly') {
+      // 지난 주 월요일 ~ 일요일
+      const lastMonday = new Date(now);
+      lastMonday.setDate(now.getDate() - now.getDay() - 6);
+      lastMonday.setHours(0, 0, 0, 0);
+      
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      lastSunday.setHours(23, 59, 59, 999);
+      
+      startDate = lastMonday.toISOString().split('T')[0];
+      endDate = lastSunday.toISOString().split('T')[0];
+    } else if (period === 'monthly') {
+      // 지난 달 1일 ~ 마지막 일
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      
+      startDate = lastMonth.toISOString().split('T')[0];
+      endDate = lastMonthEnd.toISOString().split('T')[0];
+    } else if (period === 'custom') {
+      if (!startDate || !endDate) {
+        return c.json({ 
+          success: false, 
+          error: 'custom 기간 선택 시 start_date와 end_date가 필요합니다' 
+        }, 400);
+      }
+    }
+    
+    // 셀러 정보 조회
+    const seller = await DB.prepare(`
+      SELECT s.id, s.business_name, s.commission_rate, u.name as seller_name
+      FROM sellers s
+      LEFT JOIN users u ON s.user_id = u.id
+      WHERE s.id = ?
+    `).bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    }
+    
+    // 해당 기간의 주문 조회 (결제 완료된 주문만)
+    const ordersResult = await DB.prepare(`
+      SELECT 
+        o.id,
+        o.order_number,
+        o.created_at,
+        o.status,
+        o.total_amount,
+        o.commission_rate,
+        o.commission_amount,
+        o.seller_amount
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      WHERE oi.seller_id = ?
+        AND o.status IN ('paid', 'preparing', 'shipped', 'delivered')
+        AND DATE(o.created_at) >= ?
+        AND DATE(o.created_at) <= ?
+      GROUP BY o.id
+      ORDER BY o.created_at DESC
+    `).bind(sellerId, startDate, endDate).all();
+    
+    const orders = ordersResult.results as any[];
+    
+    // 정산 요약 계산
+    const totalOrders = orders.length;
+    const totalSales = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+    const totalCommission = orders.reduce((sum, o) => sum + (o.commission_amount || 0), 0);
+    const netAmount = totalSales - totalCommission;
+    const avgCommissionRate = totalOrders > 0 
+      ? orders.reduce((sum, o) => sum + (o.commission_rate || 0), 0) / totalOrders 
+      : 0;
+    
+    const settlementData = {
+      sellerId: parseInt(sellerId),
+      sellerName: seller.seller_name || 'Unknown',
+      businessName: seller.business_name || null,
+      period: {
+        type: period,
+        startDate: startDate!,
+        endDate: endDate!
+      },
+      summary: {
+        totalOrders,
+        totalSales,
+        totalCommission,
+        netAmount,
+        commissionRate: Math.round(avgCommissionRate * 100) / 100
+      },
+      orders: orders.map(o => ({
+        orderNumber: o.order_number,
+        createdAt: o.created_at,
+        status: o.status,
+        totalAmount: o.total_amount || 0,
+        commissionAmount: o.commission_amount || 0,
+        sellerAmount: o.seller_amount || 0
+      }))
+    };
+    
+    // CSV 포맷 요청 시
+    if (format === 'csv') {
+      const rows: string[] = [];
+      
+      // 헤더 정보
+      rows.push(`셀러 정산서`);
+      rows.push(`셀러명,${settlementData.sellerName}`);
+      rows.push(`사업자명,${settlementData.businessName || 'N/A'}`);
+      rows.push(`정산 기간,${settlementData.period.startDate} ~ ${settlementData.period.endDate}`);
+      rows.push(``);
+      
+      // 요약 정보
+      rows.push(`구분,금액`);
+      rows.push(`총 주문 건수,${settlementData.summary.totalOrders}건`);
+      rows.push(`총 매출,${settlementData.summary.totalSales.toLocaleString()}원`);
+      rows.push(`플랫폼 수수료 (${settlementData.summary.commissionRate}%),${settlementData.summary.totalCommission.toLocaleString()}원`);
+      rows.push(`정산 금액,${settlementData.summary.netAmount.toLocaleString()}원`);
+      rows.push(``);
+      
+      // 주문 상세
+      rows.push(`주문번호,주문일시,상태,주문금액,플랫폼수수료,정산금액`);
+      for (const order of settlementData.orders) {
+        rows.push(
+          `${order.orderNumber},${order.createdAt},${order.status},${order.totalAmount},${order.commissionAmount},${order.sellerAmount}`
+        );
+      }
+      
+      const csv = rows.join('\n');
+      const filename = `settlement_${sellerId}_${startDate}_${endDate}.csv`;
+      
+      return c.text(csv, 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`
+      });
+    }
+    
+    // JSON 포맷 (기본)
+    return c.json({
+      success: true,
+      data: settlementData
+    });
+    
+  } catch (err) {
+    console.error('[Settlement] Calculation error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/settlements/my
+ * 
+ * 내 정산 조회 (셀러 전용) - 자신의 정산 내역만 조회 가능
+ * 
+ * Query Parameters:
+ * - period: 'weekly', 'monthly', 'custom' (기본: 'monthly')
+ * - start_date: 시작일 (custom일 때 필수)
+ * - end_date: 종료일 (custom일 때 필수)
+ * - format: 'json' or 'csv' (기본: 'json')
+ */
+app.get('/api/seller/settlements/my', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  // 셀러 인증 확인
+  const auth = await verifySellerSession(c);
+  if (!auth.success) {
+    return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 401);
+  }
+  
+  // URL에 seller_id 쿼리 파라미터 추가 (내부적으로 사용)
+  const originalUrl = new URL(c.req.url);
+  originalUrl.searchParams.set('seller_id', String(auth.sellerId));
+  
+  // 관리자 계산 API 재사용 (인증만 우회)
+  const modifiedReq = new Request(originalUrl.toString(), c.req.raw);
+  const modifiedContext = {
+    ...c,
+    req: new Proxy(modifiedReq, {
+      get(target: any, prop: string) {
+        if (prop === 'query') {
+          return (key: string) => {
+            if (key === 'seller_id') return String(auth.sellerId);
+            return originalUrl.searchParams.get(key);
+          };
+        }
+        return target[prop];
+      }
+    })
+  };
+  
+  try {
+    const sellerId = auth.sellerId;
+    const period = c.req.query('period') || 'monthly';
+    const format = c.req.query('format') || 'json';
+    let startDate = c.req.query('start_date');
+    let endDate = c.req.query('end_date');
+    
+    // 기간 자동 계산 (관리자 API와 동일 로직)
+    const now = new Date();
+    if (period === 'weekly') {
+      const lastMonday = new Date(now);
+      lastMonday.setDate(now.getDate() - now.getDay() - 6);
+      lastMonday.setHours(0, 0, 0, 0);
+      
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      lastSunday.setHours(23, 59, 59, 999);
+      
+      startDate = lastMonday.toISOString().split('T')[0];
+      endDate = lastSunday.toISOString().split('T')[0];
+    } else if (period === 'monthly') {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      
+      startDate = lastMonth.toISOString().split('T')[0];
+      endDate = lastMonthEnd.toISOString().split('T')[0];
+    } else if (period === 'custom') {
+      if (!startDate || !endDate) {
+        return c.json({ 
+          success: false, 
+          error: 'custom 기간 선택 시 start_date와 end_date가 필요합니다' 
+        }, 400);
+      }
+    }
+    
+    // 셀러 정보 조회
+    const seller = await DB.prepare(`
+      SELECT s.id, s.business_name, s.commission_rate, u.name as seller_name
+      FROM sellers s
+      LEFT JOIN users u ON s.user_id = u.id
+      WHERE s.id = ?
+    `).bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    }
+    
+    // 해당 기간의 주문 조회
+    const ordersResult = await DB.prepare(`
+      SELECT 
+        o.id,
+        o.order_number,
+        o.created_at,
+        o.status,
+        o.total_amount,
+        o.commission_rate,
+        o.commission_amount,
+        o.seller_amount
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      WHERE oi.seller_id = ?
+        AND o.status IN ('paid', 'preparing', 'shipped', 'delivered')
+        AND DATE(o.created_at) >= ?
+        AND DATE(o.created_at) <= ?
+      GROUP BY o.id
+      ORDER BY o.created_at DESC
+    `).bind(sellerId, startDate, endDate).all();
+    
+    const orders = ordersResult.results as any[];
+    
+    // 정산 요약 계산
+    const totalOrders = orders.length;
+    const totalSales = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+    const totalCommission = orders.reduce((sum, o) => sum + (o.commission_amount || 0), 0);
+    const netAmount = totalSales - totalCommission;
+    const avgCommissionRate = totalOrders > 0 
+      ? orders.reduce((sum, o) => sum + (o.commission_rate || 0), 0) / totalOrders 
+      : 0;
+    
+    const settlementData = {
+      sellerId,
+      sellerName: seller.seller_name || 'Unknown',
+      businessName: seller.business_name || null,
+      period: {
+        type: period,
+        startDate: startDate!,
+        endDate: endDate!
+      },
+      summary: {
+        totalOrders,
+        totalSales,
+        totalCommission,
+        netAmount,
+        commissionRate: Math.round(avgCommissionRate * 100) / 100
+      },
+      orders: orders.map(o => ({
+        orderNumber: o.order_number,
+        createdAt: o.created_at,
+        status: o.status,
+        totalAmount: o.total_amount || 0,
+        commissionAmount: o.commission_amount || 0,
+        sellerAmount: o.seller_amount || 0
+      }))
+    };
+    
+    // CSV 포맷
+    if (format === 'csv') {
+      const rows: string[] = [];
+      rows.push(`셀러 정산서`);
+      rows.push(`셀러명,${settlementData.sellerName}`);
+      rows.push(`사업자명,${settlementData.businessName || 'N/A'}`);
+      rows.push(`정산 기간,${settlementData.period.startDate} ~ ${settlementData.period.endDate}`);
+      rows.push(``);
+      rows.push(`구분,금액`);
+      rows.push(`총 주문 건수,${settlementData.summary.totalOrders}건`);
+      rows.push(`총 매출,${settlementData.summary.totalSales.toLocaleString()}원`);
+      rows.push(`플랫폼 수수료 (${settlementData.summary.commissionRate}%),${settlementData.summary.totalCommission.toLocaleString()}원`);
+      rows.push(`정산 금액,${settlementData.summary.netAmount.toLocaleString()}원`);
+      rows.push(``);
+      rows.push(`주문번호,주문일시,상태,주문금액,플랫폼수수료,정산금액`);
+      for (const order of settlementData.orders) {
+        rows.push(
+          `${order.orderNumber},${order.createdAt},${order.status},${order.totalAmount},${order.commissionAmount},${order.sellerAmount}`
+        );
+      }
+      
+      const csv = rows.join('\n');
+      const filename = `my_settlement_${startDate}_${endDate}.csv`;
+      
+      return c.text(csv, 200, {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`
+      });
+    }
+    
+    // JSON 포맷
+    return c.json({
+      success: true,
+      data: settlementData
+    });
+    
+  } catch (err) {
+    console.error('[My Settlement] Error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/settlements
+ * 셀러 정산 내역 조회 (기존 settlements 테이블 사용)
+ */
+app.get('/api/seller/settlements', cors(), async (c) => {
+  try {
+    const sellerId = c.req.header('X-Seller-ID')
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401)
+    }
+
+    const settlements = await c.env.DB.prepare(`
+      SELECT 
+        s.id,
+        s.period_start,
+        s.period_end,
+        sd.total_sales,
+        sd.total_orders,
+        sd.platform_fee,
+        sd.shipping_fee,
+        sd.refund_amount,
+        sd.settlement_amount,
+        sd.status,
+        sd.paid_at
+      FROM settlements s
+      JOIN settlement_details sd ON s.id = sd.settlement_id
+      WHERE sd.seller_id = ?
+      ORDER BY s.period_start DESC
+      LIMIT 50
+    `).bind(parseInt(sellerId)).all()
+
+    return c.json({
+      success: true,
+      data: settlements.results
+    })
+  } catch (error: any) {
+    console.error('[Seller Settlements] Error:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+/**
  * ====================================
  * SSE 실시간 통신 API
  * ====================================
