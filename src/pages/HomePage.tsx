@@ -8,6 +8,7 @@ import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Cl
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
 import { getUserName, getUserId, saveUserInfo, logout } from '@/utils/auth'
+import NotificationDropdown from '@/components/NotificationDropdown'
 
 interface Stream {
   id: number
@@ -283,6 +284,8 @@ export default function HomePage() {
             <div className="flex items-center space-x-3">
               {user ? (
                 <>
+                  {/* Notification Bell */}
+                  <NotificationDropdown userId={getUserId() || ''} />
                   {/* Desktop: User Profile */}
                   <Link 
                     to="/user/profile"
