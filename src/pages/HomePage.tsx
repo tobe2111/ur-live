@@ -226,7 +226,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="mx-auto min-h-screen max-w-md bg-white">
       {/* Custom Modal */}
       <CustomModal
         isOpen={modal.isOpen}

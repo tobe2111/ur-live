@@ -75,7 +75,8 @@
   }
   
   body {
-    @apply bg-background text-foreground;
+    /* PC 배경색: 연한 회색 */
+    background-color: #f5f5f7 !important;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
       -apple-system,
@@ -298,6 +299,59 @@ html {
   body {
     padding-left: max(0px, env(safe-area-inset-left));
     padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* ============================================
+   Mobile App Layout - PC에서 모바일 앱처럼
+   ============================================ */
+.mobile-app-container {
+  /* 고정 너비: iPhone Pro Max 기준 */
+  max-width: 450px;
+  width: 100%;
+  
+  /* 화면 정중앙 배치 */
+  margin: 0 auto;
+  
+  /* 최소 높이: 화면 꽉 채우기 */
+  min-height: 100vh;
+  
+  /* 컨테이너 배경: 순백 */
+  background-color: #ffffff;
+  
+  /* 은은한 그림자: 입체감 */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  
+  /* 상대 위치: 하단 탭바 기준 */
+  position: relative;
+  
+  /* 오버플로우: 스크롤 가능 */
+  overflow-x: hidden;
+}
+
+/* 모바일에서는 그림자 제거 & 전체 너비 */
+@media (max-width: 450px) {
+  .mobile-app-container {
+    box-shadow: none;
+    max-width: 100%;
+  }
+}
+
+/* 하단 탭바: 모바일 컨테이너 안에서만 고정 */
+.mobile-app-container nav[class*="fixed bottom"] {
+  /* PC에서: 450px 안에서만 고정 */
+  max-width: 450px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 450px) {
+  .mobile-app-container nav[class*="fixed bottom"] {
+    /* 모바일에서: 전체 너비 */
+    max-width: 100%;
+    left: 0;
+    transform: none;
   }
 }
 

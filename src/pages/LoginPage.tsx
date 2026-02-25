@@ -207,7 +207,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#fbfbfd] to-white flex flex-col items-center justify-center p-4">
+    <div className="mx-auto min-h-screen max-w-md bg-gradient-to-b from-[#fbfbfd] to-white flex flex-col items-center justify-center p-4">
       {/* Logo */}
       <Link to="/" className="flex items-center space-x-2 mb-8">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#007aff] to-[#0051d5]">

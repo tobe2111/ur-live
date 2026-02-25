@@ -154,7 +154,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7]">
+    <div className="mx-auto min-h-screen max-w-md bg-[#f5f5f7]">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-[#e5e5ea]">
         <div className="w-full px-4 py-3">

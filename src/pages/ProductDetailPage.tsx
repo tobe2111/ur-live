@@ -195,7 +195,7 @@ export default function ProductDetailPage() {
   const allImages = [product.image_url, ...detailImages].filter(Boolean)
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-background">
+    <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       <MobileHeader onShare={handleShare} />
 

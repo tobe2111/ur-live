@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import GripFrameLayout from './GripFrameLayout'
+import MobileAppLayout from './MobileAppLayout'
 
 interface FrameWrapperProps {
   children: ReactNode
@@ -11,24 +12,10 @@ const FRAME_PAGES = [
   '/introduce'
 ]
 
-// 프레임에서 제외할 모든 페이지들
-const EXCLUDE_PAGES = [
-  '/',           // 메인 페이지
-  '/cart',       // 장바구니
-  '/checkout',   // 결제 페이지
-  '/search',     // 검색
-  '/user/profile', // 마이페이지 (통합됨)
-  '/mypage',     // 마이페이지 (리다이렉트)
-  '/my-orders',  // 주문 내역
-  '/orders',     // 주문 내역 (별칭)
-  '/product/',   // 상품 상세
-  '/login',      // 로그인
-  '/seller',     // 셀러
-  '/admin',      // 어드민
-  '/browse',     // 브라우즈
-  '/payment',    // 결제 결과
-  '/live/',      // 라이브
-  '/auth/'       // 인증 콜백
+// 모바일 레이아웃에서 제외할 페이지들 (셀러/어드민 - PC 전체 화면 필요)
+const EXCLUDE_MOBILE_LAYOUT = [
+  '/seller',     // 셀러 대시보드
+  '/admin',      // 어드민 대시보드
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {
@@ -51,21 +38,21 @@ export default function FrameWrapper({ children }: FrameWrapperProps) {
     return <GripFrameLayout>{children}</GripFrameLayout>
   }
   
-  // 제외 페이지인지 확인 (프레임 페이지가 아닐 때만)
-  const isExcludePage = EXCLUDE_PAGES.some(path => {
+  // 모바일 레이아웃 제외 페이지인지 확인 (셀러/어드민)
+  const shouldExcludeMobileLayout = EXCLUDE_MOBILE_LAYOUT.some(path => {
     return location.pathname.startsWith(path)
   })
   
-  if (isExcludePage) {
+  if (shouldExcludeMobileLayout) {
     console.log('↩️ FrameWrapper: Returning children directly (excluded page)', {
       pathname: location.pathname
     })
     return <>{children}</>
   }
   
-  // 아니면 그냥 children 렌더링
-  console.log('👉 FrameWrapper: Returning children directly (default)', {
+  // 나머지 모든 페이지는 모바일 레이아웃으로 감싸기
+  console.log('📱 FrameWrapper: Wrapping with MobileAppLayout', {
     pathname: location.pathname
   })
-  return <>{children}</>
+  return <MobileAppLayout>{children}</MobileAppLayout>
 }

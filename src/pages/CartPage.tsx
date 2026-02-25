@@ -313,7 +313,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-white">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <button

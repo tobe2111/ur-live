@@ -238,7 +238,7 @@ export default function MyOrdersPage() {
   const totalAmount = cartItems.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0)
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd]">
+    <div className="mx-auto min-h-screen max-w-md bg-[#fbfbfd]">
       {/* Header */}
       <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
         <div className="w-full px-4 sm:px-6">

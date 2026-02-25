@@ -1591,7 +1591,7 @@ export default function LivePageV2() {
   }
 
   return (
-    <main className="mx-auto relative h-dvh max-w-md overflow-hidden bg-black">
+    <main className="relative h-dvh overflow-hidden bg-black">
       <TopNav 
         viewers={reels[activeIndex]?.stream.viewerCount || 0}
         sellerLinks={{
