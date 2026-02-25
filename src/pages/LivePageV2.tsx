@@ -386,36 +386,46 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
   // 🔥 SSE 기반 실시간 채팅
   const { messages, isConnected, error, sendMessage } = useLiveChat(streamId, !!streamId)
 
-  // 자동 스크롤
+  // 자동 스크롤 - 새 메시지가 올 때 하단으로
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
 
+  // 최근 5개 메시지만 표시
+  const recentMessages = messages.slice(-5)
+
   return (
     <div
       ref={scrollRef}
-      className="flex flex-col overflow-hidden cursor-pointer"
-      style={{ gap: '2px' }}
+      className="flex flex-col gap-0.5 overflow-y-auto max-h-32 cursor-pointer no-scrollbar"
       onClick={onChatClick}
     >
-      {/* 연결 상태 표시 - 사용자에게 보이지 않음 (백그라운드 자동 재연결) */}
-      {/* SSE 연결이 끊어져도 자동으로 재연결되므로 알림 표시 안 함 */}
-      
-      {/* SSE 메시지 렌더링 */}
-      {messages.map((msg) => (
-        <p
-          key={msg.id}
-          className="text-[11px] leading-[1.3] animate-fade-in"
-          style={{
-            textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)',
-          }}
-        >
-          <span className="font-bold text-white/90">{msg.userName}</span>
-          <span className="text-white/70">{' '}{msg.message}</span>
-        </p>
-      ))}
+      {/* SSE 메시지 렌더링 (최대 5개) */}
+      {recentMessages.map((msg) => {
+        // 시스템 메시지 (담기, 구매) 감지
+        const isSystemMessage = msg.message.includes('장바구니') || 
+                                 msg.message.includes('담았습니다') || 
+                                 msg.message.includes('구매했습니다') ||
+                                 msg.userName === 'System' ||
+                                 msg.role === 'system'
+        
+        return (
+          <p
+            key={msg.id}
+            className="text-[11px] leading-[1.3] animate-fade-in"
+            style={{
+              textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            <span className="font-bold text-white/90">{msg.userName}</span>
+            <span className={`${isSystemMessage ? 'text-yellow-300 font-semibold' : 'text-white/70'}`}>
+              {' '}{msg.message}
+            </span>
+          </p>
+        )
+      })}
     </div>
   )
 }
@@ -477,6 +487,7 @@ function ProductListSheet({
             <div className="grid grid-cols-2 gap-3">
               {products.map((product) => {
                 const isCurrentProduct = product.id === currentProductId
+                const isOutOfStock = product.stock !== undefined && product.stock === 0
                 const discount = product.original_price && product.original_price > product.price
                   ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
                   : 0
@@ -484,15 +495,27 @@ function ProductListSheet({
                 return (
                   <button
                     key={product.id}
-                    onClick={() => onSelectProduct(product)}
-                    className={`relative bg-white rounded-2xl overflow-hidden transition-all duration-200 active:scale-[0.98] ${
-                      isCurrentProduct
-                        ? 'ring-4 ring-red-500 shadow-xl shadow-red-500/30'
-                        : 'hover:shadow-lg border border-gray-200'
+                    onClick={() => !isOutOfStock && onSelectProduct(product)}
+                    disabled={isOutOfStock}
+                    className={`relative bg-white rounded-2xl overflow-hidden transition-all duration-200 ${
+                      isOutOfStock
+                        ? 'opacity-60 cursor-not-allowed'
+                        : isCurrentProduct
+                        ? 'ring-4 ring-red-500 shadow-xl shadow-red-500/30 active:scale-[0.98]'
+                        : 'hover:shadow-lg border border-gray-200 active:scale-[0.98]'
                     }`}
                   >
+                    {/* Out of Stock Overlay */}
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 bg-black/40 z-20 flex items-center justify-center">
+                        <div className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                          품절
+                        </div>
+                      </div>
+                    )}
+
                     {/* LIVE Badge for current product */}
-                    {isCurrentProduct && (
+                    {isCurrentProduct && !isOutOfStock && (
                       <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-full shadow-lg">
                         <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                         <span className="text-white font-bold text-[10px] tracking-wider">LIVE</span>
@@ -748,52 +771,60 @@ function ProductSheet({
           </div>
 
           {/* Action Buttons - KREAM Style Split Buttons */}
-          <div className="flex gap-2">
-            {/* 담기 버튼 */}
-            <button
-              onClick={handleAddToCart}
-              disabled={addingToCart || buyingNow}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 border-2 ${
-                addingToCart
-                  ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                  : 'bg-white border-gray-900 text-gray-900 active:scale-[0.98] hover:bg-gray-50'
-              }`}
-            >
-              {addingToCart ? (
-                <>
-                  <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  담는 중...
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="h-5 w-5" />
-                  담기
-                </>
-              )}
-            </button>
+          {product.stock === 0 ? (
+            // 품절 상태
+            <div className="bg-gray-100 rounded-xl py-4 text-center">
+              <p className="text-gray-900 font-bold text-lg mb-1">품절된 상품입니다</p>
+              <p className="text-gray-500 text-sm">다른 상품을 선택해주세요</p>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              {/* 담기 버튼 */}
+              <button
+                onClick={handleAddToCart}
+                disabled={addingToCart || buyingNow}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 border-2 ${
+                  addingToCart
+                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                    : 'bg-white border-gray-900 text-gray-900 active:scale-[0.98] hover:bg-gray-50'
+                }`}
+              >
+                {addingToCart ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    담는 중...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag className="h-5 w-5" />
+                    담기
+                  </>
+                )}
+              </button>
 
-            {/* 구매하기 버튼 */}
-            <button
-              onClick={handleBuyNow}
-              disabled={addingToCart || buyingNow}
-              className={`flex-[1.5] flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 ${
-                buyingNow
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-gray-900 text-white active:scale-[0.98] hover:bg-gray-800 shadow-lg'
-              }`}
-            >
-              {buyingNow ? (
-                <>
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  처리 중...
-                </>
-              ) : (
-                <>
-                  ₩{((product.price || 0) * quantity).toLocaleString()} 구매하기
-                </>
-              )}
-            </button>
-          </div>
+              {/* 구매하기 버튼 */}
+              <button
+                onClick={handleBuyNow}
+                disabled={addingToCart || buyingNow}
+                className={`flex-[1.5] flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 ${
+                  buyingNow
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-gray-900 text-white active:scale-[0.98] hover:bg-gray-800 shadow-lg'
+                }`}
+              >
+                {buyingNow ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    처리 중...
+                  </>
+                ) : (
+                  <>
+                    ₩{((product.price || 0) * quantity).toLocaleString()} 구매하기
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -833,6 +864,7 @@ function ReelCard({
   // Chat input
   const [chatMessage, setChatMessage] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [lastMessageTime, setLastMessageTime] = useState(0)
   
   // Seller control
   const [changingProduct, setChangingProduct] = useState(false)
@@ -1318,11 +1350,18 @@ function ReelCard({
   }
 
   // ============================================
-  // Send Chat Message
+  // Send Chat Message (with throttling)
   // ============================================
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault()
     if (!chatMessage.trim() || sendingMessage) return
+
+    // 도배 방지: 1초에 1회 제한
+    const now = Date.now()
+    if (now - lastMessageTime < 1000) {
+      showAlert('메시지를 너무 빠르게 보내고 있습니다. 잠시 후 다시 시도해주세요.', 'warning', '도배 방지')
+      return
+    }
 
     setSendingMessage(true)
     try {
@@ -1343,6 +1382,8 @@ function ReelCard({
         'viewer'
       )
 
+      // 마지막 메시지 시간 업데이트
+      setLastMessageTime(now)
       setChatMessage('')
       setChatModalOpen(false)
     } catch (error) {
