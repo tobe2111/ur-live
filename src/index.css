@@ -306,8 +306,8 @@ html {
    Mobile App Layout - PC에서 모바일 앱처럼
    ============================================ */
 .mobile-app-container {
-  /* 고정 너비: iPhone Pro Max 기준 */
-  max-width: 450px;
+  /* 고정 너비: 실제 모바일 너비 (iPhone 14 Pro Max: 393px) */
+  max-width: 393px;
   width: 100%;
   
   /* 화면 정중앙 배치 */
@@ -330,7 +330,7 @@ html {
 }
 
 /* 모바일에서는 그림자 제거 & 전체 너비 */
-@media (max-width: 450px) {
+@media (max-width: 393px) {
   .mobile-app-container {
     box-shadow: none;
     max-width: 100%;
@@ -339,14 +339,14 @@ html {
 
 /* 하단 탭바: 모바일 컨테이너 안에서만 고정 */
 .mobile-app-container nav[class*="fixed bottom"] {
-  /* PC에서: 450px 안에서만 고정 */
-  max-width: 450px;
+  /* PC에서: 393px 안에서만 고정 */
+  max-width: 393px;
   left: 50%;
   right: auto;
   transform: translateX(-50%);
 }
 
-@media (max-width: 450px) {
+@media (max-width: 393px) {
   .mobile-app-container nav[class*="fixed bottom"] {
     /* 모바일에서: 전체 너비 */
     max-width: 100%;

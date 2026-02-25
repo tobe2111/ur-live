@@ -1021,11 +1021,10 @@ function ReelCard({
       return
     }
     
-    // Check if cart has items
-    const hasCartItems = localStorage.getItem('hasCartItems')
-    
-    if (!hasCartItems || hasCartItems !== 'true') {
-      showAlert('상품을 먼저 담아주세요!', 'info', '상품 담기')
+    // ✅ 현재 상품이 없으면 담기 불가
+    const currentProduct = currentStream?.product
+    if (!currentProduct) {
+      showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
       return
     }
     
@@ -1043,23 +1042,27 @@ function ReelCard({
         return
       }
       
-      const response = await api.get('/api/cart')
-      console.log('[Checkout] Server cart response:', response.data)
-      
-      const cartData = response.data?.data || response.data
-      if (!cartData || !Array.isArray(cartData) || cartData.length === 0) {
-        showAlert('장바구니가 비어있습니다. 상품을 먼저 담아주세요!', 'info', '장바구니 비어있음')
-        localStorage.removeItem('hasCartItems')
-        setCheckingOut(false)
-        return
+      // ✅ 먼저 현재 상품을 장바구니에 추가
+      const cartData = {
+        userId: parseInt(userId),
+        productId: currentProduct.id,
+        quantity: 1,
+        priceSnapshot: currentProduct.price,
+        liveStreamId: currentStream.id
       }
       
-      console.log('[Checkout] Navigating to cart with', cartData.length, 'items')
+      console.log('[Checkout] Adding current product to cart:', cartData)
+      
+      await api.post('/api/cart', cartData)
+      localStorage.setItem('hasCartItems', 'true')
+      
+      // ✅ 장바구니 페이지로 이동
+      console.log('[Checkout] Navigating to cart')
       navigate('/cart')
       
     } catch (error: any) {
-      console.error('Failed to check cart:', error)
-      const errorMessage = error.response?.data?.error || error.message || '장바구니 확인에 실패했습니다.'
+      console.error('Failed to add product to cart:', error)
+      const errorMessage = error.response?.data?.error || error.message || '상품 담기에 실패했습니다.'
       showAlert(errorMessage, 'error', '결제 실패')
     } finally {
       setCheckingOut(false)
@@ -1195,11 +1198,11 @@ function ReelCard({
               </h3>
               <div className="flex items-baseline gap-1.5 mt-0.5">
                 <span className="text-[14px] font-extrabold text-red-400 drop-shadow-md">
-                  ${(safeProduct.price || 0).toFixed(2)}
+                  ₩{(safeProduct.price || 0).toLocaleString()}
                 </span>
                 {(safeProduct.originalPrice || safeProduct.original_price) && (
                   <span className="text-[10px] text-white/40 line-through">
-                    ${(safeProduct.originalPrice || safeProduct.original_price || 0).toFixed(2)}
+                    ₩{(safeProduct.originalPrice || safeProduct.original_price || 0).toLocaleString()}
                   </span>
                 )}
               </div>

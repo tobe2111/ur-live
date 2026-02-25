@@ -16,6 +16,7 @@ const FRAME_PAGES = [
 const EXCLUDE_MOBILE_LAYOUT = [
   '/seller',     // 셀러 대시보드
   '/admin',      // 어드민 대시보드
+  '/checkout',   // 결제 페이지 (배송지 정보가 길어서 PC 전체 화면 필요)
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {

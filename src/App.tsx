@@ -3,7 +3,6 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
-import { UpdateNotification } from './components/UpdateNotification'
 import { AuthProvider } from './contexts/AuthContext'
 import { useSessionValidation } from './hooks/useSessionValidation'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
@@ -91,7 +90,6 @@ function AppContent() {
   
   return (
     <>
-      <UpdateNotification />
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
           <Routes>
