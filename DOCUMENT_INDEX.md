@@ -12,11 +12,13 @@
 | 문서명 | 설명 | 중요도 | 크기 |
 |-------|------|--------|------|
 | **COMPLETE_FEATURE_SPECIFICATION.md** | 전체 서비스 기능 명세서 (80개 기능) ⭐️⭐️⭐️ | 🔴 필수 | 35KB |
+| **IMPACT_ANALYSIS_REPORT.md** | 운영 안전성 영향 분석 (재고·결제·중복 엔드포인트) | 🔴 필수 | 12KB |
 | **STOCK_RESERVATION_IMPLEMENTATION.md** | 재고 예약 시스템 구현 상세 (비관적 락) | 🔴 필수 | 15KB |
 | **RACE_CONDITION_ANALYSIS.md** | 동시성 문제 분석 및 해결 방안 | 🔴 필수 | 20KB |
 | **JWT_DETAIL_IMPROVEMENTS.md** | JWT 인증 시스템 개선 (공개 API, 로그아웃) | 🔴 필수 | 14KB |
 | **CRON_SETUP_GUIDE.md** | 재고 예약 만료 Cron 작업 설정 가이드 | 🟡 높음 | 6KB |
 | **ENV_VARS_CHECKLIST.md** | 환경변수 체크리스트 및 설정 가이드 | 🟡 높음 | 5KB |
+| **TASK_COMPLETION_REPORT.md** | 긴급 과제 완료 보고서 (3개 긴급 + 1개 높음) | 🟡 높음 | 8KB |
 
 ---
 
@@ -151,9 +153,9 @@ https://github.com/tobe2111/ur-live/blob/main/
 7. **DEPLOYMENT_CHECKLIST.md** - 배포 체크리스트
 
 ### 3순위 (선택 확인)
-8. **COMPREHENSIVE_TEST_GUIDE.md** - 전체 테스트 가이드
-9. **TROUBLESHOOTING.md** - 문제 해결 가이드
-10. **SERVICE_INTRODUCTION.md** - 서비스 소개
+10. **COMPREHENSIVE_TEST_GUIDE.md** - 전체 테스트 가이드
+11. **TROUBLESHOOTING.md** - 문제 해결 가이드
+12. **SERVICE_INTRODUCTION.md** - 서비스 소개
 
 ---
 
