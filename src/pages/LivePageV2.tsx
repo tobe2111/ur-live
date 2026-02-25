@@ -1406,11 +1406,11 @@ function ReelCard({
 
   return (
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
-      {/* LIVE Badge - Only for seller viewing their own stream */}
+      {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
-        <div className="absolute top-4 left-4 z-[101] flex items-center gap-2 bg-red-600 px-4 py-2 rounded-full shadow-2xl">
-          <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
-          <span className="text-white font-black text-sm tracking-wider">Live 상품 (셀러 계정)</span>
+        <div className="absolute top-16 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 rounded-full shadow-2xl animate-pulse">
+          <div className="w-2.5 h-2.5 bg-white rounded-full" />
+          <span className="text-white font-bold text-xs tracking-wide">현재 소개 중인 상품</span>
         </div>
       )}
       
