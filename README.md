@@ -623,3 +623,33 @@ Private - UR Team
 ---
 
 **Powered by Cloudflare Pages & Hono Framework**
+
+## 📧 Email Configuration (Resend)
+
+### Setup
+1. Create account at https://resend.com
+2. Get API key from https://resend.com/api-keys
+3. Add to environment:
+
+**Local development:**
+```bash
+# .dev.vars
+RESEND_API_KEY=re_your_api_key_here
+```
+
+**Production:**
+```bash
+wrangler secret put RESEND_API_KEY
+# Enter your API key when prompted
+```
+
+### Email Events
+- **Seller Approval**: Sent when admin approves seller
+- **Seller Rejection**: Sent when admin rejects seller with reason
+
+### Free Plan
+- 3,000 emails/month
+- 100 emails/day
+- Default sender: `onboarding@resend.dev`
+- Custom domain (optional): Add your domain in Resend dashboard
+

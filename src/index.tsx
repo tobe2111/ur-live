@@ -9107,8 +9107,36 @@ app.patch('/api/admin/sellers/:id/approve', async (c) => {
 
     console.log(`셀러 승인: ${seller.username} (ID: ${sellerId}) by Admin ID: ${auth.adminId}`);
 
-    // TODO: 이메일 알림 발송 (승인 완료)
-    // await sendEmail(seller.email, '셀러 승인 완료', '...');
+    // ✅ 이메일 알림 발송 (승인 완료)
+    if (seller.email) {
+      try {
+        const { sendEmail, getSellerApprovalEmailHTML } = await import('./services/email');
+        const resendApiKey = c.env.RESEND_API_KEY || '';
+        
+        const emailHTML = getSellerApprovalEmailHTML(
+          seller.name as string,
+          seller.username as string
+        );
+        
+        const emailResult = await sendEmail(
+          {
+            to: seller.email as string,
+            subject: '🎉 UR Live 판매자 승인 완료',
+            html: emailHTML
+          },
+          resendApiKey
+        );
+        
+        if (emailResult.success) {
+          console.log(`[셀러 승인] 이메일 발송 성공: ${seller.email}`);
+        } else {
+          console.warn(`[셀러 승인] 이메일 발송 실패: ${emailResult.error}`);
+        }
+      } catch (emailError) {
+        console.error('[셀러 승인] 이메일 발송 오류:', emailError);
+        // 이메일 실패해도 승인은 성공 처리
+      }
+    }
 
     return c.json({ 
       success: true, 
@@ -9170,8 +9198,36 @@ app.patch('/api/admin/sellers/:id/reject', async (c) => {
 
     console.log(`셀러 거부: ${seller.username} (ID: ${sellerId}), 사유: ${reason}`);
 
-    // TODO: 이메일 알림 발송 (거부 사유 포함)
-    // await sendEmail(seller.email, '셀러 승인 거부', reason);
+    // ✅ 이메일 알림 발송 (거부 사유 포함)
+    if (seller.email) {
+      try {
+        const { sendEmail, getSellerRejectionEmailHTML } = await import('./services/email');
+        const resendApiKey = c.env.RESEND_API_KEY || '';
+        
+        const emailHTML = getSellerRejectionEmailHTML(
+          seller.name as string,
+          reason
+        );
+        
+        const emailResult = await sendEmail(
+          {
+            to: seller.email as string,
+            subject: 'UR Live 판매자 승인 결과 안내',
+            html: emailHTML
+          },
+          resendApiKey
+        );
+        
+        if (emailResult.success) {
+          console.log(`[셀러 거부] 이메일 발송 성공: ${seller.email}`);
+        } else {
+          console.warn(`[셀러 거부] 이메일 발송 실패: ${emailResult.error}`);
+        }
+      } catch (emailError) {
+        console.error('[셀러 거부] 이메일 발송 오류:', emailError);
+        // 이메일 실패해도 거부는 성공 처리
+      }
+    }
 
     return c.json({ 
       success: true, 
