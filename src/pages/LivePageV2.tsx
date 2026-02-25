@@ -869,13 +869,14 @@ function ReelCard({
   const [sendingMessage, setSendingMessage] = useState(false)
   const [lastMessageTime, setLastMessageTime] = useState(0)
   
-  // Seller control
+  // Destructure reel first (MUST be before any usage)
+  const { product, stream } = reel
+  
+  // Seller control (now safe to use stream)
   const [changingProduct, setChangingProduct] = useState(false)
   const userId = getUserId()
   const userType = localStorage.getItem('user_type')
   const isSeller = userType === 'seller' && userId && stream.seller_id === parseInt(userId)
-
-  const { product, stream } = reel
   
   // Handle null product case
   const safeProduct = product || {
