@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { logout as authLogout } from '@/utils/auth'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Seller {
@@ -220,9 +221,9 @@ export default function AdminPage() {
   }
 
   function logout() {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('user_type')
-    localStorage.removeItem('admin_id')
+    // 🔧 표준 logout 함수 사용 (JWT + 레거시 키 모두 삭제)
+    authLogout()
+    console.log('[AdminPage] 🚪 관리자 로그아웃 완료')
     navigate('/admin/login')
   }
 

@@ -22,6 +22,30 @@ const api = axios.create({
 });
 
 /**
+ * 공개 API 엔드포인트 (JWT 불필요)
+ * 비회원도 접근 가능한 페이지용 API
+ */
+const PUBLIC_API_PATHS = [
+  '/api/streams',              // 라이브 스트림 목록
+  '/api/streams/',             // 특정 스트림 조회
+  '/api/products',             // 상품 목록
+  '/api/products/',            // 특정 상품 조회
+  '/api/banners',              // 배너 목록
+  '/api/categories',           // 카테고리
+  '/api/health',               // 헬스 체크
+  '/api/auth/login',           // 로그인
+  '/api/auth/register',        // 회원가입
+  '/api/auth/refresh',         // 토큰 갱신
+];
+
+/**
+ * 공개 API 경로 체크
+ */
+function isPublicAPI(url: string): boolean {
+  return PUBLIC_API_PATHS.some(path => url.startsWith(path));
+}
+
+/**
  * 요청 인터셉터: 자동 JWT 토큰 추가
  * 
  * JWT Access Token을 Authorization Bearer 헤더로 전송
@@ -36,8 +60,9 @@ api.interceptors.request.use(
       // Bearer 토큰 형식으로 전송
       config.headers['Authorization'] = `Bearer ${accessToken}`
       console.log('[API] JWT token attached:', accessToken.substring(0, 20) + '...')
-    } else {
-      console.warn('[API] No JWT token found')
+    } else if (!isPublicAPI(config.url || '')) {
+      // 🔧 공개 API가 아닌데 토큰이 없으면 경고 (공개 API는 경고 없음)
+      console.warn('[API] ⚠️ No JWT token found for protected API:', config.url)
     }
     
     return config;
@@ -59,11 +84,18 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      // 🔧 1. 먼저 에러 응답에서 권한 문제인지 확인
+      // 🔧 1. 공개 API는 401 에러 무시 (비회원 접근 허용)
+      const requestUrl = originalRequest.url || '';
+      if (isPublicAPI(requestUrl)) {
+        console.log('[API] 공개 API 401 무시 (비회원 접근):', requestUrl);
+        return Promise.reject(error);
+      }
+      
+      // 🔧 2. 먼저 에러 응답에서 권한 문제인지 확인
       const errorData = error.response?.data as any;
       const errorMessage = errorData?.error || '';
       
-      // 🔧 2. 권한 문제(userType 불일치)인 경우 토큰 갱신하지 않고 로그아웃
+      // 🔧 3. 권한 문제(userType 불일치)인 경우 토큰 갱신하지 않고 로그아웃
       if (errorMessage.includes('권한') || errorMessage.includes('admin') || errorMessage.includes('seller')) {
         console.error('[API] ❌ Permission denied (userType mismatch):', errorMessage);
         console.warn('[API] 권한 불일치 - 로그아웃 처리');
@@ -86,7 +118,7 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      // 🔧 3. 토큰 만료인 경우에만 갱신 시도
+      // 🔧 4. 토큰 만료인 경우에만 갱신 시도
       const refreshToken = localStorage.getItem('refresh_token');
       
       if (refreshToken) {

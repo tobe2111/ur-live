@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { logout as authLogout } from '@/utils/auth'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
@@ -226,12 +227,10 @@ export default function MyOrdersPage() {
 
   function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
-      localStorage.removeItem('user_session_token')
-      localStorage.removeItem('user_id')
-      localStorage.removeItem('user_name')
-      localStorage.removeItem('user_email')
-      localStorage.removeItem('user_profile_image')
-      navigate('/')
+      // 🔧 표준 logout 함수 사용 (JWT + 레거시 키 모두 삭제)
+      authLogout()
+      console.log('[MyOrdersPage] 🚪 사용자 로그아웃 완료')
+      navigate('/login')
     }
   }
 

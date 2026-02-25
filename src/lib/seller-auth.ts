@@ -30,12 +30,10 @@ export function redirectToLogin(navigate: any) {
 }
 
 export function logoutSeller(navigate: any) {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('refresh_token')
-  localStorage.removeItem('seller_session_token')
-  localStorage.removeItem('user_type')
-  localStorage.removeItem('seller_id')
-  localStorage.removeItem('seller_name')
-  localStorage.removeItem('seller_email')
+  // 🔧 표준 logout 함수 사용 (JWT + 레거시 키 모두 삭제)
+  const { logout } = require('@/utils/auth')
+  logout()
+  
+  console.log('[SellerAuth] 🚪 셀러 로그아웃 완료')
   navigate('/seller/login')
 }
