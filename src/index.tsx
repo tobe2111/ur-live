@@ -7800,6 +7800,40 @@ app.post('/api/payments/confirm', async (c) => {
         }
         
         console.log(`[Stock] ✅ 재고 확정 완료: ${successCount}/${orderItems.results.length}개 성공`);
+        
+        // 4️⃣ 재고 부족 알림 체크 (결제 완료 후)
+        try {
+          const productIds = orderItems.results.map((item: any) => item.product_id);
+          const placeholders = productIds.map(() => '?').join(',');
+          
+          const productsForAlert = await DB.prepare(`
+            SELECT id, name, stock, reserved_stock, stock_alert_threshold, seller_id 
+            FROM products 
+            WHERE id IN (${placeholders})
+          `).bind(...productIds).all();
+
+          for (const product of productsForAlert.results) {
+            const threshold = (product.stock_alert_threshold as number) || 10; // 기본값 10개
+            const currentStock = (product.stock as number) || 0;
+            const reservedStock = (product.reserved_stock as number) || 0;
+            const availableStock = currentStock - reservedStock;
+            
+            // 가용 재고가 임계값 이하이고 셀러 ID가 있으면 알림
+            if (availableStock <= threshold && product.seller_id) {
+              await notifyLowStock(
+                DB,
+                product.seller_id as number,
+                product.name as string,
+                availableStock,
+                threshold
+              );
+              console.log(`[Low Stock Alert] 📢 ${product.name}: 가용재고 ${availableStock}개 (임계값 ${threshold}개)`);
+            }
+          }
+        } catch (stockAlertError) {
+          console.error('[Low Stock Alert] ⚠️ 알림 전송 실패:', stockAlertError);
+          // 알림 실패해도 결제는 완료되었으므로 계속 진행
+        }
       }
       
       // 3️⃣ 알림톡 자동 발송 (주문 확인)
