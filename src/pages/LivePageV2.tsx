@@ -1408,9 +1408,9 @@ function ReelCard({
     <div className="relative h-full w-full snap-start snap-always overflow-hidden bg-black">
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
-        <div className="absolute top-16 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 rounded-full shadow-2xl animate-pulse">
-          <div className="w-2.5 h-2.5 bg-white rounded-full" />
-          <span className="text-white font-bold text-xs tracking-wide">현재 소개 중인 상품</span>
+        <div className="absolute top-20 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
+          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+          <span className="text-white font-bold text-[11px] tracking-wide">소개 중</span>
         </div>
       )}
       
@@ -1530,37 +1530,34 @@ function ReelCard({
               </span>
             </button>
 
-            {/* Seller: Change Product Button - 셀러 전용 상품 변경 버튼 */}
-            {isSeller && product && (
+            {/* Seller: Change Product Button - 셀러는 "구매하기" 대신 "상품 변경" 버튼 표시 */}
+            {isSeller && product ? (
               <button
                 onClick={handleChangeProduct}
                 disabled={changingProduct || isCurrentProduct}
-                className={`flex items-center gap-1.5 shrink-0 rounded-lg px-4 py-2 text-xs font-bold transition-all active:scale-95 ${
+                className={`shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-extrabold transition-all active:scale-95 ${
                   isCurrentProduct
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 cursor-default'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 cursor-default'
                     : changingProduct
-                    ? 'bg-orange-500/20 text-orange-400 opacity-50 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl'
+                    ? 'bg-gray-500/50 text-white/50 opacity-50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl'
                 }`}
                 aria-label="Change to this product"
               >
-                <ShoppingBag size={14} />
-                <span>
-                  {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 현재 소개 중' : '이 상품으로 변경'}
-                </span>
+                {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔄 변경하기'}
+              </button>
+            ) : (
+              /* Buy button - 일반 유저만 "구매하기" 버튼 표시 */
+              <button
+                onClick={openProductListSheet}
+                disabled={!product}
+                className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
+                  !product ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                구매하기
               </button>
             )}
-
-            {/* Buy button - Opens product list */}
-            <button
-              onClick={openProductListSheet}
-              disabled={!product}
-              className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
-                !product ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              구매하기
-            </button>
           </div>
         </div>
       </div>
