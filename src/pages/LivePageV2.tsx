@@ -444,6 +444,9 @@ function ProductListSheet({
   onSelectProduct: (product: Product) => void
   loading: boolean
 }) {
+  // ✅ 방어 코드: products가 undefined인 경우 빈 배열로 처리
+  const safeProducts = products || []
+  
   return (
     <>
       {/* Overlay */}
@@ -468,7 +471,7 @@ function ProductListSheet({
 
         {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900">라이브 상품 ({products.length}개)</h3>
+          <h3 className="text-lg font-bold text-gray-900">라이브 상품 ({safeProducts.length}개)</h3>
           <p className="text-sm text-gray-500 mt-1">상품을 선택해서 구매하세요</p>
         </div>
 
@@ -478,14 +481,14 @@ function ProductListSheet({
             <div className="flex items-center justify-center py-12">
               <div className="h-8 w-8 border-3 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
             </div>
-          ) : products.length === 0 ? (
+          ) : safeProducts.length === 0 ? (
             <div className="text-center py-12">
               <ShoppingBag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <p className="text-gray-500">등록된 상품이 없습니다</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {products.map((product) => {
+              {safeProducts.map((product) => {
                 const isCurrentProduct = product.id === currentProductId
                 const isOutOfStock = product.stock !== undefined && product.stock === 0
                 const discount = product.original_price && product.original_price > product.price
@@ -2028,10 +2031,31 @@ export default function LivePageV2() {
     )
   }
 
+  // ✅ 로딩 중 표시
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+          <div className="text-white text-lg">라이브 로딩 중...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ 데이터 없음 표시
   if (reels.length === 0) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-xl">No reels available</div>
+        <div className="text-center">
+          <div className="text-white text-xl mb-2">진행 중인 라이브가 없습니다</div>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 px-6 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
       </div>
     )
   }
