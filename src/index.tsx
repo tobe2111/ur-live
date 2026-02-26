@@ -52,6 +52,7 @@ import { edgeCache, CACHE_PRESETS, purgeCache } from './lib/edge-cache';
 import { parsePaginationParams, generatePaginationMeta, buildPaginationQuery, parseCursorParams, generateNextCursor } from './lib/pagination';
 import { imageOptimizationMiddleware } from './lib/image-optimization';
 import { AppError, ErrorFactory } from './lib/errors';
+import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -7857,6 +7858,25 @@ app.post('/api/payments/confirm', async (c) => {
       // DB 실패해도 결제는 성공했으므로 성공 응답 반환
     }
 
+    // Discord 알림: 결제 성공 (선택적)
+    if (c.env.DISCORD_WEBHOOK_URL) {
+      try {
+        await sendDiscordSuccess(
+          c.env.DISCORD_WEBHOOK_URL,
+          '결제 성공',
+          `주문번호 ${orderId} 결제 완료`,
+          {
+            '주문번호': orderId,
+            '결제금액': `₩${Number(amount).toLocaleString()}`,
+            '결제키': paymentKey.substring(0, 20) + '...',
+            '사용자ID': existingOrder.user_id
+          }
+        );
+      } catch (discordErr) {
+        console.error('[Discord] 결제 성공 알림 실패:', discordErr);
+      }
+    }
+
     return c.json({
       success: true,
       data: data
@@ -14148,6 +14168,18 @@ app.get('/api/debug/kv-usage', cors(), async (c) => {
     const totalWrites = Object.values(kvWriteStats).reduce((a, b) => a + b, 0);
     const totalReads = Object.values(kvReadStats).reduce((a, b) => a + b, 0);
     
+    const writePercent = (totalWrites / 1000) * 100;
+    const readPercent = (totalReads / 100000) * 100;
+    
+    // Discord 경고: 50% 이상 사용 시
+    if ((writePercent >= 50 || readPercent >= 50) && c.env.DISCORD_WEBHOOK_URL) {
+      try {
+        await sendKVUsageWarning(c.env.DISCORD_WEBHOOK_URL, readPercent, writePercent);
+      } catch (discordErr) {
+        console.error('[Discord] KV 경고 전송 실패:', discordErr);
+      }
+    }
+    
     return c.json({
       success: true,
       stats: {
@@ -14155,8 +14187,8 @@ app.get('/api/debug/kv-usage', cors(), async (c) => {
         total_reads: totalReads,
         daily_write_limit: 1000,
         daily_read_limit: 100000,
-        write_usage_percent: ((totalWrites / 1000) * 100).toFixed(2) + '%',
-        read_usage_percent: ((totalReads / 100000) * 100).toFixed(2) + '%',
+        write_usage_percent: writePercent.toFixed(2) + '%',
+        read_usage_percent: readPercent.toFixed(2) + '%',
         top_writes: sortedWrites,
         top_reads: sortedReads
       },
@@ -14317,4 +14349,137 @@ app.delete('/api/notifications/:id', cors(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// =====================================
+// 🔔 Discord Webhook Error Monitoring
+// =====================================
+
+/**
+ * Discord Webhook으로 에러 알림 전송
+ * 무료 솔루션으로 실시간 에러 모니터링
+ */
+async function sendDiscordAlert(webhook: string, error: Error, context: any) {
+  const errorEmbed = {
+    embeds: [{
+      title: '🚨 서버 에러 발생',
+      color: 0xFF0000, // 빨간색
+      fields: [
+        {
+          name: '에러 메시지',
+          value: error.message || 'Unknown error',
+          inline: false
+        },
+        {
+          name: '발생 시각',
+          value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+          inline: true
+        },
+        {
+          name: 'HTTP 메소드',
+          value: context.method || 'N/A',
+          inline: true
+        },
+        {
+          name: 'API 경로',
+          value: context.path || 'N/A',
+          inline: false
+        },
+        {
+          name: '사용자 ID',
+          value: context.userId?.toString() || '비로그인',
+          inline: true
+        },
+        {
+          name: '사용자 타입',
+          value: context.userType || 'N/A',
+          inline: true
+        },
+        {
+          name: '에러 스택',
+          value: '```\n' + (error.stack?.substring(0, 800) || 'N/A') + '\n```',
+          inline: false
+        }
+      ],
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'UR LIVE Error Monitoring'
+      }
+    }]
+  }
+
+  try {
+    await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(errorEmbed)
+    })
+    console.log('[Discord] Error alert sent successfully')
+  } catch (webhookErr) {
+    console.error('[Discord Webhook] Failed to send alert:', webhookErr)
+  }
+}
+
+/**
+ * Discord Webhook으로 중요 이벤트 알림 전송
+ */
+async function sendDiscordNotification(
+  webhook: string,
+  title: string,
+  fields: Array<{ name: string; value: string; inline?: boolean }>,
+  color: number = 0x00FF00 // 기본: 초록색
+) {
+  const embed = {
+    embeds: [{
+      title,
+      color,
+      fields,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'UR LIVE Monitoring'
+      }
+    }]
+  }
+
+  try {
+    await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(embed)
+    })
+  } catch (err) {
+    console.error('[Discord Notification] Failed to send:', err)
+  }
+}
+
+// 글로벌 에러 핸들러 (기존 onError 대체)
+app.onError(async (err, c) => {
+  console.error('[Error]', err)
+  
+  // Discord Webhook 알림 (환경변수 설정되어 있으면)
+  if (c.env.DISCORD_WEBHOOK_URL) {
+    try {
+      await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, err, {
+        method: c.req.method,
+        path: c.req.path,
+        userId: c.get('userId'),
+        userType: c.get('userType')
+      })
+    } catch (webhookErr) {
+      // Webhook 실패해도 응답은 정상 반환
+      console.error('[Discord] Webhook failed, but continuing:', webhookErr)
+    }
+  }
+  
+  return c.json({
+    success: false,
+    error: {
+      code: err.code || 'INTERNAL_ERROR',
+      message: err.message || '서버 오류가 발생했습니다.'
+    }
+  }, err.status || 500)
+})
+
+// =====================================
+// Export default app
+// =====================================
 
