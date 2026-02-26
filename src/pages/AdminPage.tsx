@@ -36,6 +36,13 @@ interface Stats {
   activeStreams: number
 }
 
+interface DashboardStats {
+  todaySales: number
+  todayOrders: number
+  currentVisitors: number
+  liveStreams: number
+}
+
 export default function AdminPage() {
   const navigate = useNavigate()
   const { isAuthReady } = useAuth()  // ✅ URL 파라미터 처리 Hook 추가
@@ -47,6 +54,12 @@ export default function AdminPage() {
     activeSellers: 0,
     totalStreams: 0,
     activeStreams: 0
+  })
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    todaySales: 0,
+    todayOrders: 0,
+    currentVisitors: 0,
+    liveStreams: 0
   })
   const [loading, setLoading] = useState(true)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
@@ -88,6 +101,12 @@ export default function AdminPage() {
     
     console.log('[AdminPage] ✅ Auth success, loading data')
     loadData()
+    
+    // 실시간 대시보드 통계 로드 (5초마다)
+    loadDashboardStats()
+    const interval = setInterval(loadDashboardStats, 5000)
+    
+    return () => clearInterval(interval)
   }, [navigate, isAuthReady])  // ✅ isProcessed 추가
 
   async function loadData() {
@@ -132,6 +151,22 @@ export default function AdminPage() {
         navigate('/admin/login')
       }
       setLoading(false)
+    }
+  }
+
+  async function loadDashboardStats() {
+    try {
+      const token = localStorage.getItem('access_token')
+      const response = await api.get('/api/admin/dashboard/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (response.data.success) {
+        setDashboardStats(response.data.stats)
+      }
+    } catch (err: any) {
+      console.error('Failed to load dashboard stats:', err)
+      // 에러는 조용히 무시 (통계는 필수가 아님)
     }
   }
 
@@ -268,6 +303,45 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* 실시간 대시보드 통계 (TailwindCSS only) */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium opacity-90">오늘 매출</div>
+              <div className="text-2xl">💰</div>
+            </div>
+            <p className="text-3xl font-bold">₩{dashboardStats.todaySales.toLocaleString()}</p>
+            <p className="text-sm opacity-75 mt-1">실시간 업데이트</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium opacity-90">오늘 주문</div>
+              <div className="text-2xl">📦</div>
+            </div>
+            <p className="text-3xl font-bold">{dashboardStats.todayOrders.toLocaleString()}</p>
+            <p className="text-sm opacity-75 mt-1">건</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium opacity-90">현재 방문자</div>
+              <div className="text-2xl">👥</div>
+            </div>
+            <p className="text-3xl font-bold">{dashboardStats.currentVisitors.toLocaleString()}</p>
+            <p className="text-sm opacity-75 mt-1">최근 5분</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium opacity-90">라이브 방송</div>
+              <div className="text-2xl">📺</div>
+            </div>
+            <p className="text-3xl font-bold">{dashboardStats.liveStreams.toLocaleString()}</p>
+            <p className="text-sm opacity-75 mt-1">진행 중</p>
+          </div>
+        </div>
+        
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">

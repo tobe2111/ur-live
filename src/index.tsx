@@ -9809,6 +9809,71 @@ app.get('/api/admin/sellers/pending', async (c) => {
   }
 });
 
+// Get dashboard stats (무료 - D1 Database만 사용)
+app.get('/api/admin/dashboard/stats', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    // 오늘 날짜 (KST 기준)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+    
+    // 1️⃣ 오늘 매출 (결제 완료된 주문만)
+    const todaySalesResult = await DB.prepare(`
+      SELECT COALESCE(SUM(total_amount), 0) as sales
+      FROM orders
+      WHERE payment_status = 'approved'
+      AND status = 'paid'
+      AND created_at >= ?
+    `).bind(todayISO).first();
+    const todaySales = (todaySalesResult?.sales as number) || 0;
+    
+    // 2️⃣ 오늘 주문 수
+    const todayOrdersResult = await DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM orders
+      WHERE created_at >= ?
+    `).bind(todayISO).first();
+    const todayOrders = (todayOrdersResult?.count as number) || 0;
+    
+    // 3️⃣ 현재 방문자 수 (최근 5분 이내 활동한 사용자)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const currentVisitorsResult = await DB.prepare(`
+      SELECT COUNT(DISTINCT user_id) as count
+      FROM orders
+      WHERE created_at >= ?
+    `).bind(fiveMinutesAgo).first();
+    const currentVisitors = (currentVisitorsResult?.count as number) || 0;
+    
+    // 4️⃣ 진행 중인 라이브 스트림 수
+    const liveStreamsResult = await DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM live_streams
+      WHERE status = 'live'
+    `).first();
+    const liveStreams = (liveStreamsResult?.count as number) || 0;
+    
+    return c.json({
+      success: true,
+      stats: {
+        todaySales,
+        todayOrders,
+        currentVisitors,
+        liveStreams
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // =================================
 // Public Seller Profile APIs (공개 페이지)
 // =================================
