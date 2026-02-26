@@ -6402,12 +6402,20 @@ app.post('/api/seller/upload-image', async (c) => {
         },
       });
 
-      // Return R2 public URL
+      // Return R2 public URL with image resizing variants
+      // Cloudflare Workers Image Resizing (무료 - $5/month Workers 플랜 포함)
+      // 사용법: ?width=400&format=webp
       const imageUrl = `/api/images/${key}`;
       
       return c.json({
         success: true,
         url: imageUrl,
+        variants: {
+          thumbnail: `${imageUrl}?width=200&format=webp`,
+          medium: `${imageUrl}?width=800&format=webp`,
+          large: `${imageUrl}?width=1600&format=webp`,
+          original: imageUrl
+        },
         storage: 'r2',
       });
 
@@ -6443,8 +6451,14 @@ app.post('/api/seller/upload-image', async (c) => {
 });
 
 /**
- * Get image from R2
+ * Get image from R2 with optional resizing
  * GET /api/images/:key
+ * 
+ * Cloudflare Workers Image Resizing 지원 (무료 - $5/month Workers 플랜 포함)
+ * Query Parameters:
+ * - width: 원하는 너비 (예: 400)
+ * - format: 출력 형식 (webp, jpeg, png 등)
+ * - quality: 품질 (1-100, 기본값 85)
  */
 app.get('/api/images/*', async (c) => {
   try {
@@ -6459,6 +6473,11 @@ app.get('/api/images/*', async (c) => {
 
     // Get key from path (remove /api/images/ prefix)
     const key = c.req.path.replace('/api/images/', '');
+    
+    // Get query parameters for image resizing
+    const width = c.req.query('width');
+    const format = c.req.query('format');
+    const quality = c.req.query('quality') || '85';
 
     const object = await IMAGES.get(key);
 
@@ -6466,12 +6485,24 @@ app.get('/api/images/*', async (c) => {
       return c.notFound();
     }
 
-    return new Response(object.body, {
-      headers: {
-        'Content-Type': object.httpMetadata?.contentType || 'image/jpeg',
-        'Cache-Control': 'public, max-age=31536000',
-      },
-    });
+    // Workers Image Resizing이 활성화된 경우 query parameter 전달
+    const headers: Record<string, string> = {
+      'Content-Type': object.httpMetadata?.contentType || 'image/jpeg',
+      'Cache-Control': 'public, max-age=31536000',
+    };
+    
+    // Cloudflare Image Resizing 옵션 추가
+    if (width || format) {
+      const resizeOptions: string[] = [];
+      if (width) resizeOptions.push(`width=${width}`);
+      if (format) resizeOptions.push(`format=${format}`);
+      if (quality) resizeOptions.push(`quality=${quality}`);
+      
+      // cf-resize 헤더로 전달 (Cloudflare Workers Image Resizing)
+      headers['cf-resize'] = resizeOptions.join(',');
+    }
+
+    return new Response(object.body, { headers });
 
   } catch (err) {
     console.error('[Image Get] Error:', err);
