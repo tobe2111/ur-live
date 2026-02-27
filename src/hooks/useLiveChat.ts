@@ -20,7 +20,7 @@ export interface UseLiveChatReturn {
   messages: ChatMessage[];
   isConnected: boolean;
   error: string | null;
-  sendMessage: (message: string, userId: number, userName: string, userType: 'viewer' | 'streamer') => Promise<void>;
+  sendMessage: (message: string, userId: number, userName: string, userType: 'viewer' | 'streamer' | 'system') => Promise<void>;
   clearMessages: () => void;
 }
 
@@ -76,7 +76,7 @@ export function useLiveChat(
     message: string,
     userId: number,
     userName: string,
-    userType: 'viewer' | 'streamer'
+    userType: 'viewer' | 'streamer' | 'system'
   ) => {
     try {
       const accessToken = getAccessToken()
@@ -89,6 +89,13 @@ export function useLiveChat(
         headers['Authorization'] = `Bearer ${accessToken}`
       }
       
+      console.log('[useLiveChat] 📤 Sending message:', {
+        userId,
+        userName,
+        userType,
+        messagePreview: message.substring(0, 50)
+      })
+      
       const response = await fetch(`/api/chat/${liveId}/messages`, {
         method: 'POST',
         headers,
@@ -97,7 +104,7 @@ export function useLiveChat(
           userName: userName,
           message: message.trim(),
           isSeller: userType === 'streamer',
-          isAdmin: false
+          isAdmin: userType === 'system'
         })
       });
 

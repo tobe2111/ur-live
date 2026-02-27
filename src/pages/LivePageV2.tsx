@@ -1243,14 +1243,16 @@ function ReelCard({
         const userName = localStorage.getItem('user_name') || '익명'
         const maskedName = maskUserName(userName)
         
+        console.log('[handleAddToCart] 📢 Sending system message...')
         await sendChatMessage(
           `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
           0, // System user ID
           '🎉 시스템',
-          'viewer'
+          'system' // 'viewer' 대신 'system'으로 변경
         )
+        console.log('[handleAddToCart] ✅ System message sent successfully')
       } catch (error) {
-        console.error('시스템 메시지 전송 실패:', error)
+        console.error('[handleAddToCart] ❌ 시스템 메시지 전송 실패:', error)
       }
     } catch (error: any) {
       console.error('[handleAddToCart] ❌ Error:', error)
