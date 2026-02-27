@@ -490,7 +490,7 @@ function ProductListSheet({
               <p className="text-gray-500">등록된 상품이 없습니다</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               {safeProducts.map((product) => {
                 const isCurrentProduct = product.id === currentProductId
                 const isOutOfStock = product.stock !== undefined && product.stock === 0
@@ -503,7 +503,7 @@ function ProductListSheet({
                     key={product.id}
                     onClick={() => !isOutOfStock && onSelectProduct(product)}
                     disabled={isOutOfStock}
-                    className={`relative bg-white rounded-2xl overflow-hidden transition-all duration-200 ${
+                    className={`relative flex items-center gap-4 bg-white rounded-2xl overflow-hidden p-4 transition-all duration-200 ${
                       isOutOfStock
                         ? 'opacity-60 cursor-not-allowed'
                         : isCurrentProduct
@@ -522,54 +522,47 @@ function ProductListSheet({
 
                     {/* LIVE Badge for current product */}
                     {isCurrentProduct && !isOutOfStock && (
-                      <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-full shadow-lg">
+                      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-full shadow-lg">
                         <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                         <span className="text-white font-bold text-[10px] tracking-wider">LIVE</span>
                       </div>
                     )}
 
-                    {/* Product Image */}
-                    <div className="relative aspect-square bg-gray-100">
+                    {/* Product Image - 작은 썸네일 (80x80) */}
+                    <div className="relative h-20 w-20 shrink-0 rounded-xl bg-gray-100 overflow-hidden">
                       <img
-                        src={product.image_url || product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400'}
+                        src={product.image_url || product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'}
                         alt={product.name}
                         className="w-full h-full object-cover"
                       />
                       {discount > 0 && (
-                        <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                        <div className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">
                           -{discount}%
                         </div>
                       )}
                     </div>
 
                     {/* Product Info */}
-                    <div className="p-3 text-left">
-                      <h4 className="text-sm font-bold text-gray-900 line-clamp-2 mb-1.5">
+                    <div className="flex-1 text-left">
+                      <h4 className="text-base font-bold text-gray-900 line-clamp-2 mb-2">
                         {product.name}
                       </h4>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-base font-extrabold text-gray-900">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-extrabold text-gray-900">
                           ₩{(product.price || 0).toLocaleString()}
                         </span>
                         {product.original_price && product.original_price > product.price && (
-                          <span className="text-xs text-gray-400 line-through">
+                          <span className="text-sm text-gray-400 line-through">
                             ₩{product.original_price.toLocaleString()}
                           </span>
                         )}
                       </div>
                       {product.stock !== undefined && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-sm text-gray-500 mt-1">
                           재고: {product.stock}개
                         </p>
                       )}
                     </div>
-
-                    {/* Animated border for current product */}
-                    {isCurrentProduct && (
-                      <div className="absolute inset-0 pointer-events-none">
-                        <div className="absolute inset-0 border-2 border-yellow-400 animate-pulse" />
-                      </div>
-                    )}
                   </button>
                 )
               })}
@@ -678,12 +671,12 @@ function ProductSheet({
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-extrabold text-red-500">
-                  ${(product.price || 0).toFixed(2)}
+                  ₩{(product.price || 0).toLocaleString()}
                 </span>
                 {(product.originalPrice || product.original_price) && (
                   <>
                     <span className="text-sm text-gray-400 line-through">
-                      ${(product.originalPrice || product.original_price || 0).toFixed(2)}
+                      ₩{(product.originalPrice || product.original_price || 0).toLocaleString()}
                     </span>
                     <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-500">
                       -{discount}%
@@ -1605,7 +1598,14 @@ function ReelCard({
             ) : (
               /* Buy button - 일반 유저만 "구매하기" 버튼 표시 */
               <button
-                onClick={openProductListSheet}
+                onClick={() => {
+                  // 현재 상품이 있으면 바로 Quick View 모달 열기
+                  if (currentProduct) {
+                    setSheetOpen(true)
+                  } else {
+                    showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
+                  }
+                }}
                 disabled={!product}
                 className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
                   !product ? 'opacity-50 cursor-not-allowed' : ''
