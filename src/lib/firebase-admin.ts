@@ -212,6 +212,104 @@ export class FirebaseAdmin {
       console.error(`❌ Firebase: Failed to send sold out alert`, error)
     }
   }
+
+  /**
+   * Firebase Custom Token 생성
+   * 
+   * Cloudflare Workers 환경에서 firebase-admin 없이 Custom Token 생성
+   * Web Crypto API 사용
+   */
+  async createCustomToken(uid: string, claims?: Record<string, any>): Promise<string> {
+    try {
+      console.log(`[Firebase Custom Token] Creating for UID: ${uid}`)
+      
+      if (!this.privateKey || !this.clientEmail || !this.projectId) {
+        throw new Error('Firebase credentials not configured')
+      }
+
+      // JWT Header
+      const header = {
+        alg: 'RS256',
+        typ: 'JWT'
+      }
+
+      // JWT Payload
+      const now = Math.floor(Date.now() / 1000)
+      const payload = {
+        iss: this.clientEmail,
+        sub: this.clientEmail,
+        aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+        iat: now,
+        exp: now + 3600, // 1 hour
+        uid: uid,
+        claims: claims || {}
+      }
+
+      // Base64url encode
+      const base64url = (data: any) => {
+        const json = JSON.stringify(data)
+        const base64 = btoa(json)
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+      }
+
+      const headerEncoded = base64url(header)
+      const payloadEncoded = base64url(payload)
+      const signatureInput = `${headerEncoded}.${payloadEncoded}`
+
+      // Sign with RS256
+      const privateKeyPem = this.privateKey.replace(/\\n/g, '\n')
+      const privateKeyDer = await this.pemToDer(privateKeyPem)
+      
+      const cryptoKey = await crypto.subtle.importKey(
+        'pkcs8',
+        privateKeyDer,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256'
+        },
+        false,
+        ['sign']
+      )
+
+      const signature = await crypto.subtle.sign(
+        'RSASSA-PKCS1-v1_5',
+        cryptoKey,
+        new TextEncoder().encode(signatureInput)
+      )
+
+      // Base64url encode signature
+      const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+      const signatureEncoded = signatureBase64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+
+      const customToken = `${signatureInput}.${signatureEncoded}`
+      
+      console.log('[Firebase Custom Token] ✅ Token created successfully')
+      return customToken
+
+    } catch (error) {
+      console.error('[Firebase Custom Token] ❌ Failed to create token:', error)
+      throw new Error('Failed to create Firebase custom token')
+    }
+  }
+
+  /**
+   * PEM to DER converter for Web Crypto API
+   */
+  private async pemToDer(pem: string): Promise<ArrayBuffer> {
+    const pemHeader = '-----BEGIN PRIVATE KEY-----'
+    const pemFooter = '-----END PRIVATE KEY-----'
+    const pemContents = pem.substring(
+      pemHeader.length,
+      pem.length - pemFooter.length - 1
+    ).trim()
+    
+    const binaryString = atob(pemContents)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return bytes.buffer
+  }
 }
 
 /**

@@ -2344,7 +2344,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     
     const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
     
-    console.log('[Kakao Callback] Starting OAuth flow');
+    console.log('[Kakao Callback] Starting OAuth flow with Firebase Custom Token');
     
     // 1. 코드를 액세스 토큰으로 교환
     const accessToken = await exchangeKakaoCode(code, redirectUri, c.env.KAKAO_REST_API_KEY);
@@ -2352,32 +2352,33 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     // 2. 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
     const { user } = await processKakaoLogin(DB, accessToken);
     
-    // 3. ✅ JWT 토큰 발급 (세션 대체)
-    const jwtSecret = getJwtSecret(c.env);
-    const jwtAccessToken = await generateAccessToken({
+    // 3. 🔥 Firebase Custom Token 생성
+    const firebase = initFirebaseAdmin(c.env);
+    const firebaseUID = `kakao_${user.kakao_id}`;
+    const customToken = await firebase.createCustomToken(firebaseUID, {
       userId: user.id,
       userType: 'user',
-      email: user.email || undefined
-    }, jwtSecret);
+      email: user.email || undefined,
+      kakaoId: user.kakao_id
+    });
     
-    const jwtRefreshToken = await generateRefreshToken({
-      userId: user.id,
-      userType: 'user',
-      email: user.email || undefined
-    }, jwtSecret);
+    console.log('[Kakao Callback] ✅ Firebase Custom Token 발급 완료 for user:', user.id);
     
-    console.log('[Kakao Callback] ✅ JWT 토큰 발급 완료 for user:', user.id);
+    // 4. D1에 firebase_uid 저장 (없으면)
+    await DB.prepare(`
+      UPDATE users SET firebase_uid = ? WHERE id = ?
+    `).bind(firebaseUID, user.id).run();
     
     return c.json({
       success: true,
       data: {
-        accessToken: jwtAccessToken,
-        refreshToken: jwtRefreshToken,
+        customToken: customToken,  // 🆕 Firebase Custom Token
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
           profile_image: user.profile_image,
+          firebaseUID: firebaseUID
         },
       },
     });
