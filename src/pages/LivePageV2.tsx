@@ -1201,6 +1201,13 @@ function ReelCard({
     try {
       const userId = getUserId()
       
+      console.log('[handleAddToCart] 🛒 Starting add to cart:', {
+        userId,
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        stock: currentProduct.stock
+      })
+      
       if (!userId) {
         localStorage.setItem('loginReturnUrl', window.location.pathname)
         
@@ -1221,12 +1228,16 @@ function ReelCard({
       }
       
       // POST to server (JWT에서 userId 자동 추출)
-      await api.post('/api/cart', {
+      console.log('[handleAddToCart] 📡 Calling API /api/cart')
+      
+      const response = await api.post('/api/cart', {
         productId: currentProduct.id,
         quantity: 1,
         priceSnapshot: currentProduct.price,
         liveStreamId: stream.id
       })
+      
+      console.log('[handleAddToCart] ✅ API response:', response.data)
       
       // Set flag
       localStorage.setItem('hasCartItems', 'true')
@@ -1249,7 +1260,13 @@ function ReelCard({
         console.error('시스템 메시지 전송 실패:', error)
       }
     } catch (error: any) {
-      console.error('Failed to add to cart:', error)
+      console.error('[handleAddToCart] ❌ Error:', error)
+      console.error('[handleAddToCart] ❌ Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      })
       const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
       
       if (errorMessage.includes('Insufficient stock') || errorMessage.includes('재고가 부족')) {

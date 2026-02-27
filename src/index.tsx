@@ -4185,7 +4185,7 @@ app.post('/api/users', async (c) => {
   }
 });
 
-app.post('/api/cart', requireAuth, async (c) => {
+app.post('/api/cart', cors(), requireAuth, async (c) => {
   const { DB } = c.env;
 
   try {
