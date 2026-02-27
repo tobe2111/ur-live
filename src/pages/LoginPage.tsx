@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play } from 'lucide-react'
+import { Play, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
 // Kakao SDK 타입 선언
 declare global {
@@ -14,11 +14,14 @@ declare global {
 }
 
 export default function LoginPage() {
-  const { loginWithCredentials, isLoggedIn, isAuthReady } = useAuth()
+  const { loginWithEmail, loginWithKakao, resetPassword, isLoggedIn, isAuthReady } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [kakaoReady, setKakaoReady] = useState(false)
   const [showEmailLogin, setShowEmailLogin] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
@@ -59,6 +62,9 @@ export default function LoginPage() {
     checkKakaoSDK()
   }, [])
 
+  /**
+   * 카카오 로그인 - Firebase Custom Token 방식
+   */
   async function handleKakaoLogin() {
     if (!kakaoReady) {
       alert('카카오 SDK가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.')
@@ -69,8 +75,7 @@ export default function LoginPage() {
     setError('')
 
     try {
-      
-      // 1단계: 이미 로그인되어 있는지 확인 (카카오톡 앱 내부에서 자동 로그인된 경우)
+      // 1단계: 이미 로그인되어 있는지 확인
       const accessToken = window.Kakao.Auth.getAccessToken()
       
       if (accessToken) {
@@ -78,75 +83,53 @@ export default function LoginPage() {
         return
       }
 
-      // 2단계: 로그인되지 않은 경우, REST API OAuth 방식으로 로그인
-      
-      // returnUrl 파라미터 또는 localStorage에서 읽기
+      // 2단계: REST API OAuth 방식으로 로그인
       const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') 
         || localStorage.getItem('loginReturnUrl') 
         || '/'
       
-      // ✅ 환경변수 사용 (없으면 fallback)
+      // ✅ 환경변수 사용
       const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd'
-      // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`
       
       window.location.href = kakaoAuthUrl
       
     } catch (err: any) {
-      setError('로그인 중 오류가 발생했습니다.')
+      setError('카카오 로그인 중 오류가 발생했습니다.')
       setLoading(false)
     }
   }
 
+  /**
+   * 카카오 accessToken으로 Firebase Custom Token 로그인
+   */
   async function processKakaoLogin(accessToken: string) {
     try {
+      console.log('[Kakao Login] 🔥 Firebase Custom Token 요청 시작')
       
-      // 백엔드로 액세스 토큰 전송하여 검증 및 JWT 발급
-      const response = await api.post('/api/auth/kakao/sync', {
+      // 백엔드에서 Firebase Custom Token 받기
+      const response = await api.post('/api/auth/kakao/firebase', {
         accessToken: accessToken
       })
 
       if (response.data.success) {
-        const { user, accessToken: jwtAccessToken, refreshToken } = response.data.data
+        const { customToken, user } = response.data
 
-        console.log('[Kakao Login] JWT 토큰 받기 완료:', {
+        console.log('[Kakao Login] ✅ Firebase Custom Token 받기 완료:', {
           userId: user.id,
           userName: user.name,
-          hasAccessToken: !!jwtAccessToken,
-          hasRefreshToken: !!refreshToken
+          hasCustomToken: !!customToken
         })
 
-        // ✅ JWT 토큰 저장 (saveJwtTokens 사용)
-        const { saveJwtTokens } = await import('@/utils/auth')
-        saveJwtTokens(
-          jwtAccessToken,
-          refreshToken,
-          user.id.toString(),
-          user.name,
-          'user',
-          user.email
-        )
-
-        // Sentry 사용자 설정
-        try {
-          const { setSentryUser } = await import('@/lib/sentry')
-          setSentryUser({
-            id: user.id.toString(),
-            email: user.email || undefined,
-            username: user.name,
-            userType: 'user'
-          })
-        } catch (e) {
-          // Sentry 초기화 실패 시 무시
-        }
+        // Firebase Auth에 Custom Token으로 로그인
+        await loginWithKakao(accessToken)
         
         // Clear return URL from localStorage
         const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
         localStorage.removeItem('loginReturnUrl')
         
-        // ✅ 로그인 성공
-        console.log('[Kakao Login] Success:', user.name)
+        console.log('[Kakao Login] ✅ Firebase 로그인 성공:', user.name)
         
         // Navigate to return URL
         navigate(savedReturnUrl, { replace: true })
@@ -154,11 +137,15 @@ export default function LoginPage() {
         throw new Error(response.data.error || '로그인에 실패했습니다.')
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
+      console.error('[Kakao Login] ❌ 오류:', err)
+      setError(err.response?.data?.error || '카카오 로그인 처리 중 오류가 발생했습니다.')
       setLoading(false)
     }
   }
 
+  /**
+   * 이메일/비밀번호 로그인 - Firebase Auth
+   */
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
     
@@ -171,188 +158,284 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const response = await api.post('/api/auth/user/login', {
-        email,
-        password
-      })
-
-      if (response.data.success) {
-        const { user, access_token, session_token } = response.data.data
-        const token = session_token || access_token  // 토큰 우선순위
-
-        // ✅ AuthContext를 통한 통합 로그인 처리
-        loginWithCredentials(
-          user.id.toString(),
-          user.name,
-          token,
-          'user'
-        )
-        
-        // Clear return URL from localStorage
-        const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
-        localStorage.removeItem('loginReturnUrl')
-
-        // ✅ 로그인 성공 - alert 제거로 UX 개선
-        console.log('[Login] Success:', user.name)
-        
-        // Navigate to return URL
-        navigate(savedReturnUrl)
-      } else {
-        throw new Error(response.data.error || '로그인에 실패했습니다.')
-      }
+      console.log('[Email Login] 🔥 Firebase 이메일 로그인 시도:', email)
+      
+      // Firebase Auth로 로그인
+      await loginWithEmail(email, password)
+      
+      console.log('[Email Login] ✅ Firebase 로그인 성공')
+      
+      // Clear return URL from localStorage
+      const savedReturnUrl = localStorage.getItem('loginReturnUrl') || '/'
+      localStorage.removeItem('loginReturnUrl')
+      
+      // Navigate to return URL
+      navigate(savedReturnUrl, { replace: true })
+      
     } catch (err: any) {
-      setError(err.response?.data?.error || '로그인 처리 중 오류가 발생했습니다.')
+      console.error('[Email Login] ❌ 오류:', err)
+      
+      // Firebase 오류 메시지 한국어 변환
+      let errorMessage = '로그인에 실패했습니다.'
+      if (err.message.includes('invalid-credential') || err.message.includes('wrong-password')) {
+        errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다.'
+      } else if (err.message.includes('user-not-found')) {
+        errorMessage = '등록되지 않은 이메일입니다.'
+      } else if (err.message.includes('too-many-requests')) {
+        errorMessage = '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.'
+      }
+      
+      setError(errorMessage)
       setLoading(false)
     }
   }
 
-  return (
-    <div className="mx-auto min-h-screen max-w-md bg-gradient-to-b from-[#fbfbfd] to-white flex flex-col items-center justify-center p-4">
-      {/* Logo */}
-      <Link to="/" className="flex items-center space-x-2 mb-8">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#007aff] to-[#0051d5]">
-          <Play className="h-5 w-5 text-white fill-white" />
+  /**
+   * 비밀번호 재설정 이메일 발송
+   */
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!email) {
+      setError('이메일을 입력해주세요.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setSuccessMessage('')
+
+    try {
+      console.log('[Forgot Password] 📧 비밀번호 재설정 이메일 발송:', email)
+      
+      await resetPassword(email)
+      
+      console.log('[Forgot Password] ✅ 이메일 발송 완료')
+      setSuccessMessage('비밀번호 재설정 이메일이 발송되었습니다. 이메일을 확인해주세요.')
+      setShowForgotPassword(false)
+      
+    } catch (err: any) {
+      console.error('[Forgot Password] ❌ 오류:', err)
+      
+      let errorMessage = '비밀번호 재설정 이메일 발송에 실패했습니다.'
+      if (err.message.includes('user-not-found')) {
+        errorMessage = '등록되지 않은 이메일입니다.'
+      }
+      
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ⏳ Auth 초기화 중이면 로딩 표시
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff] mx-auto"></div>
+          <p className="mt-4 text-[#6e6e73]">로딩 중...</p>
         </div>
-        <span className="text-[24px] font-semibold tracking-tight text-[#1d1d1f]">
-          리스터코퍼레이션
-        </span>
-      </Link>
-
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-[24px] text-center">로그인</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            {!showEmailLogin ? (
-              <>
-                {/* 카카오 로그인 버튼 */}
-                <Button
-                  onClick={handleKakaoLogin}
-                  disabled={loading || !kakaoReady}
-                  className="w-full h-12 bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] text-[16px] font-semibold rounded-lg flex items-center justify-center space-x-2"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M10 3C5.58172 3 2 5.89543 2 9.5C2 11.6484 3.2832 13.5234 5.25 14.6094L4.4375 17.5938C4.375 17.8203 4.60937 18 4.8125 17.875L8.25 15.7578C8.82813 15.8516 9.40625 15.9219 10 15.9219C14.4183 15.9219 18 13.0547 18 9.5C18 5.89543 14.4183 3 10 3Z" fill="currentColor"/>
-                  </svg>
-                  <span>{loading ? '로그인 중...' : '카카오 로그인'}</span>
-                </Button>
-
-                {!kakaoReady && (
-                  <p className="text-sm text-gray-500 text-center">
-                    카카오 SDK를 로드하는 중...
-                  </p>
-                )}
-
-                {/* 구분선 */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">또는</span>
-                  </div>
-                </div>
-
-                {/* 이메일 로그인 버튼 */}
-                <Button
-                  onClick={() => setShowEmailLogin(true)}
-                  variant="outline"
-                  className="w-full h-12 text-[16px] font-medium rounded-lg"
-                >
-                  이메일로 로그인
-                </Button>
-              </>
-            ) : (
-              <>
-                {/* 이메일 로그인 폼 */}
-                <form onSubmit={handleEmailLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      이메일
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
-                      placeholder="user@example.com"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      비밀번호
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full h-12 bg-[#007aff] hover:bg-[#0051d5] text-white text-[16px] font-semibold rounded-lg"
-                  >
-                    {loading ? '로그인 중...' : '로그인'}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowEmailLogin(false)
-                      setError('')
-                      setEmail('')
-                      setPassword('')
-                    }}
-                    variant="ghost"
-                    className="w-full text-sm text-gray-600"
-                  >
-                    ← 카카오 로그인으로 돌아가기
-                  </Button>
-                </form>
-
-                {/* 테스트 계정 안내 */}
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-800 font-medium mb-1">테스트 계정</p>
-                  <p className="text-xs text-blue-700">
-                    이메일: user@example.com<br/>
-                    비밀번호: user123
-                  </p>
-                </div>
-              </>
-            )}
-
-            {!kakaoReady && (
-              <p className="text-sm text-gray-500 text-center">
-                카카오 SDK를 로드하는 중...
-              </p>
-            )}
-
-            <div className="pt-4 text-center text-sm text-gray-600">
-              <p>카카오 계정으로 간편하게 로그인하세요</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="mt-6 text-center">
-        <Link to="/" className="text-sm text-[#007aff] hover:text-[#0051d5] transition-colors">
-          ← 메인으로 돌아가기
-        </Link>
       </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#fbfbfd]">
+      {/* Header */}
+      <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
+        <div className="max-w-[980px] mx-auto px-4 sm:px-6">
+          <div className="flex h-[52px] items-center justify-between">
+            <Link to="/" className="flex items-center space-x-1.5 sm:space-x-2">
+              <div className="flex h-7 w-7 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#007aff] to-[#0051d5]">
+                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white fill-white" />
+              </div>
+              <span className="text-[17px] sm:text-[21px] font-semibold tracking-tight text-[#1d1d1f]">
+                리스터코퍼레이션
+              </span>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-[480px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-[32px] sm:text-[40px] font-bold text-[#1d1d1f] mb-3">
+            로그인
+          </h1>
+          <p className="text-[15px] sm:text-[17px] text-[#6e6e73]">
+            라이브 쇼핑의 새로운 경험
+          </p>
+        </div>
+
+        <div className="apple-card p-6 sm:p-8">
+          {/* Success Message */}
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-[14px] mb-4">
+              {successMessage}
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-[14px] mb-4">
+              {error}
+            </div>
+          )}
+
+          {/* 비밀번호 재설정 폼 */}
+          {showForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label className="block text-[14px] font-medium text-[#1d1d1f] mb-2">
+                  이메일
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6e6e73]" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    required
+                    className="w-full pl-12 pr-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[15px] text-[#1d1d1f] placeholder:text-[#6e6e73] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="apple-button w-full py-4"
+              >
+                {loading ? '발송 중...' : '재설정 이메일 발송'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                className="w-full text-[14px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors"
+              >
+                로그인으로 돌아가기
+              </button>
+            </form>
+          ) : !showEmailLogin ? (
+            /* 소셜 로그인 */
+            <div className="space-y-4">
+              <Button
+                onClick={handleKakaoLogin}
+                disabled={loading || !kakaoReady}
+                className="w-full bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] font-semibold py-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.9 5.3 4.7 6.7-.2.8-.7 3-.8 3.5 0 .2-.1.5.2.7.2.1.5.1.7 0 .3-.1 3.5-2.3 4.1-2.7.4.1.8.1 1.1.1 5.5 0 10-3.6 10-8S17.5 3 12 3z"/>
+                </svg>
+                {loading ? '로그인 중...' : '카카오로 시작하기'}
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#e5e5ea]"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-[#6e6e73]">또는</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowEmailLogin(true)}
+                className="w-full py-4 border border-[#e5e5ea] rounded-xl text-[15px] font-medium text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+              >
+                이메일로 로그인
+              </button>
+            </div>
+          ) : (
+            /* 이메일 로그인 폼 */
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div>
+                <label className="block text-[14px] font-medium text-[#1d1d1f] mb-2">
+                  이메일
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6e6e73]" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    required
+                    className="w-full pl-12 pr-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[15px] text-[#1d1d1f] placeholder:text-[#6e6e73] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[14px] font-medium text-[#1d1d1f] mb-2">
+                  비밀번호
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#6e6e73]" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full pl-12 pr-12 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[15px] text-[#1d1d1f] placeholder:text-[#6e6e73] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6e6e73] hover:text-[#1d1d1f]"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="apple-button w-full py-4"
+              >
+                {loading ? '로그인 중...' : '로그인'}
+              </button>
+
+              <div className="flex justify-between text-[14px]">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-[#007aff] hover:opacity-60 transition-opacity"
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailLogin(false)}
+                  className="text-[#6e6e73] hover:text-[#1d1d1f] transition-colors"
+                >
+                  다른 방법으로 로그인
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* Sign Up Link */}
+        <div className="text-center mt-6">
+          <p className="text-[15px] text-[#6e6e73]">
+            아직 계정이 없으신가요?
+            {' '}
+            <Link
+              to="/register"
+              className="text-[#007aff] font-medium hover:opacity-60 transition-opacity"
+            >
+              가입하기
+            </Link>
+          </p>
+        </div>
+      </main>
     </div>
   )
 }

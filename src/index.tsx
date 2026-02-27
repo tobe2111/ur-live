@@ -487,7 +487,7 @@ app.use('*', async (c, next) => {
  * @param c - Hono context
  * @returns JWT 페이로드 (userId, userType, email) or null
  */
-async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; email?: string } | null> {
+async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string } | null> {
   try {
     // JWT 토큰 추출 (Authorization: Bearer <token>)
     const authHeader = c.req.header('Authorization')
@@ -498,7 +498,34 @@ async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; e
       return null
     }
     
-    // JWT 검증 (메모리 캐시 사용, KV 읽기 0회)
+    // 🔥 먼저 Firebase JWT 시도
+    try {
+      const { verifyFirebaseIdToken } = await import('./lib/firebase-jwt-verify')
+      const firebasePayload = await verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
+      
+      console.log('[Firebase JWT] ✅ Firebase token verified:', firebasePayload.uid)
+      
+      // Firebase UID로 D1에서 사용자 조회
+      const user = await c.env.DB.prepare(`
+        SELECT id, email, name, user_type FROM users WHERE firebase_uid = ?
+      `).bind(firebasePayload.uid).first()
+      
+      if (!user) {
+        console.warn('[Firebase JWT] User not found for UID:', firebasePayload.uid)
+        return null
+      }
+      
+      return {
+        userId: user.id,
+        userType: user.user_type || 'user',
+        email: user.email,
+        firebaseUID: firebasePayload.uid
+      }
+    } catch (firebaseError) {
+      console.log('[JWT Auth] Not a Firebase token, trying legacy JWT...')
+    }
+    
+    // 기존 JWT 검증 (fallback)
     const jwtSecret = getJwtSecret(c.env)
     const payload = await verifyCachedToken(token, jwtSecret)
     
@@ -2472,6 +2499,220 @@ app.post('/api/auth/kakao/sync', cors(), async (c) => {
       success: false, 
       error: error instanceof Error ? error.message : 'Login failed',
       code: 'UNKNOWN_ERROR',
+    }, 500);
+  }
+});
+
+// ==========================================
+// 🔥 Firebase Authentication Endpoints
+// ==========================================
+
+/**
+ * 카카오 OAuth → Firebase Custom Token 로그인
+ * 프론트엔드에서 카카오 accessToken을 받아서 Firebase Custom Token 반환
+ */
+app.post('/api/auth/kakao/firebase', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { accessToken } = await c.req.json();
+    
+    if (!accessToken) {
+      return c.json({ success: false, error: 'Access token is required' }, 400);
+    }
+    
+    console.log('[Kakao Firebase] Processing Kakao OAuth login');
+    const startTime = Date.now();
+    
+    // 1. 카카오 로그인 처리 (사용자 정보 + DB UPSERT)
+    const { user } = await processKakaoLogin(DB, accessToken);
+    console.log('[Kakao Firebase] ProcessKakaoLogin completed in', Date.now() - startTime, 'ms');
+    
+    // 2. Firebase Custom Token 생성 (Custom Claims 포함)
+    const customToken = await generateFirebaseCustomToken(user.id.toString(), {
+      role: 'user',
+      email: user.email,
+      name: user.name
+    });
+    
+    console.log('[Kakao Firebase] ✅ Firebase Custom Token 생성 완료 for user:', user.id);
+    console.log('[Kakao Firebase] Total login time:', Date.now() - startTime, 'ms');
+    
+    return c.json({
+      success: true,
+      customToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profile_image: user.profile_image,
+      },
+    });
+    
+  } catch (error) {
+    console.error('[Kakao Firebase] Error:', error);
+    
+    if (error instanceof AuthError) {
+      return c.json({
+        success: false,
+        error: error.message,
+        code: error.code,
+      }, error.statusCode);
+    }
+    
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Login failed',
+      code: 'UNKNOWN_ERROR',
+    }, 500);
+  }
+});
+
+/**
+ * Firebase Auth → D1 동기화
+ * Firebase ID Token을 받아서 D1에 사용자 정보 업데이트
+ */
+app.post('/api/auth/firebase/sync', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { idToken, firebaseUid, email, displayName } = await c.req.json();
+    
+    if (!idToken || !firebaseUid) {
+      return c.json({ success: false, error: 'idToken and firebaseUid are required' }, 400);
+    }
+    
+    console.log('[Firebase Sync] Syncing user to D1:', { firebaseUid, email });
+    
+    // Firebase ID Token 검증
+    const decoded = await verifyFirebaseToken(idToken, c.env);
+    if (!decoded || decoded.uid !== firebaseUid) {
+      return c.json({ success: false, error: 'Invalid Firebase token' }, 401);
+    }
+    
+    // D1에서 firebase_uid로 사용자 찾기
+    const existingUser = await DB.prepare(
+      'SELECT id, email, name FROM users WHERE firebase_uid = ?'
+    ).bind(firebaseUid).first();
+    
+    if (existingUser) {
+      // 기존 사용자 업데이트
+      await DB.prepare(`
+        UPDATE users 
+        SET email = ?, name = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE firebase_uid = ?
+      `).bind(email || existingUser.email, displayName || existingUser.name, firebaseUid).run();
+      
+      console.log('[Firebase Sync] ✅ 기존 사용자 업데이트 완료:', existingUser.id);
+      
+      return c.json({
+        success: true,
+        user: {
+          id: existingUser.id,
+          email: email || existingUser.email,
+          name: displayName || existingUser.name
+        }
+      });
+    } else {
+      // 새 사용자 생성 (이메일만으로 검색하여 firebase_uid 연결)
+      if (email) {
+        const userByEmail = await DB.prepare(
+          'SELECT id, email, name FROM users WHERE email = ?'
+        ).bind(email).first();
+        
+        if (userByEmail) {
+          // 기존 이메일 사용자에 firebase_uid 연결
+          await DB.prepare(`
+            UPDATE users 
+            SET firebase_uid = ?, name = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE email = ?
+          `).bind(firebaseUid, displayName || userByEmail.name, email).run();
+          
+          console.log('[Firebase Sync] ✅ 기존 이메일 사용자에 firebase_uid 연결:', userByEmail.id);
+          
+          return c.json({
+            success: true,
+            user: {
+              id: userByEmail.id,
+              email: userByEmail.email,
+              name: displayName || userByEmail.name
+            }
+          });
+        }
+      }
+      
+      return c.json({
+        success: false,
+        error: 'User not found. Please register first.'
+      }, 404);
+    }
+    
+  } catch (error) {
+    console.error('[Firebase Sync] Error:', error);
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Sync failed',
+    }, 500);
+  }
+});
+
+/**
+ * Firebase Auth 회원가입 → D1 사용자 생성
+ */
+app.post('/api/auth/firebase/register', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { idToken, firebaseUid, email, name, userType } = await c.req.json();
+    
+    if (!idToken || !firebaseUid || !email || !name) {
+      return c.json({ 
+        success: false, 
+        error: 'idToken, firebaseUid, email, and name are required' 
+      }, 400);
+    }
+    
+    console.log('[Firebase Register] Registering new user:', { firebaseUid, email, userType });
+    
+    // Firebase ID Token 검증
+    const decoded = await verifyFirebaseToken(idToken, c.env);
+    if (!decoded || decoded.uid !== firebaseUid) {
+      return c.json({ success: false, error: 'Invalid Firebase token' }, 401);
+    }
+    
+    // D1에 사용자 생성
+    const result = await DB.prepare(`
+      INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(firebaseUid, email, name).run();
+    
+    console.log('[Firebase Register] ✅ 새 사용자 생성 완료:', result.meta.last_row_id);
+    
+    return c.json({
+      success: true,
+      user: {
+        id: result.meta.last_row_id,
+        email,
+        name,
+        firebaseUid
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Firebase Register] Error:', error);
+    
+    // 이메일 중복 오류 처리
+    if (error instanceof Error && error.message.includes('UNIQUE')) {
+      return c.json({ 
+        success: false, 
+        error: 'Email already exists',
+        code: 'EMAIL_EXISTS'
+      }, 409);
+    }
+    
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Registration failed',
     }, 500);
   }
 });
