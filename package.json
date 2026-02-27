@@ -49,6 +49,8 @@
     "axios": "^1.13.4",
     "browser-image-compression": "^2.0.2",
     "embla-carousel-react": "^8.6.0",
+    "firebase": "12.9.0",
+    "firebase-admin": "13.7.0",
     "hono": "^4.11.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",

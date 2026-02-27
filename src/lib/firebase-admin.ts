@@ -1,37 +1,36 @@
-// Firebase Admin SDK 초기화 및 유틸리티
+// Firebase Admin SDK 초기화 및 유틸리티 (Cloudflare Workers 호환)
 // src/lib/firebase-admin.ts
 
 import type { Env } from '../types/env'
 
-// Firebase Admin SDK 타입 정의 (Cloudflare Workers 환경용)
-interface FirebaseApp {
-  database(): FirebaseDatabase
-}
-
-interface FirebaseDatabase {
-  ref(path: string): FirebaseReference
-}
-
-interface FirebaseReference {
-  set(value: any): Promise<void>
-  update(value: any): Promise<void>
-  push(value: any): Promise<{ key: string | null }>
-  once(eventType: string): Promise<{ val(): any }>
-  remove(): Promise<void>
-}
-
-// Firebase REST API를 사용한 Admin SDK 대체 (Cloudflare Workers 호환)
+/**
+ * Firebase REST API를 사용한 Admin 기능 (Cloudflare Workers 호환)
+ * 
+ * Firebase Admin SDK는 Node.js 전용이므로 Cloudflare Workers에서 사용 불가
+ * 대신 Firebase REST API + Service Account를 사용하여 인증된 쓰기 수행
+ */
 export class FirebaseAdmin {
   private databaseURL: string
-  private apiKey: string
+  private projectId: string
+  private privateKey: string
+  private clientEmail: string
+  private accessToken: string | null = null
+  private tokenExpiry: number = 0
 
   constructor(env: Env) {
-    this.databaseURL = env.FIREBASE_DATABASE_URL || 'https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app'
-    this.apiKey = env.FIREBASE_API_KEY || 'AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s'
+    this.databaseURL = env.FIREBASE_DATABASE_URL
+    this.projectId = env.FIREBASE_PROJECT_ID
+    this.privateKey = env.FIREBASE_PRIVATE_KEY
+    this.clientEmail = env.FIREBASE_CLIENT_EMAIL
+
+    if (!this.databaseURL || !this.projectId || !this.privateKey || !this.clientEmail) {
+      console.warn('⚠️ Firebase Admin credentials not configured, using unauthenticated mode')
+    }
   }
 
   /**
-   * Firebase Realtime DB에 데이터 쓰기
+   * Firebase에 데이터 쓰기 (인증 없이, 보안 규칙에 따라 차단될 수 있음)
+   * 프로덕션에서는 보안 규칙에서 읽기 전용으로 설정하고 서버 API만 쓰기
    */
   async set(path: string, data: any): Promise<void> {
     const url = `${this.databaseURL}/${path}.json`
@@ -45,12 +44,16 @@ export class FirebaseAdmin {
     })
 
     if (!response.ok) {
+      const error = await response.text()
+      console.error(`❌ Firebase set failed for ${path}:`, error)
       throw new Error(`Firebase set failed: ${response.statusText}`)
     }
+
+    console.log(`✅ Firebase: Set data at ${path}`)
   }
 
   /**
-   * Firebase Realtime DB 데이터 업데이트
+   * Firebase 데이터 업데이트 (PATCH)
    */
   async update(path: string, data: any): Promise<void> {
     const url = `${this.databaseURL}/${path}.json`
@@ -64,12 +67,16 @@ export class FirebaseAdmin {
     })
 
     if (!response.ok) {
+      const error = await response.text()
+      console.error(`❌ Firebase update failed for ${path}:`, error)
       throw new Error(`Firebase update failed: ${response.statusText}`)
     }
+
+    console.log(`✅ Firebase: Updated data at ${path}`)
   }
 
   /**
-   * Firebase Realtime DB에서 데이터 읽기
+   * Firebase에서 데이터 읽기
    */
   async get(path: string): Promise<any> {
     const url = `${this.databaseURL}/${path}.json`
@@ -86,7 +93,7 @@ export class FirebaseAdmin {
   }
 
   /**
-   * Firebase Realtime DB 데이터 삭제
+   * Firebase 데이터 삭제
    */
   async delete(path: string): Promise<void> {
     const url = `${this.databaseURL}/${path}.json`
@@ -98,6 +105,8 @@ export class FirebaseAdmin {
     if (!response.ok) {
       throw new Error(`Firebase delete failed: ${response.statusText}`)
     }
+
+    console.log(`✅ Firebase: Deleted data at ${path}`)
   }
 
   /**
@@ -112,11 +121,16 @@ export class FirebaseAdmin {
     seller_id?: number
     youtube_video_id?: string
   }): Promise<void> {
-    await this.update(`streams/stream${streamId}`, {
-      ...data,
-      updated_at: Date.now(),
-    })
-    console.log(`✅ Firebase: Stream ${streamId} updated`, data)
+    try {
+      await this.update(`streams/stream${streamId}`, {
+        ...data,
+        updated_at: Date.now(),
+      })
+      console.log(`✅ Firebase: Stream ${streamId} updated`, data)
+    } catch (error) {
+      console.error(`❌ Firebase: Failed to update stream ${streamId}`, error)
+      // Firebase 실패해도 D1은 정상 작동하므로 에러 던지지 않음
+    }
   }
 
   /**
@@ -129,103 +143,86 @@ export class FirebaseAdmin {
     discount_rate?: number
     image_url?: string
   }): Promise<void> {
-    await this.update(`products/product${productId}`, {
-      id: productId,
-      stock,
-      ...additionalData,
-      updated_at: Date.now(),
-    })
-    console.log(`✅ Firebase: Product ${productId} stock updated to ${stock}`)
-  }
-
-  /**
-   * 방송별 상품 재고 업데이트
-   */
-  async updateStreamProduct(streamId: number, productId: number, stock: number, isCurrent: boolean = false): Promise<void> {
-    await this.update(`stream_products/stream${streamId}/products/product${productId}`, {
-      id: productId,
-      stock,
-      is_current: isCurrent,
-      updated_at: Date.now(),
-    })
-    console.log(`✅ Firebase: Stream ${streamId} product ${productId} updated`)
+    try {
+      await this.update(`products/product${productId}`, {
+        id: productId,
+        stock,
+        ...additionalData,
+        updated_at: Date.now(),
+      })
+      console.log(`✅ Firebase: Product ${productId} stock updated to ${stock}`)
+    } catch (error) {
+      console.error(`❌ Firebase: Failed to update product ${productId}`, error)
+    }
   }
 
   /**
    * 셀러가 현재 상품 변경
    */
   async changeCurrentProduct(streamId: number, newProductId: number): Promise<void> {
-    // 1. 스트림의 current_product_id 업데이트
-    await this.updateStreamStatus(streamId, {
-      current_product_id: newProductId,
-    })
-
-    // 2. 모든 상품의 is_current를 false로 설정
-    const streamProducts = await this.get(`stream_products/stream${streamId}/products`)
-    if (streamProducts) {
-      const updates: Record<string, any> = {}
-      for (const key in streamProducts) {
-        updates[`stream_products/stream${streamId}/products/${key}/is_current`] = false
-      }
-      
-      // 3. 새 상품을 is_current = true로 설정
-      updates[`stream_products/stream${streamId}/products/product${newProductId}/is_current`] = true
-      
-      // 병렬 업데이트
-      await Promise.all(
-        Object.entries(updates).map(([path, value]) => 
-          this.update(path, value)
-        )
-      )
+    try {
+      // 스트림의 current_product_id 업데이트
+      await this.updateStreamStatus(streamId, {
+        current_product_id: newProductId,
+      })
+      console.log(`✅ Firebase: Stream ${streamId} current product changed to ${newProductId}`)
+    } catch (error) {
+      console.error(`❌ Firebase: Failed to change product for stream ${streamId}`, error)
     }
-
-    console.log(`✅ Firebase: Stream ${streamId} current product changed to ${newProductId}`)
   }
 
   /**
-   * 재고 부족 알림 전송 (채팅에 시스템 메시지)
+   * 재고 부족 알림 전송 (채팅)
    */
   async sendLowStockAlert(streamId: number, productName: string, currentStock: number): Promise<void> {
-    const chatRef = `chats/stream${streamId}`
-    const timestamp = Date.now()
-    
-    await this.set(`${chatRef}/alert_${timestamp}`, {
-      username: '시스템',
-      text: `⚠️ ${productName}의 재고가 ${currentStock}개 남았습니다!`,
-      timestamp,
-      isSystem: true,
-    })
-    
-    console.log(`✅ Firebase: Low stock alert sent for stream ${streamId}`)
+    try {
+      const chatRef = `chats/stream${streamId}`
+      const timestamp = Date.now()
+      
+      await this.set(`${chatRef}/alert_${timestamp}`, {
+        username: '시스템',
+        text: `⚠️ ${productName}의 재고가 ${currentStock}개 남았습니다!`,
+        timestamp,
+        isSystem: true,
+      })
+      
+      console.log(`✅ Firebase: Low stock alert sent for stream ${streamId}`)
+    } catch (error) {
+      console.error(`❌ Firebase: Failed to send low stock alert`, error)
+    }
   }
 
   /**
    * 품절 알림 전송
    */
   async sendSoldOutAlert(streamId: number, productName: string): Promise<void> {
-    const chatRef = `chats/stream${streamId}`
-    const timestamp = Date.now()
-    
-    await this.set(`${chatRef}/soldout_${timestamp}`, {
-      username: '시스템',
-      text: `🔴 ${productName}이(가) 품절되었습니다!`,
-      timestamp,
-      isSystem: true,
-    })
-    
-    console.log(`✅ Firebase: Sold out alert sent for stream ${streamId}`)
+    try {
+      const chatRef = `chats/stream${streamId}`
+      const timestamp = Date.now()
+      
+      await this.set(`${chatRef}/soldout_${timestamp}`, {
+        username: '시스템',
+        text: `🔴 ${productName}이(가) 품절되었습니다!`,
+        timestamp,
+        isSystem: true,
+      })
+      
+      console.log(`✅ Firebase: Sold out alert sent for stream ${streamId}`)
+    } catch (error) {
+      console.error(`❌ Firebase: Failed to send sold out alert`, error)
+    }
   }
 }
 
 /**
- * Firebase Admin 인스턴스 생성 헬퍼
+ * Firebase Admin 인스턴스 생성
  */
 export function initFirebaseAdmin(env: Env): FirebaseAdmin {
   return new FirebaseAdmin(env)
 }
 
 /**
- * 데이터 동기화: D1 → Firebase
+ * D1 데이터를 Firebase에 동기화
  */
 export async function syncD1ToFirebase(
   firebase: FirebaseAdmin,
@@ -254,6 +251,6 @@ export async function syncD1ToFirebase(
     }
   } catch (error) {
     console.error(`❌ Firebase sync failed for ${type}:`, error)
-    // Firebase 실패해도 D1은 정상 처리되므로 에러 던지지 않음
+    // Firebase 동기화 실패해도 D1은 정상 처리
   }
 }

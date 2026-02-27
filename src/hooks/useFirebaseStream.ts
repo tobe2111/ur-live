@@ -1,7 +1,9 @@
-// Firebase 실시간 훅 (useFirebaseStream)
+// Firebase 실시간 훅 (useFirebaseStream) - NPM SDK 버전
 // src/hooks/useFirebaseStream.ts
 
 import { useEffect, useState, useRef } from 'react'
+import { ref, onValue, off, DatabaseReference } from 'firebase/database'
+import database from '../lib/firebase-config'
 
 export interface StreamData {
   id: number
@@ -31,73 +33,69 @@ export function useFirebaseStream(streamId: number | null) {
   const [streamData, setStreamData] = useState<StreamData | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const listenerRef = useRef<any>(null)
+  const streamRefObj = useRef<DatabaseReference | null>(null)
 
   useEffect(() => {
-    if (!streamId) return
+    if (!streamId) {
+      setStreamData(null)
+      setIsConnected(false)
+      return
+    }
 
     let isMounted = true
-    let reconnectTimer: any = null
 
-    const initFirebase = () => {
-      try {
-        // @ts-ignore - Firebase SDK loaded via CDN
-        if (typeof window.firebase === 'undefined') {
-          console.log('⏳ Firebase SDK not loaded yet, retrying...')
-          reconnectTimer = setTimeout(initFirebase, 500)
-          return
-        }
+    try {
+      // Firebase Realtime Database 참조 생성
+      const streamRef = ref(database, `streams/stream${streamId}`)
+      streamRefObj.current = streamRef
 
-        // @ts-ignore
-        const database = window.firebase.database()
-        const streamRef = database.ref(`streams/stream${streamId}`)
+      console.log(`🔥 Firebase: Subscribing to stream ${streamId}...`)
 
-        // 실시간 리스너 등록
-        const listener = streamRef.on('value', (snapshot: any) => {
+      // 실시간 리스너 등록
+      const unsubscribe = onValue(
+        streamRef,
+        (snapshot) => {
           if (!isMounted) return
 
           const data = snapshot.val()
           if (data) {
             setStreamData({
-              id: data.id,
+              id: data.id || streamId,
               title: data.title,
-              status: data.status,
+              status: data.status || 'ended',
               current_product_id: data.current_product_id,
               viewer_count: data.viewer_count || 0,
-              updated_at: data.updated_at,
+              updated_at: data.updated_at || Date.now(),
             })
             setIsConnected(true)
             setError(null)
-            console.log(`🔥 Firebase: Stream ${streamId} updated`, data)
+            console.log(`✅ Firebase: Stream ${streamId} updated`, data)
+          } else {
+            console.log(`⚠️ Firebase: No data for stream ${streamId}`)
+            setStreamData(null)
+            setIsConnected(true) // 연결은 성공했지만 데이터가 없음
           }
-        }, (err: any) => {
+        },
+        (err) => {
           if (!isMounted) return
-          console.error('❌ Firebase stream error:', err)
+          console.error(`❌ Firebase stream error:`, err)
           setError(err.message)
           setIsConnected(false)
-        })
+        }
+      )
 
-        listenerRef.current = { ref: streamRef, listener }
-        console.log(`✅ Firebase: Listening to stream ${streamId}`)
-      } catch (err: any) {
-        console.error('❌ Firebase init error:', err)
-        setError(err.message)
-      }
-    }
+      console.log(`✅ Firebase: Listener attached to stream ${streamId}`)
 
-    // Firebase 초기화
-    initFirebase()
-
-    // Cleanup: 리스너 해제
-    return () => {
-      isMounted = false
-      if (reconnectTimer) clearTimeout(reconnectTimer)
-      
-      if (listenerRef.current) {
-        const { ref, listener } = listenerRef.current
-        ref.off('value', listener)
+      // Cleanup: 리스너 해제
+      return () => {
+        isMounted = false
+        off(streamRef)
         console.log(`🔌 Firebase: Disconnected from stream ${streamId}`)
       }
+    } catch (err: any) {
+      console.error('❌ Firebase init error:', err)
+      setError(err.message)
+      setIsConnected(false)
     }
   }, [streamId])
 
@@ -105,82 +103,78 @@ export function useFirebaseStream(streamId: number | null) {
 }
 
 /**
- * Firebase Realtime Database 상품 재고 구독 훅
- * 실시간 재고 변경 감지
+ * Firebase Realtime Database 상품 구독 훅
+ * 특정 상품의 재고를 실시간으로 구독
  */
 export function useFirebaseProduct(productId: number | null) {
   const [productData, setProductData] = useState<ProductData | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const listenerRef = useRef<any>(null)
+  const productRefObj = useRef<DatabaseReference | null>(null)
 
   useEffect(() => {
-    if (!productId) return
+    if (!productId) {
+      setProductData(null)
+      setIsConnected(false)
+      return
+    }
 
     let isMounted = true
-    let reconnectTimer: any = null
 
-    const initFirebase = () => {
-      try {
-        // @ts-ignore
-        if (typeof window.firebase === 'undefined') {
-          console.log('⏳ Firebase SDK not loaded yet, retrying...')
-          reconnectTimer = setTimeout(initFirebase, 500)
-          return
-        }
+    try {
+      // Firebase Realtime Database 참조 생성
+      const productRef = ref(database, `products/product${productId}`)
+      productRefObj.current = productRef
 
-        // @ts-ignore
-        const database = window.firebase.database()
-        const productRef = database.ref(`products/product${productId}`)
+      console.log(`🔥 Firebase: Subscribing to product ${productId}...`)
 
-        // 실시간 리스너 등록
-        const listener = productRef.on('value', (snapshot: any) => {
+      // 실시간 리스너 등록
+      const unsubscribe = onValue(
+        productRef,
+        (snapshot) => {
           if (!isMounted) return
 
           const data = snapshot.val()
           if (data) {
             setProductData({
-              id: data.id,
+              id: data.id || productId,
               name: data.name,
               price: data.price,
               original_price: data.original_price,
               discount_rate: data.discount_rate,
-              stock: data.stock,
+              stock: data.stock || 0,
               image_url: data.image_url,
-              updated_at: data.updated_at,
+              updated_at: data.updated_at || Date.now(),
             })
             setIsConnected(true)
             setError(null)
-            console.log(`🔥 Firebase: Product ${productId} updated - Stock: ${data.stock}`)
+            console.log(`✅ Firebase: Product ${productId} updated, stock=${data.stock}`)
+          } else {
+            console.log(`⚠️ Firebase: No data for product ${productId}`)
+            setProductData(null)
+            setIsConnected(true)
           }
-        }, (err: any) => {
+        },
+        (err) => {
           if (!isMounted) return
-          console.error('❌ Firebase product error:', err)
+          console.error(`❌ Firebase product error:`, err)
           setError(err.message)
           setIsConnected(false)
-        })
+        }
+      )
 
-        listenerRef.current = { ref: productRef, listener }
-        console.log(`✅ Firebase: Listening to product ${productId}`)
-      } catch (err: any) {
-        console.error('❌ Firebase init error:', err)
-        setError(err.message)
-      }
-    }
+      console.log(`✅ Firebase: Listener attached to product ${productId}`)
 
-    // Firebase 초기화
-    initFirebase()
-
-    // Cleanup: 리스너 해제
-    return () => {
-      isMounted = false
-      if (reconnectTimer) clearTimeout(reconnectTimer)
-      
-      if (listenerRef.current) {
-        const { ref, listener } = listenerRef.current
-        ref.off('value', listener)
+      // Cleanup: 리스너 해제
+      return () => {
+        isMounted = false
+        off(productRef)
         console.log(`🔌 Firebase: Disconnected from product ${productId}`)
       }
+    } catch (err: any) {
+      console.error('❌ Firebase product init error:', err)
+      setError(err.message)
+      setIsConnected(false)
     }
   }, [productId])
 
@@ -188,66 +182,52 @@ export function useFirebaseProduct(productId: number | null) {
 }
 
 /**
- * Firebase 연결 상태 모니터링 훅
- * 90명 연결 시 Discord 알림
+ * Firebase 연결 모니터링 훅
+ * 동시 접속자 수가 90명 이상일 때 Discord 알림
  */
-export function useFirebaseConnectionMonitor() {
-  const [connectionCount, setConnectionCount] = useState(0)
-  const hasWarned = useRef(false)
+export function useFirebaseConnectionMonitor(streamId: number | null, threshold = 90) {
+  const [viewerCount, setViewerCount] = useState(0)
+  const alertSentRef = useRef(false)
 
   useEffect(() => {
-    let isMounted = true
+    if (!streamId) return
 
-    const initMonitor = () => {
-      try {
-        // @ts-ignore
-        if (typeof window.firebase === 'undefined') {
-          setTimeout(initMonitor, 1000)
-          return
+    const streamRef = ref(database, `streams/stream${streamId}`)
+
+    const unsubscribe = onValue(streamRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data?.viewer_count) {
+        setViewerCount(data.viewer_count)
+
+        // 90명 이상일 때 Discord 알림 (한 번만)
+        if (data.viewer_count >= threshold && !alertSentRef.current) {
+          console.warn(`⚠️ High viewer count: ${data.viewer_count} viewers`)
+          
+          // Discord Webhook 호출 (선택사항)
+          fetch('/api/discord/alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `🔥 High traffic alert: Stream ${streamId} has ${data.viewer_count} viewers`,
+              threshold,
+              current: data.viewer_count,
+            }),
+          }).catch(console.error)
+
+          alertSentRef.current = true
         }
 
-        // @ts-ignore
-        const database = window.firebase.database()
-        const connectedRef = database.ref('.info/connected')
-
-        connectedRef.on('value', (snapshot: any) => {
-          if (!isMounted) return
-
-          if (snapshot.val() === true) {
-            setConnectionCount(prev => {
-              const newCount = prev + 1
-              
-              // 90명 도달 시 Discord 알림 (1회만)
-              if (newCount >= 90 && !hasWarned.current) {
-                console.warn(`⚠️ Firebase 연결 수 ${newCount}명 도달! (한계: 100명)`)
-                hasWarned.current = true
-                
-                // Discord Webhook 호출
-                fetch('/api/internal/discord-alert', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    message: `⚠️ Firebase 연결 수 ${newCount}명 도달! (한계: 100명)\nSSE + KV 전환을 고려하세요.`,
-                    type: 'warning',
-                  }),
-                }).catch(err => console.error('Discord alert failed:', err))
-              }
-              
-              return newCount
-            })
-          }
-        })
-      } catch (err) {
-        console.error('Firebase connection monitor error:', err)
+        // 90명 미만으로 떨어지면 알림 리셋
+        if (data.viewer_count < threshold) {
+          alertSentRef.current = false
+        }
       }
-    }
-
-    initMonitor()
+    })
 
     return () => {
-      isMounted = false
+      off(streamRef)
     }
-  }, [])
+  }, [streamId, threshold])
 
-  return { connectionCount }
+  return { viewerCount }
 }
