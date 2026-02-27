@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-3">1. 개인정보의 수집 및 이용 목적</h2>
             <p className="text-sm text-gray-700 leading-relaxed mb-2">
-              UR Live는 다음의 목적을 위하여 개인정보를 처리합니다:
+              리스터코퍼레이션은 다음의 목적을 위하여 개인정보를 처리합니다:
             </p>
             <ul className="text-sm text-gray-700 space-y-2">
               <li>• 회원 가입 및 관리</li>
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
 
           <div className="pt-4 text-center text-sm text-gray-500">
             <p>시행일자: 2026년 2월 14일</p>
-            <p>UR Team</p>
+            <p>리스터코퍼레이션</p>
           </div>
         </div>
       </div>

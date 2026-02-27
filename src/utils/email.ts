@@ -33,7 +33,7 @@ export async function sendEmail(params: EmailParams): Promise<{ success: boolean
         ],
         from: {
           email: 'noreply@live.ur-team.com',
-          name: '유어 라이브',
+          name: '리스터코퍼레이션',
         },
         subject: subject,
         content: [
@@ -267,7 +267,7 @@ ${scheduledAt ? `예약 시간: ${new Date(scheduledAt).toLocaleString('ko-KR')}
   
   return sendEmail({
     to: 'jiwon@ur-team.com',
-    subject: `[유어 라이브] 🎉 새 라이브 스트림 생성: ${title}`,
+    subject: `[리스터코퍼레이션] 🎉 새 라이브 스트림 생성: ${title}`,
     htmlContent,
     textContent,
   })

@@ -75,7 +75,7 @@ export default function SellerPage() {
   const [copiedLink, setCopiedLink] = useState(false)
 
   // Mock seller info (in production, get from session)
-  const sellerName = '유어 라이브 셀러'
+  const sellerName = '리스터코퍼레이션 셀러'
   const sellerEmail = 'seller@listercorp.com'
 
   useEffect(() => {

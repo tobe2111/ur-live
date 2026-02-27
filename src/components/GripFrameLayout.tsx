@@ -127,7 +127,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                       // introduce 페이지일 때는 메인 페이지를 iframe으로 표시
                       <iframe
                         src="/"
-                        title="UR Live Main"
+                        title="리스터코퍼레이션 Main"
                         className="w-full h-full border-0"
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                       />
@@ -158,7 +158,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                               UR
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-[10px] font-semibold text-white/90">UR Team 공식</span>
+                              <span className="text-[10px] font-semibold text-white/90">리스터코퍼레이션 공식</span>
                               <span className="text-[9px] text-white/50">시청자 2,847명</span>
                             </div>
                           </div>

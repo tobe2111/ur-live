@@ -214,7 +214,7 @@ export default function LoginPage() {
           <Play className="h-5 w-5 text-white fill-white" />
         </div>
         <span className="text-[24px] font-semibold tracking-tight text-[#1d1d1f]">
-          유어 라이브
+          리스터코퍼레이션
         </span>
       </Link>
 

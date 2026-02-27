@@ -145,7 +145,7 @@ export default function SellerLoginPage() {
                 <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white fill-white" />
               </div>
               <span className="text-[17px] sm:text-[21px] font-semibold tracking-tight text-[#1d1d1f]">
-                유어 라이브
+                리스터코퍼레이션
               </span>
             </Link>
             <div className="w-16"></div>

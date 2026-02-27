@@ -20,7 +20,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-bold mb-3">제1조 (목적)</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              본 약관은 UR Live(이하 "회사")가 제공하는 라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
+              본 약관은 리스터코퍼레이션(이하 "회사")이 제공하는 라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
             </p>
           </section>
 
@@ -94,7 +94,7 @@ export default function TermsPage() {
 
           <div className="pt-4 text-center text-sm text-gray-500">
             <p>시행일자: 2026년 2월 14일</p>
-            <p>UR Team</p>
+            <p>리스터코퍼레이션</p>
           </div>
         </div>
       </div>

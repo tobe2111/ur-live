@@ -744,7 +744,7 @@ export default function MyOrdersPage() {
                 {/* App Info */}
                 <div className="text-center pt-4">
                   <p className="text-[13px] text-[#8e8e93]">
-                    유어 라이브 커머스 v2.1.0
+                    리스터코퍼레이션 커머스 v2.1.0
                   </p>
                   <p className="text-[13px] text-[#8e8e93] mt-1">
                     © 2026 Your Live Commerce

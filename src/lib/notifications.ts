@@ -49,7 +49,7 @@ export const NotificationTemplates = {
   // Seller notifications
   seller_approved: (sellerName: string) => ({
     title: '🎉 판매자 승인 완료',
-    message: `${sellerName}님, 축하합니다! UR Live 판매자로 승인되었습니다.`,
+    message: `${sellerName}님, 축하합니다! 리스터코퍼레이션 판매자로 승인되었습니다.`,
     linkUrl: '/seller'
   }),
   

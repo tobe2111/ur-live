@@ -15,7 +15,7 @@ export function UserInfo({ userName = '게스트' }: UserInfoProps) {
           {userName}님
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          유어 라이브에 오신 것을 환영합니다
+          리스터코퍼레이션에 오신 것을 환영합니다
         </p>
       </div>
     </div>

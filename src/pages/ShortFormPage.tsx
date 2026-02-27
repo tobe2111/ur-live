@@ -214,7 +214,7 @@ export default function ShortFormPage() {
         </div>
       </div>
 
-      {/* Header - UR Live Branding */}
+      {/* Header - 리스터코퍼레이션 Branding */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <button className="p-2 hover:bg-gray-100 rounded-lg transition" onClick={() => setIsSidebarOpen(true)}>
@@ -224,7 +224,7 @@ export default function ShortFormPage() {
           </button>
             
             <h1 className="text-2xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              UR Live
+              리스터코퍼레이션
             </h1>
             
             <div className="flex items-center gap-2">

@@ -2,7 +2,7 @@
  * 알리고 알림톡 API 통합 라이브러리
  * 
  * @description 알리고 API와 통신하는 모든 함수를 제공합니다.
- * @author UR Live Team
+ * @author 리스터코퍼레이션 개발팀
  * @created 2026-02-22
  * 
  * API 문서: https://smartsms.aligo.in/alimapi.html

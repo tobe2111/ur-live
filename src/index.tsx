@@ -3951,7 +3951,7 @@ async function fetchProductDetail(DB: D1Database, id: string) {
   const product = await DB.prepare(`
     SELECT 
       p.*,
-      COALESCE(s.name, s.username, 'UR Live') as seller_name
+      COALESCE(s.name, s.username, '리스터코퍼레이션') as seller_name
     FROM products p
     LEFT JOIN sellers s ON p.seller_id = s.id
     WHERE p.id = ? AND p.is_active = 1
@@ -9651,11 +9651,11 @@ app.patch('/api/admin/sellers/:id/approve', async (c) => {
         const emailResult = await sendEmail(
           {
             to: seller.email as string,
-            subject: '🎉 UR Live 판매자 승인 완료',
+            subject: '🎉 리스터코퍼레이션 판매자 승인 완료',
             html: emailHTML
           },
           resendApiKey,
-          c.env.EMAIL_FROM || 'UR Live <noreply@ur-team.com>'
+          c.env.EMAIL_FROM || '리스터코퍼레이션 <noreply@ur-team.com>'
         );
         
         if (emailResult.success) {
@@ -9759,11 +9759,11 @@ app.patch('/api/admin/sellers/:id/reject', async (c) => {
         const emailResult = await sendEmail(
           {
             to: seller.email as string,
-            subject: 'UR Live 판매자 승인 결과 안내',
+            subject: '리스터코퍼레이션 판매자 승인 결과 안내',
             html: emailHTML
           },
           resendApiKey,
-          c.env.EMAIL_FROM || 'UR Live <noreply@ur-team.com>'
+          c.env.EMAIL_FROM || '리스터코퍼레이션 <noreply@ur-team.com>'
         );
         
         if (emailResult.success) {
@@ -12340,7 +12340,7 @@ app.onError((err, c) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>오류 발생 - 유어 라이브</title>
+      <title>오류 발생 - 리스터코퍼레이션</title>
       <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gray-50">
