@@ -64,7 +64,7 @@
       <div class="max-w-7xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-8">
           <i class="fas fa-broadcast-tower mr-2 ur-text-primary"></i>
-          유어 라이브 커머스
+          리스터코퍼레이션 라이브 커머스
         </h1>
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
