@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "streams": {
+      "$streamId": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "products": {
+      "$productId": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "chats": {
+      "$streamId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}

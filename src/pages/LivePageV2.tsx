@@ -5,7 +5,8 @@ import axios from 'axios'
 import { getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
-import { useLiveChat } from '@/hooks/useLiveChat'
+// import { useLiveChat } from '@/hooks/useLiveChat' // ❌ SSE 폴링 방식 (5초 지연)
+import { useFirebaseChat } from '@/hooks/useFirebaseChat' // ✅ Firebase 실시간 (0.2초)
 import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
 
@@ -387,7 +388,7 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
   const scrollRef = useRef<HTMLDivElement>(null)
   
   // 🔥 SSE 기반 실시간 채팅
-  const { messages, isConnected, error, sendMessage } = useLiveChat(streamId, !!streamId)
+  const { messages, isConnected, error, sendMessage } = useFirebaseChat(streamId, !!streamId)
 
   // 자동 스크롤 - 새 메시지가 올 때 하단으로
   useEffect(() => {
@@ -888,7 +889,7 @@ function ReelCard({
   }
   
   // 🔥 SSE 기반 실시간 채팅 (메시지 전송용)
-  const { sendMessage: sendChatMessage } = useLiveChat(stream.id, true)
+  const { sendMessage: sendChatMessage } = useFirebaseChat(stream.id, true)
 
   // YouTube Player Integration
   useEffect(() => {
