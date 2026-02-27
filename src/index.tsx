@@ -53,6 +53,7 @@ import { parsePaginationParams, generatePaginationMeta, buildPaginationQuery, pa
 import { imageOptimizationMiddleware } from './lib/image-optimization';
 import { AppError, ErrorFactory } from './lib/errors';
 import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
+import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -5847,6 +5848,16 @@ app.post('/api/seller/streams/:streamId/change-product', async (c) => {
       options: options.results,
     }, 30); // 30초 TTL
 
+    // 🔥 Firebase 실시간 동기화 (비동기 처리, 실패해도 API는 성공)
+    try {
+      const firebase = initFirebaseAdmin(c.env);
+      await firebase.changeCurrentProduct(parseInt(streamId), productId);
+      console.log(`🔥 Firebase: Product changed for stream ${streamId} to ${productId}`);
+    } catch (firebaseError) {
+      console.error('⚠️ Firebase sync failed (non-blocking):', firebaseError);
+      // Firebase 실패는 무시 (D1은 이미 업데이트됨)
+    }
+
     return c.json<ApiResponse>({
       success: true,
       data: {
@@ -10601,6 +10612,39 @@ app.post('/api/orders/create', requireAuth, async (c) => {
     
     // 모든 쿼리를 배치로 실행
     await DB.batch([...itemInsertQueries, ...stockUpdateQueries]);
+
+    // 🔥 Firebase 실시간 재고 동기화 (비동기, non-blocking)
+    try {
+      const firebase = initFirebaseAdmin(c.env);
+      
+      // 재고가 차감된 상품들의 최신 재고 조회
+      const productIds = cartItems.map((item: any) => item.product_id);
+      const placeholders = productIds.map(() => '?').join(',');
+      
+      const updatedProducts = await DB.prepare(`
+        SELECT id, name, price, original_price, discount_rate, stock, image_url
+        FROM products
+        WHERE id IN (${placeholders})
+      `).bind(...productIds).all();
+
+      // Firebase에 병렬로 재고 업데이트
+      await Promise.all(
+        updatedProducts.results.map((product: any) => 
+          firebase.updateProductStock(product.id, product.stock, {
+            name: product.name,
+            price: product.price,
+            original_price: product.original_price,
+            discount_rate: product.discount_rate,
+            image_url: product.image_url,
+          })
+        )
+      );
+
+      console.log(`🔥 Firebase: Stock updated for ${updatedProducts.results.length} products`);
+    } catch (firebaseError) {
+      console.error('⚠️ Firebase stock sync failed (non-blocking):', firebaseError);
+      // Firebase 실패는 무시 (D1은 이미 업데이트됨)
+    }
 
     // 저재고 알림 체크 (배치 조회 후 처리)
     try {

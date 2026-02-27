@@ -2,6 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { useFirebaseStream } from '@/hooks/useFirebaseStream'
 import { GripVertical } from 'lucide-react'
 
 interface Product {
@@ -34,6 +35,20 @@ export default function SellerLiveControlPage() {
   const [changing, setChanging] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [viewerCounts, setViewerCounts] = useState<Record<number, number>>({})
+
+  // 🔥 Firebase 실시간 스트림 구독 (선택된 스트림)
+  const { streamData: firebaseStream } = useFirebaseStream(selectedStream?.id || null)
+
+  // Firebase에서 상품 변경 감지 시 UI 자동 업데이트
+  useEffect(() => {
+    if (!firebaseStream || !selectedStream) return
+    
+    // 상품이 변경되었을 때 currentProductId 업데이트
+    if (firebaseStream.current_product_id !== currentProductId) {
+      setCurrentProductId(firebaseStream.current_product_id)
+      console.log(`🔥 Firebase: Current product updated to ${firebaseStream.current_product_id}`)
+    }
+  }, [firebaseStream?.current_product_id, selectedStream?.id])
 
   useEffect(() => {
     // Check seller session (JWT-based)

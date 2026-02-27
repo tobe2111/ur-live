@@ -6,6 +6,7 @@ import { getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
 import { useLiveChat } from '@/hooks/useLiveChat'
+import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
 
 // ============================================
@@ -76,6 +77,7 @@ interface Product {
   description: string
   rating: number
   sold: number
+  stock?: number // 🔥 Firebase 실시간 재고
   colors?: { name: string; hex: string }[]
   sizes?: string[]
 }
@@ -1045,73 +1047,89 @@ function ReelCard({
   // ============================================
   // Real-time Product Updates (Long Polling - 비용 99% 절감! 🎉)
   // ============================================
+  // ============================================
+  // 🔥 Firebase Realtime Product Updates
+  // ============================================
+  // Firebase 실시간 스트림 구독 (상품 변경 감지)
+  const { streamData: firebaseStream } = useFirebaseStream(stream.id || null)
+  
+  // Firebase 실시간 상품 재고 구독 (currentProduct가 있을 때만)
+  const { productData: firebaseProduct } = useFirebaseProduct(currentProduct?.id || null)
+
+  // Firebase에서 상품 변경 감지 시 UI 업데이트
   useEffect(() => {
-    if (!stream.id) return
+    if (!firebaseStream) return
+    
+    // 상품이 변경되었을 때 (current_product_id)
+    const newProductId = firebaseStream.current_product_id
+    
+    if (newProductId && newProductId !== currentProduct?.id) {
+      // 새로운 상품 정보 로드
+      const loadNewProduct = async () => {
+        try {
+          const response = await axios.get(`/api/streams/${stream.id}/current-product`)
+          if (response.data.success && response.data.data) {
+            const newProduct = response.data.data.product
+            setCurrentProduct(newProduct)
+            
+            // 🎉 상품 변경 알림 Toast 표시 (셀러 제외)
+            if (!isSeller && newProduct?.name) {
+              setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
+            }
+            
+            console.log(`🔥 Firebase: Product changed to ${newProduct.name}`)
+          }
+        } catch (error) {
+          console.error('[Firebase] Error loading new product:', error)
+        }
+      }
+      
+      loadNewProduct()
+    }
+  }, [firebaseStream?.current_product_id, stream.id, isSeller])
 
-    let abortController: AbortController | null = null
-    let lastTimestamp = '0' // 마지막 상품 변경 타임스탬프
+  // Firebase에서 재고 변경 감지 시 UI 업데이트
+  useEffect(() => {
+    if (!firebaseProduct || !currentProduct) return
+    
+    // 재고가 변경되었을 때만 업데이트
+    if (firebaseProduct.stock !== currentProduct.stock) {
+      setCurrentProduct(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          stock: firebaseProduct.stock,
+        }
+      })
+      
+      console.log(`🔥 Firebase: Stock updated to ${firebaseProduct.stock}`)
+      
+      // 품절 알림
+      if (firebaseProduct.stock === 0) {
+        setProductChangeToast(`🔴 ${firebaseProduct.name}이(가) 품절되었습니다!`)
+      } else if (firebaseProduct.stock <= 5 && firebaseProduct.stock > 0) {
+        setProductChangeToast(`⚠️ ${firebaseProduct.name} 재고가 ${firebaseProduct.stock}개 남았습니다!`)
+      }
+    }
+  }, [firebaseProduct?.stock, currentProduct?.id])
 
-    const loadCurrentProduct = async () => {
+  // 초기 상품 로드 (Firebase 연결 전 초기 데이터)
+  useEffect(() => {
+    if (!stream.id || currentProduct) return
+
+    const loadInitialProduct = async () => {
       try {
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data.product)
-        } else {
-          setCurrentProduct(null)
+          console.log('✅ Initial product loaded')
         }
       } catch (error) {
-        console.error('[CurrentProduct] Error loading:', error)
+        console.error('[InitialProduct] Error loading:', error)
       }
     }
 
-    const waitForProductChange = async () => {
-      while (true) {
-        try {
-          // ✅ Long Polling: 상품이 변경될 때까지 대기 (최대 25초)
-          abortController = new AbortController()
-          const response = await axios.get(
-            `/api/streams/${stream.id}/product-wait?lastTimestamp=${lastTimestamp}`,
-            { signal: abortController.signal }
-          )
-          
-          const result = response.data
-
-          if (result.success) {
-            if (result.changed && result.data) {
-              // 상품 변경됨 - 즉시 UI 업데이트 ⚡
-              const newProduct = result.data.product
-              setCurrentProduct(newProduct)
-              lastTimestamp = result.timestamp
-              
-              // 🎉 상품 변경 알림 Toast 표시 (셀러 제외)
-              if (!isSeller && newProduct?.name) {
-                setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
-              }
-            }
-            // 변경 없어도 계속 대기 (재연결)
-          }
-        } catch (err: any) {
-          if (axios.isCancel(err) || err.name === 'AbortError') {
-            // Cleanup에서 호출된 중단
-            break
-          }
-          console.error('[LongPolling] Error:', err)
-          // 에러 발생 시 3초 대기 후 재연결
-          await new Promise(resolve => setTimeout(resolve, 3000))
-        }
-      }
-    }
-
-    // 초기 로드 후 Long Polling 시작
-    loadCurrentProduct()
-    waitForProductChange()
-
-    return () => {
-      // Cleanup: Long Polling 중단
-      if (abortController) {
-        abortController.abort()
-      }
-    }
+    loadInitialProduct()
   }, [stream.id])
 
   // ============================================
