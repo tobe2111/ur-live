@@ -33,10 +33,19 @@ export default function LoginPage() {
 
   // ✅ 이미 로그인되어 있으면 리다이렉트 (한 번만)
   useEffect(() => {
-    if (isAuthReady && isLoggedIn && !hasRedirected.current) {
+    // ⚠️ sessionStorage로 중복 리다이렉트 방지 (컴포넌트 리마운트 대응)
+    const redirectKey = `login_redirected_${returnUrl}`
+    const hasAlreadyRedirected = sessionStorage.getItem(redirectKey)
+    
+    if (isAuthReady && isLoggedIn && !hasRedirected.current && !hasAlreadyRedirected) {
       console.log('[LoginPage] 이미 로그인됨 - 리다이렉트:', returnUrl)
-      hasRedirected.current = true // 플래그 설정
-      navigate(returnUrl, { replace: true })
+      hasRedirected.current = true
+      sessionStorage.setItem(redirectKey, 'true')
+      
+      // ⚠️ 짧은 지연 후 리다이렉트 (React Router 안정화)
+      setTimeout(() => {
+        navigate(returnUrl, { replace: true })
+      }, 100)
     }
   }, [isAuthReady, isLoggedIn, returnUrl, navigate])
 

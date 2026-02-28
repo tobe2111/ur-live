@@ -51,9 +51,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<'user' | 'seller' | 'admin' | null>(null)
 
+  // ⚠️ CRITICAL: 셀러/관리자 경로는 Firebase Auth 건너뛰기
+  const currentPath = window.location.pathname
+  const isAdminOrSellerPath = currentPath.startsWith('/admin') || currentPath.startsWith('/seller')
+  
+  console.log('[AuthContext] 경로 체크:', {
+    currentPath,
+    isAdminOrSellerPath,
+    skipFirebaseAuth: isAdminOrSellerPath
+  })
+
   // ✅ Firebase Auth 상태 리스너 (한 번만 등록)
   useEffect(() => {
     console.log('[AuthContext] 🔥 Firebase Auth 초기화 시작')
+    
+    // ⚠️ CRITICAL: 셀러/관리자 경로는 Firebase Auth 완전히 건너뛰기
+    if (isAdminOrSellerPath) {
+      console.log('[AuthContext] ⚠️ 셀러/관리자 경로 - Firebase Auth 건너뛰고 JWT만 사용')
+      setIsAuthReady(true)
+      return
+    }
     
     // ⚠️ CRITICAL: JWT 토큰 체크 (카카오 로그인 시 JWT 토큰이 URL에 있음)
     const urlAccessToken = searchParams.get('access_token')
@@ -279,12 +296,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // ⚠️ isLoggedIn 계산 로직 개선
+  const hasJwtToken = !!localStorage.getItem('access_token')
+  const hasFirebaseUser = !!user
+  
+  // 셀러/관리자 경로: JWT만 체크
+  // 일반 유저 경로: Firebase User OR JWT 체크
+  const computedIsLoggedIn = isAdminOrSellerPath 
+    ? hasJwtToken  // 셀러/관리자는 JWT만
+    : (hasFirebaseUser || hasJwtToken)  // 일반 유저는 둘 다
+  
+  console.log('[AuthContext] 로그인 상태 계산:', {
+    isAdminOrSellerPath,
+    hasJwtToken,
+    hasFirebaseUser,
+    computedIsLoggedIn
+  })
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthReady,
-        isLoggedIn: !!user || !!localStorage.getItem('access_token'), // Firebase User OR JWT Token
+        isLoggedIn: computedIsLoggedIn,
         userRole,
         loginWithEmail,
         signupWithEmail,

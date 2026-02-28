@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { getUserId, isLoggedIn } from '@/utils/auth'
+import { getUserId } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Import KREAM-style components
 import { MobileHeader } from '@/components/product/mobile-header'
@@ -40,6 +41,7 @@ interface ProductOption {
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { isLoggedIn } = useAuth() // ✅ AuthContext 사용
   const [product, setProduct] = useState<Product | null>(null)
   const [options, setOptions] = useState<ProductOption[]>([])
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
@@ -86,7 +88,7 @@ export default function ProductDetailPage() {
   }
 
   async function handleAddToCart() {
-    if (!isLoggedIn()) {
+    if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 1000)
@@ -111,7 +113,7 @@ export default function ProductDetailPage() {
   }
 
   async function handleBuyNow() {
-    if (!isLoggedIn()) {
+    if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       setTimeout(() => navigate('/login'), 1000)
