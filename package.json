@@ -5,7 +5,7 @@
     "preinstall": "node scripts/check-react-version.cjs || echo 'Warning: React version check script not found'",
     "postinstall": "node scripts/verify-react-version.cjs || echo 'Warning: React verification failed'",
     "prebuild": "node scripts/validate-build.cjs && rm -rf dist && node scripts/update-version.js",
-    "build": "vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
+    "build": "NODE_OPTIONS='--max-old-space-size=1024' vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
     "postbuild": "node scripts/validate-build-output.cjs",
     "dev": "vite",
     "dev:wrangler": "npm run build && wrangler pages dev dist --d1=toss-live-commerce-db --local --ip 0.0.0.0 --port 3000",
