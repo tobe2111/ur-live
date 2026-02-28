@@ -927,7 +927,6 @@ function ReelCard({
           height: '100%',
           width: '100%',
           videoId: stream.youtube_video_id,
-          host: 'https://www.youtube.com',
           playerVars: {
             autoplay: 0, // Don't autoplay (user must click)
             mute: 1,
@@ -942,8 +941,8 @@ function ReelCard({
             playlist: stream.youtube_video_id,
             fs: 0,
             cc_load_policy: 0,
+            origin: window.location.origin, // ✅ CORS 에러 방지
           },
-          origin: window.location.origin, // ✅ playerVars 밖으로 이동
           events: {
             onReady: (event: any) => {
               if (!isMounted) return
