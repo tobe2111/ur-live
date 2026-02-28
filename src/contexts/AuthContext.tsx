@@ -72,17 +72,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     
-    // ⚠️ CRITICAL: JWT 토큰 체크 (카카오 로그인 시 JWT 토큰이 URL에 있음)
+    // ⚠️ CRITICAL: 일반 유저의 JWT 토큰은 Firebase로 변환
     const urlAccessToken = searchParams.get('access_token')
     const urlRefreshToken = searchParams.get('refresh_token')
-    const hasJwtTokens = urlAccessToken && urlRefreshToken
+    const urlUserId = searchParams.get('userId')
+    const hasJwtTokens = urlAccessToken && urlRefreshToken && urlUserId
     
     if (hasJwtTokens) {
-      console.log('[AuthContext] ⚠️ JWT 토큰 감지 - Firebase Auth 건너뛰고 바로 isAuthReady 설정')
-      // JWT 토큰이 있으면 Firebase Auth를 기다리지 않고 바로 준비 완료
-      setIsAuthReady(true)
-      // JWT는 기존 로직에서 처리됨 (URL 파라미터 → localStorage)
-      return
+      console.log('[AuthContext] ⚠️ 일반 유저 JWT 토큰 감지 - Firebase Custom Token으로 변환 필요')
+      
+      // JWT를 Firebase Custom Token으로 변환
+      const convertJwtToFirebase = async () => {
+        try {
+          console.log('[AuthContext] 🔄 JWT → Firebase Custom Token 변환 시작')
+          
+          // 백엔드에 JWT를 보내고 Firebase Custom Token 받기
+          const response = await api.post('/api/auth/jwt-to-firebase', {
+            accessToken: urlAccessToken,
+            userId: urlUserId
+          })
+          
+          const { customToken } = response.data
+          console.log('[AuthContext] ✅ Firebase Custom Token 받기 완료')
+          
+          // Firebase Auth에 Custom Token으로 로그인
+          await signInWithCustomToken(auth, customToken)
+          console.log('[AuthContext] ✅ Firebase 로그인 성공')
+          
+          // URL 파라미터 제거
+          const cleanUrl = window.location.pathname
+          window.history.replaceState({}, '', cleanUrl)
+          
+        } catch (error) {
+          console.error('[AuthContext] ❌ JWT → Firebase 변환 실패:', error)
+          // 실패해도 일단 준비 완료로 표시
+          setIsAuthReady(true)
+        }
+      }
+      
+      convertJwtToFirebase()
+      // Firebase onAuthStateChanged가 처리할 것이므로 여기서 return하지 않음
     }
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -127,16 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.log('[AuthContext] ❌ 사용자 로그아웃 상태')
         
-        // ⚠️ CRITICAL: localStorage에 JWT 토큰이 있는지 확인
-        const localAccessToken = localStorage.getItem('access_token')
-        if (localAccessToken) {
-          console.log('[AuthContext] ⚠️ JWT 토큰이 localStorage에 있음 - 로그아웃하지 않음')
-          // JWT 토큰이 있으면 Firebase Auth 없어도 로그인 상태 유지
-          setIsAuthReady(true)
-          return
-        }
-        
-        // Firebase 토큰도 없고 JWT 토큰도 없으면 진짜 로그아웃
+        // Firebase 토큰도 없으면 진짜 로그아웃
         localStorage.removeItem('firebase_token')
         localStorage.removeItem('user_type')
         
@@ -296,15 +316,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // ⚠️ isLoggedIn 계산 로직 개선
+  // ⚠️ isLoggedIn 계산 로직 - 경로별 인증 분리
   const hasJwtToken = !!localStorage.getItem('access_token')
   const hasFirebaseUser = !!user
   
   // 셀러/관리자 경로: JWT만 체크
-  // 일반 유저 경로: Firebase User OR JWT 체크
+  // 일반 유저 경로: Firebase User만 체크
   const computedIsLoggedIn = isAdminOrSellerPath 
     ? hasJwtToken  // 셀러/관리자는 JWT만
-    : (hasFirebaseUser || hasJwtToken)  // 일반 유저는 둘 다
+    : hasFirebaseUser  // ✅ 일반 유저는 Firebase만
   
   console.log('[AuthContext] 로그인 상태 계산:', {
     isAdminOrSellerPath,

@@ -2569,6 +2569,73 @@ app.post('/api/auth/kakao/firebase', cors(), async (c) => {
 });
 
 /**
+ * JWT → Firebase Custom Token 변환
+ * 일반 유저의 JWT 토큰을 Firebase Custom Token으로 변환
+ */
+app.post('/api/auth/jwt-to-firebase', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { accessToken, userId } = await c.req.json();
+    
+    if (!accessToken || !userId) {
+      return c.json({ success: false, error: 'accessToken and userId are required' }, 400);
+    }
+    
+    console.log('[JWT→Firebase] Converting JWT to Firebase Custom Token for user:', userId);
+    
+    // 1. JWT 토큰 검증
+    try {
+      const decoded = await verifyJwtToken(accessToken, c.env);
+      if (decoded.userId !== parseInt(userId)) {
+        return c.json({ success: false, error: 'Invalid JWT token' }, 401);
+      }
+    } catch (error) {
+      console.error('[JWT→Firebase] JWT verification failed:', error);
+      return c.json({ success: false, error: 'Invalid JWT token' }, 401);
+    }
+    
+    // 2. D1에서 사용자 정보 가져오기
+    const userResult = await DB.prepare(`
+      SELECT id, name, email, profile_image
+      FROM users
+      WHERE id = ?
+    `).bind(userId).first();
+    
+    if (!userResult) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+    
+    // 3. Firebase Custom Token 생성
+    const customToken = await generateFirebaseCustomToken(userId, {
+      role: 'user',
+      email: userResult.email,
+      name: userResult.name
+    });
+    
+    console.log('[JWT→Firebase] ✅ Firebase Custom Token 생성 완료 for user:', userId);
+    
+    return c.json({
+      success: true,
+      customToken,
+      user: {
+        id: userResult.id,
+        name: userResult.name,
+        email: userResult.email,
+        profile_image: userResult.profile_image,
+      },
+    });
+    
+  } catch (error) {
+    console.error('[JWT→Firebase] Error:', error);
+    return c.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Conversion failed',
+    }, 500);
+  }
+});
+
+/**
  * Firebase Auth → D1 동기화
  * Firebase ID Token을 받아서 D1에 사용자 정보 업데이트
  */
