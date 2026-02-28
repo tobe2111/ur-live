@@ -1,7 +1,9 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { saveJwtTokens, getTempCartItem, clearTempCartItem } from '@/utils/auth'
+import { signInWithCustomToken } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -26,45 +28,26 @@ export default function KakaoCallbackPage() {
       }
 
       try {
+        console.log('[KakaoCallback] 🔥 Firebase Auth 방식으로 카카오 로그인 처리')
         
-        // 백엔드로 코드 전송하여 액세스 토큰 교환 및 사용자 정보 저장
-        // 프로덕션 도메인 고정 사용 (KOE006 에러 방지)
+        // 백엔드로 코드 전송하여 Firebase Custom Token 받기
         const response = await api.post('/api/auth/kakao/callback', {
           code: code,
           redirect_uri: 'https://live.ur-team.com/auth/kakao/sync/callback'
         })
 
         if (response.data.success) {
-          const { user, accessToken, refreshToken } = response.data.data
+          const { customToken, user } = response.data.data
 
-          // JWT 토큰 저장 (localStorage 키 통일)
-          console.log('[KakaoCallback] 💾 JWT 토큰 저장 시작:', {
+          console.log('[KakaoCallback] ✅ Firebase Custom Token 받기 완료:', {
             userId: user.id,
             userName: user.name,
-            hasAccessToken: !!accessToken,
-            hasRefreshToken: !!refreshToken,
-            email: user.email
-          })
-          
-          saveJwtTokens(
-            accessToken,
-            refreshToken,
-            user.id.toString(),
-            user.name,
-            'user',
-            user.email
-          )
-          
-          // 저장 확인
-          console.log('[KakaoCallback] ✅ localStorage 저장 완료:', {
-            access_token: localStorage.getItem('access_token') ? '있음' : '없음',
-            refresh_token: localStorage.getItem('refresh_token') ? '있음' : '없음',
-            user_id: localStorage.getItem('user_id'),
-            user_name: localStorage.getItem('user_name'),
-            user_type: localStorage.getItem('user_type'),
-            isLoggedIn: !!localStorage.getItem('access_token') && !!localStorage.getItem('user_id')
+            firebaseUID: user.firebaseUID
           })
 
+          // 🔥 Firebase Auth에 Custom Token으로 로그인
+          const userCredential = await signInWithCustomToken(auth, customToken)
+          console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
           // ✅ returnUrl 우선순위: state > localStorage > default
           let returnUrl = '/'
@@ -104,12 +87,12 @@ export default function KakaoCallbackPage() {
           }
           
           // Navigate to return URL
-          // Removed blocking alert for faster navigation
           navigate(returnUrl, { replace: true })
         } else {
           throw new Error(response.data.error || '로그인에 실패했습니다.')
         }
       } catch (err: any) {
+        console.error('[KakaoCallback] ❌ 로그인 실패:', err)
         
         const errorMessage = err.response?.data?.error || err.message || '로그인 처리 중 오류가 발생했습니다.'
         const errorDetails = err.response?.data?.details || ''

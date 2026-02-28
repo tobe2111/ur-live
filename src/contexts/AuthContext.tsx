@@ -14,19 +14,19 @@ import { app } from '@/lib/firebase'
 import api from '@/lib/api'
 
 /**
- * Firebase Auth Context - 전역 인증 상태 관리
+ * Firebase Auth Context - 100% Firebase Authentication
  * 
  * 목적:
  * - Firebase Authentication 기반 전역 인증 상태 제공
  * - 카카오 OAuth → Firebase Custom Token 처리
  * - 이메일/비밀번호 로그인 (일반 사용자, 셀러, 관리자)
  * - 비밀번호 재설정 이메일 발송
- * - Custom Claims로 역할(role) 관리
+ * - Custom Claims로 역할(role) 관리 (user, seller, admin)
  * 
- * 무한 로그인 루프 방지:
- * - isAuthReady: Firebase Auth 초기화 완료 여부
- * - onAuthStateChanged 리스너 한 번만 등록
- * - Protected Route에서 isAuthReady 체크 후 리다이렉트
+ * 인증 방식:
+ * - JWT 완전 제거, Firebase ID Token 단일 방식 사용
+ * - 모든 사용자(일반/셀러/관리자)가 Firebase Auth 통합 관리
+ * - Custom Claims를 통한 권한 구분
  */
 
 interface AuthContextType {
@@ -51,117 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<'user' | 'seller' | 'admin' | null>(null)
 
-  // ⚠️ CRITICAL: 셀러/관리자 경로는 Firebase Auth 건너뛰기
-  const currentPath = window.location.pathname
-  const isAdminOrSellerPath = currentPath.startsWith('/admin') || currentPath.startsWith('/seller')
-  
-  console.log('[AuthContext] 경로 체크:', {
-    currentPath,
-    isAdminOrSellerPath,
-    skipFirebaseAuth: isAdminOrSellerPath
-  })
+  // Firebase Auth로 모든 경로 통일 관리
+  console.log('[AuthContext] 🔥 100% Firebase Auth 모드')
 
   // ✅ Firebase Auth 상태 리스너 (한 번만 등록)
   useEffect(() => {
-    console.log('[AuthContext] 🔥 Firebase Auth 초기화 시작')
-    
-    // ⚠️ CRITICAL: 셀러/관리자 경로는 Firebase Auth 완전히 건너뛰기
-    if (isAdminOrSellerPath) {
-      console.log('[AuthContext] ⚠️ 셀러/관리자 경로 - Firebase Auth 건너뛰고 JWT만 사용')
-      setIsAuthReady(true)
-      return
-    }
-    
-    // 🔄 URL에 JWT 토큰이 있으면 Firebase Custom Token으로 변환
-    const urlParams = new URLSearchParams(window.location.search)
-    const urlAccessToken = urlParams.get('access_token')
-    const urlRefreshToken = urlParams.get('refresh_token')
-    const urlUserId = urlParams.get('userId')
-    
-    if (urlAccessToken && urlRefreshToken && urlUserId) {
-      console.log('[AuthContext] 🚨 URL에서 토큰 발견! Firebase 전환 시작:', {
-        userId: urlUserId,
-        path: window.location.pathname
-      })
-      
-      // ⚠️ CRITICAL: 변환이 완료될 때까지 isAuthReady를 false로 유지
-      // 이렇게 하면 LoginPage 등에서 리다이렉트하지 않음
-      
-      const migrateJwtToFirebase = async () => {
-        try {
-          console.log('[AuthContext] 🔄 JWT → Firebase 마이그레이션 시작:', {
-            userId: urlUserId,
-            tokenLength: urlAccessToken?.length
-          })
-          
-          // 1️⃣ 즉시 localStorage에 임시 저장 (백업용)
-          localStorage.setItem('migrating_jwt', 'true')
-          localStorage.setItem('temp_access_token', urlAccessToken)
-          localStorage.setItem('temp_user_id', urlUserId)
-          
-          // 2️⃣ 백엔드에서 JWT → Firebase Custom Token 변환
-          const response = await api.post('/api/auth/jwt-to-firebase', {
-            accessToken: urlAccessToken,
-            userId: urlUserId
-          })
-          
-          if (response.data.success) {
-            const { customToken } = response.data
-            console.log('[AuthContext] ✅ Firebase Custom Token 받기 완료')
-            
-            // 3️⃣ Firebase Auth로 로그인
-            await signInWithCustomToken(auth, customToken)
-            console.log('[AuthContext] ✅ Firebase 로그인 성공!')
-            
-            // 4️⃣ URL 파라미터 제거 (JWT 토큰 숨기기)
-            const cleanUrl = window.location.pathname
-            window.history.replaceState({}, '', cleanUrl)
-            
-            // 5️⃣ 임시 저장소 클리어
-            localStorage.removeItem('migrating_jwt')
-            localStorage.removeItem('temp_access_token')
-            localStorage.removeItem('temp_user_id')
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
-            localStorage.removeItem('user_id')
-            
-            console.log('[AuthContext] ✅ JWT → Firebase 마이그레이션 완료!')
-          } else {
-            throw new Error(response.data.error || 'Firebase 마이그레이션 실패')
-          }
-        } catch (error: any) {
-          console.error('[AuthContext] ❌ JWT → Firebase 마이그레이션 실패:', {
-            status: error.response?.status,
-            error: error.response?.data?.error || error.message,
-            details: error.response?.data
-          })
-          
-          // 실패 시 임시 저장소 클리어
-          localStorage.removeItem('migrating_jwt')
-          localStorage.removeItem('temp_access_token')
-          localStorage.removeItem('temp_user_id')
-          
-          // 401 에러 = JWT 만료
-          if (error.response?.status === 401) {
-            console.log('[AuthContext] ⚠️ JWT 토큰 만료 - 로그인 필요')
-            // URL 파라미터 제거
-            const cleanUrl = window.location.pathname
-            window.history.replaceState({}, '', cleanUrl)
-          }
-          
-          // 준비 완료로 표시 (로그인 페이지로 이동)
-          setIsAuthReady(true)
-        }
-      }
-      
-      migrateJwtToFirebase()
-      
-      // ⚠️ CRITICAL: Firebase onAuthStateChanged가 마이그레이션을 처리하므로
-      // 여기서 return하지 않고 계속 진행
-    }
-    
-    // ✅ 일반 유저는 Firebase Auth만 사용
-    console.log('[AuthContext] 일반 유저 - Firebase Auth로 초기화')
+    console.log('[AuthContext] 🔥 Firebase Auth 초기화 시작 (전체 통합)')
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[AuthContext] 🔥 onAuthStateChanged 트리거:', {
@@ -365,22 +260,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // ⚠️ isLoggedIn 계산 로직 - 경로별 인증 분리
-  const hasJwtToken = !!localStorage.getItem('access_token')
+  // ⚠️ isLoggedIn 계산 로직 - 100% Firebase Auth 단일화
   const hasFirebaseUser = !!user
-  const isMigratingJwt = !!localStorage.getItem('migrating_jwt')  // 🔄 마이그레이션 중
   
-  // 셀러/관리자 경로: JWT만 체크
-  // 일반 유저 경로: Firebase User 또는 마이그레이션 중
-  const computedIsLoggedIn = isAdminOrSellerPath 
-    ? hasJwtToken  // 셀러/관리자는 JWT만
-    : (hasFirebaseUser || isMigratingJwt)  // ✅ 일반 유저: Firebase 또는 마이그레이션 중
+  // 모든 경로: Firebase User만 체크 (Custom Claims로 role 구분)
+  const computedIsLoggedIn = hasFirebaseUser
   
   console.log('[AuthContext] 로그인 상태 계산:', {
-    isAdminOrSellerPath,
-    hasJwtToken,
     hasFirebaseUser,
-    isMigratingJwt,
+    userRole,
     computedIsLoggedIn
   })
 

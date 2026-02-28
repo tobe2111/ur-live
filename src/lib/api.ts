@@ -2,9 +2,14 @@
  * 중앙화된 API 클라이언트
  * 
  * 기능:
- * - 자동 인증 토큰 추가 (Authorization: Bearer)
+ * - 100% Firebase ID Token 기반 인증 (JWT 완전 제거)
+ * - 자동 인증 토큰 추가 (Authorization: Bearer <Firebase_ID_Token>)
  * - 401 에러 시 자동 로그아웃
  * - 에러 핸들링 표준화
+ * 
+ * 인증 방식:
+ * - 모든 사용자(일반/셀러/관리자): Firebase ID Token 단일 사용
+ * - Custom Claims로 권한 구분 (role: user, seller, admin)
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
@@ -22,7 +27,7 @@ const api = axios.create({
 });
 
 /**
- * 공개 API 엔드포인트 (JWT 불필요)
+ * 공개 API 엔드포인트 (Firebase ID Token 불필요)
  * 비회원도 접근 가능한 페이지용 API
  */
 const PUBLIC_API_PATHS = [
@@ -46,35 +51,21 @@ function isPublicAPI(url: string): boolean {
 }
 
 /**
- * 요청 인터셉터: 자동 인증 토큰 추가
+ * 요청 인터셉터: Firebase ID Token 자동 추가
  * 
- * 기본: Firebase ID Token (일반 유저)
- * 예외: JWT Access Token (/admin, /seller 경로만)
+ * 모든 사용자(일반/셀러/관리자): Firebase ID Token 사용
  */
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (!config.headers) return config;
     
-    const currentPath = window.location.pathname;
-    const isAdminOrSeller = currentPath.startsWith('/admin') || currentPath.startsWith('/seller');
-    
-    // 🔐 인증 토큰 추가
-    if (isAdminOrSeller) {
-      // 셀러/관리자: JWT 토큰
-      const jwtToken = localStorage.getItem('access_token');
-      if (jwtToken) {
-        config.headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log('[API] 🔑 JWT token (seller/admin)');
-      }
-    } else {
-      // 일반 유저: Firebase ID Token
-      const firebaseToken = localStorage.getItem('firebase_token');
-      if (firebaseToken) {
-        config.headers['Authorization'] = `Bearer ${firebaseToken}`;
-        console.log('[API] 🔥 Firebase token (user)');
-      } else if (!isPublicAPI(config.url || '')) {
-        console.warn('[API] ⚠️ No token for protected API:', config.url);
-      }
+    // 🔐 Firebase ID Token 추가
+    const firebaseToken = localStorage.getItem('firebase_token');
+    if (firebaseToken) {
+      config.headers['Authorization'] = `Bearer ${firebaseToken}`;
+      console.log('[API] 🔥 Firebase token attached');
+    } else if (!isPublicAPI(config.url || '')) {
+      console.warn('[API] ⚠️ No Firebase token for protected API:', config.url);
     }
     
     return config;
@@ -83,10 +74,11 @@ api.interceptors.request.use(
 );
 
 /**
- * 응답 인터셉터: 401 에러 시 토큰 갱신 또는 로그아웃
+ * 응답 인터셉터: 401 에러 시 자동 로그아웃
  * 
- * 일반 유저: Firebase Auth가 자동 처리 → 로그아웃
- * 셀러/관리자: JWT 토큰 갱신 시도
+ * - Firebase Auth가 토큰 만료 시 자동으로 갱신
+ * - 401 발생 = 진짜 인증 실패 → 로그아웃 처리
+ * - Custom Claims로 권한 체크 (role: user, seller, admin)
  */
 api.interceptors.response.use(
   (response) => response,
@@ -103,20 +95,21 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      const currentPath = window.location.pathname;
-      const isAdminOrSeller = currentPath.startsWith('/admin') || currentPath.startsWith('/seller');
-      
-      // 2️⃣ 권한 문제 체크
+      // 2️⃣ 권한 문제 체크 (Custom Claims 불일치)
       const errorData = error.response?.data as any;
       const errorMessage = errorData?.error || '';
       
       if (errorMessage.includes('권한') || errorMessage.includes('admin') || errorMessage.includes('seller')) {
-        console.error('[API] ❌ Permission denied');
+        console.error('[API] ❌ Permission denied (Firebase Custom Claims 불일치)');
         localStorage.clear();
         
-        if (isAdminOrSeller) {
-          alert(currentPath.includes('/admin') ? '관리자 권한이 필요합니다.' : '판매자 권한이 필요합니다.');
-          window.location.href = currentPath.includes('/admin') ? '/admin/login' : '/seller/login';
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/admin')) {
+          alert('관리자 권한이 필요합니다.');
+          window.location.href = '/admin/login';
+        } else if (currentPath.startsWith('/seller')) {
+          alert('판매자 권한이 필요합니다.');
+          window.location.href = '/seller/login';
         } else {
           window.location.href = '/login';
         }
@@ -124,44 +117,24 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      // 3️⃣ 셀러/관리자: JWT 토큰 갱신 시도
-      if (isAdminOrSeller) {
-        const refreshToken = localStorage.getItem('refresh_token');
-        
-        if (refreshToken) {
-          try {
-            console.log('[API] JWT token expired, refreshing...');
-            const response = await axios.post('/api/auth/refresh', { refreshToken });
-            
-            if (response.data.success) {
-              const newToken = response.data.data.accessToken;
-              localStorage.setItem('access_token', newToken);
-              
-              // 재시도
-              if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-              }
-              return api(originalRequest);
-            }
-          } catch (err) {
-            console.error('[API] JWT refresh failed');
-          }
+      // 3️⃣ Firebase 인증 실패 → 로그아웃
+      console.warn('[API] Firebase auth failed (401) - redirecting to login');
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/login')) {
+        if (currentPath.startsWith('/admin')) {
+          window.location.href = '/admin/login';
+        } else if (currentPath.startsWith('/seller')) {
+          window.location.href = '/seller/login';
+        } else {
+          window.location.href = '/login';
         }
-        
-        // Refresh 실패 → 로그아웃
-        localStorage.clear();
-        window.location.href = currentPath.includes('/admin') ? '/admin/login' : '/seller/login';
-        return Promise.reject(error);
       }
       
-      // 4️⃣ 일반 유저: Firebase Auth가 토큰 자동 갱신
-      // 401 = 진짜 로그아웃 → 로그인 페이지로
-      console.warn('[API] Firebase auth failed - redirecting to login');
-      localStorage.removeItem('firebase_token');
-      localStorage.removeItem('user_type');
-      
-      if (!currentPath.includes('/login')) {
-        window.location.href = '/login';
+      return Promise.reject(error);
+    }
       }
     }
     

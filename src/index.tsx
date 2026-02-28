@@ -22,7 +22,6 @@ import {
   ShippingAddressSchema,
   validateOrError
 } from './lib/validation-schemas';
-import jwtApiRoutes from './routes/jwt-api';
 import type { CloudflareBindings } from './types/env';
 import { validateEnv, logEnvStatus } from './types/env';
 import { handleEnvTestRequest } from './tests/env.test';
@@ -487,23 +486,30 @@ app.use('*', async (c, next) => {
  * @param c - Hono context
  * @returns JWT 페이로드 (userId, userType, email) or null
  */
-async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string } | null> {
+/**
+ * Firebase ID Token 인증 (100% Firebase Auth 통합)
+ * 
+ * - JWT 완전 제거, Firebase ID Token만 사용
+ * - Custom Claims로 역할(role) 구분: user, seller, admin
+ * - firebase_uid 기반 D1 사용자 조회
+ */
+async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string } | null> {
   try {
-    // JWT 토큰 추출 (Authorization: Bearer <token>)
+    // Firebase ID Token 추출 (Authorization: Bearer <firebase_id_token>)
     const authHeader = c.req.header('Authorization')
     const token = authHeader?.replace('Bearer ', '') || ''
     
     if (!token) {
-      console.warn('[JWT Auth] No token provided')
+      console.warn('[Firebase Auth] No token provided')
       return null
     }
     
-    // 🔥 먼저 Firebase JWT 시도
+    // 🔥 Firebase ID Token 검증
     try {
       const { verifyFirebaseIdToken } = await import('./lib/firebase-jwt-verify')
       const firebasePayload = await verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       
-      console.log('[Firebase JWT] ✅ Firebase token verified:', firebasePayload.uid)
+      console.log('[Firebase Auth] ✅ Firebase token verified:', firebasePayload.uid)
       
       // Firebase UID로 D1에서 사용자 조회
       const user = await c.env.DB.prepare(`
@@ -511,36 +517,32 @@ async function getJwtAuth(c: any): Promise<{ userId: number; userType: string; e
       `).bind(firebasePayload.uid).first()
       
       if (!user) {
-        console.warn('[Firebase JWT] User not found for UID:', firebasePayload.uid)
+        console.warn('[Firebase Auth] User not found for UID:', firebasePayload.uid)
         return null
       }
       
+      // Custom Claims에서 role 추출 (user, seller, admin)
+      const role = firebasePayload.role || user.user_type || 'user'
+      
+      console.log('[Firebase Auth] ✅ User authenticated:', {
+        userId: user.id,
+        userType: role,
+        email: user.email,
+        firebaseUID: firebasePayload.uid
+      })
+      
       return {
         userId: user.id,
-        userType: user.user_type || 'user',
+        userType: role,
         email: user.email,
         firebaseUID: firebasePayload.uid
       }
     } catch (firebaseError) {
-      console.log('[JWT Auth] Not a Firebase token, trying legacy JWT...')
-    }
-    
-    // 기존 JWT 검증 (fallback)
-    const jwtSecret = getJwtSecret(c.env)
-    const payload = await verifyCachedToken(token, jwtSecret)
-    
-    if (!payload) {
-      console.warn('[JWT Auth] Invalid or expired token')
+      console.error('[Firebase Auth] Token verification failed:', firebaseError)
       return null
     }
-    
-    return {
-      userId: payload.userId,
-      userType: payload.userType,
-      email: payload.email
-    }
   } catch (error) {
-    console.error('[JWT Auth Error]', error)
+    console.error('[Firebase Auth Error]', error)
     return null
   }
 }
@@ -639,27 +641,28 @@ async function getSessionInfo(
  * @param next - Next middleware
  */
 async function requireAuth(c: any, next: any) {
-  // JWT 인증 (KV 읽기 0회)
-  const auth = await getJwtAuth(c)
+  // 🔥 Firebase ID Token 인증
+  const auth = await getFirebaseAuth(c)
   
   if (!auth) {
     return c.json({ 
       success: false, 
-      error: 'Authentication required',
+      error: 'Authentication required - Firebase ID Token 필요',
       code: 'AUTH_REQUIRED'
     }, 401)
   }
   
-  // Context에 사용자 정보 저장 (동일 요청 내 재사용)
-  // 개별 필드로도 저장하여 c.get('userId') 접근 가능하도록 함
+  // Context에 사용자 정보 저장
   c.set('user', {
     userId: auth.userId,
     userType: auth.userType,
-    email: auth.email
+    email: auth.email,
+    firebaseUID: auth.firebaseUID
   })
-  c.set('userId', auth.userId)      // ✅ 개별 저장
-  c.set('userType', auth.userType)  // ✅ 개별 저장
-  c.set('email', auth.email)        // ✅ 개별 저장
+  c.set('userId', auth.userId)
+  c.set('userType', auth.userType)
+  c.set('email', auth.email)
+  c.set('firebaseUID', auth.firebaseUID)
   
   await next()
 }
@@ -2431,52 +2434,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
   }
 });
 
-// 카카오 싱크 토큰 검증 및 로그인 (Legacy - for reference)
-app.post('/api/auth/kakao/sync', cors(), async (c) => {
-  const { DB } = c.env;
-  
-  try {
-    const { accessToken } = await c.req.json();
-    
-    if (!accessToken) {
-      return c.json({ success: false, error: 'Access token is required' }, 400);
-    }
-    
-    console.log('[Kakao Sync] Verifying access token');
-    
-    // ✅ 카카오 로그인 처리 시작 시간 기록
-    const startTime = Date.now();
-    
-    // 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
-    const { user } = await processKakaoLogin(DB, accessToken);
-    
-    console.log('[Kakao Sync] ProcessKakaoLogin completed in', Date.now() - startTime, 'ms');
-    
-    // ✅ JWT 토큰 발급 (세션 대체)
-    const jwtSecret = getJwtSecret(c.env);
-    const jwtAccessToken = await generateAccessToken({
-      userId: user.id,
-      userType: 'user',
-      email: user.email || undefined
-    }, jwtSecret);
-    
-    const jwtRefreshToken = await generateRefreshToken({
-      userId: user.id,
-      userType: 'user',
-      email: user.email || undefined
-    }, jwtSecret);
-    
-    console.log('[Kakao Sync] ✅ JWT 토큰 발급 완료 for user:', user.id);
-    console.log('[Kakao Sync] Total login time:', Date.now() - startTime, 'ms');
-    
-    return c.json({
-      success: true,
-      data: {
-        accessToken: jwtAccessToken,
-        refreshToken: jwtRefreshToken,
-        user: {
-          id: user.id,
-          name: user.name,
+// 카카오 싱크 엔드포인트 제거 - Firebase Custom Token 방식으로 통일됨 (/api/auth/kakao/callback 사용)
           email: user.email,
           profile_image: user.profile_image,
         },
@@ -2564,92 +2522,6 @@ app.post('/api/auth/kakao/firebase', cors(), async (c) => {
       success: false, 
       error: error instanceof Error ? error.message : 'Login failed',
       code: 'UNKNOWN_ERROR',
-    }, 500);
-  }
-});
-
-/**
- * JWT → Firebase Custom Token 변환
- * 일반 유저의 JWT 토큰을 Firebase Custom Token으로 변환
- */
-app.post('/api/auth/jwt-to-firebase', cors(), async (c) => {
-  const { DB } = c.env;
-  
-  try {
-    const { accessToken, userId } = await c.req.json();
-    
-    if (!accessToken || !userId) {
-      return c.json({ success: false, error: 'accessToken and userId are required' }, 400);
-    }
-    
-    console.log('[JWT→Firebase] Converting JWT to Firebase Custom Token for user:', userId);
-    
-    // 1. JWT 토큰 검증 (verifyCachedToken 사용)
-    try {
-      const jwtSecret = getJwtSecret(c.env);
-      const decoded = await verifyCachedToken(accessToken, jwtSecret);
-      
-      if (!decoded || decoded.userId !== parseInt(userId)) {
-        console.error('[JWT→Firebase] JWT userId mismatch:', {
-          decoded: decoded?.userId,
-          expected: parseInt(userId)
-        });
-        return c.json({ success: false, error: 'Invalid JWT token' }, 401);
-      }
-      
-      console.log('[JWT→Firebase] ✅ JWT 검증 성공:', {
-        userId: decoded.userId,
-        userType: decoded.userType
-      });
-    } catch (error) {
-      console.error('[JWT→Firebase] JWT verification failed:', error);
-      return c.json({ success: false, error: 'Invalid or expired JWT token' }, 401);
-    }
-    
-    // 2. D1에서 사용자 정보 가져오기
-    const userResult = await DB.prepare(`
-      SELECT id, name, email, profile_image
-      FROM users
-      WHERE id = ?
-    `).bind(userId).first();
-    
-    if (!userResult) {
-      return c.json({ success: false, error: 'User not found' }, 404);
-    }
-    
-    // 3. Firebase Admin SDK로 Custom Token 생성
-    const firebase = initFirebaseAdmin(c.env);
-    const firebaseUID = `user_${userId}`;  // Firebase UID 형식
-    const customToken = await firebase.createCustomToken(firebaseUID, {
-      userId: parseInt(userId),
-      role: 'user',
-      email: userResult.email,
-      name: userResult.name
-    });
-    
-    // 4. D1에 firebase_uid 저장 (없으면)
-    await DB.prepare(`
-      UPDATE users SET firebase_uid = ? WHERE id = ?
-    `).bind(firebaseUID, userId).run();
-    
-    console.log('[JWT→Firebase] ✅ Firebase Custom Token 생성 완료 for user:', userId);
-    
-    return c.json({
-      success: true,
-      customToken,
-      user: {
-        id: userResult.id,
-        name: userResult.name,
-        email: userResult.email,
-        profile_image: userResult.profile_image,
-      },
-    });
-    
-  } catch (error) {
-    console.error('[JWT→Firebase] Error:', error);
-    return c.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Conversion failed',
     }, 500);
   }
 });
@@ -14612,8 +14484,7 @@ app.get('/api/cache/stats', async (c) => {
  * - GET /api/auth/verify - JWT 토큰 검증 (디버깅용)
  */
 
-// Mount JWT API routes
-app.route('/', jwtApiRoutes);
+// JWT API routes 제거됨 (Firebase Auth 통합)
 
 // ==================== KV Usage Monitoring API (긴급 디버깅용) ====================
 /**
