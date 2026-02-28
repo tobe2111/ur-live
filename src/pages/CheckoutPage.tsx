@@ -128,6 +128,28 @@ export default function CheckoutPage() {
 
   const totalAmount = subtotal + totalShippingFee
 
+  // 🧹 URL 파라미터 청소 (JWT 토큰 제거 및 무한 루프 방지)
+  useEffect(() => {
+    // 🚨 CRITICAL: JWT 토큰이나 불필요한 파라미터가 URL에 있으면 즉시 제거
+    const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName']
+    const hasParamsToClean = paramsToClean.some(param => searchParams.has(param))
+    
+    if (hasParamsToClean) {
+      console.warn('[CheckoutPage] 🧹 URL 파라미터 정리 중...', {
+        params: Array.from(searchParams.keys())
+      })
+      
+      // URL을 깔끔하게 정리 (파라미터 모두 제거)
+      window.history.replaceState({}, '', window.location.pathname)
+      
+      // 레거시 JWT 키도 정리
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      
+      console.log('[CheckoutPage] ✅ URL 파라미터 정리 완료')
+    }
+  }, []) // 컴포넌트 마운트 시 한 번만 실행
+
   // 🔐 Step 0: Firebase 인증 상태 체크 (로그인되지 않으면 리다이렉트)
   useEffect(() => {
     async function checkFirebaseAuth() {
