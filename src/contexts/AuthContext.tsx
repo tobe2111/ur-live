@@ -55,6 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('[AuthContext] 🔥 Firebase Auth 초기화 시작')
     
+    // ⚠️ CRITICAL: JWT 토큰 체크 (카카오 로그인 시 JWT 토큰이 URL에 있음)
+    const urlAccessToken = searchParams.get('access_token')
+    const urlRefreshToken = searchParams.get('refresh_token')
+    const hasJwtTokens = urlAccessToken && urlRefreshToken
+    
+    if (hasJwtTokens) {
+      console.log('[AuthContext] ⚠️ JWT 토큰 감지 - Firebase Auth 건너뛰고 바로 isAuthReady 설정')
+      // JWT 토큰이 있으면 Firebase Auth를 기다리지 않고 바로 준비 완료
+      setIsAuthReady(true)
+      // JWT는 기존 로직에서 처리됨 (URL 파라미터 → localStorage)
+      return
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[AuthContext] 🔥 onAuthStateChanged 트리거:', {
         hasUser: !!firebaseUser,
@@ -97,7 +110,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.log('[AuthContext] ❌ 사용자 로그아웃 상태')
         
-        // 로컬 스토리지 클리어
+        // ⚠️ CRITICAL: localStorage에 JWT 토큰이 있는지 확인
+        const localAccessToken = localStorage.getItem('access_token')
+        if (localAccessToken) {
+          console.log('[AuthContext] ⚠️ JWT 토큰이 localStorage에 있음 - 로그아웃하지 않음')
+          // JWT 토큰이 있으면 Firebase Auth 없어도 로그인 상태 유지
+          setIsAuthReady(true)
+          return
+        }
+        
+        // Firebase 토큰도 없고 JWT 토큰도 없으면 진짜 로그아웃
         localStorage.removeItem('firebase_token')
         localStorage.removeItem('user_type')
         
@@ -112,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[AuthContext] 🔥 Firebase Auth 리스너 해제')
       unsubscribe()
     }
-  }, [])
+  }, [searchParams])
 
   // ✅ 카카오 OAuth → Firebase Custom Token 로그인
   useEffect(() => {
@@ -262,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthReady,
-        isLoggedIn: !!user,
+        isLoggedIn: !!user || !!localStorage.getItem('access_token'), // Firebase User OR JWT Token
         userRole,
         loginWithEmail,
         signupWithEmail,
