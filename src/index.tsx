@@ -2301,32 +2301,35 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       
       console.log('[Kakao Sync] User saved successfully, userId:', userId);
       
-      // 4. ✅ JWT 토큰 발급 (세션 대체)
-      console.log('[Kakao Sync] Step 4: Generating JWT tokens...');
+      // 4. 🔥 Firebase Custom Token 생성 (JWT 완전 대체)
+      console.log('[Kakao Sync] Step 4: Generating Firebase Custom Token...');
       
-      const jwtSecret = getJwtSecret(c.env);
-      const jwtAccessToken = await generateAccessToken({
+      const firebase = initFirebaseAdmin(c.env);
+      const firebaseUID = `kakao_${kakaoId}`;
+      
+      // Firebase Custom Token 생성 (Custom Claims 포함)
+      const customToken = await firebase.createCustomToken(firebaseUID, {
+        role: 'user', // Custom Claims: 역할
         userId: userId,
-        userType: 'user',
-        email: email || undefined
-      }, jwtSecret);
+        email: email || undefined,
+        kakaoId: kakaoId
+      });
       
-      const jwtRefreshToken = await generateRefreshToken({
-        userId: userId,
-        userType: 'user',
-        email: email || undefined
-      }, jwtSecret);
+      // D1에 firebase_uid 저장 (없으면)
+      await DB.prepare(`
+        UPDATE users SET firebase_uid = ? WHERE id = ?
+      `).bind(firebaseUID, userId).run();
       
-      console.log('[Kakao Sync] ✅ JWT 토큰 발급 완료 for user:', userId);
+      console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
       
-      // 5. ✅ Redirect back with JWT tokens (URL 파라미터)
-      console.log('[Kakao Sync] Step 5: Redirecting with JWT...');
+      // 5. ✅ Redirect with Firebase Custom Token only
+      console.log('[Kakao Sync] Step 5: Redirecting with Firebase Custom Token...');
       
       const redirectUrl = state.includes('?') 
-        ? `${state}&access_token=${encodeURIComponent(jwtAccessToken)}&refresh_token=${encodeURIComponent(jwtRefreshToken)}&userId=${userId}&userName=${encodeURIComponent(nickname)}&userEmail=${encodeURIComponent(email || '')}`
-        : `${state}?access_token=${encodeURIComponent(jwtAccessToken)}&refresh_token=${encodeURIComponent(jwtRefreshToken)}&userId=${userId}&userName=${encodeURIComponent(nickname)}&userEmail=${encodeURIComponent(email || '')}`;
+        ? `${state}&firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`
+        : `${state}?firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`;
       
-      console.log('[Kakao Sync] Redirect URL (JWT):', redirectUrl.substring(0, 100) + '...');
+      console.log('[Kakao Sync] Redirect URL (Firebase):', redirectUrl.substring(0, 100) + '...');
       return c.redirect(redirectUrl);
       
     } catch (dbError) {
