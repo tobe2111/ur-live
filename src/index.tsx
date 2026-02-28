@@ -2584,15 +2584,26 @@ app.post('/api/auth/jwt-to-firebase', cors(), async (c) => {
     
     console.log('[JWT→Firebase] Converting JWT to Firebase Custom Token for user:', userId);
     
-    // 1. JWT 토큰 검증
+    // 1. JWT 토큰 검증 (verifyCachedToken 사용)
     try {
-      const decoded = await verifyJwtToken(accessToken, c.env);
-      if (decoded.userId !== parseInt(userId)) {
+      const jwtSecret = getJwtSecret(c.env);
+      const decoded = await verifyCachedToken(accessToken, jwtSecret);
+      
+      if (!decoded || decoded.userId !== parseInt(userId)) {
+        console.error('[JWT→Firebase] JWT userId mismatch:', {
+          decoded: decoded?.userId,
+          expected: parseInt(userId)
+        });
         return c.json({ success: false, error: 'Invalid JWT token' }, 401);
       }
+      
+      console.log('[JWT→Firebase] ✅ JWT 검증 성공:', {
+        userId: decoded.userId,
+        userType: decoded.userType
+      });
     } catch (error) {
       console.error('[JWT→Firebase] JWT verification failed:', error);
-      return c.json({ success: false, error: 'Invalid JWT token' }, 401);
+      return c.json({ success: false, error: 'Invalid or expired JWT token' }, 401);
     }
     
     // 2. D1에서 사용자 정보 가져오기

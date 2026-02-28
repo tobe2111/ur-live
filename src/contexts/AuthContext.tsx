@@ -79,7 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const urlUserId = urlParams.get('userId')
     
     if (urlAccessToken && urlRefreshToken && urlUserId) {
-      console.log('[AuthContext] 🔄 URL에서 JWT 토큰 발견 - Firebase로 마이그레이션 시작')
+      console.log('[AuthContext] 🚨 URL에서 토큰 발견! Firebase 전환 시작:', {
+        userId: urlUserId,
+        path: window.location.pathname
+      })
+      
+      // ⚠️ CRITICAL: 변환이 완료될 때까지 isAuthReady를 false로 유지
+      // 이렇게 하면 LoginPage 등에서 리다이렉트하지 않음
       
       const migrateJwtToFirebase = async () => {
         try {
@@ -88,7 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             tokenLength: urlAccessToken?.length
           })
           
-          // 백엔드에서 JWT → Firebase Custom Token 변환
+          // 1️⃣ 즉시 localStorage에 임시 저장 (백업용)
+          localStorage.setItem('migrating_jwt', 'true')
+          localStorage.setItem('temp_access_token', urlAccessToken)
+          localStorage.setItem('temp_user_id', urlUserId)
+          
+          // 2️⃣ 백엔드에서 JWT → Firebase Custom Token 변환
           const response = await api.post('/api/auth/jwt-to-firebase', {
             accessToken: urlAccessToken,
             userId: urlUserId
@@ -98,18 +109,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { customToken } = response.data
             console.log('[AuthContext] ✅ Firebase Custom Token 받기 완료')
             
-            // Firebase Auth로 로그인
+            // 3️⃣ Firebase Auth로 로그인
             await signInWithCustomToken(auth, customToken)
-            console.log('[AuthContext] ✅ Firebase 로그인 성공')
+            console.log('[AuthContext] ✅ Firebase 로그인 성공!')
             
-            // URL 파라미터 제거 (JWT 토큰 숨기기)
+            // 4️⃣ URL 파라미터 제거 (JWT 토큰 숨기기)
             const cleanUrl = window.location.pathname
             window.history.replaceState({}, '', cleanUrl)
             
-            // JWT 토큰 제거 (더 이상 필요 없음)
+            // 5️⃣ 임시 저장소 클리어
+            localStorage.removeItem('migrating_jwt')
+            localStorage.removeItem('temp_access_token')
+            localStorage.removeItem('temp_user_id')
             localStorage.removeItem('access_token')
             localStorage.removeItem('refresh_token')
             localStorage.removeItem('user_id')
+            
+            console.log('[AuthContext] ✅ JWT → Firebase 마이그레이션 완료!')
           } else {
             throw new Error(response.data.error || 'Firebase 마이그레이션 실패')
           }
@@ -120,9 +136,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             details: error.response?.data
           })
           
+          // 실패 시 임시 저장소 클리어
+          localStorage.removeItem('migrating_jwt')
+          localStorage.removeItem('temp_access_token')
+          localStorage.removeItem('temp_user_id')
+          
           // 401 에러 = JWT 만료
           if (error.response?.status === 401) {
-            console.log('[AuthContext] JWT 토큰 만료 - 로그인 필요')
+            console.log('[AuthContext] ⚠️ JWT 토큰 만료 - 로그인 필요')
             // URL 파라미터 제거
             const cleanUrl = window.location.pathname
             window.history.replaceState({}, '', cleanUrl)
@@ -134,7 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       migrateJwtToFirebase()
-      // Firebase onAuthStateChanged가 처리할 것이므로 여기서 return하지 않음
+      
+      // ⚠️ CRITICAL: Firebase onAuthStateChanged가 마이그레이션을 처리하므로
+      // 여기서 return하지 않고 계속 진행
     }
     
     // ✅ 일반 유저는 Firebase Auth만 사용
@@ -345,17 +368,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ⚠️ isLoggedIn 계산 로직 - 경로별 인증 분리
   const hasJwtToken = !!localStorage.getItem('access_token')
   const hasFirebaseUser = !!user
+  const isMigratingJwt = !!localStorage.getItem('migrating_jwt')  // 🔄 마이그레이션 중
   
   // 셀러/관리자 경로: JWT만 체크
-  // 일반 유저 경로: Firebase User만 체크
+  // 일반 유저 경로: Firebase User 또는 마이그레이션 중
   const computedIsLoggedIn = isAdminOrSellerPath 
     ? hasJwtToken  // 셀러/관리자는 JWT만
-    : hasFirebaseUser  // ✅ 일반 유저는 Firebase만
+    : (hasFirebaseUser || isMigratingJwt)  // ✅ 일반 유저: Firebase 또는 마이그레이션 중
   
   console.log('[AuthContext] 로그인 상태 계산:', {
     isAdminOrSellerPath,
     hasJwtToken,
     hasFirebaseUser,
+    isMigratingJwt,
     computedIsLoggedIn
   })
 
