@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { AuthProvider } from './contexts/AuthContext'
-import { useSessionValidation } from './hooks/useSessionValidation'
+// import { useSessionValidation } from './hooks/useSessionValidation' // ❌ JWT 전용 - 제거됨
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 
 // 초기 로딩 페이지만 즉시 로드
@@ -83,8 +83,8 @@ const PageLoader = () => (
 
 // ✅ Router 내부에서 실행될 컴포넌트
 function AppContent() {
-  // 🔒 세션 검증: 5분마다 자동 세션 유효성 검증
-  useSessionValidation()
+  // 🔒 세션 검증: Firebase Auth가 자동으로 처리 (JWT 제거됨)
+  // useSessionValidation() // ❌ JWT 전용 - 더 이상 사용 안 함
   
   // 🔄 다중 탭 동기화: 다른 탭의 로그인/로그아웃 감지
   useMultiTabSync()
