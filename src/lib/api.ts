@@ -48,79 +48,75 @@ function isPublicAPI(url: string): boolean {
 /**
  * 요청 인터셉터: 자동 인증 토큰 추가
  * 
- * 우선순위:
- * 1. Firebase ID Token (일반 유저)
- * 2. JWT Access Token (셀러/관리자)
+ * 기본: Firebase ID Token (일반 유저)
+ * 예외: JWT Access Token (/admin, /seller 경로만)
  */
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const currentPath = window.location.pathname;
-    const isAdminOrSellerPath = currentPath.startsWith('/admin') || currentPath.startsWith('/seller');
+    if (!config.headers) return config;
     
-    // ✅ 셀러/관리자는 JWT 토큰 사용
-    if (isAdminOrSellerPath) {
+    const currentPath = window.location.pathname;
+    const isAdminOrSeller = currentPath.startsWith('/admin') || currentPath.startsWith('/seller');
+    
+    // 🔐 인증 토큰 추가
+    if (isAdminOrSeller) {
+      // 셀러/관리자: JWT 토큰
       const jwtToken = localStorage.getItem('access_token');
-      if (jwtToken && config.headers) {
+      if (jwtToken) {
         config.headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log('[API] JWT token attached (seller/admin):', jwtToken.substring(0, 20) + '...');
+        console.log('[API] 🔑 JWT token (seller/admin)');
       }
     } else {
-      // ✅ 일반 유저는 Firebase ID Token 사용
+      // 일반 유저: Firebase ID Token
       const firebaseToken = localStorage.getItem('firebase_token');
-      if (firebaseToken && config.headers) {
+      if (firebaseToken) {
         config.headers['Authorization'] = `Bearer ${firebaseToken}`;
-        console.log('[API] Firebase token attached (user):', firebaseToken.substring(0, 20) + '...');
+        console.log('[API] 🔥 Firebase token (user)');
       } else if (!isPublicAPI(config.url || '')) {
-        console.warn('[API] ⚠️ No auth token found for protected API:', config.url);
+        console.warn('[API] ⚠️ No token for protected API:', config.url);
       }
     }
     
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 /**
- * 응답 인터셉터: 401 에러 시 JWT 토큰 갱신 또는 로그아웃
+ * 응답 인터셉터: 401 에러 시 토큰 갱신 또는 로그아웃
+ * 
+ * 일반 유저: Firebase Auth가 자동 처리 → 로그아웃
+ * 셀러/관리자: JWT 토큰 갱신 시도
  */
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
-    // 401 Unauthorized: 토큰 만료 또는 권한 부족
+    // 401 Unauthorized 처리
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      // 🔧 1. 공개 API는 401 에러 무시 (비회원 접근 허용)
-      const requestUrl = originalRequest.url || '';
-      if (isPublicAPI(requestUrl)) {
-        console.log('[API] 공개 API 401 무시 (비회원 접근):', requestUrl);
+      // 1️⃣ 공개 API는 401 무시
+      if (isPublicAPI(originalRequest.url || '')) {
+        console.log('[API] Public API - 401 ignored');
         return Promise.reject(error);
       }
       
-      // 🔧 2. 먼저 에러 응답에서 권한 문제인지 확인
+      const currentPath = window.location.pathname;
+      const isAdminOrSeller = currentPath.startsWith('/admin') || currentPath.startsWith('/seller');
+      
+      // 2️⃣ 권한 문제 체크
       const errorData = error.response?.data as any;
       const errorMessage = errorData?.error || '';
       
-      // 🔧 3. 권한 문제(userType 불일치)인 경우 토큰 갱신하지 않고 로그아웃
       if (errorMessage.includes('권한') || errorMessage.includes('admin') || errorMessage.includes('seller')) {
-        console.error('[API] ❌ Permission denied (userType mismatch):', errorMessage);
-        console.warn('[API] 권한 불일치 - 로그아웃 처리');
-        
-        // localStorage 완전 클리어
+        console.error('[API] ❌ Permission denied');
         localStorage.clear();
         
-        // 현재 페이지에 따라 리다이렉트
-        const currentPath = window.location.pathname;
-        if (currentPath.includes('/admin')) {
-          alert('관리자 권한이 필요합니다. 다시 로그인해주세요.');
-          window.location.href = '/admin/login';
-        } else if (currentPath.includes('/seller')) {
-          alert('판매자 권한이 필요합니다. 다시 로그인해주세요.');
-          window.location.href = '/seller/login';
+        if (isAdminOrSeller) {
+          alert(currentPath.includes('/admin') ? '관리자 권한이 필요합니다.' : '판매자 권한이 필요합니다.');
+          window.location.href = currentPath.includes('/admin') ? '/admin/login' : '/seller/login';
         } else {
           window.location.href = '/login';
         }
@@ -128,76 +124,54 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
       
-      // 🔧 4. 셀러/관리자는 JWT 토큰 갱신 시도
-      const currentPath = window.location.pathname;
-      const isAdminOrSellerPath = currentPath.startsWith('/admin') || currentPath.startsWith('/seller');
-      
-      if (isAdminOrSellerPath) {
+      // 3️⃣ 셀러/관리자: JWT 토큰 갱신 시도
+      if (isAdminOrSeller) {
         const refreshToken = localStorage.getItem('refresh_token');
         
         if (refreshToken) {
           try {
-            console.log('[API] JWT Access token expired, refreshing...');
-            
-            // Refresh Token으로 새 Access Token 발급
-            const response = await axios.post('/api/auth/refresh', {
-              refreshToken
-            });
+            console.log('[API] JWT token expired, refreshing...');
+            const response = await axios.post('/api/auth/refresh', { refreshToken });
             
             if (response.data.success) {
-              const newAccessToken = response.data.data.accessToken;
-              localStorage.setItem('access_token', newAccessToken);
+              const newToken = response.data.data.accessToken;
+              localStorage.setItem('access_token', newToken);
               
-              console.log('[API] ✅ JWT Token refreshed successfully');
-              
-              // 원래 요청에 새 토큰 적용하여 재시도
+              // 재시도
               if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+                originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
               }
-              
               return api(originalRequest);
             }
-          } catch (refreshError) {
-            console.error('[API] ❌ JWT Token refresh failed:', refreshError);
-            // Refresh 실패 시 로그아웃
+          } catch (err) {
+            console.error('[API] JWT refresh failed');
           }
         }
         
-        // JWT Refresh 실패 시 로그아웃
-        console.warn('[API] JWT 인증 실패 - 로그아웃 처리');
+        // Refresh 실패 → 로그아웃
         localStorage.clear();
-        
-        if (currentPath.includes('/seller')) {
-          window.location.href = '/seller/login';
-        } else if (currentPath.includes('/admin')) {
-          window.location.href = '/admin/login';
-        }
-        
+        window.location.href = currentPath.includes('/admin') ? '/admin/login' : '/seller/login';
         return Promise.reject(error);
       }
       
-      // 🔧 5. 일반 유저는 Firebase Auth가 자동으로 처리
-      // Firebase ID Token은 만료 시 Firebase Auth가 자동으로 갱신
-      // 401이 발생하면 진짜로 로그아웃된 것이므로 로그인 페이지로 리다이렉트
-      console.warn('[API] Firebase 인증 실패 - 로그인 페이지로');
-      
-      // Firebase 토큰 제거
+      // 4️⃣ 일반 유저: Firebase Auth가 토큰 자동 갱신
+      // 401 = 진짜 로그아웃 → 로그인 페이지로
+      console.warn('[API] Firebase auth failed - redirecting to login');
       localStorage.removeItem('firebase_token');
       localStorage.removeItem('user_type');
       
-      // 현재 페이지가 로그인 페이지가 아닐 때만 리다이렉트
       if (!currentPath.includes('/login')) {
         window.location.href = '/login';
       }
     }
     
-    // 403 Forbidden: 권한 없음
+    // 403 Forbidden
     if (error.response?.status === 403) {
-      console.warn('[API] 권한 없음');
+      console.warn('[API] 접근 권한 없음');
       alert('접근 권한이 없습니다.');
     }
     
-    // 500 Internal Server Error
+    // 500 Server Error
     if (error.response?.status === 500) {
       console.error('[API] 서버 오류:', error.response.data);
     }
