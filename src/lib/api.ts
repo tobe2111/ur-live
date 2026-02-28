@@ -135,8 +135,6 @@ api.interceptors.response.use(
       
       return Promise.reject(error);
     }
-      }
-    }
     
     // 403 Forbidden
     if (error.response?.status === 403) {
