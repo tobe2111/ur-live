@@ -1,10 +1,9 @@
 /**
- * JWT Authentication utility functions
- * 모든 페이지에서 일관된 JWT 기반 로그인/로그아웃 처리
+ * Firebase Authentication utility functions
+ * 모든 페이지에서 일관된 Firebase 기반 로그인/로그아웃 처리
  * 
- * localStorage 키 표준화 (JWT 전환 후):
- * - access_token: JWT 액세스 토큰 (15분)
- * - refresh_token: JWT 리프레시 토큰 (30일)
+ * localStorage 키 표준화 (Firebase 전환 후):
+ * - firebase_token: Firebase ID Token (1시간, 자동 갱신)
  * - user_id: 사용자 ID
  * - user_name: 사용자 이름
  * - user_email: 사용자 이메일
@@ -13,11 +12,12 @@
  */
 
 import { NavigateFunction } from 'react-router-dom'
+import { getAuth } from 'firebase/auth'
+import { app } from '@/lib/firebase'
 
-// JWT 표준 localStorage 키
-const JWT_STORAGE_KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
+// Firebase 표준 localStorage 키
+const FIREBASE_STORAGE_KEYS = {
+  FIREBASE_TOKEN: 'firebase_token',
   USER_ID: 'user_id',
   USER_NAME: 'user_name',
   USER_EMAIL: 'user_email',
@@ -28,8 +28,10 @@ const JWT_STORAGE_KEYS = {
   HAS_CART_ITEMS: 'hasCartItems',
 } as const
 
-// 레거시 세션 키 (읽기 전용, 마이그레이션 호환)
-const LEGACY_SESSION_KEYS = {
+// 레거시 JWT/세션 키 (마이그레이션 호환, 삭제용)
+const LEGACY_KEYS = {
+  ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
   SESSION_OLD: 'session',
   SESSION_TOKEN: 'user_session_token',
   SESSION_TOKEN_ALT: 'sessionToken',
@@ -41,66 +43,68 @@ const LEGACY_SESSION_KEYS = {
 }
 
 /**
- * JWT 액세스 토큰 가져오기
+ * Firebase ID Token 가져오기
  */
 export function getAccessToken(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.ACCESS_TOKEN)
+  return localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN)
 }
 
 /**
- * JWT 리프레시 토큰 가져오기
+ * @deprecated JWT refresh token은 더 이상 사용하지 않습니다 (Firebase 자동 갱신)
  */
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.REFRESH_TOKEN)
+  console.warn('[Auth] ⚠️ getRefreshToken는 deprecated입니다. Firebase는 자동으로 토큰을 갱신합니다.')
+  return null
 }
 
 /**
- * 로그인 상태 확인 (JWT 기반)
+ * 로그인 상태 확인 (Firebase 기반)
  */
 export function isLoggedIn(): boolean {
-  const accessToken = getAccessToken()
+  const auth = getAuth(app)
+  const firebaseUser = auth.currentUser
+  const firebaseToken = localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN)
   const userId = getUserId()
-  const userType = getUserType()
   
-  return !!(accessToken && userId && userType)
+  return !!(firebaseUser && firebaseToken && userId)
 }
 
 /**
  * 사용자 타입 가져오기
  */
 export function getUserType(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.USER_TYPE)
+  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
 }
 
 /**
  * 사용자 ID 가져오기 (레거시 키 호환)
  */
 export function getUserId(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.USER_ID) || 
-         localStorage.getItem(LEGACY_SESSION_KEYS.USER_ID_ALT)
+  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
+         localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
 }
 
 /**
  * 사용자 이름 가져오기 (레거시 키 호환)
  */
 export function getUserName(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.USER_NAME) || 
-         localStorage.getItem(LEGACY_SESSION_KEYS.USER_NAME_ALT)
+  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || 
+         localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
 }
 
 /**
  * 사용자 이메일 가져오기 (레거시 키 호환)
  */
 export function getUserEmail(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.USER_EMAIL) || 
-         localStorage.getItem(LEGACY_SESSION_KEYS.USER_EMAIL_ALT)
+  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_EMAIL) || 
+         localStorage.getItem(LEGACY_KEYS.USER_EMAIL_ALT)
 }
 
 /**
  * 사용자 프로필 이미지 가져오기
  */
 export function getUserProfileImage(): string | null {
-  return localStorage.getItem(JWT_STORAGE_KEYS.USER_PROFILE_IMAGE)
+  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_PROFILE_IMAGE)
 }
 
 /**
@@ -113,7 +117,7 @@ export function getUserProfileImage(): string | null {
 export function requireLogin(navigate: NavigateFunction, message: string = '로그인이 필요합니다.'): void {
   // Save current URL as return destination
   const currentPath = window.location.pathname + window.location.search
-  localStorage.setItem(JWT_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
   
   // Show alert if message provided
   if (message) {
@@ -148,21 +152,21 @@ export function saveTempCartItem(
     productName,
     timestamp: Date.now()
   }
-  localStorage.setItem(JWT_STORAGE_KEYS.TEMP_CART_ITEM, JSON.stringify(tempCart))
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.TEMP_CART_ITEM, JSON.stringify(tempCart))
 }
 
 /**
  * 임시 장바구니 아이템 가져오기
  */
 export function getTempCartItem(): any | null {
-  const tempCartItem = localStorage.getItem(JWT_STORAGE_KEYS.TEMP_CART_ITEM)
+  const tempCartItem = localStorage.getItem(FIREBASE_STORAGE_KEYS.TEMP_CART_ITEM)
   if (!tempCartItem) return null
   
   try {
     return JSON.parse(tempCartItem)
   } catch (error) {
     console.error('Failed to parse temp cart item:', error)
-    localStorage.removeItem(JWT_STORAGE_KEYS.TEMP_CART_ITEM)
+    localStorage.removeItem(FIREBASE_STORAGE_KEYS.TEMP_CART_ITEM)
     return null
   }
 }
@@ -171,20 +175,20 @@ export function getTempCartItem(): any | null {
  * 임시 장바구니 아이템 삭제
  */
 export function clearTempCartItem(): void {
-  localStorage.removeItem(JWT_STORAGE_KEYS.TEMP_CART_ITEM)
+  localStorage.removeItem(FIREBASE_STORAGE_KEYS.TEMP_CART_ITEM)
 }
 
 /**
- * 로그아웃 (JWT + 레거시 세션 키 모두 삭제)
+ * 로그아웃 (Firebase + 레거시 JWT 키 모두 삭제)
  */
 export function logout(): void {
-  // JWT 키 제거
-  Object.values(JWT_STORAGE_KEYS).forEach(key => {
+  // Firebase 키 제거
+  Object.values(FIREBASE_STORAGE_KEYS).forEach(key => {
     localStorage.removeItem(key)
   })
   
-  // 레거시 세션 키 제거
-  Object.values(LEGACY_SESSION_KEYS).forEach(key => {
+  // 레거시 JWT/세션 키 제거
+  Object.values(LEGACY_KEYS).forEach(key => {
     localStorage.removeItem(key)
   })
   
@@ -196,19 +200,72 @@ export function logout(): void {
     // Sentry 초기화 실패 시 무시
   }
   
-  console.log('[Auth JWT] 🚪 로그아웃 완료 (JWT + 레거시 키 모두 삭제)')
+  // Firebase 로그아웃
+  try {
+    const auth = getAuth(app)
+    auth.signOut()
+  } catch (e) {
+    console.error('[Auth] Firebase signOut 실패:', e)
+  }
+  
+  console.log('[Auth] 🚪 로그아웃 완료 (Firebase + 레거시 키 모두 삭제)')
 }
 
 /**
- * JWT 토큰 저장 (로그인 성공 후)
+ * Firebase 토큰 저장 (로그인 성공 후)
  * 
- * @param accessToken - JWT 액세스 토큰
- * @param refreshToken - JWT 리프레시 토큰
+ * @param firebaseToken - Firebase ID Token
  * @param userId - 사용자 ID
  * @param userName - 사용자 이름
  * @param userType - 사용자 타입 (user/seller/admin)
  * @param userEmail - 사용자 이메일 (선택사항)
  * @param profileImage - 프로필 이미지 URL (선택사항)
+ */
+export function saveFirebaseTokens(
+  firebaseToken: string,
+  userId: string | number,
+  userName: string,
+  userType: 'user' | 'seller' | 'admin',
+  userEmail?: string | null,
+  profileImage?: string | null
+): void {
+  // Firebase 토큰 저장
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN, firebaseToken)
+  
+  // 사용자 정보 저장
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_ID, userId.toString())
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_NAME, userName)
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_TYPE, userType)
+  
+  if (userEmail) {
+    localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_EMAIL, userEmail)
+  } else {
+    localStorage.removeItem(FIREBASE_STORAGE_KEYS.USER_EMAIL)
+  }
+  
+  if (profileImage) {
+    localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_PROFILE_IMAGE, profileImage)
+  } else {
+    localStorage.removeItem(FIREBASE_STORAGE_KEYS.USER_PROFILE_IMAGE)
+  }
+  
+  // 레거시 JWT 키 제거
+  Object.values(LEGACY_KEYS).forEach(key => {
+    localStorage.removeItem(key)
+  })
+  
+  console.log('[Auth Firebase] ✅ Firebase 토큰 및 사용자 정보 저장 완료:', {
+    userId: userId.toString(),
+    userName,
+    userType,
+    hasFirebaseToken: !!firebaseToken
+  })
+}
+
+/**
+ * 레거시 호환: saveJwtTokens (Firebase 전환 후 deprecated, saveFirebaseTokens 사용 권장)
+ * 
+ * @deprecated Firebase 전환 후 이 함수는 saveFirebaseTokens로 대체됩니다.
  */
 export function saveJwtTokens(
   accessToken: string,
@@ -219,45 +276,16 @@ export function saveJwtTokens(
   userEmail?: string | null,
   profileImage?: string | null
 ): void {
-  // JWT 토큰 저장
-  localStorage.setItem(JWT_STORAGE_KEYS.ACCESS_TOKEN, accessToken)
-  localStorage.setItem(JWT_STORAGE_KEYS.REFRESH_TOKEN, refreshToken)
+  console.warn('[Auth] ⚠️ saveJwtTokens는 deprecated입니다. saveFirebaseTokens를 사용하세요.')
   
-  // 사용자 정보 저장
-  localStorage.setItem(JWT_STORAGE_KEYS.USER_ID, userId.toString())
-  localStorage.setItem(JWT_STORAGE_KEYS.USER_NAME, userName)
-  localStorage.setItem(JWT_STORAGE_KEYS.USER_TYPE, userType)
-  
-  if (userEmail) {
-    localStorage.setItem(JWT_STORAGE_KEYS.USER_EMAIL, userEmail)
-  } else {
-    localStorage.removeItem(JWT_STORAGE_KEYS.USER_EMAIL)
-  }
-  
-  if (profileImage) {
-    localStorage.setItem(JWT_STORAGE_KEYS.USER_PROFILE_IMAGE, profileImage)
-  } else {
-    localStorage.removeItem(JWT_STORAGE_KEYS.USER_PROFILE_IMAGE)
-  }
-  
-  // 레거시 세션 키 제거
-  Object.values(LEGACY_SESSION_KEYS).forEach(key => {
-    localStorage.removeItem(key)
-  })
-  
-  console.log('[Auth JWT] ✅ JWT 토큰 및 사용자 정보 저장 완료:', {
-    userId: userId.toString(),
-    userName,
-    userType,
-    hasAccessToken: !!accessToken,
-    hasRefreshToken: !!refreshToken
-  })
+  // 임시 호환 처리: accessToken을 firebase_token으로 저장
+  saveFirebaseTokens(accessToken, userId, userName, userType, userEmail, profileImage)
 }
 
 /**
- * 레거시 호환: saveUserInfo (JWT 전환 후 deprecated, saveJwtTokens 사용 권장)
+ * 레거시 호환: saveUserInfo (Firebase 전환 후 deprecated, saveFirebaseTokens 사용 권장)
  * 
- * @deprecated JWT 전환 후 이 함수는 saveJwtTokens로 대체됩니다.
+ * @deprecated Firebase 전환 후 이 함수는 saveFirebaseTokens로 대체됩니다.
  */
 export function saveUserInfo(
   userId: string | number,
@@ -266,31 +294,32 @@ export function saveUserInfo(
   userEmail?: string | null,
   profileImage?: string | null
 ): void {
-  console.warn('[Auth] ⚠️ saveUserInfo는 deprecated입니다. saveJwtTokens를 사용하세요.')
+  console.warn('[Auth] ⚠️ saveUserInfo는 deprecated입니다. saveFirebaseTokens를 사용하세요.')
   
-  // 임시 호환 처리: sessionToken을 accessToken으로 저장
-  localStorage.setItem(JWT_STORAGE_KEYS.ACCESS_TOKEN, sessionToken)
-  localStorage.setItem(JWT_STORAGE_KEYS.USER_ID, userId.toString())
-  localStorage.setItem(JWT_STORAGE_KEYS.USER_NAME, userName)
-  localStorage.setItem(JWT_STORAGE_KEYS.USER_TYPE, 'user')
+  // 임시 호환 처리: sessionToken을 firebase_token으로 저장
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN, sessionToken)
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_ID, userId.toString())
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_NAME, userName)
+  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_TYPE, 'user')
   
   if (userEmail) {
-    localStorage.setItem(JWT_STORAGE_KEYS.USER_EMAIL, userEmail)
+    localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_EMAIL, userEmail)
   }
   
   if (profileImage) {
-    localStorage.setItem(JWT_STORAGE_KEYS.USER_PROFILE_IMAGE, profileImage)
+    localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_PROFILE_IMAGE, profileImage)
   }
 }
 
 /**
- * 레거시 호환: getSessionToken (JWT 전환 후 deprecated, getAccessToken 사용 권장)
+ * 레거시 호환: getSessionToken (Firebase 전환 후 deprecated, getAccessToken 사용 권장)
  * 
- * @deprecated JWT 전환 후 이 함수는 getAccessToken으로 대체됩니다.
+ * @deprecated Firebase 전환 후 이 함수는 getAccessToken으로 대체됩니다.
  */
 export function getSessionToken(): string | null {
   console.warn('[Auth] ⚠️ getSessionToken는 deprecated입니다. getAccessToken을 사용하세요.')
   return getAccessToken() || 
-         localStorage.getItem(LEGACY_SESSION_KEYS.SESSION_TOKEN) ||
-         localStorage.getItem(LEGACY_SESSION_KEYS.SESSION_OLD)
+         localStorage.getItem(LEGACY_KEYS.ACCESS_TOKEN) ||
+         localStorage.getItem(LEGACY_KEYS.SESSION_TOKEN) ||
+         localStorage.getItem(LEGACY_KEYS.SESSION_OLD)
 }
