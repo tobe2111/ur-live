@@ -72,7 +72,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     
-    // ✅ 일반 유저는 Firebase Auth만 사용 (JWT 발급 안 함)
+    // 🔄 URL에 JWT 토큰이 있으면 Firebase Custom Token으로 변환
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlAccessToken = urlParams.get('access_token')
+    const urlRefreshToken = urlParams.get('refresh_token')
+    const urlUserId = urlParams.get('userId')
+    
+    if (urlAccessToken && urlRefreshToken && urlUserId) {
+      console.log('[AuthContext] 🔄 URL에서 JWT 토큰 발견 - Firebase로 마이그레이션 시작')
+      
+      const migrateJwtToFirebase = async () => {
+        try {
+          // 백엔드에서 JWT → Firebase Custom Token 변환
+          const response = await api.post('/api/auth/jwt-to-firebase', {
+            accessToken: urlAccessToken,
+            userId: urlUserId
+          })
+          
+          if (response.data.success) {
+            const { customToken } = response.data
+            console.log('[AuthContext] ✅ Firebase Custom Token 받기 완료')
+            
+            // Firebase Auth로 로그인
+            await signInWithCustomToken(auth, customToken)
+            console.log('[AuthContext] ✅ Firebase 로그인 성공')
+            
+            // URL 파라미터 제거 (JWT 토큰 숨기기)
+            const cleanUrl = window.location.pathname
+            window.history.replaceState({}, '', cleanUrl)
+            
+            // JWT 토큰 제거 (더 이상 필요 없음)
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+            localStorage.removeItem('user_id')
+          } else {
+            throw new Error(response.data.error || 'Firebase 마이그레이션 실패')
+          }
+        } catch (error: any) {
+          console.error('[AuthContext] ❌ JWT → Firebase 마이그레이션 실패:', error)
+          
+          // 401 에러 = JWT 만료
+          if (error.response?.status === 401) {
+            console.log('[AuthContext] JWT 토큰 만료 - 로그인 필요')
+            // URL 파라미터 제거
+            const cleanUrl = window.location.pathname
+            window.history.replaceState({}, '', cleanUrl)
+          }
+          
+          // 준비 완료로 표시 (로그인 페이지로 이동)
+          setIsAuthReady(true)
+        }
+      }
+      
+      migrateJwtToFirebase()
+      // Firebase onAuthStateChanged가 처리할 것이므로 여기서 return하지 않음
+    }
+    
+    // ✅ 일반 유저는 Firebase Auth만 사용
     console.log('[AuthContext] 일반 유저 - Firebase Auth로 초기화')
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {

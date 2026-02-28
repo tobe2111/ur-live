@@ -2606,12 +2606,20 @@ app.post('/api/auth/jwt-to-firebase', cors(), async (c) => {
       return c.json({ success: false, error: 'User not found' }, 404);
     }
     
-    // 3. Firebase Custom Token 생성
-    const customToken = await generateFirebaseCustomToken(userId, {
+    // 3. Firebase Admin SDK로 Custom Token 생성
+    const firebase = initFirebaseAdmin(c.env);
+    const firebaseUID = `user_${userId}`;  // Firebase UID 형식
+    const customToken = await firebase.createCustomToken(firebaseUID, {
+      userId: parseInt(userId),
       role: 'user',
       email: userResult.email,
       name: userResult.name
     });
+    
+    // 4. D1에 firebase_uid 저장 (없으면)
+    await DB.prepare(`
+      UPDATE users SET firebase_uid = ? WHERE id = ?
+    `).bind(firebaseUID, userId).run();
     
     console.log('[JWT→Firebase] ✅ Firebase Custom Token 생성 완료 for user:', userId);
     
