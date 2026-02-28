@@ -72,64 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     
-    // ⚠️ CRITICAL: 일반 유저의 JWT 토큰은 Firebase로 변환
-    const urlAccessToken = searchParams.get('access_token')
-    const urlRefreshToken = searchParams.get('refresh_token')
-    const urlUserId = searchParams.get('userId')
-    const hasJwtTokens = urlAccessToken && urlRefreshToken && urlUserId
-    
-    if (hasJwtTokens) {
-      console.log('[AuthContext] ⚠️ 일반 유저 JWT 토큰 감지 - Firebase Custom Token으로 변환 필요')
-      
-      // JWT를 Firebase Custom Token으로 변환
-      const convertJwtToFirebase = async () => {
-        try {
-          console.log('[AuthContext] 🔄 JWT → Firebase Custom Token 변환 시작')
-          
-          // 백엔드에 JWT를 보내고 Firebase Custom Token 받기
-          const response = await api.post('/api/auth/jwt-to-firebase', {
-            accessToken: urlAccessToken,
-            userId: urlUserId
-          })
-          
-          const { customToken } = response.data
-          console.log('[AuthContext] ✅ Firebase Custom Token 받기 완료')
-          
-          // Firebase Auth에 Custom Token으로 로그인
-          await signInWithCustomToken(auth, customToken)
-          console.log('[AuthContext] ✅ Firebase 로그인 성공')
-          
-          // URL 파라미터 제거
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, '', cleanUrl)
-          
-        } catch (error: any) {
-          console.error('[AuthContext] ❌ JWT → Firebase 변환 실패:', error)
-          
-          // ⚠️ JWT 토큰이 만료되었거나 유효하지 않음
-          if (error.response?.status === 401) {
-            console.log('[AuthContext] ⚠️ JWT 토큰 만료 - localStorage 클리어 후 로그인 페이지로')
-            
-            // 만료된 JWT 토큰 제거
-            localStorage.removeItem('access_token')
-            localStorage.removeItem('refresh_token')
-            localStorage.removeItem('user_id')
-            localStorage.removeItem('user_type')
-            localStorage.removeItem('user_name')
-            
-            // URL 파라미터 제거
-            const cleanUrl = window.location.pathname
-            window.history.replaceState({}, '', cleanUrl)
-          }
-          
-          // 어쨌든 준비 완료로 표시
-          setIsAuthReady(true)
-        }
-      }
-      
-      convertJwtToFirebase()
-      // Firebase onAuthStateChanged가 처리할 것이므로 여기서 return하지 않음
-    }
+    // ✅ 일반 유저는 Firebase Auth만 사용 (JWT 발급 안 함)
+    console.log('[AuthContext] 일반 유저 - Firebase Auth로 초기화')
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[AuthContext] 🔥 onAuthStateChanged 트리거:', {
