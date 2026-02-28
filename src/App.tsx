@@ -20,6 +20,7 @@ import IntroducePage from './pages/IntroducePage'
 
 // 나머지 페이지는 lazy load
 const LoginPage = lazy(() => import('./pages/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
@@ -102,6 +103,7 @@ function AppContent() {
             {/* 기존 홈페이지는 /browse로 이동 */}
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
