@@ -123,6 +123,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const customToken = searchParams.get('firebase_token')
       const userName = searchParams.get('userName')
       
+      // 🔥 JWT 토큰 자동 정리 (마이그레이션 지원)
+      const hasJwtTokens = searchParams.has('access_token') || searchParams.has('refresh_token')
+      if (hasJwtTokens) {
+        console.warn('[AuthContext] ⚠️ URL에 JWT 토큰 감지 - 자동 정리 중')
+        const cleanUrl = window.location.pathname
+        window.history.replaceState({}, '', cleanUrl)
+        
+        // 레거시 JWT 키 정리
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        
+        console.log('[AuthContext] ✅ JWT 토큰 URL 파라미터 및 localStorage 정리 완료')
+        return
+      }
+      
       if (customToken) {
         console.log('[AuthContext] 🔥 카카오 Custom Token 수신:', {
           hasToken: !!customToken,
