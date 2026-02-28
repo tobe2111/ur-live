@@ -17,3 +17,4 @@ node_modules/
 # - .npmrc
 # Local development environment variables
 .dev.vars
+core
