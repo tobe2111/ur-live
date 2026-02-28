@@ -103,9 +103,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const cleanUrl = window.location.pathname
           window.history.replaceState({}, '', cleanUrl)
           
-        } catch (error) {
+        } catch (error: any) {
           console.error('[AuthContext] ❌ JWT → Firebase 변환 실패:', error)
-          // 실패해도 일단 준비 완료로 표시
+          
+          // ⚠️ JWT 토큰이 만료되었거나 유효하지 않음
+          if (error.response?.status === 401) {
+            console.log('[AuthContext] ⚠️ JWT 토큰 만료 - localStorage 클리어 후 로그인 페이지로')
+            
+            // 만료된 JWT 토큰 제거
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+            localStorage.removeItem('user_id')
+            localStorage.removeItem('user_type')
+            localStorage.removeItem('user_name')
+            
+            // URL 파라미터 제거
+            const cleanUrl = window.location.pathname
+            window.history.replaceState({}, '', cleanUrl)
+          }
+          
+          // 어쨌든 준비 완료로 표시
           setIsAuthReady(true)
         }
       }
