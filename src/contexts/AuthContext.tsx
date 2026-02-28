@@ -83,6 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const migrateJwtToFirebase = async () => {
         try {
+          console.log('[AuthContext] 🔄 JWT → Firebase 마이그레이션 시작:', {
+            userId: urlUserId,
+            tokenLength: urlAccessToken?.length
+          })
+          
           // 백엔드에서 JWT → Firebase Custom Token 변환
           const response = await api.post('/api/auth/jwt-to-firebase', {
             accessToken: urlAccessToken,
@@ -109,7 +114,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(response.data.error || 'Firebase 마이그레이션 실패')
           }
         } catch (error: any) {
-          console.error('[AuthContext] ❌ JWT → Firebase 마이그레이션 실패:', error)
+          console.error('[AuthContext] ❌ JWT → Firebase 마이그레이션 실패:', {
+            status: error.response?.status,
+            error: error.response?.data?.error || error.message,
+            details: error.response?.data
+          })
           
           // 401 에러 = JWT 만료
           if (error.response?.status === 401) {
