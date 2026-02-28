@@ -1,0 +1,6 @@
+tree f5bc5772374550eea85eeb2e2cc50edfd6faf610
+parent 8ac26afe9d0c2205fdd70d1e45425049c7797cc0
+author tobe2111 <genspark_dev@genspark.ai> 1772265538 +0000
+committer tobe2111 <genspark_dev@genspark.ai> 1772265538 +0000
+
+index on main: 8ac26af feat: Migrate to Firebase Authentication (Phase 1-2 완료)
