@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,14 +26,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const hasRedirected = useRef(false) // ⚠️ 중복 리다이렉트 방지
   
   // Get return URL from query params or localStorage
   const returnUrl = searchParams.get('returnUrl') || localStorage.getItem('loginReturnUrl') || '/'
 
-  // ✅ 이미 로그인되어 있으면 리다이렉트
+  // ✅ 이미 로그인되어 있으면 리다이렉트 (한 번만)
   useEffect(() => {
-    if (isAuthReady && isLoggedIn) {
+    if (isAuthReady && isLoggedIn && !hasRedirected.current) {
       console.log('[LoginPage] 이미 로그인됨 - 리다이렉트:', returnUrl)
+      hasRedirected.current = true // 플래그 설정
       navigate(returnUrl, { replace: true })
     }
   }, [isAuthReady, isLoggedIn, returnUrl, navigate])
