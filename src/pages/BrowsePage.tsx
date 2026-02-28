@@ -27,7 +27,9 @@ const categoryLabels: Record<string, string> = {
   beauty: '뷰티',
   food: '식품',
   electronics: '전자제품',
-  lifestyle: '라이프스타일'
+  lifestyle: '라이프스타일',
+  home: '홈/리빙',
+  sports: '스포츠'
 }
 
 export default function BrowsePage() {

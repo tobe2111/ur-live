@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package } from 'lucide-react'
+import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package, Search } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
 import { getUserName, getUserId, saveUserInfo, logout } from '@/utils/auth'
@@ -282,6 +282,15 @@ export default function HomePage() {
 
             {/* Right Side Buttons */}
             <div className="flex items-center space-x-3">
+              {/* Search Button */}
+              <Link 
+                to="/search"
+                className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                aria-label="검색"
+              >
+                <Search className="w-5 h-5 text-gray-600" />
+              </Link>
+              
               {user ? (
                 <>
                   {/* Notification Bell */}
@@ -556,9 +565,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
             {['all', 'fashion', 'beauty', 'electronics', 'food', 'home', 'sports'].map((category) => (
-              <button
+              <Link
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                to={category === 'all' ? '/browse' : `/browse?category=${category}`}
                 className={`flex-shrink-0 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
                   selectedCategory === category
                     ? 'bg-gradient-to-r from-[#6A5ACD] to-[#9370DB] text-white shadow-lg'
@@ -572,7 +581,7 @@ export default function HomePage() {
                 {category === 'food' && '🍕 식품'}
                 {category === 'home' && '🏠 홈/리빙'}
                 {category === 'sports' && '⚽ 스포츠'}
-              </button>
+              </Link>
             ))}
           </div>
         </div>
