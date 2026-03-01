@@ -532,9 +532,16 @@ function ProductListSheet({
                     {/* Product Image - 작은 썸네일 (80x80) */}
                     <div className="relative h-20 w-20 shrink-0 rounded-xl bg-gray-100 overflow-hidden">
                       <img
-                        src={product.image_url || product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'}
+                        src={product.image_url || product.image || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                         alt={product.name}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // ✅ 이미지 로드 실패 시 YouTube 썸네일로 대체
+                          const img = e.target as HTMLImageElement
+                          if (img.src !== stream.thumbnail_url) {
+                            img.src = stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`
+                          }
+                        }}
                       />
                       {discount > 0 && (
                         <div className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">
@@ -652,8 +659,15 @@ function ProductSheet({
           <div className="flex items-start gap-4 mb-6">
             <div className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
               <img
-                src={product.image || product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
+                src={product.image || product.image_url || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                 alt={product.name}
+                onError={(e) => {
+                  // ✅ 이미지 로드 실패 시 YouTube 썸네일로 대체
+                  const img = e.target as HTMLImageElement
+                  if (img.src !== stream.thumbnail_url) {
+                    img.src = stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`
+                  }
+                }}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -881,8 +895,9 @@ function ReelCard({
   // Handle null product case
   const safeProduct = product || {
     name: stream.title || '상품 정보 없음',
-    image: stream.thumbnail_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
-    image_url: stream.thumbnail_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
+    // ✅ YouTube 썸네일을 우선 사용 (placeholder 대신)
+    image: stream.thumbnail_url || 'https://img.youtube.com/vi/' + (stream.youtube_video_id || 'dQw4w9WgXcQ') + '/maxresdefault.jpg',
+    image_url: stream.thumbnail_url || 'https://img.youtube.com/vi/' + (stream.youtube_video_id || 'dQw4w9WgXcQ') + '/maxresdefault.jpg',
     price: 0,
     originalPrice: 0,
     original_price: 0
