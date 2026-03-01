@@ -547,8 +547,9 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       if (firebasePayload.userId) {
         console.log('[Firebase Auth] 🎯 Using userId from Custom Claims:', firebasePayload.userId)
         
+        // 🚨 FIX: user_type 컨럼 제거 (D1에 존재하지 않음)
         const userByClaims = await c.env.DB.prepare(`
-          SELECT id, email, name, user_type, firebase_uid FROM users WHERE id = ?
+          SELECT id, email, name, firebase_uid FROM users WHERE id = ?
         `).bind(firebasePayload.userId).first()
         
         if (userByClaims) {
@@ -564,7 +565,8 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
             }
           }
           
-          const role = firebasePayload.role || userByClaims.user_type || 'user'
+          // 🔥 Custom Claims에서 role 가져오기 (기본값: 'user')
+          const role = firebasePayload.role || 'user'
           console.log('[Firebase Auth] ✅ User authenticated via Custom Claims')
           
           return {
@@ -577,8 +579,9 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       }
       
       // 🔍 우선순위 2: Firebase UID로 D1에서 사용자 조회
+      // 🚨 FIX: user_type 컨럼 제거
       let user = await c.env.DB.prepare(`
-        SELECT id, email, name, user_type, firebase_uid FROM users WHERE firebase_uid = ?
+        SELECT id, email, name, firebase_uid FROM users WHERE firebase_uid = ?
       `).bind(firebasePayload.uid).first()
       
       // 🚨 CRITICAL FIX: firebase_uid가 NULL인 기존 사용자 처리
@@ -586,8 +589,9 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
         const kakaoId = firebasePayload.uid.replace('kakao_', '')
         console.warn('[Firebase Auth] firebase_uid not found, trying kakao_id fallback:', kakaoId)
         
+        // 🚨 FIX: user_type 컨럼 제거
         user = await c.env.DB.prepare(`
-          SELECT id, email, name, user_type, firebase_uid FROM users 
+          SELECT id, email, name, firebase_uid FROM users 
           WHERE kakao_id = ? AND firebase_uid IS NULL
         `).bind(kakaoId).first()
         
@@ -619,7 +623,8 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       }
       
       // Custom Claims에서 role 추출 (user, seller, admin)
-      const role = firebasePayload.role || user.user_type || 'user'
+      // 🔥 FIX: user.user_type 제거 (D1에 컨럼 없음)
+      const role = firebasePayload.role || 'user'
       
       console.log('[Firebase Auth] ✅ User authenticated:', {
         userId: user.id,
