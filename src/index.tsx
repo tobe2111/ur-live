@@ -1865,6 +1865,31 @@ app.post('/api/auth/logout', cors(), async (c) => {
 
 // 셀러 회원가입 API
 // 🔥 NEW: Firebase 이메일 회원가입
+// 👤 Get current user profile (Firebase UID → D1 user_id)
+app.get('/api/auth/me', cors(), requireAuth, async (c) => {
+  const { DB } = c.env;
+  const { userId, email, firebaseUID } = c.get('user');
+  
+  try {
+    console.log('[GET /api/auth/me] User info:', { userId, email, firebaseUID });
+    
+    return c.json({
+      success: true,
+      user: {
+        id: userId,
+        email: email,
+        firebaseUID: firebaseUID
+      }
+    });
+  } catch (error) {
+    console.error('[GET /api/auth/me] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message
+    }, 500);
+  }
+});
+
 app.post('/api/auth/email/register', cors(), async (c) => {
   const { DB } = c.env;
   

@@ -253,8 +253,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userNameFromClaims = idTokenResult.claims.userName as string | undefined
           const role = (idTokenResult.claims.role as UserRole) || 'user'
           
-          // 🚀 localStorage 저장 (URL userName이 이미 있으면 그대로 유지)
-          if (userId) {
+          // 🔥 CRITICAL: Custom Claims에 userId가 없으면 백엔드에서 조회
+          if (!userId) {
+            console.log('[Auth] ⚠️ Custom Claims에 userId 없음, 백엔드 조회 시도...')
+            try {
+              const idToken = await firebaseUser.getIdToken()
+              const response = await fetch('/api/auth/me', {
+                headers: {
+                  'Authorization': `Bearer ${idToken}`
+                }
+              })
+              const data = await response.json()
+              if (data.success && data.user) {
+                console.log('[Auth] ✅ 백엔드에서 user_id 조회 성공:', data.user.id)
+                localStorage.setItem('user_id', data.user.id.toString())
+              } else {
+                console.error('[Auth] ❌ 백엔드 조회 실패:', data.error)
+              }
+            } catch (apiError) {
+              console.error('[Auth] ❌ /api/auth/me 호출 실패:', apiError)
+            }
+          } else {
+            // Custom Claims에 userId가 있으면 바로 저장
             localStorage.setItem('user_id', userId.toString())
           }
           
