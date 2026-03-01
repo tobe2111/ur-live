@@ -257,12 +257,19 @@ export class FirebaseAdmin {
       // Base64url encode (UTF-8 safe for Cloudflare Workers)
       const base64url = (data: any) => {
         const json = JSON.stringify(data)
-        // Convert string to UTF-8 bytes
-        const bytes = new TextEncoder().encode(json)
-        // Convert bytes to base64
-        const binString = String.fromCharCode(...bytes)
-        const base64 = btoa(binString)
-        // Make it URL-safe
+        // Convert string to UTF-8 bytes using TextEncoder
+        const utf8Bytes = new TextEncoder().encode(json)
+        
+        // Convert byte array to binary string (each byte becomes one char)
+        let binaryString = ''
+        for (let i = 0; i < utf8Bytes.length; i++) {
+          binaryString += String.fromCharCode(utf8Bytes[i])
+        }
+        
+        // Encode to base64
+        const base64 = btoa(binaryString)
+        
+        // Make it URL-safe (JWT base64url format)
         return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
       }
 
