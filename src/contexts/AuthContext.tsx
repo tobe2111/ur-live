@@ -96,10 +96,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem(lastSyncKey, now.toString())
             console.log('[AuthContext] ✅ D1 동기화 완료')
           } catch (error: any) {
-            if (error?.response?.status === 429) {
+            const status = error?.response?.status
+            
+            if (status === 429) {
               console.warn('[AuthContext] ⚠️ Rate Limit - sync 스킵 (사용자 인증은 유지)')
               // Rate limit에도 인증 상태 유지
               localStorage.setItem(lastSyncKey, now.toString())
+            } else if (status === 401) {
+              console.error('[AuthContext] ❌ 401 Unauthorized - Token 검증 실패')
+              console.error('[AuthContext] 상세:', {
+                firebaseUid: firebaseUser.uid,
+                email: firebaseUser.email,
+                errorMessage: error?.response?.data?.error
+              })
+              // ✅ 401이어도 Firebase User가 있으면 로그인 상태 유지 (무한 루프 방지)
+              console.warn('[AuthContext] ⚠️ D1 sync 실패했지만 Firebase Auth는 유효함 - 로그인 유지')
+              localStorage.setItem(lastSyncKey, now.toString()) // 재시도 방지
             } else {
               console.error('[AuthContext] ❌ D1 동기화 실패:', error)
             }
@@ -110,12 +122,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] ⏭️ Sync 스킵 (최근 sync: ' + (lastSync ? new Date(parseInt(lastSync)).toLocaleTimeString() : 'N/A') + ')')
         }
         
-        // 로컬 상태 저장
+        // ✅ D1 sync 실패 여부와 관계없이 Firebase User 기준으로 로그인 상태 설정
+        // Firebase가 Single Source of Truth
         localStorage.setItem('firebase_token', idToken)
         localStorage.setItem('user_type', role || 'user')
         
         setUser(firebaseUser)
         setUserRole(role || 'user')
+        
+        console.log('[AuthContext] ✅ 로그인 상태 확정:', {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          role: role || 'user',
+          source: 'Firebase Auth (Single Source of Truth)'
+        })
       } else {
         console.log('[AuthContext] ❌ 사용자 로그아웃 상태')
         

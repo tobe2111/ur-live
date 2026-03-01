@@ -2353,31 +2353,81 @@ app.post('/api/auth/kakao/firebase', cors(), async (c) => {
 
 // Firebase ID Token 검증을 위한 JWK Set (Worker 레벨 캐싱)
 let FIREBASE_JWKS: ReturnType<typeof createRemoteJWKSet> | null = null;
-const FIREBASE_PROJECT_ID = 'ur-live-1e63d';
+
+/**
+ * Firebase Project ID 가져오기 (환경 변수 우선, 폴백 하드코딩)
+ */
+function getFirebaseProjectId(env?: any): string {
+  // 1순위: 환경 변수
+  if (env?.FIREBASE_PROJECT_ID) {
+    return env.FIREBASE_PROJECT_ID;
+  }
+  
+  // 2순위: 하드코딩 (폴백)
+  const fallbackProjectId = 'urteam-live-commerce-5b284';
+  console.warn('[Firebase] ⚠️ FIREBASE_PROJECT_ID 환경 변수 없음, 폴백 사용:', fallbackProjectId);
+  return fallbackProjectId;
+}
 
 /**
  * Firebase ID Token 검증 (Cloudflare Workers 호환)
+ * 
+ * 검증 로직:
+ * 1. JWK Set 캐싱 (Worker 인스턴스당 1회)
+ * 2. JWT 서명 검증
+ * 3. Issuer & Audience 검증
+ * 4. 만료 시간 검증 (자동)
  */
-async function verifyFirebaseIdToken(idToken: string): Promise<any> {
+async function verifyFirebaseIdToken(idToken: string, env?: any): Promise<any> {
+  const FIREBASE_PROJECT_ID = getFirebaseProjectId(env);
+  
   try {
     // JWK Set 캐싱 (Worker 인스턴스 수명 동안 유지)
     if (!FIREBASE_JWKS) {
       FIREBASE_JWKS = createRemoteJWKSet(
         new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
       );
-      console.log('[Firebase] ✅ JWK Set initialized');
+      console.log('[Firebase] ✅ JWK Set initialized for project:', FIREBASE_PROJECT_ID);
     }
     
-    // JWT 검증
+    // JWT 검증 (서명, issuer, audience, 만료 시간)
     const { payload } = await jwtVerify(idToken, FIREBASE_JWKS, {
       issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
       audience: FIREBASE_PROJECT_ID,
     });
     
-    console.log('[Firebase] ✅ Token verified:', { sub: payload.sub, email: payload.email });
+    console.log('[Firebase] ✅ Token verified:', { 
+      sub: payload.sub, 
+      email: payload.email,
+      iss: payload.iss,
+      aud: payload.aud,
+      exp: payload.exp 
+    });
     return payload;
   } catch (error: any) {
-    console.error('[Firebase] ❌ Token verification failed:', error.message);
+    // 상세한 에러 로깅
+    console.error('[Firebase] ❌ Token verification failed:', {
+      error: error.message,
+      code: error.code,
+      claim: error.claim,
+      reason: error.reason,
+      expectedProjectId: FIREBASE_PROJECT_ID
+    });
+    
+    // 에러 타입별 상세 메시지
+    if (error.code === 'ERR_JWT_EXPIRED') {
+      console.error('[Firebase] Token expired. User needs to re-authenticate.');
+    } else if (error.code === 'ERR_JWT_CLAIM_VALIDATION_FAILED') {
+      console.error('[Firebase] Claim validation failed:', error.claim);
+      if (error.claim === 'aud') {
+        console.error('[Firebase] ⚠️ Audience mismatch! Check FIREBASE_PROJECT_ID');
+        console.error('[Firebase] Expected:', FIREBASE_PROJECT_ID);
+        console.error('[Firebase] Got:', error.payload?.aud);
+      }
+    } else if (error.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
+      console.error('[Firebase] Invalid signature. Token may be tampered.');
+    }
+    
     return null;
   }
 }
@@ -2416,8 +2466,8 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
     
     console.log('[Firebase Sync] Syncing user to D1:', { firebaseUid, email });
     
-    // Firebase ID Token 검증
-    const decoded = await verifyFirebaseIdToken(idToken);
+    // Firebase ID Token 검증 (env 전달)
+    const decoded = await verifyFirebaseIdToken(idToken, c.env);
     console.log('[Firebase Sync] Token decoded:', { 
       hasDecoded: !!decoded, 
       decodedSub: decoded?.sub, 
@@ -2429,9 +2479,18 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
       console.error('[Firebase Sync] ❌ Token validation failed:', {
         decoded: !!decoded,
         expectedUid: firebaseUid,
-        actualSub: decoded?.sub
+        actualSub: decoded?.sub,
+        projectId: c.env?.FIREBASE_PROJECT_ID || 'NOT_SET'
       });
-      return c.json({ success: false, error: 'Invalid Firebase token' }, 401);
+      return c.json({ 
+        success: false, 
+        error: 'Invalid Firebase token',
+        details: {
+          expectedUid: firebaseUid,
+          actualSub: decoded?.sub || null,
+          projectId: c.env?.FIREBASE_PROJECT_ID || 'NOT_SET'
+        }
+      }, 401);
     }
     
     console.log('[Firebase Sync] ✅ Token verified successfully');

@@ -11,12 +11,19 @@ compatibility_flags = ["nodejs_compat"]
 # - JWT_SECRET: Secret key for JWT token generation
 # - TOSS_SECRET_KEY: Toss Payments secret key (production)
 # - EMAIL_FROM: Email sender address (e.g., "UR Live <noreply@ur-team.com>")
+# - FIREBASE_PROJECT_ID: Firebase project ID (for token verification)
+# - FIREBASE_DATABASE_URL: Firebase Realtime Database URL
+# - FIREBASE_PRIVATE_KEY: Firebase Admin SDK private key (optional, for server-side operations)
+# - FIREBASE_CLIENT_EMAIL: Firebase Admin SDK client email (optional)
 #
 # Set production secrets:
 # npx wrangler pages secret put RESEND_API_KEY
 # npx wrangler pages secret put JWT_SECRET
 # npx wrangler pages secret put TOSS_SECRET_KEY
 # npx wrangler pages secret put EMAIL_FROM
+# 
+# Note: FIREBASE_PROJECT_ID and FIREBASE_DATABASE_URL are hardcoded in src/index.tsx
+# to avoid binding conflicts with Cloudflare Pages environment.
 
 # D1 Database
 [[d1_databases]]
