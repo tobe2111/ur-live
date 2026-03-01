@@ -628,6 +628,8 @@ function ProductSheet({
       // Navigation will be handled by parent
     } catch (error) {
       console.error('Failed to buy now:', error)
+    } finally {
+      // ✅ always reset loading state
       setBuyingNow(false)
     }
   }
