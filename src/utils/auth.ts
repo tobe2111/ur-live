@@ -59,14 +59,20 @@ export function getRefreshToken(): string | null {
 
 /**
  * 로그인 상태 확인 (Firebase 기반)
+ * 
+ * ✅ Single Source of Truth: Firebase Auth ONLY
+ * - localStorage 의존성 제거
+ * - Firebase User 객체만 체크
+ * - user_id는 Custom Claims에서 추출되므로 별도 체크 불필요
  */
 export function isLoggedIn(): boolean {
-  const auth = getAuth(app)
-  const firebaseUser = auth.currentUser
-  const firebaseToken = localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN)
-  const userId = getUserId()
-  
-  return !!(firebaseUser && firebaseToken && userId)
+  try {
+    const auth = getAuth(app)
+    return !!auth.currentUser
+  } catch (error) {
+    console.error('[Auth] isLoggedIn 체크 실패:', error)
+    return false
+  }
 }
 
 /**
