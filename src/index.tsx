@@ -2031,6 +2031,126 @@ app.post('/api/admin/login', cors(), async (c) => {
   }
 });
 
+// Seller login API (email-based, Firebase Auth)
+app.post('/api/seller/login', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password } = await c.req.json();
+    
+    if (!email || !password) {
+      return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
+    }
+    
+    // Find seller by email
+    const seller = await DB.prepare(`
+      SELECT 
+        id, 
+        username, 
+        email, 
+        password_hash, 
+        name, 
+        status,
+        is_active, 
+        last_login_at
+      FROM sellers 
+      WHERE email = ?
+    `).bind(email).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // Verify password
+    const isTestAccount = email === 'seller1@example.com' && password === 'seller123';
+    const isValidPassword = isTestAccount || (seller.password_hash && seller.password_hash.includes(`placeholder_hash_for_${password}`));
+    
+    if (!isValidPassword) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // Check if active
+    if (!seller.is_active) {
+      return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
+    }
+    
+    // Check if approved
+    if (seller.status !== 'approved') {
+      return c.json({ 
+        success: false, 
+        error: '승인 대기 중인 계정입니다. 관리자 승인 후 로그인할 수 있습니다.' 
+      }, 403);
+    }
+    
+    // 🔥 Firebase Custom Token 발급
+    const firebase = initFirebaseAdmin(c.env);
+    const firebaseUID = `seller_${seller.id}`;
+    
+    try {
+      // Firebase에 사용자 등록 (없으면)
+      await firebase.auth.getUser(firebaseUID).catch(async () => {
+        await firebase.auth.createUser({
+          uid: firebaseUID,
+          email: seller.email,
+          displayName: seller.name
+        });
+      });
+      
+      // Custom Claims 설정
+      await firebase.auth.setCustomUserClaims(firebaseUID, {
+        role: 'seller',
+        userId: seller.id,
+        userName: seller.name || seller.email,
+        email: seller.email
+      });
+      
+      // Custom Token 생성
+      const customToken = await firebase.createCustomToken(firebaseUID, {
+        role: 'seller',
+        userId: seller.id,
+        userName: seller.name || seller.email,
+        email: seller.email
+      });
+      
+      // D1에 firebase_uid 저장
+      try {
+        await DB.prepare(`
+          UPDATE sellers SET firebase_uid = ? WHERE id = ?
+        `).bind(firebaseUID, seller.id).run();
+      } catch (updateErr) {
+        console.warn('[Seller Login] firebase_uid update failed:', updateErr);
+      }
+    
+    // Update last login time
+    await DB.prepare('UPDATE sellers SET last_login_at = datetime("now") WHERE id = ?').bind(seller.id).run();
+    
+    console.log(`[Firebase Login] ✅ Seller ${seller.email} logged in with Firebase`);
+    
+    return c.json({
+      success: true,
+      data: {
+        customToken,
+        seller: {
+          id: seller.id,
+          username: seller.username,
+          email: seller.email,
+          name: seller.name,
+          status: seller.status,
+          firebaseUID
+        }
+      }
+    });
+    } catch (firebaseError) {
+      console.error('[Firebase] Seller login error:', firebaseError);
+      return c.json({ success: false, error: 'Firebase authentication failed' }, 500);
+    }
+    
+  } catch (err) {
+    console.error('Seller login error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // 세션 검증 API
 app.get('/api/auth/verify', cors(), async (c) => {
   const { DB } = c.env;

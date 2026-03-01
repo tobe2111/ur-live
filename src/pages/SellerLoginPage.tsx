@@ -44,67 +44,62 @@ export default function SellerLoginPage() {
     
     try {
       if (isLogin) {
-        // Login logic
-        const response = await api.post('/api/auth/login', {
-          username: formData.email,
-          password: formData.password,
-          userType: 'seller'
+        // 🔥 Firebase Auth 엔드포인트 사용
+        const response = await api.post('/api/seller/login', {
+          email: formData.email,
+          password: formData.password
         })
 
         if (response.data.success) {
-          // ✅ 1단계: 기존 세션 완전 삭제 (admin 세션 등)
+          // ✅ 1단계: 기존 세션 완전 삭제
           console.log('[SellerLogin] Step 0: Clearing old sessions...')
-          localStorage.clear()  // 모든 localStorage 클리어
+          localStorage.clear()
           
-          // ✅ 2단계: JWT 토큰 저장
-          const { accessToken, refreshToken } = response.data.data
-          const sellerId = response.data.data.user.id
+          // ✅ 2단계: Firebase Custom Token 및 Seller 정보 저장
+          const { customToken, seller } = response.data.data
           
-          console.log('[SellerLogin] 🚀 JWT Login successful')
-          console.log('[SellerLogin] Access token:', accessToken?.substring(0, 20) + '...')
-          console.log('[SellerLogin] Refresh token:', refreshToken?.substring(0, 20) + '...')
-          console.log('[SellerLogin] Seller ID:', sellerId)
-          console.log('[SellerLogin] User data:', response.data.data.user)
+          console.log('[SellerLogin] 🔥 Firebase Login successful')
+          console.log('[SellerLogin] Custom Token:', customToken?.substring(0, 20) + '...')
+          console.log('[SellerLogin] Seller ID:', seller.id)
           
-          console.log('[SellerLogin] Step 1: Setting user_type to seller...')
+          // Firebase Auth로 로그인
+          const { signInWithCustomToken } = await import('firebase/auth')
+          const { auth } = await import('@/lib/firebase')
+          
+          console.log('[SellerLogin] Step 1: Signing in with Custom Token...')
+          const userCredential = await signInWithCustomToken(auth, customToken)
+          
+          console.log('[SellerLogin] Step 2: Getting ID Token...')
+          const idToken = await userCredential.user.getIdToken()
+          
+          console.log('[SellerLogin] Step 3: Storing tokens...')
+          localStorage.setItem('firebase_token', idToken)
           localStorage.setItem('user_type', 'seller')
+          localStorage.setItem('seller_id', seller.id.toString())
+          localStorage.setItem('user_id', seller.id.toString())
+          localStorage.setItem('user_name', seller.name || seller.email)
+          localStorage.setItem('seller_name', seller.name || '')
+          localStorage.setItem('seller_email', seller.email || '')
           
-          console.log('[SellerLogin] Step 2: Setting JWT tokens...')
-          localStorage.setItem('access_token', accessToken)
-          localStorage.setItem('refresh_token', refreshToken)
-          
-          console.log('[SellerLogin] Step 3: Setting seller ID...')
-          localStorage.setItem('seller_id', sellerId.toString())
-          
-          console.log('[SellerLogin] Step 4: Setting seller name...')
-          localStorage.setItem('seller_name', response.data.data.user.name || '')
-          
-          console.log('[SellerLogin] Step 5: Setting seller email...')
-          localStorage.setItem('seller_email', response.data.data.user.email || '')
-          
-          // 🔍 디버깅: localStorage 확인
-          console.log('[SellerLogin] ✅ All localStorage set successfully:')
+          console.log('[SellerLogin] ✅ All localStorage set successfully')
           console.log('  - user_type:', localStorage.getItem('user_type'))
-          console.log('  - access_token:', localStorage.getItem('access_token')?.substring(0, 20) + '...')
+          console.log('  - firebase_token:', localStorage.getItem('firebase_token')?.substring(0, 20) + '...')
           console.log('  - seller_id:', localStorage.getItem('seller_id'))
-          console.log('  - seller_name:', localStorage.getItem('seller_name'))
-          console.log('  - seller_email:', localStorage.getItem('seller_email'))
-          console.log('  - All keys:', Object.keys(localStorage))
           
-          // ✅ localStorage 설정 확인 후 이동
+          // 🔍 검증
           const verifyUserType = localStorage.getItem('user_type')
-          const verifyAccessToken = localStorage.getItem('access_token')
+          const verifyToken = localStorage.getItem('firebase_token')
           
-          if (verifyUserType === 'seller' && verifyAccessToken === accessToken) {
-            console.log('[SellerLogin] ✅ JWT verification passed! Navigating to /seller...')
+          if (verifyUserType === 'seller' && verifyToken === idToken) {
+            console.log('[SellerLogin] ✅ Firebase verification passed! Navigating to /seller...')
             alert('로그인 성공!')
             
             // replace: true로 히스토리에서 로그인 페이지 제거
             navigate('/seller', { replace: true })
           } else {
-            console.error('[SellerLogin] ❌ JWT verification failed!')
+            console.error('[SellerLogin] ❌ Firebase verification failed!')
             console.error('Expected user_type: seller, got:', verifyUserType)
-            console.error('Access token match:', verifyAccessToken === accessToken)
+            console.error('Token match:', verifyToken === idToken)
             alert('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
           }
         } else {
@@ -121,6 +116,7 @@ export default function SellerLoginPage() {
         navigate('/seller/register')
       }
     } catch (err: any) {
+      console.error('[SellerLogin] Error:', err)
       setError(err.response?.data?.error || err.response?.data?.message || '로그인 실패')
     } finally {
       setLoading(false)

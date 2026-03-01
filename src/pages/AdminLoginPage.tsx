@@ -33,51 +33,57 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      const response = await api.post('/api/auth/login', {
-        username: email, // API uses 'username' field
-        password,
-        userType: 'admin'
+      // 🔥 Firebase Auth 엔드포인트 사용
+      const response = await api.post('/api/admin/login', {
+        email,
+        password
       })
 
       if (response.data.success) {
-        // ✅ 1단계: 기존 세션 완전 삭제 (seller 세션 등)
+        // ✅ 1단계: 기존 세션 완전 삭제
         console.log('[AdminLogin] Step 0: Clearing old sessions...')
-        localStorage.clear()  // 모든 localStorage 클리어
+        localStorage.clear()
         
-        // ✅ 2단계: JWT 토큰 저장
-        const { accessToken, refreshToken } = response.data.data
-        const adminId = response.data.data.user.id
+        // ✅ 2단계: Firebase Custom Token 및 Admin 정보 저장
+        const { customToken, admin } = response.data.data
         
-        console.log('[AdminLogin] 🚀 JWT Login successful')
-        console.log('[AdminLogin] Access token:', accessToken?.substring(0, 20) + '...')
-        console.log('[AdminLogin] Refresh token:', refreshToken?.substring(0, 20) + '...')
-        console.log('[AdminLogin] Admin ID:', adminId)
+        console.log('[AdminLogin] 🔥 Firebase Login successful')
+        console.log('[AdminLogin] Custom Token:', customToken?.substring(0, 20) + '...')
+        console.log('[AdminLogin] Admin ID:', admin.id)
         
-        console.log('[AdminLogin] Step 1: Setting user_type to admin...')
+        // Firebase Auth로 로그인 (같은 패턴 사용)
+        const { signInWithCustomToken } = await import('firebase/auth')
+        const { auth } = await import('@/lib/firebase')
+        
+        console.log('[AdminLogin] Step 1: Signing in with Custom Token...')
+        const userCredential = await signInWithCustomToken(auth, customToken)
+        
+        console.log('[AdminLogin] Step 2: Getting ID Token...')
+        const idToken = await userCredential.user.getIdToken()
+        
+        console.log('[AdminLogin] Step 3: Storing tokens...')
+        localStorage.setItem('firebase_token', idToken)
         localStorage.setItem('user_type', 'admin')
-        
-        console.log('[AdminLogin] Step 2: Setting JWT tokens...')
-        localStorage.setItem('access_token', accessToken)
-        localStorage.setItem('refresh_token', refreshToken)
-        
-        console.log('[AdminLogin] Step 3: Setting admin ID...')
-        localStorage.setItem('admin_id', adminId.toString())
+        localStorage.setItem('admin_id', admin.id.toString())
+        localStorage.setItem('user_id', admin.id.toString())
+        localStorage.setItem('user_name', admin.name || admin.email)
         
         // 🔍 검증
         const verifyUserType = localStorage.getItem('user_type')
-        const verifyAccessToken = localStorage.getItem('access_token')
+        const verifyToken = localStorage.getItem('firebase_token')
         
-        if (verifyUserType === 'admin' && verifyAccessToken === accessToken) {
-          console.log('[AdminLogin] ✅ JWT verification passed! Navigating to /admin...')
+        if (verifyUserType === 'admin' && verifyToken === idToken) {
+          console.log('[AdminLogin] ✅ Firebase verification passed! Navigating to /admin...')
           navigate('/admin', { replace: true })
         } else {
-          console.error('[AdminLogin] ❌ JWT verification failed!')
+          console.error('[AdminLogin] ❌ Firebase verification failed!')
           setError('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
         }
       } else {
         setError(response.data.error || '로그인 실패')
       }
     } catch (err: any) {
+      console.error('[AdminLogin] Error:', err)
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)
