@@ -2155,10 +2155,14 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         kakaoId: kakaoId
       });
       
-      // D1에 firebase_uid 저장 (없으면)
-      await DB.prepare(`
-        UPDATE users SET firebase_uid = ? WHERE id = ?
-      `).bind(firebaseUID, userId).run();
+      // D1에 firebase_uid 저장 (없으면) - 컬럼 없을 경우 무시
+      try {
+        await DB.prepare(`
+          UPDATE users SET firebase_uid = ? WHERE id = ?
+        `).bind(firebaseUID, userId).run();
+      } catch (colErr) {
+        console.warn('[Kakao Sync] firebase_uid column not found, skipping update:', colErr);
+      }
       
       console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
       
@@ -2237,10 +2241,14 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     
     console.log('[Kakao Callback] ✅ Firebase Custom Token 발급 완료 for user:', user.id);
     
-    // 4. D1에 firebase_uid 저장 (없으면)
-    await DB.prepare(`
-      UPDATE users SET firebase_uid = ? WHERE id = ?
-    `).bind(firebaseUID, user.id).run();
+    // 4. D1에 firebase_uid 저장 (없으면) - 컬럼 없을 경우 무시
+    try {
+      await DB.prepare(`
+        UPDATE users SET firebase_uid = ? WHERE id = ?
+      `).bind(firebaseUID, user.id).run();
+    } catch (colErr) {
+      console.warn('[Kakao Callback] firebase_uid column not found, skipping update:', colErr);
+    }
     
     return c.json({
       success: true,
