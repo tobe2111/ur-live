@@ -482,18 +482,31 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
   try {
     // Firebase ID Token 추출 (Authorization: Bearer <firebase_id_token>)
     const authHeader = c.req.header('Authorization')
+    console.log('[Firebase Auth] 🔍 Authorization header:', authHeader ? `Bearer ${authHeader.substring(7, 50)}...` : 'MISSING')
+    
     const token = authHeader?.replace('Bearer ', '') || ''
     
     if (!token) {
-      console.warn('[Firebase Auth] No token provided')
+      console.warn('[Firebase Auth] ❌ No token provided')
       return null
     }
     
+    console.log('[Firebase Auth] 🔑 Token length:', token.length)
+    console.log('[Firebase Auth] 🔑 Token preview:', token.substring(0, 50) + '...')
+    
     // 🔥 Firebase ID Token 검증 (100% Firebase 표준)
     try {
+      console.log('[Firebase Auth] 🔐 Verifying token with project:', c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       const firebasePayload = await verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       
-      console.log('[Firebase Auth] ✅ Firebase token verified:', firebasePayload.uid)
+      console.log('[Firebase Auth] ✅ Firebase token verified!')
+      console.log('[Firebase Auth] 📋 Token payload:', {
+        uid: firebasePayload.uid,
+        iss: firebasePayload.iss,
+        aud: firebasePayload.aud,
+        exp: firebasePayload.exp,
+        iat: firebasePayload.iat
+      })
       
       // Firebase UID로 D1에서 사용자 조회
       const user = await c.env.DB.prepare(`

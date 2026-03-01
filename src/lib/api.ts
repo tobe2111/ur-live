@@ -13,6 +13,7 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { auth } from './firebase';
 
 // API 클라이언트 생성
 const api = axios.create({
@@ -55,19 +56,32 @@ function isPublicAPI(url: string): boolean {
 /**
  * 요청 인터셉터: Firebase ID Token 자동 추가
  * 
- * 모든 사용자(일반/셀러/관리자): Firebase ID Token 사용
+ * 🔥 핵심 변경: localStorage 대신 Firebase Auth 객체에서 직접 ID Token 가져오기
+ * - Custom Token 문제 해결 (localStorage에 Custom Token이 저장되는 경우 방지)
+ * - 항상 최신 ID Token 사용 (자동 갱신)
  */
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     if (!config.headers) return config;
     
-    // 🔐 Firebase ID Token 추가
-    const firebaseToken = localStorage.getItem('firebase_token');
-    if (firebaseToken) {
-      config.headers['Authorization'] = `Bearer ${firebaseToken}`;
-      console.log('[API] 🔥 Firebase token attached');
-    } else if (!isPublicAPI(config.url || '')) {
-      console.warn('[API] ⚠️ No Firebase token for protected API:', config.url);
+    // 공개 API는 토큰 불필요
+    if (isPublicAPI(config.url || '')) {
+      return config;
+    }
+    
+    // 🔥 Firebase Auth에서 직접 ID Token 가져오기
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const idToken = await user.getIdToken(true); // force refresh = true
+        config.headers['Authorization'] = `Bearer ${idToken}`;
+        console.log('[API] 🔥 Firebase ID Token attached (from auth.currentUser)');
+        console.log('[API] 🔑 Token preview:', idToken.substring(0, 50) + '...');
+      } else {
+        console.warn('[API] ⚠️ No Firebase user for protected API:', config.url);
+      }
+    } catch (error) {
+      console.error('[API] ❌ Failed to get Firebase ID Token:', error);
     }
     
     return config;
