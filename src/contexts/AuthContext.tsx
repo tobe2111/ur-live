@@ -125,6 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: role || 'user'
         })
         
+        // ✅ CRITICAL FIX 1: URL 파라미터의 userName을 최우선으로 사용
+        const urlUserName = localStorage.getItem('temp_user_name_from_url')
+        
         // ✅ Custom Claims에서 userId 바로 가져오기 (API 호출 불필요!)
         const userIdFromClaims = idTokenResult.claims.userId as number | undefined
         const userNameFromFirebase = firebaseUser.displayName
@@ -133,12 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('user_id', userIdFromClaims.toString())
           console.log('[AuthContext] ✅ user_id를 Custom Claims에서 저장:', userIdFromClaims)
         } else {
-          console.warn('[AuthContext] ⚠️ Custom Claims에 userId 없음 - D1 sync 필요')
+          console.warn('[AuthContext] ⚠️ Custom Claims에 userId 없음 - D1 sync 시도')
         }
         
-        if (userNameFromFirebase) {
+        // ✅ CRITICAL FIX 2: userName 우선순위 - URL > Firebase > D1
+        if (urlUserName) {
+          localStorage.setItem('user_name', urlUserName)
+          localStorage.removeItem('temp_user_name_from_url') // 임시 저장소 정리
+          console.log('[AuthContext] ✅ user_name을 URL 파라미터에서 저장 (최우선):', urlUserName)
+        } else if (userNameFromFirebase) {
           localStorage.setItem('user_name', userNameFromFirebase)
           console.log('[AuthContext] ✅ user_name을 Firebase에서 저장:', userNameFromFirebase)
+        } else {
+          console.warn('[AuthContext] ⚠️ user_name 없음 - D1 sync에서 가져오기 시도')
         }
         
         // D1 동기화 (firebase_uid 업데이트) - Rate Limiting 회피 + 백오프
@@ -192,17 +202,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn('[AuthContext] ℹ️ 로그인은 정상 작동, D1 sync만 스킵')
               localStorage.setItem(lastSyncKey, now.toString())
             } else if (status === 429) {
-              // ✅ Rate Limit 시 2분 대기 (백오프)
+              // ✅ CRITICAL FIX 3: 429 에러여도 로그인 승인 (Fallback 로직)
               const backoffMs = 120000 // 2분
               localStorage.setItem(rateLimitKey, (now + backoffMs).toString())
               localStorage.setItem(lastSyncKey, now.toString())
-              console.warn(`[AuthContext] ⚠️ Rate Limit (429) - 2분 대기 설정`)
+              console.warn(`[AuthContext] ⚠️ Rate Limit (429) - D1 sync 실패`)
+              console.log(`[AuthContext] ✅ FALLBACK: Firebase Auth는 유효함 - 로그인 승인 계속`)
+              // ✅ user_id와 user_name이 이미 저장되어 있으면 로그인 정상 진행
             } else if (status === 401) {
               console.error('[AuthContext] ❌ 401 Unauthorized - Token 검증 실패')
-              console.warn('[AuthContext] ⚠️ D1 sync 실패했지만 Firebase Auth는 유효함 - 로그인 유지')
+              console.log('[AuthContext] ✅ FALLBACK: Firebase Auth는 유효함 - 로그인 승인 계속')
               localStorage.setItem(lastSyncKey, now.toString())
             } else {
               console.error('[AuthContext] ❌ D1 동기화 실패:', error)
+              console.log('[AuthContext] ✅ FALLBACK: Firebase Auth는 유효함 - 로그인 승인 계속')
             }
           } finally {
             syncAttemptedUidsRef.current.add(firebaseUser.uid)  // ✅ uid별로 기록
@@ -357,10 +370,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] ✅ JWT 정리 완료')
         }
         
-        // ✅ URL 파라미터에서 userName 먼저 저장 (429 에러 대비)
+        // ✅ CRITICAL FIX: URL 파라미터에서 userName을 임시 저장소에 저장
+        // onAuthStateChanged에서 최우선으로 사용됨
         if (userName) {
-          localStorage.setItem('user_name', decodeURIComponent(userName))
-          console.log('[AuthContext] ✅ URL에서 user_name 저장:', decodeURIComponent(userName))
+          const decodedName = decodeURIComponent(userName)
+          localStorage.setItem('temp_user_name_from_url', decodedName)
+          console.log('[AuthContext] ✅ URL에서 user_name 임시 저장 (최우선 사용):', decodedName)
         }
         
         // Firebase Custom Token 처리
