@@ -666,13 +666,31 @@ async function getSessionInfo(
  */
 async function requireAuth(c: any, next: any) {
   // 🔥 Firebase ID Token 인증 (100% Firebase 표준)
+  const authHeader = c.req.header('Authorization')
+  console.log('[requireAuth] 🔍 Header check:', authHeader ? 'EXISTS' : 'MISSING')
+  
+  if (!authHeader) {
+    return c.json({ 
+      success: false, 
+      error: 'Missing Authorization header - Firebase ID Token required',
+      code: 'NO_AUTH_HEADER',
+      debug: {
+        headers: Object.fromEntries(c.req.raw.headers.entries())
+      }
+    }, 401)
+  }
+  
   const auth = await getFirebaseAuth(c)
   
   if (!auth) {
     return c.json({ 
       success: false, 
-      error: 'Authentication required - Firebase ID Token 필요',
-      code: 'AUTH_REQUIRED'
+      error: 'Authentication failed - Token verification failed',
+      code: 'AUTH_FAILED',
+      debug: {
+        tokenProvided: !!authHeader,
+        tokenLength: authHeader?.replace('Bearer ', '').length || 0
+      }
     }, 401)
   }
   
