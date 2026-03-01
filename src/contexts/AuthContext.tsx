@@ -46,10 +46,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const auth = getAuth(app)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [user, setUser] = useState<User | null>(null)
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<'user' | 'seller' | 'admin' | null>(null)
+  const [syncAttempted, setSyncAttempted] = useState(false)
 
   // Firebase Auth로 모든 경로 통일 관리
   console.log('[AuthContext] 🔥 100% Firebase Auth 모드')
@@ -78,17 +79,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: role || 'user'
         })
         
-        // D1 동기화 (firebase_uid 업데이트)
-        try {
-          await api.post('/api/auth/firebase/sync', {
-            idToken,
-            firebaseUid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName
-          })
-          console.log('[AuthContext] ✅ D1 동기화 완료')
-        } catch (error) {
-          console.error('[AuthContext] ❌ D1 동기화 실패:', error)
+        // D1 동기화 (firebase_uid 업데이트) - Rate Limiting 회피
+        const lastSyncKey = `last_sync_${firebaseUser.uid}`
+        const lastSync = localStorage.getItem(lastSyncKey)
+        const now = Date.now()
+        const syncInterval = 60000 // 1분
+        
+        if (!syncAttempted && (!lastSync || now - parseInt(lastSync) > syncInterval)) {
+          try {
+            await api.post('/api/auth/firebase/sync', {
+              idToken,
+              firebaseUid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName
+            })
+            localStorage.setItem(lastSyncKey, now.toString())
+            console.log('[AuthContext] ✅ D1 동기화 완료')
+          } catch (error: any) {
+            if (error?.response?.status === 429) {
+              console.warn('[AuthContext] ⚠️ Rate Limit - sync 스킵 (사용자 인증은 유지)')
+              // Rate limit에도 인증 상태 유지
+              localStorage.setItem(lastSyncKey, now.toString())
+            } else {
+              console.error('[AuthContext] ❌ D1 동기화 실패:', error)
+            }
+          } finally {
+            setSyncAttempted(true)
+          }
+        } else {
+          console.log('[AuthContext] ⏭️ Sync 스킵 (최근 sync: ' + (lastSync ? new Date(parseInt(lastSync)).toLocaleTimeString() : 'N/A') + ')')
         }
         
         // 로컬 상태 저장
@@ -123,19 +142,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const customToken = searchParams.get('firebase_token')
       const userName = searchParams.get('userName')
       
-      // 🔥 JWT 토큰 자동 정리 (마이그레이션 지원)
-      const hasJwtTokens = searchParams.has('access_token') || searchParams.has('refresh_token')
+      // 🔥 JWT 토큰 및 모든 불필요 파라미터 자동 정리
+      const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName']
+      const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+      
       if (hasJwtTokens) {
-        console.warn('[AuthContext] ⚠️ URL에 JWT 토큰 감지 - 자동 정리 중')
-        const cleanUrl = window.location.pathname
-        window.history.replaceState({}, '', cleanUrl)
+        console.warn('[AuthContext] ⚠️ URL에 JWT/레거시 토큰 감지 - 자동 정리 중')
+        
+        // firebase_token만 보존, 나머지 제거
+        const firebaseToken = searchParams.get('firebase_token')
+        const newParams = new URLSearchParams()
+        if (firebaseToken) {
+          newParams.set('firebase_token', firebaseToken)
+        }
+        
+        setSearchParams(newParams, { replace: true })
         
         // 레거시 JWT 키 정리
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('userEmail')
         
-        console.log('[AuthContext] ✅ JWT 토큰 URL 파라미터 및 localStorage 정리 완료')
-        return
+        console.log('[AuthContext] ✅ JWT/레거시 파라미터 완전 정리 완료')
+        
+        // firebase_token이 없으면 리턴
+        if (!firebaseToken) return
       }
       
       if (customToken) {
@@ -149,9 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userCredential = await signInWithCustomToken(auth, customToken)
           console.log('[AuthContext] ✅ 카카오 Firebase 로그인 성공:', userCredential.user.uid)
           
-          // URL 파라미터 제거
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, '', cleanUrl)
+          // URL 완전 정리 - 모든 파라미터 제거
+          setSearchParams(new URLSearchParams(), { replace: true })
+          console.log('[AuthContext] ✅ URL 파라미터 완전 제거')
           
           // 페이지 새로고침 (한 번만)
           if (!sessionStorage.getItem('kakao_firebase_refreshed')) {

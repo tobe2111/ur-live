@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Minus, Plus, X, ChevronLeft, AlertCircle, CheckCircle } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
@@ -94,6 +94,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
 
 export default function CartPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -137,6 +138,23 @@ export default function CartPage() {
   }
 
   useEffect(() => {
+    // 🧹 JWT/레거시 토큰 URL 파라미터 자동 정리
+    const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName', 'firebase_token']
+    const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+    
+    if (hasJwtTokens) {
+      console.warn('[CartPage] ⚠️ JWT 토큰 URL 파라미터 감지 - 자동 정리')
+      setSearchParams(new URLSearchParams(), { replace: true })
+      
+      // localStorage 정리
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('userEmail')
+      
+      console.log('[CartPage] ✅ JWT 파라미터 정리 완료')
+    }
+    
     loadCart()
   }, [])
 
