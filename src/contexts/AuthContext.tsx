@@ -109,13 +109,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: role || 'user'
         })
         
-        // D1 동기화 (firebase_uid 업데이트) - Rate Limiting 회피
+        // D1 동기화 (firebase_uid 업데이트) - Rate Limiting 회피 + 백오프
         const lastSyncKey = `last_sync_${firebaseUser.uid}`
         const lastSync = localStorage.getItem(lastSyncKey)
+        const rateLimitKey = `rate_limit_${firebaseUser.uid}`
+        const rateLimitUntil = localStorage.getItem(rateLimitKey)
         const now = Date.now()
         const syncInterval = 60000 // 1분
         
-        if (!syncAttempted && (!lastSync || now - parseInt(lastSync) > syncInterval)) {
+        // ✅ Rate Limit 중이면 sync 완전 스킵
+        if (rateLimitUntil && now < parseInt(rateLimitUntil)) {
+          const waitSeconds = Math.ceil((parseInt(rateLimitUntil) - now) / 1000)
+          console.log(`[AuthContext] ⏱️ Rate Limit 대기 중 (${waitSeconds}초 남음)`)
+        } else if (!syncAttempted && (!lastSync || now - parseInt(lastSync) > syncInterval)) {
           try {
             const syncResponse = await api.post('/api/auth/firebase/sync', {
               idToken,
@@ -137,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             
             localStorage.setItem(lastSyncKey, now.toString())
+            localStorage.removeItem(rateLimitKey) // 성공 시 rate limit 해제
             console.log('[AuthContext] ✅ D1 동기화 완료')
           } catch (error: any) {
             const status = error?.response?.status
@@ -149,8 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn('[AuthContext] ℹ️ 로그인은 정상 작동, D1 sync만 스킵')
               localStorage.setItem(lastSyncKey, now.toString())
             } else if (status === 429) {
-              console.warn('[AuthContext] ⚠️ Rate Limit - sync 스킵 (사용자 인증은 유지)')
+              // ✅ Rate Limit 시 2분 대기 (백오프)
+              const backoffMs = 120000 // 2분
+              localStorage.setItem(rateLimitKey, (now + backoffMs).toString())
               localStorage.setItem(lastSyncKey, now.toString())
+              console.warn(`[AuthContext] ⚠️ Rate Limit (429) - 2분 대기 설정`)
             } else if (status === 401) {
               console.error('[AuthContext] ❌ 401 Unauthorized - Token 검증 실패')
               console.warn('[AuthContext] ⚠️ D1 sync 실패했지만 Firebase Auth는 유효함 - 로그인 유지')
@@ -166,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // ✅ Sync 스킵했지만 localStorage에 user_id가 없으면 빠른 조회 API 호출
           const existingUserId = localStorage.getItem('user_id')
-          if (!existingUserId) {
+          if (!existingUserId && (!rateLimitUntil || now >= parseInt(rateLimitUntil))) {
             try {
               console.log('[AuthContext] 🔍 user_id 없음 - 빠른 조회 API 호출')
               const userIdResponse = await api.get(`/api/auth/firebase/user-id/${firebaseUser.uid}`)
@@ -180,8 +190,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   userName: userIdResponse.data.userName
                 })
               }
-            } catch (err) {
-              console.warn('[AuthContext] ⚠️ user_id 조회 실패 (계속 진행):', err)
+            } catch (err: any) {
+              if (err?.response?.status === 429) {
+                const backoffMs = 120000 // 2분
+                localStorage.setItem(rateLimitKey, (now + backoffMs).toString())
+                console.warn(`[AuthContext] ⚠️ user_id 조회 Rate Limit - 2분 대기 설정`)
+              } else {
+                console.warn('[AuthContext] ⚠️ user_id 조회 실패 (계속 진행):', err)
+              }
             }
           }
         }
@@ -282,6 +298,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const handleUrlParams = async () => {
       try {
+        // ✅ 🚨 CRITICAL: URL 파라미터를 즉시 제거 (비동기 처리 전에!)
+        // 이렇게 하지 않으면 React Router가 파라미터를 다시 감지해서 무한 루프 발생
+        const cleanUrl = window.location.pathname
+        window.history.replaceState({}, document.title, cleanUrl)
+        console.log('[AuthContext] ✅ URL 파라미터 즉시 제거 (무한 루프 방지)')
+        
         // JWT 레거시 파라미터 정리
         if (hasJwtTokens) {
           console.warn('[AuthContext] ⚠️ JWT 레거시 토큰 정리 중')
@@ -299,11 +321,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userCredential = await signInWithCustomToken(auth, firebaseToken)
           console.log('[AuthContext] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
-          // ✅ window.history.replaceState로 URL 정리 (React Router 재렌더링 방지)
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, document.title, cleanUrl)
-          console.log('[AuthContext] ✅ URL 파라미터 제거 (replaceState)')
-          
           // ✅ 로그인 성공 후 리다이렉트 (AuthContext가 주도권 가짐)
           const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
           localStorage.removeItem('loginReturnUrl')
@@ -313,19 +330,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('[AuthContext] 🔄 로그인 완료 - 리다이렉트:', returnUrl)
             navigate(returnUrl, { replace: true })
           }, 500)
-        } else if (hasJwtTokens) {
-          // JWT 파라미터만 있으면 URL만 정리
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, document.title, cleanUrl)
-          console.log('[AuthContext] ✅ JWT 파라미터만 정리 완료')
         }
       } catch (error) {
         console.error('[AuthContext] ❌ URL 파라미터 처리 실패:', error)
         setInitError('로그인 처리 실패')
-        
-        // 에러 발생 시에도 URL 정리
-        const cleanUrl = window.location.pathname
-        window.history.replaceState({}, document.title, cleanUrl)
       } finally {
         // ✅ 락(Lock) 해제
         isProcessingTokenRef.current = false
