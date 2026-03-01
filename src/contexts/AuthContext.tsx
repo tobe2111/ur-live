@@ -117,12 +117,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (!syncAttempted && (!lastSync || now - parseInt(lastSync) > syncInterval)) {
           try {
-            await api.post('/api/auth/firebase/sync', {
+            const syncResponse = await api.post('/api/auth/firebase/sync', {
               idToken,
               firebaseUid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName
             })
+            
+            // ✅ D1 sync 성공 시 user_id, user_name을 localStorage에 저장
+            if (syncResponse.data?.success && syncResponse.data?.user) {
+              const userData = syncResponse.data.user
+              localStorage.setItem('user_id', userData.id?.toString() || '')
+              localStorage.setItem('user_name', userData.name || '')
+              
+              console.log('[AuthContext] ✅ D1 동기화 완료 + localStorage 저장:', {
+                userId: userData.id,
+                userName: userData.name
+              })
+            }
+            
             localStorage.setItem(lastSyncKey, now.toString())
             console.log('[AuthContext] ✅ D1 동기화 완료')
           } catch (error: any) {
