@@ -152,6 +152,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // 🔥 CRITICAL: 즉시 Firebase ID Token을 localStorage에 저장!
           // (onAuthStateChanged를 기다리지 않음)
           const idToken = await userCredential.user.getIdToken()
+          
+          // 🚨 DEBUGGING: 저장하기 전에 토큰 타입 확인
+          try {
+            const parts = idToken.split('.')
+            if (parts.length === 3) {
+              const payloadBase64 = parts[1]
+              const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
+              const payload = JSON.parse(payloadJson)
+              console.log('[Auth] 🔍 ID Token Payload (BEFORE saving):', {
+                iss: payload.iss,
+                aud: payload.aud,
+                sub: payload.sub,
+                exp: payload.exp,
+                iat: payload.iat
+              })
+              
+              if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
+                console.error('[Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨')
+                console.error('[Auth] ❌ getIdToken() returned a Custom Token!')
+                throw new Error('Custom Token detected instead of ID Token')
+              } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
+                console.log('[Auth] ✅ Correct ID Token (securetoken.google.com)')
+              }
+            }
+          } catch (decodeError) {
+            console.error('[Auth] ❌ Token decode failed:', decodeError)
+            throw decodeError
+          }
+          
           localStorage.setItem('firebase_token', idToken)
           console.log('[Auth] 🔥 Firebase ID Token 즉시 저장 완료!')
           console.log('[Auth] 🔑 Token preview:', idToken.substring(0, 50) + '...')
@@ -239,7 +268,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           localStorage.setItem('user_type', role)
-          localStorage.setItem('firebase_token', await firebaseUser.getIdToken())
+          
+          // 🚨 DEBUGGING: localStorage 저장 전 토큰 검증
+          const firebaseToken = await firebaseUser.getIdToken()
+          try {
+            const parts = firebaseToken.split('.')
+            if (parts.length === 3) {
+              const payloadBase64 = parts[1]
+              const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
+              const payload = JSON.parse(payloadJson)
+              console.log('[Auth] 🔍 ID Token Payload (onAuthStateChanged):', {
+                iss: payload.iss,
+                aud: payload.aud,
+                sub: payload.sub
+              })
+              
+              if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
+                console.error('[Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED (onAuthStateChanged)! 🚨🚨🚨')
+                throw new Error('Custom Token detected in onAuthStateChanged')
+              } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
+                console.log('[Auth] ✅ Correct ID Token (onAuthStateChanged)')
+              }
+            }
+          } catch (decodeError) {
+            console.error('[Auth] ❌ Token decode failed (onAuthStateChanged):', decodeError)
+          }
+          
+          localStorage.setItem('firebase_token', firebaseToken)
           
           // 🚀 즉시 UI 렌더링
           setUser(firebaseUser)
@@ -327,6 +382,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // 🔥 CRITICAL: Custom Token이 아닌 ID Token을 localStorage에 저장!
       const idToken = await userCredential.user.getIdToken()
+      
+      // 🚨 DEBUGGING: 저장하기 전에 토큰 타입 확인
+      try {
+        const parts = idToken.split('.')
+        if (parts.length === 3) {
+          const payloadBase64 = parts[1]
+          const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
+          const payload = JSON.parse(payloadJson)
+          console.log('[Auth] 🔍 ID Token Payload (loginWithKakao):', {
+            iss: payload.iss,
+            aud: payload.aud,
+            sub: payload.sub,
+            exp: payload.exp,
+            iat: payload.iat
+          })
+          
+          if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
+            console.error('[Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED (loginWithKakao)! 🚨🚨🚨')
+            throw new Error('Custom Token detected in loginWithKakao')
+          } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
+            console.log('[Auth] ✅ Correct ID Token (loginWithKakao)')
+          }
+        }
+      } catch (decodeError) {
+        console.error('[Auth] ❌ Token decode failed (loginWithKakao):', decodeError)
+        throw decodeError
+      }
+      
       localStorage.setItem('firebase_token', idToken)
       
       if (DEBUG_AUTH) console.log('[Auth] ✅ 카카오 로그인 성공')

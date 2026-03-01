@@ -494,6 +494,33 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
     console.log('[Firebase Auth] 🔑 Token length:', token.length)
     console.log('[Firebase Auth] 🔑 Token preview:', token.substring(0, 50) + '...')
     
+    // 🚨 DEBUGGING: 토큰을 디코딩해서 iss, aud 확인 (검증 전)
+    try {
+      const parts = token.split('.')
+      if (parts.length === 3) {
+        const payloadBase64 = parts[1]
+        const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
+        const payload = JSON.parse(payloadJson)
+        console.log('[Firebase Auth] 🔍 Token Payload (BEFORE verification):', {
+          iss: payload.iss,
+          aud: payload.aud,
+          sub: payload.sub,
+          exp: payload.exp,
+          iat: payload.iat
+        })
+        
+        // 🚨 CRITICAL CHECK: Custom Token 감지
+        if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
+          console.error('[Firebase Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨')
+          console.error('[Firebase Auth] ❌ This is a Custom Token, not an ID Token!')
+          console.error('[Firebase Auth] ❌ Custom Token should be exchanged for ID Token on client!')
+          return null
+        }
+      }
+    } catch (decodeError) {
+      console.warn('[Firebase Auth] ⚠️ Could not decode token payload (might be corrupted):', decodeError)
+    }
+    
     // 🔥 Firebase ID Token 검증 (100% Firebase 표준)
     try {
       console.log('[Firebase Auth] 🔐 Verifying token with project:', c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')

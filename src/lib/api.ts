@@ -93,6 +93,36 @@ api.interceptors.request.use(
       
       if (user) {
         const idToken = await user.getIdToken(true); // force refresh = true
+        
+        // 🚨 DEBUGGING: 토큰 타입 확인 (Custom Token vs ID Token)
+        try {
+          const parts = idToken.split('.');
+          if (parts.length === 3) {
+            const payloadBase64 = parts[1];
+            const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+            const payload = JSON.parse(payloadJson);
+            
+            console.log('[API] 🔍 Token Payload:', {
+              iss: payload.iss,
+              aud: payload.aud,
+              sub: payload.sub,
+              exp: payload.exp,
+              iat: payload.iat
+            });
+            
+            // 🚨 CRITICAL CHECK: Custom Token 감지
+            if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
+              console.error('[API] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨');
+              console.error('[API] ❌ This should NEVER happen!');
+              console.error('[API] ❌ auth.currentUser.getIdToken() returned a Custom Token!');
+            } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
+              console.log('[API] ✅ Correct ID Token (securetoken.google.com)');
+            }
+          }
+        } catch (decodeError) {
+          console.warn('[API] ⚠️ Could not decode token payload:', decodeError);
+        }
+        
         config.headers['Authorization'] = `Bearer ${idToken}`;
         console.log('[API] 🔥 Firebase ID Token attached (from auth.currentUser)');
         console.log('[API] 🔑 Token preview:', idToken.substring(0, 50) + '...');
