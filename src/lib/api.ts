@@ -183,7 +183,23 @@ api.interceptors.response.use(
       }
       
       // 3️⃣ Firebase 인증 실패 → 로그아웃
-      console.warn('[API] Firebase auth failed (401) - redirecting to login');
+      console.error('[API] 🚨 Firebase auth failed (401)');
+      console.error('[API] 📊 Server error details:', errorData);
+      
+      // Display detailed error information from server
+      if (errorData?.code) {
+        console.error('[API] 🔍 Error Code:', errorData.code);
+        console.error('[API] 💬 Error Message:', errorData.error);
+        if (errorData.debug) {
+          console.error('[API] 🐛 Debug Info:', errorData.debug);
+        }
+      }
+      
+      // Alert user with detailed error
+      const errorMsg = errorData?.error || 'Authentication failed';
+      const errorCode = errorData?.code || 'UNKNOWN';
+      alert(`인증 실패 (${errorCode})\n\n${errorMsg}\n\n다시 로그인해주세요.`);
+      
       localStorage.clear();
       sessionStorage.clear();
       

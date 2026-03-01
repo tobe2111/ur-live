@@ -478,7 +478,7 @@ app.use('*', async (c, next) => {
  * @param c - Hono context
  * @returns 사용자 정보 (userId, userType, email, firebaseUID) or null
  */
-async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string } | null> {
+async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string; errorDetails?: { code: string; message: string; tokenInfo?: any } } | null> {
   try {
     // Firebase ID Token 추출 (Authorization: Bearer <firebase_id_token>)
     const authHeader = c.req.header('Authorization')
@@ -514,7 +514,15 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
           console.error('[Firebase Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨')
           console.error('[Firebase Auth] ❌ This is a Custom Token, not an ID Token!')
           console.error('[Firebase Auth] ❌ Custom Token should be exchanged for ID Token on client!')
-          return null
+          return {
+            userId: 0,
+            userType: '',
+            errorDetails: {
+              code: 'CUSTOM_TOKEN_DETECTED',
+              message: 'Custom Token should be exchanged for ID Token on client',
+              tokenInfo: { iss: payload.iss, aud: payload.aud, sub: payload.sub }
+            }
+          } as any
         }
       }
     } catch (decodeError) {
@@ -563,7 +571,16 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       }
     } catch (firebaseError) {
       console.error('[Firebase Auth] Token verification failed:', firebaseError)
-      return null
+      const errorInfo = parseVerifyError(firebaseError)
+      return {
+        userId: 0,
+        userType: '',
+        errorDetails: {
+          code: errorInfo.code,
+          message: errorInfo.message,
+          tokenInfo: { length: token.length, preview: token.substring(0, 30) + '...' }
+        }
+      } as any
     }
   } catch (error) {
     console.error('[Firebase Auth Error]', error)
@@ -682,14 +699,21 @@ async function requireAuth(c: any, next: any) {
   
   const auth = await getFirebaseAuth(c)
   
-  if (!auth) {
+  if (!auth || auth.userId === 0) {
+    // Return detailed error information from token verification
+    const errorDetails = auth?.errorDetails || {
+      code: 'AUTH_FAILED',
+      message: 'Token verification failed - unknown reason'
+    }
+    
     return c.json({ 
       success: false, 
-      error: 'Authentication failed - Token verification failed',
-      code: 'AUTH_FAILED',
+      error: errorDetails.message,
+      code: errorDetails.code,
       debug: {
         tokenProvided: !!authHeader,
-        tokenLength: authHeader?.replace('Bearer ', '').length || 0
+        tokenLength: authHeader?.replace('Bearer ', '').length || 0,
+        ...errorDetails.tokenInfo
       }
     }, 401)
   }
