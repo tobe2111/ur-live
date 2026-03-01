@@ -10,7 +10,7 @@ import {
   signInWithCustomToken,
   type User
 } from 'firebase/auth'
-import { app } from '@/lib/firebase'
+import { app, auth as firebaseAuth, isFirebaseInitialized } from '@/lib/firebase'
 import api from '@/lib/api'
 
 /**
@@ -43,7 +43,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const auth = getAuth(app)
+// ✅ Firebase Auth 인스턴스 (전역)
+// 초기화 실패 시 null일 수 있음
+const auth = firebaseAuth
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -59,15 +61,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ✅ Firebase Auth 상태 리스너 (한 번만 등록) - 의존성 배열 비움 (무한 루프 방지)
   useEffect(() => {
     console.log('[AuthContext] 🔥 Firebase Auth 초기화 시작 (전체 통합)')
+    console.log('[AuthContext] 🔍 Firebase 초기화 상태 체크...')
     
     // ✅ Firebase 초기화 에러 처리
-    if (!auth) {
-      const errorMsg = 'Firebase Auth 초기화 실패'
+    if (!isFirebaseInitialized()) {
+      const errorMsg = 'Firebase 초기화 실패 - firebase.ts에서 초기화 에러 발생'
       console.error('[AuthContext] ❌', errorMsg)
+      console.error('[AuthContext] ❌ auth:', auth)
+      console.error('[AuthContext] ❌ app:', app)
       setInitError(errorMsg)
       setIsAuthReady(true) // 에러가 있어도 ready 상태로 전환 (흰 화면 방지)
       return
     }
+    
+    if (!auth) {
+      const errorMsg = 'Firebase Auth 인스턴스가 null입니다'
+      console.error('[AuthContext] ❌', errorMsg)
+      setInitError(errorMsg)
+      setIsAuthReady(true)
+      return
+    }
+    
+    console.log('[AuthContext] ✅ Firebase 초기화 상태 확인 완료')
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[AuthContext] 🔥 onAuthStateChanged 트리거:', {

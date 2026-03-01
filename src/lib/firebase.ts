@@ -17,19 +17,30 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app: FirebaseApp;
-let database: Database;
-let auth: Auth;
+let app: FirebaseApp | null = null;
+let database: Database | null = null;
+let auth: Auth | null = null;
 
 try {
+  console.log('[Firebase] 🔥 초기화 시작...');
   app = initializeApp(firebaseConfig);
   database = getDatabase(app);
   auth = getAuth(app);
-  console.log('✅ Firebase initialized successfully');
-  console.log('✅ Firebase Auth initialized');
+  console.log('[Firebase] ✅ Firebase initialized successfully');
+  console.log('[Firebase] ✅ Firebase Auth initialized');
+  console.log('[Firebase] ✅ Firebase Database initialized');
 } catch (error) {
-  console.error('❌ Firebase initialization failed:', error);
-  throw error;
+  console.error('[Firebase] ❌ Firebase initialization failed:', error);
+  console.error('[Firebase] ❌ Error details:', JSON.stringify(error, null, 2));
+  
+  // ⚠️ 에러가 발생해도 앱을 완전히 중단하지 않음
+  // AuthContext에서 null 체크로 처리
+  console.warn('[Firebase] ⚠️ 앱은 계속 실행되지만 Firebase 기능은 사용 불가');
+}
+
+// ✅ null 체크 헬퍼 함수
+export function isFirebaseInitialized(): boolean {
+  return app !== null && database !== null && auth !== null;
 }
 
 export { app, database, auth };

@@ -79,11 +79,15 @@ const PageLoader = () => (
 
 // ✅ Router 내부에서 실행될 컴포넌트
 function AppContent() {
+  console.log('[App] 📱 AppContent 마운트됨')
+  
   // 🔒 세션 검증: Firebase Auth가 자동으로 처리 (JWT 제거됨)
   // useSessionValidation() // ❌ JWT 전용 - 더 이상 사용 안 함
   
   // 🔄 다중 탭 동기화: 다른 탭의 로그인/로그아웃 감지
   useMultiTabSync()
+  
+  console.log('[App] 📍 현재 경로:', window.location.pathname)
   
   return (
     <>
@@ -158,6 +162,8 @@ function AppContent() {
 
 // ✅ App 컴포넌트: BrowserRouter와 AuthProvider를 최상위에 배치
 function App() {
+  console.log('[App] 🚀 App 컴포넌트 렌더링')
+  
   return (
     <ErrorBoundary>
       <BrowserRouter>
