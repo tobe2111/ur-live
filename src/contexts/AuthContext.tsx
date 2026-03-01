@@ -1,11 +1,11 @@
 /**
- * 🚀 Lightweight Auth Context (완전 재설계)
+ * 🚀 AuthContext (Clean Rewrite)
  * 
  * 핵심 원칙:
- * 1. Firebase 우선: Custom Claims에서 모든 정보 추출 (userId, userName, role)
- * 2. 낙관적 UI: 서버 응답 기다리지 않고 즉시 렌더링
- * 3. 단순성: 복잡한 조건문 제거, Lock 로직 최상단 배치
- * 4. 에러 친화적: 한글 메시지 + 로그인 버튼
+ * 1. URL userName 최우선: 카카오 로그인 시 URL에서 userName 즉시 저장
+ * 2. Firebase 우선: Custom Claims → localStorage → 즉시 UI
+ * 3. 단순성: 복잡한 분기문 완전 제거
+ * 4. 무한 루프 방지: Lock + replaceState 즉시 실행
  */
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
@@ -64,12 +64,96 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [initError, setInitError] = useState<string | null>(null)
   
-  // Lock: URL 파라미터 중복 처리 방지
+  // Lock: 중복 처리 방지
   const isProcessingTokenRef = useRef(false)
   const processedTokenRef = useRef<string | null>(null)
   
   // ============================================
-  // 1️⃣ Firebase Auth Listener (최고 우선순위)
+  // 🔥 1️⃣ URL 파라미터 처리 (최고 우선순위!)
+  // firebase_token + userName을 먼저 처리해야 무한 루프 방지
+  // ============================================
+  
+  useEffect(() => {
+    const firebaseToken = searchParams.get('firebase_token')
+    const userName = searchParams.get('userName')
+    const errorParam = searchParams.get('error')
+    
+    // 🚫 Lock 1: 이미 처리 중이면 스킵
+    if (isProcessingTokenRef.current) {
+      console.log('[Auth] ⏭️ 이미 처리 중 - 스킵')
+      return
+    }
+    
+    // 🚫 Lock 2: 이미 처리된 토큰이면 스킵
+    if (firebaseToken && processedTokenRef.current === firebaseToken) {
+      console.log('[Auth] ⏭️ 이미 처리된 토큰 - 스킵')
+      return
+    }
+    
+    // ⚠️ 에러 파라미터가 있으면 즉시 처리
+    if (errorParam) {
+      console.error('[Auth] ❌ URL 에러:', errorParam)
+      setInitError('인증 중 오류가 발생했습니다. 다시 시도해 주세요.')
+      
+      // URL 정리 (무한 루프 방지)
+      window.history.replaceState({}, document.title, window.location.pathname)
+      return
+    }
+    
+    // ✅ firebase_token이 있으면 처리
+    if (firebaseToken) {
+      console.log('[Auth] 🔥 Firebase Token 감지')
+      
+      isProcessingTokenRef.current = true
+      processedTokenRef.current = firebaseToken
+      
+      // 🚀 즉시 비동기 처리 (UI 블로킹 안 함)
+      ;(async () => {
+        try {
+          // 🎯 STEP 1: URL 파라미터 즉시 제거 (무한 루프 방지)
+          window.history.replaceState({}, document.title, window.location.pathname)
+          console.log('[Auth] ✅ URL 파라미터 제거 완료')
+          
+          // 🎯 STEP 2: userName이 있으면 즉시 localStorage 저장 (최우선!)
+          if (userName) {
+            const decodedName = decodeURIComponent(userName)
+            localStorage.setItem('user_name', decodedName)
+            console.log('[Auth] 🎯 URL userName 즉시 저장:', decodedName)
+          }
+          
+          // 🎯 STEP 3: Firebase 로그인
+          console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
+          const userCredential = await signInWithCustomToken(auth, firebaseToken)
+          console.log('[Auth] ✅ Firebase 로그인 성공:', userCredential.user.uid)
+          
+          // 🎯 STEP 4: returnUrl 복구 (스마트 리다이렉트)
+          const returnUrl = sessionStorage.getItem('returnUrl') || '/'
+          sessionStorage.removeItem('returnUrl')
+          
+          console.log('[Auth] 🎯 리다이렉트 준비:', returnUrl)
+          
+          // onAuthStateChanged가 트리거될 때까지 짧은 대기
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          // 로그인 페이지가 아니면 리다이렉트
+          if (window.location.pathname === '/login' && returnUrl !== '/login') {
+            navigate(returnUrl, { replace: true })
+          }
+          
+        } catch (error) {
+          console.error('[Auth] ❌ Firebase 토큰 로그인 실패:', error)
+          setInitError('로그인 처리에 실패했습니다. 다시 시도해 주세요.')
+          
+        } finally {
+          isProcessingTokenRef.current = false
+        }
+      })()
+    }
+    
+  }, [searchParams, navigate])
+  
+  // ============================================
+  // 🔥 2️⃣ Firebase Auth Listener
   // ============================================
   
   useEffect(() => {
@@ -90,19 +174,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
         
         try {
-          // 🎯 Custom Claims에서 모든 정보 추출 (통합 인증)
+          // 🎯 Custom Claims에서 정보 추출
           const idTokenResult = await firebaseUser.getIdTokenResult()
           const userId = idTokenResult.claims.userId as number | undefined
-          const userName = idTokenResult.claims.userName as string | undefined
+          const userNameFromClaims = idTokenResult.claims.userName as string | undefined
           const role = (idTokenResult.claims.role as UserRole) || 'user'
           
-          // 🚀 즉시 localStorage 저장 (낙관적 업데이트)
-          if (userId) localStorage.setItem('user_id', userId.toString())
-          if (userName) localStorage.setItem('user_name', userName)
+          // 🚀 localStorage 저장 (URL userName이 이미 있으면 그대로 유지)
+          if (userId) {
+            localStorage.setItem('user_id', userId.toString())
+          }
+          
+          // 🎯 userName 우선순위: localStorage (URL에서 저장됨) > Claims > displayName
+          const existingUserName = localStorage.getItem('user_name')
+          if (!existingUserName) {
+            // localStorage에 없을 때만 Claims 또는 displayName 사용
+            const finalUserName = userNameFromClaims || firebaseUser.displayName || '사용자'
+            localStorage.setItem('user_name', finalUserName)
+            console.log('[Auth] ✅ user_name 저장 (Claims/displayName):', finalUserName)
+          } else {
+            console.log('[Auth] ✅ user_name 유지 (URL 우선):', existingUserName)
+          }
+          
           localStorage.setItem('user_type', role)
           localStorage.setItem('firebase_token', await firebaseUser.getIdToken())
           
-          // 🚀 즉시 UI 렌더링 (Firebase 우선 정책)
+          // 🚀 즉시 UI 렌더링
           setUser(firebaseUser)
           setUserRole(role)
           setIsAuthReady(true)
@@ -110,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] 🚀 낙관적 업데이트 완료:', {
             uid: firebaseUser.uid,
             userId,
-            userName: userName || '(없음)',
+            userName: localStorage.getItem('user_name'),
             role
           })
           
@@ -144,92 +241,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []) // ✅ 빈 의존성 배열 - 한 번만 실행
   
   // ============================================
-  // 2️⃣ URL 파라미터 처리 (firebase_token)
-  // ============================================
-  
-  useEffect(() => {
-    const firebaseToken = searchParams.get('firebase_token')
-    const userName = searchParams.get('userName')
-    const errorParam = searchParams.get('error')
-    
-    // 🚫 Lock: 중복 처리 방지
-    if (isProcessingTokenRef.current) {
-      console.log('[Auth] ⏭️ 이미 처리 중 - 스킵')
-      return
-    }
-    
-    if (firebaseToken && processedTokenRef.current === firebaseToken) {
-      console.log('[Auth] ⏭️ 이미 처리된 토큰 - 스킵')
-      return
-    }
-    
-    // ⚠️ 에러 파라미터가 있으면 즉시 처리
-    if (errorParam) {
-      console.error('[Auth] ❌ URL 에러 파라미터:', errorParam)
-      setInitError('인증 중 오류가 발생했습니다. 다시 시도해 주세요.')
-      
-      // URL 정리
-      window.history.replaceState({}, document.title, window.location.pathname)
-      return
-    }
-    
-    // ✅ firebase_token이 있으면 처리
-    if (firebaseToken) {
-      console.log('[Auth] 🔥 Firebase Token 감지')
-      
-      isProcessingTokenRef.current = true
-      processedTokenRef.current = firebaseToken
-      
-      // 🚀 비동기 처리 (UI 블로킹 하지 않음)
-      ;(async () => {
-        try {
-          // 1️⃣ URL 파라미터 즉시 제거 (무한 루프 방지)
-          window.history.replaceState({}, document.title, window.location.pathname)
-          console.log('[Auth] ✅ URL 파라미터 제거 완료')
-          
-          // 2️⃣ userName이 있으면 즉시 저장 (낙관적 UI)
-          if (userName) {
-            const decodedName = decodeURIComponent(userName)
-            localStorage.setItem('user_name', decodedName)
-            console.log('[Auth] 🎯 URL userName 즉시 저장:', decodedName)
-          }
-          
-          // 3️⃣ Firebase 로그인
-          console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
-          const userCredential = await signInWithCustomToken(auth, firebaseToken)
-          console.log('[Auth] ✅ Firebase 로그인 성공:', userCredential.user.uid)
-          
-          // 4️⃣ returnUrl 복구 (스마트 리다이렉트)
-          const returnUrl = sessionStorage.getItem('returnUrl') || '/'
-          sessionStorage.removeItem('returnUrl')
-          
-          console.log('[Auth] 🎯 리다이렉트:', returnUrl)
-          
-          // onAuthStateChanged가 트리거될 때까지 짧은 대기
-          await new Promise(resolve => setTimeout(resolve, 300))
-          
-          if (returnUrl !== '/login') {
-            navigate(returnUrl, { replace: true })
-          }
-          
-        } catch (error) {
-          console.error('[Auth] ❌ Firebase 토큰 로그인 실패:', error)
-          setInitError('로그인 처리에 실패했습니다. 다시 시도해 주세요.')
-          
-        } finally {
-          isProcessingTokenRef.current = false
-        }
-      })()
-    }
-    
-  }, [searchParams, navigate])
-  
-  // ============================================
   // 3️⃣ Auth Methods
   // ============================================
   
   const loginWithEmail = async (email: string, password: string) => {
-    console.log('[Auth] 📧 이메일 로그인 시작:', email)
+    console.log('[Auth] 📧 이메일 로그인 시도:', email)
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)

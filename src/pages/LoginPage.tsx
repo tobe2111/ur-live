@@ -31,21 +31,22 @@ export default function LoginPage() {
   // 🎯 스마트 리다이렉트: returnUrl을 sessionStorage에 저장 (로그인 후 복귀)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
 
-  // ✅ 이미 로그인되어 있으면 홈으로 리다이렉트 (AuthContext가 주도권 가짐)
-  // 단, AuthContext 초기화 완료 후에만 체크
+  // ✅ 이미 로그인되어 있으면 홈으로 리다이렉트
+  // 🎯 CRITICAL FIX: AuthContext가 리다이렉트를 처리하므로 여기서는 스킵
+  // (무한 루프 방지)
   useEffect(() => {
     // Auth 초기화 완료 대기
     if (!isAuthReady) {
       return
     }
     
-    // 이미 로그인됨 → 홈으로 리다이렉트
-    if (isLoggedIn && !hasRedirected.current) {
-      console.log('[LoginPage] 🔄 이미 로그인됨 - 홈으로 리다이렉트')
-      hasRedirected.current = true
-      navigate('/', { replace: true })  // ✅ 즉시 실행 (setTimeout 제거)
+    // 🚫 리다이렉트 제거: AuthContext가 URL 파라미터 처리 후 자동으로 리다이렉트함
+    // 여기서 추가 리다이렉트를 하면 무한 루프 발생
+    
+    if (isLoggedIn) {
+      console.log('[LoginPage] ✅ 이미 로그인됨 (AuthContext가 리다이렉트 처리)')
     }
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isAuthReady, isLoggedIn])
 
   useEffect(() => {
     // 🎯 returnUrl을 sessionStorage에 저장 (로그인 후 복귀)
