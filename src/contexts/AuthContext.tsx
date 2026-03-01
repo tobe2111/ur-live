@@ -51,13 +51,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<'user' | 'seller' | 'admin' | null>(null)
   const [syncAttempted, setSyncAttempted] = useState(false)
+  const [initError, setInitError] = useState<string | null>(null)
 
   // Firebase Auth로 모든 경로 통일 관리
   console.log('[AuthContext] 🔥 100% Firebase Auth 모드')
 
-  // ✅ Firebase Auth 상태 리스너 (한 번만 등록)
+  // ✅ Firebase Auth 상태 리스너 (한 번만 등록) - 의존성 배열 비움 (무한 루프 방지)
   useEffect(() => {
     console.log('[AuthContext] 🔥 Firebase Auth 초기화 시작 (전체 통합)')
+    
+    // ✅ Firebase 초기화 에러 처리
+    if (!auth) {
+      const errorMsg = 'Firebase Auth 초기화 실패'
+      console.error('[AuthContext] ❌', errorMsg)
+      setInitError(errorMsg)
+      setIsAuthReady(true) // 에러가 있어도 ready 상태로 전환 (흰 화면 방지)
+      return
+    }
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('[AuthContext] 🔥 onAuthStateChanged 트리거:', {
@@ -154,11 +164,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[AuthContext] 🔥 Firebase Auth 리스너 해제')
       unsubscribe()
     }
-  }, [searchParams])
+  }, []) // ✅ 빈 의존성 배열 - Firebase Auth 리스너는 한 번만 등록되어야 함 (무한 루프 방지)
 
-  // ✅ 카카오 OAuth → Firebase Custom Token 로그인
+  // ✅ URL 파라미터 처리 (한 번만 실행) - 카카오 OAuth 및 레거시 파라미터 정리
   useEffect(() => {
-    const handleKakaoCallback = async () => {
+    // ✅ 중복 실행 방지 - 이미 처리했으면 스킵
+    const processedKey = 'url_params_processed'
+    const alreadyProcessed = sessionStorage.getItem(processedKey)
+    
+    if (alreadyProcessed) {
+      console.log('[AuthContext] ⏭️ URL 파라미터 이미 처리됨 - 스킵')
+      return
+    }
+    
+    const handleUrlParams = async () => {
       const customToken = searchParams.get('firebase_token')
       const userName = searchParams.get('userName')
       
@@ -169,15 +188,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (hasJwtTokens) {
         console.warn('[AuthContext] ⚠️ URL에 JWT/레거시 토큰 감지 - 자동 정리 중')
         
-        // firebase_token만 보존, 나머지 제거
-        const firebaseToken = searchParams.get('firebase_token')
-        const newParams = new URLSearchParams()
-        if (firebaseToken) {
-          newParams.set('firebase_token', firebaseToken)
-        }
-        
-        setSearchParams(newParams, { replace: true })
-        
         // 레거시 JWT 키 정리
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
@@ -185,9 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('userEmail')
         
         console.log('[AuthContext] ✅ JWT/레거시 파라미터 완전 정리 완료')
-        
-        // firebase_token이 없으면 리턴
-        if (!firebaseToken) return
       }
       
       if (customToken) {
@@ -205,23 +212,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSearchParams(new URLSearchParams(), { replace: true })
           console.log('[AuthContext] ✅ URL 파라미터 완전 제거')
           
-          // 페이지 새로고침 (한 번만)
-          if (!sessionStorage.getItem('kakao_firebase_refreshed')) {
-            sessionStorage.setItem('kakao_firebase_refreshed', 'true')
-            console.log('[AuthContext] 🔄 카카오 로그인 완료 - 페이지 새로고침')
-            window.location.reload()
-          }
+          // ✅ 처리 완료 표시 (중복 방지)
+          sessionStorage.setItem(processedKey, 'true')
+          
+          // ✅ 페이지 새로고침 없이 onAuthStateChanged가 자동 처리하도록 함
+          console.log('[AuthContext] ✅ Firebase Auth가 자동으로 상태 업데이트 처리')
         } catch (error) {
           console.error('[AuthContext] ❌ 카카오 Firebase 로그인 실패:', error)
+          setInitError('카카오 로그인 처리 실패')
           // URL 파라미터 제거
-          const cleanUrl = window.location.pathname
-          window.history.replaceState({}, '', cleanUrl)
+          setSearchParams(new URLSearchParams(), { replace: true })
+          sessionStorage.setItem(processedKey, 'true')
         }
+      } else if (hasJwtTokens) {
+        // JWT 파라미터만 있고 firebase_token이 없으면 URL 정리만
+        setSearchParams(new URLSearchParams(), { replace: true })
+        sessionStorage.setItem(processedKey, 'true')
       }
     }
     
-    handleKakaoCallback()
-  }, [searchParams])
+    handleUrlParams()
+  }, [searchParams, setSearchParams]) // searchParams 변경 시 실행되지만 중복 방지 로직으로 한 번만 실행됨
 
   /**
    * 이메일/비밀번호 로그인
@@ -336,8 +347,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   console.log('[AuthContext] 로그인 상태 계산:', {
     hasFirebaseUser,
     userRole,
-    computedIsLoggedIn
+    computedIsLoggedIn,
+    isAuthReady,
+    initError
   })
+  
+  // ✅ 초기화 에러가 있으면 에러 UI 표시 (흰 화면 방지)
+  if (initError && isAuthReady) {
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="mb-4 text-red-600">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">인증 시스템 오류</h2>
+          <p className="text-gray-600 mb-4">{initError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            새로고침
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AuthContext.Provider
