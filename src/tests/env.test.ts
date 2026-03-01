@@ -190,6 +190,99 @@ export async function runEnvTests(env: CloudflareBindings): Promise<TestResult[]
     });
   }
   
+  // ========================================
+  // 6. FIREBASE_PRIVATE_KEY 테스트 🔥
+  // ========================================
+  if (!env.FIREBASE_PRIVATE_KEY) {
+    results.push({
+      name: 'FIREBASE_PRIVATE_KEY',
+      status: 'fail',
+      message: 'FIREBASE_PRIVATE_KEY not configured',
+      details: 'Add FIREBASE_PRIVATE_KEY in Cloudflare Dashboard → ur-live → Settings → Environment variables'
+    });
+  } else if (!env.FIREBASE_PRIVATE_KEY.includes('BEGIN PRIVATE KEY')) {
+    results.push({
+      name: 'FIREBASE_PRIVATE_KEY',
+      status: 'warn',
+      message: 'FIREBASE_PRIVATE_KEY format may be invalid',
+      details: 'Expected format: -----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n'
+    });
+  } else {
+    results.push({
+      name: 'FIREBASE_PRIVATE_KEY',
+      status: 'pass',
+      message: `FIREBASE_PRIVATE_KEY configured (${env.FIREBASE_PRIVATE_KEY.length} chars)`
+    });
+  }
+  
+  // ========================================
+  // 7. FIREBASE_CLIENT_EMAIL 테스트 🔥
+  // ========================================
+  if (!env.FIREBASE_CLIENT_EMAIL) {
+    results.push({
+      name: 'FIREBASE_CLIENT_EMAIL',
+      status: 'fail',
+      message: 'FIREBASE_CLIENT_EMAIL not configured',
+      details: 'Add FIREBASE_CLIENT_EMAIL in Cloudflare Dashboard → ur-live → Settings → Environment variables'
+    });
+  } else if (!env.FIREBASE_CLIENT_EMAIL.includes('@') || !env.FIREBASE_CLIENT_EMAIL.includes('iam.gserviceaccount.com')) {
+    results.push({
+      name: 'FIREBASE_CLIENT_EMAIL',
+      status: 'warn',
+      message: 'FIREBASE_CLIENT_EMAIL format may be invalid',
+      details: 'Expected format: *@*.iam.gserviceaccount.com'
+    });
+  } else {
+    results.push({
+      name: 'FIREBASE_CLIENT_EMAIL',
+      status: 'pass',
+      message: `FIREBASE_CLIENT_EMAIL configured: ${env.FIREBASE_CLIENT_EMAIL}`
+    });
+  }
+  
+  // ========================================
+  // 8. FIREBASE_PROJECT_ID 테스트 🔥
+  // ========================================
+  if (!env.FIREBASE_PROJECT_ID) {
+    results.push({
+      name: 'FIREBASE_PROJECT_ID',
+      status: 'fail',
+      message: 'FIREBASE_PROJECT_ID not configured',
+      details: 'Add FIREBASE_PROJECT_ID in Cloudflare Dashboard → ur-live → Settings → Environment variables'
+    });
+  } else {
+    results.push({
+      name: 'FIREBASE_PROJECT_ID',
+      status: 'pass',
+      message: `FIREBASE_PROJECT_ID configured: ${env.FIREBASE_PROJECT_ID}`
+    });
+  }
+  
+  // ========================================
+  // 9. FIREBASE_DATABASE_URL 테스트 🔥
+  // ========================================
+  if (!env.FIREBASE_DATABASE_URL) {
+    results.push({
+      name: 'FIREBASE_DATABASE_URL',
+      status: 'fail',
+      message: 'FIREBASE_DATABASE_URL not configured',
+      details: 'Add FIREBASE_DATABASE_URL in Cloudflare Dashboard → ur-live → Settings → Environment variables'
+    });
+  } else if (!env.FIREBASE_DATABASE_URL.startsWith('https://') || !env.FIREBASE_DATABASE_URL.includes('firebaseio.com')) {
+    results.push({
+      name: 'FIREBASE_DATABASE_URL',
+      status: 'warn',
+      message: 'FIREBASE_DATABASE_URL format may be invalid',
+      details: 'Expected format: https://*.firebaseio.com'
+    });
+  } else {
+    results.push({
+      name: 'FIREBASE_DATABASE_URL',
+      status: 'pass',
+      message: `FIREBASE_DATABASE_URL configured: ${env.FIREBASE_DATABASE_URL}`
+    });
+  }
+  
   return results;
 }
 
