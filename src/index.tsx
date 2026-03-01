@@ -543,14 +543,79 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
         iat: firebasePayload.iat
       })
       
-      // Firebase UID로 D1에서 사용자 조회
-      const user = await c.env.DB.prepare(`
-        SELECT id, email, name, user_type FROM users WHERE firebase_uid = ?
+      // 🎯 우선순위 1: Custom Claims에 userId가 있으면 직접 사용 (가장 빠름)
+      if (firebasePayload.userId) {
+        console.log('[Firebase Auth] 🎯 Using userId from Custom Claims:', firebasePayload.userId)
+        
+        const userByClaims = await c.env.DB.prepare(`
+          SELECT id, email, name, user_type, firebase_uid FROM users WHERE id = ?
+        `).bind(firebasePayload.userId).first()
+        
+        if (userByClaims) {
+          // firebase_uid가 없으면 업데이트
+          if (!userByClaims.firebase_uid) {
+            try {
+              await c.env.DB.prepare(`
+                UPDATE users SET firebase_uid = ? WHERE id = ?
+              `).bind(firebasePayload.uid, userByClaims.id).run()
+              console.log('[Firebase Auth] ✅ firebase_uid updated via Custom Claims:', userByClaims.id)
+            } catch (updateErr) {
+              console.warn('[Firebase Auth] ⚠️ firebase_uid update failed:', updateErr)
+            }
+          }
+          
+          const role = firebasePayload.role || userByClaims.user_type || 'user'
+          console.log('[Firebase Auth] ✅ User authenticated via Custom Claims')
+          
+          return {
+            userId: userByClaims.id,
+            userType: role,
+            email: userByClaims.email,
+            firebaseUID: firebasePayload.uid
+          }
+        }
+      }
+      
+      // 🔍 우선순위 2: Firebase UID로 D1에서 사용자 조회
+      let user = await c.env.DB.prepare(`
+        SELECT id, email, name, user_type, firebase_uid FROM users WHERE firebase_uid = ?
       `).bind(firebasePayload.uid).first()
+      
+      // 🚨 CRITICAL FIX: firebase_uid가 NULL인 기존 사용자 처리
+      if (!user && firebasePayload.uid.startsWith('kakao_')) {
+        const kakaoId = firebasePayload.uid.replace('kakao_', '')
+        console.warn('[Firebase Auth] firebase_uid not found, trying kakao_id fallback:', kakaoId)
+        
+        user = await c.env.DB.prepare(`
+          SELECT id, email, name, user_type, firebase_uid FROM users 
+          WHERE kakao_id = ? AND firebase_uid IS NULL
+        `).bind(kakaoId).first()
+        
+        if (user) {
+          console.log('[Firebase Auth] ✅ Found user via kakao_id fallback:', user.id)
+          // firebase_uid 즉시 업데이트
+          try {
+            await c.env.DB.prepare(`
+              UPDATE users SET firebase_uid = ? WHERE id = ?
+            `).bind(firebasePayload.uid, user.id).run()
+            console.log('[Firebase Auth] ✅ firebase_uid updated for existing user:', user.id)
+          } catch (updateErr) {
+            console.error('[Firebase Auth] ❌ firebase_uid update failed:', updateErr)
+          }
+        }
+      }
       
       if (!user) {
         console.warn('[Firebase Auth] User not found for UID:', firebasePayload.uid)
-        return null
+        return {
+          userId: 0,
+          userType: '',
+          errorDetails: {
+            code: 'USER_NOT_FOUND',
+            message: 'User not found in database',
+            tokenInfo: { uid: firebasePayload.uid }
+          }
+        } as any
       }
       
       // Custom Claims에서 role 추출 (user, seller, admin)
