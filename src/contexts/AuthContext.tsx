@@ -275,9 +275,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ✅ URL 파라미터 처리 - useRef 동기 제어 + window.history.replaceState
   useEffect(() => {
     const firebaseToken = searchParams.get('firebase_token')  // ✅ 변수로 추출
+    const userName = searchParams.get('userName')  // ✅ URL에서 사용자 이름 추출
     const errorParam = searchParams.get('error')
     const errorDetail = searchParams.get('detail')
-    const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName']
+    const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail']
     const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
     
     console.log('[AuthContext] 🔍 URL useEffect 트리거:', { 
@@ -356,6 +357,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] ✅ JWT 정리 완료')
         }
         
+        // ✅ URL 파라미터에서 userName 먼저 저장 (429 에러 대비)
+        if (userName) {
+          localStorage.setItem('user_name', decodeURIComponent(userName))
+          console.log('[AuthContext] ✅ URL에서 user_name 저장:', decodeURIComponent(userName))
+        }
+        
         // Firebase Custom Token 처리
         if (firebaseToken) {
           console.log('[AuthContext] 🔥 Firebase Custom Token 로그인 시작')
@@ -366,6 +373,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // ✅ returnUrl 저장만 하고 navigate는 onAuthStateChanged에서 처리
           const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
           console.log('[AuthContext] ✅ returnUrl 저장:', returnUrl)
+          
+          // ✅ CRITICAL FIX: onAuthStateChanged가 트리거될 때까지 짧은 대기
+          // signInWithCustomToken이 완료되어도 onAuthStateChanged는 비동기로 트리거됨
+          // 이 대기 시간 동안 Firebase Auth 상태가 업데이트됨
+          await new Promise(resolve => setTimeout(resolve, 300))
+          console.log('[AuthContext] ✅ Firebase Auth 상태 업데이트 대기 완료')
           // navigate는 하지 않음 - onAuthStateChanged가 완료되면 자동으로 페이지가 렌더링됨
         }
       } catch (error) {
