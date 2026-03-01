@@ -51,9 +51,9 @@ jobs:
         run: |
           rm -rf dist .vite node_modules/.vite
           npm run build
-        timeout-minutes: 15
+        timeout-minutes: 20
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Deploy to Cloudflare Pages
         id: deploy
