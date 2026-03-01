@@ -183,6 +183,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ URL 파라미터 처리 (한 번만 실행) - 카카오 OAuth 및 레거시 파라미터 정리
   useEffect(() => {
+    // ✅ URL 파라미터가 없으면 아예 실행하지 않음
+    const customToken = searchParams.get('firebase_token')
+    const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName']
+    const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+    
+    if (!customToken && !hasJwtTokens) {
+      // 처리할 파라미터가 없으면 스킵
+      return
+    }
+    
     // ✅ 중복 실행 방지 - 이미 처리했으면 스킵
     const processedKey = 'url_params_processed'
     const alreadyProcessed = sessionStorage.getItem(processedKey)
@@ -192,13 +202,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     
+    console.log('[AuthContext] 🔍 URL 파라미터 처리 시작:', { customToken: !!customToken, hasJwtTokens })
+    
     const handleUrlParams = async () => {
-      const customToken = searchParams.get('firebase_token')
       const userName = searchParams.get('userName')
       
-      // 🔥 JWT 토큰 및 모든 불필요 파라미터 자동 정리
-      const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName']
-      const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+      // ⚠️ 처리 시작 즉시 플래그 설정 (중복 방지)
+      sessionStorage.setItem(processedKey, 'true')
       
       if (hasJwtTokens) {
         console.warn('[AuthContext] ⚠️ URL에 JWT/레거시 토큰 감지 - 자동 정리 중')
@@ -227,9 +237,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSearchParams(new URLSearchParams(), { replace: true })
           console.log('[AuthContext] ✅ URL 파라미터 완전 제거')
           
-          // ✅ 처리 완료 표시 (중복 방지)
-          sessionStorage.setItem(processedKey, 'true')
-          
           // ✅ 페이지 새로고침 없이 onAuthStateChanged가 자동 처리하도록 함
           console.log('[AuthContext] ✅ Firebase Auth가 자동으로 상태 업데이트 처리')
         } catch (error) {
@@ -237,12 +244,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setInitError('카카오 로그인 처리 실패')
           // URL 파라미터 제거
           setSearchParams(new URLSearchParams(), { replace: true })
-          sessionStorage.setItem(processedKey, 'true')
         }
       } else if (hasJwtTokens) {
         // JWT 파라미터만 있고 firebase_token이 없으면 URL 정리만
         setSearchParams(new URLSearchParams(), { replace: true })
-        sessionStorage.setItem(processedKey, 'true')
       }
     }
     
