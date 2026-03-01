@@ -106,7 +106,13 @@ export function useMultiTabSync() {
       }
 
       // 4. user_type 변경 감지 (user ↔ seller ↔ admin 전환)
-      if (event.key === 'user_type' && event.oldValue !== event.newValue) {
+      // ⚠️ 중요: 초기 로그인 시 (null → user) 새로고침 방지
+      if (
+        event.key === 'user_type' && 
+        event.oldValue && // 이전 값이 존재해야 함 (null이 아님)
+        event.newValue && 
+        event.oldValue !== event.newValue
+      ) {
         console.log('[MultiTabSync] 🔄 다른 탭에서 사용자 타입 변경 감지')
         console.log('[MultiTabSync] Old:', event.oldValue, '→ New:', event.newValue)
         console.log('[MultiTabSync] 현재 탭 새로고침 중...')
