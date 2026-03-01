@@ -147,6 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] 📧 Email:', userCredential.user.email)
           console.log('[Auth] 🏷️ Display Name:', userCredential.user.displayName)
           
+          // 🔥 CRITICAL: 즉시 Firebase ID Token을 localStorage에 저장!
+          // (onAuthStateChanged를 기다리지 않음)
+          const idToken = await userCredential.user.getIdToken()
+          localStorage.setItem('firebase_token', idToken)
+          console.log('[Auth] 🔥 Firebase ID Token 즉시 저장 완료!')
+          console.log('[Auth] 🔑 Token preview:', idToken.substring(0, 50) + '...')
+          
           // 🎯 STEP 4: returnUrl 복구 (스마트 리다이렉트)
           const returnUrl = sessionStorage.getItem('returnUrl') || '/'
           sessionStorage.removeItem('returnUrl')
