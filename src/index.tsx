@@ -44,6 +44,7 @@ import { imageOptimizationMiddleware } from './lib/image-optimization';
 import { AppError, ErrorFactory } from './lib/errors';
 import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -2350,12 +2351,44 @@ app.post('/api/auth/kakao/firebase', cors(), async (c) => {
   }
 });
 
+// Firebase ID Token 검증을 위한 JWK Set (Worker 레벨 캐싱)
+let FIREBASE_JWKS: ReturnType<typeof createRemoteJWKSet> | null = null;
+const FIREBASE_PROJECT_ID = 'ur-live-1e63d';
+
+/**
+ * Firebase ID Token 검증 (Cloudflare Workers 호환)
+ */
+async function verifyFirebaseIdToken(idToken: string): Promise<any> {
+  try {
+    // JWK Set 캐싱 (Worker 인스턴스 수명 동안 유지)
+    if (!FIREBASE_JWKS) {
+      FIREBASE_JWKS = createRemoteJWKSet(
+        new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+      );
+      console.log('[Firebase] ✅ JWK Set initialized');
+    }
+    
+    // JWT 검증
+    const { payload } = await jwtVerify(idToken, FIREBASE_JWKS, {
+      issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+      audience: FIREBASE_PROJECT_ID,
+    });
+    
+    return payload;
+  } catch (error: any) {
+    console.error('[Firebase] ❌ Token verification failed:', error.message);
+    return null;
+  }
+}
+
 /**
  * Firebase Auth → D1 동기화
  * Firebase ID Token을 받아서 D1에 사용자 정보 업데이트
+ * 
+ * Rate Limiting: 동일 UID당 1분에 1회로 제한
  */
 app.post('/api/auth/firebase/sync', cors(), async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   
   try {
     const { idToken, firebaseUid, email, displayName } = await c.req.json();
@@ -2364,11 +2397,27 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
       return c.json({ success: false, error: 'idToken and firebaseUid are required' }, 400);
     }
     
+    // Rate Limiting: 동일 UID당 1분에 1회
+    const rateLimitKey = `sync_limit:${firebaseUid}`;
+    const lastSync = await CACHE_KV.get(rateLimitKey);
+    
+    if (lastSync) {
+      const elapsed = Date.now() - parseInt(lastSync);
+      if (elapsed < 60000) { // 1분
+        console.log(`[Firebase Sync] ⏳ Rate limited (${Math.floor((60000 - elapsed) / 1000)}s remaining):`, firebaseUid);
+        return c.json({ 
+          success: false, 
+          error: 'Rate limited', 
+          retryAfter: Math.ceil((60000 - elapsed) / 1000) 
+        }, 429);
+      }
+    }
+    
     console.log('[Firebase Sync] Syncing user to D1:', { firebaseUid, email });
     
     // Firebase ID Token 검증
-    const decoded = await verifyFirebaseToken(idToken, c.env);
-    if (!decoded || decoded.uid !== firebaseUid) {
+    const decoded = await verifyFirebaseIdToken(idToken);
+    if (!decoded || decoded.sub !== firebaseUid) {
       return c.json({ success: false, error: 'Invalid Firebase token' }, 401);
     }
     
@@ -2384,6 +2433,9 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
         SET email = ?, name = ?, updated_at = CURRENT_TIMESTAMP
         WHERE firebase_uid = ?
       `).bind(email || existingUser.email, displayName || existingUser.name, firebaseUid).run();
+      
+      // Rate Limit 키 갱신
+      await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 60 });
       
       console.log('[Firebase Sync] ✅ 기존 사용자 업데이트 완료:', existingUser.id);
       
@@ -2409,6 +2461,9 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
             SET firebase_uid = ?, name = ?, updated_at = CURRENT_TIMESTAMP
             WHERE email = ?
           `).bind(firebaseUid, displayName || userByEmail.name, email).run();
+          
+          // Rate Limit 키 갱신
+          await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 60 });
           
           console.log('[Firebase Sync] ✅ 기존 이메일 사용자에 firebase_uid 연결:', userByEmail.id);
           
