@@ -335,7 +335,7 @@ export default function AlimtalkSendPage() {
                   {variables.map((variable, index) => (
                     <div key={variable.name}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        #{{{variable.name}}}
+                        #{'{' + variable.name + '}'}
                       </label>
                       <input
                         type="text"
