@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const rateLimitKey = `rate_limit_${firebaseUser.uid}`
         const rateLimitUntil = localStorage.getItem(rateLimitKey)
         const now = Date.now()
-        const syncInterval = 60000 // 1분
+        const syncInterval = 600000 // 10분 (서버와 동기화 - 60000ms × 10)
         
         // ✅ Rate Limit 중이면 sync 완전 스킵
         if (rateLimitUntil && now < parseInt(rateLimitUntil)) {
@@ -370,12 +370,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] ✅ JWT 정리 완료')
         }
         
-        // ✅ CRITICAL FIX: URL 파라미터에서 userName을 임시 저장소에 저장
-        // onAuthStateChanged에서 최우선으로 사용됨
+        // ✅ CRITICAL FIX 1: URL 파라미터에서 userName을 즉시 저장 (서버 sync 불필요)
+        // 429 에러가 발생해도 이름이 보장됨
         if (userName) {
           const decodedName = decodeURIComponent(userName)
-          localStorage.setItem('temp_user_name_from_url', decodedName)
-          console.log('[AuthContext] ✅ URL에서 user_name 임시 저장 (최우선 사용):', decodedName)
+          localStorage.setItem('user_name', decodedName) // 즉시 저장!
+          localStorage.setItem('temp_user_name_from_url', decodedName) // 임시 저장소에도 저장
+          console.log('[AuthContext] 🎯 URL에서 user_name 즉시 저장 (서버 sync 불필요):', decodedName)
         }
         
         // Firebase Custom Token 처리
@@ -384,6 +385,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           const userCredential = await signInWithCustomToken(auth, firebaseToken)
           console.log('[AuthContext] ✅ Firebase 로그인 성공:', userCredential.user.uid)
+          
+          // ✅ CRITICAL FIX 2: Firebase displayName에 userName 동기화 (근본 해결)
+          // 이렇게 하면 서버(D1)가 죽어도 Firebase에서 이름을 가져올 수 있음
+          const urlUserName = localStorage.getItem('temp_user_name_from_url')
+          if (urlUserName && !userCredential.user.displayName) {
+            try {
+              const { updateProfile } = await import('firebase/auth')
+              await updateProfile(userCredential.user, { displayName: urlUserName })
+              console.log('[AuthContext] 🎯 Firebase displayName 동기화 완료:', urlUserName)
+            } catch (err) {
+              console.warn('[AuthContext] ⚠️ Firebase displayName 업데이트 실패 (무시):', err)
+            }
+          }
           
           // ✅ returnUrl 저장만 하고 navigate는 onAuthStateChanged에서 처리
           const returnUrl = localStorage.getItem('loginReturnUrl') || '/'

@@ -2465,18 +2465,20 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
       return c.json({ success: false, error: 'idToken and firebaseUid are required' }, 400);
     }
     
-    // Rate Limiting: 동일 UID당 1분에 1회
+    // Rate Limiting: 동일 UID당 10분에 1회 (기존 1분에서 10배 완화)
+    // 🎯 CRITICAL FIX: 로그인 시 429 에러 원천 차단
     const rateLimitKey = `sync_limit:${firebaseUid}`;
     const lastSync = await CACHE_KV.get(rateLimitKey);
+    const SYNC_INTERVAL_MS = 600000; // 10분 (60000ms × 10)
     
     if (lastSync) {
       const elapsed = Date.now() - parseInt(lastSync);
-      if (elapsed < 60000) { // 1분
-        console.log(`[Firebase Sync] ⏳ Rate limited (${Math.floor((60000 - elapsed) / 1000)}s remaining):`, firebaseUid);
+      if (elapsed < SYNC_INTERVAL_MS) {
+        console.log(`[Firebase Sync] ⏳ Rate limited (${Math.floor((SYNC_INTERVAL_MS - elapsed) / 1000)}s remaining):`, firebaseUid);
         return c.json({ 
           success: false, 
           error: 'Rate limited', 
-          retryAfter: Math.ceil((60000 - elapsed) / 1000) 
+          retryAfter: Math.ceil((SYNC_INTERVAL_MS - elapsed) / 1000) 
         }, 429);
       }
     }
