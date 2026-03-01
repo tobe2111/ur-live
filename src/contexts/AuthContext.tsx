@@ -8,6 +8,9 @@
  * 4. 무한 루프 방지: Lock + replaceState 즉시 실행
  */
 
+// 🔧 Debug mode (환경변수로 제어)
+const DEBUG_AUTH = import.meta.env.DEV || false
+
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { 
@@ -80,13 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // 🚫 Lock 1: 이미 처리 중이면 스킵
     if (isProcessingTokenRef.current) {
-      console.log('[Auth] ⏭️ 이미 처리 중 - 스킵')
+      if (DEBUG_AUTH) console.log('[Auth] ⏭️ 이미 처리 중 - 스킵')
       return
     }
     
     // 🚫 Lock 2: 이미 처리된 토큰이면 스킵
     if (firebaseToken && processedTokenRef.current === firebaseToken) {
-      console.log('[Auth] ⏭️ 이미 처리된 토큰 - 스킵')
+      if (DEBUG_AUTH) console.log('[Auth] ⏭️ 이미 처리된 토큰 - 스킵')
       return
     }
     
@@ -102,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // ✅ firebase_token이 있으면 처리
     if (firebaseToken) {
-      console.log('[Auth] 🔥 Firebase Token 감지')
+      if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Token 감지')
       
       isProcessingTokenRef.current = true
       processedTokenRef.current = firebaseToken
@@ -112,25 +115,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           // 🎯 STEP 1: URL 파라미터 즉시 제거 (무한 루프 방지)
           window.history.replaceState({}, document.title, window.location.pathname)
-          console.log('[Auth] ✅ URL 파라미터 제거 완료')
+          if (DEBUG_AUTH) console.log('[Auth] ✅ URL 파라미터 제거 완료')
           
           // 🎯 STEP 2: userName이 있으면 즉시 localStorage 저장 (최우선!)
           if (userName) {
             const decodedName = decodeURIComponent(userName)
             localStorage.setItem('user_name', decodedName)
-            console.log('[Auth] 🎯 URL userName 즉시 저장:', decodedName)
+            if (DEBUG_AUTH) console.log('[Auth] 🎯 URL userName 즉시 저장:', decodedName)
           }
           
           // 🎯 STEP 3: Firebase 로그인
-          console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
+          if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
           const userCredential = await signInWithCustomToken(auth, firebaseToken)
-          console.log('[Auth] ✅ Firebase 로그인 성공:', userCredential.user.uid)
+          if (DEBUG_AUTH) console.log('[Auth] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
           // 🎯 STEP 4: returnUrl 복구 (스마트 리다이렉트)
           const returnUrl = sessionStorage.getItem('returnUrl') || '/'
           sessionStorage.removeItem('returnUrl')
           
-          console.log('[Auth] 🎯 리다이렉트 준비:', returnUrl)
+          if (DEBUG_AUTH) console.log('[Auth] 🎯 리다이렉트 준비:', returnUrl)
           
           // onAuthStateChanged가 트리거될 때까지 짧은 대기
           await new Promise(resolve => setTimeout(resolve, 500))
@@ -157,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
   
   useEffect(() => {
-    console.log('[Auth] 🔥 Firebase Auth 리스너 시작')
+    if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 시작')
     
     // Firebase 초기화 확인
     if (!isFirebaseInitialized()) {
@@ -171,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         // ✅ 로그인 상태
-        console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
+        if (DEBUG_AUTH) console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
         
         try {
           // 🎯 Custom Claims에서 정보 추출
@@ -191,9 +194,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // localStorage에 없을 때만 Claims 또는 displayName 사용
             const finalUserName = userNameFromClaims || firebaseUser.displayName || '사용자'
             localStorage.setItem('user_name', finalUserName)
-            console.log('[Auth] ✅ user_name 저장 (Claims/displayName):', finalUserName)
+            if (DEBUG_AUTH) console.log('[Auth] ✅ user_name 저장 (Claims/displayName):', finalUserName)
           } else {
-            console.log('[Auth] ✅ user_name 유지 (URL 우선):', existingUserName)
+            if (DEBUG_AUTH) console.log('[Auth] ✅ user_name 유지 (URL 우선):', existingUserName)
           }
           
           localStorage.setItem('user_type', role)
@@ -204,12 +207,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserRole(role)
           setIsAuthReady(true)
           
-          console.log('[Auth] 🚀 낙관적 업데이트 완료:', {
-            uid: firebaseUser.uid,
-            userId,
-            userName: localStorage.getItem('user_name'),
-            role
-          })
+          if (DEBUG_AUTH) {
+            console.log('[Auth] 🚀 낙관적 업데이트 완료:', {
+              uid: firebaseUser.uid,
+              userId,
+              userName: localStorage.getItem('user_name'),
+              role
+            })
+          }
           
         } catch (error) {
           console.error('[Auth] ❌ Token 추출 실패:', error)
@@ -221,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
       } else {
         // ❌ 로그아웃 상태
-        console.log('[Auth] ❌ 로그아웃됨')
+        if (DEBUG_AUTH) console.log('[Auth] ❌ 로그아웃됨')
         
         localStorage.removeItem('firebase_token')
         localStorage.removeItem('user_type')
@@ -235,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     
     return () => {
-      console.log('[Auth] 🔥 Firebase Auth 리스너 해제')
+      if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 해제')
       unsubscribe()
     }
   }, []) // ✅ 빈 의존성 배열 - 한 번만 실행
@@ -245,11 +250,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ============================================
   
   const loginWithEmail = async (email: string, password: string) => {
-    console.log('[Auth] 📧 이메일 로그인 시도:', email)
+    if (DEBUG_AUTH) console.log('[Auth] 📧 이메일 로그인 시도:', email)
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      console.log('[Auth] ✅ 이메일 로그인 성공:', userCredential.user.uid)
+      if (DEBUG_AUTH) console.log('[Auth] ✅ 이메일 로그인 성공:', userCredential.user.uid)
       
     } catch (error: any) {
       console.error('[Auth] ❌ 이메일 로그인 실패:', error)
@@ -258,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const loginWithKakao = async (accessToken: string) => {
-    console.log('[Auth] 🟡 카카오 로그인 시작')
+    if (DEBUG_AUTH) console.log('[Auth] 🟡 카카오 로그인 시작')
     
     try {
       // 백엔드 API 호출
@@ -276,7 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Firebase 로그인
       await signInWithCustomToken(auth, data.customToken)
-      console.log('[Auth] ✅ 카카오 로그인 성공')
+      if (DEBUG_AUTH) console.log('[Auth] ✅ 카카오 로그인 성공')
       
     } catch (error: any) {
       console.error('[Auth] ❌ 카카오 로그인 실패:', error)
@@ -285,11 +290,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const logout = async () => {
-    console.log('[Auth] 🚪 로그아웃 시작')
+    if (DEBUG_AUTH) console.log('[Auth] 🚪 로그아웃 시작')
     
     try {
       await signOut(auth)
-      console.log('[Auth] ✅ 로그아웃 완료')
+      if (DEBUG_AUTH) console.log('[Auth] ✅ 로그아웃 완료')
       
     } catch (error) {
       console.error('[Auth] ❌ 로그아웃 실패:', error)
