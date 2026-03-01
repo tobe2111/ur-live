@@ -2374,6 +2374,7 @@ async function verifyFirebaseIdToken(idToken: string): Promise<any> {
       audience: FIREBASE_PROJECT_ID,
     });
     
+    console.log('[Firebase] ✅ Token verified:', { sub: payload.sub, email: payload.email });
     return payload;
   } catch (error: any) {
     console.error('[Firebase] ❌ Token verification failed:', error.message);
@@ -2417,9 +2418,23 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
     
     // Firebase ID Token 검증
     const decoded = await verifyFirebaseIdToken(idToken);
+    console.log('[Firebase Sync] Token decoded:', { 
+      hasDecoded: !!decoded, 
+      decodedSub: decoded?.sub, 
+      firebaseUid,
+      match: decoded?.sub === firebaseUid 
+    });
+    
     if (!decoded || decoded.sub !== firebaseUid) {
+      console.error('[Firebase Sync] ❌ Token validation failed:', {
+        decoded: !!decoded,
+        expectedUid: firebaseUid,
+        actualSub: decoded?.sub
+      });
       return c.json({ success: false, error: 'Invalid Firebase token' }, 401);
     }
+    
+    console.log('[Firebase Sync] ✅ Token verified successfully');
     
     // D1에서 firebase_uid로 사용자 찾기
     const existingUser = await DB.prepare(
