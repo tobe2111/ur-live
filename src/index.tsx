@@ -2155,7 +2155,7 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         const customToken = await firebase.createCustomToken(firebaseUID, {
           role: 'user', // Custom Claims: 역할
           userId: userId,
-          userName: name,  // 🎯 NEW: 통합 인증
+          userName: nickname,  // 🎯 NEW: 통합 인증 (카카오 닉네임)
           email: email || undefined,
           kakaoId: kakaoId
         });
