@@ -2171,12 +2171,16 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         
         console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
         
-        // 5. ✅ Redirect with Firebase Custom Token only
+        // 5. ✅ Redirect with Firebase Custom Token (preserving all original query params)
         console.log('[Kakao Sync] Step 5: Redirecting with Firebase Custom Token...');
         
-        const redirectUrl = state.includes('?') 
-          ? `${state}&firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`
-          : `${state}?firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`;
+        // Parse state URL to preserve all query parameters
+        const stateUrl = new URL(state, 'https://dummy.com');
+        stateUrl.searchParams.set('firebase_token', customToken);
+        stateUrl.searchParams.set('userName', nickname);
+        
+        // Reconstruct URL with all parameters preserved
+        const redirectUrl = stateUrl.pathname + stateUrl.search;
         
         console.log('[Kakao Sync] Redirect URL (Firebase):', redirectUrl.substring(0, 100) + '...');
         return c.redirect(redirectUrl);

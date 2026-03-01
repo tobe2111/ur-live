@@ -113,9 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 🚀 즉시 비동기 처리 (UI 블로킹 안 함)
       ;(async () => {
         try {
-          // 🎯 STEP 1: URL 파라미터 즉시 제거 (무한 루프 방지)
-          window.history.replaceState({}, document.title, window.location.pathname)
-          if (DEBUG_AUTH) console.log('[Auth] ✅ URL 파라미터 제거 완료')
+          // 🎯 STEP 1: firebase_token과 userName만 URL에서 제거 (다른 파라미터는 유지)
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.delete('firebase_token');
+          currentUrl.searchParams.delete('userName');
+          
+          // Clean URL로 교체
+          const cleanUrl = currentUrl.pathname + currentUrl.search;
+          window.history.replaceState({}, document.title, cleanUrl);
+          
+          if (DEBUG_AUTH) console.log('[Auth] ✅ URL 파라미터 제거 완료 (다른 params 유지)')
+          if (DEBUG_AUTH) console.log('[Auth] 🎯 Clean URL:', cleanUrl)
           
           // 🎯 STEP 2: userName이 있으면 즉시 localStorage 저장 (최우선!)
           if (userName) {
