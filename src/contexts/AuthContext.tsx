@@ -31,6 +31,7 @@ type UserRole = 'user' | 'seller' | 'admin'
 
 interface AuthContextType {
   user: User | null
+  loading: boolean        // ✅ 핵심: 초기화 완료 여부
   isAuthReady: boolean
   isLoggedIn: boolean
   userRole: UserRole | null
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // State
   const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)           // ✅ 초기값 true (초기화 중)
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [initError, setInitError] = useState<string | null>(null)
@@ -203,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[Auth] ❌ Firebase 초기화 실패')
       setInitError('Firebase 초기화 실패. 페이지를 새로고침해 주세요.')
       setIsAuthReady(true)
+      setLoading(false)  // ✅ 초기화 실패 시에도 loading 해제
       return
     }
     
@@ -242,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(firebaseUser)
           setUserRole(role)
           setIsAuthReady(true)
+          setLoading(false)  // ✅ 핵심: 초기화 완료
           
           if (DEBUG_AUTH) {
             console.log('[Auth] 🚀 낙관적 업데이트 완료:', {
@@ -258,6 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(firebaseUser)
           setUserRole('user')
           setIsAuthReady(true)
+          setLoading(false)  // ✅ 에러 발생 시에도 loading 해제
         }
         
       } else {
@@ -272,6 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setUserRole(null)
         setIsAuthReady(true)
+        setLoading(false)  // ✅ 로그아웃 시에도 loading 해제
       }
     })
     
@@ -344,6 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const value: AuthContextType = {
     user,
+    loading,              // ✅ 핵심: loading 상태 제공
     isAuthReady,
     isLoggedIn: !!user,
     userRole,
@@ -351,6 +358,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithEmail,
     loginWithKakao,
     logout
+  }
+  
+  // ✅ 디버그 로그 (매 렌더링마다 상태 추적)
+  if (DEBUG_AUTH) {
+    console.log('[AuthContext] 🔄 렌더링:', {
+      user: user?.uid || 'null',
+      loading,
+      isAuthReady,
+      userRole
+    })
   }
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
