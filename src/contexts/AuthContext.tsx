@@ -59,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ✅ useRef로 동기 처리 상태 즉시 제어 (sessionStorage 대신)
   const isProcessingTokenRef = useRef(false)
   const processedTokenRef = useRef<string | null>(null)
+  const authChangeCounterRef = useRef(0)  // ✅ 디버그: onAuthStateChanged 트리거 횟수
+  const syncAttemptedUidsRef = useRef<Set<string>>(new Set())  // ✅ uid별 sync 관리
 
   // Firebase Auth로 모든 경로 통일 관리
   console.log('[AuthContext] 🔥 100% Firebase Auth 모드 + useRef 동기 제어')
@@ -90,9 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('[AuthContext] ✅ Firebase 초기화 상태 확인 완료')
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('[AuthContext] 🔥 onAuthStateChanged 트리거:', {
+      authChangeCounterRef.current++
+      console.log(`[AuthContext] 🔥 onAuthStateChanged 트리거 #${authChangeCounterRef.current}:`, {
         hasUser: !!firebaseUser,
-        email: firebaseUser?.email
+        email: firebaseUser?.email,
+        uid: firebaseUser?.uid
       })
       
       if (firebaseUser) {
@@ -135,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (rateLimitUntil && now < parseInt(rateLimitUntil)) {
           const waitSeconds = Math.ceil((parseInt(rateLimitUntil) - now) / 1000)
           console.log(`[AuthContext] ⏱️ Rate Limit 대기 중 (${waitSeconds}초 남음)`)
-        } else if (!syncAttempted && (!lastSync || now - parseInt(lastSync) > syncInterval)) {
+        } else if (!syncAttemptedUidsRef.current.has(firebaseUser.uid) && (!lastSync || now - parseInt(lastSync) > syncInterval)) {
           try {
             const syncResponse = await api.post('/api/auth/firebase/sync', {
               idToken,
@@ -183,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.error('[AuthContext] ❌ D1 동기화 실패:', error)
             }
           } finally {
-            setSyncAttempted(true)
+            syncAttemptedUidsRef.current.add(firebaseUser.uid)  // ✅ uid별로 기록
           }
         } else {
           console.log('[AuthContext] ⏭️ Sync 스킵 (최근 sync: ' + (lastSync ? new Date(parseInt(lastSync)).toLocaleTimeString() : 'N/A') + ')')
@@ -221,8 +225,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('firebase_token', idToken)
         localStorage.setItem('user_type', role || 'user')
         
+        // ✅ 상태 업데이트를 한 번에 (batch update)
         setUser(firebaseUser)
         setUserRole(role || 'user')
+        setIsAuthReady(true)  // ✅ 여기서 한 번만 설정
         
         console.log('[AuthContext] ✅ 로그인 상태 확정:', {
           uid: firebaseUser.uid,
@@ -231,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           source: 'Firebase Auth (Single Source of Truth)'
         })
       } else {
-        console.log('[AuthContext] ❌ 사용자 로그아웃 상태')
+        console.log(`[AuthContext] ❌ 사용자 로그아웃 상태 (#${authChangeCounterRef.current})`)
         
         // Firebase 토큰도 없으면 진짜 로그아웃
         localStorage.removeItem('firebase_token')
@@ -239,9 +245,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setUser(null)
         setUserRole(null)
+        setIsAuthReady(true)  // ✅ 로그아웃도 ready
       }
-      
-      setIsAuthReady(true)
     })
 
     return () => {
@@ -252,11 +257,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ✅ URL 파라미터 처리 - useRef 동기 제어 + window.history.replaceState
   useEffect(() => {
-    const firebaseToken = searchParams.get('firebase_token')
+    const firebaseToken = searchParams.get('firebase_token')  // ✅ 변수로 추출
     const errorParam = searchParams.get('error')
     const errorDetail = searchParams.get('detail')
     const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName']
     const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+    
+    console.log('[AuthContext] 🔍 URL useEffect 트리거:', { 
+      firebaseToken: firebaseToken?.substring(0, 20) + '...', 
+      hasJwtTokens,
+      pathname: window.location.pathname 
+    })
     
     // ✅ 가드 0: 에러 파라미터가 있으면 즉시 제거하고 에러 표시
     if (errorParam) {
@@ -335,15 +346,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userCredential = await signInWithCustomToken(auth, firebaseToken)
           console.log('[AuthContext] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
-          // ✅ 로그인 성공 후 리다이렉트 (AuthContext가 주도권 가짐)
+          // ✅ returnUrl 저장만 하고 navigate는 onAuthStateChanged에서 처리
           const returnUrl = localStorage.getItem('loginReturnUrl') || '/'
-          localStorage.removeItem('loginReturnUrl')
-          
-          // onAuthStateChanged가 완료될 때까지 약간 대기
-          setTimeout(() => {
-            console.log('[AuthContext] 🔄 로그인 완료 - 리다이렉트:', returnUrl)
-            navigate(returnUrl, { replace: true })
-          }, 500)
+          console.log('[AuthContext] ✅ returnUrl 저장:', returnUrl)
+          // navigate는 하지 않음 - onAuthStateChanged가 완료되면 자동으로 페이지가 렌더링됨
         }
       } catch (error) {
         console.error('[AuthContext] ❌ URL 파라미터 처리 실패:', error)
@@ -355,7 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     handleUrlParams()
-  }, [searchParams.get('firebase_token'), navigate]) // ✅ firebase_token 값만 감시
+  }, [searchParams, navigate])  // ✅ searchParams 전체를 의존성으로
 
   /**
    * 이메일/비밀번호 로그인
