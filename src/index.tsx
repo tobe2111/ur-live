@@ -3315,13 +3315,23 @@ app.post('/api/shipping-addresses', cors(), requireAuth, async (c) => {
     const postalCode = body.postal_code;
     const address = body.address;
     const addressDetail = body.address_detail;
-    const isDefault = body.is_default;
+    let isDefault = body.is_default;
     
     console.log('[POST /api/shipping-addresses] Received:', JSON.stringify(body));
     
     if (!userId || !recipientName || !phone || !address) {
       console.error('[POST /api/shipping-addresses] Missing required fields:', { userId, recipientName, phone, address });
       return c.json({ success: false, error: '필수 정보를 입력해주세요' }, 400);
+    }
+    
+    // 🎯 첫 번째 배송지인 경우 자동으로 기본 배송지로 설정
+    const existingAddresses = await DB.prepare(`
+      SELECT COUNT(*) as count FROM shipping_addresses WHERE user_id = ?
+    `).bind(userId).first();
+    
+    if (existingAddresses && existingAddresses.count === 0) {
+      isDefault = true; // 첫 배송지는 무조건 기본 배송지
+      console.log('[POST /api/shipping-addresses] 첫 번째 배송지 → 자동으로 기본 배송지 설정');
     }
     
     // 기본 배송지로 설정하는 경우, 기존 기본 배송지 해제
