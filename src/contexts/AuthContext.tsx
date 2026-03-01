@@ -109,6 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: role || 'user'
         })
         
+        // ✅ Custom Claims에서 userId 바로 가져오기 (API 호출 불필요!)
+        const userIdFromClaims = idTokenResult.claims.userId as number | undefined
+        const userNameFromFirebase = firebaseUser.displayName
+        
+        if (userIdFromClaims) {
+          localStorage.setItem('user_id', userIdFromClaims.toString())
+          console.log('[AuthContext] ✅ user_id를 Custom Claims에서 저장:', userIdFromClaims)
+        }
+        
+        if (userNameFromFirebase) {
+          localStorage.setItem('user_name', userNameFromFirebase)
+          console.log('[AuthContext] ✅ user_name을 Firebase에서 저장:', userNameFromFirebase)
+        }
+        
         // D1 동기화 (firebase_uid 업데이트) - Rate Limiting 회피 + 백오프
         const lastSyncKey = `last_sync_${firebaseUser.uid}`
         const lastSync = localStorage.getItem(lastSyncKey)
