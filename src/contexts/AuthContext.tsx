@@ -127,21 +127,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('[AuthContext] ✅ D1 동기화 완료')
           } catch (error: any) {
             const status = error?.response?.status
+            const errorData = error?.response?.data
             
-            if (status === 429) {
+            // ✅ firebase_uid 컬럼 없음 에러는 무시 (마이그레이션 대기 중)
+            if (errorData?.error?.includes('no such column: firebase_uid') || 
+                errorData?.error?.includes('firebase_uid')) {
+              console.warn('[AuthContext] ⚠️ D1 마이그레이션 대기 중 - firebase_uid 컬럼 없음')
+              console.warn('[AuthContext] ℹ️ 로그인은 정상 작동, D1 sync만 스킵')
+              localStorage.setItem(lastSyncKey, now.toString())
+            } else if (status === 429) {
               console.warn('[AuthContext] ⚠️ Rate Limit - sync 스킵 (사용자 인증은 유지)')
-              // Rate limit에도 인증 상태 유지
               localStorage.setItem(lastSyncKey, now.toString())
             } else if (status === 401) {
               console.error('[AuthContext] ❌ 401 Unauthorized - Token 검증 실패')
-              console.error('[AuthContext] 상세:', {
-                firebaseUid: firebaseUser.uid,
-                email: firebaseUser.email,
-                errorMessage: error?.response?.data?.error
-              })
-              // ✅ 401이어도 Firebase User가 있으면 로그인 상태 유지 (무한 루프 방지)
               console.warn('[AuthContext] ⚠️ D1 sync 실패했지만 Firebase Auth는 유효함 - 로그인 유지')
-              localStorage.setItem(lastSyncKey, now.toString()) // 재시도 방지
+              localStorage.setItem(lastSyncKey, now.toString())
             } else {
               console.error('[AuthContext] ❌ D1 동기화 실패:', error)
             }

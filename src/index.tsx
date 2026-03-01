@@ -2560,9 +2560,27 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
     
   } catch (error) {
     console.error('[Firebase Sync] Error:', error);
+    
+    // firebase_uid 컬럼이 없는 경우 graceful 처리
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    if (errorMsg.includes('no such column: firebase_uid')) {
+      console.warn('[Firebase Sync] ⚠️ firebase_uid column not found - migration needed');
+      // 마이그레이션 전까지는 성공으로 응답하여 사용자 경험 유지
+      return c.json({ 
+        success: true,
+        warning: 'Database migration pending',
+        requiresMigration: true
+      });
+    }
+    
+    // D1 에러 로깅
+    if (errorMsg.includes('D1_ERROR') || errorMsg.includes('SQLITE_ERROR')) {
+      console.error('[Firebase Sync] 🔴 D1 Database Error:', errorMsg);
+    }
+    
     return c.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Sync failed',
+      error: errorMsg,
     }, 500);
   }
 });
