@@ -28,8 +28,8 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false) // ⚠️ 중복 리다이렉트 방지
   
-  // Get return URL from query params or localStorage
-  const returnUrl = searchParams.get('returnUrl') || localStorage.getItem('loginReturnUrl') || '/'
+  // 🎯 스마트 리다이렉트: returnUrl을 sessionStorage에 저장 (로그인 후 복귀)
+  const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
 
   // ✅ 이미 로그인되어 있으면 홈으로 리다이렉트 (AuthContext가 주도권 가짐)
   // 단, AuthContext 초기화 완료 후에만 체크
@@ -48,10 +48,11 @@ export default function LoginPage() {
   }, [isAuthReady, isLoggedIn, navigate])
 
   useEffect(() => {
-    // Save returnUrl to localStorage if provided
+    // 🎯 returnUrl을 sessionStorage에 저장 (로그인 후 복귀)
     const urlParam = searchParams.get('returnUrl')
     if (urlParam) {
-      localStorage.setItem('loginReturnUrl', urlParam)
+      sessionStorage.setItem('returnUrl', urlParam)
+      console.log('[LoginPage] 🎯 returnUrl 저장:', urlParam)
     }
     
     // Kakao SDK 초기화 확인

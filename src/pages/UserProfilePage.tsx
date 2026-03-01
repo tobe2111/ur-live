@@ -21,7 +21,9 @@ export default function UserProfilePage() {
     // ✅ 2. 로그인 체크: isAuthReady 후에만 실행
     if (!isLoggedIn) {
       console.log('[UserProfilePage] ❌ 로그인 필요 - /login으로 리다이렉트')
-      navigate('/login?returnUrl=/user/profile')
+      // 🎯 스마트 리다이렉트: 현재 페이지를 returnUrl로 저장
+      sessionStorage.setItem('returnUrl', '/user/profile')
+      navigate('/login', { replace: true })
       return
     }
 

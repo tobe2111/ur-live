@@ -1841,6 +1841,7 @@ app.post('/api/admin/login', cors(), async (c) => {
       await firebase.auth.setCustomUserClaims(firebaseUID, {
         role: 'admin',
         userId: admin.id,
+        userName: admin.name || admin.email,  // 🎯 NEW
         email: admin.email
       });
       
@@ -1848,6 +1849,7 @@ app.post('/api/admin/login', cors(), async (c) => {
       const customToken = await firebase.createCustomToken(firebaseUID, {
         role: 'admin',
         userId: admin.id,
+        userName: admin.name || admin.email,  // 🎯 NEW
         email: admin.email
       });
       
@@ -2153,6 +2155,7 @@ app.get('/auth/kakao/sync/callback', async (c) => {
         const customToken = await firebase.createCustomToken(firebaseUID, {
           role: 'user', // Custom Claims: 역할
           userId: userId,
+          userName: name,  // 🎯 NEW: 통합 인증
           email: email || undefined,
           kakaoId: kakaoId
         });
@@ -2252,7 +2255,8 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     const firebaseUID = `kakao_${user.kakao_id}`;
     const customToken = await firebase.createCustomToken(firebaseUID, {
       userId: user.id,
-      userType: 'user',
+      userName: user.name,  // 🎯 NEW: 즉시 이름 표시 (통합 인증)
+      role: user.type || 'user',  // 🎯 NEW: role 통일 (userType → role)
       email: user.email || undefined,
       kakaoId: user.kakao_id
     });
