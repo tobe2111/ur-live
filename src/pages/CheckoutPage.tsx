@@ -5,6 +5,7 @@ import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn, saveUserInfo } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
 import { CustomModal, useModal } from '@/components/CustomModal'
 
 // 🚨 중요: 결제위젯 SDK는 HTML에서 로드됨 (index.html 참고)
@@ -58,6 +59,10 @@ function generateRandomString() {
 
 export default function CheckoutPage() {
   console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
+  
+  // ✅ AuthContext에서 isAuthReady 가져오기
+  const { isAuthReady } = useAuth()
+  
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -90,6 +95,19 @@ export default function CheckoutPage() {
     address_detail: '',
     is_default: 0
   })
+  
+  // ✅ isAuthReady 가드: 인증 초기화 전에는 로딩 표시
+  if (!isAuthReady) {
+    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...')
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
 
   // 셀러별 장바구니 그룹화 및 배송비 계산
   const sellerGroups = cartItems.reduce((groups, item) => {

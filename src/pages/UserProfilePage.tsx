@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { getUserId, getUserName, logout } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { LogoutButton } from '@/components/my-page/logout-button'
@@ -9,45 +8,67 @@ import { Footer } from '@/components/my-page/footer'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
-  const { isLoggedIn, isAuthReady } = useAuth()
+  const { user, isLoggedIn, isAuthReady, logout: authLogout } = useAuth()
   const [userName, setUserName] = useState('')
 
   useEffect(() => {
-    // ✅ JWT 인증 확인
+    // ✅ 1. isAuthReady 가드: 인증 초기화 전에는 대기
     if (!isAuthReady) {
-      return // 인증 초기화 대기
+      console.log('[UserProfilePage] ⏳ 인증 초기화 대기 중...')
+      return
     }
 
+    // ✅ 2. 로그인 체크: isAuthReady 후에만 실행
     if (!isLoggedIn) {
-      // JWT 토큰 없으면 로그인 페이지로 리다이렉트
-      console.log('[UserProfilePage] 로그인 필요 - /login으로 리다이렉트')
+      console.log('[UserProfilePage] ❌ 로그인 필요 - /login으로 리다이렉트')
       navigate('/login?returnUrl=/user/profile')
       return
     }
 
-    // ✅ JWT에서 사용자 정보 가져오기
-    const name = getUserName()
-    setUserName(name || '게스트')
+    // ✅ 3. Firebase User에서 사용자 이름 가져오기 (Single Source of Truth)
+    // displayName이 없으면 localStorage의 user_name 사용 (카카오 로그인 시 저장됨)
+    const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
+    setUserName(name)
     
-    console.log('[UserProfilePage] 사용자 정보 로드:', {
-      userId: getUserId(),
+    console.log('[UserProfilePage] ✅ 사용자 정보 로드:', {
+      uid: user?.uid,
+      displayName: user?.displayName,
+      email: user?.email,
       userName: name,
       isLoggedIn
     })
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isAuthReady, isLoggedIn, user, navigate])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log('[UserProfilePage] 로그아웃 처리')
     
-    // ✅ JWT 로그아웃 (auth.ts의 logout 함수 사용)
-    logout()
-    
-    // 홈페이지로 리다이렉트
-    navigate('/')
+    try {
+      // ✅ AuthContext의 logout 사용 (Firebase + localStorage 모두 처리)
+      await authLogout()
+      
+      console.log('[UserProfilePage] ✅ 로그아웃 완료')
+      // 홈페이지로 리다이렉트
+      navigate('/')
+    } catch (error) {
+      console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+    }
   }
 
-  if (!isAuthReady || !isLoggedIn) {
-    return null // 로그인 페이지로 리다이렉트 중
+  // ✅ 4. isAuthReady 전에는 로딩 표시
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ 5. 로그인 안 됨: 리다이렉트 중
+  if (!isLoggedIn) {
+    return null
   }
 
   return (
