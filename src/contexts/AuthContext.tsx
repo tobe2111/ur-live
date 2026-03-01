@@ -9,7 +9,8 @@
  */
 
 // 🔧 Debug mode (환경변수로 제어)
-const DEBUG_AUTH = import.meta.env.DEV || false
+// 🚨 TEMPORARY: Always debug in production to diagnose login issue
+const DEBUG_AUTH = true
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -105,7 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // ✅ firebase_token이 있으면 처리
     if (firebaseToken) {
-      if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Token 감지')
+      console.log('[Auth] 🔥🔥🔥 Firebase Token 감지! 🔥🔥🔥')
+      console.log('[Auth] Token length:', firebaseToken.length)
+      console.log('[Auth] UserName param:', userName)
       
       isProcessingTokenRef.current = true
       processedTokenRef.current = firebaseToken
@@ -133,9 +136,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           // 🎯 STEP 3: Firebase 로그인
-          if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
+          console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
+          console.log('[Auth] 📝 Token preview:', firebaseToken.substring(0, 50) + '...')
+          console.log('[Auth] 📝 Auth object:', auth ? 'initialized' : 'NOT initialized')
+          
           const userCredential = await signInWithCustomToken(auth, firebaseToken)
-          if (DEBUG_AUTH) console.log('[Auth] ✅ Firebase 로그인 성공:', userCredential.user.uid)
+          
+          console.log('[Auth] ✅ Firebase 로그인 성공!')
+          console.log('[Auth] 👤 UID:', userCredential.user.uid)
+          console.log('[Auth] 📧 Email:', userCredential.user.email)
+          console.log('[Auth] 🏷️ Display Name:', userCredential.user.displayName)
           
           // 🎯 STEP 4: returnUrl 복구 (스마트 리다이렉트)
           const returnUrl = sessionStorage.getItem('returnUrl') || '/'
@@ -152,8 +162,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
         } catch (error) {
-          console.error('[Auth] ❌ Firebase 토큰 로그인 실패:', error)
+          console.error('[Auth] ❌❌❌ Firebase 토큰 로그인 실패 ❌❌❌')
+          console.error('[Auth] Error type:', error?.constructor?.name)
+          console.error('[Auth] Error message:', (error as Error)?.message)
+          console.error('[Auth] Error code:', (error as any)?.code)
+          console.error('[Auth] Full error:', error)
+          
           setInitError('로그인 처리에 실패했습니다. 다시 시도해 주세요.')
+          
+          // URL 정리 (실패 시에도)
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.delete('firebase_token');
+          currentUrl.searchParams.delete('userName');
+          window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
           
         } finally {
           isProcessingTokenRef.current = false
