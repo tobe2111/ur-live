@@ -60,8 +60,8 @@ function generateRandomString() {
 export default function CheckoutPage() {
   console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
   
-  // ✅ AuthContext에서 isAuthReady 가져오기
-  const { isAuthReady } = useAuth()
+  // ✅ AuthContext에서 user, loading, isAuthReady 가져오기
+  const { user, loading: authLoading, isAuthReady } = useAuth()
   
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -96,9 +96,9 @@ export default function CheckoutPage() {
     is_default: 0
   })
   
-  // ✅ isAuthReady 가드: 인증 초기화 전에는 로딩 표시
-  if (!isAuthReady) {
-    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...')
+  // ✅ 인증 초기화 대기: authLoading이 끝날 때까지 로딩 표시
+  if (authLoading || !isAuthReady) {
+    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...', { authLoading, isAuthReady })
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
@@ -107,6 +107,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     )
+  }
+
+  // ✅ 인증 완료 후 user가 없으면 로그인 페이지로 리다이렉트
+  if (!user) {
+    console.log('[CheckoutPage] ❌ 사용자 없음 - 로그인 필요')
+    requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
+    return null
   }
 
   // 셀러별 장바구니 그룹화 및 배송비 계산
