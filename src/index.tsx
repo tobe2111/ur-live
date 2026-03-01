@@ -2145,37 +2145,54 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       // 4. 🔥 Firebase Custom Token 생성 (JWT 완전 대체)
       console.log('[Kakao Sync] Step 4: Generating Firebase Custom Token...');
       
-      const firebase = initFirebaseAdmin(c.env);
-      const firebaseUID = `kakao_${kakaoId}`;
-      
-      // Firebase Custom Token 생성 (Custom Claims 포함)
-      const customToken = await firebase.createCustomToken(firebaseUID, {
-        role: 'user', // Custom Claims: 역할
-        userId: userId,
-        email: email || undefined,
-        kakaoId: kakaoId
-      });
-      
-      // D1에 firebase_uid 저장 (없으면) - 컬럼 없을 경우 무시
       try {
-        await DB.prepare(`
-          UPDATE users SET firebase_uid = ? WHERE id = ?
-        `).bind(firebaseUID, userId).run();
-      } catch (colErr) {
-        console.warn('[Kakao Sync] firebase_uid column not found, skipping update:', colErr);
+        const firebase = initFirebaseAdmin(c.env);
+        const firebaseUID = `kakao_${kakaoId}`;
+        
+        // Firebase Custom Token 생성 (Custom Claims 포함)
+        const customToken = await firebase.createCustomToken(firebaseUID, {
+          role: 'user', // Custom Claims: 역할
+          userId: userId,
+          email: email || undefined,
+          kakaoId: kakaoId
+        });
+        
+        // D1에 firebase_uid 저장 (없으면) - 컬럼 없을 경우 무시
+        try {
+          await DB.prepare(`
+            UPDATE users SET firebase_uid = ? WHERE id = ?
+          `).bind(firebaseUID, userId).run();
+        } catch (colErr) {
+          console.warn('[Kakao Sync] firebase_uid column not found, skipping update:', colErr);
+        }
+        
+        console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
+        
+        // 5. ✅ Redirect with Firebase Custom Token only
+        console.log('[Kakao Sync] Step 5: Redirecting with Firebase Custom Token...');
+        
+        const redirectUrl = state.includes('?') 
+          ? `${state}&firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`
+          : `${state}?firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`;
+        
+        console.log('[Kakao Sync] Redirect URL (Firebase):', redirectUrl.substring(0, 100) + '...');
+        return c.redirect(redirectUrl);
+        
+      } catch (firebaseError) {
+        console.error('[Kakao Sync] 🔴 Firebase Custom Token 생성 실패:', firebaseError);
+        console.error('[Kakao Sync] Firebase 환경변수 체크 필요:', {
+          hasProjectId: !!c.env.FIREBASE_PROJECT_ID,
+          hasPrivateKey: !!c.env.FIREBASE_PRIVATE_KEY,
+          hasClientEmail: !!c.env.FIREBASE_CLIENT_EMAIL,
+          hasDatabaseURL: !!c.env.FIREBASE_DATABASE_URL
+        });
+        
+        // Firebase 토큰 생성 실패 시 상세 에러 메시지
+        const errorMsg = (firebaseError as Error).message || 'Unknown error';
+        return c.redirect(`${state}?error=firebase_config_error&detail=${encodeURIComponent(
+          'Firebase 인증 설정 오류. 관리자에게 문의하세요. (' + errorMsg + ')'
+        )}`);
       }
-      
-      console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
-      
-      // 5. ✅ Redirect with Firebase Custom Token only
-      console.log('[Kakao Sync] Step 5: Redirecting with Firebase Custom Token...');
-      
-      const redirectUrl = state.includes('?') 
-        ? `${state}&firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`
-        : `${state}?firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`;
-      
-      console.log('[Kakao Sync] Redirect URL (Firebase):', redirectUrl.substring(0, 100) + '...');
-      return c.redirect(redirectUrl);
       
     } catch (dbError) {
       console.error('[Kakao Sync] Database error:', dbError);

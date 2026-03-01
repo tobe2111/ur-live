@@ -189,8 +189,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ✅ URL 파라미터 처리 - useRef 동기 제어 + window.history.replaceState
   useEffect(() => {
     const firebaseToken = searchParams.get('firebase_token')
+    const errorParam = searchParams.get('error')
+    const errorDetail = searchParams.get('detail')
     const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName']
     const hasJwtTokens = jwtParams.some(param => searchParams.has(param))
+    
+    // ✅ 가드 0: 에러 파라미터가 있으면 즉시 제거하고 에러 표시
+    if (errorParam) {
+      console.error('[AuthContext] ❌ URL에서 에러 감지:', { error: errorParam, detail: errorDetail })
+      
+      // 에러 상태 설정
+      if (errorParam === 'database_error' && errorDetail?.includes('Firebase custom token')) {
+        setInitError('Firebase 인증 설정 오류: 서버 환경변수를 확인해주세요')
+      } else {
+        setInitError(errorDetail || errorParam)
+      }
+      
+      // URL 정리
+      const cleanUrl = window.location.pathname
+      window.history.replaceState({}, document.title, cleanUrl)
+      console.log('[AuthContext] ✅ 에러 URL 파라미터 제거 완료')
+      
+      // 로그인 페이지로 리다이렉트
+      setTimeout(() => {
+        navigate('/login', { replace: true })
+      }, 100)
+      
+      return
+    }
     
     // ✅ 가드 1: 처리할 파라미터가 없으면 조기 종료
     if (!firebaseToken && !hasJwtTokens) {
