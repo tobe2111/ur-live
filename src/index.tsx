@@ -1864,6 +1864,101 @@ app.post('/api/auth/logout', cors(), async (c) => {
 });
 
 // 셀러 회원가입 API
+// 🔥 NEW: Firebase 이메일 회원가입
+app.post('/api/auth/email/register', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password, name } = await c.req.json();
+    
+    if (!email || !password || !name) {
+      return c.json({ 
+        success: false, 
+        error: 'Email, password, and name are required' 
+      }, 400);
+    }
+    
+    console.log('[Email Register] Registering new user:', email);
+    
+    // 1. Firebase Auth에 사용자 생성 (REST API)
+    const firebaseApiKey = c.env.FIREBASE_API_KEY || 'AIzaSyBGfSLTtA6KTeTgOqfH3VCPmCHjHZvCc3U';
+    const signUpUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseApiKey}`;
+    
+    const signUpResponse = await fetch(signUpUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        returnSecureToken: true
+      })
+    });
+    
+    const signUpData = await signUpResponse.json();
+    
+    if (!signUpResponse.ok) {
+      console.error('[Email Register] Firebase signup failed:', signUpData);
+      
+      let errorMessage = '회원가입에 실패했습니다';
+      if (signUpData.error?.message === 'EMAIL_EXISTS') {
+        errorMessage = '이미 가입된 이메일입니다';
+      } else if (signUpData.error?.message === 'WEAK_PASSWORD') {
+        errorMessage = '비밀번호가 너무 약합니다 (최소 6자)';
+      } else if (signUpData.error?.message) {
+        errorMessage = signUpData.error.message;
+      }
+      
+      return c.json({ success: false, error: errorMessage }, 400);
+    }
+    
+    const firebaseUid = signUpData.localId;
+    const idToken = signUpData.idToken;
+    
+    console.log('[Email Register] ✅ Firebase user created:', firebaseUid);
+    
+    // 2. D1에 사용자 정보 저장
+    try {
+      await DB.prepare(`
+        INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).bind(firebaseUid, email, name).run();
+      
+      console.log('[Email Register] ✅ User saved to D1');
+    } catch (dbError: any) {
+      console.error('[Email Register] D1 insert failed:', dbError);
+      // D1 실패해도 Firebase 계정은 생성되었으므로 성공 처리
+    }
+    
+    // 3. Custom Token 생성 (Custom Claims 포함)
+    const firebaseAdmin = initFirebaseAdmin(c.env);
+    const customToken = await firebaseAdmin.createCustomToken(firebaseUid, {
+      role: 'user',
+      email: email,
+      userName: name
+    });
+    
+    console.log('[Email Register] ✅ Custom token created');
+    
+    return c.json({
+      success: true,
+      customToken,
+      idToken,
+      user: {
+        uid: firebaseUid,
+        email,
+        name
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Email Register] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message || '회원가입 중 오류가 발생했습니다'
+    }, 500);
+  }
+});
+
 app.post('/api/seller/register', cors(), async (c) => {
   const { DB } = c.env;
   

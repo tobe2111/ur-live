@@ -37,6 +37,8 @@ interface AuthContextType {
   userRole: UserRole | null
   initError: string | null
   loginWithEmail: (email: string, password: string) => Promise<void>
+  signupWithEmail: (email: string, password: string, name: string) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
   loginWithKakao: (accessToken: string) => Promise<void>
   logout: () => Promise<void>
 }
@@ -359,6 +361,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
   
+  const signupWithEmail = async (email: string, password: string, name: string) => {
+    if (DEBUG_AUTH) console.log('[Auth] 📝 이메일 회원가입 시도:', email)
+    
+    try {
+      // 백엔드 API 호출 (Firebase Auth + D1 동시 처리)
+      const response = await fetch('/api/auth/email/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name })
+      })
+      
+      const data = await response.json()
+      
+      if (!data.success || !data.customToken) {
+        throw new Error(data.error || '회원가입 실패')
+      }
+      
+      // Custom Token → ID Token 교환
+      if (DEBUG_AUTH) console.log('[Auth] 🔥 Custom Token 받음, ID Token으로 교환...')
+      const userCredential = await signInWithCustomToken(auth, data.customToken)
+      
+      // ID Token 저장
+      const idToken = await userCredential.user.getIdToken()
+      localStorage.setItem('firebase_token', idToken)
+      localStorage.setItem('user_name', name)
+      
+      if (DEBUG_AUTH) console.log('[Auth] ✅ 이메일 회원가입 성공:', userCredential.user.uid)
+      
+    } catch (error: any) {
+      console.error('[Auth] ❌ 이메일 회원가입 실패:', error)
+      throw error
+    }
+  }
+  
+  const resetPassword = async (email: string) => {
+    if (DEBUG_AUTH) console.log('[Auth] 🔑 비밀번호 재설정:', email)
+    
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth')
+      await sendPasswordResetEmail(auth, email)
+      if (DEBUG_AUTH) console.log('[Auth] ✅ 비밀번호 재설정 이메일 발송')
+      
+    } catch (error: any) {
+      console.error('[Auth] ❌ 비밀번호 재설정 실패:', error)
+      throw error
+    }
+  }
+  
   const loginWithKakao = async (accessToken: string) => {
     if (DEBUG_AUTH) console.log('[Auth] 🟡 카카오 로그인 시작')
     
@@ -450,6 +500,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userRole,
     initError,
     loginWithEmail,
+    signupWithEmail,
+    resetPassword,
     loginWithKakao,
     logout
   }
