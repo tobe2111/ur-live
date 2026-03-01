@@ -5,15 +5,6 @@ import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings, ApiResponse, LiveStream, Product, ProductOption, User, CartItem, Order, OrderItem } from './types';
 import { validateUploadFile, generateSecureFilename, validateFileMagicBytes } from './lib/upload-security';
 import { sendSecurityAlert, logSecurityEvent, type SecurityEvent } from './lib/security-monitoring';
-import { 
-  generateAccessToken, 
-  generateRefreshToken, 
-  verifyToken, 
-  verifyCachedToken,
-  refreshAccessToken,
-  getJwtSecret,
-  type TokenPayload 
-} from './lib/jwt-auth';
 import {
   LoginSchema,
   RegisterSchema,
@@ -1701,187 +1692,15 @@ app.post('/api/auth/user/login', cors(), async (c) => {
   }
 });
 
-// 관리자 로그인 API
+// 관리자 로그인 API (⚠️ DEPRECATED: Firebase Auth 사용 권장)
 app.post('/api/auth/login', cors(), async (c) => {
-  const { DB } = c.env;
-  
-  try {
-    const { username, password, userType } = await c.req.json();
-    
-    // IP 주소 및 User Agent 추출
-    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'Unknown';
-    const userAgent = c.req.header('User-Agent') || 'Unknown';
-    
-    if (!username || !password || !userType) {
-      return c.json({ success: false, error: '아이디와 비밀번호를 입력해주세요' }, 400);
-    }
-    
-    let user;
-    let table = userType === 'admin' ? 'admins' : 'sellers';
-    
-    // 사용자 조회 (username 또는 email로 조회, 로그인 시 필요한 필드만)
-    // admins 테이블에는 status, business_name이 없음
-    if (userType === 'admin') {
-      user = await DB.prepare(`
-        SELECT 
-          id, 
-          username, 
-          email, 
-          password_hash, 
-          name, 
-          is_active, 
-          last_login_at
-        FROM ${table} 
-        WHERE username = ? OR email = ?
-      `).bind(username, username).first();
-    } else {
-      user = await DB.prepare(`
-        SELECT 
-          id, 
-          username, 
-          email, 
-          password_hash, 
-          name, 
-          is_active, 
-          status, 
-          last_login_at, 
-          business_name
-        FROM ${table} 
-        WHERE username = ? OR email = ?
-      `).bind(username, username).first();
-    }
-    
-    if (!user) {
-      // 🔴 로그인 실패 - Discord 알림
-      const { sendDiscordAlert, addLoginHistory } = await import('./lib/discord-monitoring');
-      addLoginHistory(ip, false);
-      
-      await sendDiscordAlert({
-        type: 'login_failure',
-        username,
-        userType: userType as any,
-        ip,
-        userAgent,
-        timestamp: new Date().toISOString(),
-        details: '존재하지 않는 계정'
-      }, c.env.DISCORD_WEBHOOK_URL);
-      
-      return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
-    }
-    
-    // 비밀번호 검증
-    // 기본 테스트 계정 (username 또는 email로 로그인 가능)
-    const isDefaultAdmin = userType === 'admin' && 
-                          (username === 'admin' || username === 'admin@example.com') && 
-                          password === 'admin123';
-    const isDefaultSeller = userType === 'seller' && 
-                           ((username === 'seller1' && password === 'seller123') ||
-                            (username === 'seller2' && password === 'seller123'));
-    
-    // 관리자가 생성한 계정 (password_hash에 비밀번호가 포함됨)
-    const isCustomAccount = user.password_hash && user.password_hash.includes(`placeholder_hash_for_${password}`);
-    
-    const validPassword = isDefaultAdmin || isDefaultSeller || isCustomAccount;
-    
-    if (!validPassword) {
-      // 🔴 로그인 실패 - Discord 알림
-      const { sendDiscordAlert, addLoginHistory, detectSuspiciousLogin, getLoginHistory } = await import('./lib/discord-monitoring');
-      addLoginHistory(ip, false);
-      
-      const loginHistory = getLoginHistory(ip);
-      const isSuspicious = detectSuspiciousLogin(ip, userAgent, userType as any, loginHistory);
-      
-      await sendDiscordAlert({
-        type: isSuspicious ? 'suspicious_login' : 'login_failure',
-        userId: user.id,
-        username: user.username,
-        userType: userType as any,
-        ip,
-        userAgent,
-        timestamp: new Date().toISOString(),
-        details: isSuspicious ? '⚠️ 5분 내 3회 이상 실패 또는 의심스러운 패턴' : '비밀번호 불일치',
-        metadata: {
-          '최근 실패 횟수': loginHistory.filter(h => !h.success).length.toString()
-        }
-      }, c.env.DISCORD_WEBHOOK_URL);
-      
-      return c.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다' }, 401);
-    }
-    
-    // 활성 상태 확인
-    if (!user.is_active) {
-      return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
-    }
-    
-    // 판매자인 경우 승인 상태 확인
-    if (userType === 'seller' && user.status !== 'approved') {
-      return c.json({ success: false, error: '승인 대기 중인 계정입니다' }, 403);
-    }
-    
-    // ✅ JWT 토큰 발급 (KV Write 0회!)
-    const { generateAccessToken, generateRefreshToken, getJwtSecret } = await import('./lib/jwt-auth');
-    const jwtSecret = getJwtSecret(c.env);
-    
-    const accessToken = await generateAccessToken({
-      userId: user.id,
-      userType: userType as 'admin' | 'seller',
-      email: user.email
-    }, jwtSecret);
-    
-    const refreshToken = await generateRefreshToken({
-      userId: user.id,
-      userType: userType as 'admin' | 'seller',
-      email: user.email
-    }, jwtSecret);
-    
-    // 마지막 로그인 시간 업데이트
-    await DB.prepare(`UPDATE ${table} SET last_login_at = datetime('now') WHERE id = ?`).bind(user.id).run();
-    
-    // ✅ 로그인 성공 - Discord 알림 (관리자만)
-    const { sendDiscordAlert, addLoginHistory, detectSuspiciousLogin, getLoginHistory } = await import('./lib/discord-monitoring');
-    addLoginHistory(ip, true);
-    
-    const loginHistory = getLoginHistory(ip);
-    const isSuspicious = detectSuspiciousLogin(ip, userAgent, userType as any, loginHistory);
-    
-    if (userType === 'admin' || isSuspicious) {
-      await sendDiscordAlert({
-        type: isSuspicious ? 'suspicious_login' : 'login_success',
-        userId: user.id,
-        username: user.username,
-        userType: userType as any,
-        ip,
-        userAgent,
-        timestamp: new Date().toISOString(),
-        details: isSuspicious ? '⚠️ 의심스러운 패턴 감지 (관리자 로그인 또는 비정상 User Agent)' : undefined
-      }, c.env.DISCORD_WEBHOOK_URL);
-    }
-    
-    console.log(`[JWT Login] ✅ ${userType} ${user.username} logged in with JWT (KV Write: 0)`);
-    
-    return c.json({
-      success: true,
-      data: {
-        accessToken,
-        refreshToken,
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name,
-          email: user.email,
-          type: userType,
-          businessName: user.business_name
-        }
-      }
-    });
-    
-  } catch (err) {
-    console.error('Login error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
+  return c.json({
+    success: false,
+    error: 'This endpoint is deprecated. Please use Firebase Authentication.',
+    message: 'Admin/Seller login should use /api/admin/login or /api/seller/login with Firebase Auth',
+    code: 'DEPRECATED_ENDPOINT'
+  }, 410); // 410 Gone
 });
-
-// 로그아웃 API
 app.post('/api/auth/logout', cors(), async (c) => {
   const { DB } = c.env;
   
@@ -2003,40 +1822,61 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
     }
     
-    // ✅ JWT 토큰 발급 (KV Write 0회!)
-    const { generateAccessToken, generateRefreshToken, getJwtSecret } = await import('./lib/jwt-auth');
-    const jwtSecret = getJwtSecret(c.env);
+    // 🔥 Firebase Custom Token 발급
+    const firebase = initFirebaseAdmin(c.env);
+    const firebaseUID = `admin_${admin.id}`;
     
-    const accessToken = await generateAccessToken({
-      userId: admin.id,
-      userType: 'admin',
-      email: admin.email
-    }, jwtSecret);
-    
-    const refreshToken = await generateRefreshToken({
-      userId: admin.id,
-      userType: 'admin',
-      email: admin.email
-    }, jwtSecret);
+    try {
+      // Firebase에 사용자 등록 (없으면)
+      await firebase.auth.getUser(firebaseUID).catch(async () => {
+        await firebase.auth.createUser({
+          uid: firebaseUID,
+          email: admin.email,
+          displayName: admin.name
+        });
+      });
+      
+      // Custom Claims 설정
+      await firebase.auth.setCustomUserClaims(firebaseUID, {
+        role: 'admin',
+        userId: admin.id,
+        email: admin.email
+      });
+      
+      // Custom Token 생성
+      const customToken = await firebase.createCustomToken(firebaseUID, {
+        role: 'admin',
+        userId: admin.id,
+        email: admin.email
+      });
+      
+      // D1에 firebase_uid 저장
+      await DB.prepare(`
+        UPDATE admins SET firebase_uid = ? WHERE id = ?
+      `).bind(firebaseUID, admin.id).run();
     
     // Update last login time
     await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?').bind(admin.id).run();
     
-    console.log(`[JWT Login] ✅ Admin ${admin.email} logged in with JWT (KV Write: 0)`);
+    console.log(`[Firebase Login] ✅ Admin ${admin.email} logged in with Firebase (KV Write: 0)`);
     
     return c.json({
       success: true,
       data: {
-        accessToken,
-        refreshToken,
+        customToken,
         admin: {
           id: admin.id,
           username: admin.username,
           email: admin.email,
-          name: admin.name
+          name: admin.name,
+          firebaseUID
         }
       }
     });
+    } catch (firebaseError) {
+      console.error('[Firebase] Admin login error:', firebaseError);
+      return c.json({ success: false, error: 'Firebase authentication failed' }, 500);
+    }
     
   } catch (err) {
     console.error('Admin login error:', err);
@@ -2432,33 +2272,6 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     return c.json({
       success: false,
       error: (error as Error).message || 'Internal server error',
-      code: 'UNKNOWN_ERROR',
-    }, 500);
-  }
-});
-
-// 카카오 싱크 엔드포인트 제거 - Firebase Custom Token 방식으로 통일됨 (/api/auth/kakao/callback 사용)
-          email: user.email,
-          profile_image: user.profile_image,
-        },
-      },
-    });
-    
-  } catch (error) {
-    console.error('[Kakao Sync] Error:', error);
-    
-    // AuthError 타입 체크
-    if (error instanceof AuthError) {
-      return c.json({
-        success: false,
-        error: error.message,
-        code: error.code,
-      }, error.statusCode);
-    }
-    
-    return c.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Login failed',
       code: 'UNKNOWN_ERROR',
     }, 500);
   }
