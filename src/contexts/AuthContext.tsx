@@ -321,9 +321,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || '카카오 로그인 실패')
       }
       
-      // Firebase 로그인
-      await signInWithCustomToken(auth, data.customToken)
+      // ★ 핵심 수정: Custom Token → ID Token 교환
+      if (DEBUG_AUTH) console.log('[Auth] 🔥 Custom Token 받음, ID Token으로 교환 시작...')
+      const userCredential = await signInWithCustomToken(auth, data.customToken)
+      
+      // 🔥 CRITICAL: Custom Token이 아닌 ID Token을 localStorage에 저장!
+      const idToken = await userCredential.user.getIdToken()
+      localStorage.setItem('firebase_token', idToken)
+      
       if (DEBUG_AUTH) console.log('[Auth] ✅ 카카오 로그인 성공')
+      if (DEBUG_AUTH) console.log('[Auth] 🔑 ID Token 교환 & 저장 완료')
+      if (DEBUG_AUTH) console.log('[Auth] 🔑 Token preview:', idToken.substring(0, 50) + '...')
+      
+      // 안전하게 user 상태도 업데이트 (onAuthStateChanged가 자동으로 해주지만)
+      setUser(userCredential.user)
       
     } catch (error: any) {
       console.error('[Auth] ❌ 카카오 로그인 실패:', error)
