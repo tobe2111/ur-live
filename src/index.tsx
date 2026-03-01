@@ -44,8 +44,7 @@ import { imageOptimizationMiddleware } from './lib/image-optimization';
 import { AppError, ErrorFactory } from './lib/errors';
 import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { verifyFirebaseIdToken } from './lib/firebase-token-verify';
+import { verifyFirebaseIdToken, parseVerifyError, type FirebaseTokenPayload } from './lib/firebase-token-verify';
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -2369,223 +2368,196 @@ app.post('/api/auth/kakao/firebase', cors(), async (c) => {
   }
 });
 
-// Firebase ID Token 검증을 위한 JWK Set (Worker 레벨 캐싱)
-let FIREBASE_JWKS: ReturnType<typeof createRemoteJWKSet> | null = null;
-
 /**
- * Firebase Project ID 가져오기 (환경 변수 우선, 폴백 하드코딩)
- */
-function getFirebaseProjectId(env?: any): string {
-  // 1순위: 환경 변수
-  if (env?.FIREBASE_PROJECT_ID) {
-    return env.FIREBASE_PROJECT_ID;
-  }
-  
-  // 2순위: 하드코딩 (폴백)
-  const fallbackProjectId = 'urteam-live-commerce-5b284';
-  console.warn('[Firebase] ⚠️ FIREBASE_PROJECT_ID 환경 변수 없음, 폴백 사용:', fallbackProjectId);
-  return fallbackProjectId;
-}
-
-/**
- * Firebase ID Token 검증 (Cloudflare Workers 호환)
+ * 🔥 Firebase Auth → D1 동기화
  * 
- * 검증 로직:
- * 1. JWK Set 캐싱 (Worker 인스턴스당 1회)
- * 2. JWT 서명 검증
- * 3. Issuer & Audience 검증
- * 4. 만료 시간 검증 (자동)
+ * ✅ 개선 사항:
+ * - verifyFirebaseIdToken은 src/lib/firebase-token-verify.ts에서 import
+ * - JWKS 캐싱, exp/iat 강화, 타입 가드 추가
+ * - parseVerifyError로 클라이언트 친화적 에러 응답
  */
-async function verifyFirebaseIdToken(idToken: string, env?: any): Promise<any> {
-  const FIREBASE_PROJECT_ID = getFirebaseProjectId(env);
-  
-  try {
-    // JWK Set 캐싱 (Worker 인스턴스 수명 동안 유지)
-    if (!FIREBASE_JWKS) {
-      FIREBASE_JWKS = createRemoteJWKSet(
-        new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
-      );
-      console.log('[Firebase] ✅ JWK Set initialized for project:', FIREBASE_PROJECT_ID);
-    }
-    
-    // JWT 검증 (서명, issuer, audience, 만료 시간)
-    const { payload } = await jwtVerify(idToken, FIREBASE_JWKS, {
-      issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-      audience: FIREBASE_PROJECT_ID,
-    });
-    
-    console.log('[Firebase] ✅ Token verified:', { 
-      sub: payload.sub, 
-      email: payload.email,
-      iss: payload.iss,
-      aud: payload.aud,
-      exp: payload.exp 
-    });
-    return payload;
-  } catch (error: any) {
-    // 상세한 에러 로깅
-    console.error('[Firebase] ❌ Token verification failed:', {
-      error: error.message,
-      code: error.code,
-      claim: error.claim,
-      reason: error.reason,
-      expectedProjectId: FIREBASE_PROJECT_ID
-    });
-    
-    // 에러 타입별 상세 메시지
-    if (error.code === 'ERR_JWT_EXPIRED') {
-      console.error('[Firebase] Token expired. User needs to re-authenticate.');
-    } else if (error.code === 'ERR_JWT_CLAIM_VALIDATION_FAILED') {
-      console.error('[Firebase] Claim validation failed:', error.claim);
-      if (error.claim === 'aud') {
-        console.error('[Firebase] ⚠️ Audience mismatch! Check FIREBASE_PROJECT_ID');
-        console.error('[Firebase] Expected:', FIREBASE_PROJECT_ID);
-        console.error('[Firebase] Got:', error.payload?.aud);
-      }
-    } else if (error.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
-      console.error('[Firebase] Invalid signature. Token may be tampered.');
-    }
-    
-    return null;
-  }
-}
-
 /**
- * Firebase Auth → D1 동기화
- * Firebase ID Token을 받아서 D1에 사용자 정보 업데이트
+ * 🔥 Firebase Auth → D1 동기화 (최적화 버전)
  * 
- * Rate Limiting: 동일 UID당 1분에 1회로 제한
+ * 기능:
+ * - Firebase ID Token 검증 (jose + JWKS 캐싱)
+ * - D1 사용자 데이터 싱크 (INSERT or UPDATE)
+ * - Rate Limiting: 10분당 1회
+ * 
+ * 엔드포인트:
+ * POST /api/auth/firebase/sync
+ * 
+ * Body:
+ * {
+ *   "idToken": "Firebase_ID_Token (NOT Custom Token!)",
+ *   "firebaseUid": "uid from Firebase Auth",
+ *   "email": "user@example.com (optional)",
+ *   "displayName": "User Name (optional)"
+ * }
+ * 
+ * Response:
+ * 200: { success: true, user: {...} }
+ * 401: { success: false, code: 'TOKEN_EXPIRED', message: '...' }
+ * 404: { success: false, error: 'User not found' }
+ * 429: { success: false, error: 'Rate limited', retryAfter: 123 }
+ * 500: { success: false, error: '...' }
  */
 app.post('/api/auth/firebase/sync', cors(), async (c) => {
   const { DB, CACHE_KV } = c.env;
   
   try {
+    // 1️⃣ Request Body 검증
     const { idToken, firebaseUid, email, displayName } = await c.req.json();
     
     if (!idToken || !firebaseUid) {
-      return c.json({ success: false, error: 'idToken and firebaseUid are required' }, 400);
+      return c.json({ 
+        success: false, 
+        error: 'idToken and firebaseUid are required' 
+      }, 400);
     }
     
-    // Rate Limiting: 동일 UID당 10분에 1회 (기존 1분에서 10배 완화)
-    // 🎯 CRITICAL FIX: 로그인 시 429 에러 원천 차단
+    // 2️⃣ Rate Limiting (10분당 1회)
     const rateLimitKey = `sync_limit:${firebaseUid}`;
     const lastSync = await CACHE_KV.get(rateLimitKey);
-    const SYNC_INTERVAL_MS = 600000; // 10분 (60000ms × 10)
+    const SYNC_INTERVAL_MS = 600000; // 10분
     
     if (lastSync) {
       const elapsed = Date.now() - parseInt(lastSync);
       if (elapsed < SYNC_INTERVAL_MS) {
-        console.log(`[Firebase Sync] ⏳ Rate limited (${Math.floor((SYNC_INTERVAL_MS - elapsed) / 1000)}s remaining):`, firebaseUid);
+        const retryAfter = Math.ceil((SYNC_INTERVAL_MS - elapsed) / 1000);
+        console.log(`[Firebase Sync] ⏳ Rate limited (${retryAfter}s remaining):`, firebaseUid);
         return c.json({ 
           success: false, 
           error: 'Rate limited', 
-          retryAfter: Math.ceil((SYNC_INTERVAL_MS - elapsed) / 1000) 
+          retryAfter 
         }, 429);
       }
     }
     
-    console.log('[Firebase Sync] Syncing user to D1:', { firebaseUid, email });
+    console.log('[Firebase Sync] 🔄 Starting sync:', { firebaseUid, email: email ? 'exists' : 'none' });
     
-    // Firebase ID Token 검증 (env 전달)
-    const decoded = await verifyFirebaseIdToken(idToken, c.env);
-    console.log('[Firebase Sync] Token decoded:', { 
-      hasDecoded: !!decoded, 
-      decodedSub: decoded?.sub, 
-      firebaseUid,
-      match: decoded?.sub === firebaseUid 
-    });
-    
-    if (!decoded || decoded.sub !== firebaseUid) {
-      console.error('[Firebase Sync] ❌ Token validation failed:', {
-        decoded: !!decoded,
-        expectedUid: firebaseUid,
-        actualSub: decoded?.sub,
-        projectId: c.env?.FIREBASE_PROJECT_ID || 'NOT_SET'
-      });
+    // 3️⃣ Firebase ID Token 검증 (강화 버전)
+    let payload: FirebaseTokenPayload;
+    try {
+      payload = await verifyFirebaseIdToken(idToken, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284');
+    } catch (verifyError) {
+      const err = parseVerifyError(verifyError);
+      console.error('[Firebase Sync] ❌ Token verification failed:', err);
       return c.json({ 
         success: false, 
-        error: 'Invalid Firebase token',
-        details: {
-          expectedUid: firebaseUid,
-          actualSub: decoded?.sub || null,
-          projectId: c.env?.FIREBASE_PROJECT_ID || 'NOT_SET'
-        }
+        ...err
       }, 401);
     }
     
-    console.log('[Firebase Sync] ✅ Token verified successfully');
+    // UID 일치 확인
+    if (payload.uid !== firebaseUid) {
+      console.error('[Firebase Sync] ❌ UID mismatch:', {
+        expected: firebaseUid,
+        actual: payload.uid
+      });
+      return c.json({ 
+        success: false, 
+        code: 'UID_MISMATCH',
+        message: 'Token UID does not match provided firebaseUid'
+      }, 401);
+    }
     
-    // D1에서 firebase_uid로 사용자 찾기
+    console.log('[Firebase Sync] ✅ Token verified:', {
+      uid: payload.uid,
+      role: payload.role,
+      email: payload.email
+    });
+    
+    // 4️⃣ D1 사용자 조회 (firebase_uid 기준)
     const existingUser = await DB.prepare(
-      'SELECT id, email, name FROM users WHERE firebase_uid = ?'
+      'SELECT id, email, name, user_type FROM users WHERE firebase_uid = ?'
     ).bind(firebaseUid).first();
     
     if (existingUser) {
       // 기존 사용자 업데이트
       await DB.prepare(`
         UPDATE users 
-        SET email = ?, name = ?, updated_at = CURRENT_TIMESTAMP
+        SET email = ?, 
+            name = ?, 
+            last_login_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
         WHERE firebase_uid = ?
-      `).bind(email || existingUser.email, displayName || existingUser.name, firebaseUid).run();
+      `).bind(
+        email || existingUser.email, 
+        displayName || existingUser.name, 
+        firebaseUid
+      ).run();
       
-      // Rate Limit 키 갱신
-      await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 60 });
+      // Rate Limit 갱신
+      await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 600 }); // 10분
       
-      console.log('[Firebase Sync] ✅ 기존 사용자 업데이트 완료:', existingUser.id);
+      console.log('[Firebase Sync] ✅ User updated:', existingUser.id);
       
       return c.json({
         success: true,
         user: {
           id: existingUser.id,
           email: email || existingUser.email,
-          name: displayName || existingUser.name
+          name: displayName || existingUser.name,
+          user_type: existingUser.user_type
         }
       });
-    } else {
-      // 새 사용자 생성 (이메일만으로 검색하여 firebase_uid 연결)
-      if (email) {
-        const userByEmail = await DB.prepare(
-          'SELECT id, email, name FROM users WHERE email = ?'
-        ).bind(email).first();
-        
-        if (userByEmail) {
-          // 기존 이메일 사용자에 firebase_uid 연결
-          await DB.prepare(`
-            UPDATE users 
-            SET firebase_uid = ?, name = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE email = ?
-          `).bind(firebaseUid, displayName || userByEmail.name, email).run();
-          
-          // Rate Limit 키 갱신
-          await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 60 });
-          
-          console.log('[Firebase Sync] ✅ 기존 이메일 사용자에 firebase_uid 연결:', userByEmail.id);
-          
-          return c.json({
-            success: true,
-            user: {
-              id: userByEmail.id,
-              email: userByEmail.email,
-              name: displayName || userByEmail.name
-            }
-          });
-        }
-      }
-      
-      return c.json({
-        success: false,
-        error: 'User not found. Please register first.'
-      }, 404);
     }
     
-  } catch (error) {
-    console.error('[Firebase Sync] Error:', error);
+    // 5️⃣ 이메일로 기존 사용자 찾기 (firebase_uid 연결)
+    if (email) {
+      const userByEmail = await DB.prepare(
+        'SELECT id, email, name, user_type FROM users WHERE email = ?'
+      ).bind(email).first();
+      
+      if (userByEmail) {
+        // 기존 이메일 계정에 firebase_uid 연결
+        await DB.prepare(`
+          UPDATE users 
+          SET firebase_uid = ?, 
+              name = ?, 
+              last_login_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE email = ?
+        `).bind(
+          firebaseUid, 
+          displayName || userByEmail.name, 
+          email
+        ).run();
+        
+        // Rate Limit 갱신
+        await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 600 });
+        
+        console.log('[Firebase Sync] ✅ Linked firebase_uid to existing email user:', userByEmail.id);
+        
+        return c.json({
+          success: true,
+          user: {
+            id: userByEmail.id,
+            email: userByEmail.email,
+            name: displayName || userByEmail.name,
+            user_type: userByEmail.user_type
+          }
+        });
+      }
+    }
     
-    // firebase_uid 컬럼이 없는 경우 graceful 처리
+    // 6️⃣ 사용자 없음 (가입 필요)
+    console.warn('[Firebase Sync] ⚠️ User not found:', firebaseUid);
+    return c.json({
+      success: false,
+      error: 'User not found. Please register first.',
+      code: 'USER_NOT_FOUND'
+    }, 404);
+    
+  } catch (error) {
+    console.error('[Firebase Sync] 🔴 Error:', error);
+    
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    
+    // firebase_uid 컬럼 없음 (graceful 처리)
     if (errorMsg.includes('no such column: firebase_uid')) {
       console.warn('[Firebase Sync] ⚠️ firebase_uid column not found - migration needed');
-      // 마이그레이션 전까지는 성공으로 응답하여 사용자 경험 유지
       return c.json({ 
         success: true,
         warning: 'Database migration pending',
@@ -2601,6 +2573,7 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
     return c.json({ 
       success: false, 
       error: errorMsg,
+      code: 'INTERNAL_ERROR'
     }, 500);
   }
 });
