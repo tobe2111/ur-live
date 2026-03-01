@@ -45,6 +45,7 @@ import { AppError, ErrorFactory } from './lib/errors';
 import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { verifyFirebaseIdToken } from './lib/firebase-token-verify';
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -491,7 +492,6 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
     
     // 🔥 Firebase ID Token 검증 (100% Firebase 표준)
     try {
-      const { verifyFirebaseIdToken } = await import('./lib/firebase-token-verify')
       const firebasePayload = await verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       
       console.log('[Firebase Auth] ✅ Firebase token verified:', firebasePayload.uid)
