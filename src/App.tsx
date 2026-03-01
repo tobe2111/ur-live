@@ -7,16 +7,12 @@ import { AuthProvider } from './contexts/AuthContext'
 // import { useSessionValidation } from './hooks/useSessionValidation' // ❌ JWT 전용 - 제거됨
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 
-// 초기 로딩 페이지만 즉시 로드
-import HomePage from './pages/HomePage'
-// MainHomePage - KREAM 스타일 메인 페이지
-import MainHomePage from './pages/MainHomePage'
-// CheckoutPage는 즉시 로드 (lazy loading 문제 해결)
-import CheckoutPage from './pages/CheckoutPage'
-// ShortFormPage - 요고 스타일 숏폼 커머스
-import ShortFormPage from './pages/ShortFormPage'
-// IntroducePage - 소개 페이지 (브랜딩 + 메인 페이지 iframe)
-import IntroducePage from './pages/IntroducePage'
+// ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
+const HomePage = lazy(() => import('./pages/HomePage'))
+const MainHomePage = lazy(() => import('./pages/MainHomePage'))
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
+const ShortFormPage = lazy(() => import('./pages/ShortFormPage'))
+const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 
 // 나머지 페이지는 lazy load
 const LoginPage = lazy(() => import('./pages/LoginPage'))
