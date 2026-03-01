@@ -38,9 +38,8 @@ const PUBLIC_API_PATHS = [
   '/api/banners',              // 배너 목록
   '/api/categories',           // 카테고리
   '/api/health',               // 헬스 체크
-  '/api/auth/login',           // 로그인
-  '/api/auth/register',        // 회원가입
-  '/api/auth/refresh',         // 토큰 갱신
+  '/api/auth/login',           // 로그인 (deprecated - Firebase 사용)
+  '/api/auth/register',        // 회원가입 (deprecated - Firebase 사용)
   '/api/auth/kakao',           // 카카오 로그인 (모든 카카오 엔드포인트)
   '/api/auth/firebase/sync',   // Firebase 동기화 (인증 프로세스의 일부)
   '/api/auth/firebase/register', // Firebase 회원가입

@@ -468,22 +468,15 @@ app.use('*', async (c, next) => {
 // =================================
 
 /**
- * ✅ JWT 인증 미들웨어 (KV 세션 완전 대체)
+ * Firebase ID Token 인증 (100% Firebase Auth 표준)
  * 
- * - Authorization: Bearer <token> 헤더에서 JWT 토큰 추출
- * - JWT 검증 (verifyCachedToken: 메모리 캐시 사용)
- * - 페이로드에서 userId, userType 추출
- * - **KV 읽기/쓰기 0회 (완전 stateless)**
- * 
- * @param c - Hono context
- * @returns JWT 페이로드 (userId, userType, email) or null
- */
-/**
- * Firebase ID Token 인증 (100% Firebase Auth 통합)
- * 
- * - JWT 완전 제거, Firebase ID Token만 사용
+ * - Custom JWT 완전 제거, Firebase ID Token만 사용
  * - Custom Claims로 역할(role) 구분: user, seller, admin
  * - firebase_uid 기반 D1 사용자 조회
+ * - Authorization: Bearer <Firebase_ID_Token> 헤더에서 토큰 추출
+ * 
+ * @param c - Hono context
+ * @returns 사용자 정보 (userId, userType, email, firebaseUID) or null
  */
 async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string } | null> {
   try {
@@ -496,9 +489,9 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       return null
     }
     
-    // 🔥 Firebase ID Token 검증
+    // 🔥 Firebase ID Token 검증 (100% Firebase 표준)
     try {
-      const { verifyFirebaseIdToken } = await import('./lib/firebase-jwt-verify')
+      const { verifyFirebaseIdToken } = await import('./lib/firebase-token-verify')
       const firebasePayload = await verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       
       console.log('[Firebase Auth] ✅ Firebase token verified:', firebasePayload.uid)
@@ -623,17 +616,17 @@ async function getSessionInfo(
 }
 
 /**
- * ✅ JWT 인증 미들웨어 (KV 세션 완전 대체)
+ * 🔐 Firebase 인증 미들웨어 (100% Firebase 표준)
  * 
- * - Authorization: Bearer <token> 헤더에서 JWT 검증
- * - KV 읽기/쓰기 0회 (완전 stateless)
- * - 메모리 캐시 사용 (verifyCachedToken)
+ * - Firebase ID Token 검증 (Custom JWT 사용 안 함)
+ * - Authorization: Bearer <Firebase_ID_Token> 헤더 필수
+ * - Google 공개키로 서명 검증 (jose 라이브러리)
  * 
  * @param c - Hono context
  * @param next - Next middleware
  */
 async function requireAuth(c: any, next: any) {
-  // 🔥 Firebase ID Token 인증
+  // 🔥 Firebase ID Token 인증 (100% Firebase 표준)
   const auth = await getFirebaseAuth(c)
   
   if (!auth) {
@@ -2726,112 +2719,15 @@ app.post('/api/auth/firebase/register', cors(), async (c) => {
   }
 });
 
-// 카카오 로그아웃
-// 세션 유효성 검증 API
-// JWT 검증 엔드포인트 (JWT 전환 후)
-app.get('/api/auth/validate', cors(), async (c) => {
-  try {
-    // JWT 토큰 가져오기 (Authorization: Bearer <token>)
-    const authHeader = c.req.header('Authorization')
-    const token = authHeader?.replace('Bearer ', '') || ''
-    
-    if (!token) {
-      return c.json({ 
-        success: false, 
-        valid: false,
-        error: 'No JWT token provided',
-        code: 'NO_TOKEN'
-      }, 401)
-    }
-    
-    // JWT 검증 (verifyCachedToken: 메모리 캐시 사용, KV 읽기 최소화)
-    const jwtSecret = getJwtSecret(c.env)
-    console.log('[JWT Validate] Secret (first 20 chars):', jwtSecret.substring(0, 20))
-    console.log('[JWT Validate] Token (first 50 chars):', token.substring(0, 50))
-    
-    const payload = await verifyCachedToken(token, jwtSecret)
-    
-    console.log('[JWT Validate] Payload:', payload ? 'Valid' : 'Invalid/Expired')
-    
-    if (!payload) {
-      return c.json({ 
-        success: false, 
-        valid: false,
-        error: 'JWT token expired or invalid',
-        code: 'TOKEN_EXPIRED'
-      }, 401)
-    }
-    
-    // JWT 토큰 유효함
-    return c.json({ 
-      success: true, 
-      valid: true,
-      data: {
-        user_id: payload.userId,
-        user_type: payload.userType,
-        email: payload.email,
-        session_valid: true
-      },
-      user: {
-        userId: payload.userId,
-        userType: payload.userType,
-        email: payload.email
-      }
-    })
-  } catch (error) {
-    console.error('[JWT Validate Error]', error)
-    return c.json({ 
-      success: false, 
-      valid: false,
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR'
-    }, 500)
-  }
-})
+// =============================================================================
+// ❌ DEPRECATED: Custom JWT Endpoints (Firebase 전환으로 불필요)
+// =============================================================================
+// 아래 엔드포인트들은 커스텀 JWT(access_token, refresh_token) 전용입니다.
+// Firebase ID Token 방식에서는 사용하지 않습니다.
+// Firebase SDK가 자동으로 토큰 검증 및 갱신을 처리합니다.
+// =============================================================================
 
-// JWT Refresh Token API (액세스 토큰 자동 갱신)
-app.post('/api/auth/refresh', cors(), async (c) => {
-  try {
-    const body = await c.req.json()
-    const { refreshToken } = body
-    
-    if (!refreshToken) {
-      return c.json({ 
-        success: false, 
-        error: 'No refresh token provided',
-        code: 'NO_REFRESH_TOKEN'
-      }, 400)
-    }
-    
-    // Refresh Token으로 새 Access Token 발급
-    const jwtSecret = getJwtSecret(c.env)
-    const newAccessToken = await refreshAccessToken(refreshToken, jwtSecret)
-    
-    if (!newAccessToken) {
-      return c.json({ 
-        success: false, 
-        error: 'Refresh token expired or invalid',
-        code: 'REFRESH_TOKEN_EXPIRED'
-      }, 401)
-    }
-    
-    // 새 Access Token 반환
-    return c.json({ 
-      success: true, 
-      data: {
-        accessToken: newAccessToken
-      }
-    })
-  } catch (error) {
-    console.error('[JWT Refresh Error]', error)
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR'
-    }, 500)
-  }
-})
-
+// 카카오 로그아웃 (Firebase Auth 방식)
 app.post('/api/auth/kakao/logout', cors(), async (c) => {
   const { DB } = c.env;
   

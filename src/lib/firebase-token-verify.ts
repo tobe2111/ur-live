@@ -1,10 +1,13 @@
 /**
- * Firebase JWT 검증 헬퍼 (jose 라이브러리 사용)
+ * Firebase ID Token 검증 헬퍼 (100% Firebase 표준)
  * 
  * Cloudflare Workers에서 Firebase ID Token 검증
- * Google의 공개 키를 사용하여 JWT 서명 검증
+ * Google의 공개 키를 사용하여 서명 검증
  * 
- * jose 라이브러리: Cloudflare Workers와 호환되는 JWT/JWK/JWS 라이브러리
+ * 참고: Firebase ID Token은 JWT 형식이지만, 이는 Firebase의 표준 방식입니다.
+ *       커스텀 JWT(access_token, refresh_token)와는 다릅니다.
+ * 
+ * jose 라이브러리: Cloudflare Workers와 호환되는 표준 Web Crypto 래퍼
  */
 
 import * as jose from 'jose';
@@ -19,11 +22,11 @@ let publicKeysCache: { keys: any[], expires: number } | null = null;
  */
 export async function verifyFirebaseIdToken(idToken: string, projectId: string): Promise<any> {
   try {
-    console.log('[Firebase JWT] 🔍 Starting ID Token verification');
-    console.log('[Firebase JWT] 📊 Token length:', idToken.length);
-    console.log('[Firebase JWT] 🏢 Project ID:', projectId);
+    console.log('[Firebase Token] 🔍 Starting ID Token verification');
+    console.log('[Firebase Token] 📊 Token length:', idToken.length);
+    console.log('[Firebase Token] 🏢 Project ID:', projectId);
     
-    // 1. JWT 구조 검증
+    // 1. Token 구조 검증
     const parts = idToken.split('.');
     if (parts.length !== 3) {
       throw new Error(`Invalid token structure: expected 3 parts, got ${parts.length}`);
@@ -33,8 +36,8 @@ export async function verifyFirebaseIdToken(idToken: string, projectId: string):
     const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
 
-    console.log('[Firebase JWT] 🔑 Token header:', { alg: header.alg, kid: header.kid });
-    console.log('[Firebase JWT] 📝 Token payload:', {
+    console.log('[Firebase Token] 🔑 Token header:', { alg: header.alg, kid: header.kid });
+    console.log('[Firebase Token] 📝 Token payload:', {
       aud: payload.aud,
       iss: payload.iss,
       exp: payload.exp,
@@ -60,14 +63,14 @@ export async function verifyFirebaseIdToken(idToken: string, projectId: string):
       throw new Error('Token issued in the future');
     }
 
-    console.log('[Firebase JWT] ✅ Basic validation passed');
+    console.log('[Firebase Token] ✅ Basic validation passed');
 
     // 4. Google 공개 키로 서명 검증
     await verifySignatureWithJose(idToken, header.kid);
 
-    console.log('[Firebase JWT] ✅ Token verified successfully');
-    console.log('[Firebase JWT] 👤 User ID:', payload.uid || payload.user_id);
-    console.log('[Firebase JWT] 🏷️ Custom Claims:', {
+    console.log('[Firebase Token] ✅ Token verified successfully');
+    console.log('[Firebase Token] 👤 User ID:', payload.uid || payload.user_id);
+    console.log('[Firebase Token] 🏷️ Custom Claims:', {
       role: payload.role,
       userId: payload.userId,
       userName: payload.userName
@@ -76,10 +79,10 @@ export async function verifyFirebaseIdToken(idToken: string, projectId: string):
     return payload;
 
   } catch (error) {
-    console.error('[Firebase JWT] ❌ Verification failed:', error);
+    console.error('[Firebase Token] ❌ Verification failed:', error);
     if (error instanceof Error) {
-      console.error('[Firebase JWT] ❌ Error message:', error.message);
-      console.error('[Firebase JWT] ❌ Error stack:', error.stack);
+      console.error('[Firebase Token] ❌ Error message:', error.message);
+      console.error('[Firebase Token] ❌ Error stack:', error.stack);
     }
     throw error;
   }
@@ -93,11 +96,11 @@ async function getPublicKeys(): Promise<any[]> {
 
   // 캐시가 유효하면 반환
   if (publicKeysCache && publicKeysCache.expires > now) {
-    console.log('[Firebase JWT] 🎯 Using cached public keys');
+    console.log('[Firebase Token] 🎯 Using cached public keys');
     return publicKeysCache.keys;
   }
 
-  console.log('[Firebase JWT] 📥 Fetching public keys from Google');
+  console.log('[Firebase Token] 📥 Fetching public keys from Google');
   
   // Google에서 공개 키 가져오기
   const response = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
@@ -118,8 +121,8 @@ async function getPublicKeys(): Promise<any[]> {
     expires: now + maxAge * 1000
   };
 
-  console.log('[Firebase JWT] ✅ Public keys fetched:', publicKeysCache.keys.length, 'keys');
-  console.log('[Firebase JWT] ⏰ Cache expires in:', maxAge, 'seconds');
+  console.log('[Firebase Token] ✅ Public keys fetched:', publicKeysCache.keys.length, 'keys');
+  console.log('[Firebase Token] ⏰ Cache expires in:', maxAge, 'seconds');
 
   return publicKeysCache.keys;
 }
@@ -129,7 +132,7 @@ async function getPublicKeys(): Promise<any[]> {
  */
 async function verifySignatureWithJose(token: string, kid: string): Promise<void> {
   try {
-    console.log('[Firebase JWT] 🔐 Verifying signature with kid:', kid);
+    console.log('[Firebase Token] 🔐 Verifying signature with kid:', kid);
     
     const keys = await getPublicKeys();
     const key = keys.find(k => k.kid === kid);
@@ -138,27 +141,27 @@ async function verifySignatureWithJose(token: string, kid: string): Promise<void
       throw new Error(`Public key not found for kid: ${kid}`);
     }
 
-    console.log('[Firebase JWT] 🔑 Public key found for kid:', kid);
+    console.log('[Firebase Token] 🔑 Public key found for kid:', kid);
     
     // PEM 인증서를 JWK로 변환
     // Firebase는 X.509 인증서 형식으로 제공하지만, jose는 PEM을 직접 import 가능
     const publicKey = await jose.importX509(key.cert, 'RS256');
     
-    console.log('[Firebase JWT] 🔓 Public key imported successfully');
+    console.log('[Firebase Token] 🔓 Public key imported successfully');
     
     // JWT 서명 검증
     const { payload, protectedHeader } = await jose.jwtVerify(token, publicKey, {
       algorithms: ['RS256'],
     });
     
-    console.log('[Firebase JWT] ✅ Signature verified successfully');
-    console.log('[Firebase JWT] 🛡️ Protected header:', protectedHeader);
+    console.log('[Firebase Token] ✅ Signature verified successfully');
+    console.log('[Firebase Token] 🛡️ Protected header:', protectedHeader);
     
   } catch (error) {
-    console.error('[Firebase JWT] ❌ Signature verification error:', error);
+    console.error('[Firebase Token] ❌ Signature verification error:', error);
     if (error instanceof Error) {
-      console.error('[Firebase JWT] ❌ Error name:', error.name);
-      console.error('[Firebase JWT] ❌ Error message:', error.message);
+      console.error('[Firebase Token] ❌ Error name:', error.name);
+      console.error('[Firebase Token] ❌ Error message:', error.message);
     }
     throw new Error(`Signature verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
