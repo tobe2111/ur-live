@@ -53,14 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<'user' | 'seller' | 'admin' | null>(null)
-  const [syncAttempted, setSyncAttempted] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   
-  // ✅ useRef로 동기 처리 상태 즉시 제어 (sessionStorage 대신)
+  // ✅ useRef로 동기 처리 상태 즉시 제어
   const isProcessingTokenRef = useRef(false)
   const processedTokenRef = useRef<string | null>(null)
-  const authChangeCounterRef = useRef(0)  // ✅ 디버그: onAuthStateChanged 트리거 횟수
-  const syncAttemptedUidsRef = useRef<Set<string>>(new Set())  // ✅ uid별 sync 관리
+  const authChangeCounterRef = useRef(0)
+  const syncAttemptedUidsRef = useRef<Set<string>>(new Set())
+  const lastAuthStateRef = useRef<'loading' | 'logged-in' | 'logged-out'>('loading')  // ✅ 상태 변경 추적
 
   // Firebase Auth로 모든 경로 통일 관리
   console.log('[AuthContext] 🔥 100% Firebase Auth 모드 + useRef 동기 제어')
@@ -93,11 +93,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       authChangeCounterRef.current++
+      const currentState = firebaseUser ? 'logged-in' : 'logged-out'
+      
       console.log(`[AuthContext] 🔥 onAuthStateChanged 트리거 #${authChangeCounterRef.current}:`, {
         hasUser: !!firebaseUser,
         email: firebaseUser?.email,
-        uid: firebaseUser?.uid
+        uid: firebaseUser?.uid,
+        lastState: lastAuthStateRef.current,
+        currentState
       })
+      
+      // ✅ 상태가 실제로 변경되지 않았으면 스킵
+      if (lastAuthStateRef.current === currentState && lastAuthStateRef.current !== 'loading') {
+        console.log('[AuthContext] ⏭️ 상태 변경 없음 - 스킵')
+        return
+      }
+      
+      lastAuthStateRef.current = currentState
       
       if (firebaseUser) {
         // Firebase ID Token 가져오기
@@ -120,6 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userIdFromClaims) {
           localStorage.setItem('user_id', userIdFromClaims.toString())
           console.log('[AuthContext] ✅ user_id를 Custom Claims에서 저장:', userIdFromClaims)
+        } else {
+          console.warn('[AuthContext] ⚠️ Custom Claims에 userId 없음 - D1 sync 필요')
         }
         
         if (userNameFromFirebase) {
@@ -148,16 +162,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               displayName: firebaseUser.displayName
             })
             
-            // ✅ D1 sync 성공 시 user_id, user_name을 localStorage에 저장
+            // ✅ D1 sync 성공 시 Custom Claims에 없던 데이터만 저장
             if (syncResponse.data?.success && syncResponse.data?.user) {
               const userData = syncResponse.data.user
-              localStorage.setItem('user_id', userData.id?.toString() || '')
-              localStorage.setItem('user_name', userData.name || '')
               
-              console.log('[AuthContext] ✅ D1 동기화 완료 + localStorage 저장:', {
-                userId: userData.id,
-                userName: userData.name
-              })
+              // Custom Claims에서 못 가져온 경우만 저장
+              if (!userIdFromClaims && userData.id) {
+                localStorage.setItem('user_id', userData.id.toString())
+                console.log('[AuthContext] ✅ D1에서 user_id 저장:', userData.id)
+              }
+              
+              if (!userNameFromFirebase && userData.name) {
+                localStorage.setItem('user_name', userData.name)
+                console.log('[AuthContext] ✅ D1에서 user_name 저장:', userData.name)
+              }
             }
             
             localStorage.setItem(lastSyncKey, now.toString())
@@ -192,25 +210,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           console.log('[AuthContext] ⏭️ Sync 스킵 (최근 sync: ' + (lastSync ? new Date(parseInt(lastSync)).toLocaleTimeString() : 'N/A') + ')')
           
-          // ✅ Sync 스킵했지만 localStorage에 user_id가 없으면 빠른 조회 API 호출
-          const existingUserId = localStorage.getItem('user_id')
-          if (!existingUserId && (!rateLimitUntil || now >= parseInt(rateLimitUntil))) {
+          // ✅ Custom Claims에서 못 가져온 경우에만 조회 API 호출
+          if (!userIdFromClaims && (!rateLimitUntil || now >= parseInt(rateLimitUntil))) {
             try {
-              console.log('[AuthContext] 🔍 user_id 없음 - 빠른 조회 API 호출')
+              console.log('[AuthContext] 🔍 Custom Claims에 userId 없음 - D1 조회 API 호출')
               const userIdResponse = await api.get(`/api/auth/firebase/user-id/${firebaseUser.uid}`)
               
               if (userIdResponse.data?.success) {
                 localStorage.setItem('user_id', userIdResponse.data.userId?.toString() || '')
                 localStorage.setItem('user_name', userIdResponse.data.userName || '')
                 
-                console.log('[AuthContext] ✅ user_id 조회 완료:', {
+                console.log('[AuthContext] ✅ D1에서 user_id 조회 완료:', {
                   userId: userIdResponse.data.userId,
                   userName: userIdResponse.data.userName
                 })
               }
             } catch (err: any) {
               if (err?.response?.status === 429) {
-                const backoffMs = 120000 // 2분
+                const backoffMs = 120000
                 localStorage.setItem(rateLimitKey, (now + backoffMs).toString())
                 console.warn(`[AuthContext] ⚠️ user_id 조회 Rate Limit - 2분 대기 설정`)
               } else {

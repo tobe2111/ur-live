@@ -43,11 +43,7 @@ export default function LoginPage() {
     if (isLoggedIn && !hasRedirected.current) {
       console.log('[LoginPage] 🔄 이미 로그인됨 - 홈으로 리다이렉트')
       hasRedirected.current = true
-      
-      // AuthContext가 이미 리다이렉트를 처리했을 수 있으므로 짧은 지연
-      setTimeout(() => {
-        navigate('/', { replace: true })
-      }, 100)
+      navigate('/', { replace: true })  // ✅ 즉시 실행 (setTimeout 제거)
     }
   }, [isAuthReady, isLoggedIn, navigate])
 
