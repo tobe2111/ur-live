@@ -59,6 +59,7 @@ function isPublicAPI(url: string): boolean {
  * 🔥 핵심 변경: localStorage 대신 Firebase Auth 객체에서 직접 ID Token 가져오기
  * - Custom Token 문제 해결 (localStorage에 Custom Token이 저장되는 경우 방지)
  * - 항상 최신 ID Token 사용 (자동 갱신)
+ * - auth.currentUser가 null일 때 Firebase Auth 초기화 대기
  */
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -71,14 +72,32 @@ api.interceptors.request.use(
     
     // 🔥 Firebase Auth에서 직접 ID Token 가져오기
     try {
-      const user = auth.currentUser;
+      let user = auth.currentUser;
+      
+      // ✅ auth.currentUser가 null이면 onAuthStateChanged로 대기 (최대 3초)
+      if (!user) {
+        console.log('[API] ⏳ Waiting for Firebase Auth initialization...');
+        user = await new Promise<typeof auth.currentUser>((resolve) => {
+          const timeout = setTimeout(() => {
+            console.warn('[API] ⚠️ Firebase Auth initialization timeout (3s)');
+            resolve(null);
+          }, 3000);
+          
+          const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+            clearTimeout(timeout);
+            unsubscribe();
+            resolve(currentUser);
+          });
+        });
+      }
+      
       if (user) {
         const idToken = await user.getIdToken(true); // force refresh = true
         config.headers['Authorization'] = `Bearer ${idToken}`;
         console.log('[API] 🔥 Firebase ID Token attached (from auth.currentUser)');
         console.log('[API] 🔑 Token preview:', idToken.substring(0, 50) + '...');
       } else {
-        console.warn('[API] ⚠️ No Firebase user for protected API:', config.url);
+        console.warn('[API] ⚠️ No Firebase user for protected API after waiting:', config.url);
       }
     } catch (error) {
       console.error('[API] ❌ Failed to get Firebase ID Token:', error);
