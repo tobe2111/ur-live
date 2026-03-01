@@ -163,6 +163,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           console.log('[AuthContext] ⏭️ Sync 스킵 (최근 sync: ' + (lastSync ? new Date(parseInt(lastSync)).toLocaleTimeString() : 'N/A') + ')')
+          
+          // ✅ Sync 스킵했지만 localStorage에 user_id가 없으면 빠른 조회 API 호출
+          const existingUserId = localStorage.getItem('user_id')
+          if (!existingUserId) {
+            try {
+              console.log('[AuthContext] 🔍 user_id 없음 - 빠른 조회 API 호출')
+              const userIdResponse = await api.get(`/api/auth/firebase/user-id/${firebaseUser.uid}`)
+              
+              if (userIdResponse.data?.success) {
+                localStorage.setItem('user_id', userIdResponse.data.userId?.toString() || '')
+                localStorage.setItem('user_name', userIdResponse.data.userName || '')
+                
+                console.log('[AuthContext] ✅ user_id 조회 완료:', {
+                  userId: userIdResponse.data.userId,
+                  userName: userIdResponse.data.userName
+                })
+              }
+            } catch (err) {
+              console.warn('[AuthContext] ⚠️ user_id 조회 실패 (계속 진행):', err)
+            }
+          }
         }
         
         // ✅ D1 sync 실패 여부와 관계없이 Firebase User 기준으로 로그인 상태 설정

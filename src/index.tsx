@@ -2603,6 +2603,59 @@ app.post('/api/auth/firebase/sync', cors(), async (c) => {
 });
 
 /**
+ * Firebase UID로 D1 user_id 조회
+ * 빠른 조회용 (sync 없이 user_id만 반환)
+ */
+app.get('/api/auth/firebase/user-id/:firebaseUid', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const firebaseUid = c.req.param('firebaseUid');
+    
+    if (!firebaseUid) {
+      return c.json({ success: false, error: 'firebaseUid is required' }, 400);
+    }
+    
+    // D1에서 firebase_uid로 사용자 찾기
+    const user = await DB.prepare(
+      'SELECT id, name, email FROM users WHERE firebase_uid = ?'
+    ).bind(firebaseUid).first();
+    
+    if (!user) {
+      return c.json({
+        success: false,
+        error: 'User not found'
+      }, 404);
+    }
+    
+    return c.json({
+      success: true,
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email
+    });
+    
+  } catch (error) {
+    console.error('[Firebase User ID Lookup] Error:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    
+    // firebase_uid 컬럼이 없는 경우
+    if (errorMsg.includes('no such column: firebase_uid')) {
+      return c.json({ 
+        success: false,
+        error: 'Database migration needed',
+        requiresMigration: true
+      }, 503);
+    }
+    
+    return c.json({ 
+      success: false, 
+      error: errorMsg
+    }, 500);
+  }
+});
+
+/**
  * Firebase Auth 회원가입 → D1 사용자 생성
  */
 app.post('/api/auth/firebase/register', cors(), async (c) => {
