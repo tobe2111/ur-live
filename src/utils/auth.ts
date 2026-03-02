@@ -83,9 +83,29 @@ export function getUserType(): string | null {
 }
 
 /**
- * 사용자 ID 가져오기 (레거시 키 호환)
+ * 사용자 ID 가져오기 (Firebase Custom Claims 우선)
+ * ✅ 모바일 동기화 이슈 해결: Firebase Auth에서 직접 가져오기
  */
 export function getUserId(): string | null {
+  // 1️⃣ Firebase Custom Claims에서 가져오기 (가장 신뢰할 수 있음)
+  try {
+    const auth = getAuth(app)
+    const user = auth.currentUser
+    if (user) {
+      // @ts-ignore - Firebase custom claims
+      const claims = user.reloadUserInfo?.customAttributes
+      if (claims) {
+        const parsed = JSON.parse(claims)
+        if (parsed.userId) {
+          return parsed.userId.toString()
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[Auth] getUserId - Firebase claims 조회 실패:', error)
+  }
+  
+  // 2️⃣ Fallback: localStorage (동기화 지연 대응)
   return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
          localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
 }

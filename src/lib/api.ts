@@ -92,7 +92,9 @@ api.interceptors.request.use(
       }
       
       if (user) {
-        const idToken = await user.getIdToken(true); // force refresh = true
+        // ✅ 캐시된 토큰 사용 (모바일 성능 개선)
+        // 만료되면 Firebase가 자동으로 갱신
+        const idToken = await user.getIdToken(false); // force refresh = false
         
         // 🚨 DEBUGGING: 토큰 타입 확인 (Custom Token vs ID Token)
         try {
@@ -153,6 +155,19 @@ api.interceptors.response.use(
     // 401 Unauthorized 처리
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+      
+      // 🔄 토큰 갱신 재시도 (모바일 네트워크 이슈 대응)
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          console.log('[API] 🔄 Retrying with refreshed token...');
+          const newToken = await user.getIdToken(true); // 강제 갱신
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error('[API] ❌ Token refresh failed:', refreshError);
+        }
+      }
       
       // 1️⃣ 공개 API는 401 무시
       if (isPublicAPI(originalRequest.url || '')) {
