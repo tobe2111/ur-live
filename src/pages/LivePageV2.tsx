@@ -1215,14 +1215,21 @@ function ReelCard({
         </div>
       )}
       
-      {/* Background image */}
-      <img
-        src={safeProduct.image || safeProduct.image_url || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
-        alt={safeProduct.name}
-        className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
-          isActive ? 'scale-100' : 'scale-110'
-        }`}
-      />
+      {/* Background image - 상품 이미지 우선, 없으면 투명 배경 */}
+      {(safeProduct.image || safeProduct.image_url) && (
+        <img
+          src={safeProduct.image || safeProduct.image_url}
+          alt={safeProduct.name}
+          className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
+            isActive ? 'scale-100' : 'scale-110'
+          }`}
+        />
+      )}
+      
+      {/* 상품 이미지 없을 때: 검은색 배경 */}
+      {!safeProduct.image && !safeProduct.image_url && (
+        <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
+      )}
 
       {/* YouTube Player Container */}
       <div
