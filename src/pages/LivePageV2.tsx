@@ -1693,7 +1693,6 @@ function ReelCard({
                 
                 console.log('[LivePageV2] 📡 POST /api/cart 호출 중...')
                 await api.post('/api/cart', {
-                  userId: parseInt(userId),
                   productId: product.id,
                   quantity,
                   priceSnapshot: product.price,
@@ -1755,7 +1754,6 @@ function ReelCard({
                 
                 console.log('[LivePageV2] 📡 POST /api/cart 호출 중...')
                 await api.post('/api/cart', {
-                  userId: parseInt(userId),
                   productId: product.id,
                   quantity,
                   priceSnapshot: product.price,

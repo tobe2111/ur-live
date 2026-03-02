@@ -104,9 +104,10 @@ export default function ProductDetailPage() {
     try {
       console.log('[ProductDetail] 📡 POST /api/cart 호출 중...')
       await api.post('/api/cart', {
-        product_id: product!.id,
+        productId: product!.id,
         quantity,
-        option_id: Object.values(selectedOptions)[0] || null
+        optionId: Object.values(selectedOptions)[0] || null,
+        priceSnapshot: product!.price
       })
       console.log('[ProductDetail] ✅ 장바구니 추가 성공')
       showToast('장바구니에 추가되었습니다.', 'success')
@@ -133,9 +134,10 @@ export default function ProductDetailPage() {
     try {
       // 1️⃣ 먼저 장바구니에 추가
       await api.post('/api/cart', {
-        product_id: product!.id,
+        productId: product!.id,
         quantity,
-        option_id: Object.values(selectedOptions)[0] || null
+        optionId: Object.values(selectedOptions)[0] || null,
+        priceSnapshot: product!.price
       })
       console.log('[ProductDetail] ✅ 장바구니 추가 완료')
       
