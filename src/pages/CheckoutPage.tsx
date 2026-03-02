@@ -399,7 +399,14 @@ export default function CheckoutPage() {
     
     console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
     const uid = getUserId()
-    console.log('[CheckoutPage] userId:', uid)
+    console.log('[CheckoutPage] 👤 userId:', uid)
+    console.log('[CheckoutPage] 🔍 localStorage 전체 확인:', {
+      user_id: localStorage.getItem('user_id'),
+      userId: localStorage.getItem('userId'),
+      firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
+      user_name: localStorage.getItem('user_name'),
+      user_type: localStorage.getItem('user_type')
+    })
     console.log('[CheckoutPage] isLoggedIn:', isLoggedIn())
     
     if (!isLoggedIn()) {

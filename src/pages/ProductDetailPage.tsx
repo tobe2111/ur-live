@@ -88,6 +88,12 @@ export default function ProductDetailPage() {
   }
 
   async function handleAddToCart() {
+    console.log('[ProductDetail] 🛒 담기 버튼 클릭, isLoggedIn:', isLoggedIn)
+    console.log('[ProductDetail] 🔍 localStorage 확인:', {
+      user_id: localStorage.getItem('user_id'),
+      firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...'
+    })
+    
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
@@ -96,18 +102,20 @@ export default function ProductDetailPage() {
     }
 
     try {
+      console.log('[ProductDetail] 📡 POST /api/cart 호출 중...')
       await api.post('/api/cart', {
         product_id: product!.id,
         quantity,
         option_id: Object.values(selectedOptions)[0] || null
       })
+      console.log('[ProductDetail] ✅ 장바구니 추가 성공')
       showToast('장바구니에 추가되었습니다.', 'success')
       localStorage.setItem('hasCartItems', 'true')
       
       // ✅ 장바구니 페이지로 이동
       setTimeout(() => navigate('/cart'), 1000)
     } catch (err: any) {
-      console.error('Failed to add to cart:', err)
+      console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
       showToast(err.response?.data?.error || '장바구니 추가에 실패했습니다.', 'error')
     }
   }
@@ -120,14 +128,25 @@ export default function ProductDetailPage() {
       return
     }
 
-    navigate('/checkout', {
-      state: {
-        product: product!,
+    console.log('[ProductDetail] 🛒 구매하기: 장바구니에 추가 후 결제 페이지 이동')
+    
+    try {
+      // 1️⃣ 먼저 장바구니에 추가
+      await api.post('/api/cart', {
+        product_id: product!.id,
         quantity,
-        selectedOptions,
-        fromCart: false
-      }
-    })
+        option_id: Object.values(selectedOptions)[0] || null
+      })
+      console.log('[ProductDetail] ✅ 장바구니 추가 완료')
+      
+      localStorage.setItem('hasCartItems', 'true')
+      
+      // 2️⃣ 결제 페이지로 이동
+      navigate('/checkout')
+    } catch (err: any) {
+      console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
+      showToast(err.response?.data?.error || '구매 진행에 실패했습니다.', 'error')
+    }
   }
 
   function handleShare() {
