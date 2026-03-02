@@ -8,7 +8,7 @@ import { ArrowLeft, Play, Mail, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-r
 
 export default function SellerLoginPage() {
   const navigate = useNavigate()
-  const { isLoggedIn, isAuthReady } = useAuth()
+  const { isLoggedIn, isAuthReady, logout } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
@@ -29,13 +29,14 @@ export default function SellerLoginPage() {
       if (userType === 'seller') {
         console.log('[SellerLoginPage] 이미 판매자 로그인됨 - /seller로 리다이렉트')
         navigate('/seller', { replace: true })
-      } else {
-        console.log('[SellerLoginPage] 다른 사용자 타입으로 로그인됨:', userType)
-        // 판매자가 아닌 경우 로그아웃 필요
+      } else if (userType) {
+        console.log('[SellerLoginPage] 다른 사용자 타입으로 로그인됨:', userType, '- 자동 로그아웃')
+        // 판매자가 아닌 경우 자동 로그아웃
+        logout()
         setError('판매자 계정으로 로그인해주세요.')
       }
     }
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isAuthReady, isLoggedIn, navigate, logout])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

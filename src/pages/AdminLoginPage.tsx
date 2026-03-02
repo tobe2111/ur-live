@@ -6,7 +6,7 @@ import { getUserType } from '@/utils/auth'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-  const { isLoggedIn, isAuthReady } = useAuth()
+  const { isLoggedIn, isAuthReady, logout } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,13 +19,14 @@ export default function AdminLoginPage() {
       if (userType === 'admin') {
         console.log('[AdminLoginPage] 이미 관리자 로그인됨 - /admin으로 리다이렉트')
         navigate('/admin', { replace: true })
-      } else {
-        console.log('[AdminLoginPage] 다른 사용자 타입으로 로그인됨:', userType)
-        // 관리자가 아닌 경우 로그아웃 필요
+      } else if (userType) {
+        console.log('[AdminLoginPage] 다른 사용자 타입으로 로그인됨:', userType, '- 자동 로그아웃')
+        // 관리자가 아닌 경우 자동 로그아웃
+        logout()
         setError('관리자 계정으로 로그인해주세요.')
       }
     }
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isAuthReady, isLoggedIn, navigate, logout])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
