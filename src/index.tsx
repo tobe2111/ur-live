@@ -8157,92 +8157,198 @@ app.post('/api/orders/:orderId/cancel', requireAuth, async (c) => {
 // ========================================
 
 // Get current viewer count
+// ==========================================
+// 👁️ Viewer Count API - KV 기반 실시간 시청자 수
+// ==========================================
+
+// 시청자 참여 (Heartbeat) - 페이지 접속 시 + 30초마다
+app.post('/api/streams/:streamId/viewer/join', async (c) => {
+  const { SESSION_KV } = c.env;
+  
+  try {
+    const streamId = c.req.param('streamId');
+    const sessionId = c.req.header('X-Session-ID') || crypto.randomUUID();
+    
+    // KV에 세션 저장 (TTL 60초)
+    const key = `stream:${streamId}:viewer:${sessionId}`;
+    await SESSION_KV.put(key, Date.now().toString(), {
+      expirationTtl: 60 // 60초 후 자동 삭제
+    });
+    
+    return c.json({ 
+      success: true, 
+      sessionId,
+      message: 'Viewer session updated'
+    });
+  } catch (err) {
+    console.error('[Viewer Join] Error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 시청자 수 조회 - 셀러 조작값 우선
 app.get('/api/streams/:streamId/viewer-count', async (c) => {
-  const { DB } = c.env;
+  const { DB, SESSION_KV } = c.env;
 
   try {
     const streamId = c.req.param('streamId');
 
+    // 1️⃣ D1에서 셀러 조작값 확인
     const stream = await DB.prepare(
-      'SELECT viewer_count FROM live_streams WHERE id = ?'
-    ).bind(streamId).first();
+      'SELECT manual_viewer_count FROM live_streams WHERE id = ?'
+    ).bind(streamId).first() as { manual_viewer_count: number | null } | null;
 
     if (!stream) {
       return c.json({ success: false, error: 'Stream not found' }, 404);
     }
 
+    // 2️⃣ 셀러가 설정한 값이 있으면 그것을 반환
+    if (stream.manual_viewer_count !== null && stream.manual_viewer_count !== undefined) {
+      return c.json({ 
+        success: true, 
+        data: { 
+          viewer_count: stream.manual_viewer_count,
+          is_manual: true // 셀러 조작값 표시
+        } 
+      });
+    }
+
+    // 3️⃣ KV에서 실제 시청자 수 카운트
+    const prefix = `stream:${streamId}:viewer:`;
+    const list = await SESSION_KV.list({ prefix });
+    const actualCount = list.keys.length;
+
     return c.json({ 
       success: true, 
       data: { 
-        viewer_count: stream.viewer_count || 0 
+        viewer_count: actualCount,
+        is_manual: false // 실제 시청자 수
       } 
     });
   } catch (err) {
+    console.error('[Viewer Count] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
-// Update viewer count (Admin/Seller only)
-app.put('/api/streams/:streamId/viewer-count', async (c) => {
+// 셀러 시청자 수 조작 (can_manipulate_stats 권한 필요)
+app.put('/api/streams/:streamId/viewer-count', requireAuth, async (c) => {
   const { DB } = c.env;
+  const { userId, userType } = c.get('user');
   
-  // Try both admin and seller auth
-  const adminAuth = await verifyAdminSession(c);
-  const sellerAuth = !adminAuth.success ? await verifySellerSession(c) : { success: false };
-
-  if (!adminAuth.success && !sellerAuth.success) {
-    return c.json({ success: false, error: 'Unauthorized' }, 401);
-  }
-
   try {
     const streamId = c.req.param('streamId');
-    const { viewer_count } = await c.req.json();
+    const { manual_count } = await c.req.json();
 
-    if (typeof viewer_count !== 'number' || viewer_count < 0) {
-      return c.json({ success: false, error: 'Invalid viewer count' }, 400);
+    // 판매자 확인
+    if (userType !== 'seller') {
+      return c.json({ success: false, error: 'Only sellers can manipulate viewer count' }, 403);
     }
 
-    // If seller, verify ownership
-    if (sellerAuth.success) {
-      const stream = await DB.prepare(
-        'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
-      ).bind(streamId, sellerAuth.sellerId).first();
+    // 스트림 소유권 및 권한 확인
+    const result = await DB.prepare(`
+      SELECT ls.id, s.can_manipulate_stats
+      FROM live_streams ls
+      JOIN sellers s ON ls.seller_id = s.id
+      WHERE ls.id = ? AND ls.seller_id = ?
+    `).bind(streamId, userId).first() as { id: number, can_manipulate_stats: number } | null;
 
-      if (!stream) {
-        return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
-      }
+    if (!result) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
     }
 
+    if (!result.can_manipulate_stats) {
+      return c.json({ 
+        success: false, 
+        error: 'You do not have permission to manipulate stats. Please contact admin for approval.' 
+      }, 403);
+    }
+
+    // manual_count가 null이면 실제 값으로 복귀
     await DB.prepare(
-      'UPDATE live_streams SET viewer_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(viewer_count, streamId).run();
-
-    return c.json({ success: true, data: { viewer_count } });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Increment viewer count (called when user joins)
-app.post('/api/streams/:streamId/view', async (c) => {
-  const { DB } = c.env;
-
-  try {
-    const streamId = c.req.param('streamId');
-
-    await DB.prepare(
-      'UPDATE live_streams SET viewer_count = viewer_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(streamId).run();
-
-    const stream = await DB.prepare(
-      'SELECT viewer_count FROM live_streams WHERE id = ?'
-    ).bind(streamId).first();
+      'UPDATE live_streams SET manual_viewer_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(manual_count, streamId).run();
 
     return c.json({ 
       success: true, 
-      data: { viewer_count: stream?.viewer_count || 0 } 
+      data: { 
+        manual_count,
+        message: manual_count === null ? 'Reverted to actual viewer count' : 'Manual viewer count updated'
+      } 
     });
   } catch (err) {
+    console.error('[Update Viewer Count] Error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🛒 가짜 장바구니 알림 전송 (can_manipulate_stats 권한 필요)
+app.post('/api/streams/:streamId/fake-cart-notification', requireAuth, async (c) => {
+  const { DB } = c.env;
+  const { userId, userType } = c.get('user');
+  
+  try {
+    const streamId = c.req.param('streamId');
+    const { product_name, quantity = 1 } = await c.req.json();
+
+    // 판매자 확인
+    if (userType !== 'seller') {
+      return c.json({ success: false, error: 'Only sellers can send fake notifications' }, 403);
+    }
+
+    // 스트림 소유권 및 권한 확인
+    const result = await DB.prepare(`
+      SELECT ls.id, s.can_manipulate_stats, s.display_name
+      FROM live_streams ls
+      JOIN sellers s ON ls.seller_id = s.id
+      WHERE ls.id = ? AND ls.seller_id = ?
+    `).bind(streamId, userId).first() as { id: number, can_manipulate_stats: number, display_name: string } | null;
+
+    if (!result) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
+    }
+
+    if (!result.can_manipulate_stats) {
+      return c.json({ 
+        success: false, 
+        error: 'You do not have permission to send fake notifications. Please contact admin for approval.' 
+      }, 403);
+    }
+
+    // Firebase에 시스템 메시지 전송 (🎉 패키지)
+    const message = `🎉 ${product_name} ${quantity}개가 장바구니에 추가되었습니다!`;
+    
+    // Firebase Realtime Database에 메시지 전송
+    try {
+      const firebaseAdmin = await import('./lib/firebase-admin');
+      const db = firebaseAdmin.getDatabase();
+      const chatRef = db.ref(`chats/stream${streamId}`);
+      
+      await chatRef.push({
+        userId: 0, // 시스템 메시지
+        userName: 'System',
+        userType: 'system',
+        message,
+        timestamp: Date.now(),
+        isSeller: false,
+        isAdmin: false
+      });
+      
+      console.log(`[Fake Cart Notification] ✅ Message sent to Firebase: ${message}`);
+    } catch (firebaseError) {
+      console.error('[Fake Cart Notification] Firebase error:', firebaseError);
+      // Firebase 실패해도 성공 응답 (알림은 선택적 기능)
+    }
+
+    return c.json({ 
+      success: true, 
+      data: { 
+        message,
+        note: 'Fake notification sent to chat'
+      } 
+    });
+  } catch (err) {
+    console.error('[Fake Cart Notification] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -10199,6 +10305,57 @@ app.patch('/api/admin/sellers/:id/commission', async (c) => {
 
   } catch (err) {
     console.error('수수료율 변경 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🎭 판매자 특수 권한 설정 (시청자 수 조작, 가짜 알림)
+app.patch('/api/admin/sellers/:id/permissions', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+    const { can_manipulate_stats } = await c.req.json();
+
+    // 권한 값 유효성 검증 (0 or 1)
+    if (can_manipulate_stats !== 0 && can_manipulate_stats !== 1) {
+      return c.json({ success: false, error: '권한 값은 0 또는 1이어야 합니다' }, 400);
+    }
+
+    // 판매자 존재 확인
+    const seller = await DB.prepare('SELECT id, username, name FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 권한 업데이트
+    await DB.prepare(`
+      UPDATE sellers 
+      SET can_manipulate_stats = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(can_manipulate_stats, sellerId).run();
+
+    const action = can_manipulate_stats ? '승인' : '해제';
+    console.log(`시청자 수 조작 권한 ${action}: 판매자 ${seller.username} (ID: ${sellerId})`);
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.username || seller.name}'의 특수 권한이 ${action}되었습니다`,
+      data: {
+        seller_id: sellerId,
+        seller_username: seller.username,
+        can_manipulate_stats
+      }
+    });
+
+  } catch (err) {
+    console.error('권한 변경 실패:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

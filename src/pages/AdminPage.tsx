@@ -17,6 +17,7 @@ interface Seller {
   company_name?: string
   status: string
   commission_rate?: number
+  can_manipulate_stats?: number // 0 or 1
   created_at: string
 }
 
@@ -252,6 +253,29 @@ export default function AdminPage() {
       loadData()
     } catch (err: any) {
       alert(`수수료율 변경 실패: ${err.response?.data?.error || err.message}`)
+    }
+  }
+
+  // 🎭 시청자 수 조작 권한 토글
+  async function toggleManipulateStatsPermission(sellerId: number, currentValue: number) {
+    const newValue = currentValue ? 0 : 1
+    const action = newValue ? '승인' : '해제'
+    
+    if (!confirm(`이 판매자에게 시청자 수 조작 및 가짜 알림 전송 권한을 ${action}하시겠습니까?`)) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('access_token')
+      await api.patch(
+        `/api/admin/sellers/${sellerId}/permissions`,
+        { can_manipulate_stats: newValue },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      )
+      alert(`권한이 ${action}되었습니다!`)
+      loadData() // 데이터 새로고침
+    } catch (err: any) {
+      alert(`권한 변경 실패: ${err.response?.data?.error || err.message}`)
     }
   }
 
@@ -507,6 +531,7 @@ export default function AdminPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이메일</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">회사명</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">수수료율</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">🎭 특수권한</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">가입일</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">액션</th>
@@ -515,7 +540,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-gray-200">
                 {sellers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                       등록된 판매자가 없습니다
                     </td>
                   </tr>
@@ -531,6 +556,29 @@ export default function AdminPage() {
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
                           {(seller.commission_rate || 10.00).toFixed(2)}%
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => toggleManipulateStatsPermission(seller.id, seller.can_manipulate_stats || 0)}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                            seller.can_manipulate_stats
+                              ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                          title={seller.can_manipulate_stats ? '클릭하여 권한 해제' : '클릭하여 권한 승인'}
+                        >
+                          {seller.can_manipulate_stats ? (
+                            <>
+                              <CheckCircle className="w-3 h-3" />
+                              승인됨
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-3 h-3" />
+                              미승인
+                            </>
+                          )}
                         </button>
                       </td>
                       <td className="px-6 py-4">

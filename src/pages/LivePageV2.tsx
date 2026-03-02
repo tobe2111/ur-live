@@ -1698,10 +1698,29 @@ export default function LivePageV2() {
     }
   }, [reels])
 
-  // 실시간 시청자 수 업데이트 (10초마다)
+  // 🔥 KV 기반 실시간 시청자 수 추적 (Session-based)
   useEffect(() => {
     if (!currentStream?.id) return
 
+    // 세션 ID 생성 또는 가져오기
+    let sessionId = sessionStorage.getItem('viewer_session_id')
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem('viewer_session_id', sessionId)
+    }
+
+    // 시청자 등록 (Heartbeat)
+    const joinViewer = async () => {
+      try {
+        await axios.post(`/api/streams/${currentStream.id}/viewer/join`, {}, {
+          headers: { 'X-Session-ID': sessionId }
+        })
+      } catch (error) {
+        console.error('[LivePageV2] Failed to join viewer:', error)
+      }
+    }
+
+    // 시청자 수 조회
     const fetchViewerCount = async () => {
       try {
         const response = await axios.get(`/api/streams/${currentStream.id}/viewer-count`)
@@ -1713,13 +1732,20 @@ export default function LivePageV2() {
       }
     }
 
-    // 초기 로드
+    // 초기 등록
+    joinViewer()
     fetchViewerCount()
 
-    // 10초마다 업데이트
-    const interval = setInterval(fetchViewerCount, 10000)
+    // 30초마다 Heartbeat 전송 (KV TTL 60초)
+    const heartbeatInterval = setInterval(joinViewer, 30000)
 
-    return () => clearInterval(interval)
+    // 10초마다 시청자 수 조회
+    const countInterval = setInterval(fetchViewerCount, 10000)
+
+    return () => {
+      clearInterval(heartbeatInterval)
+      clearInterval(countInterval)
+    }
   }, [currentStream?.id])
 
   // 스트리머 전용: 상품 변경 함수
