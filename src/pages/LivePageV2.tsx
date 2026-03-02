@@ -608,26 +608,38 @@ function ProductSheet({
     : 0
 
   async function handleAddToCart() {
-    if (addingToCart || buyingNow) return
+    console.log('[ProductSheet] 🛒 담기 버튼 클릭됨', { addingToCart, buyingNow, quantity })
+    if (addingToCart || buyingNow) {
+      console.log('[ProductSheet] ⚠️ 이미 처리 중이므로 무시')
+      return
+    }
     setAddingToCart(true)
     try {
+      console.log('[ProductSheet] 📡 onAddToCart 호출 중...', quantity)
       await onAddToCart(quantity)
+      console.log('[ProductSheet] ✅ onAddToCart 완료')
       // onClose() will be called by parent after showing toast
     } catch (error) {
-      console.error('Failed to add to cart:', error)
+      console.error('[ProductSheet] ❌ 담기 실패:', error)
     } finally {
       setAddingToCart(false)
     }
   }
 
   async function handleBuyNow() {
-    if (addingToCart || buyingNow) return
+    console.log('[ProductSheet] 💳 구매하기 버튼 클릭됨', { addingToCart, buyingNow, quantity })
+    if (addingToCart || buyingNow) {
+      console.log('[ProductSheet] ⚠️ 이미 처리 중이므로 무시')
+      return
+    }
     setBuyingNow(true)
     try {
+      console.log('[ProductSheet] 📡 onBuyNow 호출 중...', quantity)
       await onBuyNow(quantity)
+      console.log('[ProductSheet] ✅ onBuyNow 완료')
       // Navigation will be handled by parent
     } catch (error) {
-      console.error('Failed to buy now:', error)
+      console.error('[ProductSheet] ❌ 구매하기 실패:', error)
     } finally {
       // ✅ always reset loading state
       setBuyingNow(false)
@@ -1661,14 +1673,17 @@ function ReelCard({
             product={product} 
             onClose={() => setSheetOpen(false)}
             onAddToCart={async (quantity) => {
+              console.log('[LivePageV2] 📦 onAddToCart 호출됨, quantity:', quantity)
               // 담기: 장바구니에 추가만 하고 토스트 표시
               try {
                 const userId = getUserId()
+                console.log('[LivePageV2] 👤 userId:', userId)
                 if (!userId) {
                   showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
                   return
                 }
                 
+                console.log('[LivePageV2] 📡 POST /api/cart 호출 중...')
                 await api.post('/api/cart', {
                   userId: parseInt(userId),
                   productId: product.id,
@@ -1677,6 +1692,7 @@ function ReelCard({
                   liveStreamId: stream.id
                 })
                 
+                console.log('[LivePageV2] ✅ 장바구니 추가 성공!')
                 localStorage.setItem('hasCartItems', 'true')
                 
                 // 🎯 장바구니 아이템 추가 이벤트 발생
@@ -1694,14 +1710,17 @@ function ReelCard({
               }
             }}
             onBuyNow={async (quantity) => {
+              console.log('[LivePageV2] 💰 onBuyNow 호출됨, quantity:', quantity)
               // 구매하기: 장바구니에 추가 후 즉시 /cart로 이동
               try {
                 const userId = getUserId()
+                console.log('[LivePageV2] 👤 userId:', userId)
                 if (!userId) {
                   showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
                   return
                 }
                 
+                console.log('[LivePageV2] 📡 POST /api/cart 호출 중...')
                 await api.post('/api/cart', {
                   userId: parseInt(userId),
                   productId: product.id,
@@ -1710,6 +1729,7 @@ function ReelCard({
                   liveStreamId: stream.id
                 })
                 
+                console.log('[LivePageV2] ✅ 장바구니 추가 성공! 장바구니로 이동...')
                 localStorage.setItem('hasCartItems', 'true')
                 
                 // 🎯 장바구니 아이템 추가 이벤트 발생
