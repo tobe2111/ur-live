@@ -14879,6 +14879,41 @@ function trackKvRead(key: string) {
   kvReadStats[key] = (kvReadStats[key] || 0) + 1;
 }
 
+// 🔍 DEBUG: Check user by email
+app.get('/api/debug/user/:email', cors(), async (c) => {
+  const { DB } = c.env;
+  const email = c.req.param('email');
+  
+  try {
+    const user = await DB.prepare(`
+      SELECT id, firebase_uid, email, name, created_at 
+      FROM users 
+      WHERE email = ?
+    `).bind(email).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+    
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        firebase_uid: user.firebase_uid,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at
+      }
+    });
+  } catch (error) {
+    console.error('[Debug] Error fetching user:', error);
+    return c.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, 500);
+  }
+});
+
 export default app
 
 // =================================
