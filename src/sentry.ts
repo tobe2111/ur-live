@@ -23,12 +23,16 @@ export function initSentry() {
       }),
     ],
     
-    // 성능 모니터링 샘플링 비율
-    tracesSampleRate: 1.0,
+    // 💰 비용 최적화: 성능 모니터링 샘플링 비율 (100% → 10%)
+    // 예상 절감: 57% (100,000 MAU 기준 $699 → $299)
+    tracesSampleRate: 0.1, // 10% 샘플링
+    
+    // 💰 비용 최적화: 에러 이벤트 샘플링
+    sampleRate: 0.5, // 에러 이벤트 50% 샘플링
     
     // 세션 리플레이 샘플링
-    replaysSessionSampleRate: 0.1, // 10%
-    replaysOnErrorSampleRate: 1.0, // 에러 발생 시 100%
+    replaysSessionSampleRate: 0.05, // 5% (10% → 5%)
+    replaysOnErrorSampleRate: 0.5, // 에러 발생 시 50% (100% → 50%)
     
     // 환경 설정
     environment: import.meta.env.MODE || 'development',
@@ -36,15 +40,43 @@ export function initSentry() {
     // 릴리즈 버전 (package.json의 version 사용)
     release: `webapp@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
     
-    // 에러 필터링 (무시할 에러)
+    // 💰 비용 최적화: 에러 필터링 (무시할 에러 확대)
     beforeSend(event, hint) {
-      // 네트워크 에러 중 일부 무시
+      // 1. 네트워크 에러 무시
       if (event.exception) {
         const error = hint.originalException as Error
-        if (error?.message?.includes('Network Error')) {
-          return null // 전송 안함
+        const errorMessage = error?.message || ''
+        
+        // 네트워크 관련 에러 무시
+        if (
+          errorMessage.includes('Network Error') ||
+          errorMessage.includes('Network request failed') ||
+          errorMessage.includes('Failed to fetch') ||
+          errorMessage.includes('NetworkError')
+        ) {
+          console.log('🔇 Sentry: Network error ignored')
+          return null
+        }
+        
+        // 취소된 요청 무시
+        if (errorMessage.includes('AbortError') || errorMessage.includes('cancelled')) {
+          console.log('🔇 Sentry: Cancelled request ignored')
+          return null
+        }
+        
+        // 브라우저 확장 프로그램 에러 무시
+        if (errorMessage.includes('extension') || errorMessage.includes('chrome://')) {
+          console.log('🔇 Sentry: Browser extension error ignored')
+          return null
         }
       }
+      
+      // 2. 스크립트 로딩 에러 무시 (ad blockers 등)
+      if (event.request?.url?.includes('ad')) {
+        console.log('🔇 Sentry: Ad-related error ignored')
+        return null
+      }
+      
       return event
     },
   })

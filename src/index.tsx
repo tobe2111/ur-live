@@ -3823,18 +3823,51 @@ app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
 
 
 app.get('/api/streams/:id', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   const id = c.req.param('id');
 
   try {
-    const stream = await DB.prepare(`
-      SELECT ls.*, 
-             p.id as current_product_id, p.name as product_name, p.price, p.original_price, 
-             p.discount_rate, p.image_url, p.stock, p.category, p.description as product_description
-      FROM live_streams ls
-      LEFT JOIN products p ON ls.current_product_id = p.id
-      WHERE ls.id = ?
-    `).bind(id).first();
+    const cacheKey = `stream:detail:${id}`;
+    
+    // 💰 비용 최적화: KV 캐시 우선 확인 (D1 읽기 비용 절감)
+    const kvCached = await CACHE_KV.get(cacheKey, 'json');
+    if (kvCached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: kvCached,
+        cached: true,
+        cacheSource: 'kv',
+      });
+    }
+    
+    // 메모리 캐시 확인
+    const memCached = getFromMemoryCache(cacheKey);
+    if (memCached) {
+      // 백그라운드 갱신
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const freshData = await fetchStreamDetail(DB, id);
+            setToMemoryCache(cacheKey, freshData, 300); // 5분 TTL (라이브는 짧게)
+            await CACHE_KV.put(cacheKey, JSON.stringify(freshData), {
+              expirationTtl: 600 // 10분
+            });
+          } catch (err) {
+            console.error('[Cache Revalidate] Stream detail error:', err);
+          }
+        })()
+      );
+      
+      return c.json<ApiResponse>({
+        success: true,
+        data: memCached,
+        cached: true,
+        cacheSource: 'memory',
+      });
+    }
+
+    // 캐시 미스: DB 조회
+    const stream = await fetchStreamDetail(DB, id);
 
     if (!stream) {
       return c.json<ApiResponse>({
@@ -3842,10 +3875,17 @@ app.get('/api/streams/:id', async (c) => {
         error: 'Stream not found',
       }, 404);
     }
+    
+    // 💰 캐시 저장 (메모리 + KV)
+    setToMemoryCache(cacheKey, stream, 300); // 5분
+    await CACHE_KV.put(cacheKey, JSON.stringify(stream), {
+      expirationTtl: 600 // 10분
+    });
 
     return c.json<ApiResponse>({
       success: true,
       data: stream,
+      cached: false,
     });
   } catch (err) {
     return c.json<ApiResponse>({
@@ -3854,6 +3894,20 @@ app.get('/api/streams/:id', async (c) => {
     }, 500);
   }
 });
+
+/**
+ * 스트림 상세 조회 헬퍼 함수
+ */
+async function fetchStreamDetail(DB: D1Database, id: string) {
+  return await DB.prepare(`
+    SELECT ls.*, 
+           p.id as current_product_id, p.name as product_name, p.price, p.original_price, 
+           p.discount_rate, p.image_url, p.stock, p.category, p.description as product_description
+    FROM live_streams ls
+    LEFT JOIN products p ON ls.current_product_id = p.id
+    WHERE ls.id = ?
+  `).bind(id).first();
+}
 
 // 📺 라이브 스트림 목록 조회 (공개)
 app.get('/api/live-streams', async (c) => {
@@ -4412,13 +4466,24 @@ app.get('/api/products/search', async (c) => {
 
 // Product API
 app.get('/api/products/:id', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   const id = c.req.param('id');
 
   try {
     const cacheKey = `product:detail:${id}`;
     
-    // ✅ Stale-While-Revalidate: 메모리 캐시 우선
+    // 💰 비용 최적화: KV 캐시 우선 확인 (D1 읽기 비용 절감)
+    const kvCached = await CACHE_KV.get(cacheKey, 'json');
+    if (kvCached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: kvCached,
+        cached: true,
+        cacheSource: 'kv',
+      });
+    }
+    
+    // ✅ Stale-While-Revalidate: 메모리 캐시 확인
     const memCached = getFromMemoryCache(cacheKey);
     if (memCached) {
       // 백그라운드 갱신
@@ -4427,6 +4492,10 @@ app.get('/api/products/:id', async (c) => {
           try {
             const freshData = await fetchProductDetail(DB, id);
             setToMemoryCache(cacheKey, freshData, 1800); // 30분 TTL
+            // KV에도 저장 (1시간 TTL)
+            await CACHE_KV.put(cacheKey, JSON.stringify(freshData), {
+              expirationTtl: 3600
+            });
           } catch (err) {
             console.error('[Cache Revalidate] Product detail error:', err);
           }
@@ -4437,6 +4506,7 @@ app.get('/api/products/:id', async (c) => {
         success: true,
         data: memCached,
         cached: true,
+        cacheSource: 'memory',
       });
     }
 
@@ -4450,8 +4520,11 @@ app.get('/api/products/:id', async (c) => {
       }, 404);
     }
     
-    // 캐시 저장
+    // 💰 캐시 저장 (메모리 + KV)
     setToMemoryCache(cacheKey, productData, 1800);
+    await CACHE_KV.put(cacheKey, JSON.stringify(productData), {
+      expirationTtl: 3600 // 1시간
+    });
     
     return c.json<ApiResponse>({
       success: true,
