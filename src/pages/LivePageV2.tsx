@@ -631,9 +631,9 @@ function ReelCard({
   // Handle null product case
   const safeProduct = product || {
     name: stream.title || '상품 정보 없음',
-    // ✅ YouTube 썸네일을 우선 사용 (placeholder 대신)
-    image: stream.thumbnail_url || 'https://img.youtube.com/vi/' + (stream.youtube_video_id || 'dQw4w9WgXcQ') + '/maxresdefault.jpg',
-    image_url: stream.thumbnail_url || 'https://img.youtube.com/vi/' + (stream.youtube_video_id || 'dQw4w9WgXcQ') + '/maxresdefault.jpg',
+    // ✅ 이미지 없을 때: undefined로 두어 배경 이미지 비활성화
+    image: undefined,
+    image_url: undefined,
     price: 0,
     originalPrice: 0,
     original_price: 0
