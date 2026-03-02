@@ -582,283 +582,6 @@ function ProductListSheet({
   )
 }
 
-// ProductSheet Component (KREAM Style)
-function ProductSheet({
-  product,
-  onClose,
-  onAddToCart,
-  onBuyNow,
-}: {
-  product: Product
-  onClose: () => void
-  onAddToCart: (quantity: number) => Promise<void>
-  onBuyNow: (quantity: number) => Promise<void>
-}) {
-  const [selectedColor, setSelectedColor] = useState(0)
-  const [selectedSize, setSelectedSize] = useState(0)
-  const [quantity, setQuantity] = useState(1)
-  const [addingToCart, setAddingToCart] = useState(false)
-  const [buyingNow, setBuyingNow] = useState(false)
-
-  const originalPrice = product.originalPrice || product.original_price || product.price
-  const currentPrice = product.price || 0
-
-  const discount = originalPrice > currentPrice
-    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-    : 0
-
-  async function handleAddToCart() {
-    console.log('[ProductSheet] 🛒 담기 버튼 클릭됨', { addingToCart, buyingNow, quantity })
-    if (addingToCart || buyingNow) {
-      console.log('[ProductSheet] ⚠️ 이미 처리 중이므로 무시')
-      return
-    }
-    setAddingToCart(true)
-    try {
-      console.log('[ProductSheet] 📡 onAddToCart 호출 중...', quantity)
-      await onAddToCart(quantity)
-      console.log('[ProductSheet] ✅ onAddToCart 완료')
-      // onClose() will be called by parent after showing toast
-    } catch (error) {
-      console.error('[ProductSheet] ❌ 담기 실패:', error)
-    } finally {
-      setAddingToCart(false)
-    }
-  }
-
-  async function handleBuyNow() {
-    console.log('[ProductSheet] 💳 구매하기 버튼 클릭됨', { addingToCart, buyingNow, quantity })
-    if (addingToCart || buyingNow) {
-      console.log('[ProductSheet] ⚠️ 이미 처리 중이므로 무시')
-      return
-    }
-    setBuyingNow(true)
-    try {
-      console.log('[ProductSheet] 📡 onBuyNow 호출 중...', quantity)
-      await onBuyNow(quantity)
-      console.log('[ProductSheet] ✅ onBuyNow 완료')
-      // Navigation will be handled by parent
-    } catch (error) {
-      console.error('[ProductSheet] ❌ 구매하기 실패:', error)
-    } finally {
-      // ✅ always reset loading state
-      setBuyingNow(false)
-    }
-  }
-
-  return (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
-        onClick={onClose}
-      />
-
-      {/* Sheet - KREAM Style with 60% max height */}
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
-        {/* Handle */}
-        <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/60 backdrop-blur-md">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
-          <button
-            onClick={onClose}
-            className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4 text-gray-800" />
-          </button>
-        </div>
-
-        <div className="px-5 pb-8">
-          {/* Product header */}
-          <div className="flex items-start gap-4 mb-6">
-            <div className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
-              <img
-                src={product.image || product.image_url || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
-                alt={product.name}
-                onError={(e) => {
-                  // ✅ 이미지 로드 실패 시 YouTube 썸네일로 대체
-                  const img = e.target as HTMLImageElement
-                  if (img.src !== stream.thumbnail_url) {
-                    img.src = stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`
-                  }
-                }}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">
-                {product.name}
-              </h3>
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="flex items-center gap-0.5">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-sm font-semibold text-gray-900">{product.rating || 4.5}</span>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {(product.sold || product.sold_count || 0).toLocaleString()} sold
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-red-500">
-                  ₩{(product.price || 0).toLocaleString()}
-                </span>
-                {(product.originalPrice || product.original_price) && (
-                  <>
-                    <span className="text-sm text-gray-400 line-through">
-                      ₩{(product.originalPrice || product.original_price || 0).toLocaleString()}
-                    </span>
-                    <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-500">
-                      -{discount}%
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          {product.description && (
-            <p className="text-sm text-gray-600 leading-relaxed mb-5">
-              {product.description}
-            </p>
-          )}
-
-          {/* Colors */}
-          {product.colors && (
-            <div className="mb-5">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                {'Color: '}
-                <span className="font-normal text-gray-500">
-                  {product.colors[selectedColor].name}
-                </span>
-              </h4>
-              <div className="flex items-center gap-3">
-                {product.colors.map((color, i) => (
-                  <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(i)}
-                    className={`relative h-9 w-9 rounded-full transition-all duration-200 ${
-                      selectedColor === i
-                        ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-white scale-110'
-                        : 'ring-1 ring-gray-300'
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    aria-label={color.name}
-                  >
-                    {selectedColor === i && (
-                      <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow-md" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sizes */}
-          {product.sizes && (
-            <div className="mb-5">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Size</h4>
-              <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size, i) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(i)}
-                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                      selectedSize === i
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quantity */}
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Quantity</h4>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
-                aria-label="Decrease quantity"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="text-lg font-bold text-gray-900 w-8 text-center">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
-                aria-label="Increase quantity"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons - KREAM Style Split Buttons */}
-          {product.stock === 0 ? (
-            // 품절 상태
-            <div className="bg-gray-100 rounded-xl py-4 text-center">
-              <p className="text-gray-900 font-bold text-lg mb-1">품절된 상품입니다</p>
-              <p className="text-gray-500 text-sm">다른 상품을 선택해주세요</p>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              {/* 담기 버튼 */}
-              <button
-                onClick={handleAddToCart}
-                disabled={addingToCart || buyingNow}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 border-2 ${
-                  addingToCart
-                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border-gray-900 text-gray-900 active:scale-[0.98] hover:bg-gray-50'
-                }`}
-              >
-                {addingToCart ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                    담는 중...
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="h-5 w-5" />
-                    담기
-                  </>
-                )}
-              </button>
-
-              {/* 구매하기 버튼 */}
-              <button
-                onClick={handleBuyNow}
-                disabled={addingToCart || buyingNow}
-                className={`flex-[1.5] flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 ${
-                  buyingNow
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-gray-900 text-white active:scale-[0.98] hover:bg-gray-800 shadow-lg'
-                }`}
-              >
-                {buyingNow ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    처리 중...
-                  </>
-                ) : (
-                  <>
-                    ₩{((product.price || 0) * quantity).toLocaleString()} 구매하기
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  )
-}
-
 // ReelCard Component
 function ReelCard({ 
   reel, 
@@ -871,7 +594,6 @@ function ReelCard({
 }) {
   const navigate = useNavigate()
   const { showAlert } = useModal()
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [productListSheetOpen, setProductListSheetOpen] = useState(false)
   const [streamProducts, setStreamProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
@@ -1574,9 +1296,8 @@ function ReelCard({
           {/* Unified bottom bar: product info + basket + buy */}
           <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
             
-            {/* Product info - left side */}
-            <button
-              onClick={() => setSheetOpen(true)}
+            {/* Product info - left side - 클릭 비활성화 */}
+            <div
               className="flex flex-col items-start min-w-0 flex-1 text-left animate-fade-in"
               key={currentProduct?.id || 'default'}
             >
@@ -1593,20 +1314,20 @@ function ReelCard({
                   </span>
                 )}
               </div>
-            </button>
+            </div>
 
             {/* Basket button - Opens product list */}
             <button
-              onClick={openProductListSheet}
-              disabled={!product}
+              onClick={handleAddToCart}
+              disabled={!product || addingToCart}
               className={`flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95 ${
-                !product ? 'opacity-50 cursor-not-allowed' : ''
+                !product || addingToCart ? 'opacity-50 cursor-not-allowed' : ''
               }`}
-              aria-label="Open product list"
+              aria-label="Add to cart"
             >
               <ShoppingBag className="h-3.5 w-3.5 text-white/80" />
               <span className="text-[11px] font-bold text-white/90">
-                담기
+                {addingToCart ? '추가 중...' : '담기'}
               </span>
             </button>
 
@@ -1630,9 +1351,8 @@ function ReelCard({
               /* Buy button - 일반 유저만 "구매하기" 버튼 표시 */
               <button
                 onClick={() => {
-                  // 현재 상품이 있으면 바로 Quick View 모달 열기
                   if (currentProduct) {
-                    setSheetOpen(true)
+                    handleCheckout() // 직접 결제 처리
                   } else {
                     showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                   }
@@ -1659,119 +1379,10 @@ function ReelCard({
             onSelectProduct={(selectedProduct) => {
               setProductListSheetOpen(false)
               setCurrentProduct(selectedProduct)
-              setSheetOpen(true)
+              // 모달 열기 대신 바로 장바구니 추가
+              handleAddToCart()
             }}
             loading={loadingProducts}
-          />
-        </div>
-      )}
-
-      {/* Product sheet */}
-      {sheetOpen && product && (
-        <div className="pointer-events-auto">
-          <ProductSheet 
-            product={product} 
-            onClose={() => setSheetOpen(false)}
-            onAddToCart={async (quantity) => {
-              console.log('[LivePageV2] 📦 onAddToCart 호출됨, quantity:', quantity)
-              // 담기: 장바구니에 추가만 하고 토스트 표시
-              try {
-                const userId = getUserId()
-                console.log('[LivePageV2] 👤 userId:', userId)
-                console.log('[LivePageV2] 🔍 localStorage 전체 확인:', {
-                  user_id: localStorage.getItem('user_id'),
-                  userId: localStorage.getItem('userId'),
-                  firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
-                  user_name: localStorage.getItem('user_name'),
-                  user_type: localStorage.getItem('user_type')
-                })
-                if (!userId) {
-                  console.error('[LivePageV2] ❌ userId가 null입니다!')
-                  showAlert('로그인이 필요합니다. (userId 없음)', 'warning', '로그인 필요')
-                  return
-                }
-                
-                console.log('[LivePageV2] 📡 POST /api/cart 호출 중...')
-                await api.post('/api/cart', {
-                  productId: product.id,
-                  quantity,
-                  priceSnapshot: product.price,
-                  liveStreamId: stream.id
-                })
-                
-                console.log('[LivePageV2] ✅ 장바구니 추가 성공!')
-                localStorage.setItem('hasCartItems', 'true')
-                
-                // 🎯 장바구니 아이템 추가 이벤트 발생
-                window.dispatchEvent(new CustomEvent('cartItemAdded'))
-                
-                // 🔥 시스템 메시지 전송 (채팅창에 표시)
-                try {
-                  const userName = localStorage.getItem('user_name') || '익명'
-                  const maskedName = maskUserName(userName)
-                  
-                  console.log('[LivePageV2] 📢 Sending system message...')
-                  await sendChatMessage(
-                    `${maskedName}님이 ${product.name}을(를) 담았습니다!`,
-                    0, // System user ID
-                    '🎉 시스템',
-                    'system'
-                  )
-                  console.log('[LivePageV2] ✅ System message sent successfully')
-                } catch (chatError) {
-                  console.error('[LivePageV2] ❌ 시스템 메시지 전송 실패:', chatError)
-                }
-                
-                // 토스트 표시
-                setNotificationText(`✅ 장바구니에 ${quantity}개 담았습니다`)
-                setShowNotification(true)
-                setTimeout(() => setShowNotification(false), 2000)
-                
-                // 시트 닫기
-                setSheetOpen(false)
-              } catch (error: any) {
-                showAlert(error.response?.data?.error || '장바구니 담기 실패', 'error', '오류')
-              }
-            }}
-            onBuyNow={async (quantity) => {
-              console.log('[LivePageV2] 💰 onBuyNow 호출됨, quantity:', quantity)
-              // 구매하기: 장바구니에 추가 후 즉시 /cart로 이동
-              try {
-                const userId = getUserId()
-                console.log('[LivePageV2] 👤 userId:', userId)
-                console.log('[LivePageV2] 🔍 localStorage 전체 확인:', {
-                  user_id: localStorage.getItem('user_id'),
-                  userId: localStorage.getItem('userId'),
-                  firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
-                  user_name: localStorage.getItem('user_name'),
-                  user_type: localStorage.getItem('user_type')
-                })
-                if (!userId) {
-                  console.error('[LivePageV2] ❌ userId가 null입니다!')
-                  showAlert('로그인이 필요합니다. (userId 없음)', 'warning', '로그인 필요')
-                  return
-                }
-                
-                console.log('[LivePageV2] 📡 POST /api/cart 호출 중...')
-                await api.post('/api/cart', {
-                  productId: product.id,
-                  quantity,
-                  priceSnapshot: product.price,
-                  liveStreamId: stream.id
-                })
-                
-                console.log('[LivePageV2] ✅ 장바구니 추가 성공! 장바구니로 이동...')
-                localStorage.setItem('hasCartItems', 'true')
-                
-                // 🎯 장바구니 아이템 추가 이벤트 발생
-                window.dispatchEvent(new CustomEvent('cartItemAdded'))
-                
-                // 즉시 장바구니 페이지로 이동
-                navigate('/cart')
-              } catch (error: any) {
-                showAlert(error.response?.data?.error || '구매 진행 실패', 'error', '오류')
-              }
-            }}
           />
         </div>
       )}
