@@ -1495,7 +1495,7 @@ function ReelCard({
       
       {/* Background image */}
       <img
-        src={safeProduct.image || safeProduct.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
+        src={safeProduct.image || safeProduct.image_url || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
         alt={safeProduct.name}
         className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
           isActive ? 'scale-100' : 'scale-110'
@@ -1678,8 +1678,16 @@ function ReelCard({
               try {
                 const userId = getUserId()
                 console.log('[LivePageV2] 👤 userId:', userId)
+                console.log('[LivePageV2] 🔍 localStorage 전체 확인:', {
+                  user_id: localStorage.getItem('user_id'),
+                  userId: localStorage.getItem('userId'),
+                  firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
+                  user_name: localStorage.getItem('user_name'),
+                  user_type: localStorage.getItem('user_type')
+                })
                 if (!userId) {
-                  showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+                  console.error('[LivePageV2] ❌ userId가 null입니다!')
+                  showAlert('로그인이 필요합니다. (userId 없음)', 'warning', '로그인 필요')
                   return
                 }
                 
@@ -1698,6 +1706,23 @@ function ReelCard({
                 // 🎯 장바구니 아이템 추가 이벤트 발생
                 window.dispatchEvent(new CustomEvent('cartItemAdded'))
                 
+                // 🔥 시스템 메시지 전송 (채팅창에 표시)
+                try {
+                  const userName = localStorage.getItem('user_name') || '익명'
+                  const maskedName = maskUserName(userName)
+                  
+                  console.log('[LivePageV2] 📢 Sending system message...')
+                  await sendChatMessage(
+                    `${maskedName}님이 ${product.name}을(를) 담았습니다!`,
+                    0, // System user ID
+                    '🎉 시스템',
+                    'system'
+                  )
+                  console.log('[LivePageV2] ✅ System message sent successfully')
+                } catch (chatError) {
+                  console.error('[LivePageV2] ❌ 시스템 메시지 전송 실패:', chatError)
+                }
+                
                 // 토스트 표시
                 setNotificationText(`✅ 장바구니에 ${quantity}개 담았습니다`)
                 setShowNotification(true)
@@ -1715,8 +1740,16 @@ function ReelCard({
               try {
                 const userId = getUserId()
                 console.log('[LivePageV2] 👤 userId:', userId)
+                console.log('[LivePageV2] 🔍 localStorage 전체 확인:', {
+                  user_id: localStorage.getItem('user_id'),
+                  userId: localStorage.getItem('userId'),
+                  firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
+                  user_name: localStorage.getItem('user_name'),
+                  user_type: localStorage.getItem('user_type')
+                })
                 if (!userId) {
-                  showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
+                  console.error('[LivePageV2] ❌ userId가 null입니다!')
+                  showAlert('로그인이 필요합니다. (userId 없음)', 'warning', '로그인 필요')
                   return
                 }
                 
