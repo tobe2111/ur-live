@@ -14914,6 +14914,52 @@ app.get('/api/debug/user/:email', cors(), async (c) => {
   }
 });
 
+// 🔧 DEBUG: Update user Firebase UID
+app.post('/api/debug/user/:email/firebase-uid', cors(), async (c) => {
+  const { DB } = c.env;
+  const email = c.req.param('email');
+  
+  try {
+    const { firebase_uid } = await c.req.json();
+    
+    if (!firebase_uid) {
+      return c.json({ success: false, error: 'firebase_uid is required' }, 400);
+    }
+    
+    // Check if user exists
+    const user = await DB.prepare(`
+      SELECT id FROM users WHERE email = ?
+    `).bind(email).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+    
+    // Update Firebase UID
+    await DB.prepare(`
+      UPDATE users SET firebase_uid = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?
+    `).bind(firebase_uid, email).run();
+    
+    console.log(`[Debug] Updated Firebase UID for ${email}: ${firebase_uid}`);
+    
+    return c.json({
+      success: true,
+      message: 'Firebase UID updated successfully',
+      user: {
+        id: user.id,
+        email,
+        firebase_uid
+      }
+    });
+  } catch (error) {
+    console.error('[Debug] Error updating Firebase UID:', error);
+    return c.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, 500);
+  }
+});
+
 export default app
 
 // =================================
