@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { ArrowLeft, Search, Package, AlertCircle, Loader2 } from 'lucide-react'
 import MobileFooter from '@/components/MobileFooter'
+import BottomNav from '@/components/main/BottomNav'
 
 interface Product {
   id: number
@@ -154,7 +155,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#f5f5f7]">
+    <div className="mx-auto min-h-screen max-w-md bg-[#f5f5f7] pb-20">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-[#e5e5ea]">
         <div className="w-full px-4 py-3">
@@ -380,6 +381,9 @@ export default function SearchPage() {
         {/* Mobile Footer */}
         <MobileFooter />
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }
