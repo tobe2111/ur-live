@@ -248,12 +248,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 시작')
     
+    // 🚨 강제 타임아웃: 3초 후에도 로딩 중이면 강제 해제
+    const forceTimeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('[Auth] ⏰ 강제 타임아웃 (3초) - 로딩 해제')
+        setLoading(false)
+        setIsAuthReady(true)
+      }
+    }, 3000)
+    
     // Firebase 초기화 확인
     if (!isFirebaseInitialized()) {
       console.error('[Auth] ❌ Firebase 초기화 실패')
       setInitError('Firebase 초기화 실패. 페이지를 새로고침해 주세요.')
       setIsAuthReady(true)
       setLoading(false)  // ✅ 초기화 실패 시에도 loading 해제
+      clearTimeout(forceTimeoutId)
       return
     }
     
@@ -399,6 +409,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     return () => {
       if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 해제')
+      clearTimeout(forceTimeoutId)
       unsubscribe()
     }
   }, []) // ✅ 빈 의존성 배열 - 한 번만 실행

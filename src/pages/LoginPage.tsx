@@ -32,21 +32,22 @@ export default function LoginPage() {
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
 
   // ✅ 이미 로그인되어 있으면 홈으로 리다이렉트
-  // 🎯 CRITICAL FIX: AuthContext가 리다이렉트를 처리하므로 여기서는 스킵
-  // (무한 루프 방지)
   useEffect(() => {
     // Auth 초기화 완료 대기
     if (!isAuthReady) {
+      console.log('[LoginPage] ⏳ Auth 초기화 대기 중...')
       return
     }
     
-    // 🚫 리다이렉트 제거: AuthContext가 URL 파라미터 처리 후 자동으로 리다이렉트함
-    // 여기서 추가 리다이렉트를 하면 무한 루프 발생
-    
-    if (isLoggedIn) {
-      console.log('[LoginPage] ✅ 이미 로그인됨 (AuthContext가 리다이렉트 처리)')
+    // 이미 로그인되어 있고, 중복 리다이렉트가 아니면 이동
+    if (isLoggedIn && !hasRedirected.current) {
+      console.log('[LoginPage] ✅ 이미 로그인됨 - returnUrl로 리다이렉트:', returnUrl)
+      hasRedirected.current = true
+      
+      // returnUrl로 이동 (로그인 페이지는 히스토리에서 제거)
+      navigate(returnUrl, { replace: true })
     }
-  }, [isAuthReady, isLoggedIn])
+  }, [isAuthReady, isLoggedIn, navigate, returnUrl])
 
   useEffect(() => {
     // 🎯 returnUrl을 sessionStorage에 저장 (로그인 후 복귀)
