@@ -22,14 +22,14 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
-      <div className="flex items-center justify-around py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex items-center justify-between px-4 py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         {navItems.map(({ icon: Icon, label, path }) => {
           const isActive = active === path || (path !== '/' && active.startsWith(path))
           return (
             <button
               key={label}
               onClick={() => handleNavClick(path)}
-              className="flex flex-col items-center gap-0.5 py-1 px-3 group"
+              className="flex flex-col items-center gap-0.5 py-1 flex-1"
               aria-label={label}
             >
               <Icon
