@@ -58,17 +58,44 @@ export function getRefreshToken(): string | null {
 }
 
 /**
- * 로그인 상태 확인 (Firebase 기반)
+ * 로그인 상태 확인 (Firebase + JWT 통합)
  * 
- * ✅ Single Source of Truth: Firebase Auth ONLY
- * - localStorage 의존성 제거
- * - Firebase User 객체만 체크
- * - user_id는 Custom Claims에서 추출되므로 별도 체크 불필요
+ * ✅ Multi-auth Support:
+ * 1. JWT sellers/admins: check seller_token or admin_token in localStorage
+ * 2. Firebase buyers: check Firebase auth.currentUser
+ * 
+ * Priority: JWT tokens first (seller/admin), then Firebase (buyers)
  */
 export function isLoggedIn(): boolean {
   try {
+    // 1️⃣ Check JWT tokens first (seller/admin)
+    const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
+    
+    if (userType === 'seller') {
+      const sellerToken = localStorage.getItem('seller_token')
+      if (sellerToken) {
+        console.log('[Auth] isLoggedIn: seller JWT found ✅')
+        return true
+      }
+    }
+    
+    if (userType === 'admin') {
+      const adminToken = localStorage.getItem('admin_token')
+      if (adminToken) {
+        console.log('[Auth] isLoggedIn: admin JWT found ✅')
+        return true
+      }
+    }
+    
+    // 2️⃣ Check Firebase Auth (buyers with Kakao/Email login)
     const auth = getAuth(app)
-    return !!auth.currentUser
+    if (auth.currentUser) {
+      console.log('[Auth] isLoggedIn: Firebase user found ✅')
+      return true
+    }
+    
+    console.log('[Auth] isLoggedIn: no authentication found ❌')
+    return false
   } catch (error) {
     console.error('[Auth] isLoggedIn 체크 실패:', error)
     return false
@@ -83,11 +110,18 @@ export function getUserType(): string | null {
 }
 
 /**
- * 사용자 ID 가져오기 (Firebase Custom Claims 우선)
- * ✅ 모바일 동기화 이슈 해결: Firebase Auth에서 직접 가져오기
+ * 사용자 ID 가져오기 (JWT + Firebase Custom Claims 통합)
+ * ✅ Multi-auth Support: JWT sellers/admins first, then Firebase buyers
  */
 export function getUserId(): string | null {
-  // 1️⃣ Firebase Custom Claims에서 가져오기 (가장 신뢰할 수 있음)
+  // 1️⃣ Check localStorage first (JWT sellers/admins store user_id here)
+  const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
+                 localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
+  if (userId) {
+    return userId
+  }
+  
+  // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)
   try {
     const auth = getAuth(app)
     const user = auth.currentUser
@@ -105,9 +139,7 @@ export function getUserId(): string | null {
     console.warn('[Auth] getUserId - Firebase claims 조회 실패:', error)
   }
   
-  // 2️⃣ Fallback: localStorage (동기화 지연 대응)
-  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
-         localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
+  return null
 }
 
 /**
@@ -137,17 +169,24 @@ export function getUserProfileImage(): string | null {
  * 로그인 필요 시 로그인 페이지로 이동
  * 현재 페이지를 returnUrl로 저장하여 로그인 후 돌아올 수 있게 함
  * 
+ * ⚠️ Alert 중복 방지: 같은 세션에서 한 번만 표시
+ * 
  * @param navigate - React Router의 navigate 함수
  * @param message - 사용자에게 표시할 메시지 (선택사항)
+ * @param force - 강제로 alert 표시 (기본값: false)
  */
-export function requireLogin(navigate: NavigateFunction, message: string = '로그인이 필요합니다.'): void {
+export function requireLogin(navigate: NavigateFunction, message: string = '로그인이 필요합니다.', force: boolean = false): void {
   // Save current URL as return destination
   const currentPath = window.location.pathname + window.location.search
   localStorage.setItem(FIREBASE_STORAGE_KEYS.LOGIN_RETURN_URL, currentPath)
   
-  // Show alert if message provided
-  if (message) {
+  // Show alert ONCE per session to prevent repetitive popups
+  const alertShownKey = 'login_alert_shown_' + currentPath
+  const alertShown = sessionStorage.getItem(alertShownKey)
+  
+  if (message && (force || !alertShown)) {
     alert(message)
+    sessionStorage.setItem(alertShownKey, 'true')
   }
   
   // Navigate to login with returnUrl

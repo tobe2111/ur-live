@@ -2166,8 +2166,8 @@ app.post('/api/seller/register', cors(), async (c) => {
     // username 생성 (email의 @ 앞부분)
     const username = email.split('@')[0];
     
-    // 비밀번호 해시 (간단한 형태로 저장)
-    const password_hash = `placeholder_hash_for_${password}`;
+    // 비밀번호 해시 (bcrypt 10 rounds)
+    const password_hash = await hashPassword(password);
     
     // ✅ 개선: UNIQUE 제약 조건으로 동시성 보호 (SELECT 제거)
     try {
