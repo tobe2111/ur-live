@@ -267,8 +267,8 @@ Set-Cookie: seller_token=<jwt>; HttpOnly; Secure; SameSite=Strict; Max-Age=25920
 **Request**:
 ```json
 {
-  "email": "admin@example.com",
-  "password": "admin123"
+  "email": "tobe2111@naver.com",
+  "password": "358533aa!!"
 }
 ```
 
@@ -280,9 +280,9 @@ Set-Cookie: seller_token=<jwt>; HttpOnly; Secure; SameSite=Strict; Max-Age=25920
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "admin": {
       "id": 1,
-      "username": "admin",
-      "email": "admin@example.com",
-      "name": "관리자"
+      "username": "tobe2111",
+      "email": "tobe2111@naver.com",
+      "name": "토비"
     }
   }
 }
@@ -567,7 +567,7 @@ CREATE INDEX idx_admins_is_active ON admins(is_active);
 
 | Email | Password | Role | Use Case |
 |-------|----------|------|----------|
-| `admin@example.com` | `admin123` | super_admin | Main admin account |
+| `tobe2111@naver.com` | `358533aa!!` | super_admin | Main admin account |
 
 ### Migration Script
 
@@ -662,8 +662,8 @@ curl -X POST https://live.ur-team.com/api/seller/login \
 curl -X POST https://live.ur-team.com/api/admin/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@example.com",
-    "password": "admin123"
+    "email": "tobe2111@naver.com",
+    "password": "358533aa!!"
   }'
 ```
 

@@ -152,9 +152,9 @@ INSERT OR IGNORE INTO sellers (
 -- ADMINS TABLE
 -- ============================================
 
--- Test admin: admin@example.com
--- Password: admin123
--- Hash: $2b$10$Tf5.UtLCIeNRDBR7p0kLY.09uU6/Kf.hMRPZuD7C0OP22BWsJsxPy
+-- Main admin: tobe2111@naver.com
+-- Password: 358533aa!!
+-- Hash: $2b$10$3WoWNsMd./fG2mMCL3ZlEut5lNMSF7omSONsQwBzDYnfPwE6RptuO
 INSERT OR REPLACE INTO admins (
   id,
   username,
@@ -167,10 +167,10 @@ INSERT OR REPLACE INTO admins (
   updated_at
 ) VALUES (
   1,
-  'admin',
-  'admin@example.com',
-  '$2b$10$Tf5.UtLCIeNRDBR7p0kLY.09uU6/Kf.hMRPZuD7C0OP22BWsJsxPy',
-  '관리자',
+  'tobe2111',
+  'tobe2111@naver.com',
+  '$2b$10$3WoWNsMd./fG2mMCL3ZlEut5lNMSF7omSONsQwBzDYnfPwE6RptuO',
+  '토비',
   1,
   'super_admin',
   datetime('now'),
