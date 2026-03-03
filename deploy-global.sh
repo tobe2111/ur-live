@@ -28,9 +28,10 @@ echo "Project name: ur-live-global"
 echo "Domain: world.ur-team.com"
 echo ""
 
-wrangler pages deploy dist \
+npx wrangler pages deploy dist \
   --project-name=ur-live-global \
-  --branch=main
+  --branch=main \
+  --config=wrangler.global.toml
 
 if [ $? -ne 0 ]; then
     echo "❌ Deployment failed!"
