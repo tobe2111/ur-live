@@ -251,7 +251,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 🚨 강제 타임아웃: 3초 후에도 로딩 중이면 강제 해제
     const forceTimeoutId = setTimeout(() => {
       if (loading) {
+        // 📊 타임아웃 원인 진단 로깅
         console.warn('[Auth] ⏰ 강제 타임아웃 (3초) - 로딩 해제')
+        console.warn('[Auth] 📊 타임아웃 원인:', {
+          loading: loading ? 'loading=true (인증이 느림)' : 'loading=false',
+          isAuthReady: !isAuthReady ? 'isAuthReady=false (리스너 미응답)' : 'isAuthReady=true',
+          userState: user ? `user=${user.uid}` : 'user=null',
+          timestamp: new Date().toISOString()
+        })
         setLoading(false)
         setIsAuthReady(true)
       }
