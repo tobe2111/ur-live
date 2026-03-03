@@ -54,12 +54,10 @@ function isPublicAPI(url: string): boolean {
 }
 
 /**
- * 요청 인터셉터: Firebase ID Token 자동 추가
+ * 요청 인터셉터: JWT & Firebase ID Token 자동 추가
  * 
- * 🔥 핵심 변경: localStorage 대신 Firebase Auth 객체에서 직접 ID Token 가져오기
- * - Custom Token 문제 해결 (localStorage에 Custom Token이 저장되는 경우 방지)
- * - 항상 최신 ID Token 사용 (자동 갱신)
- * - auth.currentUser가 null일 때 Firebase Auth 초기화 대기
+ * - Seller/Admin: JWT Token (localStorage에서 읽기)
+ * - Buyers: Firebase ID Token (Firebase Auth에서 읽기)
  */
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -70,11 +68,33 @@ api.interceptors.request.use(
       return config;
     }
     
-    // 🔥 Firebase Auth에서 직접 ID Token 가져오기
+    const userType = localStorage.getItem('user_type');
+    
+    // 🔐 Seller: JWT Token
+    if (userType === 'seller') {
+      const sellerToken = localStorage.getItem('seller_token');
+      if (sellerToken) {
+        config.headers['Authorization'] = `Bearer ${sellerToken}`;
+        console.log('[API] 🔐 JWT Token attached (seller)');
+        return config;
+      }
+    }
+    
+    // 🔐 Admin: JWT Token
+    if (userType === 'admin') {
+      const adminToken = localStorage.getItem('admin_token');
+      if (adminToken) {
+        config.headers['Authorization'] = `Bearer ${adminToken}`;
+        console.log('[API] 🔐 JWT Token attached (admin)');
+        return config;
+      }
+    }
+    
+    // 🔥 Buyers/Others: Firebase ID Token
     try {
       let user = auth.currentUser;
       
-      // ✅ auth.currentUser가 null이면 onAuthStateChanged로 대기 (최대 3초)
+      // auth.currentUser가 null이면 onAuthStateChanged로 대기 (최대 3초)
       if (!user) {
         console.log('[API] ⏳ Waiting for Firebase Auth initialization...');
         user = await new Promise<typeof auth.currentUser>((resolve) => {
@@ -92,47 +112,14 @@ api.interceptors.request.use(
       }
       
       if (user) {
-        // ✅ 캐시된 토큰 사용 (모바일 성능 개선)
-        // 만료되면 Firebase가 자동으로 갱신
-        const idToken = await user.getIdToken(false); // force refresh = false
-        
-        // 🚨 DEBUGGING: 토큰 타입 확인 (Custom Token vs ID Token)
-        try {
-          const parts = idToken.split('.');
-          if (parts.length === 3) {
-            const payloadBase64 = parts[1];
-            const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
-            const payload = JSON.parse(payloadJson);
-            
-            console.log('[API] 🔍 Token Payload:', {
-              iss: payload.iss,
-              aud: payload.aud,
-              sub: payload.sub,
-              exp: payload.exp,
-              iat: payload.iat
-            });
-            
-            // 🚨 CRITICAL CHECK: Custom Token 감지
-            if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
-              console.error('[API] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨');
-              console.error('[API] ❌ This should NEVER happen!');
-              console.error('[API] ❌ auth.currentUser.getIdToken() returned a Custom Token!');
-            } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
-              console.log('[API] ✅ Correct ID Token (securetoken.google.com)');
-            }
-          }
-        } catch (decodeError) {
-          console.warn('[API] ⚠️ Could not decode token payload:', decodeError);
-        }
-        
+        const idToken = await user.getIdToken(false);
         config.headers['Authorization'] = `Bearer ${idToken}`;
-        console.log('[API] 🔥 Firebase ID Token attached (from auth.currentUser)');
-        console.log('[API] 🔑 Token preview:', idToken.substring(0, 50) + '...');
+        console.log('[API] 🔥 Firebase ID Token attached (buyer)');
       } else {
-        console.warn('[API] ⚠️ No Firebase user for protected API after waiting:', config.url);
+        console.warn('[API] ⚠️ No auth token for protected API:', config.url);
       }
     } catch (error) {
-      console.error('[API] ❌ Failed to get Firebase ID Token:', error);
+      console.error('[API] ❌ Failed to get auth token:', error);
     }
     
     return config;

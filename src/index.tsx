@@ -45,6 +45,151 @@ import { AppError, ErrorFactory } from './lib/errors';
 import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
 import { verifyFirebaseIdToken, parseVerifyError, type FirebaseTokenPayload } from './lib/firebase-token-verify';
+import bcrypt from 'bcryptjs';
+
+// =================================
+// 🔐 JWT & Password Hashing Utilities
+// =================================
+
+/**
+ * JWT Secret Key (환경변수에서 로드, 없으면 기본값 사용)
+ * 프로덕션에서는 반드시 환경변수 설정 필요
+ */
+const getJWTSecret = (env: any): string => {
+  return env.JWT_SECRET || 'default-jwt-secret-change-in-production-12345678901234567890';
+};
+
+/**
+ * JWT 토큰 생성
+ */
+async function createJWTToken(
+  payload: { id: number; email: string; name: string; username?: string; type: 'seller' | 'admin' },
+  secret: string
+): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  
+  const jwtPayload = {
+    ...payload,
+    iat: now,
+    exp: now + (30 * 24 * 60 * 60) // 30일 만료
+  };
+  
+  // Base64 URL 인코딩
+  const base64UrlEncode = (obj: any) => {
+    const str = JSON.stringify(obj);
+    return btoa(str)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+  
+  const encodedHeader = base64UrlEncode(header);
+  const encodedPayload = base64UrlEncode(jwtPayload);
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  // HMAC-SHA256 서명
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(signatureInput)
+  );
+  
+  const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  
+  return `${signatureInput}.${base64Signature}`;
+}
+
+/**
+ * JWT 토큰 검증 및 디코딩
+ */
+async function verifyJWTToken(token: string, secret: string): Promise<any | null> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    const [encodedHeader, encodedPayload, signature] = parts;
+    
+    // 서명 검증
+    const signatureInput = `${encodedHeader}.${encodedPayload}`;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign', 'verify']
+    );
+    
+    const expectedSignature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(signatureInput)
+    );
+    
+    const expectedBase64 = btoa(String.fromCharCode(...new Uint8Array(expectedSignature)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    
+    if (signature !== expectedBase64) {
+      console.warn('[JWT] Invalid signature');
+      return null;
+    }
+    
+    // Base64 URL 디코딩
+    const base64UrlDecode = (str: string) => {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = str.length % 4;
+      if (pad) {
+        str += '='.repeat(4 - pad);
+      }
+      return JSON.parse(atob(str));
+    };
+    
+    const payload = base64UrlDecode(encodedPayload);
+    
+    // 만료 확인
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      console.warn('[JWT] Token expired');
+      return null;
+    }
+    
+    return payload;
+  } catch (error) {
+    console.error('[JWT] Verification error:', error);
+    return null;
+  }
+}
+
+/**
+ * 비밀번호 해싱 (bcrypt)
+ */
+async function hashPassword(password: string): Promise<string> {
+  return await bcrypt.hash(password, 10); // 10 salt rounds
+}
+
+/**
+ * 비밀번호 검증 (bcrypt)
+ */
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await bcrypt.compare(password, hash);
+}
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -752,41 +897,60 @@ async function getSessionInfo(
  * @param next - Next middleware
  */
 async function requireAuth(c: any, next: any) {
-  // 🔥 Firebase ID Token 인증 (100% Firebase 표준)
-  const authHeader = c.req.header('Authorization')
-  console.log('[requireAuth] 🔍 Header check:', authHeader ? 'EXISTS' : 'MISSING')
+  const authHeader = c.req.header('Authorization');
+  console.log('[requireAuth] 🔍 Header check:', authHeader ? 'EXISTS' : 'MISSING');
   
   if (!authHeader) {
     return c.json({ 
       success: false, 
-      error: 'Missing Authorization header - Firebase ID Token required',
-      code: 'NO_AUTH_HEADER',
-      debug: {
-        headers: Object.fromEntries(c.req.raw.headers.entries())
-      }
-    }, 401)
+      error: 'Missing Authorization header',
+      code: 'NO_AUTH_HEADER'
+    }, 401);
   }
   
-  const auth = await getFirebaseAuth(c)
+  const token = authHeader.replace('Bearer ', '');
+  
+  // 🔐 Try JWT verification first (for sellers and admins)
+  const jwtSecret = getJWTSecret(c.env);
+  const jwtPayload = await verifyJWTToken(token, jwtSecret);
+  
+  if (jwtPayload) {
+    // JWT token verified successfully
+    console.log('[requireAuth] ✅ JWT verified:', jwtPayload.type, jwtPayload.email);
+    
+    // Set context with JWT payload
+    c.set('user', {
+      userId: jwtPayload.id,
+      userType: jwtPayload.type,
+      email: jwtPayload.email,
+      name: jwtPayload.name
+    });
+    c.set('userId', jwtPayload.id);
+    c.set('userType', jwtPayload.type);
+    c.set('email', jwtPayload.email);
+    
+    await next();
+    return;
+  }
+  
+  // 🔥 Fallback to Firebase ID Token (for buyers)
+  const auth = await getFirebaseAuth(c);
   
   if (!auth || auth.userId === 0) {
-    // Return detailed error information from token verification
     const errorDetails = auth?.errorDetails || {
       code: 'AUTH_FAILED',
-      message: 'Token verification failed - unknown reason'
-    }
+      message: 'Token verification failed - not a valid JWT or Firebase token'
+    };
     
     return c.json({ 
       success: false, 
       error: errorDetails.message,
-      code: errorDetails.code,
-      debug: {
-        tokenProvided: !!authHeader,
-        tokenLength: authHeader?.replace('Bearer ', '').length || 0,
-        ...errorDetails.tokenInfo
-      }
-    }, 401)
+      code: errorDetails.code
+    }, 401);
   }
+  
+  // Firebase authentication successful
+  console.log('[requireAuth] ✅ Firebase verified:', auth.userType, auth.email);
   
   // Context에 사용자 정보 저장
   c.set('user', {
@@ -794,13 +958,13 @@ async function requireAuth(c: any, next: any) {
     userType: auth.userType,
     email: auth.email,
     firebaseUID: auth.firebaseUID
-  })
-  c.set('userId', auth.userId)
-  c.set('userType', auth.userType)
-  c.set('email', auth.email)
-  c.set('firebaseUID', auth.firebaseUID)
+  });
+  c.set('userId', auth.userId);
+  c.set('userType', auth.userType);
+  c.set('email', auth.email);
+  c.set('firebaseUID', auth.firebaseUID);
   
-  await next()
+  await next();
 }
 
 // ==================== Admin Authorization Middleware ====================
@@ -2045,7 +2209,7 @@ app.post('/api/seller/register', cors(), async (c) => {
   }
 });
 
-// Admin login API (email-based)
+// 🔐 Admin Login API (JWT-based, NO Firebase)
 app.post('/api/admin/login', cors(), async (c) => {
   const { DB } = c.env;
   
@@ -2056,7 +2220,7 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
     }
     
-    // Find admin by email (로그인 필요 필드)
+    // Find admin by email
     const admin = await DB.prepare(`
       SELECT 
         id, 
@@ -2064,8 +2228,7 @@ app.post('/api/admin/login', cors(), async (c) => {
         email, 
         password_hash, 
         name, 
-        is_active, 
-        last_login_at
+        is_active
       FROM admins 
       WHERE email = ?
     `).bind(email).first();
@@ -2074,9 +2237,22 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
     
-    // Verify password (simple check for test account)
+    // Verify password
+    // 1. Check test account (hardcoded for development)
     const isTestAccount = email === 'admin@example.com' && password === 'admin123';
-    const isValidPassword = isTestAccount || (admin.password_hash && admin.password_hash.includes(`placeholder_hash_for_${password}`));
+    
+    // 2. Check bcrypt hash (for production accounts)
+    let isValidPassword = isTestAccount;
+    
+    if (!isValidPassword && admin.password_hash) {
+      // Try bcrypt verification
+      if (admin.password_hash.startsWith('$2')) {
+        isValidPassword = await verifyPassword(password, admin.password_hash);
+      } else if (admin.password_hash.includes(`placeholder_hash_for_${password}`)) {
+        // Backward compatibility with placeholder hashes
+        isValidPassword = true;
+      }
+    }
     
     if (!isValidPassword) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
@@ -2087,71 +2263,46 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
     }
     
-    // 🔥 Firebase Custom Token 발급
-    const firebase = initFirebaseAdmin(c.env);
-    const firebaseUID = `admin_${admin.id}`;
+    // 🔐 Create JWT token (NO Firebase!)
+    const jwtSecret = getJWTSecret(c.env);
+    const token = await createJWTToken({
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      username: admin.username,
+      type: 'admin'
+    }, jwtSecret);
     
-    try {
-      // Firebase에 사용자 등록 (없으면)
-      await firebase.auth.getUser(firebaseUID).catch(async () => {
-        await firebase.auth.createUser({
-          uid: firebaseUID,
-          email: admin.email,
-          displayName: admin.name
-        });
-      });
-      
-      // Custom Claims 설정
-      await firebase.auth.setCustomUserClaims(firebaseUID, {
-        role: 'admin',
-        userId: admin.id,
-        userName: admin.name || admin.email,  // 🎯 NEW
-        email: admin.email
-      });
-      
-      // Custom Token 생성
-      const customToken = await firebase.createCustomToken(firebaseUID, {
-        role: 'admin',
-        userId: admin.id,
-        userName: admin.name || admin.email,  // 🎯 NEW
-        email: admin.email
-      });
-      
-      // D1에 firebase_uid 저장
-      await DB.prepare(`
-        UPDATE admins SET firebase_uid = ? WHERE id = ?
-      `).bind(firebaseUID, admin.id).run();
+    // Set HttpOnly cookie for security
+    c.header('Set-Cookie', `admin_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000; Path=/`);
     
     // Update last login time
-    await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?').bind(admin.id).run();
+    await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?')
+      .bind(admin.id)
+      .run();
     
-    console.log(`[Firebase Login] ✅ Admin ${admin.email} logged in with Firebase (KV Write: 0)`);
+    console.log(`[JWT Login] ✅ Admin ${admin.email} logged in with JWT (NO Firebase)`);
     
     return c.json({
       success: true,
       data: {
-        customToken,
+        token, // Send token in response for localStorage backup
         admin: {
           id: admin.id,
           username: admin.username,
           email: admin.email,
-          name: admin.name,
-          firebaseUID
+          name: admin.name
         }
       }
     });
-    } catch (firebaseError) {
-      console.error('[Firebase] Admin login error:', firebaseError);
-      return c.json({ success: false, error: 'Firebase authentication failed' }, 500);
-    }
     
   } catch (err) {
-    console.error('Admin login error:', err);
+    console.error('[Admin Login] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
-// Seller login API (email-based, Firebase Auth)
+// 🔐 Seller Login API (JWT-based, NO Firebase)
 app.post('/api/seller/login', cors(), async (c) => {
   const { DB } = c.env;
   
@@ -2171,8 +2322,7 @@ app.post('/api/seller/login', cors(), async (c) => {
         password_hash, 
         name, 
         status,
-        is_active, 
-        last_login_at
+        is_active
       FROM sellers 
       WHERE email = ?
     `).bind(email).first();
@@ -2182,10 +2332,23 @@ app.post('/api/seller/login', cors(), async (c) => {
     }
     
     // Verify password
+    // 1. Check test accounts (hardcoded for development)
     const isTestAccount1 = email === 'seller1@example.com' && password === 'seller123';
     const isTestAccount2 = email === 'seller@ur-team.com' && password === 'seller123';
     const isMainAccount = email === 'tobe2111@naver.com' && password === '358533aa!!';
-    const isValidPassword = isTestAccount1 || isTestAccount2 || isMainAccount || (seller.password_hash && seller.password_hash.includes(`placeholder_hash_for_${password}`));
+    
+    // 2. Check bcrypt hash (for production accounts)
+    let isValidPassword = isTestAccount1 || isTestAccount2 || isMainAccount;
+    
+    if (!isValidPassword && seller.password_hash) {
+      // Try bcrypt verification
+      if (seller.password_hash.startsWith('$2')) {
+        isValidPassword = await verifyPassword(password, seller.password_hash);
+      } else if (seller.password_hash.includes(`placeholder_hash_for_${password}`)) {
+        // Backward compatibility with placeholder hashes
+        isValidPassword = true;
+      }
+    }
     
     if (!isValidPassword) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
@@ -2204,71 +2367,42 @@ app.post('/api/seller/login', cors(), async (c) => {
       }, 403);
     }
     
-    // 🔥 Firebase Custom Token 발급
-    const firebase = initFirebaseAdmin(c.env);
-    const firebaseUID = `seller_${seller.id}`;
+    // 🔐 Create JWT token (NO Firebase!)
+    const jwtSecret = getJWTSecret(c.env);
+    const token = await createJWTToken({
+      id: seller.id,
+      email: seller.email,
+      name: seller.name,
+      username: seller.username,
+      type: 'seller'
+    }, jwtSecret);
     
-    try {
-      // Firebase에 사용자 등록 (없으면)
-      await firebase.auth.getUser(firebaseUID).catch(async () => {
-        await firebase.auth.createUser({
-          uid: firebaseUID,
-          email: seller.email,
-          displayName: seller.name
-        });
-      });
-      
-      // Custom Claims 설정
-      await firebase.auth.setCustomUserClaims(firebaseUID, {
-        role: 'seller',
-        userId: seller.id,
-        userName: seller.name || seller.email,
-        email: seller.email
-      });
-      
-      // Custom Token 생성
-      const customToken = await firebase.createCustomToken(firebaseUID, {
-        role: 'seller',
-        userId: seller.id,
-        userName: seller.name || seller.email,
-        email: seller.email
-      });
-      
-      // D1에 firebase_uid 저장
-      try {
-        await DB.prepare(`
-          UPDATE sellers SET firebase_uid = ? WHERE id = ?
-        `).bind(firebaseUID, seller.id).run();
-      } catch (updateErr) {
-        console.warn('[Seller Login] firebase_uid update failed:', updateErr);
-      }
+    // Set HttpOnly cookie for security
+    c.header('Set-Cookie', `seller_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000; Path=/`);
     
     // Update last login time
-    await DB.prepare('UPDATE sellers SET last_login_at = datetime("now") WHERE id = ?').bind(seller.id).run();
+    await DB.prepare('UPDATE sellers SET last_login_at = datetime("now") WHERE id = ?')
+      .bind(seller.id)
+      .run();
     
-    console.log(`[Firebase Login] ✅ Seller ${seller.email} logged in with Firebase`);
+    console.log(`[JWT Login] ✅ Seller ${seller.email} logged in with JWT (NO Firebase)`);
     
     return c.json({
       success: true,
       data: {
-        customToken,
+        token, // Send token in response for localStorage backup
         seller: {
           id: seller.id,
           username: seller.username,
           email: seller.email,
           name: seller.name,
-          status: seller.status,
-          firebaseUID
+          status: seller.status
         }
       }
     });
-    } catch (firebaseError) {
-      console.error('[Firebase] Seller login error:', firebaseError);
-      return c.json({ success: false, error: 'Firebase authentication failed' }, 500);
-    }
     
   } catch (err) {
-    console.error('Seller login error:', err);
+    console.error('[Seller Login] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

@@ -34,52 +34,37 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      // 🔥 Firebase Auth 엔드포인트 사용
+      // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
         email,
         password
       })
 
       if (response.data.success) {
-        // ✅ 1단계: 기존 세션 완전 삭제
-        console.log('[AdminLogin] Step 0: Clearing old sessions...')
+        // Clear old sessions
+        console.log('[AdminLogin] Clearing old sessions...')
         localStorage.clear()
         
-        // ✅ 2단계: Firebase Custom Token 및 Admin 정보 저장
-        const { customToken, admin } = response.data.data
+        // Store JWT token and admin info
+        const { token, admin } = response.data.data
         
-        console.log('[AdminLogin] 🔥 Firebase Login successful')
-        console.log('[AdminLogin] Custom Token:', customToken?.substring(0, 20) + '...')
+        console.log('[AdminLogin] ✅ JWT Login successful')
         console.log('[AdminLogin] Admin ID:', admin.id)
         
-        // Firebase Auth로 로그인 (같은 패턴 사용)
-        const { signInWithCustomToken } = await import('firebase/auth')
-        const { auth } = await import('@/lib/firebase')
-        
-        console.log('[AdminLogin] Step 1: Signing in with Custom Token...')
-        const userCredential = await signInWithCustomToken(auth, customToken)
-        
-        console.log('[AdminLogin] Step 2: Getting ID Token...')
-        const idToken = await userCredential.user.getIdToken()
-        
-        console.log('[AdminLogin] Step 3: Storing tokens...')
-        localStorage.setItem('firebase_token', idToken)
+        localStorage.setItem('admin_token', token)
         localStorage.setItem('user_type', 'admin')
         localStorage.setItem('admin_id', admin.id.toString())
         localStorage.setItem('user_id', admin.id.toString())
         localStorage.setItem('user_name', admin.name || admin.email)
         
-        // 🔍 검증
-        const verifyUserType = localStorage.getItem('user_type')
-        const verifyToken = localStorage.getItem('firebase_token')
+        console.log('[AdminLogin] ✅ All localStorage set')
+        console.log('  - user_type:', localStorage.getItem('user_type'))
+        console.log('  - admin_token:', token.substring(0, 20) + '...')
+        console.log('  - admin_id:', admin.id)
         
-        if (verifyUserType === 'admin' && verifyToken === idToken) {
-          console.log('[AdminLogin] ✅ Firebase verification passed! Navigating to /admin...')
-          navigate('/admin', { replace: true })
-        } else {
-          console.error('[AdminLogin] ❌ Firebase verification failed!')
-          setError('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
-        }
+        // Navigate to admin dashboard
+        console.log('[AdminLogin] ✅ Navigating to /admin...')
+        navigate('/admin', { replace: true })
       } else {
         setError(response.data.error || '로그인 실패')
       }
