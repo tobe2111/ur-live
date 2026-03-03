@@ -63,7 +63,15 @@
     "orderNumber": "Order Number",
     "orderDate": "Order Date",
     "paymentAmount": "Payment Amount",
-    "viewOrder": "View Order Details"
+    "viewOrder": "View Order Details",
+    "pay": "Pay",
+    "processing": "Processing...",
+    "initError": "Failed to initialize payment",
+    "renderError": "Failed to render payment UI",
+    "widgetNotReady": "Payment widget is not ready",
+    "requestError": "Payment request failed",
+    "stripeSetupRequired": "Stripe backend setup required",
+    "loading": "Loading payment information..."
   },
   "cart": {
     "title": "Shopping Cart",

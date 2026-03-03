@@ -63,7 +63,15 @@
     "orderNumber": "주문번호",
     "orderDate": "주문일시",
     "paymentAmount": "결제금액",
-    "viewOrder": "주문 상세보기"
+    "viewOrder": "주문 상세보기",
+    "pay": "결제하기",
+    "processing": "처리 중...",
+    "initError": "결제 초기화 실패",
+    "renderError": "결제 UI 렌더링 실패",
+    "widgetNotReady": "결제 위젯이 준비되지 않았습니다",
+    "requestError": "결제 요청 실패",
+    "stripeSetupRequired": "Stripe 백엔드 설정이 필요합니다",
+    "loading": "결제 정보 로딩 중..."
   },
   "cart": {
     "title": "장바구니",

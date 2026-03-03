@@ -6,6 +6,8 @@
     "postinstall": "node scripts/verify-react-version.cjs || echo 'Warning: React verification failed'",
     "prebuild": "rm -rf dist && node scripts/update-version.js",
     "build": "vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
+    "build:kr": "cp .env.kr .env && vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
+    "build:global": "cp .env.global .env && vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
     "build:full": "NODE_OPTIONS='--max-old-space-size=2048' vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
     "postbuild": "echo 'Build completed'",
     "dev": "vite",

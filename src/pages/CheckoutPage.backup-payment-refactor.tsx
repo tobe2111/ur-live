@@ -201,10 +201,156 @@ export default function CheckoutPage() {
   }, [navigate]) // 컴포넌트 마운트 시 한 번만 실행
 
   /* ====================================================================
-   * 🔥 LEGACY: Toss Payment 관련 로직 제거됨
-   * TossPaymentWidget 컴포넌트로 이동됨 (Region 기반 lazy loading)
+   * 🔥 LEGACY: Toss Payment 관련 로직 (TossPaymentWidget 컴포넌트로 이동됨)
+   * Region 기반 lazy loading 적용으로 인해 더 이상 사용되지 않음
    * ==================================================================== */
   
+  // 🎯 Step 1: 토스페이먼츠 SDK 초기화 및 위젯 인스턴스 생성
+  // useEffect(() => {
+  //   async function fetchPaymentWidgets() {
+      if (!userId || cartItems.length === 0) {
+        console.log('[TossPayments] Step 1 대기 중: userId 또는 cartItems 없음')
+        return
+      }
+
+      try {
+        console.log('[TossPayments] Step 1: SDK 초기화 시작')
+        console.log('[TossPayments] window.PaymentWidget 존재 여부:', typeof window.PaymentWidget)
+        
+        // 전역 객체에서 SDK 로드 확인
+        if (typeof window.PaymentWidget === 'undefined') {
+          throw new Error('결제위젯 SDK가 로드되지 않았습니다. index.html을 확인하세요.')
+        }
+        
+        // 결제위젯 초기화 (Version 1 공식 샘플 방식 - new 키워드 없음)
+        const customerKey = `customer_${userId}`  // 고유한 구매자 ID
+        const widgetsInstance = window.PaymentWidget(clientKey, customerKey)
+        console.log('[TossPayments] ✅ PaymentWidget 인스턴스 생성 완료 (V1 함수 호출 방식)')
+        
+        setWidgets(widgetsInstance)
+        console.log('[TossPayments] ✅ Step 1 완료: widgets 인스턴스 생성')
+      } catch (err) {
+        console.error('[TossPayments] ❌ Step 1 실패:', err)
+        setError('결제 시스템을 불러올 수 없습니다.')
+      }
+    }
+
+  //   fetchPaymentWidgets()
+  // }, [userId, cartItems])
+
+  // 🎯 Step 2: 결제 UI 렌더링 (한 번만 실행, 금액은 Step 3에서 업데이트)
+  // useEffect(() => {
+  //   async function renderPaymentWidgets() {
+      if (widgets == null) {
+        console.log('[TossPayments] Step 2: widgets 없음, 대기 중')
+        return
+      }
+      
+      // 이미 렌더링되었다면 중복 실행 방지
+      if (ready) {
+        console.log('[TossPayments] Step 2: 이미 렌더링됨, 스킵')
+        return
+      }
+
+      try {
+        console.log('[TossPayments] Step 2: 결제 UI 렌더링 시작')
+        console.log('[TossPayments] totalAmount:', totalAmount)
+        console.log('[TossPayments] cartItems:', cartItems.length)
+        
+        // DOM 요소가 존재할 때까지 대기 (최적화: 최대 5초)
+        let paymentMethodEl = null
+        let agreementEl = null
+        let attempts = 0
+        const maxAttempts = 50  // 50번 시도 (5초) - 최적화
+        
+        while (attempts < maxAttempts) {
+          paymentMethodEl = document.getElementById('payment-method')
+          agreementEl = document.getElementById('agreement')
+          
+          if (paymentMethodEl && agreementEl) {
+            console.log('[TossPayments] ✅ DOM 요소 발견! (', attempts * 100, 'ms)')
+            
+            // 모바일에서 높이 강제 설정
+            if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
+              paymentMethodEl.style.minHeight = '350px'
+              console.log('[TossPayments] 📱 모바일 최소 높이 설정: 350px')
+            }
+            
+            break
+          }
+          
+          console.log('[TossPayments] ⏳ DOM 대기 중... (', attempts * 100, 'ms)')
+          await new Promise(resolve => setTimeout(resolve, 100))
+          attempts++
+        }
+        
+        if (!paymentMethodEl || !agreementEl) {
+          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음 (10초 초과)')
+          console.error('[TossPayments] payment-method:', paymentMethodEl)
+          console.error('[TossPayments] agreement:', agreementEl)
+          console.error('[TossPayments] 디버그 - document.body.innerHTML 길이:', document.body.innerHTML.length)
+          setError('결제 UI를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
+          return
+        }
+        
+        // 결제 수단 UI 렌더링 전 로그
+        console.log('[TossPayments] renderPaymentMethods 호출 직전')
+        console.log('[TossPayments] widgets:', widgets)
+        console.log('[TossPayments] widgets.renderPaymentMethods:', typeof widgets.renderPaymentMethods)
+        console.log('[TossPayments] 모바일 환경:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
+        console.log('[TossPayments] 화면 크기:', window.innerWidth, 'x', window.innerHeight)
+        
+        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드, 반환값 저장)
+        console.log('[TossPayments] 초기 금액으로 렌더링:', totalAmount)
+        
+        // 모바일 환경에서 추가 대기 시간
+        if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
+          console.log('[TossPayments] 📱 모바일 환경 - 500ms 추가 대기')
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+        
+        const paymentMethodWidgetInstance = widgets.renderPaymentMethods(
+          '#payment-method',
+          { value: totalAmount },
+          { variantKey: 'DEFAULT' }
+        )
+        
+        console.log('[TossPayments] renderPaymentMethods 완료, 반환값:', paymentMethodWidgetInstance)
+        console.log('[TossPayments] renderPaymentMethods.on:', typeof paymentMethodWidgetInstance?.on)
+        
+        // 이용약관 UI 렌더링 (Version 1 - 동기 메서드)
+        console.log('[TossPayments] renderAgreement 호출')
+        widgets.renderAgreement(
+          '#agreement',
+          { variantKey: 'AGREEMENT' }
+        )
+        console.log('[TossPayments] renderAgreement 완료')
+        
+        // V1 공식: 'ready' 이벤트로 렌더링 완료 확인
+        if (paymentMethodWidgetInstance && typeof paymentMethodWidgetInstance.on === 'function') {
+          console.log('[TossPayments] ready 이벤트 리스너 등록')
+          paymentMethodWidgetInstance.on('ready', function() {
+            console.log('[TossPayments] 🎉 ready 이벤트 발생!')
+            setPaymentMethodWidget(paymentMethodWidgetInstance)  // 저장
+            setReady(true)
+            console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 준비됨 (ready 이벤트)')
+          })
+        } else {
+          console.error('[TossPayments] ❌ paymentMethodWidgetInstance.on이 함수가 아님')
+          console.error('[TossPayments] paymentMethodWidgetInstance:', paymentMethodWidgetInstance)
+        }
+      } catch (err: any) {
+        console.error('[TossPayments] ❌ Step 2 실패:', err)
+        console.error('[TossPayments] 에러 메시지:', err.message)
+  //       console.error('[TossPayments] 에러 스택:', err.stack)
+  //       setError('결제 UI 렌더링에 실패했습니다: ' + err.message)
+  //     }
+  //   }
+
+  //   renderPaymentWidgets()
+  // }, [widgets, totalAmount, cartItems])  // totalAmount와 cartItems 추가하여 변경 시 재렌더링
+
+  /* ==================================================================== */
   // 🎯 Step 3: 금액 변경 시 업데이트 (V1 - 동기 메서드)
   useEffect(() => {
     if (paymentMethodWidget == null || !ready) {
