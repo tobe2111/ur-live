@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Step 1: 로그아웃 트리거 엄격 제한
   const previousUserRef = useRef<User | null>(null)  // 이전 사용자 유지
   const isIntentionalLogoutRef = useRef(false)  // 의도적 로그아웃 플래그
+  const isInitialAuthRef = useRef(true)  // ★ 최초 인증 플래그 (null 완전 차단)
   
   // Step 2: Custom Token 로그인 후 상태 안정화
   const isAuthenticatingRef = useRef(false)  // 인증 진행 중
@@ -259,8 +260,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // onAuthStateChanged 리스너 (한 번만 등록)
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        // ✅ Step 1: 로그인 상태 - 이전 사용자 저장
+        // ✅ Step 1: 로그인 상태 - 이전 사용자 저장 + 최초 인증 완료
         if (DEBUG_AUTH) console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
+        
+        // ★ 최초 인증 완료 플래그 해제 (이제 정상 로그아웃 감지 가능)
+        isInitialAuthRef.current = false
         previousUserRef.current = firebaseUser
         
         try {
@@ -361,17 +365,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ❌ Step 1: 로그아웃 상태 - 엄격한 체크
         if (DEBUG_AUTH) console.log('[Auth] ❌ 로그아웃 감지')
         
-        // 🚨 CRITICAL: 의도치 않은 로그아웃 방지
-        if (previousUserRef.current && !isIntentionalLogoutRef.current) {
-          console.warn('[Auth] ⚠️⚠️⚠️ 의도치 않은 로그아웃 감지 → 이전 사용자 유지')
-          console.warn('[Auth] 🔒 이전 사용자:', previousUserRef.current.uid)
-          // 상태를 유지하고 리턴 - 로그아웃 트리거 무시!
+        // 🚨 CRITICAL: 최초 인증 중이거나 의도치 않은 로그아웃 방지
+        if (isInitialAuthRef.current || (previousUserRef.current && !isIntentionalLogoutRef.current)) {
+          console.warn('[Auth] ⚠️⚠️⚠️ 로그아웃 무시 → 최초 인증 중 또는 이전 사용자 유지')
+          if (previousUserRef.current) {
+            console.warn('[Auth] 🔒 이전 사용자:', previousUserRef.current.uid)
+          }
+          if (isInitialAuthRef.current) {
+            console.warn('[Auth] 🔒 최초 인증 중 - null 상태 무시')
+          }
+          // 상태를 유지하고 리턴 - 로그아웃 트리거 완전 무시!
           return
         }
         
         // 의도적 로그아웃이면 정상 처리
         if (DEBUG_AUTH) console.log('[Auth] ✅ 정상 로그아웃 처리')
         
+        isInitialAuthRef.current = false  // 최초 인증 플래그 초기화
         previousUserRef.current = null
         isIntentionalLogoutRef.current = false  // 플래그 초기화
         
@@ -535,9 +545,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signOut(auth)
       if (DEBUG_AUTH) console.log('[Auth] ✅ 로그아웃 완료')
       
+      // 플래그 초기화 (재사용 대비)
+      isIntentionalLogoutRef.current = false
+      
     } catch (error) {
       console.error('[Auth] ❌ 로그아웃 실패:', error)
-      isIntentionalLogoutRef.current = false  // 실패 시 플래그 초기화
+      isIntentionalLogoutRef.current = false  // 실패 시에도 플래그 초기화
       throw new Error('로그아웃에 실패했습니다.')
     }
   }
