@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Search, Bell, User } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function TopNav() {
   const navigate = useNavigate()
@@ -50,6 +51,7 @@ export default function TopNav() {
             </h1>
 
             <div className="flex items-center gap-3">
+              <LanguageSwitcher />
               <button 
                 onClick={handleSearchClick}
                 aria-label="Search" 

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import './i18n' // ✅ i18n 초기화
 import { initSentry } from './lib/sentry'
 
 console.log('[App] 🚀 앱 시작...')
