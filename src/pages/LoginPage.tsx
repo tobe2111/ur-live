@@ -245,13 +245,8 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
-          <div className="relative">
-            {/* 이중 스피너 효과 */}
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#e5e5ea] border-t-[#007aff] mx-auto"></div>
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-transparent border-r-[#007aff] mx-auto absolute top-0 left-1/2 -translate-x-1/2" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-          </div>
-          <p className="mt-6 text-[17px] font-semibold text-[#1d1d1f]">잠시만 기다려주세요...</p>
-          <p className="mt-2 text-[14px] text-[#6e6e73]">안전한 로그인 환경을 준비하고 있습니다</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff] mx-auto"></div>
+          <p className="mt-4 text-[#6e6e73]">로딩 중...</p>
         </div>
       </div>
     )
