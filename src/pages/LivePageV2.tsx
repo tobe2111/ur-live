@@ -1215,7 +1215,7 @@ function ReelCard({
         </div>
       )}
       
-      {/* Background image - 상품 이미지 우선, 없으면 투명 배경 */}
+      {/* Background image - 상품 이미지만 표시 (오류 시 자동 숨김) */}
       {(safeProduct.image || safeProduct.image_url) && (
         <img
           src={safeProduct.image || safeProduct.image_url}
@@ -1223,13 +1223,16 @@ function ReelCard({
           className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
             isActive ? 'scale-100' : 'scale-110'
           }`}
+          onError={(e) => {
+            // 이미지 로드 실패 시 숨기기
+            e.currentTarget.style.display = 'none'
+            console.log(`[ReelCard] Image load failed for stream ${stream.id}:`, safeProduct.image || safeProduct.image_url)
+          }}
         />
       )}
       
-      {/* 상품 이미지 없을 때: 검은색 배경 */}
-      {!safeProduct.image && !safeProduct.image_url && (
-        <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
-      )}
+      {/* 기본 배경: 어두운 그라데이션 (항상 표시) */}
+      <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-10" />
 
       {/* YouTube Player Container */}
       <div
@@ -1824,6 +1827,19 @@ export default function LivePageV2() {
           >
             홈으로 돌아가기
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ activeIndex가 유효한 범위인지 확인
+  const currentReel = reels[activeIndex]
+  if (!currentReel || !currentReel.stream) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+          <div className="text-white text-lg">데이터 로딩 중...</div>
         </div>
       </div>
     )
