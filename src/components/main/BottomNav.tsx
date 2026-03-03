@@ -21,7 +21,16 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
+    <nav 
+      className="fixed bottom-0 z-50 bg-white border-t border-gray-200" 
+      style={{
+        left: '0',
+        right: '0',
+        width: '100vw',
+        marginLeft: 'calc(-1 * max(0px, env(safe-area-inset-left)))',
+        marginRight: 'calc(-1 * max(0px, env(safe-area-inset-right)))',
+      }}
+    >
       <div className="flex items-center w-full py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         {navItems.map(({ icon: Icon, label, path }) => {
           const isActive = active === path || (path !== '/' && active.startsWith(path))
