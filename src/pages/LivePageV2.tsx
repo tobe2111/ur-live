@@ -433,6 +433,8 @@ function ReelCard({
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
+  // Check if user came from homepage or direct link
+  const [isDirectLink, setIsDirectLink] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
@@ -615,6 +617,34 @@ function ReelCard({
     }
   }, [stream.youtube_video_id, stream.id])  // isActive removed from dependencies
 
+  // Cleanup: Pause video when component unmounts or becomes inactive
+  useEffect(() => {
+    return () => {
+      if (playerRef.current && !isActive) {
+        try {
+          playerRef.current.pauseVideo()
+          log.debug(`[ReelCard] Paused video for stream ${stream.id} (inactive)`)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    }
+  }, [isActive, stream.id])
+
+  // Pause video when no longer active
+  useEffect(() => {
+    if (!isActive && playerRef.current && playerReady) {
+      try {
+        playerRef.current.pauseVideo()
+        setShowPlayButton(true)
+        log.debug(`[ReelCard] Paused video for stream ${stream.id} (not active)`)
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }, [isActive, playerReady, stream.id])
+  
+  // Handle video click to unmute and play
   const handleVideoClick = () => {
     if (playerRef.current && playerReady) {
       try {
@@ -1407,45 +1437,76 @@ export default function LivePageV2() {
     return () => observerRef.current?.disconnect()
   }, [])
 
-  // Load reels data - MODIFIED: Load ALL streams, not just one
+  // Load reels data - MODIFIED: Check if direct link or from homepage
   useEffect(() => {
     const loadReels = async () => {
       try {
         setLoading(true)
 
-        // Load ALL active streams
+        // Check if user came directly to this URL (not from homepage)
+        const referrer = document.referrer
+        const isFromHomepage = referrer.includes(window.location.origin) && 
+                               (referrer.includes('/') || referrer.includes('/home'))
+        const hasStreamId = !!streamId
+        
+        // Direct link: Show ONLY the requested stream (no scroll)
+        // Homepage link: Show ALL streams (with scroll)
+        const shouldShowSingleStream = hasStreamId && !isFromHomepage
+        setIsDirectLink(shouldShowSingleStream)
+        
+        log.debug('[LivePageV2] Navigation context:', {
+          hasStreamId,
+          isFromHomepage,
+          shouldShowSingleStream,
+          referrer
+        })
+
+        // Load streams (single or all based on context)
         let streams: Stream[] = []
         
-        try {
-          const streamsResponse = await axios.get('/api/streams')
-          log.debug('[LivePageV2] Streams API response:', streamsResponse.data)
-          
-          if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
-            streams = streamsResponse.data.data
-            log.debug('[LivePageV2] Loaded all streams:', streams.length)
+        if (shouldShowSingleStream && streamId) {
+          // DIRECT LINK: Load only the requested stream
+          try {
+            const singleStreamResponse = await axios.get(`/api/streams/${streamId}`)
+            log.debug('[LivePageV2] Single stream API response:', singleStreamResponse.data)
             
-            // Set current stream from URL parameter
-            if (streamId) {
-              const currentStreamData = streams.find(s => s.id === parseInt(streamId))
-              if (currentStreamData) {
-                setCurrentStream(currentStreamData)
-                
-                // Check streamer permission
-                const userType = localStorage.getItem('user_type')
-                const userId = getUserId()
-                if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
-                  setIsStreamer(true)
-                  log.debug('[LivePageV2] 스트리머 권한 확인됨')
-                }
-              }
+            if (singleStreamResponse.data.success && singleStreamResponse.data.data) {
+              streams = [singleStreamResponse.data.data]
+              log.debug('[LivePageV2] Loaded single stream (direct link)')
             }
-          } else {
-            console.error('[LivePageV2] No streams found in API response')
-            throw new Error('No streams available')
+          } catch (error) {
+            console.error('[LivePageV2] Single stream API failed:', error)
           }
-        } catch (error) {
-          console.error('[LivePageV2] Streams API failed:', error)
-          throw error // Re-throw to outer catch block
+        } else {
+          // HOMEPAGE LINK: Load ALL active streams
+          try {
+            const streamsResponse = await axios.get('/api/streams')
+            log.debug('[LivePageV2] All streams API response:', streamsResponse.data)
+            
+            if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
+              streams = streamsResponse.data.data
+              log.debug('[LivePageV2] Loaded all streams:', streams.length)
+            }
+          } catch (error) {
+            console.error('[LivePageV2] Streams API failed:', error)
+            throw error
+          }
+        }
+            
+        // Set current stream from URL parameter
+        if (streamId) {
+          const currentStreamData = streams.find(s => s.id === parseInt(streamId))
+          if (currentStreamData) {
+            setCurrentStream(currentStreamData)
+            
+            // Check streamer permission
+            const userType = localStorage.getItem('user_type')
+            const userId = getUserId()
+            if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
+              setIsStreamer(true)
+              log.debug('[LivePageV2] 스트리머 권한 확인됨')
+            }
+          }
         }
 
         // Create reels: ONE reel per stream (not per product)
@@ -1827,7 +1888,11 @@ export default function LivePageV2() {
       
       <div
         ref={containerRef}
-        className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
+        className={`h-dvh w-full no-scrollbar ${
+          isDirectLink 
+            ? 'overflow-hidden' // Direct link: No scroll, single stream only
+            : 'overflow-y-scroll snap-y snap-mandatory' // Homepage: Scrollable reels
+        }`}
       >
         {reels.map((reel, index) => (
           <div
