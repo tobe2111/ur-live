@@ -2238,6 +2238,10 @@ app.post('/api/admin/login', cors(), async (c) => {
     }
     
     // Verify password
+    console.log('[Admin Login] Verifying password for:', email);
+    console.log('[Admin Login] Password hash found:', admin.password_hash ? 'Yes' : 'No');
+    console.log('[Admin Login] Hash prefix:', admin.password_hash?.substring(0, 10));
+    
     // 1. Check test account (hardcoded for development)
     const isTestAccount = email === 'admin@example.com' && password === 'admin123';
     
@@ -2247,16 +2251,22 @@ app.post('/api/admin/login', cors(), async (c) => {
     if (!isValidPassword && admin.password_hash) {
       // Try bcrypt verification
       if (admin.password_hash.startsWith('$2')) {
+        console.log('[Admin Login] Attempting bcrypt verification...');
         isValidPassword = await verifyPassword(password, admin.password_hash);
+        console.log('[Admin Login] Bcrypt result:', isValidPassword);
       } else if (admin.password_hash.includes(`placeholder_hash_for_${password}`)) {
         // Backward compatibility with placeholder hashes
+        console.log('[Admin Login] Using placeholder hash compatibility');
         isValidPassword = true;
       }
     }
     
     if (!isValidPassword) {
+      console.log('[Admin Login] ❌ Password verification failed');
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
+    
+    console.log('[Admin Login] ✅ Password verified successfully');
     
     // Check if active
     if (!admin.is_active) {
@@ -2332,6 +2342,10 @@ app.post('/api/seller/login', cors(), async (c) => {
     }
     
     // Verify password
+    console.log('[Seller Login] Verifying password for:', email);
+    console.log('[Seller Login] Password hash found:', seller.password_hash ? 'Yes' : 'No');
+    console.log('[Seller Login] Hash prefix:', seller.password_hash?.substring(0, 10));
+    
     // 1. Check test accounts (hardcoded for development)
     const isTestAccount1 = email === 'seller1@example.com' && password === 'seller123';
     const isTestAccount2 = email === 'seller@ur-team.com' && password === 'seller123';
@@ -2343,16 +2357,22 @@ app.post('/api/seller/login', cors(), async (c) => {
     if (!isValidPassword && seller.password_hash) {
       // Try bcrypt verification
       if (seller.password_hash.startsWith('$2')) {
+        console.log('[Seller Login] Attempting bcrypt verification...');
         isValidPassword = await verifyPassword(password, seller.password_hash);
+        console.log('[Seller Login] Bcrypt result:', isValidPassword);
       } else if (seller.password_hash.includes(`placeholder_hash_for_${password}`)) {
         // Backward compatibility with placeholder hashes
+        console.log('[Seller Login] Using placeholder hash compatibility');
         isValidPassword = true;
       }
     }
     
     if (!isValidPassword) {
+      console.log('[Seller Login] ❌ Password verification failed');
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
+    
+    console.log('[Seller Login] ✅ Password verified successfully');
     
     // Check if active
     if (!seller.is_active) {
