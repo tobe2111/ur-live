@@ -6,7 +6,7 @@
 
 | 항목 | 한국 (KR) | 글로벌 (GLOBAL) |
 |------|-----------|-----------------|
-| **도메인** | live.ur-team.com | global.ur-team.com |
+| **도메인** | live.ur-team.com | world.ur-team.com |
 | **로그인** | 카카오 + 이메일 | Google + 이메일 |
 | **결제** | TossPayments | Stripe |
 | **언어** | 한국어 기본 | 영어 기본 (다국어 지원) |
@@ -48,7 +48,7 @@ VITE_REGION=GLOBAL
 VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_STRIPE_KEY
 VITE_DEFAULT_LANGUAGE=en
-VITE_API_BASE_URL=https://global.ur-team.com
+VITE_API_BASE_URL=https://world.ur-team.com
 ```
 
 ### `.env.local` (로컬 개발)

@@ -3,7 +3,7 @@
 ## 📋 목차
 1. [배포 전 준비사항](#1-배포-전-준비사항)
 2. [한국 버전 배포 (live.ur-team.com)](#2-한국-버전-배포-liveur-teamcom)
-3. [글로벌 버전 배포 (global.ur-team.com)](#3-글로벌-버전-배포-globalur-teamcom)
+3. [글로벌 버전 배포 (world.ur-team.com)](#3-글로벌-버전-배포-globalur-teamcom)
 4. [환경 변수 설정](#4-환경-변수-설정)
 5. [배포 후 검증](#5-배포-후-검증)
 6. [롤백 가이드](#6-롤백-가이드)
@@ -36,7 +36,7 @@ git log -1
 - [x] Firebase Console에서 Google Authentication 활성화
 - [x] 승인된 도메인 추가:
   - `live.ur-team.com` (한국)
-  - `global.ur-team.com` (글로벌)
+  - `world.ur-team.com` (글로벌)
 
 #### Kakao Developers (한국 로그인)
 - [x] Kakao 앱 생성 완료
@@ -126,7 +126,7 @@ D1_DATABASE=lister-db
 
 ---
 
-## 3. 글로벌 버전 배포 (global.ur-team.com)
+## 3. 글로벌 버전 배포 (world.ur-team.com)
 
 ### 3.1 빌드
 ```bash
@@ -183,7 +183,7 @@ STRIPE_SECRET_KEY=sk_test_YOUR_STRIPE_SECRET_KEY
 VITE_DEFAULT_LANGUAGE=en
 
 # API Base URL
-VITE_API_BASE_URL=https://global.ur-team.com
+VITE_API_BASE_URL=https://world.ur-team.com
 
 # Database (동일한 D1 사용)
 D1_DATABASE=lister-db
@@ -231,7 +231,7 @@ D1_DATABASE=lister-db
 | `VITE_STRIPE_PUBLISHABLE_KEY` | `pk_test_...` | Stripe Publishable Key (frontend) |
 | `STRIPE_SECRET_KEY` | `sk_test_...` | Stripe Secret Key (backend) |
 | `VITE_DEFAULT_LANGUAGE` | `en` | 기본 언어 |
-| `VITE_API_BASE_URL` | `https://global.ur-team.com` | API 베이스 URL |
+| `VITE_API_BASE_URL` | `https://world.ur-team.com` | API 베이스 URL |
 | `D1_DATABASE` | `lister-db` | Cloudflare D1 데이터베이스 |
 
 ### 4.3 환경 변수 적용
@@ -274,7 +274,7 @@ console.log(import.meta.env.VITE_REGION)
 
 ```bash
 # 1. 배포 완료 확인
-curl -I https://global.ur-team.com
+curl -I https://world.ur-team.com
 # HTTP/2 200 OK 확인
 
 # 2. Region 설정 확인 (브라우저 Console)
@@ -282,12 +282,12 @@ console.log(import.meta.env.VITE_REGION)
 // "GLOBAL" 출력되어야 함
 
 # 3. 로그인 테스트
-# https://global.ur-team.com/login
+# https://world.ur-team.com/login
 # - Google 로그인 버튼 확인 (4색 로고)
 # - 카카오 로그인 버튼 없음
 
 # 4. 결제 테스트
-# https://global.ur-team.com/checkout
+# https://world.ur-team.com/checkout
 # - Stripe Payment Element 로드 확인
 # - Toss 관련 코드 로드되지 않음 (Network 탭 확인)
 
@@ -300,7 +300,7 @@ console.log(import.meta.env.VITE_REGION)
 
 #### Stripe Payment Intent (글로벌)
 ```bash
-curl -X POST https://global.ur-team.com/api/payment/stripe/create-intent \
+curl -X POST https://world.ur-team.com/api/payment/stripe/create-intent \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 1000,
@@ -392,7 +392,7 @@ git push origin main --force
 - [ ] Toss 결제 테스트 성공
 - [ ] 한국어 UI 정상
 
-### 글로벌 버전 (global.ur-team.com)
+### 글로벌 버전 (world.ur-team.com)
 - [ ] 빌드 성공 (`npm run build:global`)
 - [ ] 배포 성공 (`wrangler pages deploy`)
 - [ ] 환경 변수 설정 완료 (STRIPE_SECRET_KEY 포함)

@@ -254,7 +254,7 @@ cat public/locales/en/translation.json
 2. `.env.global`의 `VITE_GOOGLE_CLIENT_ID` 설정
 3. Firebase 프로젝트 설정에서 승인된 도메인 추가:
    - `localhost` (개발)
-   - `global.ur-team.com` (프로덕션)
+   - `world.ur-team.com` (프로덕션)
 
 ### 6.3 Stripe Payment Intent 생성 실패
 
