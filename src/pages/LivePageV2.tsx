@@ -435,6 +435,7 @@ function ReelCard({
   const playerRef = useRef<any>(null)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
+  const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
   
   // Cart & Purchase state
   const [addingToCart, setAddingToCart] = useState(false)
@@ -616,8 +617,17 @@ function ReelCard({
 
   const handleVideoClick = () => {
     if (playerRef.current && playerReady) {
-      playerRef.current.playVideo()
-      setShowPlayButton(false)
+      try {
+        // Unmute and play for better UX
+        playerRef.current.unMute()
+        playerRef.current.setVolume(100)
+        playerRef.current.playVideo()
+        setIsMuted(false)
+        setShowPlayButton(false)
+        log.debug('[ReelCard] Video started with audio enabled')
+      } catch (error) {
+        log.error('[ReelCard] Failed to start video:', error)
+      }
     }
   }
 
@@ -1073,17 +1083,32 @@ function ReelCard({
         className="absolute inset-0 w-full h-full z-[5]"
       />
 
-      {/* Play Button Overlay */}
+      {/* 방송 입장 버튼 */}
       {showPlayButton && playerReady && (
         <button
           onClick={handleVideoClick}
-          className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[1px] transition-opacity hover:bg-black/30"
-          aria-label="Play video"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-b from-black/40 via-black/60 to-black/80 backdrop-blur-sm transition-all hover:bg-black/70"
+          aria-label="방송 입장하기"
         >
-          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center transition-transform hover:scale-110">
-            <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+          <div className="flex flex-col items-center gap-4 animate-fade-in">
+            {/* Live Badge */}
+            <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-sm font-bold">LIVE</span>
+            </div>
+            
+            {/* Play Icon */}
+            <div className="w-20 h-20 rounded-full bg-white/90 shadow-2xl flex items-center justify-center transition-all hover:scale-110 hover:bg-white active:scale-95">
+              <svg className="w-10 h-10 text-red-600 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            
+            {/* Text */}
+            <div className="text-center px-6">
+              <p className="text-white text-xl font-bold mb-1.5">방송 입장하기</p>
+              <p className="text-white/80 text-sm">탭하여 라이브 시청 시작</p>
+            </div>
           </div>
         </button>
       )}
@@ -1628,21 +1653,21 @@ export default function LivePageV2() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    )
-  }
-
   // ✅ 로딩 중 표시
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-          <div className="text-white text-lg">라이브 로딩 중...</div>
+          <div className="relative">
+            {/* Outer spinning ring */}
+            <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
+            {/* Inner pulsing dot */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <div className="text-white text-xl font-bold">라이브 입장 중...</div>
+          <div className="text-white/60 text-sm">잠시만 기다려주세요</div>
         </div>
       </div>
     )
@@ -1671,8 +1696,13 @@ export default function LivePageV2() {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-          <div className="text-white text-lg">데이터 로딩 중...</div>
+          <div className="relative">
+            <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <div className="text-white text-xl font-bold">라이브 준비 중...</div>
         </div>
       </div>
     )
