@@ -8770,6 +8770,79 @@ app.post('/api/streams/:streamId/fake-cart-notification', requireAuth, async (c)
 });
 
 // ==========================================
+// Stripe Payment API - Global Region
+// ==========================================
+
+// Stripe Payment Intent 생성 API
+app.post('/api/payment/stripe/create-intent', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const body = await c.req.json();
+    const { amount, currency = 'usd', metadata = {} } = body;
+
+    console.log('[Stripe] Payment Intent 생성 요청:', { amount, currency, metadata });
+
+    // 필수 파라미터 검증
+    if (!amount || amount <= 0) {
+      return c.json({
+        success: false,
+        error: 'Invalid amount. Amount must be greater than 0.'
+      }, 400);
+    }
+
+    // Stripe Secret Key 가져오기
+    const stripeSecretKey = c.env.STRIPE_SECRET_KEY;
+    
+    if (!stripeSecretKey) {
+      console.error('[Stripe] ❌ STRIPE_SECRET_KEY 환경 변수가 설정되지 않음');
+      return c.json({
+        success: false,
+        error: 'Stripe is not configured. Please contact support.'
+      }, 500);
+    }
+
+    // Stripe SDK 동적 import (Cloudflare Workers 환경 고려)
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-11-20.acacia',
+      // Cloudflare Workers에서는 fetch API 사용
+      httpClient: Stripe.createFetchHttpClient()
+    });
+
+    // Payment Intent 생성
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount), // cents 단위 (정수)
+      currency: currency.toLowerCase(),
+      automatic_payment_methods: {
+        enabled: true
+      },
+      metadata: {
+        ...metadata,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    console.log('[Stripe] ✅ Payment Intent 생성 완료:', paymentIntent.id);
+
+    return c.json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
+
+  } catch (error: any) {
+    console.error('[Stripe] ❌ Payment Intent 생성 실패:', error);
+    
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to create payment intent',
+      details: error.type || 'unknown_error'
+    }, 500);
+  }
+});
+
+// ==========================================
 // Payment API - PG 결제 승인 (PG사 변경 가능)
 // ==========================================
 

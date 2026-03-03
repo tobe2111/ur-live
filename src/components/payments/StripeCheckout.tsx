@@ -50,44 +50,12 @@ function CheckoutForm({
   const stripe = useStripe()
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-
-  // 1️⃣ Payment Intent 생성 (백엔드 API 호출)
-  useEffect(() => {
-    async function createPaymentIntent() {
-      try {
-        console.log('[Stripe] Payment Intent 생성 요청')
-
-        const finalAmount = totalAmount + shippingFee
-
-        // TODO: 실제 백엔드 API 호출로 교체
-        // const response = await axios.post('/api/payment/stripe/create-intent', {
-        //   amount: finalAmount,
-        //   userId,
-        //   cartItems
-        // })
-        // setClientSecret(response.data.clientSecret)
-
-        // 임시: 테스트용 client_secret (실제 프로덕션에서는 백엔드에서 생성)
-        console.warn('[Stripe] ⚠️ 테스트 모드: 실제 Payment Intent가 필요합니다')
-        onPaymentError(t('payment.stripeSetupRequired') || 'Stripe 백엔드 설정이 필요합니다')
-
-      } catch (err: any) {
-        console.error('[Stripe] ❌ Payment Intent 생성 실패:', err)
-        onPaymentError(err?.message || t('payment.initError') || '결제 초기화 실패')
-      }
-    }
-
-    if (userId && cartItems.length > 0) {
-      createPaymentIntent()
-    }
-  }, [userId, cartItems, totalAmount, shippingFee, onPaymentError, t])
 
   // 2️⃣ 결제 요청 처리
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!stripe || !elements || !clientSecret) {
+    if (!stripe || !elements) {
       onPaymentError(t('payment.widgetNotReady') || '결제 위젯이 준비되지 않았습니다')
       return
     }
@@ -128,22 +96,16 @@ function CheckoutForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Stripe Payment Element */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        {clientSecret ? (
-          <PaymentElement />
-        ) : (
-          <div className="min-h-[200px] flex items-center justify-center text-gray-500">
-            {t('payment.loading') || '결제 정보 로딩 중...'}
-          </div>
-        )}
+        <PaymentElement />
       </div>
 
       {/* 결제하기 버튼 */}
       <button
         type="submit"
-        disabled={!stripe || !clientSecret || isProcessing}
+        disabled={!stripe || isProcessing}
         className={`
           w-full py-4 rounded-lg font-bold text-white text-lg
-          ${!stripe || !clientSecret || isProcessing
+          ${!stripe || isProcessing
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
           }
@@ -161,11 +123,57 @@ function CheckoutForm({
 // 메인 컴포넌트 (Elements Provider 래핑)
 export function StripeCheckout(props: StripeCheckoutProps) {
   const stripePromise = getStripePromise()
+  const [clientSecret, setClientSecret] = React.useState<string | null>(null)
+  const { t } = useTranslation()
 
-  // clientSecret이 필요하므로 실제로는 백엔드에서 받아와야 함
-  // 여기서는 구조만 제공
+  // Payment Intent 생성
+  React.useEffect(() => {
+    async function createPaymentIntent() {
+      try {
+        const finalAmount = Math.round((props.totalAmount + props.shippingFee) * 100) // Convert to cents
+
+        const response = await fetch('/api/payment/stripe/create-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: finalAmount,
+            currency: 'usd',
+            metadata: {
+              userId: props.userId,
+              itemCount: props.cartItems.length
+            }
+          })
+        })
+
+        const data = await response.json()
+        if (data.success && data.clientSecret) {
+          setClientSecret(data.clientSecret)
+        } else {
+          throw new Error(data.error || 'Failed to create payment intent')
+        }
+      } catch (err: any) {
+        console.error('[Stripe] Payment Intent 생성 실패:', err)
+        props.onPaymentError(err?.message || t('payment.initError'))
+      }
+    }
+
+    if (props.userId && props.cartItems.length > 0) {
+      createPaymentIntent()
+    }
+  }, [props.userId, props.cartItems, props.totalAmount, props.shippingFee, t])
+
+  // clientSecret이 없으면 로딩 표시
+  if (!clientSecret) {
+    return (
+      <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+        <p>{t('payment.loading') || 'Loading payment...'}</p>
+      </div>
+    )
+  }
+
   const options = {
-    // clientSecret: 'pi_xxx_secret_xxx', // 백엔드에서 받아온 값
+    clientSecret,
     appearance: {
       theme: 'stripe' as const,
       variables: {

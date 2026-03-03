@@ -883,3 +883,98 @@ console.log(i18n.t('common.login'))
 
 **예상 소요 시간**: 3-4시간
 **완료 후 혜택**: 한국/글로벌 버전 단일 코드베이스 관리, 유지보수 용이성 극대화
+
+---
+
+## 📝 Step 4: Stripe Backend API & Final Testing
+
+### ✅ Completed Work
+- Stripe Payment Intent API 추가 (`/api/payment/stripe/create-intent`)
+- StripeCheckout 컴포넌트 Payment Intent 통합
+- 테스트 가이드 작성 (TESTING_GUIDE.md)
+- 배포 가이드 작성 (DEPLOYMENT_GUIDE.md)
+
+### 🔧 Backend API Implementation
+
+#### Stripe Payment Intent 엔드포인트 (src/index.tsx)
+```typescript
+app.post('/api/payment/stripe/create-intent', async (c) => {
+  const { amount, currency = 'usd', metadata = {} } = await c.req.json();
+  const stripeSecretKey = c.env.STRIPE_SECRET_KEY;
+  
+  const Stripe = (await import('stripe')).default;
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: '2024-11-20.acacia',
+    httpClient: Stripe.createFetchHttpClient()
+  });
+  
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(amount),
+    currency,
+    automatic_payment_methods: { enabled: true },
+    metadata
+  });
+  
+  return c.json({
+    success: true,
+    clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id
+  });
+});
+```
+
+### 🧪 Testing
+
+#### 로컬 테스트
+```bash
+# 한국 버전
+npm run build:kr && npm run preview
+
+# 글로벌 버전
+npm run build:global && npm run preview
+```
+
+**상세 테스트 가이드**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
+
+### 🚀 Deployment
+
+#### Cloudflare Pages 배포
+```bash
+# 한국 버전
+npm run build:kr
+wrangler pages deploy dist --project-name=ur-live
+
+# 글로벌 버전
+npm run build:global
+wrangler pages deploy dist --project-name=ur-live-global
+```
+
+**상세 배포 가이드**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+
+### 📋 Final Checklist
+
+#### 한국 버전 (live.ur-team.com)
+- [x] 카카오 로그인 구현
+- [x] Toss Payments 통합
+- [x] 한국어 UI 기본
+- [x] Lazy loading 적용 (3.12 KB)
+
+#### 글로벌 버전 (global.ur-team.com)
+- [x] Google 로그인 구현
+- [x] Stripe Payments 통합
+- [x] English UI 기본
+- [x] Lazy loading 적용 (2.51 KB)
+- [x] Payment Intent API 구현
+
+#### 공통
+- [x] i18n 다국어 지원 (30+ keys)
+- [x] Region 기반 lazy loading
+- [x] Seller/Admin JWT 유지
+- [x] Build scripts (build:kr, build:global)
+- [x] 테스트 가이드 작성
+- [x] 배포 가이드 작성
+
+---
+
+**총 소요 시간**: 4-5시간  
+**최종 상태**: Production Ready ✅
