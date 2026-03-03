@@ -2209,6 +2209,53 @@ app.post('/api/seller/register', cors(), async (c) => {
   }
 });
 
+// 🔍 DEBUG: Check DB accounts (TEMPORARY - REMOVE IN PRODUCTION)
+app.get('/api/debug/accounts', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sellers = await DB.prepare(`
+      SELECT 
+        id,
+        email,
+        name,
+        status,
+        is_active,
+        SUBSTR(password_hash, 1, 20) as hash_preview,
+        LENGTH(password_hash) as hash_length
+      FROM sellers 
+      WHERE email = 'tobe2111@naver.com'
+    `).all();
+    
+    const admins = await DB.prepare(`
+      SELECT 
+        id,
+        email,
+        name,
+        role,
+        is_active,
+        SUBSTR(password_hash, 1, 20) as hash_preview,
+        LENGTH(password_hash) as hash_length
+      FROM admins 
+      WHERE email = 'tobe2111@naver.com'
+    `).all();
+    
+    return c.json({
+      success: true,
+      data: {
+        sellers: sellers.results,
+        admins: admins.results,
+        message: '⚠️ This is a DEBUG endpoint - REMOVE in production!'
+      }
+    });
+  } catch (err) {
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
 // 🔐 Admin Login API (JWT-based, NO Firebase)
 app.post('/api/admin/login', cors(), async (c) => {
   const { DB } = c.env;

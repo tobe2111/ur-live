@@ -299,7 +299,29 @@ ${o}
           business_number, company_name, status, is_active, 
           created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 1, datetime('now'), datetime('now'))
-      `).bind(c,t,l,a,n,o||null,i||null).run();return e.json({success:!0,data:{sellerId:u.meta.last_row_id,message:"회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."}})}catch(u){const d=u.message||"";if(d.includes("UNIQUE")||d.includes("unique"))return e.json({success:!1,error:"이미 가입된 이메일입니다"},400);throw u}}catch(t){return console.error("Seller registration error:",t),e.json({success:!1,error:t.message},500)}});p.post("/api/admin/login",S(),async e=>{var t;const{DB:s}=e.env;try{const{email:r,password:a}=await e.req.json();if(!r||!a)return e.json({success:!1,error:"이메일과 비밀번호를 입력해주세요"},400);const n=await s.prepare(`
+      `).bind(c,t,l,a,n,o||null,i||null).run();return e.json({success:!0,data:{sellerId:u.meta.last_row_id,message:"회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."}})}catch(u){const d=u.message||"";if(d.includes("UNIQUE")||d.includes("unique"))return e.json({success:!1,error:"이미 가입된 이메일입니다"},400);throw u}}catch(t){return console.error("Seller registration error:",t),e.json({success:!1,error:t.message},500)}});p.get("/api/debug/accounts",S(),async e=>{const{DB:s}=e.env;try{const t=await s.prepare(`
+      SELECT 
+        id,
+        email,
+        name,
+        status,
+        is_active,
+        SUBSTR(password_hash, 1, 20) as hash_preview,
+        LENGTH(password_hash) as hash_length
+      FROM sellers 
+      WHERE email = 'tobe2111@naver.com'
+    `).all(),r=await s.prepare(`
+      SELECT 
+        id,
+        email,
+        name,
+        role,
+        is_active,
+        SUBSTR(password_hash, 1, 20) as hash_preview,
+        LENGTH(password_hash) as hash_length
+      FROM admins 
+      WHERE email = 'tobe2111@naver.com'
+    `).all();return e.json({success:!0,data:{sellers:t.results,admins:r.results,message:"⚠️ This is a DEBUG endpoint - REMOVE in production!"}})}catch(t){return e.json({success:!1,error:t.message},500)}});p.post("/api/admin/login",S(),async e=>{var t;const{DB:s}=e.env;try{const{email:r,password:a}=await e.req.json();if(!r||!a)return e.json({success:!1,error:"이메일과 비밀번호를 입력해주세요"},400);const n=await s.prepare(`
       SELECT 
         id, 
         username, 

@@ -47,6 +47,7 @@ const PUBLIC_API_PATHS = [
   '/api/seller/login',         // 셀러 로그인 (JWT 방식)
   '/api/seller/register',      // 셀러 회원가입 (JWT 방식)
   '/api/admin/login',          // 어드민 로그인 (JWT 방식)
+  '/api/debug',                // 디버그 엔드포인트 (임시, 프로덕션에서 제거 필요)
 ];
 
 /**
