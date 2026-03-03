@@ -28,6 +28,8 @@
     "loginWithEmail": "Login with Email",
     "forgotPassword": "Forgot password?",
     "resetPassword": "Reset Password",
+    "resetPasswordButton": "Send Reset Link",
+    "resetPasswordSuccess": "Password reset email sent",
     "noAccount": "Don't have an account?",
     "alreadyHaveAccount": "Already have an account?",
     "createAccount": "Create Account",
@@ -37,7 +39,15 @@
     "passwordMismatch": "Passwords do not match",
     "loginSuccess": "Login successful",
     "logoutSuccess": "Logged out successfully",
-    "signupSuccess": "Account created successfully"
+    "signupSuccess": "Account created successfully",
+    "kakaoLoginError": "Kakao login error occurred",
+    "kakaoSdkNotReady": "Kakao SDK not ready. Please try again",
+    "googleLoginError": "Google login error occurred",
+    "loginError": "Login failed",
+    "emailPlaceholder": "Enter your email",
+    "passwordPlaceholder": "Enter your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "payment": {
     "checkout": "Checkout",
