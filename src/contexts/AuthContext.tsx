@@ -1,15 +1,14 @@
 /**
- * 🚀 AuthContext (Clean Rewrite)
+ * 🚀 AuthContext (Multi-Auth: Firebase + JWT)
  * 
  * 핵심 원칙:
- * 1. URL userName 최우선: 카카오 로그인 시 URL에서 userName 즉시 저장
- * 2. Firebase 우선: Custom Claims → localStorage → 즉시 UI
- * 3. 단순성: 복잡한 분기문 완전 제거
+ * 1. Buyer: Firebase Auth (onAuthStateChanged)
+ * 2. Seller/Admin: JWT 토큰 (localStorage)
+ * 3. 경로 기반 인증 분기: /seller, /admin → JWT 체크만
  * 4. 무한 루프 방지: Lock + replaceState 즉시 실행
  */
 
-// 🔧 Debug mode (환경변수로 제어)
-// 🚨 TEMPORARY: Always debug in production to diagnose login issue
+// 🔧 Debug mode
 const DEBUG_AUTH = true
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
@@ -31,7 +30,7 @@ type UserRole = 'user' | 'seller' | 'admin'
 
 interface AuthContextType {
   user: User | null
-  loading: boolean        // ✅ 핵심: 초기화 완료 여부
+  loading: boolean
   isAuthReady: boolean
   isLoggedIn: boolean
   userRole: UserRole | null
@@ -67,29 +66,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // State
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)           // ✅ 초기값 true (초기화 중)
+  const [loading, setLoading] = useState(true)
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [initError, setInitError] = useState<string | null>(null)
   
-  // 🚨 3단계 필수 조치: 무한 루프 영구 방지
-  
-  // Step 1: 로그아웃 트리거 엄격 제한
-  const previousUserRef = useRef<User | null>(null)  // 이전 사용자 유지
-  const isIntentionalLogoutRef = useRef(false)  // 의도적 로그아웃 플래그
-  const isInitialAuthRef = useRef(true)  // ★ 최초 인증 플래그 (null 완전 차단)
-  
-  // Step 2: Custom Token 로그인 후 상태 안정화
-  const isAuthenticatingRef = useRef(false)  // 인증 진행 중
-  const pendingNavigationRef = useRef<string | null>(null)  // 대기 중인 리다이렉트
-  
-  // Step 3: URL 파라미터 중복 처리 방지
-  const hasProcessedTokenRef = useRef(false)  // URL token 처리 완료 플래그
-  const processedTokenRef = useRef<string | null>(null)  // 처리된 token 값
+  // 무한 루프 방지 플래그
+  const previousUserRef = useRef<User | null>(null)
+  const isIntentionalLogoutRef = useRef(false)
+  const isInitialAuthRef = useRef(true)
+  const isAuthenticatingRef = useRef(false)
+  const pendingNavigationRef = useRef<string | null>(null)
+  const hasProcessedTokenRef = useRef(false)
+  const processedTokenRef = useRef<string | null>(null)
   
   // ============================================
-  // 🔥 1️⃣ URL 파라미터 처리 (최고 우선순위!)
-  // firebase_token + userName을 먼저 처리해야 무한 루프 방지
+  // 🔥 1️⃣ URL 파라미터 처리
   // ============================================
   
   useEffect(() => {
@@ -97,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userName = searchParams.get('userName')
     const errorParam = searchParams.get('error')
     
-    // 🚨 Step 3: URL 파라미터 중복 처리 방지
     if (firebaseToken && hasProcessedTokenRef.current) {
       if (DEBUG_AUTH) console.log('[Auth] ⏭️ 이미 URL token 처리 완료 - 스킵')
       return
@@ -108,133 +99,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     
-    // ⚠️ 에러 파라미터가 있으면 즉시 처리
     if (errorParam) {
       console.error('[Auth] ❌ URL 에러:', errorParam)
       setInitError('인증 중 오류가 발생했습니다. 다시 시도해 주세요.')
-      
-      // URL 정리 (무한 루프 방지)
       window.history.replaceState({}, document.title, window.location.pathname)
       return
     }
     
-    // ✅ firebase_token이 있으면 처리
     if (firebaseToken) {
-      console.log('[Auth] 🔥🔥🔥 Firebase Token 감지! 🔥🔥🔥')
-      console.log('[Auth] Token length:', firebaseToken.length)
-      console.log('[Auth] UserName param:', userName)
+      console.log('[Auth] 🔥 Firebase Token 감지!')
       
-      // 🚨 Step 3: 중복 처리 방지 플래그 설정
       hasProcessedTokenRef.current = true
       processedTokenRef.current = firebaseToken
-      
-      // 🚨 Step 2: 인증 시작 플래그 설정
       isAuthenticatingRef.current = true
-      if (DEBUG_AUTH) console.log('[Auth] 🔒 Step 2: 인증 프로세스 시작 - 상태 안정화 대기')
       
-      // 🚀 즉시 비동기 처리 (UI 블로킹 안 함)
       ;(async () => {
         try {
-          // 🎯 STEP 1: firebase_token과 userName만 URL에서 제거 (다른 파라미터는 유지)
-          const currentUrl = new URL(window.location.href);
-          currentUrl.searchParams.delete('firebase_token');
-          currentUrl.searchParams.delete('userName');
-          
-          // Clean URL로 교체
-          const cleanUrl = currentUrl.pathname + currentUrl.search;
-          window.history.replaceState({}, document.title, cleanUrl);
-          
-          if (DEBUG_AUTH) console.log('[Auth] ✅ URL 파라미터 제거 완료 (다른 params 유지)')
-          if (DEBUG_AUTH) console.log('[Auth] 🎯 Clean URL:', cleanUrl)
-          
-          // 🎯 STEP 2: userName이 있으면 즉시 localStorage 저장 (최우선!)
-          if (userName) {
-            const decodedName = decodeURIComponent(userName)
-            localStorage.setItem('user_name', decodedName)
-            if (DEBUG_AUTH) console.log('[Auth] 🎯 URL userName 즉시 저장:', decodedName)
-          }
-          
-          // 🎯 STEP 3: Firebase 로그인
-          console.log('[Auth] 🔥 Firebase 커스텀 토큰 로그인 시작...')
-          console.log('[Auth] 📝 Token preview:', firebaseToken.substring(0, 50) + '...')
-          console.log('[Auth] 📝 Auth object:', auth ? 'initialized' : 'NOT initialized')
-          
-          const userCredential = await signInWithCustomToken(auth, firebaseToken)
-          
-          console.log('[Auth] ✅ Firebase 로그인 성공!')
-          console.log('[Auth] 👤 UID:', userCredential.user.uid)
-          console.log('[Auth] 📧 Email:', userCredential.user.email)
-          console.log('[Auth] 🏷️ Display Name:', userCredential.user.displayName)
-          
-          // 🔥 CRITICAL: 즉시 Firebase ID Token을 localStorage에 저장!
-          // (onAuthStateChanged를 기다리지 않음)
-          const idToken = await userCredential.user.getIdToken()
-          
-          // 🚨 DEBUGGING: 저장하기 전에 토큰 타입 확인
-          try {
-            const parts = idToken.split('.')
-            if (parts.length === 3) {
-              const payloadBase64 = parts[1]
-              const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
-              const payload = JSON.parse(payloadJson)
-              console.log('[Auth] 🔍 ID Token Payload (BEFORE saving):', {
-                iss: payload.iss,
-                aud: payload.aud,
-                sub: payload.sub,
-                exp: payload.exp,
-                iat: payload.iat
-              })
-              
-              if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
-                console.error('[Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨')
-                console.error('[Auth] ❌ getIdToken() returned a Custom Token!')
-                throw new Error('Custom Token detected instead of ID Token')
-              } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
-                console.log('[Auth] ✅ Correct ID Token (securetoken.google.com)')
-              }
-            }
-          } catch (decodeError) {
-            console.error('[Auth] ❌ Token decode failed:', decodeError)
-            throw decodeError
-          }
-          
-          localStorage.setItem('firebase_token', idToken)
-          console.log('[Auth] 🔥 Firebase ID Token 즉시 저장 완료!')
-          console.log('[Auth] 🔑 Token preview:', idToken.substring(0, 50) + '...')
-          
-          // 🎯 Step 2: returnUrl 저장 (즉시 이동 금지!)
-          const returnUrl = sessionStorage.getItem('returnUrl') || '/'
-          sessionStorage.removeItem('returnUrl')
-          
-          // 📦 리다이렉트를 pendingNavigationRef에 저장
-          pendingNavigationRef.current = returnUrl
-          
-          if (DEBUG_AUTH) console.log('[Auth] 📦 Step 2: 리다이렉트 대기열에 저장:', returnUrl)
-          if (DEBUG_AUTH) console.log('[Auth] ⏳ onAuthStateChanged에서 상태 확인 후 이동 예정')
-          
-          // 🚨 절대 여기서 navigate 하지 말 것!
-          
-        } catch (error) {
-          console.error('[Auth] ❌❌❌ Firebase 토큰 로그인 실패 ❌❌❌')
-          console.error('[Auth] Error type:', error?.constructor?.name)
-          console.error('[Auth] Error message:', (error as Error)?.message)
-          console.error('[Auth] Error code:', (error as any)?.code)
-          console.error('[Auth] Full error:', error)
-          
-          setInitError('로그인 처리에 실패했습니다. 다시 시도해 주세요.')
-          
-          // URL 정리 (실패 시에도)
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.delete('firebase_token');
           currentUrl.searchParams.delete('userName');
           window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
           
-          // 🚨 인증 실패 시에도 플래그 해제
+          if (userName) {
+            const decodedName = decodeURIComponent(userName)
+            localStorage.setItem('user_name', decodedName)
+            if (DEBUG_AUTH) console.log('[Auth] 🎯 userName 저장:', decodedName)
+          }
+          
+          const userCredential = await signInWithCustomToken(auth, firebaseToken)
+          const idToken = await userCredential.user.getIdToken()
+          localStorage.setItem('firebase_token', idToken)
+          
+          const returnUrl = sessionStorage.getItem('returnUrl') || '/'
+          sessionStorage.removeItem('returnUrl')
+          pendingNavigationRef.current = returnUrl
+          
+          if (DEBUG_AUTH) console.log('[Auth] ✅ Firebase 로그인 성공')
+          
+        } catch (error) {
+          console.error('[Auth] ❌ Firebase 토큰 로그인 실패:', error)
+          setInitError('로그인 처리에 실패했습니다.')
           isAuthenticatingRef.current = false
           pendingNavigationRef.current = null
-          
-        } finally {
-          // 플래그 해제는 catch에서 처리
         }
       })()
     }
@@ -242,23 +148,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [searchParams, navigate])
   
   // ============================================
-  // 🔥 2️⃣ Firebase Auth Listener
+  // 🔥 2️⃣ Multi-Auth System (Firebase + JWT)
   // ============================================
   
   useEffect(() => {
+    const pathname = window.location.pathname
+    
+    // ✅ JWT 인증이 필요한 경로 (seller/admin)
+    if (pathname.startsWith('/seller') || pathname.startsWith('/admin')) {
+      if (DEBUG_AUTH) console.log('[Auth] 🔑 JWT 인증 경로 감지:', pathname)
+      
+      // JWT 토큰 확인
+      const token = localStorage.getItem('seller_token') || localStorage.getItem('admin_token')
+      const userId = localStorage.getItem('seller_id') || localStorage.getItem('admin_id')
+      const userName = localStorage.getItem('seller_name') || localStorage.getItem('admin_name')
+      const userType = localStorage.getItem('user_type') as UserRole | null
+      
+      if (token && userId) {
+        if (DEBUG_AUTH) console.log('[Auth] ✅ JWT 토큰 발견:', { userId, userName, userType })
+        
+        // JWT로 인증된 상태 설정 (Firebase user는 null)
+        setUser(null)
+        setUserRole(userType)
+        setIsAuthReady(true)
+        setLoading(false)
+        return
+      } else {
+        if (DEBUG_AUTH) console.log('[Auth] ❌ JWT 토큰 없음 - 로그인 필요')
+        
+        // 인증 실패 - 로그인 페이지로 리다이렉트는 각 페이지에서 처리
+        setUser(null)
+        setUserRole(null)
+        setIsAuthReady(true)
+        setLoading(false)
+        return
+      }
+    }
+    
+    // ✅ Firebase 인증이 필요한 경로 (buyer)
     if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 시작')
     
-    // 🚨 강제 타임아웃: 3초 후에도 로딩 중이면 강제 해제
+    // 강제 타임아웃 (buyer 경로만)
     const forceTimeoutId = setTimeout(() => {
       if (loading) {
-        // 📊 타임아웃 원인 진단 로깅
         console.warn('[Auth] ⏰ 강제 타임아웃 (3초) - 로딩 해제')
-        console.warn('[Auth] 📊 타임아웃 원인:', {
-          loading: loading ? 'loading=true (인증이 느림)' : 'loading=false',
-          isAuthReady: !isAuthReady ? 'isAuthReady=false (리스너 미응답)' : 'isAuthReady=true',
-          userState: user ? `user=${user.uid}` : 'user=null',
-          timestamp: new Date().toISOString()
-        })
         setLoading(false)
         setIsAuthReady(true)
       }
@@ -269,138 +202,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[Auth] ❌ Firebase 초기화 실패')
       setInitError('Firebase 초기화 실패. 페이지를 새로고침해 주세요.')
       setIsAuthReady(true)
-      setLoading(false)  // ✅ 초기화 실패 시에도 loading 해제
+      setLoading(false)
       clearTimeout(forceTimeoutId)
       return
     }
     
-    // onAuthStateChanged 리스너 (한 번만 등록)
+    // onAuthStateChanged 리스너
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        // ✅ Step 1: 로그인 상태 - 이전 사용자 저장 + 최초 인증 완료
         if (DEBUG_AUTH) console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
         
-        // ★ 최초 인증 완료 플래그 해제 (이제 정상 로그아웃 감지 가능)
         isInitialAuthRef.current = false
         previousUserRef.current = firebaseUser
         
         try {
-          // 🎯 Custom Claims에서 정보 추출
           const idTokenResult = await firebaseUser.getIdTokenResult()
           const userId = idTokenResult.claims.userId as number | undefined
           const userNameFromClaims = idTokenResult.claims.userName as string | undefined
           const role = (idTokenResult.claims.role as UserRole) || 'user'
           
-          // 🔥 CRITICAL: Custom Claims에 userId가 없으면 백엔드에서 조회
           if (!userId) {
-            console.log('[Auth] ⚠️ Custom Claims에 userId 없음, 백엔드 조회 시도...')
-            try {
-              const idToken = await firebaseUser.getIdToken()
-              const response = await fetch('/api/auth/me', {
-                headers: {
-                  'Authorization': `Bearer ${idToken}`
-                }
-              })
-              const data = await response.json()
-              if (data.success && data.user) {
-                console.log('[Auth] ✅ 백엔드에서 user_id 조회 성공:', data.user.id)
-                localStorage.setItem('user_id', data.user.id.toString())
-              } else {
-                console.error('[Auth] ❌ 백엔드 조회 실패:', data.error)
-              }
-            } catch (apiError) {
-              console.error('[Auth] ❌ /api/auth/me 호출 실패:', apiError)
-            }
+            console.log('[Auth] ⚠️ Custom Claims에 userId 없음')
           } else {
-            // Custom Claims에 userId가 있으면 바로 저장
             localStorage.setItem('user_id', userId.toString())
           }
           
-          // 🎯 userName 우선순위: localStorage (URL에서 저장됨) > Claims > displayName
           const existingUserName = localStorage.getItem('user_name')
           if (!existingUserName) {
-            // localStorage에 없을 때만 Claims 또는 displayName 사용
             const finalUserName = userNameFromClaims || firebaseUser.displayName || '사용자'
             localStorage.setItem('user_name', finalUserName)
-            if (DEBUG_AUTH) console.log('[Auth] ✅ user_name 저장 (Claims/displayName):', finalUserName)
-          } else {
-            if (DEBUG_AUTH) console.log('[Auth] ✅ user_name 유지 (URL 우선):', existingUserName)
           }
           
           localStorage.setItem('user_type', role)
           
-          // 🔑 CRITICAL: ID Token 강제 refresh + 저장
           const freshToken = await firebaseUser.getIdToken(true)
           localStorage.setItem('firebase_token', freshToken)
-          if (DEBUG_AUTH) console.log('[Auth] 🔑 ID Token 강제 refresh 완료')
           
-          // 🚀 즉시 UI 렌더링
           setUser(firebaseUser)
           setUserRole(role)
           setIsAuthReady(true)
-          setLoading(false)  // ✅ 핵심: 초기화 완료
+          setLoading(false)
           
-          // 🚨 Step 2: 인증 완료 후 리다이렉트 처리
+          // 대기 중인 리다이렉트 처리
           if (isAuthenticatingRef.current && pendingNavigationRef.current) {
             const targetUrl = pendingNavigationRef.current
             pendingNavigationRef.current = null
             isAuthenticatingRef.current = false
             
-            if (DEBUG_AUTH) console.log('[Auth] 📦 대기 중인 리다이렉트 실행:', targetUrl)
-            
-            // 로그인 페이지가 아니면 이동
             if (window.location.pathname === '/login' && targetUrl !== '/login') {
               navigate(targetUrl, { replace: true })
             }
           }
           
-          // 🚨 인증 완료 플래그 해제 (500ms 지연)
           setTimeout(() => {
             isAuthenticatingRef.current = false
-            if (DEBUG_AUTH) console.log('[Auth] 🔓 인증 프로세스 완료 - 로그아웃 감지 재개')
           }, 500)
-          
-          if (DEBUG_AUTH) {
-            console.log('[Auth] 🚀 낙관적 업데이트 완료:', {
-              uid: firebaseUser.uid,
-              userId,
-              userName: localStorage.getItem('user_name'),
-              role
-            })
-          }
           
         } catch (error) {
           console.error('[Auth] ❌ Token 추출 실패:', error)
-          // 실패해도 Firebase User는 유효하므로 계속 진행
           setUser(firebaseUser)
           setUserRole('user')
           setIsAuthReady(true)
-          setLoading(false)  // ✅ 에러 발생 시에도 loading 해제
+          setLoading(false)
         }
         
       } else {
-        // ❌ Step 1: 로그아웃 상태 - 엄격한 체크
         if (DEBUG_AUTH) console.log('[Auth] ❌ 로그아웃 감지')
         
-        // 🚨 CRITICAL: 최초 인증 중이거나 의도치 않은 로그아웃 방지
         if (isInitialAuthRef.current || (previousUserRef.current && !isIntentionalLogoutRef.current)) {
-          console.warn('[Auth] ⚠️⚠️⚠️ 로그아웃 무시 → 최초 인증 중 또는 이전 사용자 유지')
-          if (previousUserRef.current) {
-            console.warn('[Auth] 🔒 이전 사용자:', previousUserRef.current.uid)
-          }
-          if (isInitialAuthRef.current) {
-            console.warn('[Auth] 🔒 최초 인증 중 - null 상태 무시')
-          }
-          // 상태를 유지하고 리턴 - 로그아웃 트리거 완전 무시!
+          console.warn('[Auth] ⚠️ 로그아웃 무시 - 최초 인증 중')
           return
         }
         
-        // 의도적 로그아웃이면 정상 처리
         if (DEBUG_AUTH) console.log('[Auth] ✅ 정상 로그아웃 처리')
         
-        isInitialAuthRef.current = false  // 최초 인증 플래그 초기화
+        isInitialAuthRef.current = false
         previousUserRef.current = null
-        isIntentionalLogoutRef.current = false  // 플래그 초기화
+        isIntentionalLogoutRef.current = false
         
         localStorage.removeItem('firebase_token')
         localStorage.removeItem('user_type')
@@ -410,28 +288,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setUserRole(null)
         setIsAuthReady(true)
-        setLoading(false)  // ✅ 로그아웃 시에도 loading 해제
+        setLoading(false)
       }
     })
     
     return () => {
       if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 해제')
+      if (pathname.startsWith('/seller') || pathname.startsWith('/admin')) {
+        // JWT 경로는 Firebase 리스너 없음
+        return
+      }
       clearTimeout(forceTimeoutId)
       unsubscribe()
     }
-  }, []) // ✅ 빈 의존성 배열 - 한 번만 실행
+  }, [loading, isAuthReady, user, navigate])
   
   // ============================================
   // 3️⃣ Auth Methods
   // ============================================
   
   const loginWithEmail = async (email: string, password: string) => {
-    if (DEBUG_AUTH) console.log('[Auth] 📧 이메일 로그인 시도:', email)
-    
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      if (DEBUG_AUTH) console.log('[Auth] ✅ 이메일 로그인 성공:', userCredential.user.uid)
-      
+      await signInWithEmailAndPassword(auth, email, password)
     } catch (error: any) {
       console.error('[Auth] ❌ 이메일 로그인 실패:', error)
       throw new Error('이메일 또는 비밀번호가 잘못되었습니다.')
@@ -439,10 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const signupWithEmail = async (email: string, password: string, name: string) => {
-    if (DEBUG_AUTH) console.log('[Auth] 📝 이메일 회원가입 시도:', email)
-    
     try {
-      // 백엔드 API 호출 (Firebase Auth + D1 동시 처리)
       const response = await fetch('/api/auth/email/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -455,16 +330,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || '회원가입 실패')
       }
       
-      // Custom Token → ID Token 교환
-      if (DEBUG_AUTH) console.log('[Auth] 🔥 Custom Token 받음, ID Token으로 교환...')
       const userCredential = await signInWithCustomToken(auth, data.customToken)
-      
-      // ID Token 저장
       const idToken = await userCredential.user.getIdToken()
       localStorage.setItem('firebase_token', idToken)
       localStorage.setItem('user_name', name)
-      
-      if (DEBUG_AUTH) console.log('[Auth] ✅ 이메일 회원가입 성공:', userCredential.user.uid)
       
     } catch (error: any) {
       console.error('[Auth] ❌ 이메일 회원가입 실패:', error)
@@ -473,13 +342,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const resetPassword = async (email: string) => {
-    if (DEBUG_AUTH) console.log('[Auth] 🔑 비밀번호 재설정:', email)
-    
     try {
       const { sendPasswordResetEmail } = await import('firebase/auth')
       await sendPasswordResetEmail(auth, email)
-      if (DEBUG_AUTH) console.log('[Auth] ✅ 비밀번호 재설정 이메일 발송')
-      
     } catch (error: any) {
       console.error('[Auth] ❌ 비밀번호 재설정 실패:', error)
       throw error
@@ -487,10 +352,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const loginWithKakao = async (accessToken: string) => {
-    if (DEBUG_AUTH) console.log('[Auth] 🟡 카카오 로그인 시작')
-    
     try {
-      // 백엔드 API 호출
       const response = await fetch('/api/auth/kakao/firebase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -503,47 +365,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || '카카오 로그인 실패')
       }
       
-      // ★ 핵심 수정: Custom Token → ID Token 교환
-      if (DEBUG_AUTH) console.log('[Auth] 🔥 Custom Token 받음, ID Token으로 교환 시작...')
       const userCredential = await signInWithCustomToken(auth, data.customToken)
-      
-      // 🔥 CRITICAL: Custom Token이 아닌 ID Token을 localStorage에 저장!
       const idToken = await userCredential.user.getIdToken()
-      
-      // 🚨 DEBUGGING: 저장하기 전에 토큰 타입 확인
-      try {
-        const parts = idToken.split('.')
-        if (parts.length === 3) {
-          const payloadBase64 = parts[1]
-          const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
-          const payload = JSON.parse(payloadJson)
-          console.log('[Auth] 🔍 ID Token Payload (loginWithKakao):', {
-            iss: payload.iss,
-            aud: payload.aud,
-            sub: payload.sub,
-            exp: payload.exp,
-            iat: payload.iat
-          })
-          
-          if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
-            console.error('[Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED (loginWithKakao)! 🚨🚨🚨')
-            throw new Error('Custom Token detected in loginWithKakao')
-          } else if (payload.iss && payload.iss.includes('securetoken.google.com')) {
-            console.log('[Auth] ✅ Correct ID Token (loginWithKakao)')
-          }
-        }
-      } catch (decodeError) {
-        console.error('[Auth] ❌ Token decode failed (loginWithKakao):', decodeError)
-        throw decodeError
-      }
-      
       localStorage.setItem('firebase_token', idToken)
       
-      if (DEBUG_AUTH) console.log('[Auth] ✅ 카카오 로그인 성공')
-      if (DEBUG_AUTH) console.log('[Auth] 🔑 ID Token 교환 & 저장 완료')
-      if (DEBUG_AUTH) console.log('[Auth] 🔑 Token preview:', idToken.substring(0, 50) + '...')
-      
-      // 안전하게 user 상태도 업데이트 (onAuthStateChanged가 자동으로 해주지만)
       setUser(userCredential.user)
       
     } catch (error: any) {
@@ -553,22 +378,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   
   const logout = async () => {
-    if (DEBUG_AUTH) console.log('[Auth] 🚪 로그아웃 시작')
-    
     try {
-      // 🚨 Step 1: 의도적 로그아웃 플래그 설정
       isIntentionalLogoutRef.current = true
-      if (DEBUG_AUTH) console.log('[Auth] 🚨 의도적 로그아웃 플래그 설정')
-      
       await signOut(auth)
-      if (DEBUG_AUTH) console.log('[Auth] ✅ 로그아웃 완료')
-      
-      // 플래그 초기화 (재사용 대비)
       isIntentionalLogoutRef.current = false
-      
     } catch (error) {
       console.error('[Auth] ❌ 로그아웃 실패:', error)
-      isIntentionalLogoutRef.current = false  // 실패 시에도 플래그 초기화
+      isIntentionalLogoutRef.current = false
       throw new Error('로그아웃에 실패했습니다.')
     }
   }
@@ -579,9 +395,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const value: AuthContextType = {
     user,
-    loading,              // ✅ 핵심: loading 상태 제공
+    loading,
     isAuthReady,
-    isLoggedIn: !!user,
+    isLoggedIn: !!user || !!userRole, // JWT 사용자도 로그인 상태로 인식
     userRole,
     initError,
     loginWithEmail,
@@ -589,16 +405,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     loginWithKakao,
     logout
-  }
-  
-  // ✅ 디버그 로그 (매 렌더링마다 상태 추적)
-  if (DEBUG_AUTH) {
-    console.log('[AuthContext] 🔄 렌더링:', {
-      user: user?.uid || 'null',
-      loading,
-      isAuthReady,
-      userRole
-    })
   }
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
