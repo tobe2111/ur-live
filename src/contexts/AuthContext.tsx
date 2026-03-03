@@ -76,6 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isProcessingTokenRef = useRef(false)
   const processedTokenRef = useRef<string | null>(null)
   
+  // 🚨 CRITICAL: 로그인 직후 로그아웃 방지
+  const isAuthenticatingRef = useRef(false)
+  const lastAuthUserRef = useRef<User | null>(null)
+  
   // ============================================
   // 🔥 1️⃣ URL 파라미터 처리 (최고 우선순위!)
   // firebase_token + userName을 먼저 처리해야 무한 루프 방지
@@ -116,6 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       isProcessingTokenRef.current = true
       processedTokenRef.current = firebaseToken
+      
+      // 🚨 인증 시작 플래그 설정
+      isAuthenticatingRef.current = true
+      if (DEBUG_AUTH) console.log('[Auth] 🔒 인증 프로세스 시작 - 로그아웃 감지 일시 중지')
       
       // 🚀 즉시 비동기 처리 (UI 블로킹 안 함)
       ;(async () => {
@@ -216,6 +224,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           currentUrl.searchParams.delete('userName');
           window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search);
           
+          // 🚨 인증 실패 시에도 플래그 해제
+          isAuthenticatingRef.current = false
+          
         } finally {
           isProcessingTokenRef.current = false
         }
@@ -242,9 +253,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // onAuthStateChanged 리스너 (한 번만 등록)
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      // 🚨 CRITICAL: 로그인 진행 중에는 null 상태를 무시
+      if (!firebaseUser && isAuthenticatingRef.current) {
+        if (DEBUG_AUTH) console.log('[Auth] ⏭️ 로그인 진행 중 - null 상태 무시')
+        return
+      }
+      
       if (firebaseUser) {
         // ✅ 로그인 상태
         if (DEBUG_AUTH) console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
+        
+        // 마지막 인증된 사용자 저장
+        lastAuthUserRef.current = firebaseUser
         
         try {
           // 🎯 Custom Claims에서 정보 추출
@@ -324,6 +344,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAuthReady(true)
           setLoading(false)  // ✅ 핵심: 초기화 완료
           
+          // 🚨 인증 완료 플래그 해제 (500ms 지연)
+          setTimeout(() => {
+            isAuthenticatingRef.current = false
+            if (DEBUG_AUTH) console.log('[Auth] 🔓 인증 프로세스 완료 - 로그아웃 감지 재개')
+          }, 500)
+          
           if (DEBUG_AUTH) {
             console.log('[Auth] 🚀 낙관적 업데이트 완료:', {
               uid: firebaseUser.uid,
@@ -346,10 +372,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ❌ 로그아웃 상태
         if (DEBUG_AUTH) console.log('[Auth] ❌ 로그아웃됨')
         
+        // 🚨 CRITICAL: 이전 사용자가 있었고 토큰이 localStorage에 있으면 로그아웃 무시
+        const hasToken = localStorage.getItem('firebase_token')
+        if (lastAuthUserRef.current && hasToken) {
+          console.warn('[Auth] ⚠️ 로그아웃 무시 - 이전 사용자 유지 (token 존재)')
+          console.warn('[Auth] ⚠️ 마지막 사용자:', lastAuthUserRef.current.uid)
+          // 상태를 유지하고 리턴
+          return
+        }
+        
         localStorage.removeItem('firebase_token')
         localStorage.removeItem('user_type')
         localStorage.removeItem('user_id')
         localStorage.removeItem('user_name')
+        
+        // 마지막 사용자 초기화
+        lastAuthUserRef.current = null
         
         setUser(null)
         setUserRole(null)
