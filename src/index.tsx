@@ -8193,24 +8193,40 @@ app.get('/api/streams/:streamId/viewer-count', async (c) => {
   try {
     const streamId = c.req.param('streamId');
 
-    // 1️⃣ D1에서 셀러 조작값 확인
-    const stream = await DB.prepare(
-      'SELECT manual_viewer_count FROM live_streams WHERE id = ?'
-    ).bind(streamId).first() as { manual_viewer_count: number | null } | null;
+    // 1️⃣ D1에서 스트림 존재 확인 및 manual_viewer_count 조회
+    // ⚠️ 컬럼이 없을 경우를 대비한 에러 처리
+    let stream: any = null;
+    let manualCount: number | null = null;
+    
+    try {
+      stream = await DB.prepare(
+        'SELECT id, manual_viewer_count FROM live_streams WHERE id = ?'
+      ).bind(streamId).first();
+      
+      if (stream) {
+        manualCount = stream.manual_viewer_count;
+      }
+    } catch (dbError) {
+      // manual_viewer_count 컬럼이 없는 경우 (마이그레이션 미적용)
+      console.warn('[Viewer Count] manual_viewer_count column not found, using fallback query');
+      stream = await DB.prepare(
+        'SELECT id FROM live_streams WHERE id = ?'
+      ).bind(streamId).first();
+    }
 
     if (!stream) {
       return c.json({ success: false, error: 'Stream not found' }, 404);
     }
 
     // 2️⃣ 셀러가 설정한 값이 있으면 그것을 반환
-    if (stream.manual_viewer_count !== null && stream.manual_viewer_count !== undefined) {
+    if (manualCount !== null && manualCount !== undefined) {
       return c.json({ 
         success: true, 
         data: { 
-          viewer_count: stream.manual_viewer_count,
+          viewer_count: manualCount,
           is_manual: true // 셀러 조작값 표시
         } 
-      });
+        });
     }
 
     // 3️⃣ KV에서 실제 시청자 수 카운트
