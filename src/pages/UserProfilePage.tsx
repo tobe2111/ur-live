@@ -5,6 +5,7 @@ import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { LogoutButton } from '@/components/my-page/logout-button'
 import { Footer } from '@/components/my-page/footer'
+import BottomNav from '@/components/main/BottomNav'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
@@ -74,7 +75,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-20">
       {/* User Info Section */}
       <UserInfo userName={userName} />
 
@@ -96,6 +97,9 @@ export default function UserProfilePage() {
 
       {/* Footer Section */}
       <Footer />
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   )
 }
