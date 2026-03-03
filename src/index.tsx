@@ -4568,6 +4568,31 @@ async function fetchProductDetail(DB: D1Database, id: string) {
   };
 }
 
+// 상품 옵션 조회 API (Cart 페이지용)
+app.get('/api/products/:id/options', edgeCache(CACHE_PRESETS.microCache), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+
+  try {
+    const options = await DB.prepare(`
+      SELECT id, product_id, option_type, option_value, price_adjustment, stock
+      FROM product_options
+      WHERE product_id = ? AND stock > 0
+      ORDER BY option_type, option_value
+    `).bind(id).all();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: options.results || [],
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
+
 // 실시간 재고 확인 API
 // ✨ 재고 조회 API (Micro-caching: 10초 TTL)
 // 실시간성을 보장하면서 서버 부하를 막기 위한 짧은 캐싱
@@ -4918,41 +4943,94 @@ app.put('/api/cart/:cartItemId', requireAuth, async (c) => {
 
   try {
     const body = await c.req.json();
-    const { quantity } = body;
+    const { quantity, option_id } = body;
 
-    if (!quantity || quantity < 1) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Invalid quantity',
-      }, 400);
+    // 수량 변경의 경우
+    if (quantity !== undefined) {
+      if (quantity < 1) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Invalid quantity',
+        }, 400);
+      }
+
+      // 재고 확인
+      const cartItem = await DB.prepare(`
+        SELECT ci.product_id, ci.option_id, p.stock
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.id = ?
+      `).bind(cartItemId).first();
+
+      if (!cartItem) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Cart item not found',
+        }, 404);
+      }
+
+      // 옵션이 있는 경우 옵션 재고 확인, 없으면 상품 재고 확인
+      let availableStock = cartItem.stock as number;
+      if (cartItem.option_id) {
+        const optionStock = await DB.prepare(
+          'SELECT stock FROM product_options WHERE id = ?'
+        ).bind(cartItem.option_id).first();
+        if (optionStock) {
+          availableStock = optionStock.stock as number;
+        }
+      }
+
+      if (availableStock < quantity) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Insufficient stock',
+        }, 400);
+      }
+
+      // 수량 업데이트
+      await DB.prepare(
+        'UPDATE cart_items SET quantity = ? WHERE id = ?'
+      ).bind(quantity, cartItemId).run();
     }
 
-    // 재고 확인
-    const cartItem = await DB.prepare(`
-      SELECT ci.product_id, p.stock
-      FROM cart_items ci
-      JOIN products p ON ci.product_id = p.id
-      WHERE ci.id = ?
-    `).bind(cartItemId).first();
+    // 옵션 변경의 경우
+    if (option_id !== undefined) {
+      // 옵션 재고 확인
+      const option = await DB.prepare(
+        'SELECT stock, price_adjustment FROM product_options WHERE id = ?'
+      ).bind(option_id).first();
 
-    if (!cartItem) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Cart item not found',
-      }, 404);
+      if (!option) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Option not found',
+        }, 404);
+      }
+
+      // 현재 장바구니 아이템의 수량 조회
+      const cartItem = await DB.prepare(
+        'SELECT quantity FROM cart_items WHERE id = ?'
+      ).bind(cartItemId).first();
+
+      if (!cartItem) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Cart item not found',
+        }, 404);
+      }
+
+      if ((option.stock as number) < (cartItem.quantity as number)) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Insufficient stock for selected option',
+        }, 400);
+      }
+
+      // 옵션 업데이트
+      await DB.prepare(
+        'UPDATE cart_items SET option_id = ? WHERE id = ?'
+      ).bind(option_id, cartItemId).run();
     }
-
-    if ((cartItem.stock as number) < quantity) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Insufficient stock',
-      }, 400);
-    }
-
-    // 수량 업데이트
-    await DB.prepare(
-      'UPDATE cart_items SET quantity = ? WHERE id = ?'
-    ).bind(quantity, cartItemId).run();
 
     return c.json<ApiResponse>({
       success: true,

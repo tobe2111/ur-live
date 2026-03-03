@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { Minus, Plus, X, ChevronLeft, AlertCircle, CheckCircle } from 'lucide-react'
+import { Minus, Plus, X, ChevronLeft, AlertCircle, CheckCircle, Settings } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import OptionSelectModal from '@/components/OptionSelectModal'
 
 interface CartItem {
   id: number
@@ -99,6 +100,17 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  
+  const [optionModal, setOptionModal] = useState<{
+    isOpen: boolean
+    cartItemId?: number
+    productId?: number
+    productName?: string
+    currentOptionId?: number
+    currentOptionValue?: string
+  }>({
+    isOpen: false,
+  })
 
   const [modal, setModal] = useState<{
     isOpen: boolean
@@ -257,6 +269,41 @@ export default function CartPage() {
     )
   }
 
+  const openOptionModal = (item: CartItem) => {
+    setOptionModal({
+      isOpen: true,
+      cartItemId: item.id,
+      productId: item.product_id,
+      productName: item.product_name,
+      currentOptionId: item.option_id,
+      currentOptionValue: item.option_value,
+    })
+  }
+
+  const closeOptionModal = () => {
+    setOptionModal({ isOpen: false })
+  }
+
+  const handleOptionChange = async (optionId: number, optionValue: string) => {
+    if (!optionModal.cartItemId || updating) return
+
+    setUpdating(true)
+    try {
+      await api.put(`/api/cart/${optionModal.cartItemId}`, { option_id: optionId })
+      await loadCart()
+      showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
+    } catch (error: any) {
+      console.error('Failed to change option:', error)
+      showAlert(
+        error.response?.data?.error || '옵션 변경에 실패했습니다.',
+        'error',
+        '변경 실패'
+      )
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const handleDeleteSelected = useCallback(() => {
     if (selectedIds.size === 0) return
 
@@ -409,6 +456,16 @@ export default function CartPage() {
                             className="mt-2 w-16 h-16 object-cover rounded"
                           />
                         )}
+                        
+                        {/* 옵션 변경 버튼 */}
+                        <button
+                          onClick={() => openOptionModal(item)}
+                          disabled={updating}
+                          className="mt-2 flex items-center gap-1 text-[11px] text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
+                        >
+                          <Settings className="h-3 w-3" strokeWidth={1.5} />
+                          <span className="font-medium">옵션 변경</span>
+                        </button>
                       </div>
 
                       {/* Remove button */}
@@ -532,6 +589,17 @@ export default function CartPage() {
         title={modal.title}
         message={modal.message}
         type={modal.type}
+      />
+
+      {/* Option Select Modal */}
+      <OptionSelectModal
+        isOpen={optionModal.isOpen}
+        onClose={closeOptionModal}
+        productId={optionModal.productId!}
+        productName={optionModal.productName || ''}
+        currentOptionId={optionModal.currentOptionId}
+        currentOptionValue={optionModal.currentOptionValue}
+        onOptionSelected={handleOptionChange}
       />
     </div>
   )
