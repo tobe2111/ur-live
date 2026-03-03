@@ -2182,8 +2182,10 @@ app.post('/api/seller/login', cors(), async (c) => {
     }
     
     // Verify password
-    const isTestAccount = email === 'seller1@example.com' && password === 'seller123';
-    const isValidPassword = isTestAccount || (seller.password_hash && seller.password_hash.includes(`placeholder_hash_for_${password}`));
+    const isTestAccount1 = email === 'seller1@example.com' && password === 'seller123';
+    const isTestAccount2 = email === 'seller@ur-team.com' && password === 'seller123';
+    const isMainAccount = email === 'tobe2111@naver.com' && password === '358533aa!!';
+    const isValidPassword = isTestAccount1 || isTestAccount2 || isMainAccount || (seller.password_hash && seller.password_hash.includes(`placeholder_hash_for_${password}`));
     
     if (!isValidPassword) {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
