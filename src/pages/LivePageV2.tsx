@@ -9,42 +9,51 @@ import { useModal } from '@/components/CustomModal'
 import { useFirebaseChat } from '@/hooks/useFirebaseChat' // ✅ Firebase 실시간 (0.2초)
 import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
+import { createLogger } from '@/utils/logger'
+
+const log = createLogger('LivePageV2')
 
 // ============================================
-// Suppress YouTube Console Errors
+// Suppress Known Harmless Console Messages
 // ============================================
 if (typeof window !== 'undefined') {
   const originalError = console.error
   const originalWarn = console.warn
   
+  // Whitelist of known harmless patterns (regex for better matching)
+  const SUPPRESSED_ERROR_PATTERNS = [
+    /postMessage.*youtube\.com/i,
+    /www-embed-player\.js/i,
+    /www-widgetapi\.js/i,
+    /target origin.*youtube\.com/i,
+    /DOMWindow.*postMessage/i,
+  ]
+  
+  const SUPPRESSED_WARN_PATTERNS = [
+    /passive event listener/i,
+    /Added non-passive event listener/i,
+    /\[Violation\].*passive/i,
+  ]
+  
   console.error = (...args: any[]) => {
     const message = args[0]?.toString() || ''
-    // Filter out YouTube-related errors
-    if (
-      message.includes('postMessage') ||
-      message.includes('touchstart') ||
-      message.includes('touchmove') ||
-      message.includes('www-embed-player') ||
-      message.includes('www-widgetapi') ||
-      message.includes('youtube.com') ||
-      message.includes('DOMWindow')
-    ) {
-      return // Suppress these errors
+    
+    // Only suppress KNOWN harmless errors
+    if (SUPPRESSED_ERROR_PATTERNS.some(pattern => pattern.test(message))) {
+      return
     }
+    
     originalError.apply(console, args)
   }
   
   console.warn = (...args: any[]) => {
     const message = args[0]?.toString() || ''
-    // Filter out YouTube-related warnings
-    if (
-      message.includes('passive event listener') ||
-      message.includes('touchstart') ||
-      message.includes('touchmove') ||
-      message.includes('[Violation]')
-    ) {
-      return // Suppress these warnings
+    
+    // Only suppress KNOWN harmless warnings
+    if (SUPPRESSED_WARN_PATTERNS.some(pattern => pattern.test(message))) {
+      return
     }
+    
     originalWarn.apply(console, args)
   }
 }
@@ -95,184 +104,8 @@ interface ReelData {
 }
 
 // ============================================
-// Demo Data (for fallback)
+// Demo Data - Removed (using real API data only)
 // ============================================
-const demoStreams: Stream[] = [
-  {
-    id: 1,
-    title: '프리미엄 헤드폰 라이브',
-    streamerName: 'Marcus Chen',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtube_video_id: 'dQw4w9WgXcQ',
-    status: 'live',
-    viewerCount: 12400,
-    products: []
-  },
-  {
-    id: 2,
-    title: '골드 주얼리 특가',
-    streamerName: 'Sofia Laurent',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtube_video_id: 'dQw4w9WgXcQ',
-    status: 'live',
-    viewerCount: 34200,
-    products: []
-  },
-  {
-    id: 3,
-    title: '스니커즈 신상품',
-    streamerName: 'Jake Morrison',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtube_video_id: 'dQw4w9WgXcQ',
-    status: 'live',
-    viewerCount: 52000,
-    products: []
-  }
-]
-
-const demoProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Nova Pro Wireless Headphones',
-    price: 89.99,
-    originalPrice: 149.99,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
-    description: 'Premium noise-cancelling headphones with 30-hour battery life and studio-quality sound.',
-    rating: 4.8,
-    sold: 2340,
-    colors: [
-      { name: 'Midnight Black', hex: '#1a1a1a' },
-      { name: 'Space Gray', hex: '#6b6b6b' },
-      { name: 'Rose Gold', hex: '#b76e79' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Luna Gold Jewelry Set',
-    price: 45.00,
-    originalPrice: 78.00,
-    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800',
-    description: 'Elegant 18K gold-plated necklace and earring set, perfect for special occasions.',
-    rating: 4.9,
-    sold: 8720,
-    colors: [
-      { name: 'Gold', hex: '#ffd700' },
-      { name: 'Silver', hex: '#c0c0c0' },
-      { name: 'Rose Gold', hex: '#b76e79' }
-    ]
-  },
-  {
-    id: 3,
-    name: 'StreetX Cloud Sneakers',
-    price: 62.00,
-    originalPrice: 120.00,
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
-    description: 'Ultra-comfortable running shoes with cloud-like cushioning and breathable mesh.',
-    rating: 4.7,
-    sold: 15600,
-    sizes: ['US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12'],
-    colors: [
-      { name: 'Triple White', hex: '#ffffff' },
-      { name: 'Core Black', hex: '#000000' },
-      { name: 'Navy Blue', hex: '#000080' }
-    ]
-  },
-  {
-    id: 4,
-    name: 'Glow Elixir Vitamin C Serum',
-    price: 24.99,
-    originalPrice: 55.00,
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800',
-    description: 'Brightening serum with 20% vitamin C for radiant, youthful skin.',
-    rating: 4.9,
-    sold: 42100
-  },
-  {
-    id: 5,
-    name: 'Pulse Ultra Smartwatch',
-    price: 129.00,
-    originalPrice: 249.00,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800',
-    description: 'Advanced fitness tracking, heart rate monitoring, and 7-day battery life.',
-    rating: 4.6,
-    sold: 6890,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Silver', hex: '#c0c0c0' },
-      { name: 'Gold', hex: '#ffd700' }
-    ]
-  },
-  {
-    id: 6,
-    name: 'Premium Leather Wallet',
-    price: 35.00,
-    originalPrice: 65.00,
-    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=800',
-    description: 'Genuine leather bifold wallet with RFID protection and card slots.',
-    rating: 4.7,
-    sold: 12300,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Brown', hex: '#8b4513' },
-      { name: 'Tan', hex: '#d2b48c' }
-    ]
-  },
-  {
-    id: 7,
-    name: 'Wireless Charging Pad',
-    price: 19.99,
-    originalPrice: 39.99,
-    image: 'https://images.unsplash.com/photo-1591290619762-0c0a6b5c2e7a?w=800',
-    description: 'Fast wireless charger compatible with all Qi-enabled devices.',
-    rating: 4.5,
-    sold: 18900
-  },
-  {
-    id: 8,
-    name: 'Eco-Friendly Water Bottle',
-    price: 12.99,
-    originalPrice: 24.99,
-    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800',
-    description: 'Stainless steel insulated bottle keeps drinks cold for 24 hours.',
-    rating: 4.8,
-    sold: 31200,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Blue', hex: '#0000ff' },
-      { name: 'Pink', hex: '#ff69b4' }
-    ]
-  },
-  {
-    id: 9,
-    name: 'Minimalist Backpack',
-    price: 49.00,
-    originalPrice: 89.00,
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800',
-    description: 'Sleek design with laptop compartment and water-resistant material.',
-    rating: 4.6,
-    sold: 9800,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Gray', hex: '#808080' },
-      { name: 'Navy', hex: '#000080' }
-    ]
-  },
-  {
-    id: 10,
-    name: 'Bluetooth Speaker',
-    price: 39.99,
-    originalPrice: 79.99,
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=800',
-    description: 'Portable speaker with 360° sound and 12-hour playtime.',
-    rating: 4.7,
-    sold: 22500,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Red', hex: '#ff0000' },
-      { name: 'Blue', hex: '#0000ff' }
-    ]
-  }
-]
 
 // ============================================
 // Utility Functions
@@ -653,24 +486,24 @@ function ReelCard({
 
     const initializePlayer = () => {
       try {
-        console.log(`[ReelCard] Initializing player for stream ${stream.id}:`, stream.youtube_video_id)
+        log.debug(`[ReelCard] Initializing player for stream ${stream.id}:`, stream.youtube_video_id)
         // @ts-ignore
         if (!window.YT || !window.YT.Player) {
-          console.log(`[ReelCard] YouTube API not ready for stream ${stream.id}`)
+          log.debug(`[ReelCard] YouTube API not ready for stream ${stream.id}`)
           return
         }
         if (!isMounted) {
-          console.log(`[ReelCard] Component unmounted for stream ${stream.id}`)
+          log.debug(`[ReelCard] Component unmounted for stream ${stream.id}`)
           return
         }
 
         const playerElement = document.getElementById(`youtube-player-${stream.id}`)
         if (!playerElement) {
-          console.log(`[ReelCard] Player element not found for stream ${stream.id}`)
+          log.debug(`[ReelCard] Player element not found for stream ${stream.id}`)
           return
         }
 
-        console.log(`[ReelCard] Creating YouTube player for stream ${stream.id}`)
+        log.debug(`[ReelCard] Creating YouTube player for stream ${stream.id}`)
         playerElement.innerHTML = ''
 
         // @ts-ignore
@@ -697,7 +530,7 @@ function ReelCard({
           events: {
             onReady: (event: any) => {
               if (!isMounted) return
-              console.log(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
+              log.debug(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
               playerRef.current = event.target
               setPlayerReady(true)
               setShowPlayButton(true) // Show play button overlay
@@ -733,13 +566,13 @@ function ReelCard({
 
     // @ts-ignore
     if (window.YT && window.YT.Player) {
-      console.log(`[ReelCard] YouTube API already loaded, initializing stream ${stream.id}`)
+      log.debug(`[ReelCard] YouTube API already loaded, initializing stream ${stream.id}`)
       initializePlayer()
     } else {
-      console.log(`[ReelCard] YouTube API not loaded, queueing callback for stream ${stream.id}`)
+      log.debug(`[ReelCard] YouTube API not loaded, queueing callback for stream ${stream.id}`)
       const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]')
       if (!existingScript) {
-        console.log('[ReelCard] Loading YouTube IFrame API script')
+        log.debug('[ReelCard] Loading YouTube IFrame API script')
         const tag = document.createElement('script')
         tag.src = 'https://www.youtube.com/iframe_api'
         tag.async = true
@@ -750,12 +583,12 @@ function ReelCard({
       // Store callback in array to support multiple reels
       // @ts-ignore
       if (!window.youtubeCallbacks) {
-        console.log('[ReelCard] Creating YouTube callbacks array')
+        log.debug('[ReelCard] Creating YouTube callbacks array')
         // @ts-ignore
         window.youtubeCallbacks = []
         // @ts-ignore
         window.onYouTubeIframeAPIReady = () => {
-          console.log('[ReelCard] YouTube IFrame API ready, executing callbacks:', window.youtubeCallbacks.length)
+          log.debug('[ReelCard] YouTube IFrame API ready, executing callbacks:', window.youtubeCallbacks.length)
           // @ts-ignore
           window.youtubeCallbacks.forEach(cb => cb())
           // @ts-ignore
@@ -764,7 +597,7 @@ function ReelCard({
       }
       // @ts-ignore
       window.youtubeCallbacks.push(() => {
-        console.log(`[ReelCard] Executing queued callback for stream ${stream.id}`)
+        log.debug(`[ReelCard] Executing queued callback for stream ${stream.id}`)
         if (isMounted) initializePlayer()
       })
     }
@@ -821,7 +654,7 @@ function ReelCard({
               setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
             }
             
-            console.log(`🔥 Firebase: Product changed to ${newProduct.name}`)
+            log.debug(`🔥 Firebase: Product changed to ${newProduct.name}`)
           }
         } catch (error) {
           console.error('[Firebase] Error loading new product:', error)
@@ -846,7 +679,7 @@ function ReelCard({
         }
       })
       
-      console.log(`🔥 Firebase: Stock updated to ${firebaseProduct.stock}`)
+      log.debug(`🔥 Firebase: Stock updated to ${firebaseProduct.stock}`)
       
       // 품절 알림
       if (firebaseProduct.stock === 0) {
@@ -866,7 +699,7 @@ function ReelCard({
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data.product)
-          console.log('✅ Initial product loaded')
+          log.debug('✅ Initial product loaded')
         }
       } catch (error) {
         console.error('[InitialProduct] Error loading:', error)
@@ -945,7 +778,7 @@ function ReelCard({
     try {
       const userId = getUserId()
       
-      console.log('[handleAddToCart] 🛒 Starting add to cart:', {
+      log.debug('[handleAddToCart] 🛒 Starting add to cart:', {
         userId,
         productId: currentProduct.id,
         productName: currentProduct.name,
@@ -972,7 +805,7 @@ function ReelCard({
       }
       
       // POST to server (JWT에서 userId 자동 추출)
-      console.log('[handleAddToCart] 📡 Calling API /api/cart')
+      log.debug('[handleAddToCart] 📡 Calling API /api/cart')
       
       const response = await api.post('/api/cart', {
         productId: currentProduct.id,
@@ -981,7 +814,7 @@ function ReelCard({
         liveStreamId: stream.id
       })
       
-      console.log('[handleAddToCart] ✅ API response:', response.data)
+      log.debug('[handleAddToCart] ✅ API response:', response.data)
       
       // Set flag
       localStorage.setItem('hasCartItems', 'true')
@@ -994,14 +827,14 @@ function ReelCard({
         const userName = localStorage.getItem('user_name') || '익명'
         const maskedName = maskUserName(userName)
         
-        console.log('[handleAddToCart] 📢 Sending system message...')
+        log.debug('[handleAddToCart] 📢 Sending system message...')
         await sendChatMessage(
           `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
           0, // System user ID
           '🎉 시스템',
           'system' // 'viewer' 대신 'system'으로 변경
         )
-        console.log('[handleAddToCart] ✅ System message sent successfully')
+        log.debug('[handleAddToCart] ✅ System message sent successfully')
       } catch (error) {
         console.error('[handleAddToCart] ❌ 시스템 메시지 전송 실패:', error)
       }
@@ -1069,7 +902,7 @@ function ReelCard({
         liveStreamId: reel.stream.id  // ✅ Fixed: currentStream → reel.stream
       }
       
-      console.log('[Checkout] Adding current product to cart:', cartData)
+      log.debug('[Checkout] Adding current product to cart:', cartData)
       
       await api.post('/api/cart', cartData)
       localStorage.setItem('hasCartItems', 'true')
@@ -1078,7 +911,7 @@ function ReelCard({
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
       
       // ✅ 장바구니 페이지로 이동
-      console.log('[Checkout] Navigating to cart')
+      log.debug('[Checkout] Navigating to cart')
       navigate('/cart')
       
     } catch (error: any) {
@@ -1141,7 +974,7 @@ function ReelCard({
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
 
-      console.log('[Seller] Product changed successfully to:', product.id)
+      log.debug('[Seller] Product changed successfully to:', product.id)
     } catch (error: any) {
       console.error('[Seller] Failed to change product:', error)
       showAlert(error.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
@@ -1226,7 +1059,7 @@ function ReelCard({
           onError={(e) => {
             // 이미지 로드 실패 시 숨기기
             e.currentTarget.style.display = 'none'
-            console.log(`[ReelCard] Image load failed for stream ${stream.id}:`, safeProduct.image || safeProduct.image_url)
+            log.debug(`[ReelCard] Image load failed for stream ${stream.id}:`, safeProduct.image || safeProduct.image_url)
           }}
         />
       )}
@@ -1483,7 +1316,7 @@ export default function LivePageV2() {
     const userName = urlParams.get('userName')
 
     if (loginSuccess === 'success' && session && userId) {
-      console.log('[LivePageV2] 💾 로그인 성공 - localStorage 저장:', {
+      log.debug('[LivePageV2] 💾 로그인 성공 - localStorage 저장:', {
         session: session ? '있음' : '없음',
         userId,
         userName: userName ? decodeURIComponent(userName) : null
@@ -1516,7 +1349,7 @@ export default function LivePageV2() {
       const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
       window.history.replaceState({}, '', newUrl)
 
-      console.log('[LivePageV2] ✅ localStorage 저장 완료:', {
+      log.debug('[LivePageV2] ✅ localStorage 저장 완료:', {
         user_session_token: localStorage.getItem('user_session_token') ? '있음' : '없음',
         user_type: localStorage.getItem('user_type'),
         user_id: localStorage.getItem('user_id'),
@@ -1560,11 +1393,11 @@ export default function LivePageV2() {
         
         try {
           const streamsResponse = await axios.get('/api/streams')
-          console.log('[LivePageV2] Streams API response:', streamsResponse.data)
+          log.debug('[LivePageV2] Streams API response:', streamsResponse.data)
           
           if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
             streams = streamsResponse.data.data
-            console.log('[LivePageV2] Loaded all streams:', streams.length)
+            log.debug('[LivePageV2] Loaded all streams:', streams.length)
             
             // Set current stream from URL parameter
             if (streamId) {
@@ -1577,7 +1410,7 @@ export default function LivePageV2() {
                 const userId = getUserId()
                 if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
                   setIsStreamer(true)
-                  console.log('[LivePageV2] 스트리머 권한 확인됨')
+                  log.debug('[LivePageV2] 스트리머 권한 확인됨')
                 }
               }
             }
@@ -1600,11 +1433,11 @@ export default function LivePageV2() {
           
           try {
             const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
-            console.log(`[LivePageV2] Products API response for stream ${stream.id}:`, productsResponse.data)
+            log.debug(`[LivePageV2] Products API response for stream ${stream.id}:`, productsResponse.data)
             
             if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
               products = productsResponse.data.data
-              console.log(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
+              log.debug(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
             } else {
               console.warn(`[LivePageV2] No products found for stream ${stream.id}`)
             }
@@ -1619,7 +1452,7 @@ export default function LivePageV2() {
           })
         }
 
-        console.log('[LivePageV2] Created reels:', reelsData.length)
+        log.debug('[LivePageV2] Created reels:', reelsData.length)
         
         // Set initial active index based on streamId BEFORE setReels
         let initialIndex = 0
@@ -1627,7 +1460,7 @@ export default function LivePageV2() {
           const foundIndex = reelsData.findIndex(r => r.stream.id === parseInt(streamId))
           if (foundIndex !== -1) {
             initialIndex = foundIndex
-            console.log('[LivePageV2] Initial index for stream', streamId, ':', initialIndex)
+            log.debug('[LivePageV2] Initial index for stream', streamId, ':', initialIndex)
           }
         }
         
@@ -1660,7 +1493,7 @@ export default function LivePageV2() {
     // Update URL without reload
     if (window.location.pathname !== `/live/${activeStreamId}`) {
       window.history.replaceState(null, '', `/live/${activeStreamId}`)
-      console.log('[LivePageV2] URL updated to:', `/live/${activeStreamId}`)
+      log.debug('[LivePageV2] URL updated to:', `/live/${activeStreamId}`)
     }
     
     // Update currentStream
@@ -1672,7 +1505,7 @@ export default function LivePageV2() {
       const userId = getUserId()
       const accessToken = localStorage.getItem('access_token')
       
-      console.log('[LivePageV2] Checking seller permission:', {
+      log.debug('[LivePageV2] Checking seller permission:', {
         userType,
         userId,
         hasAccessToken: !!accessToken,
@@ -1681,7 +1514,7 @@ export default function LivePageV2() {
       
       if (userType === 'seller' && userId && activeReel.stream.seller_id === parseInt(userId)) {
         setIsStreamer(true)
-        console.log('[LivePageV2] ✅ User is seller of this stream')
+        log.debug('[LivePageV2] ✅ User is seller of this stream')
       } else {
         setIsStreamer(false)
       }
@@ -1696,7 +1529,7 @@ export default function LivePageV2() {
     // Scroll to the active reel
     const targetElement = containerRef.current.children[activeIndex] as HTMLElement
     if (targetElement) {
-      console.log('[LivePageV2] Scrolling to index:', activeIndex)
+      log.debug('[LivePageV2] Scrolling to index:', activeIndex)
       targetElement.scrollIntoView({ behavior: 'instant' as any })
     }
   }, [reels])
@@ -1864,7 +1697,7 @@ export default function LivePageV2() {
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              console.log('[LivePageV2] 배경 클릭으로 모달 닫기')
+              log.debug('[LivePageV2] 배경 클릭으로 모달 닫기')
               setShowProductSelector(false)
             }
           }}
