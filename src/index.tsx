@@ -7270,6 +7270,114 @@ app.post('/api/seller/products', async (c) => {
   }
 });
 
+// Create/Update product options (상품 옵션 생성/업데이트)
+app.post('/api/seller/products/:id/options', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+    const { options } = await c.req.json();
+
+    // Verify product ownership
+    const product = await DB.prepare(
+      'SELECT id FROM products WHERE id = ? AND seller_id = ?'
+    ).bind(productId, auth.sellerId).first();
+
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    if (!Array.isArray(options) || options.length === 0) {
+      return c.json({ success: false, error: 'Options array is required' }, 400);
+    }
+
+    // Delete existing options first (for update case)
+    await DB.prepare(
+      'DELETE FROM product_options WHERE product_id = ?'
+    ).bind(productId).run();
+
+    // Insert new options
+    for (const option of options) {
+      const { option_type, option_value, price_adjustment, stock } = option;
+
+      if (!option_type || !option_value) {
+        continue; // Skip invalid options
+      }
+
+      await DB.prepare(`
+        INSERT INTO product_options (
+          product_id, option_type, option_value, price_adjustment, stock
+        ) VALUES (?, ?, ?, ?, ?)
+      `).bind(
+        productId,
+        option_type,
+        option_value,
+        price_adjustment || 0,
+        stock || 0
+      ).run();
+    }
+
+    // Get all options for this product
+    const savedOptions = await DB.prepare(
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock FROM product_options WHERE product_id = ?'
+    ).bind(productId).all();
+
+    // 캐시 무효화
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, `product:options:${productId}`);
+
+    return c.json({ 
+      success: true, 
+      data: savedOptions.results,
+      message: `${savedOptions.results.length} options saved successfully`
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete product option (상품 옵션 삭제)
+app.delete('/api/seller/products/:id/options/:optionId', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+    const optionId = c.req.param('optionId');
+
+    // Verify product ownership via product_options JOIN
+    const option = await DB.prepare(`
+      SELECT po.id 
+      FROM product_options po
+      JOIN products p ON po.product_id = p.id
+      WHERE po.id = ? AND po.product_id = ? AND p.seller_id = ?
+    `).bind(optionId, productId, auth.sellerId).first();
+
+    if (!option) {
+      return c.json({ success: false, error: 'Option not found or unauthorized' }, 404);
+    }
+
+    await DB.prepare(
+      'DELETE FROM product_options WHERE id = ?'
+    ).bind(optionId).run();
+
+    // 캐시 무효화
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, `product:options:${productId}`);
+
+    return c.json({ success: true, message: 'Option deleted successfully' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Get single product (상품 단건 조회 - 수정용)
 app.get('/api/seller/products/:id', async (c) => {
   const { DB } = c.env;
@@ -7294,7 +7402,18 @@ app.get('/api/seller/products/:id', async (c) => {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
     }
 
-    return c.json({ success: true, data: product });
+    // Get product options
+    const options = await DB.prepare(
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock FROM product_options WHERE product_id = ?'
+    ).bind(id).all();
+
+    return c.json({ 
+      success: true, 
+      data: {
+        ...product,
+        options: options.results || []
+      }
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
