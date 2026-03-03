@@ -28,8 +28,8 @@ const api = axios.create({
 });
 
 /**
- * 공개 API 엔드포인트 (Firebase ID Token 불필요)
- * 비회원도 접근 가능한 페이지용 API
+ * 공개 API 엔드포인트 (토큰 불필요)
+ * 비회원도 접근 가능한 페이지용 API + 로그인/회원가입 엔드포인트
  */
 const PUBLIC_API_PATHS = [
   '/api/streams',              // 라이브 스트림 목록
@@ -39,11 +39,14 @@ const PUBLIC_API_PATHS = [
   '/api/banners',              // 배너 목록
   '/api/categories',           // 카테고리
   '/api/health',               // 헬스 체크
-  '/api/auth/login',           // 로그인 (deprecated - Firebase 사용)
-  '/api/auth/register',        // 회원가입 (deprecated - Firebase 사용)
+  '/api/auth/login',           // 유저 로그인 (deprecated - Firebase 사용)
+  '/api/auth/register',        // 유저 회원가입 (deprecated - Firebase 사용)
   '/api/auth/kakao',           // 카카오 로그인 (모든 카카오 엔드포인트)
   '/api/auth/firebase/sync',   // Firebase 동기화 (인증 프로세스의 일부)
   '/api/auth/firebase/register', // Firebase 회원가입
+  '/api/seller/login',         // 셀러 로그인 (JWT 방식)
+  '/api/seller/register',      // 셀러 회원가입 (JWT 방식)
+  '/api/admin/login',          // 어드민 로그인 (JWT 방식)
 ];
 
 /**
