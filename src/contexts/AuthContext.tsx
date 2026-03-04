@@ -221,8 +221,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userNameFromClaims = idTokenResult.claims.userName as string | undefined
           const role = (idTokenResult.claims.role as UserRole) || 'user'
           
+          // 🔥 Fix: Always use Firebase UID if custom claim userId is missing
           if (!userId) {
-            console.log('[Auth] ⚠️ Custom Claims에 userId 없음')
+            console.log('[Auth] ⚠️ Custom Claims에 userId 없음 - Firebase UID 사용:', firebaseUser.uid)
+            localStorage.setItem('user_id', firebaseUser.uid)
           } else {
             localStorage.setItem('user_id', userId.toString())
           }

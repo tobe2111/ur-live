@@ -756,15 +756,50 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       
       if (!user) {
         console.warn('[Firebase Auth] User not found for UID:', firebasePayload.uid)
-        return {
-          userId: 0,
-          userType: '',
-          errorDetails: {
-            code: 'USER_NOT_FOUND',
-            message: 'User not found in database',
-            tokenInfo: { uid: firebasePayload.uid }
+        
+        // 🔥 Auto-create D1 user from Firebase token
+        try {
+          const email = firebasePayload.email || `user_${firebasePayload.uid}@firebase.local`
+          const name = firebasePayload.name || firebasePayload.email?.split('@')[0] || 'User'
+          
+          console.log('[Firebase Auth] 🆕 Creating new D1 user:', { uid: firebasePayload.uid, email, name })
+          
+          const insertResult = await c.env.DB.prepare(`
+            INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `).bind(firebasePayload.uid, email, name).run()
+          
+          // Fetch the newly created user
+          user = await c.env.DB.prepare(`
+            SELECT id, email, name, firebase_uid FROM users WHERE firebase_uid = ?
+          `).bind(firebasePayload.uid).first()
+          
+          if (user) {
+            console.log('[Firebase Auth] ✅ Auto-created D1 user:', user.id)
+          } else {
+            console.error('[Firebase Auth] ❌ Failed to retrieve newly created user')
+            return {
+              userId: 0,
+              userType: '',
+              errorDetails: {
+                code: 'USER_CREATION_FAILED',
+                message: 'Failed to create user in database',
+                tokenInfo: { uid: firebasePayload.uid }
+              }
+            } as any
           }
-        } as any
+        } catch (createError) {
+          console.error('[Firebase Auth] ❌ User auto-creation failed:', createError)
+          return {
+            userId: 0,
+            userType: '',
+            errorDetails: {
+              code: 'USER_CREATION_ERROR',
+              message: 'Error creating user in database: ' + (createError as Error).message,
+              tokenInfo: { uid: firebasePayload.uid }
+            }
+          } as any
+        }
       }
       
       // Custom Claims에서 role 추출 (user, seller, admin)

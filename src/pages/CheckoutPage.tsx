@@ -267,14 +267,26 @@ export default function CheckoutPage() {
     }
     
     console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
-    const uid = getUserId()
+    
+    // 🔥 Fix: Use Firebase UID directly if getUserId() returns null
+    let uid = getUserId()
+    
+    // Fallback to Firebase UID if userId is not in localStorage
+    if (!uid && user) {
+      console.log('[CheckoutPage] ⚠️ localStorage에 userId 없음, Firebase UID 사용:', user.uid)
+      uid = user.uid
+      // Save Firebase UID as user_id for future use
+      localStorage.setItem('user_id', user.uid)
+    }
+    
     console.log('[CheckoutPage] 👤 userId:', uid)
     console.log('[CheckoutPage] 🔍 localStorage 전체 확인:', {
       user_id: localStorage.getItem('user_id'),
       userId: localStorage.getItem('userId'),
       firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
       user_name: localStorage.getItem('user_name'),
-      user_type: localStorage.getItem('user_type')
+      user_type: localStorage.getItem('user_type'),
+      firebase_uid: user?.uid
     })
     console.log('[CheckoutPage] isLoggedIn:', isLoggedIn())
     
