@@ -908,47 +908,7 @@ export default function CheckoutPage() {
       </main>
 
       {/* Mobile payment button removed - now inside TossPaymentWidget */}
-
-      {/* 약관 링크 - 최하단 (모바일만) */}
-      <div className="bg-gray-50 py-4 border-t border-gray-200 lg:hidden">
-        <div className="mx-auto max-w-lg px-5">
-          {/* 약관 및 개인정보 수집 동의 */}
-          <p className="text-[11px] text-gray-500 text-center mb-3">
-            결제 진행 시 아래 약관 및 개인정보 수집에 동의한 것으로 간주됩니다
-          </p>
-          
-          {/* 개인정보 수집 동의 체크박스 */}
-          <label className="flex items-start gap-2 justify-center mb-3 cursor-pointer group px-4">
-            <input
-              type="checkbox"
-              checked={agreedToPrivacy}
-              onChange={(e) => setAgreedToPrivacy(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <span className="text-[12px] text-gray-700 group-hover:text-gray-900 transition-colors">
-              <span className="font-medium text-red-600">(필수)</span> 개인정보 수집 및 이용에 동의합니다
-            </span>
-          </label>
-          
-          <div className="flex justify-center gap-2 text-[11px]">
-            <Link 
-              to="/terms" 
-              target="_blank"
-              className="text-gray-600 hover:text-blue-600 underline"
-            >
-              이용약관
-            </Link>
-            <span className="text-gray-300">|</span>
-            <Link 
-              to="/privacy" 
-              target="_blank"
-              className="text-gray-600 hover:text-blue-600 underline"
-            >
-              개인정보 처리방침
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* Terms section removed as it's now inside TossPaymentWidget's agreement component */}
 
       {/* 배송지 선택 모달 */}
       {console.log('[CheckoutPage] 배송지 모달 렌더링 - showAddressModal:', showAddressModal, 'addresses:', addresses.length)}
