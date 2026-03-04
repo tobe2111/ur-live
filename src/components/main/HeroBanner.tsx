@@ -3,7 +3,7 @@ import React from 'react'
 export default function HeroBanner() {
   return (
     <section className="relative w-full overflow-hidden">
-      <div className="relative aspect-[3/4] w-full sm:aspect-[16/9]">
+      <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
         {/* Hero Image - Placeholder with gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-600 to-gray-900" />
         

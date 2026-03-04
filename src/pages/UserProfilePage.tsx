@@ -6,6 +6,7 @@ import { MenuList } from '@/components/my-page/menu-list'
 import { LogoutButton } from '@/components/my-page/logout-button'
 import { Footer } from '@/components/my-page/footer'
 import BottomNav from '@/components/main/BottomNav'
+import { ArrowLeft } from 'lucide-react'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
@@ -76,6 +77,20 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Header with Back Button */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="flex items-center px-4 py-3">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="flex-1 text-center text-[18px] font-bold pr-10">마이페이지</h1>
+        </div>
+      </div>
+
       {/* User Info Section */}
       <UserInfo userName={userName} />
 
