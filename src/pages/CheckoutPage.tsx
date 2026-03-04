@@ -1114,7 +1114,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </CustomModal>
-      </div>
     </div>
   )
 }
