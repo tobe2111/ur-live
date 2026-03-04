@@ -853,31 +853,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Desktop payment button */}
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    onClick={handlePayment}
-                    disabled={!ready || !selectedAddress || isProcessing || !widgets}
-                    className="flex w-full items-center justify-center rounded-2xl bg-blue-600 py-[18px] text-[16px] font-bold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isProcessing ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                        <span>결제 처리중</span>
-                      </div>
-                    ) : !widgets ? (
-                      '결제 시스템 로딩 중...'
-                    ) : !selectedAddress ? (
-                      '⚠️ 배송지를 선택해주세요'
-                    ) : !ready ? (
-                      '결제 UI 준비 중...'
-                    ) : (
-                      <span>{totalAmount.toLocaleString()}원 결제하기</span>
-                    )}
-                  </button>
-                </div>
-
+                {/* Payment button is inside TossPaymentWidget */}
                 {!selectedAddress && (
                   <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-xs text-amber-800 text-center">
@@ -931,42 +907,7 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {/* Mobile pay bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-50">
-        <button
-          type="button"
-          onClick={handlePayment}
-          onTouchEnd={(e) => {
-            // 모바일 터치 이벤트 지원
-            e.preventDefault()
-            if (!isProcessing && ready && selectedAddress) {
-              handlePayment(e)
-            }
-          }}
-          disabled={!ready || !selectedAddress || isProcessing || !widgets}
-          className="w-full flex items-center justify-center rounded-2xl bg-blue-600 py-4 text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
-          style={{
-            backgroundColor: !ready || !selectedAddress || !widgets ? '#e5e7eb' : undefined,
-            color: !ready || !selectedAddress || !widgets ? '#9ca3af' : undefined,
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          {isProcessing ? (
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              <span>결제 처리중</span>
-            </div>
-          ) : !widgets ? (
-            '결제 시스템 로딩 중...'
-          ) : !selectedAddress ? (
-            '⚠️ 배송지를 선택해주세요'
-          ) : !ready ? (
-            '결제 UI 준비 중...'
-          ) : (
-            <span>{totalAmount.toLocaleString()}원 결제하기</span>
-          )}
-        </button>
+      {/* Mobile payment button removed - now inside TossPaymentWidget */}
 
       {/* 약관 링크 - 최하단 (모바일만) */}
       <div className="bg-gray-50 py-4 border-t border-gray-200 lg:hidden">
