@@ -155,7 +155,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#f5f5f7] pb-20">
+    <div className="mx-auto min-h-screen max-w-md bg-[#f5f5f7]">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-[#e5e5ea]">
         <div className="w-full px-4 py-3">
@@ -381,6 +381,9 @@ export default function SearchPage() {
         {/* Mobile Footer */}
         <MobileFooter />
       </div>
+      
+      {/* Bottom Navigation Spacer */}
+      <div className="h-20" aria-hidden="true"></div>
       
       {/* Bottom Navigation */}
       <BottomNav />

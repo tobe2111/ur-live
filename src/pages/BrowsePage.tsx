@@ -191,7 +191,7 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
       <TopNav />
       
       <main className="px-4 py-6">
@@ -229,6 +229,9 @@ export default function BrowsePage() {
           </div>
         )}
       </main>
+      
+      {/* Bottom Navigation Spacer */}
+      <div className="h-20" aria-hidden="true"></div>
       
       <BottomNav />
     </div>

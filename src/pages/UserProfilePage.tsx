@@ -75,7 +75,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-20">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* User Info Section */}
       <UserInfo userName={userName} />
 
@@ -97,6 +97,9 @@ export default function UserProfilePage() {
 
       {/* Footer Section */}
       <Footer />
+      
+      {/* Bottom Navigation Spacer */}
+      <div className="h-20" aria-hidden="true"></div>
       
       {/* Bottom Navigation */}
       <BottomNav />

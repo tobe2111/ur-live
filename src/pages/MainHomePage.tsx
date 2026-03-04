@@ -11,7 +11,7 @@ export default function MainHomePage() {
   return (
     <div className="min-h-screen bg-background">
       <TopNav />
-      <main className="pb-20">
+      <main>
         <HeroBanner />
         <QuickAccess />
         <div className="h-px bg-border" />
@@ -20,6 +20,8 @@ export default function MainHomePage() {
         <LiveNow />
         <SiteFooter />
       </main>
+      {/* Bottom Navigation Spacer */}
+      <div className="h-20" aria-hidden="true"></div>
       <BottomNav />
     </div>
   )
