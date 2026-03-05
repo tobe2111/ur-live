@@ -11,7 +11,9 @@ import { compress } from 'hono/compress';
 import { serveStatic } from 'hono/cloudflare-workers';
 
 // Feature Routes
-import { kakaoRoutes } from '@/features/auth';
+import { kakaoRoutes, googleRoutes } from '@/features/auth';
+import { productsRoutes } from '@/features/products';
+import { ordersRoutes } from '@/features/orders';
 
 type Bindings = {
   DB: D1Database;
@@ -59,8 +61,9 @@ app.get('/health', (c) => {
   return c.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    worker: 'ur-live-worker-v2',
-    features: ['auth', 'products', 'orders']
+    worker: 'ur-live-worker-v2.1',
+    features: ['auth-kakao', 'auth-google', 'products', 'orders'],
+    region: import.meta.env.VITE_REGION || 'KR'
   });
 });
 
@@ -68,14 +71,20 @@ app.get('/health', (c) => {
 // Feature Routes
 // =================================
 
-// Auth Feature
+// Auth Feature (KR: Kakao, WORLD: Google)
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
+app.route('/api/auth/google', googleRoutes);
+
+// Products Feature
+app.route('/api/products', productsRoutes);
+
+// Orders Feature
+app.route('/api/orders', ordersRoutes);
 
 // TODO: 다른 Feature 라우트 추가
-// app.route('/api/products', productsRoutes);
-// app.route('/api/orders', ordersRoutes);
 // app.route('/api/live-stream', liveStreamRoutes);
+// app.route('/api/payments', paymentsRoutes);
 
 // =================================
 // Static Assets & SPA Fallback

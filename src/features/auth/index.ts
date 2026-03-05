@@ -7,9 +7,11 @@
 
 // Routes
 export { default as kakaoRoutes } from './api/kakao.routes';
+export { default as googleRoutes } from './api/google.routes';
 
 // Services
 export { KakaoAuthService } from './services/KakaoAuthService';
+export { GoogleAuthService } from './services/GoogleAuthService';
 export { FirebaseAuthService } from './services/FirebaseAuthService';
 
 // Types
