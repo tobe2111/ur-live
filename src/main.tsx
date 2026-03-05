@@ -4,10 +4,16 @@ import App from './App.tsx'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
 import { initSentry } from './lib/sentry'
+import { logRegionInfo } from '@/shared/config/region'
 
 console.log('[App] 🚀 앱 시작...')
 console.log('[App] 📍 Location:', window.location.href)
 console.log('[App] 🌐 User Agent:', navigator.userAgent)
+
+// Region 정보 출력 (디버깅용)
+if (import.meta.env.DEV) {
+  logRegionInfo()
+}
 
 // Sentry 초기화 (앱 시작 전)
 try {
@@ -35,10 +41,9 @@ if (!rootElement) {
   console.log('[App] ✅ Root element found')
   
   try {
+    // ✅ React StrictMode 제거 (중복 마운트 방지)
     ReactDOM.createRoot(rootElement).render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>,
+      <App />
     )
     console.log('[App] ✅ React 렌더링 완료')
   } catch (error) {
@@ -54,3 +59,4 @@ if (!rootElement) {
     `
   }
 }
+

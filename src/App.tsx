@@ -1,4 +1,4 @@
-// React Router App - v2.1 (Cache Buster)
+// React Router App - v2.2 (AuthProvider inside BrowserRouter)
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'

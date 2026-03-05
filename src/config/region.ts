@@ -1,22 +1,39 @@
 /**
- * Region Configuration
+ * Region Configuration (Legacy Compatibility)
  * 
- * 한국(KR)과 글로벌(GLOBAL) 버전을 구분하는 설정 유틸리티
+ * ⚠️ DEPRECATED: Use @/shared/config/region instead
+ * 
+ * This file is kept for backward compatibility.
+ * All new code should import from @/shared/config/region
  */
 
-export type Region = 'KR' | 'GLOBAL'
+// Re-export from the new centralized location
+export {
+  type Region,
+  getRegion,
+  getRegionConfig,
+  isKorea,
+  isGlobal,
+  isRegion,
+  isKakaoAuthEnabled,
+  isGoogleAuthEnabled,
+  isTossPaymentEnabled,
+  isStripePaymentEnabled,
+  getPaymentProvider,
+  getAuthProvider,
+  logRegionInfo
+} from '@/shared/config/region'
 
-export const REGION = (import.meta.env.VITE_REGION || 'KR') as Region
-
-export const isKorea = () => REGION === 'KR'
-export const isGlobal = () => REGION === 'GLOBAL'
+// Legacy compatibility exports
+export const REGION = (() => {
+  if (typeof __REGION__ !== 'undefined') {
+    return __REGION__
+  }
+  return (import.meta.env.VITE_REGION || 'KR') as 'KR' | 'GLOBAL'
+})()
 
 export const getLoginProvider = () => {
   return isKorea() ? 'kakao' : 'google'
-}
-
-export const getPaymentProvider = () => {
-  return isKorea() ? 'toss' : 'stripe'
 }
 
 export const getDefaultLanguage = () => {
@@ -33,3 +50,4 @@ export const getSupportedLanguages = () => {
     ? ['ko', 'en']
     : ['en', 'ko', 'ja', 'zh']
 }
+

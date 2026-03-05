@@ -8,16 +8,22 @@ export default defineConfig(({ mode }) => {
   const isKR = mode === 'kr' || mode === 'development'  // dev는 기본 KR
   const isGlobal = mode === 'global'
 
+  console.log(`🌍 [Vite Config] Building for region: ${isKR ? 'KR' : 'GLOBAL'}`)
+  console.log(`📦 [Vite Config] Mode: ${mode}`)
+  console.log(`🔧 [Vite Config] Tree-shaking: ${isKR ? 'Stripe/Google excluded' : 'Toss/Kakao excluded'}`)
+
   return {
   // 환경변수 정의 (빌드 시점에 번들에 포함)
   define: {
     'import.meta.env.VITE_TOSS_CLIENT_KEY': JSON.stringify(
       process.env.VITE_TOSS_CLIENT_KEY || 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
     ),
-    // 🔥 Region 상수 주입 (tree-shaking 유리)
+    // 🔥 Region 상수 주입 (tree-shaking 최적화)
     '__REGION__': JSON.stringify(isKR ? 'KR' : 'GLOBAL'),
-    '__IS_KR__': isKR,
-    '__IS_GLOBAL__': isGlobal,
+    '__IS_KR__': JSON.stringify(isKR),
+    '__IS_GLOBAL__': JSON.stringify(isGlobal),
+    // 🔥 호환성을 위한 추가 상수
+    'process.env.VITE_REGION': JSON.stringify(isKR ? 'KR' : 'GLOBAL'),
   },
   
   // 🔥 CRITICAL FIX: React 중복 방지 강화
@@ -31,7 +37,7 @@ export default defineConfig(({ mode }) => {
       'firebase/app',
     ],
     // 🔥 모든 의존성을 사전 번들링 (중복 방지)
-    force: true,
+    force: false,  // ✅ true → false (불필요한 force 제거)
     // 🔥 외부 링크 제거 (단일 번들로 강제)
     esbuildOptions: {
       // React를 절대로 외부화하지 않음
@@ -79,21 +85,49 @@ export default defineConfig(({ mode }) => {
     rollupOptions: {
       // 🔧 순환 참조 및 TDZ 에러 방지
       preserveEntrySignatures: 'allow-extension',
-      // 🔥 Region별 불필요한 라이브러리 제외
+      // 🔥 Region별 불필요한 라이브러리 제외 (Tree-shaking 강화)
       external: isKR 
-        ? ['@stripe/stripe-js', '@stripe/react-stripe-js']  // KR: Stripe 제외
-        : [],  // GLOBAL: 모두 포함
+        ? [
+            '@stripe/stripe-js', 
+            '@stripe/react-stripe-js',
+            // ✅ GLOBAL 전용 제거 대상 추가
+          ]
+        : [
+            // ✅ KR 전용 제거 대상
+            '@tosspayments/payment-sdk',
+            'kakao-js-sdk',
+          ],
       output: {
         // 🔧 해시 기반 파일명으로 캐시 무효화
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        // 🔥 CRITICAL FIX: manualChunks 대폭 단순화 (React Duplicate 방지)
-        manualChunks: {
-          // 🎯 React 관련은 무조건 하나의 청크로!
-          'react-vendor': ['react', 'react-dom', 'react/jsx-runtime', 'react-router-dom'],
-          // Firebase도 하나로
-          'firebase-vendor': ['firebase/app', 'firebase/auth'],
+        // 🔥 CRITICAL FIX: React 단일 chunk로 강제 (중복 방지)
+        manualChunks: (id) => {
+          // 🎯 React & React-DOM → 단일 chunk
+          if (id.includes('node_modules/react/') || 
+              id.includes('node_modules/react-dom/')) {
+            return 'react-core'
+          }
+          
+          // 🎯 React Router → 별도 chunk (react-core와 분리)
+          if (id.includes('node_modules/react-router-dom/')) {
+            return 'react-router'
+          }
+          
+          // 🎯 Firebase → 단일 chunk
+          if (id.includes('node_modules/firebase/') ||
+              id.includes('node_modules/@firebase/')) {
+            return 'firebase'
+          }
+          
+          // 🎯 나머지 node_modules → vendor chunk
+          if (id.includes('node_modules/')) {
+            return 'vendor'
+          }
+          
+          // 기본값: undefined (Vite 자동 처리)
+          return undefined
         },
       },
     },
