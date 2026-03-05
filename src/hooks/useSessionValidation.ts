@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { getAccessToken, getUserType, logout } from '@/utils/auth'
-import { useAuth } from '@/contexts/AuthContext'
+import { isKorea } from '@/config/region'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 
 /**
  * JWT 세션 검증 훅
@@ -19,7 +21,10 @@ import { useAuth } from '@/contexts/AuthContext'
 export function useSessionValidation() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isProcessingLogin, isAuthReady } = useAuth()
+  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  const isAuthReady = useAuth(state => state.isAuthReady)
+  // Note: isProcessingLogin is not in Zustand stores, removing this check
+  const isProcessingLogin = false
 
   useEffect(() => {
     let validateTimeout: NodeJS.Timeout | null = null
