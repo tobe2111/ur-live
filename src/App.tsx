@@ -185,7 +185,12 @@ function App() {
   
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
         <AppContent />
       </BrowserRouter>
