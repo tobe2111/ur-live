@@ -20,3 +20,4 @@ node_modules/
 core
 core
 src/index-api-only.tsx.backup
+dist-global/
