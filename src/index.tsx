@@ -15977,6 +15977,26 @@ async function sendDiscordNotification(
   }
 }
 
+// =====================================
+// 🌐 SPA Fallback Handler
+// =====================================
+// All non-API, non-static routes should serve index.html
+// This ensures React Router can handle client-side routing
+
+app.get('*', serveStatic({ root: './' }));
+app.get('*', async (c) => {
+  const path = c.req.path;
+  
+  // Skip API routes (already handled above)
+  if (path.startsWith('/api/') || path.startsWith('/auth/') || path.startsWith('/static/')) {
+    return c.notFound();
+  }
+  
+  // For all other routes, serve index.html to enable SPA routing
+  console.log(`[SPA Fallback] Serving index.html for: ${path}`);
+  return c.html(await c.env.ASSETS.fetch(new Request('https://dummy.com/index.html')).then(r => r.text()));
+});
+
 // 글로벌 에러 핸들러 (기존 onError 대체)
 app.onError(async (err, c) => {
   console.error('[Error]', err)
