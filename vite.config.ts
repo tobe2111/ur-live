@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     '__IS_GLOBAL__': isGlobal,
   },
   
-  // 🔥 CRITICAL: React 중복 방지
+  // 🔥 CRITICAL FIX: React 중복 방지 강화
   optimizeDeps: {
     include: [
       'react',
@@ -30,8 +30,13 @@ export default defineConfig(({ mode }) => {
       'firebase/auth',
       'firebase/app',
     ],
-    // 🔥 React를 단일 번들로 강제
+    // 🔥 모든 의존성을 사전 번들링 (중복 방지)
     force: true,
+    // 🔥 외부 링크 제거 (단일 번들로 강제)
+    esbuildOptions: {
+      // React를 절대로 외부화하지 않음
+      external: [],
+    },
   },
   
   plugins: [
