@@ -1,29 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/config/region'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Play, Mail, Lock, User, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
-  const navigate = useNavigate()
-  
-  // ✅ Region 기반 Store 선택
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  
-  // ✅ Selector로 필요한 상태만 구독
-  const user = useAuth(state => state.user)
-  const isAuthReady = useAuth(state => state.isAuthReady)
-  
-  // ✅ Action (함수 참조만)
-  const signupWithEmailAction = useAuth(state => state.signupWithEmail)
-  
-  // ✅ 계산된 값
-  const isLoggedIn = !!user
-  
-  // Local State
+  const { signupWithEmail, isLoggedIn, isAuthReady } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -35,6 +17,7 @@ export default function RegisterPage() {
     confirmPassword: ''
   })
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const navigate = useNavigate()
 
   // ✅ 이미 로그인되어 있으면 리다이렉트
   useEffect(() => {
@@ -77,8 +60,8 @@ export default function RegisterPage() {
     try {
       console.log('[Register] 🔥 Firebase 회원가입 시도:', formData.email)
       
-      // ✅ Zustand action 직접 호출
-      await signupWithEmailAction(formData.email, formData.password, formData.name)
+      // Firebase Auth로 회원가입
+      await signupWithEmail(formData.email, formData.password, formData.name)
       
       console.log('[Register] ✅ Firebase 회원가입 성공')
       
