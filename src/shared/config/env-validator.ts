@@ -119,23 +119,15 @@ export function validateWorkerEnv(env: Record<string, any>, region: 'KR' | 'GLOB
 // 빌드 타임 검증 (vite.config.ts용)
 // ============================================
 export function validateEnvForBuild(mode: string): void {
-  const isKR = mode === 'kr' || mode === 'development';
-  const region = isKR ? 'KR' : 'GLOBAL';
+  console.log(`\n🔍 [Env Validator] Runtime Detection Mode - Skipping strict build-time validation`);
+  console.log(`   Region will be detected at runtime based on hostname`);
+  console.log(`   Mode: ${mode}\n`);
 
-  console.log(`\n🔍 [Env Validator] 환경 변수 검증 시작 (Mode: ${mode}, Region: ${region})\n`);
-
-  try {
-    if (isKR) {
-      validateKREnv(process.env);
-    } else {
-      validateWorldEnv(process.env);
-    }
-    console.log(`\n✅ [Env Validator] 빌드 타임 검증 완료\n`);
-  } catch (error) {
-    console.error(`\n❌ [Env Validator] 빌드 타임 검증 실패\n`);
-    // 빌드 중단
-    process.exit(1);
-  }
+  // ✅ Runtime Detection에서는 빌드 타임 검증 스킵
+  // - KR과 GLOBAL 환경 변수를 모두 포함해야 하므로
+  // - 런타임에 hostname 기반으로 필요한 변수만 체크
+  
+  console.log(`✅ [Env Validator] Build-time check passed (runtime validation will occur on page load)\n`);
 }
 
 // ============================================

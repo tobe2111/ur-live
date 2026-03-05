@@ -10,13 +10,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   Object.assign(process.env, env)
 
-  // 🎯 Region 분기 (KR vs GLOBAL)
-  const isKR = mode === 'kr' || mode === 'development'  // dev는 기본 KR
-  const isGlobal = mode === 'global'
-
-  console.log(`🌍 [Vite Config] Building for region: ${isKR ? 'KR' : 'GLOBAL'}`)
+  // 🌍 Runtime Detection Mode (단일 빌드, 호스트명으로 자동 감지)
+  console.log(`🌍 [Vite Config] Building UNIVERSAL build (supports KR + GLOBAL)`)
   console.log(`📦 [Vite Config] Mode: ${mode}`)
-  console.log(`🔧 [Vite Config] Tree-shaking: ${isKR ? 'Stripe/Google excluded' : 'Toss/Kakao excluded'}`)
+  console.log(`🔧 [Vite Config] Region detection: Runtime (hostname-based)`)
 
   // ✅ 빌드 타임 환경 변수 검증 (Week 5 Day 2)
   validateEnvForBuild(mode)
@@ -27,12 +24,8 @@ export default defineConfig(({ mode }) => {
     'import.meta.env.VITE_TOSS_CLIENT_KEY': JSON.stringify(
       process.env.VITE_TOSS_CLIENT_KEY || 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
     ),
-    // 🔥 Region 상수 주입 (tree-shaking 최적화)
-    '__REGION__': JSON.stringify(isKR ? 'KR' : 'GLOBAL'),
-    '__IS_KR__': JSON.stringify(isKR),
-    '__IS_GLOBAL__': JSON.stringify(isGlobal),
-    // 🔥 호환성을 위한 추가 상수
-    'process.env.VITE_REGION': JSON.stringify(isKR ? 'KR' : 'GLOBAL'),
+    // 🌍 Runtime Detection: Region은 hostname으로 자동 감지
+    // (빌드 타임 상수 불필요 - region.ts의 getRegion() 사용)
   },
   
   // 🔥 CRITICAL FIX: React 중복 방지 강화
@@ -72,7 +65,7 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     host: '0.0.0.0',
-    port: isKR ? 5173 : 5174,  // 🎯 Region별 포트 분리
+    port: 5173,  // 🌍 단일 포트 (도메인으로 구분)
     // ✅ 샌드박스 호스트 허용
     allowedHosts: [
       'localhost',
@@ -85,7 +78,7 @@ export default defineConfig(({ mode }) => {
     },
   },
   build: {
-    outDir: isKR ? 'dist' : 'dist-global',  // 🎯 Region별 출력 폴더
+    outDir: 'dist',  // 🌍 단일 빌드 출력
     emptyOutDir: true,
     // 소스맵 활성화 (에러 디버깅용)
     sourcemap: true,
@@ -94,18 +87,7 @@ export default defineConfig(({ mode }) => {
     rollupOptions: {
       // 🔧 순환 참조 및 TDZ 에러 방지
       preserveEntrySignatures: 'allow-extension',
-      // 🔥 Region별 불필요한 라이브러리 제외 (Tree-shaking 강화)
-      external: isKR 
-        ? [
-            '@stripe/stripe-js', 
-            '@stripe/react-stripe-js',
-            // ✅ GLOBAL 전용 제거 대상 추가
-          ]
-        : [
-            // ✅ KR 전용 제거 대상
-            '@tosspayments/payment-sdk',
-            'kakao-js-sdk',
-          ],
+      // 🌍 Runtime Detection: external 제거 (모든 라이브러리 포함, lazy import로 tree-shaking)
       output: {
         // 🔧 해시 기반 파일명으로 캐시 무효화
         entryFileNames: 'assets/[name]-[hash].js',

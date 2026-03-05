@@ -14,7 +14,6 @@ export {
   getRegionConfig,
   isKorea,
   isGlobal,
-  isRegion,
   isKakaoAuthEnabled,
   isGoogleAuthEnabled,
   isTossPaymentEnabled,
