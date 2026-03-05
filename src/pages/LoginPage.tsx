@@ -92,13 +92,28 @@ export default function LoginPage() {
         || localStorage.getItem('loginReturnUrl') 
         || '/'
       
-      const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd'
+      // ✅ 환경 변수 검증 추가
+      const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
+      
+      if (!KAKAO_REST_API_KEY) {
+        console.error('[Kakao Login] ❌ VITE_KAKAO_REST_API_KEY 환경 변수가 설정되지 않았습니다')
+        console.error('[Kakao Login] 📝 해결 방법: KAKAO_LOGIN_KOE101_FIX.md 파일을 참고하세요')
+        setError('카카오 로그인 설정 오류입니다. 관리자에게 문의하세요. (KOE101)')
+        setLoading(false)
+        return
+      }
+      
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
+      
+      console.log('[Kakao Login] 🔑 REST API Key:', KAKAO_REST_API_KEY.substring(0, 10) + '...')
+      console.log('[Kakao Login] 🔗 Redirect URI:', REDIRECT_URI)
+      
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(returnUrl)}`
       
       window.location.href = kakaoAuthUrl
       
     } catch (err: any) {
+      console.error('[Kakao Login] ❌ 오류 발생:', err)
       setError(t('auth.kakaoLoginError')) // ✅ 번역
       setLoading(false)
     }

@@ -69,6 +69,9 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 
+// 🔧 Debug 페이지
+const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
+
 // 로딩 컴포넌트
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -168,6 +171,9 @@ function AppContent() {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
+            
+            {/* 🔧 Debug Pages */}
+            <Route path="/debug/kakao" element={<KakaoDebugPage />} />
             
             {/* Error Pages */}
             <Route path="/500" element={<ServerErrorPage />} />
