@@ -75,9 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const previousUserRef = useRef<User | null>(null)
   const isIntentionalLogoutRef = useRef(false)
   const isInitialAuthRef = useRef(true)
+  const isInitialMountRef = useRef(true)  // ✅ Fix #2: 최초 null 이벤트 무시용
   const isAuthenticatingRef = useRef(false)
   const pendingNavigationRef = useRef<string | null>(null)
   const hasProcessedTokenRef = useRef(false)
+  const authStateUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)  // ✅ Fix #3: Debounce용
   const processedTokenRef = useRef<string | null>(null)
   
   // ============================================
@@ -127,8 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           
           const userCredential = await signInWithCustomToken(auth, firebaseToken)
-          const idToken = await userCredential.user.getIdToken()
+          
+          // ✅ Fix #4: 강제 ID Token 갱신 (true 파라미터)
+          // Custom Token 적용 후 즉시 user 상태 확정
+          const idToken = await userCredential.user.getIdToken(true)  // force refresh
           localStorage.setItem('firebase_token', idToken)
+          
+          if (DEBUG_AUTH) console.log('[Auth] 🔄 ID Token 강제 갱신 완료')
           
           const returnUrl = sessionStorage.getItem('returnUrl') || '/'
           sessionStorage.removeItem('returnUrl')
@@ -188,14 +195,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // ✅ Firebase 인증이 필요한 경로 (buyer)
     if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 시작')
     
-    // 강제 타임아웃 (buyer 경로만)
+    // ✅ Fix #1: 강제 타임아웃 증가 (3초 → 10초)
+    // Firebase 세션 복구를 충분히 기다림 (null → user 전환)
     const forceTimeoutId = setTimeout(() => {
       if (loading) {
-        console.warn('[Auth] ⏰ 강제 타임아웃 (3초) - 로딩 해제')
+        console.warn('[Auth] ⏰ 강제 타임아웃 (10초) - 로딩 해제 (세션 복구 실패 가능성)')
         setLoading(false)
         setIsAuthReady(true)
+        isInitialMountRef.current = false  // 타임아웃 후에도 초기 마운트 플래그 해제
       }
-    }, 3000)
+    }, 10000)  // 3000 → 10000 (10초)
     
     // Firebase 초기화 확인
     if (!isFirebaseInitialized()) {
@@ -209,11 +218,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // onAuthStateChanged 리스너
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        if (DEBUG_AUTH) console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
-        
-        isInitialAuthRef.current = false
-        previousUserRef.current = firebaseUser
+      // ✅ Fix #3: 500ms debounce - 너무 빠른 상태 변화 방지
+      if (authStateUpdateTimerRef.current) {
+        clearTimeout(authStateUpdateTimerRef.current)
+      }
+      
+      authStateUpdateTimerRef.current = setTimeout(async () => {
+        if (firebaseUser) {
+          if (DEBUG_AUTH) console.log('[Auth] ✅ 로그인됨:', firebaseUser.uid)
+          
+          isInitialAuthRef.current = false
+          isInitialMountRef.current = false  // 로그인 시 초기 마운트 플래그 해제
+          previousUserRef.current = firebaseUser
         
         try {
           const idTokenResult = await firebaseUser.getIdTokenResult()
@@ -268,35 +284,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false)
         }
         
-      } else {
-        if (DEBUG_AUTH) console.log('[Auth] ❌ 로그아웃 감지')
+        } else {
+          // ✅ Fix #2: 최초 null 이벤트 무시 (Firebase 초기화 시 항상 null → user 순서)
+          if (isInitialMountRef.current) {
+            if (DEBUG_AUTH) console.log('[Auth] ⏭️ 최초 null 이벤트 무시 - Firebase 세션 복구 대기 중')
+            return  // 첫 번째 null은 무조건 무시
+          }
+          
+          if (DEBUG_AUTH) console.log('[Auth] ❌ 로그아웃 감지')
+          
+          // 기존 로그아웃 무시 로직 유지
+          if (isInitialAuthRef.current || (previousUserRef.current && !isIntentionalLogoutRef.current)) {
+            console.warn('[Auth] ⚠️ 로그아웃 무시 - 인증 진행 중 또는 의도하지 않은 로그아웃')
+            return
+          }
         
-        if (isInitialAuthRef.current || (previousUserRef.current && !isIntentionalLogoutRef.current)) {
-          console.warn('[Auth] ⚠️ 로그아웃 무시 - 최초 인증 중')
-          return
+          if (DEBUG_AUTH) console.log('[Auth] ✅ 정상 로그아웃 처리')
+          
+          isInitialAuthRef.current = false
+          isInitialMountRef.current = false
+          previousUserRef.current = null
+          isIntentionalLogoutRef.current = false
+          
+          localStorage.removeItem('firebase_token')
+          localStorage.removeItem('user_type')
+          localStorage.removeItem('user_id')
+          localStorage.removeItem('user_name')
+          
+          setUser(null)
+          setUserRole(null)
+          setIsAuthReady(true)
+          setLoading(false)
         }
-        
-        if (DEBUG_AUTH) console.log('[Auth] ✅ 정상 로그아웃 처리')
-        
-        isInitialAuthRef.current = false
-        previousUserRef.current = null
-        isIntentionalLogoutRef.current = false
-        
-        localStorage.removeItem('firebase_token')
-        localStorage.removeItem('user_type')
-        localStorage.removeItem('user_id')
-        localStorage.removeItem('user_name')
-        
-        setUser(null)
-        setUserRole(null)
-        setIsAuthReady(true)
-        setLoading(false)
-      }
+      }, 500)  // ✅ Fix #3: 500ms 지연 후 상태 업데이트
     })
     
     return () => {
       if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 해제')
       clearTimeout(forceTimeoutId)
+      if (authStateUpdateTimerRef.current) {
+        clearTimeout(authStateUpdateTimerRef.current)
+      }
       unsubscribe()
     }
   }, []) // 🔥 Empty array - register listener only once!
@@ -329,7 +357,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const userCredential = await signInWithCustomToken(auth, data.customToken)
-      const idToken = await userCredential.user.getIdToken()
+      // ✅ Fix #4: Force ID token refresh
+      const idToken = await userCredential.user.getIdToken(true)  // force refresh
       localStorage.setItem('firebase_token', idToken)
       localStorage.setItem('user_name', name)
       
@@ -364,7 +393,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       const userCredential = await signInWithCustomToken(auth, data.customToken)
-      const idToken = await userCredential.user.getIdToken()
+      // ✅ Fix #4: Force ID token refresh
+      const idToken = await userCredential.user.getIdToken(true)  // force refresh
       localStorage.setItem('firebase_token', idToken)
       
       setUser(userCredential.user)
