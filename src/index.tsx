@@ -5287,6 +5287,12 @@ app.post('/api/orders', requireAuth, async (c) => {
 
   try {
     const requestData = await c.req.json();
+    console.log('[Order] 📝 주문 요청 받음:', {
+      userId: requestData.userId,
+      items: requestData.items?.length,
+      totalAmount: requestData.totalAmount
+    });
+    
     const { 
       userId, 
       cartItemIds, 
@@ -5412,6 +5418,24 @@ app.post('/api/orders', requireAuth, async (c) => {
       // ⏰ 예약 만료 시간 설정 (10분 후)
       const reservationExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       
+      // 🔄 Firebase UID를 DB user ID로 변환
+      let dbUserId = userId;
+      if (userId && typeof userId === 'string' && userId.length > 20) {
+        // Firebase UID 형식 감지 (20자 이상의 문자열)
+        console.log('[Order] 🔍 Firebase UID 감지, DB ID 조회 중:', userId);
+        const userResult = await DB.prepare(`
+          SELECT id FROM users WHERE firebase_uid = ?
+        `).bind(userId).first();
+        
+        if (userResult) {
+          dbUserId = userResult.id;
+          console.log(`[Order] ✅ Firebase UID ${userId} → DB ID ${dbUserId}`);
+        } else {
+          console.warn(`[Order] ⚠️ Firebase UID ${userId}에 해당하는 DB user 없음, null로 처리`);
+          dbUserId = null;
+        }
+      }
+      
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
           order_number, user_id, total_amount, payment_status, status,
@@ -5420,7 +5444,7 @@ app.post('/api/orders', requireAuth, async (c) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
         orderNumber,
-        userId || null,
+        dbUserId || null,
         providedTotalAmount || 0,
         'pending',  // 결제 대기 상태
         'pending',  // 주문 상태 (결제 승인 후 'paid'로 변경)
@@ -5657,9 +5681,15 @@ app.post('/api/orders', requireAuth, async (c) => {
       },
     });
   } catch (err) {
+    console.error('[Order] ❌ 주문 생성 실패:', err);
+    console.error('[Order] 에러 상세:', {
+      message: (err as Error).message,
+      stack: (err as Error).stack?.slice(0, 500)
+    });
+    
     return c.json<ApiResponse>({
       success: false,
-      error: (err as Error).message,
+      error: (err as Error).message || '주문 생성 중 오류가 발생했습니다.',
     }, 500);
   }
 });
