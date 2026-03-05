@@ -20,6 +20,9 @@ export function initSentry() {
     dsn: sentryDsn,
     environment,
     
+    // PII (개인 식별 정보) 수집 - IP 주소 등
+    sendDefaultPii: true,
+    
     // Performance Monitoring
     integrations: [
       Sentry.browserTracingIntegration(),
