@@ -14,26 +14,28 @@ export function useAuth() {
   if (isKorea()) {
     return {
       user: authKR.user,
-      isLoggedIn: authKR.isLoggedIn,
-      loading: authKR.loading,
-      role: authKR.role,
+      isLoggedIn: !!authKR.user,
+      loading: authKR.isLoading,
+      isAuthReady: authKR.isAuthReady,
+      role: authKR.userRole,
       loginWithEmail: authKR.loginWithEmail,
       signupWithEmail: authKR.signupWithEmail,
       loginWithKakao: authKR.loginWithKakao,
       logout: authKR.logout,
-      resetPassword: authKR.resetPassword,
+      resetPassword: authKR.sendPasswordResetEmail,
     }
   } else {
     return {
       user: authWorld.user,
-      isLoggedIn: authWorld.isLoggedIn,
-      loading: authWorld.loading,
-      role: authWorld.role,
+      isLoggedIn: !!authWorld.user,
+      loading: authWorld.isLoading,
+      isAuthReady: authWorld.isAuthReady,
+      role: authWorld.userRole,
       loginWithEmail: authWorld.loginWithEmail,
       signupWithEmail: authWorld.signupWithEmail,
       loginWithGoogle: authWorld.loginWithGoogle,
       logout: authWorld.logout,
-      resetPassword: authWorld.resetPassword,
+      resetPassword: authWorld.sendPasswordResetEmail,
     }
   }
 }
