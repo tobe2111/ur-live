@@ -772,14 +772,14 @@ export default function CheckoutPage() {
               <h2 className="text-[17px] font-bold text-gray-900 mb-3">결제 수단</h2>
               
               {/* 🔥 Region-based payment widget */}
-              <Suspense fallback={
-                <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-                  <p>결제 수단 불러오는 중...</p>
-                </div>
-              }>
-                {isKorea() ? (
-                  /* 한국: Toss Payments */
+              {isKorea() ? (
+                /* 한국: Toss Payments */
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                    <p>결제 수단 불러오는 중...</p>
+                  </div>
+                }>
                   <TossPaymentWidget
                     userId={userId || ''}
                     cartItems={cartItems}
@@ -794,8 +794,15 @@ export default function CheckoutPage() {
                       showErrorToast(error)
                     }}
                   />
-                ) : (
-                  /* 글로벌: Stripe */
+                </Suspense>
+              ) : (
+                /* 글로벌: Stripe */
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                    <p>Loading payment method...</p>
+                  </div>
+                }>
                   <StripeCheckout
                     userId={userId || ''}
                     cartItems={cartItems}
@@ -810,8 +817,8 @@ export default function CheckoutPage() {
                       showErrorToast(error)
                     }}
                   />
-                )}
-              </Suspense>
+                </Suspense>
+              )}
             </section>
           </div>
 
