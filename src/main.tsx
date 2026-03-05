@@ -4,11 +4,16 @@ import App from './App.tsx'
 import './index.css'
 import './i18n' // ✅ i18n 초기화
 import { initSentry } from './lib/sentry'
-import { logRegionInfo } from '@/shared/config/region'
+import { logRegionInfo, isKorea } from '@/shared/config/region'
+// ✅ Week 5 Day 2: 런타임 환경 변수 검증
+import { validateEnvForRuntime } from '@/shared/config/env-validator'
 
 console.log('[App] 🚀 앱 시작...')
 console.log('[App] 📍 Location:', window.location.href)
 console.log('[App] 🌐 User Agent:', navigator.userAgent)
+
+// ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
+validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
 // Region 정보 출력 (디버깅용)
 if (import.meta.env.DEV) {

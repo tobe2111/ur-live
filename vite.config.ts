@@ -1,9 +1,15 @@
 import path from 'path'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
+// ✅ Week 5 Day 2: 환경 변수 검증
+import { validateEnvForBuild } from './src/shared/config/env-validator'
 
 export default defineConfig(({ mode }) => {
+  // 🔥 환경 변수 로드 (Week 5 Day 2)
+  const env = loadEnv(mode, process.cwd(), '')
+  Object.assign(process.env, env)
+
   // 🎯 Region 분기 (KR vs GLOBAL)
   const isKR = mode === 'kr' || mode === 'development'  // dev는 기본 KR
   const isGlobal = mode === 'global'
@@ -11,6 +17,9 @@ export default defineConfig(({ mode }) => {
   console.log(`🌍 [Vite Config] Building for region: ${isKR ? 'KR' : 'GLOBAL'}`)
   console.log(`📦 [Vite Config] Mode: ${mode}`)
   console.log(`🔧 [Vite Config] Tree-shaking: ${isKR ? 'Stripe/Google excluded' : 'Toss/Kakao excluded'}`)
+
+  // ✅ 빌드 타임 환경 변수 검증 (Week 5 Day 2)
+  validateEnvForBuild(mode)
 
   return {
   // 환경변수 정의 (빌드 시점에 번들에 포함)
