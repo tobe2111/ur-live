@@ -83,38 +83,17 @@ export default defineConfig(({ mode }) => {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks: (id) => {
-          // 🔴 CRITICAL: React는 반드시 단일 청크에만!
-          if (id.includes('node_modules')) {
-            // 1. React Core - MUST be single instance
-            if (id.includes('/react/') || 
-                id.includes('/react-dom/') ||
-                id.includes('/scheduler/') ||
-                id.includes('/react-is/')) {
-              return 'react-vendor'  // 🔥 단일 청크로 통합
-            }
-            
-            // 2. Firebase
-            if (id.includes('/firebase/')) {
-              return 'firebase-vendor'
-            }
-            
-            // 3. Payment SDKs (Region 분기)
-            if (isKR && id.includes('/@tosspayments/')) {
-              return 'payment-vendor'
-            }
-            if (isGlobal && id.includes('/@stripe/')) {
-              return 'payment-vendor'
-            }
-            
-            // 4. Other vendors
-            return 'vendor'
-          }
+        // 🔥 CRITICAL FIX: manualChunks 대폭 단순화 (React Duplicate 방지)
+        manualChunks: {
+          // 🎯 React 관련은 무조건 하나의 청크로!
+          'react-vendor': ['react', 'react-dom', 'react/jsx-runtime', 'react-router-dom'],
+          // Firebase도 하나로
+          'firebase-vendor': ['firebase/app', 'firebase/auth'],
         },
       },
     },
     // 청크 크기 경고 임계값
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 1000,  // 500 → 1000 (단순화로 인한 크기 증가 허용)
   },
   }
 })
