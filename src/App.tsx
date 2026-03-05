@@ -1,11 +1,13 @@
-// React Router App - v2.2 (AuthProvider inside BrowserRouter)
-import { lazy, Suspense } from 'react'
+// React Router App - v2.3 (Zustand Store Migration)
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
-import { AuthProvider } from './contexts/AuthContext'
-// import { useSessionValidation } from './hooks/useSessionValidation' // ❌ JWT 전용 - 제거됨
+// ❌ import { AuthProvider } from './contexts/AuthContext' // REMOVED - Migrated to Zustand
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/shared/config/region'
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -81,8 +83,25 @@ const PageLoader = () => (
 function AppContent() {
   console.log('[App] 📱 AppContent 마운트됨')
   
-  // 🔒 세션 검증: Firebase Auth가 자동으로 처리 (JWT 제거됨)
-  // useSessionValidation() // ❌ JWT 전용 - 더 이상 사용 안 함
+  // ✅ Zustand Store 인증 초기화 (Week 5 Day 1)
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (isKorea()) {
+          console.log('[App] 🇰🇷 KR 인증 초기화 시작')
+          await useAuthKR.getState().initializeAuth()
+          console.log('[App] ✅ KR 인증 초기화 완료')
+        } else {
+          console.log('[App] 🌍 WORLD 인증 초기화 시작')
+          await useAuthWorld.getState().initializeAuth()
+          console.log('[App] ✅ WORLD 인증 초기화 완료')
+        }
+      } catch (err) {
+        console.error('[App] ❌ 인증 초기화 실패:', err)
+      }
+    }
+    initAuth()
+  }, [])
   
   // 🔄 다중 탭 동기화: 다른 탭의 로그인/로그아웃 감지
   useMultiTabSync()
@@ -160,16 +179,15 @@ function AppContent() {
   )
 }
 
-// ✅ App 컴포넌트: BrowserRouter와 AuthProvider를 최상위에 배치
+// ✅ App 컴포넌트: BrowserRouter 최상위 배치 (AuthProvider 제거)
 function App() {
-  console.log('[App] 🚀 App 컴포넌트 렌더링')
+  console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand)')
   
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
+        <AppContent />
       </BrowserRouter>
     </ErrorBoundary>
   )
