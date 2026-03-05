@@ -158,7 +158,15 @@ export default function LoginPage() {
         })
 
         // ✅ Firebase signInWithCustomToken (Zustand가 자동으로 상태 업데이트)
-        await signInWithCustomToken(auth, customToken)
+        const credential = await signInWithCustomToken(auth, customToken)
+        
+        // 🔥 강제 토큰 갱신 (세션 안정성 보장)
+        try {
+          await credential.user.getIdToken(true)
+          console.log('[Kakao Login] 🔥 ID Token 강제 갱신 완료')
+        } catch (tokenError) {
+          console.warn('[Kakao Login] ⚠️ Token 갱신 실패 (무시하고 진행):', tokenError)
+        }
         
         const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
         sessionStorage.removeItem('returnUrl')
