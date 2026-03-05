@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/shared/config/region'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { LogoutButton } from '@/components/my-page/logout-button'
@@ -10,7 +12,12 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
-  const { user, isLoggedIn, isAuthReady, logout: authLogout } = useAuth()
+  
+  // ✅ Zustand 스토어 사용 (지역별)
+  const authStore = isKorea() ? useAuthKR : useAuthWorld
+  const { user, isAuthReady, logout: authLogout } = authStore()
+  const isLoggedIn = !!user
+  
   const [userName, setUserName] = useState('')
 
   useEffect(() => {
