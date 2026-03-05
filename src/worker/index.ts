@@ -3,6 +3,12 @@
  * 
  * 모든 Feature 라우트를 통합하는 메인 Worker 파일
  * 기존 src/index.tsx의 16,031줄을 대체
+ * 
+ * Week 5 Day 4 업데이트:
+ * - Rate limiting (IP-based, KV-backed)
+ * - Global error handling with Sentry
+ * - Retry logic for external APIs
+ * - Discord alerts for critical errors
  */
 
 import { Hono } from 'hono';
@@ -15,16 +21,27 @@ import { kakaoRoutes, googleRoutes } from '@/features/auth';
 import { productsRoutes } from '@/features/products';
 import { ordersRoutes } from '@/features/orders';
 
+// Middleware & Utils
+import { rateLimitMiddleware } from './middleware/rate-limiter';
+import { handleError, attachErrorContext } from './middleware/error-handler';
+import { initSentry, captureException } from './utils/sentry';
+import { initDiscord, sendCriticalAlert } from './utils/discord';
+
 type Bindings = {
   DB: D1Database;
   SESSION_KV: KVNamespace;
   CACHE_KV: KVNamespace;
+  RATE_LIMIT_KV: KVNamespace;
   ASSETS: Fetcher;
   KAKAO_REST_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_PRIVATE_KEY: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_DATABASE_URL: string;
+  SENTRY_DSN?: string;
+  DISCORD_WEBHOOK_URL?: string;
+  ENVIRONMENT: string;
+  REGION: 'KR' | 'WORLD';
   [key: string]: any;
 };
 
@@ -45,12 +62,75 @@ app.use('*', cors({
 // Compression
 app.use('*', compress());
 
-// Request Logging
+// Initialize monitoring tools
+app.use('*', async (c, next) => {
+  // Initialize Sentry (once per worker instance)
+  if (c.env.SENTRY_DSN && !c.get('sentryInitialized')) {
+    initSentry({
+      dsn: c.env.SENTRY_DSN,
+      environment: c.env.ENVIRONMENT || 'production',
+      region: c.env.REGION || 'KR',
+      enabled: true,
+    });
+    c.set('sentryInitialized', true);
+  }
+
+  // Initialize Discord alerter (once per worker instance)
+  if (c.env.DISCORD_WEBHOOK_URL && !c.get('discordInitialized')) {
+    initDiscord({
+      webhookUrl: c.env.DISCORD_WEBHOOK_URL,
+      environment: c.env.ENVIRONMENT || 'production',
+      region: c.env.REGION || 'KR',
+      enabled: true,
+      rateLimitMs: 60000, // 1 minute between duplicate alerts
+    });
+    c.set('discordInitialized', true);
+  }
+
+  await next();
+});
+
+// Rate Limiting (IP-based, KV-backed)
+app.use('/api/*', rateLimitMiddleware);
+app.use('/auth/*', rateLimitMiddleware);
+
+// Attach error context for better debugging
+app.use('*', attachErrorContext);
+
+// Request Logging with Performance Monitoring
 app.use('*', async (c, next) => {
   const start = Date.now();
+  const method = c.req.method;
+  const path = c.req.path;
+  
   await next();
+  
   const duration = Date.now() - start;
-  console.log(`[${c.req.method}] ${c.req.path} - ${c.res.status} (${duration}ms)`);
+  const status = c.res.status;
+  
+  console.log(`[${method}] ${path} - ${status} (${duration}ms)`);
+  
+  // Performance warning for slow requests (>2s)
+  if (duration > 2000) {
+    console.warn(`⚠️ Slow request detected: ${method} ${path} took ${duration}ms`);
+    
+    // Send Discord alert for very slow requests (>5s)
+    if (duration > 5000) {
+      try {
+        const { getDiscord } = await import('./utils/discord');
+        const discord = getDiscord();
+        if (discord) {
+          await discord.sendPerformanceWarning(
+            `${method} ${path}`,
+            duration,
+            5000
+          );
+        }
+      } catch (err) {
+        console.error('[Discord] Failed to send performance alert:', err);
+      }
+    }
+  }
 });
 
 // =================================
@@ -61,9 +141,16 @@ app.get('/health', (c) => {
   return c.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    worker: 'ur-live-worker-v2.1',
+    worker: 'ur-live-worker-v2.2',
+    version: '2.2.0',
     features: ['auth-kakao', 'auth-google', 'products', 'orders'],
-    region: import.meta.env.VITE_REGION || 'KR'
+    middleware: ['rate-limiting', 'error-handling', 'retry-logic', 'monitoring'],
+    region: c.env.REGION || import.meta.env.VITE_REGION || 'KR',
+    environment: c.env.ENVIRONMENT || 'production',
+    monitoring: {
+      sentry: !!c.env.SENTRY_DSN,
+      discord: !!c.env.DISCORD_WEBHOOK_URL,
+    },
   });
 });
 
@@ -116,7 +203,7 @@ app.get('*', async (c) => {
 });
 
 // =================================
-// Error Handler
+// Error Handler (Unified with Sentry + Discord)
 // =================================
 
 app.onError(async (err, c) => {
@@ -127,37 +214,23 @@ app.onError(async (err, c) => {
     method: c.req.method
   });
   
-  // Discord Webhook으로 에러 알림 (선택)
-  if (c.env.DISCORD_WEBHOOK_URL) {
-    try {
-      await fetch(c.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{
-            title: '🚨 Worker Error',
-            color: 0xFF0000,
-            fields: [
-              { name: 'Error', value: err.message, inline: false },
-              { name: 'Path', value: c.req.path, inline: true },
-              { name: 'Method', value: c.req.method, inline: true }
-            ],
-            timestamp: new Date().toISOString()
-          }]
-        })
-      });
-    } catch (webhookErr) {
-      console.error('[Discord] Webhook failed:', webhookErr);
-    }
+  // Use unified error handler (Sentry + Discord + structured logging)
+  try {
+    const errorContext = c.get('errorContext') || {};
+    const response = await handleError(err, c.req.raw, errorContext);
+    return response;
+  } catch (handlerError) {
+    console.error('[Error Handler] Failed:', handlerError);
+    
+    // Fallback error response
+    return c.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: '서버 오류가 발생했습니다.'
+      }
+    }, 500);
   }
-  
-  return c.json({
-    success: false,
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: '서버 오류가 발생했습니다.'
-    }
-  }, 500);
 });
 
 // =================================
