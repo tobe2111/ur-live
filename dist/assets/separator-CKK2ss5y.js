@@ -1,0 +1,2 @@
+import{r as e,j as l,b8 as a}from"./vendor-DKpYQhVa.js";import{c as m}from"./utils-C5SdkXMG.js";const x=e.forwardRef(({className:o,orientation:r="horizontal",decorative:s=!0,...t},p)=>l.jsx(a,{ref:p,decorative:s,orientation:r,className:m("shrink-0 bg-border",r==="horizontal"?"h-[1px] w-full":"h-full w-[1px]",o),...t}));x.displayName=a.displayName;export{x as S};
+//# sourceMappingURL=separator-CKK2ss5y.js.map
