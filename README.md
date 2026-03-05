@@ -14,10 +14,12 @@
 
 ### 🌏 Supported Regions
 
-| Region | Domain | Login | Payment | Language |
-|--------|--------|-------|---------|----------|
-| **🇰🇷 Korea** | [live.ur-team.com](https://live.ur-team.com) | Kakao | Toss Payments | 한국어 (기본) |
-| **🌐 Global** | [world.ur-team.com](https://world.ur-team.com) | Google | Stripe | English (기본) |
+| Region | Domain | Login | Payment | Language | Status |
+|--------|--------|-------|---------|----------|--------|
+| **🇰🇷 Korea** | [live.ur-team.com](https://live.ur-team.com) | Kakao | Toss Payments | 한국어 (기본) | ✅ **Production** |
+| **🌐 Global** | world.ur-team.com (Coming soon) | Google | Stripe | English | ⏳ **Planned** |
+
+> **Note**: 현재는 한국(KR) 버전만 운영 중입니다. 글로벌 버전은 6-12개월 내 출시 예정입니다.
 
 ---
 
@@ -82,29 +84,23 @@ npm install
 
 ### Development
 ```bash
-# Korean version
+# Korean version (default)
 npm run dev
 
-# Test with different regions
-VITE_REGION=KR npm run dev     # Korean
-VITE_REGION=GLOBAL npm run dev # Global
+# Note: GLOBAL version is not yet implemented
 ```
 
 ### Build
-
-#### Korean Version
 ```bash
-npm run build:kr
+# Production build (KR only)
+npm run build
+
+# Preview locally
 npm run preview
 # → http://localhost:4173
 ```
 
-#### Global Version
-```bash
-npm run build:global
-npm run preview
-# → http://localhost:4173
-```
+> **Important**: `npm run build`는 항상 한국(KR) 버전으로 빌드됩니다. 글로벌 버전은 향후 추가 예정입니다.
 
 ---
 

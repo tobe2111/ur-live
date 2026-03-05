@@ -150,47 +150,51 @@ export function getRegionConfig(): RegionConfig {
 // ============================================
 
 /**
- * KR Region 체크 (Tree-shakable)
+ * KR Region 체크
  * 
- * @returns KR 빌드에서는 항상 true, GLOBAL 빌드에서는 항상 false
+ * ⚠️ 단순화: 현재는 항상 KR만 운영
+ * 향후 GLOBAL 확장 시 hostname 기반 detection으로 변경 예정
+ * 
+ * @returns 현재 항상 true (KR만 운영)
  * @example
  * ```typescript
  * if (isKorea()) {
- *   // KR 전용 코드 (GLOBAL 빌드에서 제거됨)
+ *   // KR 전용 코드
  *   await import('./toss-payment')
  * }
  * ```
  */
 export function isKorea(): boolean {
-  // 빌드 타임 상수 사용 (Tree-shaking 가능)
-  if (typeof __IS_KR__ !== 'undefined') {
-    return __IS_KR__
-  }
+  // 🎯 Phase 1: KR만 운영 (단순화)
+  return true
   
-  // Fallback: 런타임 체크
-  return getRegion() === 'KR'
+  // 🔮 Phase 2: 글로벌 확장 시 (향후 활성화)
+  // const hostname = window.location.hostname
+  // return hostname.includes('live.ur-team.com') || hostname.includes('kr.')
 }
 
 /**
- * GLOBAL Region 체크 (Tree-shakable)
+ * GLOBAL Region 체크
  * 
- * @returns GLOBAL 빌드에서는 항상 true, KR 빌드에서는 항상 false
+ * ⚠️ 단순화: 현재는 GLOBAL 버전 비활성화
+ * 향후 GLOBAL 확장 시 hostname 기반 detection으로 변경 예정
+ * 
+ * @returns 현재 항상 false (GLOBAL 비활성화)
  * @example
  * ```typescript
  * if (isGlobal()) {
- *   // GLOBAL 전용 코드 (KR 빌드에서 제거됨)
+ *   // GLOBAL 전용 코드
  *   await import('./stripe-payment')
  * }
  * ```
  */
 export function isGlobal(): boolean {
-  // 빌드 타임 상수 사용 (Tree-shaking 가능)
-  if (typeof __IS_GLOBAL__ !== 'undefined') {
-    return __IS_GLOBAL__
-  }
+  // 🎯 Phase 1: GLOBAL 비활성화 (단순화)
+  return false
   
-  // Fallback: 런타임 체크
-  return getRegion() === 'GLOBAL'
+  // 🔮 Phase 2: 글로벌 확장 시 (향후 활성화)
+  // const hostname = window.location.hostname
+  // return hostname.includes('world.ur-team.com') || hostname.includes('global.')
 }
 
 /**
