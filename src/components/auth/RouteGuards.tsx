@@ -4,10 +4,11 @@
  * 핵심:
  * 1. ✅ loading 상태 체크 필수 (초기화 완료 전까지 리다이렉트 차단)
  * 2. ✅ location.state로 returnUrl 전달
- * 3. ✅ 명확한 디버그 로그
+ * 3. ✅ firebase_token 감지 시 리다이렉트 지연
+ * 4. ✅ 명확한 디버그 로그
  */
 
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -34,6 +35,10 @@ export function ProtectedRoute({
   const isLoading = useAuth(state => state.isLoading)
   const userRole = useAuth(state => state.userRole)
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  // ✅ firebase_token 감지 (Kakao 콜백 후)
+  const hasFirebaseToken = searchParams.has('firebase_token')
 
   if (DEBUG) {
     console.log('[ProtectedRoute]', {
@@ -42,13 +47,20 @@ export function ProtectedRoute({
       isLoading,
       userRole,
       requireAdmin,
-      requireSeller
+      requireSeller,
+      hasFirebaseToken
     })
   }
 
-  // ✅ 1. loading 중이면 로딩 UI 표시 (리다이렉트 차단!)
-  if (isLoading) {
-    if (DEBUG) console.log('[ProtectedRoute] ⏳ Loading... 대기 중')
+  // ✅ 1. loading 중이거나 firebase_token 처리 중이면 로딩 UI 표시
+  if (isLoading || (hasFirebaseToken && !user)) {
+    if (DEBUG) {
+      if (hasFirebaseToken && !user) {
+        console.log('[ProtectedRoute] ⏳ firebase_token 처리 대기 중...')
+      } else {
+        console.log('[ProtectedRoute] ⏳ Loading... 대기 중')
+      }
+    }
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

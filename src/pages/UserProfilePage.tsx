@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
+import { signInWithCustomToken } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { LogoutButton } from '@/components/my-page/logout-button'
@@ -12,6 +14,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function UserProfilePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   
   // ✅ Zustand 스토어 사용 (지역별)
   const authStore = isKorea() ? useAuthKR : useAuthWorld
@@ -19,8 +22,50 @@ export default function UserProfilePage() {
   const isLoggedIn = !!user
   
   const [userName, setUserName] = useState('')
+  const [isProcessingToken, setIsProcessingToken] = useState(false)
+  const hasProcessedToken = useRef(false)
+
+  // ✅ firebase_token 강제 처리 로직
+  useEffect(() => {
+    const firebaseToken = searchParams.get('firebase_token')
+    
+    // 토큰이 있고, 아직 처리 안 했고, 인증 준비됨
+    if (firebaseToken && !hasProcessedToken.current && isAuthReady) {
+      hasProcessedToken.current = true
+      setIsProcessingToken(true)
+      
+      console.log('[UserProfilePage] 🔑 firebase_token 발견 - 자동 로그인 처리')
+      
+      signInWithCustomToken(auth, firebaseToken)
+        .then(() => {
+          console.log('[UserProfilePage] ✅ Firebase 로그인 성공')
+          
+          // URL에서 토큰 제거 (무한 루프 방지)
+          const newUrl = new URL(window.location.href)
+          newUrl.searchParams.delete('firebase_token')
+          newUrl.searchParams.delete('userName')
+          window.history.replaceState({}, '', newUrl.toString())
+          
+          setIsProcessingToken(false)
+        })
+        .catch((error) => {
+          console.error('[UserProfilePage] ❌ Firebase 로그인 실패:', error)
+          hasProcessedToken.current = false // 실패 시 재시도 허용
+          setIsProcessingToken(false)
+          navigate('/login', { replace: true })
+        })
+      
+      return
+    }
+  }, [searchParams, isAuthReady, navigate])
 
   useEffect(() => {
+    // ✅ 토큰 처리 중에는 대기
+    if (isProcessingToken) {
+      console.log('[UserProfilePage] ⏳ 토큰 처리 중...')
+      return
+    }
+
     // ✅ 1. isAuthReady 가드: 인증 초기화 전에는 대기
     if (!isAuthReady) {
       console.log('[UserProfilePage] ⏳ 인증 초기화 대기 중...')
@@ -29,6 +74,13 @@ export default function UserProfilePage() {
 
     // ✅ 2. 로그인 체크: isAuthReady 후에만 실행
     if (!isLoggedIn) {
+      // firebase_token이 있으면 리다이렉트 지연
+      const firebaseToken = searchParams.get('firebase_token')
+      if (firebaseToken) {
+        console.log('[UserProfilePage] ⏳ firebase_token 있음 - 로그인 처리 대기 중...')
+        return
+      }
+      
       console.log('[UserProfilePage] ❌ 로그인 필요 - /login으로 리다이렉트')
       // 🎯 스마트 리다이렉트: 현재 페이지를 returnUrl로 저장
       sessionStorage.setItem('returnUrl', '/user/profile')
@@ -48,7 +100,7 @@ export default function UserProfilePage() {
       userName: name,
       isLoggedIn
     })
-  }, [isAuthReady, isLoggedIn, user, navigate])
+  }, [isAuthReady, isLoggedIn, user, navigate, searchParams, isProcessingToken])
 
   const handleLogout = async () => {
     console.log('[UserProfilePage] 로그아웃 처리')
@@ -65,13 +117,13 @@ export default function UserProfilePage() {
     }
   }
 
-  // ✅ 4. isAuthReady 전에는 로딩 표시
-  if (!isAuthReady) {
+  // ✅ 4. 토큰 처리 중 또는 isAuthReady 전에는 로딩 표시
+  if (isProcessingToken || !isAuthReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <p className="text-gray-600">{isProcessingToken ? '로그인 처리 중...' : '로딩 중...'}</p>
         </div>
       </div>
     )

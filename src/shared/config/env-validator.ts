@@ -15,10 +15,13 @@ import { krEnvSchema, worldEnvSchema, workerEnvSchema } from './env-schema';
 // 에러 메시지 포맷팅
 // ============================================
 function formatValidationError(error: z.ZodError, region?: string): string {
-  const errors = error.errors.map((err) => {
-    const path = err.path.join('.');
-    return `  ❌ ${path}: ${err.message}`;
-  });
+  // ✅ undefined/null 안전 처리
+  const errors = (error?.errors || [])
+    .filter(err => err != null)
+    .map((err) => {
+      const path = Array.isArray(err.path) ? err.path.join('.') : 'unknown';
+      return `  ❌ ${path}: ${err.message || 'Unknown error'}`;
+    });
 
   return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
