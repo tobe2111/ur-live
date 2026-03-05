@@ -111,26 +111,16 @@ export default defineConfig(({ mode }) => {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        // 🔥 CRITICAL FIX: React 단일 chunk로 강제 (중복 방지)
+        // 🔥 CRITICAL FIX: React를 vendor에 포함하여 로딩 순서 보장
         manualChunks: (id) => {
-          // 🎯 React & React-DOM → 단일 chunk
-          if (id.includes('node_modules/react/') || 
-              id.includes('node_modules/react-dom/')) {
-            return 'react-core'
-          }
-          
-          // 🎯 React Router → 별도 chunk (react-core와 분리)
-          if (id.includes('node_modules/react-router-dom/')) {
-            return 'react-router'
-          }
-          
-          // 🎯 Firebase → 단일 chunk
+          // 🎯 Firebase → 별도 chunk
           if (id.includes('node_modules/firebase/') ||
               id.includes('node_modules/@firebase/')) {
             return 'firebase'
           }
           
-          // 🎯 나머지 node_modules → vendor chunk
+          // 🎯 모든 node_modules (React 포함) → vendor chunk
+          // React를 별도 chunk로 분리하지 않고 vendor에 포함
           if (id.includes('node_modules/')) {
             return 'vendor'
           }
