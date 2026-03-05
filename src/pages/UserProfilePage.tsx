@@ -37,16 +37,13 @@ export default function UserProfilePage() {
       console.log('[UserProfilePage] 🔑 firebase_token 발견 - 자동 로그인 처리')
       
       signInWithCustomToken(auth, firebaseToken)
-        .then(async (credential) => {
+        .then((credential) => {
           console.log('[UserProfilePage] ✅ Firebase 로그인 성공')
           
-          // 🔥 강제 토큰 갱신 (세션 안정성 보장)
-          try {
-            await credential.user.getIdToken(true)
-            console.log('[UserProfilePage] 🔥 ID Token 강제 갱신 완료')
-          } catch (tokenError) {
-            console.warn('[UserProfilePage] ⚠️ Token 갱신 실패 (무시하고 진행):', tokenError)
-          }
+          // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)
+          credential.user.getIdToken(true)
+            .then(() => console.log('[UserProfilePage] 🔥 ID Token 강제 갱신 완료 (백그라운드)'))
+            .catch((err) => console.warn('[UserProfilePage] ⚠️ Token 갱신 실패 (무시):', err))
           
           // URL에서 토큰 제거 (무한 루프 방지)
           const newUrl = new URL(window.location.href)
