@@ -104,3 +104,59 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
 export function logError(error: Error, context?: Record<string, any>) {
   captureError(error, context);
 }
+
+/**
+ * 🎯 커스텀 이벤트 추적 (비즈니스 메트릭)
+ */
+export function trackEvent(eventName: string, data?: Record<string, any>) {
+  Sentry.addBreadcrumb({
+    category: 'custom_event',
+    message: eventName,
+    level: 'info',
+    data,
+  });
+}
+
+/**
+ * 🔐 로그인 성공 이벤트
+ */
+export function trackLoginSuccess(method: 'kakao' | 'email' | 'google', userId: string) {
+  trackEvent('login_success', { method, userId, timestamp: Date.now() });
+  Sentry.setTag('login_method', method);
+}
+
+/**
+ * 🔐 로그인 실패 이벤트
+ */
+export function trackLoginFailure(method: 'kakao' | 'email' | 'google', reason: string) {
+  trackEvent('login_failure', { method, reason, timestamp: Date.now() });
+  captureMessage(`Login failed: ${method} - ${reason}`, 'warning');
+}
+
+/**
+ * 💳 결제 성공 이벤트
+ */
+export function trackPaymentSuccess(orderId: string, amount: number, method: string) {
+  trackEvent('payment_success', { orderId, amount, method, timestamp: Date.now() });
+  Sentry.setTag('payment_method', method);
+}
+
+/**
+ * 💳 결제 실패 이벤트
+ */
+export function trackPaymentFailure(orderId: string, amount: number, reason: string) {
+  trackEvent('payment_failure', { orderId, amount, reason, timestamp: Date.now() });
+  captureMessage(`Payment failed: ${orderId} - ${reason}`, 'error');
+}
+
+/**
+ * ⏱️ 페이지 로드 시간 추적
+ */
+export function trackPageLoadTime(pageName: string, loadTimeMs: number) {
+  trackEvent('page_load', { pageName, loadTimeMs, timestamp: Date.now() });
+  
+  // 3초 이상 느린 경우 경고
+  if (loadTimeMs > 3000) {
+    captureMessage(`Slow page load: ${pageName} took ${loadTimeMs}ms`, 'warning');
+  }
+}
