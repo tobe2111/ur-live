@@ -1,12 +1,18 @@
 import { defineConfig } from 'vite'
+import path from 'path'
 import pages from '@hono/vite-cloudflare-pages'
 
 export default defineConfig({
   plugins: [
     pages({
-      entry: 'src/index.tsx',
+      entry: 'src/worker/index.ts', // 🆕 새 Worker 진입점
     }),
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'), // Path alias 지원
+    },
+  },
   ssr: {
     external: ['react', 'react-dom'],
   },
