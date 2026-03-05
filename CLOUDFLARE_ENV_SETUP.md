@@ -1,203 +1,197 @@
-# 🔧 Cloudflare Pages 환경 변수 설정 가이드
+# Cloudflare Pages 환경 변수 설정 가이드
 
-## 📍 위치
-Cloudflare Dashboard → Workers & Pages → `ur-live-global` → Settings → Environment variables
-
----
-
-## 🌍 Global Version 환경 변수
-
-### Production 환경에 다음 변수들을 추가하세요:
-
-#### 1. Region 설정
-```
-Variable name: VITE_REGION
-Value: GLOBAL
-```
-
-#### 2. Google Login (Firebase)
-```
-Variable name: VITE_GOOGLE_CLIENT_ID
-Value: YOUR_GOOGLE_OAUTH_CLIENT_ID
-```
-
-**🔍 Google Client ID 찾기**:
-1. Firebase Console → Project Settings
-2. General 탭
-3. Your apps → Web app
-4. SDK setup and configuration
-5. Config 객체에서 `authDomain`과 함께 있는 Client ID 복사
-
-또는:
-1. Google Cloud Console → APIs & Services → Credentials
-2. OAuth 2.0 Client IDs에서 Web client 찾기
-
-#### 3. Stripe Publishable Key (Frontend)
-```
-Variable name: VITE_STRIPE_PUBLISHABLE_KEY
-Value: pk_test_YOUR_STRIPE_PUBLISHABLE_KEY
-```
-
-**🔍 Stripe Publishable Key 찾기**:
-1. Stripe Dashboard: https://dashboard.stripe.com/
-2. Developers → API keys
-3. "Publishable key" 복사 (pk_test_로 시작)
-
-#### 4. Stripe Secret Key (Backend) ⚠️ 중요!
-```
-Variable name: STRIPE_SECRET_KEY
-Value: sk_test_YOUR_STRIPE_SECRET_KEY
-```
-
-**⚠️ 주의**: 
-- 이 키는 `VITE_` 접두사가 없습니다 (Backend 전용)
-- 절대 프론트엔드 코드에 노출되면 안 됩니다
-- Stripe Dashboard → Developers → API keys → "Secret key" 복사 (sk_test_로 시작)
-
-#### 5. Default Language
-```
-Variable name: VITE_DEFAULT_LANGUAGE
-Value: en
-```
-
-#### 6. API Base URL
-```
-Variable name: VITE_API_BASE_URL
-Value: https://world.ur-team.com
-```
-
-#### 7. Database (이미 설정되어 있을 수 있음)
-```
-Variable name: D1_DATABASE
-Value: lister-db
-```
-
-**🔍 D1 Database 확인**:
-1. Cloudflare Dashboard → Workers & Pages → D1
-2. Database 이름 확인 (`lister-db`)
+## 🎯 목적
+Cloudflare Pages에 카카오 REST API 키를 환경 변수로 추가하여 KOE101 오류 해결
 
 ---
 
-## 📋 체크리스트
+## 📝 설정할 환경 변수
 
-### Environment Variables
-- [ ] `VITE_REGION` = `GLOBAL`
-- [ ] `VITE_GOOGLE_CLIENT_ID` = `YOUR_GOOGLE_CLIENT_ID`
-- [ ] `VITE_STRIPE_PUBLISHABLE_KEY` = `pk_test_...`
-- [ ] `STRIPE_SECRET_KEY` = `sk_test_...` (VITE_ 없음!)
-- [ ] `VITE_DEFAULT_LANGUAGE` = `en`
-- [ ] `VITE_API_BASE_URL` = `https://world.ur-team.com`
-- [ ] `D1_DATABASE` = `lister-db`
-
-### 변수 추가 후
-- [ ] 모든 변수 저장 완료
-- [ ] **Redeploy** 버튼 클릭
-- [ ] 배포 완료 대기 (약 2-3분)
-
----
-
-## 🧪 배포 후 테스트
-
-### 1. 도메인 접속 확인
 ```bash
-curl -I https://world.ur-team.com
-# HTTP/2 200 OK 확인
+VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
 ```
 
-### 2. Region 설정 확인
-브라우저에서 https://world.ur-team.com 접속 후 Console (F12):
+---
+
+## 🔧 설정 방법 (Cloudflare Dashboard)
+
+### Step 1: Cloudflare Pages 대시보드 접속
+
+1. 브라우저에서 https://dash.cloudflare.com 접속
+2. 로그인 (Jiwon@ur-team.com 계정)
+3. 좌측 메뉴에서 **"Workers & Pages"** 클릭
+
+### Step 2: ur-live 프로젝트 선택
+
+1. Pages 탭 클릭
+2. 프로젝트 목록에서 **"ur-live"** 클릭
+
+### Step 3: 환경 변수 설정
+
+1. 상단 탭에서 **"Settings"** 클릭
+2. 좌측 메뉴에서 **"Environment variables"** 클릭 (또는 아래로 스크롤)
+3. **"Production"** 섹션 찾기
+4. **"Add variable"** 버튼 클릭
+
+### Step 4: 변수 추가
+
+다음 정보를 입력:
+
+| 필드 | 값 |
+|------|-----|
+| Variable name | `VITE_KAKAO_REST_API_KEY` |
+| Value | `5dd74bccb797640b0efd070467f3bafd` |
+| Environment | Production (체크) |
+
+### Step 5: 저장
+
+1. **"Save"** 버튼 클릭
+2. 변경사항이 저장되었는지 확인
+
+### Step 6: 재배포
+
+환경 변수가 추가되면 **자동으로 재배포**됩니다.  
+또는 수동으로 재배포하려면:
+
+1. **"Deployments"** 탭 클릭
+2. 최신 배포의 **"..."** 메뉴 클릭
+3. **"Retry deployment"** 선택
+
+---
+
+## 🧪 환경 변수 확인 방법
+
+### 방법 1: 디버그 페이지 (권장)
+
+배포 완료 후 다음 URL 접속:
+```
+https://live.ur-team.com/debug/kakao
+```
+
+**기대 결과**:
+```
+✅ VITE_KAKAO_REST_API_KEY: 설정됨 (5dd74bccb79...)
+```
+
+### 방법 2: 브라우저 콘솔
+
+1. https://live.ur-team.com 접속
+2. F12 키로 개발자 도구 열기
+3. Console 탭에서 다음 입력:
 ```javascript
-console.log(import.meta.env.VITE_REGION)
-// "GLOBAL" 출력되어야 함
+console.log('KAKAO_REST_API_KEY:', import.meta.env.VITE_KAKAO_REST_API_KEY)
 ```
 
-### 3. UI 확인
-- [ ] 기본 언어가 **English**
-- [ ] **Google 로그인 버튼** 표시 (4색 로고)
-- [ ] 카카오 로그인 버튼 없음
+**기대 결과**:
+```
+KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
+```
 
-### 4. Stripe Payment Intent API 테스트
+---
+
+## ✅ 카카오 로그인 테스트
+
+환경 변수 설정 완료 후:
+
+1. https://live.ur-team.com/login 접속
+2. **"카카오로 시작하기"** 버튼 클릭
+3. KOE101 오류 없이 카카오 로그인 페이지로 리다이렉트 확인
+4. 로그인 완료 후 정상적으로 앱으로 돌아오는지 확인
+
+---
+
+## 🚨 주의사항
+
+### 1. 환경 변수 적용 시간
+- 환경 변수를 추가하면 **자동 재배포**가 트리거됩니다
+- 재배포 완료까지 약 **1-2분** 소요
+- 재배포가 완료될 때까지 기다려야 합니다
+
+### 2. 캐시 문제
+환경 변수가 즉시 반영되지 않으면:
+- 브라우저 **시크릿 모드**로 테스트
+- 또는 **브라우저 캐시 삭제** (Ctrl+Shift+Delete)
+
+### 3. Preview vs Production
+- **Production** 환경에만 환경 변수 추가하세요
+- Preview 배포는 별도로 설정 가능하지만 현재는 불필요
+
+---
+
+## 🔐 보안 고려사항
+
+### REST API 키 노출 위험
+현재 클라이언트 사이드에서 REST API 키를 사용하고 있어 **보안 위험**이 있습니다.
+
+**권장 개선 방안** (향후 작업):
+1. 서버 사이드에서만 REST API 키 사용
+2. 클라이언트는 JavaScript SDK만 사용
+3. OAuth 플로우를 백엔드 API로 처리
+
+**현재 구조** (임시):
+```
+클라이언트 -> 카카오 OAuth (REST API 키 사용)
+```
+
+**권장 구조** (향후):
+```
+클라이언트 -> 백엔드 API -> 카카오 OAuth (REST API 키 사용)
+```
+
+---
+
+## 📊 현재 상태
+
+### 로컬 환경 ✅
 ```bash
-curl -X POST https://world.ur-team.com/api/payment/stripe/create-intent \
-  -H "Content-Type: application/json" \
-  -d '{"amount": 1000, "currency": "usd", "metadata": {"test": "true"}}'
-
-# Expected response:
-# {"success":true,"clientSecret":"pi_xxx_secret_xxx","paymentIntentId":"pi_xxx"}
+# .env.kr 파일
+VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
 ```
 
-### 5. 결제 테스트
-1. 상품을 장바구니에 추가
-2. Checkout 페이지로 이동
-3. **Stripe Payment Element** 로딩 확인
-4. 테스트 카드 입력:
-   ```
-   카드번호: 4242 4242 4242 4242
-   만료일: 12/34
-   CVC: 123
-   ZIP: 12345
-   ```
-5. "Pay" 버튼 클릭
-6. 결제 성공 확인
+### Cloudflare Pages (Production) ⏳
+```bash
+# 설정 필요
+VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+```
 
 ---
 
-## ⚠️ 트러블슈팅
+## 🔗 유용한 링크
 
-### 문제: "Stripe is not configured" 에러
-**원인**: `STRIPE_SECRET_KEY` 환경 변수가 없음
-
-**해결**:
-1. Cloudflare Dashboard → ur-live-global → Settings → Environment variables
-2. `STRIPE_SECRET_KEY` 추가 (주의: `VITE_` 접두사 없음)
-3. Redeploy
-
-### 문제: Google 로그인 실패
-**원인**: Firebase에 `world.ur-team.com` 도메인 미등록
-
-**해결**:
-1. Firebase Console → Authentication → Settings
-2. Authorized domains에 `world.ur-team.com` 추가
-
-### 문제: Region이 "GLOBAL"이 아님
-**원인**: 환경 변수 미적용 또는 오타
-
-**해결**:
-1. 환경 변수 확인 (대소문자 구분)
-2. `VITE_REGION=GLOBAL` (모두 대문자)
-3. Redeploy 후 캐시 클리어 (Ctrl+Shift+R)
-
-### 문제: API 호출이 live.ur-team.com으로 감
-**원인**: `VITE_API_BASE_URL` 미설정
-
-**해결**:
-1. `VITE_API_BASE_URL=https://world.ur-team.com` 추가
-2. Redeploy
+- Cloudflare Dashboard: https://dash.cloudflare.com
+- Workers & Pages: https://dash.cloudflare.com/?to=/:account/workers-and-pages
+- 디버그 페이지: https://live.ur-team.com/debug/kakao
+- 카카오 개발자 콘솔: https://developers.kakao.com/console/app
 
 ---
 
-## 🎯 완료!
+## 📞 문제 해결
 
-모든 환경 변수를 추가하고 Redeploy하면 다음과 같이 작동합니다:
+### Q: 환경 변수를 추가했는데 여전히 KOE101 오류가 발생합니다
 
-| Feature | Status |
-|---------|--------|
-| Domain | https://world.ur-team.com |
-| UI Language | English (기본) |
-| Login | Google OAuth |
-| Payment | Stripe |
-| Region | GLOBAL |
+**A**: 다음을 확인하세요:
+1. 재배포가 완료되었는지 확인 (Deployments 탭)
+2. 브라우저 캐시 삭제 또는 시크릿 모드 사용
+3. 디버그 페이지에서 환경 변수 상태 확인
+4. 카카오 개발자 콘솔에서 Redirect URI 등록 확인
+
+### Q: 디버그 페이지에서 환경 변수가 "설정되지 않음"으로 표시됩니다
+
+**A**: 
+1. Cloudflare Pages 대시보드에서 환경 변수가 올바르게 저장되었는지 확인
+2. 변수 이름이 정확히 `VITE_KAKAO_REST_API_KEY`인지 확인 (대소문자 구분)
+3. Production 환경에 추가되었는지 확인
+4. 재배포가 완료되었는지 확인
+
+### Q: Cloudflare Dashboard에 접근할 수 없습니다
+
+**A**: 
+- Jiwon@ur-team.com 계정으로 로그인
+- 계정에 Workers & Pages 권한이 있는지 확인
+- 필요시 계정 관리자에게 문의
 
 ---
 
-## 📞 문제 발생 시
-
-1. Cloudflare Dashboard → ur-live-global → Deployments → 최신 배포 선택 → **Logs** 확인
-2. 브라우저 Console (F12) 확인
-3. Network 탭에서 API 요청 확인
-4. [TESTING_GUIDE.md](./TESTING_GUIDE.md) 참고
-
----
-
-**작성일**: 2026-03-03  
-**최종 업데이트**: Build ID 314c94080362b0d8
+**작성일**: 2026-03-05  
+**버전**: v1.0  
+**상태**: ✅ 로컬 설정 완료, Cloudflare Pages 설정 대기 중
