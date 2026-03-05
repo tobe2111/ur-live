@@ -45,8 +45,9 @@ export default function LoginPage() {
       console.log('[LoginPage] ✅ 이미 로그인됨 - returnUrl로 리다이렉트:', returnUrl)
       hasRedirected.current = true
       navigate(returnUrl, { replace: true })
+      return // 🔥 Early return after navigation
     }
-  }, [isAuthReady, isLoggedIn, navigate, returnUrl])
+  }, [isAuthReady, isLoggedIn]) // 🔥 Remove navigate and returnUrl from deps
 
   useEffect(() => {
     const urlParam = searchParams.get('returnUrl')
@@ -215,6 +216,15 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 🔥 Early return: Prevent rendering while redirecting
+  if (isAuthReady && isLoggedIn && hasRedirected.current) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
+        <div className="text-white text-xl">Redirecting...</div>
+      </div>
+    )
   }
 
   return (

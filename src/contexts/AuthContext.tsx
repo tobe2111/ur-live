@@ -296,14 +296,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     return () => {
       if (DEBUG_AUTH) console.log('[Auth] 🔥 Firebase Auth 리스너 해제')
-      if (pathname.startsWith('/seller') || pathname.startsWith('/admin')) {
-        // JWT 경로는 Firebase 리스너 없음
-        return
-      }
       clearTimeout(forceTimeoutId)
       unsubscribe()
     }
-  }, [loading, isAuthReady, user, navigate])
+  }, []) // 🔥 Empty array - register listener only once!
   
   // ============================================
   // 3️⃣ Auth Methods
