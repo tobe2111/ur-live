@@ -240,4 +240,38 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
   }
 });
 
+/**
+ * GET /api/users/role
+ * Get user role from Firebase Auth token
+ * 
+ * Headers:
+ * - Authorization: Bearer <firebase-id-token>
+ */
+kakaoRoutes.get('/users/role', cors(), async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ 
+        success: true, 
+        role: 'user' 
+      }, 200); // Return default role instead of 401
+    }
+    
+    // For now, return default 'user' role
+    // TODO: Implement Firebase token verification and database lookup
+    return c.json({
+      success: true,
+      role: 'user' // Default role for all authenticated users
+    }, 200);
+    
+  } catch (err) {
+    console.error('[/api/users/role] Error:', err);
+    return c.json({ 
+      success: true, 
+      role: 'user' // Fallback to user role on error
+    }, 200);
+  }
+});
+
 export default kakaoRoutes;

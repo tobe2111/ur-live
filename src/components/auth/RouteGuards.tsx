@@ -8,7 +8,9 @@
  */
 
 import { Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/shared/config/region'
 
 const DEBUG = true
 
@@ -27,8 +29,14 @@ export function ProtectedRoute({
   requireAdmin = false,
   requireSeller = false 
 }: ProtectedRouteProps) {
-  const { user, loading, userRole } = useAuth()
+  const authKR = useAuthKR()
+  const authWorld = useAuthWorld()
   const location = useLocation()
+  
+  // Use appropriate store based on region
+  const { user, loading, userRole } = isKorea() 
+    ? { user: authKR.user, loading: authKR.loading, userRole: authKR.userRole }
+    : { user: authWorld.user, loading: authWorld.loading, userRole: authWorld.userRole }
 
   if (DEBUG) {
     console.log('[ProtectedRoute]', {
@@ -87,8 +95,14 @@ export function PublicRoute({
   children, 
   redirectTo = '/' 
 }: PublicRouteProps) {
-  const { user, loading } = useAuth()
+  const authKR = useAuthKR()
+  const authWorld = useAuthWorld()
   const location = useLocation()
+  
+  // Use appropriate store based on region
+  const { user, loading } = isKorea() 
+    ? { user: authKR.user, loading: authKR.loading }
+    : { user: authWorld.user, loading: authWorld.loading }
 
   if (DEBUG) {
     console.log('[PublicRoute]', {

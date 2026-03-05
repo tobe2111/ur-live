@@ -1,12 +1,16 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Search, Bell, User } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/shared/config/region'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function TopNav() {
   const navigate = useNavigate()
-  const { isLoggedIn } = useAuth()
+  const authKR = useAuthKR()
+  const authWorld = useAuthWorld()
+  const isLoggedIn = isKorea() ? authKR.isLoggedIn : authWorld.isLoggedIn
   const [menuOpen, setMenuOpen] = useState(false)
 
   const handleProfileClick = () => {

@@ -3579,6 +3579,32 @@ app.get('/api/auth/user/verify', cors(), async (c) => {
   }
 });
 
+// ✅ Get user role endpoint (for Firebase Auth users)
+app.get('/api/users/role', cors(), async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: 'Missing or invalid authorization header', role: 'user' }, 401);
+    }
+    
+    // For now, return default 'user' role
+    // TODO: Implement Firebase token verification and database lookup
+    return c.json({
+      success: true,
+      role: 'user' // Default role for all authenticated users
+    });
+    
+  } catch (err) {
+    console.error('[/api/users/role] Error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message,
+      role: 'user' // Fallback to user role on error
+    }, 200); // Return 200 to prevent client errors
+  }
+});
+
 // =================================
 // Shipping Address APIs
 // =================================

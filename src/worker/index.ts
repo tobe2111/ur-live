@@ -162,6 +162,7 @@ app.get('/health', (c) => {
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
 app.route('/api/auth/google', googleRoutes);
+app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
 
 // Products Feature
 app.route('/api/products', productsRoutes);
