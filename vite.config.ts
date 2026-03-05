@@ -3,13 +3,37 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // 🎯 Region 분기 (KR vs GLOBAL)
+  const isKR = mode === 'kr' || mode === 'development'  // dev는 기본 KR
+  const isGlobal = mode === 'global'
+
+  return {
   // 환경변수 정의 (빌드 시점에 번들에 포함)
   define: {
     'import.meta.env.VITE_TOSS_CLIENT_KEY': JSON.stringify(
       process.env.VITE_TOSS_CLIENT_KEY || 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm'
     ),
+    // 🔥 Region 상수 주입 (tree-shaking 유리)
+    '__REGION__': JSON.stringify(isKR ? 'KR' : 'GLOBAL'),
+    '__IS_KR__': isKR,
+    '__IS_GLOBAL__': isGlobal,
   },
+  
+  // 🔥 CRITICAL: React 중복 방지
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'react-router-dom',
+      'firebase/auth',
+      'firebase/app',
+    ],
+    // 🔥 React를 단일 번들로 강제
+    force: true,
+  },
+  
   plugins: [
     react(),
     visualizer({
@@ -23,19 +47,25 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // 🔥 React 중복 해결: 항상 최상위 node_modules/react 사용
+    dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
   },
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: isKR ? 5173 : 5174,  // 🎯 Region별 포트 분리
     // ✅ 샌드박스 호스트 허용
     allowedHosts: [
       'localhost',
       '.sandbox.novita.ai',  // 모든 sandbox 서브도메인 허용
       '.e2b.dev',            // E2B 샌드박스
     ],
+    // 🔥 HMR 안정화
+    hmr: {
+      overlay: true,
+    },
   },
   build: {
-    outDir: 'dist',
+    outDir: isKR ? 'dist' : 'dist-global',  // 🎯 Region별 출력 폴더
     emptyOutDir: true,
     // 소스맵 활성화 (에러 디버깅용)
     sourcemap: true,
@@ -44,55 +74,41 @@ export default defineConfig({
     rollupOptions: {
       // 🔧 순환 참조 및 TDZ 에러 방지
       preserveEntrySignatures: 'allow-extension',
+      // 🔥 Region별 불필요한 라이브러리 제외
+      external: isKR 
+        ? ['@stripe/stripe-js', '@stripe/react-stripe-js']  // KR: Stripe 제외
+        : [],  // GLOBAL: 모두 포함
       output: {
         // 🔧 해시 기반 파일명으로 캐시 무효화
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: (id) => {
-          // 🔴 CRITICAL: React must be in ONE chunk ONLY to prevent duplicate instances
+          // 🔴 CRITICAL: React는 반드시 단일 청크에만!
           if (id.includes('node_modules')) {
             // 1. React Core - MUST be single instance
-            if (id.includes('node_modules/react/') || 
-                id.includes('node_modules/react-dom/') ||
-                id.includes('node_modules/scheduler/')) {
-              return 'react-core'
+            if (id.includes('/react/') || 
+                id.includes('/react-dom/') ||
+                id.includes('/scheduler/') ||
+                id.includes('/react-is/')) {
+              return 'react-vendor'  // 🔥 단일 청크로 통합
             }
             
-            // 2. React ecosystem - depends on react-core
-            if (id.includes('node_modules/react-router') || 
-                id.includes('node_modules/@radix-ui') ||
-                id.includes('node_modules/lucide-react') ||
-                id.includes('node_modules/recharts')) {
-              return 'react-deps'
+            // 2. Firebase
+            if (id.includes('/firebase/')) {
+              return 'firebase-vendor'
             }
             
-            // 3. Sentry
-            if (id.includes('node_modules/@sentry')) {
-              return 'sentry-vendor'
+            // 3. Payment SDKs (Region 분기)
+            if (isKR && id.includes('/@tosspayments/')) {
+              return 'payment-vendor'
+            }
+            if (isGlobal && id.includes('/@stripe/')) {
+              return 'payment-vendor'
             }
             
-            // 4. Utilities
-            if (id.includes('node_modules/axios')) {
-              return 'utils-vendor'
-            }
-            
-            // 5. Other node_modules
+            // 4. Other vendors
             return 'vendor'
-          }
-          
-          // 🔧 SIMPLIFIED: 3개 청크로 단순화 (순환 참조 방지)
-          if (id.includes('/src/pages/')) {
-            // LivePage만 별도 분리 (가장 복잡한 페이지)
-            if (id.includes('/src/pages/Live')) {
-              return 'live-pages'
-            }
-            // Seller pages
-            if (id.includes('/src/pages/Seller')) {
-              return 'seller-pages'
-            }
-            // 나머지 모든 페이지는 하나로 묶음
-            return 'app-pages'
           }
         },
       },
@@ -100,4 +116,5 @@ export default defineConfig({
     // 청크 크기 경고 임계값
     chunkSizeWarningLimit: 500,
   },
+  }
 })
