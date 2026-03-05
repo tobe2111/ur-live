@@ -5,7 +5,7 @@
     "preinstall": "node scripts/check-react-version.cjs || echo 'Warning: React version check script not found'",
     "postinstall": "node scripts/verify-react-version.cjs || echo 'Warning: React verification failed'",
     "prebuild": "rm -rf dist dist-global && node scripts/update-version.js",
-    "build": "vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
+    "build": "vite build --mode kr && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
     "build:kr": "vite build --mode kr && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
     "build:global": "vite build --mode global && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
     "build:full": "NODE_OPTIONS='--max-old-space-size=2048' vite build && vite build --config vite.worker.config.ts && node fix-routes.js && node force-update.js",
