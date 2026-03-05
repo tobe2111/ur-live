@@ -1,9 +1,7 @@
-// React Router App - v2.3 (Zustand Store Migration)
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
-// ❌ import { AuthProvider } from './contexts/AuthContext' // REMOVED - Migrated to Zustand
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'

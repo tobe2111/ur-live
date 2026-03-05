@@ -157,6 +157,7 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (refreshError) {
           console.error('[API] ❌ Token refresh failed:', refreshError);
+          captureError(refreshError as Error, { context: 'API.tokenRefresh', url: originalRequest.url });
         }
       }
       
@@ -191,6 +192,11 @@ api.interceptors.response.use(
       // 3️⃣ Firebase 인증 실패 → 로그아웃
       console.error('[API] 🚨 Firebase auth failed (401)');
       console.error('[API] 📊 Server error details:', errorData);
+      captureError(new Error(`API 401 Unauthorized: ${errorData?.error || 'Unknown'}`), { 
+        context: 'API.401', 
+        url: originalRequest.url,
+        errorCode: errorData?.code 
+      });
       
       // Display detailed error information from server
       if (errorData?.code) {

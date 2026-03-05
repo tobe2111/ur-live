@@ -12,7 +12,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 
-const DEBUG = true
+const DEBUG = import.meta.env.DEV  // 개발 모드에서만 활성화
 
 // ============================================
 // 🛡️ ProtectedRoute (로그인 필요)

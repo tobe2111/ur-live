@@ -10,6 +10,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { isKorea } from '@/config/region'
+import { captureError, captureMessage } from '@/lib/sentry'
 
 // 🔥 Region-based lazy loading for payment components
 const TossPaymentWidget = lazy(() => 
@@ -305,6 +306,7 @@ export default function CheckoutPage() {
 
     if (!uid) {
       console.log('[CheckoutPage] ❌ userId 없음')
+      captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })
       setError('사용자 정보를 확인할 수 없습니다.')
       setLoading(false)
       return
@@ -346,6 +348,7 @@ export default function CheckoutPage() {
         }
       } catch (err) {
         console.error('[CheckoutPage] ❌ API 에러:', err)
+        captureError(err as Error, { context: 'CheckoutPage.loadData', userId: uid })
         handleApiError(err, '데이터 로드 실패')
         setError('데이터를 불러올 수 없습니다.')
       } finally {
