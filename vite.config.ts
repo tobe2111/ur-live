@@ -27,6 +27,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // ✅ 샌드박스 호스트 허용
+    allowedHosts: [
+      'localhost',
+      '.sandbox.novita.ai',  // 모든 sandbox 서브도메인 허용
+      '.e2b.dev',            // E2B 샌드박스
+    ],
   },
   build: {
     outDir: 'dist',
