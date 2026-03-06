@@ -1,142 +1,120 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
-import { signInWithCustomToken } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
-import { LogoutButton } from '@/components/my-page/logout-button'
 import { Footer } from '@/components/my-page/footer'
 import BottomNav from '@/components/main/BottomNav'
 import { ArrowLeft } from 'lucide-react'
 
+/**
+ * 🧹 완전히 단순화된 UserProfilePage
+ * - firebase_token 처리는 여기서만
+ * - RouteGuard와 협력해 무한 루프 방지
+ */
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   
   // ✅ Zustand 스토어 사용 (지역별)
   const authStore = isKorea() ? useAuthKR : useAuthWorld
-  const { user, isAuthReady, logout: authLogout } = authStore()
-  const isLoggedIn = !!user
+  const { user, isAuthReady } = authStore()
   
   const [userName, setUserName] = useState('')
   const [isProcessingToken, setIsProcessingToken] = useState(false)
   const hasProcessedToken = useRef(false)
 
-  // ✅ firebase_token 강제 처리 로직
+  // ✅ firebase_token 한 번만 처리
   useEffect(() => {
     const firebaseToken = searchParams.get('firebase_token')
     
-    // 토큰이 있고, 아직 처리 안 했고, 인증 준비됨
-    if (firebaseToken && !hasProcessedToken.current && isAuthReady) {
+    // 조건: 토큰 있음 + 아직 안 처리 + 인증 준비됨 + 로그인 안 됨
+    if (firebaseToken && !hasProcessedToken.current && isAuthReady && !user) {
       hasProcessedToken.current = true
       setIsProcessingToken(true)
       
-      console.log('[UserProfilePage] 🔑 firebase_token 발견 - 자동 로그인 처리')
+      console.log('[UserProfilePage] 🔑 firebase_token 발견 - 1회만 처리')
       
-      signInWithCustomToken(auth, firebaseToken)
-        .then((credential) => {
-          console.log('[UserProfilePage] ✅ Firebase 로그인 성공')
-          
-          // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)
-          credential.user.getIdToken(true)
-            .then(() => console.log('[UserProfilePage] 🔥 ID Token 강제 갱신 완료 (백그라운드)'))
-            .catch((err) => console.warn('[UserProfilePage] ⚠️ Token 갱신 실패 (무시):', err))
-          
-          // ✅ React Router의 navigate로 URL 정리 (무한 루프 방지)
-          console.log('[UserProfilePage] 🧹 URL 정리 중 (firebase_token 제거)...')
+      loginWithFirebaseToken(firebaseToken)
+        .then(() => {
+          console.log('[UserProfilePage] ✅ 로그인 완료, URL 정리 중...')
           setIsProcessingToken(false)
           
-          // navigate를 사용해 React Router가 인식하도록 함
+          // ✅ URL 정리 - navigate로 React Router 상태 업데이트
           navigate('/user/profile', { replace: true })
           console.log('[UserProfilePage] ✅ URL 정리 완료')
         })
         .catch((error) => {
-          console.error('[UserProfilePage] ❌ Firebase 로그인 실패:', error)
+          console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
           hasProcessedToken.current = false // 실패 시 재시도 허용
           setIsProcessingToken(false)
+          // 실패하면 로그인 페이지로
           navigate('/login', { replace: true })
         })
-      
-      return
     }
-  }, [searchParams, isAuthReady, navigate])
+  }, [searchParams, isAuthReady, user, navigate])
 
+  // ✅ 사용자 이름 설정
   useEffect(() => {
-    // ✅ 토큰 처리 중에는 대기
-    if (isProcessingToken) {
-      console.log('[UserProfilePage] ⏳ 토큰 처리 중...')
-      return
-    }
-
-    // ✅ 1. isAuthReady 가드: 인증 초기화 전에는 대기
-    if (!isAuthReady) {
-      console.log('[UserProfilePage] ⏳ 인증 초기화 대기 중...')
-      return
-    }
-
-    // ✅ 2. 로그인 체크: isAuthReady 후에만 실행
-    if (!isLoggedIn) {
-      // firebase_token이 있으면 리다이렉트 지연
-      const firebaseToken = searchParams.get('firebase_token')
-      if (firebaseToken) {
-        console.log('[UserProfilePage] ⏳ firebase_token 있음 - 로그인 처리 대기 중...')
-        return
-      }
+    if (user) {
+      const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
+      setUserName(name)
       
-      console.log('[UserProfilePage] ❌ 로그인 필요 - /login으로 리다이렉트')
-      // 🎯 스마트 리다이렉트: 현재 페이지를 returnUrl로 저장
-      sessionStorage.setItem('returnUrl', '/user/profile')
-      navigate('/login', { replace: true })
-      return
+      console.log('[UserProfilePage] ✅ 사용자 정보:', {
+        uid: user.uid,
+        displayName: user.displayName,
+        userName: name
+      })
     }
+  }, [user])
 
-    // ✅ 3. Firebase User에서 사용자 이름 가져오기 (Single Source of Truth)
-    // displayName이 없으면 localStorage의 user_name 사용 (카카오 로그인 시 저장됨)
-    const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
-    setUserName(name)
-    
-    console.log('[UserProfilePage] ✅ 사용자 정보 로드:', {
-      uid: user?.uid,
-      displayName: user?.displayName,
-      email: user?.email,
-      userName: name,
-      isLoggedIn
-    })
-  }, [isAuthReady, isLoggedIn, user, navigate, searchParams, isProcessingToken])
-
-  const handleLogout = async () => {
-    console.log('[UserProfilePage] 로그아웃 처리')
-    
-    try {
-      // ✅ AuthContext의 logout 사용 (Firebase + localStorage 모두 처리)
-      await authLogout()
-      
-      console.log('[UserProfilePage] ✅ 로그아웃 완료')
-      // 홈페이지로 리다이렉트
-      navigate('/')
-    } catch (error) {
-      console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
-    }
-  }
-
-  // ✅ 4. 토큰 처리 중 또는 isAuthReady 전에는 로딩 표시
-  if (isProcessingToken || !isAuthReady) {
+  // 🔄 로딩 중
+  if (!isAuthReady || isProcessingToken) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-600">{isProcessingToken ? '로그인 처리 중...' : '로딩 중...'}</p>
+          <p className="text-gray-600">
+            {isProcessingToken ? '로그인 처리 중...' : '로딩 중...'}
+          </p>
         </div>
       </div>
     )
   }
 
-  // ✅ 5. 로그인 안 됨: 리다이렉트 중
-  if (!isLoggedIn) {
-    return null
+  // 🚫 로그인 안 됨 - RouteGuard에서 처리되지만 안전장치
+  if (!user) {
+    // firebase_token이 있으면 대기
+    const firebaseToken = searchParams.get('firebase_token')
+    if (firebaseToken) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
+            <p className="text-gray-600">로그인 처리 중...</p>
+          </div>
+        </div>
+      )
+    }
+    
+    // 토큰 없으면 로그인 페이지로
+    return <Navigate to="/login" replace />
+  }
+
+  // ✅ 로그아웃 핸들러
+  const handleLogout = async () => {
+    console.log('[UserProfilePage] 로그아웃 시작')
+    
+    try {
+      await logout()
+      console.log('[UserProfilePage] ✅ 로그아웃 완료')
+      navigate('/', { replace: true })
+    } catch (error) {
+      console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+    }
   }
 
   return (
