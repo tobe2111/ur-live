@@ -114,6 +114,23 @@ export default function MyPage() {
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </Link>
 
+          {/* 계정 설정 */}
+          <Link 
+            to="/account/settings" 
+            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                <Settings className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">계정 설정</h3>
+                <p className="text-sm text-gray-500">프로필 및 보안 설정</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+
           {/* 고객센터 */}
           <a 
             href="tel:0507-0177-0432" 
@@ -132,7 +149,7 @@ export default function MyPage() {
           </a>
         </div>
 
-        {/* 설정 */}
+        {/* 약관 및 정책 */}
         <div className="bg-white rounded-2xl shadow-sm mb-6">
           <Link 
             to="/terms" 

@@ -51,6 +51,12 @@ const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage')
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
+// Account (탈퇴) 페이지들
+const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'))
+const AccountDeleteWarningPage = lazy(() => import('./pages/AccountDeleteWarningPage'))
+const AccountDeleteFinalPage = lazy(() => import('./pages/AccountDeleteFinalPage'))
+const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
+
 // Admin 페이지들
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'))
@@ -163,6 +169,12 @@ function AppContent() {
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
+            
+            {/* Account Settings & Delete Pages */}
+            <Route path="/account/settings" element={<AccountSettingsPage />} />
+            <Route path="/account/delete-warning" element={<AccountDeleteWarningPage />} />
+            <Route path="/account/delete-final" element={<AccountDeleteFinalPage />} />
+            <Route path="/account/deleted" element={<AccountDeletedPage />} />
             
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
