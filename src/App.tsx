@@ -54,7 +54,6 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 // Account (탈퇴) 페이지들
 const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'))
 const AccountDeleteWarningPage = lazy(() => import('./pages/AccountDeleteWarningPage'))
-const AccountDeleteFinalPage = lazy(() => import('./pages/AccountDeleteFinalPage'))
 const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
 
 // Admin 페이지들
@@ -173,7 +172,6 @@ function AppContent() {
             {/* Account Settings & Delete Pages */}
             <Route path="/account/settings" element={<AccountSettingsPage />} />
             <Route path="/account/delete-warning" element={<AccountDeleteWarningPage />} />
-            <Route path="/account/delete-final" element={<AccountDeleteFinalPage />} />
             <Route path="/account/deleted" element={<AccountDeletedPage />} />
             
             {/* Terms Pages */}

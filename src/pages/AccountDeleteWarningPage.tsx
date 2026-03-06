@@ -49,14 +49,40 @@ export default function AccountDeleteWarningPage() {
     agreedToNoRefund &&
     confirmText === '회원탈퇴';
 
-  const handleProceedToFinalStep = () => {
+  const handleProceedToDelete = async () => {
     if (!canProceed) {
       alert('모든 동의 항목을 체크하고 "회원탈퇴"를 정확히 입력해주세요.');
       return;
     }
 
-    // 최종 만류 페이지로 이동
-    navigate('/account/delete-final');
+    const finalConfirm = confirm(
+      '정말로 탈퇴하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 모든 데이터가 영구 삭제됩니다.'
+    );
+
+    if (!finalConfirm) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // TODO: 실제 탈퇴 API 호출
+      // await api.delete('/api/users/me');
+
+      // 임시: 3초 대기 후 처리
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // 로그아웃 처리
+      authLogout();
+
+      // 탈퇴 완료 페이지로 이동
+      navigate('/account/deleted', { replace: true });
+    } catch (error) {
+      console.error('Account deletion failed:', error);
+      alert('탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getWarningIcon = (icon: string) => {
@@ -290,7 +316,7 @@ export default function AccountDeleteWarningPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <div className="mx-auto max-w-md px-4 py-4 space-y-3">
           <button
-            onClick={handleProceedToFinalStep}
+            onClick={handleProceedToDelete}
             disabled={!canProceed || isLoading}
             className={`w-full py-4 rounded-xl font-semibold transition-all ${
               canProceed && !isLoading
@@ -301,15 +327,16 @@ export default function AccountDeleteWarningPage() {
             {isLoading ? (
               <span className="flex items-center justify-center">
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                처리 중...
+                탈퇴 처리 중...
               </span>
             ) : (
-              '다음 단계로 (탈퇴 계속하기)'
+              '회원 탈퇴하기'
             )}
           </button>
 
           <button
             onClick={() => navigate('/account/settings')}
+            disabled={isLoading}
             className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 active:scale-95 transition-all"
           >
             취소하고 돌아가기
