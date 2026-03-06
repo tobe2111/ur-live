@@ -8,6 +8,8 @@
  * 4. 탈퇴 기록 저장 (30일간 재가입 제한)
  */
 
+import { getAuth } from 'firebase-admin/auth';
+
 export interface DeleteAccountRequest {
   userId: string;
   reason?: string; // 선택적: 탈퇴 사유
@@ -25,16 +27,30 @@ export interface DeleteAccountResponse {
 export async function deleteUserAccount(
   request: DeleteAccountRequest
 ): Promise<DeleteAccountResponse> {
-  const { userId } = request;
+  const { userId, reason } = request;
 
   try {
     console.log('[DeleteAccount] 탈퇴 처리 시작:', userId);
 
-    // TODO: 실제 구현 시 아래 로직 추가
-    // 1. Firebase Admin SDK로 사용자 삭제
-    // await admin.auth().deleteUser(userId);
+    // 1. Firebase Authentication에서 사용자 삭제
+    try {
+      const auth = getAuth();
+      await auth.deleteUser(userId);
+      console.log('[DeleteAccount] Firebase Auth 사용자 삭제 완료:', userId);
+    } catch (authError) {
+      console.error('[DeleteAccount] Firebase Auth 삭제 실패:', authError);
+      // Firebase 사용자가 이미 삭제된 경우는 무시하고 계속 진행
+      if (authError && typeof authError === 'object' && 'code' in authError) {
+        const code = (authError as { code: string }).code;
+        if (code !== 'auth/user-not-found') {
+          throw authError;
+        }
+      }
+    }
 
     // 2. 데이터베이스에서 사용자 데이터 삭제 또는 익명화
+    // TODO: 실제 DB 작업 구현
+    // const db = getDatabase();
     // await db.delete(users).where(eq(users.id, userId));
 
     // 3. 관련 데이터 처리
@@ -42,17 +58,18 @@ export async function deleteUserAccount(
     // - 리뷰: 익명화 또는 삭제
     // - 찜목록/장바구니: 삭제
     // - 포인트/쿠폰: 삭제
+    // TODO: 실제 데이터 익명화/삭제 로직 구현
+    console.log('[DeleteAccount] 관련 데이터 처리 시작:', userId);
 
     // 4. 탈퇴 기록 저장 (30일간 재가입 제한용)
+    // TODO: 탈퇴 기록 저장 구현
     // await db.insert(deletedAccounts).values({
     //   userId,
     //   email: user.email,
     //   deletedAt: new Date(),
     //   reregisterAvailableAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    //   reason: reason || null,
     // });
-
-    // 임시: 3초 딜레이로 실제 처리하는 것처럼 시뮬레이션
-    await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const deletedAt = new Date().toISOString();
 

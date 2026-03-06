@@ -20,6 +20,7 @@ import { serveStatic } from 'hono/cloudflare-workers';
 import { kakaoRoutes, googleRoutes } from '@/features/auth';
 import { productsRoutes } from '@/features/products';
 import { ordersRoutes } from '@/features/orders';
+import { accountRoutes } from '@/features/account';
 
 // Middleware & Utils
 import { rateLimitMiddleware } from './middleware/rate-limiter';
@@ -169,6 +170,9 @@ app.route('/api/products', productsRoutes);
 
 // Orders Feature
 app.route('/api/orders', ordersRoutes);
+
+// Account Management Feature
+app.route('/api/account', accountRoutes);
 
 // TODO: 다른 Feature 라우트 추가
 // app.route('/api/live-stream', liveStreamRoutes);

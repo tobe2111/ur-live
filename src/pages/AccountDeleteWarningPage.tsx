@@ -66,11 +66,30 @@ export default function AccountDeleteWarningPage() {
     setIsLoading(true);
 
     try {
-      // TODO: 실제 탈퇴 API 호출
-      // await api.delete('/api/users/me');
+      const userId = getUserId();
+      if (!userId) {
+        throw new Error('사용자 ID를 찾을 수 없습니다.');
+      }
 
-      // 임시: 3초 대기 후 처리
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // 실제 탈퇴 API 호출
+      const response = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          reason: '사용자 요청',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || '탈퇴 처리에 실패했습니다.');
+      }
+
+      console.log('[Account Delete] Success:', data);
 
       // 로그아웃 처리
       authLogout();
@@ -79,7 +98,11 @@ export default function AccountDeleteWarningPage() {
       navigate('/account/deleted', { replace: true });
     } catch (error) {
       console.error('Account deletion failed:', error);
-      alert('탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      alert(
+        error instanceof Error 
+          ? error.message 
+          : '탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      );
     } finally {
       setIsLoading(false);
     }
