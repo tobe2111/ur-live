@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
@@ -7,6 +8,10 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import { QueryProvider } from './lib/react-query'
+import { initSentry } from './lib/sentry'
+
+// Sentry 초기화 (최상위에서 한 번만)
+initSentry()
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -196,22 +201,40 @@ function AppContent() {
 
 // ✅ App 컴포넌트: BrowserRouter 최상위 배치 (AuthProvider 제거)
 function App() {
-  console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand + React Query)')
+  console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand + React Query + Sentry)')
   
   return (
-    <ErrorBoundary>
-      <QueryProvider>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
-          <AppContent />
-        </BrowserRouter>
-      </QueryProvider>
-    </ErrorBoundary>
+    <Sentry.ErrorBoundary 
+      fallback={({ error }) => (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">오류가 발생했습니다</h2>
+            <p className="text-gray-600 mb-4">{error.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+      )}
+      showDialog={false}
+    >
+      <ErrorBoundary>
+        <QueryProvider>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
+            <AppContent />
+          </BrowserRouter>
+        </QueryProvider>
+      </ErrorBoundary>
+    </Sentry.ErrorBoundary>
   )
 }
 

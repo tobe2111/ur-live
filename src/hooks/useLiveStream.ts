@@ -95,3 +95,17 @@ export function useChangeCurrentProduct() {
     },
   })
 }
+
+// 🎯 라이브 스트림 전체 데이터 병렬 조회 (LivePageV2용 최적화)
+export function useLiveStreamData(streamId: string | undefined) {
+  const stream = useLiveStream(streamId)
+  const products = useStreamProducts(streamId)
+  
+  return {
+    stream: stream.data,
+    products: products.data || [],
+    isLoading: stream.isLoading || products.isLoading,
+    isError: stream.isError || products.isError,
+    error: stream.error || products.error,
+  }
+}

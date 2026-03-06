@@ -49,3 +49,22 @@ export function useProductOptions(productId: string | undefined) {
     staleTime: 5 * 60 * 1000,
   })
 }
+
+// 🎯 상품 목록 조회 Hook (HomePage용)
+export function useProducts(params?: { category?: string; page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['products', params],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams()
+      if (params?.category) queryParams.append('category', params.category)
+      if (params?.page) queryParams.append('page', params.page.toString())
+      if (params?.limit) queryParams.append('limit', params.limit.toString())
+      
+      const url = `/api/products${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+      const response = await api.get(url)
+      return response.data.data.products as Product[]
+    },
+    staleTime: 5 * 60 * 1000, // 5분간 캐시
+    gcTime: 30 * 60 * 1000,   // 30분 후 메모리 해제
+  })
+}
