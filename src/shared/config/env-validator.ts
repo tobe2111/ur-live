@@ -144,11 +144,25 @@ export function validateEnvForRuntime(region: 'KR' | 'GLOBAL'): void {
       validateWorldEnv();
     }
   } catch (error) {
-    // 런타임 에러는 사용자에게 보이지 않도록 콘솔에만 로그
-    console.error('[Env Validator] 런타임 검증 실패:', error);
-    // Sentry 등으로 에러 전송
-    if (import.meta.env.VITE_SENTRY_DSN) {
-      // TODO: Sentry.captureException(error);
+    // ⚠️ 런타임 에러는 경고로만 처리 (앱 실행을 막지 않음)
+    console.warn('[Env Validator] ⚠️ 환경 변수 검증 경고 (앱은 계속 실행)');
+    console.warn(error);
+    
+    // Sentry로 에러 전송 (프로덕션 모니터링용)
+    if (import.meta.env.VITE_SENTRY_DSN && typeof window !== 'undefined') {
+      try {
+        // @ts-ignore - Sentry는 초기화 후 전역으로 사용 가능
+        if (window.Sentry) {
+          window.Sentry.captureException(error);
+        }
+      } catch (sentryError) {
+        console.warn('[Env Validator] Sentry 전송 실패:', sentryError);
+      }
+    }
+    
+    // ⚠️ Production에서는 throw하지 않음 (앱이 계속 실행되어야 함)
+    if (import.meta.env.DEV) {
+      console.error('[Env Validator] ❌ 개발 모드에서는 위 경고를 확인하세요');
     }
   }
 }
