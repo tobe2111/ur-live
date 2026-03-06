@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { getUserId } from '@/utils/auth'
@@ -9,10 +9,14 @@ import { isKorea } from '@/config/region'
 
 // Import KREAM-style components
 import { MobileHeader } from '@/components/product/mobile-header'
-import { ProductImageCarousel } from '@/components/product/product-image-carousel'
 import { ProductHeader } from '@/components/product/product-header'
-import { FloatingActionBar } from '@/components/product/floating-action-bar'
 import { Separator } from '@/components/ui/separator'
+import { ProductDetailSkeleton } from '@/components/ui/skeleton'
+import { ProgressiveImage } from '@/components/ui/progressive-image'
+
+// Lazy load heavy components
+const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
+const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
 interface Product {
   id: number
@@ -97,11 +101,13 @@ export default function ProductDetailPage() {
   }
 
   async function handleAddToCart() {
-    console.log('[ProductDetail] 🛒 담기 버튼 클릭, isLoggedIn:', isLoggedIn)
-    console.log('[ProductDetail] 🔍 localStorage 확인:', {
-      user_id: localStorage.getItem('user_id'),
-      firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...'
-    })
+    if (import.meta.env.DEV) {
+      console.log('[ProductDetail] 🛒 담기 버튼 클릭, isLoggedIn:', isLoggedIn)
+      console.log('[ProductDetail] 🔍 localStorage 확인:', {
+        user_id: localStorage.getItem('user_id'),
+        firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...'
+      })
+    }
     
     if (!isLoggedIn) {
       showToast('로그인이 필요합니다.', 'error')
@@ -111,21 +117,27 @@ export default function ProductDetailPage() {
     }
 
     try {
-      console.log('[ProductDetail] 📡 POST /api/cart 호출 중...')
+      if (import.meta.env.DEV) {
+        console.log('[ProductDetail] 📡 POST /api/cart 호출 중...')
+      }
       await api.post('/api/cart', {
         productId: product!.id,
         quantity,
         optionId: Object.values(selectedOptions)[0] || null,
         priceSnapshot: product!.price
       })
-      console.log('[ProductDetail] ✅ 장바구니 추가 성공')
+      if (import.meta.env.DEV) {
+        console.log('[ProductDetail] ✅ 장바구니 추가 성공')
+      }
       showToast('장바구니에 추가되었습니다.', 'success')
       localStorage.setItem('hasCartItems', 'true')
       
       // ✅ 장바구니 페이지로 이동
       setTimeout(() => navigate('/cart'), 1000)
     } catch (err: any) {
-      console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
+      if (import.meta.env.DEV) {
+        console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
+      }
       showToast(err.response?.data?.error || '장바구니 추가에 실패했습니다.', 'error')
     }
   }
@@ -182,14 +194,7 @@ export default function ProductDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-foreground border-r-transparent"></div>
-          <p className="mt-4 text-sm text-muted-foreground">로딩 중...</p>
-        </div>
-      </div>
-    )
+    return <ProductDetailSkeleton />
   }
 
   if (error || !product) {
@@ -233,7 +238,9 @@ export default function ProductDetailPage() {
 
       <main className="pb-20">
         {/* Product Images Carousel */}
-        <ProductImageCarousel images={allImages} />
+        <Suspense fallback={<div className="w-full h-96 bg-gray-100 animate-pulse" />}>
+          <ProductImageCarousel images={allImages} />
+        </Suspense>
 
         <Separator />
 
@@ -261,14 +268,14 @@ export default function ProductDetailPage() {
               <h2 className="text-sm font-bold text-foreground">상세 이미지</h2>
               <div className="mt-4 flex flex-col gap-1">
                 {detailImages.map((src, idx) => (
-                  <div key={idx} className="relative w-full">
-                    <img
-                      src={src}
-                      alt={`Product detail ${idx + 1}`}
-                      className="h-auto w-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
+                  <ProgressiveImage
+                    key={idx}
+                    src={src}
+                    alt={`Product detail ${idx + 1}`}
+                    className="h-auto w-full"
+                    width={800}
+                    priority={idx === 0} // First image priority
+                  />
                 ))}
               </div>
             </div>
@@ -468,11 +475,13 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <FloatingActionBar 
-        onAddToCart={handleAddToCart}
-        onBuyNow={handleBuyNow}
-        disabled={product.stock === 0}
-      />
+      <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-gray-100 animate-pulse" />}>
+        <FloatingActionBar 
+          onAddToCart={handleAddToCart}
+          onBuyNow={handleBuyNow}
+          disabled={product.stock === 0}
+        />
+      </Suspense>
 
       {/* Toast Notification */}
       {toast && (
