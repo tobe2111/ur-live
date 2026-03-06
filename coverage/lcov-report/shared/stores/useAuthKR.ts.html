@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for sentry-events.ts</title>
+    <title>Code coverage report for shared/stores/useAuthKR.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="prettify.css" />
-    <link rel="stylesheet" href="base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="favicon.png" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(sort-arrow-sprite.png);
+            background-image: url(../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="index.html">All files</a> sentry-events.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">shared/stores</a> useAuthKR.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">45.67% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>37/81</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">88.88% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>8/9</span>
+                <span class='fraction'>0/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>16/16</span>
+                <span class='fraction'>12/24</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">46.47% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>33/71</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -318,91 +318,29 @@
 <a name='L253'></a><a href='#L253'>253</a>
 <a name='L254'></a><a href='#L254'>254</a>
 <a name='L255'></a><a href='#L255'>255</a>
-<a name='L256'></a><a href='#L256'>256</a>
-<a name='L257'></a><a href='#L257'>257</a>
-<a name='L258'></a><a href='#L258'>258</a>
-<a name='L259'></a><a href='#L259'>259</a>
-<a name='L260'></a><a href='#L260'>260</a>
-<a name='L261'></a><a href='#L261'>261</a>
-<a name='L262'></a><a href='#L262'>262</a>
-<a name='L263'></a><a href='#L263'>263</a>
-<a name='L264'></a><a href='#L264'>264</a>
-<a name='L265'></a><a href='#L265'>265</a>
-<a name='L266'></a><a href='#L266'>266</a>
-<a name='L267'></a><a href='#L267'>267</a>
-<a name='L268'></a><a href='#L268'>268</a>
-<a name='L269'></a><a href='#L269'>269</a>
-<a name='L270'></a><a href='#L270'>270</a>
-<a name='L271'></a><a href='#L271'>271</a>
-<a name='L272'></a><a href='#L272'>272</a>
-<a name='L273'></a><a href='#L273'>273</a>
-<a name='L274'></a><a href='#L274'>274</a>
-<a name='L275'></a><a href='#L275'>275</a>
-<a name='L276'></a><a href='#L276'>276</a>
-<a name='L277'></a><a href='#L277'>277</a>
-<a name='L278'></a><a href='#L278'>278</a>
-<a name='L279'></a><a href='#L279'>279</a>
-<a name='L280'></a><a href='#L280'>280</a>
-<a name='L281'></a><a href='#L281'>281</a>
-<a name='L282'></a><a href='#L282'>282</a>
-<a name='L283'></a><a href='#L283'>283</a>
-<a name='L284'></a><a href='#L284'>284</a>
-<a name='L285'></a><a href='#L285'>285</a>
-<a name='L286'></a><a href='#L286'>286</a>
-<a name='L287'></a><a href='#L287'>287</a>
-<a name='L288'></a><a href='#L288'>288</a>
-<a name='L289'></a><a href='#L289'>289</a>
-<a name='L290'></a><a href='#L290'>290</a>
-<a name='L291'></a><a href='#L291'>291</a>
-<a name='L292'></a><a href='#L292'>292</a>
-<a name='L293'></a><a href='#L293'>293</a>
-<a name='L294'></a><a href='#L294'>294</a>
-<a name='L295'></a><a href='#L295'>295</a>
-<a name='L296'></a><a href='#L296'>296</a>
-<a name='L297'></a><a href='#L297'>297</a>
-<a name='L298'></a><a href='#L298'>298</a>
-<a name='L299'></a><a href='#L299'>299</a>
-<a name='L300'></a><a href='#L300'>300</a>
-<a name='L301'></a><a href='#L301'>301</a>
-<a name='L302'></a><a href='#L302'>302</a>
-<a name='L303'></a><a href='#L303'>303</a>
-<a name='L304'></a><a href='#L304'>304</a>
-<a name='L305'></a><a href='#L305'>305</a>
-<a name='L306'></a><a href='#L306'>306</a>
-<a name='L307'></a><a href='#L307'>307</a>
-<a name='L308'></a><a href='#L308'>308</a>
-<a name='L309'></a><a href='#L309'>309</a>
-<a name='L310'></a><a href='#L310'>310</a>
-<a name='L311'></a><a href='#L311'>311</a>
-<a name='L312'></a><a href='#L312'>312</a>
-<a name='L313'></a><a href='#L313'>313</a>
-<a name='L314'></a><a href='#L314'>314</a>
-<a name='L315'></a><a href='#L315'>315</a>
-<a name='L316'></a><a href='#L316'>316</a>
-<a name='L317'></a><a href='#L317'>317</a>
-<a name='L318'></a><a href='#L318'>318</a>
-<a name='L319'></a><a href='#L319'>319</a>
-<a name='L320'></a><a href='#L320'>320</a>
-<a name='L321'></a><a href='#L321'>321</a>
-<a name='L322'></a><a href='#L322'>322</a>
-<a name='L323'></a><a href='#L323'>323</a>
-<a name='L324'></a><a href='#L324'>324</a>
-<a name='L325'></a><a href='#L325'>325</a>
-<a name='L326'></a><a href='#L326'>326</a>
-<a name='L327'></a><a href='#L327'>327</a>
-<a name='L328'></a><a href='#L328'>328</a>
-<a name='L329'></a><a href='#L329'>329</a>
-<a name='L330'></a><a href='#L330'>330</a>
-<a name='L331'></a><a href='#L331'>331</a>
-<a name='L332'></a><a href='#L332'>332</a>
-<a name='L333'></a><a href='#L333'>333</a>
-<a name='L334'></a><a href='#L334'>334</a>
-<a name='L335'></a><a href='#L335'>335</a>
-<a name='L336'></a><a href='#L336'>336</a>
-<a name='L337'></a><a href='#L337'>337</a>
-<a name='L338'></a><a href='#L338'>338</a>
-<a name='L339'></a><a href='#L339'>339</a>
-<a name='L340'></a><a href='#L340'>340</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L256'></a><a href='#L256'>256</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -423,232 +361,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -658,35 +371,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -696,20 +396,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -721,7 +422,142 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">22x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -733,353 +569,265 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * 🎯 Sentry 이벤트 추적 서비스
- * 
- * 비즈니스 로직의 핵심 이벤트를 추적하여 Sentry 대시보드에서 모니터링합니다.
- * 
- * @example
- * // 로그인 시도
- * SentryEvents.loginAttempt('kakao');
- * 
- * // 로그인 성공
- * SentryEvents.loginSuccess('kakao', userId);
- * 
- * // 결제 시도
- * SentryEvents.paymentAttempt('toss', 50000);
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  type User as FirebaseUser,
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+&nbsp;
+/**
+ * ✅ Zustand Store - KR 전용 인증 (Kakao + Firebase Email)
+ * - 순수 함수로 구성 → 테스트 가능
+ * - Context API 불필요 → Hook 규칙 위반 방지
+ * - Selector 지원 → 리렌더 최소화
  */
+interface AuthKRState {
+  // 1️⃣ 상태
+  user: FirebaseUser | null;
+  isLoading: boolean;
+  error: string | null;
+  isAuthReady: boolean;
+  userRole: 'user' | 'seller' | 'admin' | null;
 &nbsp;
-import * as Sentry from '@sentry/react';
+  // 2️⃣ Actions - 순수 함수로 분리
+  setUser: (user: FirebaseUser | null) =&gt; void;
+  setLoading: (loading: boolean) =&gt; void;
+  setError: (error: string | null) =&gt; void;
+  setAuthReady: (ready: boolean) =&gt; void;
 &nbsp;
-export const SentryEvents = {
-  // ==========================================
-  // 🔐 Authentication Events
-  // ==========================================
+  // 3️⃣ 비즈니스 로직 - 비동기 함수
+  loginWithEmail: (email: string, password: string) =&gt; Promise&lt;void&gt;;
+  signupWithEmail: (email: string, password: string, displayName: string) =&gt; Promise&lt;void&gt;;
+  loginWithKakao: () =&gt; Promise&lt;void&gt;;
+  sendPasswordResetEmail: (email: string) =&gt; Promise&lt;void&gt;;
+  logout: () =&gt; Promise&lt;void&gt;;
+  initializeAuth: () =&gt; Promise&lt;void&gt;;
+}
 &nbsp;
-  /**
-   * 로그인 시도
-   */
-  loginAttempt(type: 'kakao' | 'google' | 'email' | 'seller' | 'admin') {
-    Sentry.addBreadcrumb({
-      category: 'auth',
-      message: `Login attempt: ${type}`,
-      level: 'info',
-      data: { type, timestamp: Date.now() }
-    });
-  },
+export const useAuthKR = create&lt;AuthKRState&gt;()(
+  devtools(
+    persist(
+      (set, get) =&gt; ({
+        // 초기 상태
+        user: null,
+        isLoading: true,
+        error: null,
+        isAuthReady: false,
+        userRole: null,
 &nbsp;
-  /**
-   * 로그인 성공
-   */
-  loginSuccess(type: string, userId: string) {
-    Sentry.captureMessage(`Login success: ${type}`, {
-      level: 'info',
-      tags: { 
-        login_type: type, 
-        user_id: userId,
-        event: 'login_success'
-      },
-      contexts: {
-        login: {
-          type,
-          userId,
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
+        // ✅ Setter - 순수 함수
+        setUser: (user) =&gt; set({ user }, false, 'setUser'),
+        setLoading: (isLoading) =&gt; set({ isLoading }, false, 'setLoading'),
+        setError: <span class="fstat-no" title="function not covered" >(e</span>rror) =&gt; <span class="cstat-no" title="statement not covered" >set({ error }, false, 'setError'),</span>
+        setAuthReady: <span class="fstat-no" title="function not covered" >(i</span>sAuthReady) =&gt; <span class="cstat-no" title="statement not covered" >set({ isAuthReady }, false, 'setAuthReady'),</span>
 &nbsp;
-    // 사용자 컨텍스트 설정
-    Sentry.setUser({ id: userId });
-    Sentry.setTag('login_method', type);
-  },
+        // ✅ 이메일 로그인
+        loginWithEmail: async (email, password) =&gt; {
+          try {
+            set({ isLoading: true, error: null });
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 &nbsp;
-  /**
-   * 로그인 실패
-   */
-  loginFailure(type: string, error: Error) {
-    Sentry.captureException(error, {
-      level: 'error',
-      tags: { 
-        login_type: type,
-        event: 'login_failure'
-      },
-      contexts: {
-        login: {
-          type,
-          errorMessage: error.message,
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
-  },
+            // 사용자 역할 조회 (API 호출)
+            const roleResponse = await fetch('/api/users/role', {
+              headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+            });
+            const { role } = await roleResponse.json();
 &nbsp;
-  /**
-   * 로그아웃
-   */
-  logout(userId: string, type: string) {
-    Sentry.addBreadcrumb({
-      category: 'auth',
-      message: `Logout: ${type}`,
-      level: 'info',
-      data: { userId, type }
-    });
-&nbsp;
-    // 사용자 컨텍스트 제거
-    Sentry.setUser(null);
-  },
-&nbsp;
-  // ==========================================
-  // 💳 Payment Events
-  // ==========================================
-&nbsp;
-  /**
-   * 결제 시도
-   */
-  paymentAttempt(method: 'toss' | 'stripe', amount: number, orderId?: string) {
-    Sentry.addBreadcrumb({
-      category: 'payment',
-      message: `Payment attempt: ${method}`,
-      level: 'info',
-      data: { method, amount, orderId, timestamp: Date.now() }
-    });
-  },
-&nbsp;
-  /**
-   * 결제 성공
-   */
-  paymentSuccess(method: string, orderId: string, amount: number) {
-    Sentry.captureMessage('Payment success', {
-      level: 'info',
-      tags: { 
-        payment_method: method, 
-        order_id: orderId,
-        event: 'payment_success'
-      },
-      contexts: {
-        payment: { 
-          method,
-          orderId,
-          amount, 
-          currency: method === 'toss' ? 'KRW' : 'USD',
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
-  },
-&nbsp;
-  /**
-   * 결제 실패
-   */
-  paymentFailure(method: string, error: Error, amount: number, orderId?: string) {
-    Sentry.captureException(error, {
-      level: 'error',
-      tags: { 
-        payment_method: method,
-        event: 'payment_failure'
-      },
-      contexts: {
-        payment: {
-          method,
-          orderId,
-          amount,
-          errorMessage: error.message,
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
-  },
-&nbsp;
-  // ==========================================
-  // 📺 Live Streaming Events
-  // ==========================================
-&nbsp;
-  /**
-   * 라이브 스트림 시작
-   */
-  liveStreamStart(streamId: string, sellerId: string, title: string) {
-    Sentry.captureMessage('Live stream started', {
-      level: 'info',
-      tags: { 
-        stream_id: streamId, 
-        seller_id: sellerId,
-        event: 'live_stream_start'
-      },
-      contexts: {
-        stream: {
-          id: streamId,
-          sellerId,
-          title,
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
-  },
-&nbsp;
-  /**
-   * 라이브 스트림 종료
-   */
-  liveStreamEnd(streamId: string, duration: number, viewerCount: number) {
-    Sentry.addBreadcrumb({
-      category: 'live_stream',
-      message: 'Live stream ended',
-      level: 'info',
-      data: { streamId, duration, viewerCount }
-    });
-  },
-&nbsp;
-  /**
-   * 라이브 스트림 에러
-   */
-  liveStreamError(streamId: string, error: Error) {
-    Sentry.captureException(error, {
-      level: 'error',
-      tags: { 
-        stream_id: streamId,
-        event: 'live_stream_error'
-      },
-      contexts: {
-        stream: {
-          id: streamId,
-          errorMessage: error.message,
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
-  },
-&nbsp;
-  // ==========================================
-  // 📊 Performance Events
-  // ==========================================
-&nbsp;
-  /**
-   * 페이지 로드 시간
-   */
-  pageLoad(pageName: string, loadTime: number) {
-    Sentry.addBreadcrumb({
-      category: 'performance',
-      message: `Page loaded: ${pageName}`,
-      level: 'info',
-      data: { 
-        page: pageName, 
-        load_time_ms: loadTime,
-        timestamp: Date.now()
-      }
-    });
-&nbsp;
-    // 3초 이상 느린 경우 경고
-    if (loadTime &gt; 3000) {
-      Sentry.captureMessage(`Slow page load: ${pageName}`, {
-        level: 'warning',
-        tags: { 
-          page: pageName,
-          event: 'slow_page_load'
-        },
-        contexts: {
-          performance: { 
-            load_time_ms: loadTime,
-            threshold_ms: 3000
+            set({
+              user,
+              userRole: role,
+              isLoading: false,
+              isAuthReady: true,
+              error: null,
+            });
+          } catch (err: any) {
+<span class="cstat-no" title="statement not covered" >            console.error('[useAuthKR] loginWithEmail failed:', err);</span>
+<span class="cstat-no" title="statement not covered" >            set({</span>
+              error: err.message || '로그인 실패',
+              isLoading: false,
+            });
+<span class="cstat-no" title="statement not covered" >            throw err;</span>
           }
-        }
-      });
-    }
-  },
-&nbsp;
-  /**
-   * API 응답 시간
-   */
-  apiResponseTime(endpoint: string, method: string, duration: number, status: number) {
-    Sentry.addBreadcrumb({
-      category: 'api',
-      message: `${method} ${endpoint}`,
-      level: status &gt;= 400 ? <span class="branch-0 cbranch-no" title="branch not covered" >'error' : '</span>info',
-      data: { endpoint, method, duration, status }
-    });
-&nbsp;
-    // 5초 이상 느린 API 경고
-    if (duration &gt; 5000) {
-      Sentry.captureMessage(`Slow API response: ${method} ${endpoint}`, {
-        level: 'warning',
-        tags: { 
-          endpoint,
-          method,
-          event: 'slow_api'
         },
-        contexts: {
-          api: { duration, status, threshold: 5000 }
-        }
-      });
-    }
-  },
 &nbsp;
-  // ==========================================
-  // 🛒 E-commerce Events
-  // ==========================================
+        // ✅ 이메일 회원가입
+        signupWithEmail: async (email, password, displayName) =&gt; {
+          try {
+            set({ isLoading: true, error: null });
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 &nbsp;
-  /**
-   * 장바구니 추가
-   */
-  addToCart(productId: string, quantity: number, price: number) {
-    Sentry.addBreadcrumb({
-      category: 'commerce',
-      message: 'Product added to cart',
-      level: 'info',
-      data: { productId, quantity, price }
-    });
-  },
+            // 사용자 프로필 초기화
+            await fetch('/api/users/init', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${await user.getIdToken()}`,
+              },
+              body: JSON.stringify({ displayName }),
+            });
 &nbsp;
-  /**
-   * 주문 생성
-   */
-  orderCreated(orderId: string, totalAmount: number, itemCount: number) {
-    Sentry.addBreadcrumb({
-      category: 'commerce',
-      message: 'Order created',
-      level: 'info',
-      data: { orderId, totalAmount, itemCount }
-    });
-  },
+            set({
+              user,
+              userRole: 'user',
+              isLoading: false,
+              isAuthReady: true,
+            });
+          } catch (err: any) {
+<span class="cstat-no" title="statement not covered" >            console.error('[useAuthKR] signupWithEmail failed:', err);</span>
+<span class="cstat-no" title="statement not covered" >            set({</span>
+              error: err.message || '회원가입 실패',
+              isLoading: false,
+            });
+<span class="cstat-no" title="statement not covered" >            throw err;</span>
+          }
+        },
 &nbsp;
-  /**
-   * 주문 취소
-   */
-  orderCancelled(orderId: string, reason: string) {
-    Sentry.captureMessage('Order cancelled', {
-      level: 'info',
-      tags: { 
-        order_id: orderId,
-        event: 'order_cancelled'
-      },
-      contexts: {
-        order: { orderId, reason }
+        // ✅ Kakao OAuth 로그인
+        loginWithKakao: <span class="fstat-no" title="function not covered" >async () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >          try {</span>
+<span class="cstat-no" title="statement not covered" >            set({ isLoading: true, error: null });</span>
+&nbsp;
+            // Kakao OAuth 시작 (Redirect 방식)
+            const KAKAO_AUTH_URL = <span class="cstat-no" title="statement not covered" >import.meta.env.VITE_KAKAO_AUTH_URL || '/auth/kakao';</span>
+<span class="cstat-no" title="statement not covered" >            window.location.href = KAKAO_AUTH_URL;</span>
+          } catch (err: any) {
+<span class="cstat-no" title="statement not covered" >            console.error('[useAuthKR] loginWithKakao failed:', err);</span>
+<span class="cstat-no" title="statement not covered" >            set({</span>
+              error: err.message || 'Kakao 로그인 실패',
+              isLoading: false,
+            });
+<span class="cstat-no" title="statement not covered" >            throw err;</span>
+          }
+        },
+&nbsp;
+        // ✅ 비밀번호 재설정
+        sendPasswordResetEmail: async (email) =&gt; {
+          try {
+            set({ isLoading: true, error: null });
+            await firebaseSendPasswordResetEmail(auth, email);
+            set({
+              isLoading: false,
+              error: null,
+            });
+          } catch (err: any) {
+<span class="cstat-no" title="statement not covered" >            console.error('[useAuthKR] sendPasswordResetEmail failed:', err);</span>
+<span class="cstat-no" title="statement not covered" >            set({</span>
+              error: err.message || '비밀번호 재설정 실패',
+              isLoading: false,
+            });
+<span class="cstat-no" title="statement not covered" >            throw err;</span>
+          }
+        },
+&nbsp;
+        // ✅ 로그아웃
+        logout: async () =&gt; {
+          try {
+            set({ isLoading: true, error: null });
+            await firebaseSignOut(auth);
+&nbsp;
+            // 로컬 스토리지 클리어
+            localStorage.removeItem('user');
+            localStorage.removeItem('kakao_token');
+&nbsp;
+            set({
+              user: null,
+              userRole: null,
+              isLoading: false,
+              isAuthReady: true,
+            });
+          } catch (err: any) {
+<span class="cstat-no" title="statement not covered" >            console.error('[useAuthKR] logout failed:', err);</span>
+<span class="cstat-no" title="statement not covered" >            set({</span>
+              error: err.message || '로그아웃 실패',
+              isLoading: false,
+            });
+<span class="cstat-no" title="statement not covered" >            throw err;</span>
+          }
+        },
+&nbsp;
+        // ✅ 인증 초기화 (앱 시작 시 호출)
+        initializeAuth: <span class="fstat-no" title="function not covered" >async () =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >          try {</span>
+<span class="cstat-no" title="statement not covered" >            set({ isLoading: true, error: null });</span>
+&nbsp;
+            // Firebase Auth 상태 확인
+<span class="cstat-no" title="statement not covered" >            return new Promise&lt;void&gt;(<span class="fstat-no" title="function not covered" >(r</span>esolve) =&gt; {</span>
+              const unsubscribe = <span class="cstat-no" title="statement not covered" >auth.onAuthStateChanged(<span class="fstat-no" title="function not covered" >async (u</span>ser) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >                if (user) {</span>
+                  // 사용자 역할 조회
+<span class="cstat-no" title="statement not covered" >                  try {</span>
+                    const roleResponse = <span class="cstat-no" title="statement not covered" >await fetch('/api/users/role', {</span>
+                      headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+                    });
+                    const { role } = <span class="cstat-no" title="statement not covered" >await roleResponse.json();</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >                    set({</span>
+                      user,
+                      userRole: role,
+                      isLoading: false,
+                      isAuthReady: true,
+                    });
+                  } catch (err) {
+<span class="cstat-no" title="statement not covered" >                    console.error('[useAuthKR] Failed to fetch user role:', err);</span>
+<span class="cstat-no" title="statement not covered" >                    set({</span>
+                      user,
+                      userRole: 'user', // 기본값
+                      isLoading: false,
+                      isAuthReady: true,
+                    });
+                  }
+                } else {
+<span class="cstat-no" title="statement not covered" >                  set({</span>
+                    user: null,
+                    userRole: null,
+                    isLoading: false,
+                    isAuthReady: true,
+                  });
+                }
+<span class="cstat-no" title="statement not covered" >                unsubscribe();</span>
+<span class="cstat-no" title="statement not covered" >                resolve();</span>
+              });
+            });
+          } catch (err: any) {
+<span class="cstat-no" title="statement not covered" >            console.error('[useAuthKR] initializeAuth failed:', err);</span>
+<span class="cstat-no" title="statement not covered" >            set({</span>
+              error: err.message || '인증 초기화 실패',
+              isLoading: false,
+              isAuthReady: true,
+            });
+<span class="cstat-no" title="statement not covered" >            throw err;</span>
+          }
+        },
+      }),
+      {
+        name: 'auth-kr-storage', // localStorage 키
+        partialize: (state) =&gt; ({
+          user: state.user,
+          userRole: state.userRole,
+        }),
       }
-    });
-  },
+    ),
+    { name: 'AuthKR Store' }
+  )
+);
 &nbsp;
-  // ==========================================
-  // 🔔 Custom Business Events
-  // ==========================================
-&nbsp;
-  /**
-   * 커스텀 이벤트 (범용)
-   */
-  custom(eventName: string, data?: Record&lt;string, any&gt;, level: 'info' | 'warning' | 'error' = 'info') {
-    Sentry.captureMessage(eventName, {
-      level,
-      tags: { event: 'custom' },
-      contexts: {
-        custom: { ...data, timestamp: new Date().toISOString() }
-      }
-    });
-  }
-};
+// ✅ Selector 예시 (리렌더 최소화)
+export const useAuthKRUser = () =&gt; useAuthKR((state) =&gt; state.user);
+export const useAuthKRLoading = () =&gt; useAuthKR((state) =&gt; state.isLoading);
+export const useAuthKRError = <span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >u</span>seAuthKR(<span class="fstat-no" title="function not covered" >(s</span>tate) =&gt; <span class="cstat-no" title="statement not covered" >state.error)</span>;</span>
+export const useAuthKRRole = <span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >u</span>seAuthKR(<span class="fstat-no" title="function not covered" >(s</span>tate) =&gt; <span class="cstat-no" title="statement not covered" >state.userRole)</span>;</span>
+export const useAuthKRReady = <span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >u</span>seAuthKR(<span class="fstat-no" title="function not covered" >(s</span>tate) =&gt; <span class="cstat-no" title="statement not covered" >state.isAuthReady)</span>;</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -1087,16 +835,16 @@ export const SentryEvents = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-06T03:28:33.124Z
+                at 2026-03-06T03:36:58.640Z
             </div>
-        <script src="prettify.js"></script>
+        <script src="../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="sorter.js"></script>
-        <script src="block-navigation.js"></script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
     </body>
 </html>
     
