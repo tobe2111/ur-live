@@ -1,14 +1,20 @@
 /**
  * 🔐 Login Flow Service
  * 
- * 모든 로그인 관련 로직을 여기에 집중
- * - Kakao 로그인
- * - Firebase Custom Token 처리
- * - Token 갱신
+ * 4가지 로그인 방식을 모두 지원:
+ * 1. 일반 사용자 - Kakao/Google OAuth + Firebase
+ * 2. 셀러 - 이메일/비밀번호 + JWT
+ * 3. 어드민 - 이메일/비밀번호 + JWT
+ * 4. Custom Token - Firebase Custom Token 직접 처리
  */
 
 import { signInWithCustomToken } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import api from '@/lib/api'
+
+// ============================================
+// 1. 일반 사용자 로그인 (Firebase)
+// ============================================
 
 /**
  * 카카오 액세스 토큰으로 Firebase 로그인
@@ -74,18 +80,129 @@ export async function loginWithFirebaseToken(firebaseToken: string): Promise<voi
   }
 }
 
+// ============================================
+// 2. 셀러 로그인 (JWT)
+// ============================================
+
+export interface SellerLoginResponse {
+  token: string
+  user: {
+    id: number
+    email: string
+    name: string
+    role: 'seller'
+  }
+}
+
 /**
- * 로그아웃
+ * 셀러 이메일/비밀번호 로그인
+ */
+export async function loginSeller(email: string, password: string): Promise<SellerLoginResponse> {
+  console.log('[LoginFlow] 🏪 셀러 로그인 시작:', email)
+  
+  try {
+    const response = await api.post('/auth/seller/login', {
+      email,
+      password,
+    })
+
+    const data = response.data as SellerLoginResponse
+    
+    // JWT 토큰 저장
+    if (data.token) {
+      localStorage.setItem('seller_token', data.token)
+      localStorage.setItem('user_type', 'seller')
+      console.log('[LoginFlow] ✅ 셀러 로그인 성공:', data.user.email)
+    } else {
+      throw new Error('No token received')
+    }
+
+    return data
+  } catch (error: any) {
+    console.error('[LoginFlow] ❌ 셀러 로그인 실패:', error)
+    
+    // 에러 메시지 정리
+    const message = error.response?.data?.message || error.message || '로그인에 실패했습니다'
+    throw new Error(message)
+  }
+}
+
+// ============================================
+// 3. 어드민 로그인 (JWT)
+// ============================================
+
+export interface AdminLoginResponse {
+  token: string
+  user: {
+    id: number
+    email: string
+    name: string
+    role: 'admin'
+  }
+}
+
+/**
+ * 어드민 이메일/비밀번호 로그인
+ */
+export async function loginAdmin(email: string, password: string): Promise<AdminLoginResponse> {
+  console.log('[LoginFlow] 👔 어드민 로그인 시작:', email)
+  
+  try {
+    const response = await api.post('/auth/admin/login', {
+      email,
+      password,
+    })
+
+    const data = response.data as AdminLoginResponse
+    
+    // JWT 토큰 저장
+    if (data.token) {
+      localStorage.setItem('admin_token', data.token)
+      localStorage.setItem('user_type', 'admin')
+      console.log('[LoginFlow] ✅ 어드민 로그인 성공:', data.user.email)
+    } else {
+      throw new Error('No token received')
+    }
+
+    return data
+  } catch (error: any) {
+    console.error('[LoginFlow] ❌ 어드민 로그인 실패:', error)
+    
+    // 에러 메시지 정리
+    const message = error.response?.data?.message || error.message || '로그인에 실패했습니다'
+    throw new Error(message)
+  }
+}
+
+// ============================================
+// 4. 로그아웃 (통합)
+// ============================================
+
+/**
+ * 통합 로그아웃 - 모든 인증 정보 제거
  */
 export async function logout(): Promise<void> {
   console.log('[LoginFlow] 🚪 로그아웃 시작')
   
   try {
-    await auth.signOut()
+    // 1. Firebase 로그아웃
+    try {
+      await auth.signOut()
+      console.log('[LoginFlow] ✅ Firebase 로그아웃 완료')
+    } catch (err) {
+      console.warn('[LoginFlow] ⚠️ Firebase 로그아웃 실패 (무시):', err)
+    }
     
-    // localStorage 정리
-    localStorage.removeItem('user_name')
-    localStorage.removeItem('loginReturnUrl')
+    // 2. localStorage 정리
+    const keysToRemove = [
+      'user_name',
+      'loginReturnUrl',
+      'seller_token',
+      'admin_token',
+      'user_type',
+    ]
+    
+    keysToRemove.forEach(key => localStorage.removeItem(key))
     
     console.log('[LoginFlow] ✅ 로그아웃 완료')
   } catch (error) {
@@ -93,3 +210,37 @@ export async function logout(): Promise<void> {
     throw error
   }
 }
+
+// ============================================
+// 5. 유틸리티 함수
+// ============================================
+
+/**
+ * 현재 로그인 타입 확인
+ */
+export function getLoginType(): 'user' | 'seller' | 'admin' | null {
+  const userType = localStorage.getItem('user_type')
+  
+  if (userType === 'seller' && localStorage.getItem('seller_token')) {
+    return 'seller'
+  }
+  
+  if (userType === 'admin' && localStorage.getItem('admin_token')) {
+    return 'admin'
+  }
+  
+  if (auth.currentUser) {
+    return 'user'
+  }
+  
+  return null
+}
+
+/**
+ * JWT 토큰 가져오기
+ */
+export function getJWTToken(type: 'seller' | 'admin'): string | null {
+  const key = type === 'seller' ? 'seller_token' : 'admin_token'
+  return localStorage.getItem(key)
+}
+
