@@ -6,6 +6,7 @@ import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import OptionSelectModal from '@/components/OptionSelectModal'
+import { useCart, useUpdateCartQuantity, useRemoveFromCart } from '@/hooks/useCart'
 
 interface CartItem {
   id: number
@@ -96,8 +97,13 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
 export default function CartPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
-  const [loading, setLoading] = useState(true)
+  
+  // 🎯 React Query 훅 사용
+  const { data: cartData, isLoading: loading, refetch } = useCart()
+  const updateQuantityMutation = useUpdateCartQuantity()
+  const removeItemMutation = useRemoveFromCart()
+  
+  const cartItems = cartData?.items || []
   const [updating, setUpdating] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   
@@ -167,35 +173,23 @@ export default function CartPage() {
       console.log('[CartPage] ✅ JWT 파라미터 정리 완료')
     }
     
-    loadCart()
-  }, [])
-
-  async function loadCart() {
-    try {
-      if (!isLoggedIn()) {
-        requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
-        return
-      }
-      
-      const userId = getUserId()
-      if (!userId) {
-        requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
-        return
-      }
-
-      const response = await api.get(`/api/cart`)
-      const items = response.data?.data || []
-      setCartItems(items)
-      setSelectedIds(new Set(items.map((item: CartItem) => item.id)))
-      
-      localStorage.setItem('hasCartItems', items.length > 0 ? 'true' : 'false')
-    } catch (error) {
-      console.error('Failed to load cart:', error)
-      showAlert('장바구니를 불러오는데 실패했습니다.', 'error', '오류')
-    } finally {
-      setLoading(false)
+    // ✅ React Query가 자동으로 데이터 로딩
+    if (!isLoggedIn()) {
+      requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
     }
-  }
+  }, [])
+  
+  // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      setSelectedIds(new Set(cartItems.map((item: CartItem) => item.id)))
+      localStorage.setItem('hasCartItems', 'true')
+    } else {
+      localStorage.setItem('hasCartItems', 'false')
+    }
+  }, [cartItems])
+
+  // ✅ loadCart 함수 삭제 - React Query가 자동 처리
 
   const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
 
@@ -219,6 +213,7 @@ export default function CartPage() {
     })
   }, [])
 
+  // 🎯 React Query mutation으로 수량 변경
   async function updateQuantity(cartItemId: number, delta: number) {
     const item = cartItems.find(i => i.id === cartItemId)
     if (!item) return
@@ -229,8 +224,11 @@ export default function CartPage() {
 
     setUpdating(true)
     try {
-      await api.put(`/api/cart/${cartItemId}`, { quantity: newQuantity })
-      await loadCart()
+      await updateQuantityMutation.mutateAsync({
+        itemId: String(cartItemId),
+        quantity: newQuantity
+      })
+      // ✅ React Query가 자동으로 캐시 업데이트
     } catch (error: any) {
       console.error('Failed to update quantity:', error)
       showAlert(
@@ -243,6 +241,7 @@ export default function CartPage() {
     }
   }
 
+  // 🎯 React Query mutation으로 아이템 삭제
   async function removeItem(cartItemId: number) {
     if (updating) return
 
@@ -251,8 +250,8 @@ export default function CartPage() {
       async () => {
         setUpdating(true)
         try {
-          await api.delete(`/api/cart/${cartItemId}`)
-          await loadCart()
+          await removeItemMutation.mutateAsync(String(cartItemId))
+          // ✅ React Query가 자동으로 캐시 업데이트
           showAlert('상품이 삭제되었습니다.', 'success', '삭제 완료')
         } catch (error: any) {
           console.error('Failed to remove item:', error)
@@ -290,7 +289,7 @@ export default function CartPage() {
     setUpdating(true)
     try {
       await api.put(`/api/cart/${optionModal.cartItemId}`, { option_id: optionId })
-      await loadCart()
+      refetch() // ✅ React Query refetch
       showAlert('옵션이 변경되었습니다.', 'success', '변경 완료')
     } catch (error: any) {
       console.error('Failed to change option:', error)
@@ -312,10 +311,13 @@ export default function CartPage() {
       async () => {
         setUpdating(true)
         try {
-          for (const id of selectedIds) {
-            await api.delete(`/api/cart/${id}`)
-          }
-          await loadCart()
+          // 🎯 병렬 삭제로 성능 개선
+          await Promise.all(
+            Array.from(selectedIds).map(id => 
+              removeItemMutation.mutateAsync(String(id))
+            )
+          )
+          // ✅ React Query가 자동으로 캐시 업데이트
           showAlert('선택한 상품이 삭제되었습니다.', 'success', '삭제 완료')
         } catch (error: any) {
           console.error('Failed to delete selected:', error)
@@ -330,7 +332,7 @@ export default function CartPage() {
       },
       '선택 삭제'
     )
-  }, [selectedIds])
+  }, [selectedIds, removeItemMutation])
 
   const { totalItems, subtotal } = useMemo(() => {
     let count = 0
