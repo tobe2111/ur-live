@@ -93,16 +93,62 @@ export default defineConfig(({ mode }) => {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        // 🔥 CRITICAL FIX: React를 vendor에 포함하여 로딩 순서 보장
+        // 🔥 성능 최적화: 세분화된 청크 전략 (1.13MB → 500KB 목표)
         manualChunks: (id) => {
-          // 🎯 Firebase → 별도 chunk
-          if (id.includes('node_modules/firebase/') ||
-              id.includes('node_modules/@firebase/')) {
-            return 'firebase'
+          // 🎯 React 코어 라이브러리 (가장 높은 우선순위)
+          if (id.includes('node_modules/react/') || 
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')) {
+            return 'react-core'
           }
           
-          // 🎯 모든 node_modules (React 포함) → vendor chunk
-          // React를 별도 chunk로 분리하지 않고 vendor에 포함
+          // 🎯 React 라우터 (페이지 네비게이션)
+          if (id.includes('node_modules/react-router') ||
+              id.includes('node_modules/@remix-run/')) {
+            return 'react-router'
+          }
+          
+          // 🎯 Firebase Auth (인증만 분리)
+          if (id.includes('node_modules/firebase/auth') ||
+              id.includes('node_modules/@firebase/auth')) {
+            return 'firebase-auth'
+          }
+          
+          // 🎯 Firebase 기타 (app, database 등)
+          if (id.includes('node_modules/firebase/') ||
+              id.includes('node_modules/@firebase/')) {
+            return 'firebase-core'
+          }
+          
+          // 🎯 UI 라이브러리 (아이콘, 유틸리티)
+          if (id.includes('node_modules/lucide-react') ||
+              id.includes('node_modules/react-icons') ||
+              id.includes('node_modules/clsx') ||
+              id.includes('node_modules/class-variance-authority')) {
+            return 'ui-libs'
+          }
+          
+          // 🎯 상태 관리 (Zustand, Jotai 등)
+          if (id.includes('node_modules/zustand') ||
+              id.includes('node_modules/jotai') ||
+              id.includes('node_modules/immer')) {
+            return 'state-management'
+          }
+          
+          // 🎯 국제화 (i18next)
+          if (id.includes('node_modules/i18next') ||
+              id.includes('node_modules/react-i18next')) {
+            return 'i18n'
+          }
+          
+          // 🎯 유틸리티 라이브러리 (date-fns, lodash 등)
+          if (id.includes('node_modules/date-fns') ||
+              id.includes('node_modules/lodash') ||
+              id.includes('node_modules/dayjs')) {
+            return 'utils'
+          }
+          
+          // 🎯 나머지 node_modules → vendor
           if (id.includes('node_modules/')) {
             return 'vendor'
           }
@@ -112,8 +158,8 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    // 청크 크기 경고 임계값
-    chunkSizeWarningLimit: 1000,  // 500 → 1000 (단순화로 인한 크기 증가 허용)
+    // 청크 크기 경고 임계값 (세분화 후 각 청크는 500KB 미만 목표)
+    chunkSizeWarningLimit: 500,  // 더 작은 청크로 분할 권장
   },
   }
 })

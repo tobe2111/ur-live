@@ -6,6 +6,8 @@ import { getUserId } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
+// ✅ React Query Hook
+import { useProduct, useProductOptions } from '@/hooks/useProduct'
 
 // Import KREAM-style components
 import { MobileHeader } from '@/components/product/mobile-header'
@@ -55,17 +57,16 @@ export default function ProductDetailPage() {
   // ✅ Selector로 필요한 상태만 구독
   const user = useAuth(state => state.user)
   const isLoggedIn = !!user
-  const [product, setProduct] = useState<Product | null>(null)
-  const [options, setOptions] = useState<ProductOption[]>([])
+  
+  // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
+  const { data: product, isLoading, error } = useProduct(id)
+  const { data: options = [] } = useProductOptions(id)
+  
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
   const [quantity, setQuantity] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
-    loadProduct()
-    
     const referrer = document.referrer
     if (referrer && !referrer.includes('/login') && !referrer.includes('/auth/kakao')) {
       try {
@@ -76,24 +77,6 @@ export default function ProductDetailPage() {
       }
     }
   }, [id])
-
-  async function loadProduct() {
-    try {
-      setLoading(true)
-      const response = await api.get(`/api/products/${id}`)
-      if (response.data.success && response.data.data) {
-        setProduct(response.data.data.product)
-        setOptions(response.data.data.options || [])
-      } else {
-        setError('상품을 불러올 수 없습니다.')
-      }
-    } catch (err) {
-      console.error('Failed to load product:', err)
-      setError('상품을 불러올 수 없습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setToast({ message, type })
@@ -193,7 +176,7 @@ export default function ProductDetailPage() {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return <ProductDetailSkeleton />
   }
 
@@ -201,7 +184,7 @@ export default function ProductDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">{error || '상품을 찾을 수 없습니다.'}</p>
+          <p className="text-sm text-muted-foreground">{error?.message || '상품을 찾을 수 없습니다.'}</p>
           <button 
             onClick={() => navigate('/')}
             className="mt-4 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"

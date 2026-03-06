@@ -6,6 +6,7 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
+import { QueryProvider } from './lib/react-query'
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -195,19 +196,21 @@ function AppContent() {
 
 // ✅ App 컴포넌트: BrowserRouter 최상위 배치 (AuthProvider 제거)
 function App() {
-  console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand)')
+  console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand + React Query)')
   
   return (
     <ErrorBoundary>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
-        <AppContent />
-      </BrowserRouter>
+      <QueryProvider>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
+          <AppContent />
+        </BrowserRouter>
+      </QueryProvider>
     </ErrorBoundary>
   )
 }
