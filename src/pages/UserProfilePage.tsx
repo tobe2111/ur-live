@@ -45,13 +45,13 @@ export default function UserProfilePage() {
             .then(() => console.log('[UserProfilePage] 🔥 ID Token 강제 갱신 완료 (백그라운드)'))
             .catch((err) => console.warn('[UserProfilePage] ⚠️ Token 갱신 실패 (무시):', err))
           
-          // URL에서 토큰 제거 (무한 루프 방지)
-          const newUrl = new URL(window.location.href)
-          newUrl.searchParams.delete('firebase_token')
-          newUrl.searchParams.delete('userName')
-          window.history.replaceState({}, '', newUrl.toString())
-          
+          // ✅ React Router의 navigate로 URL 정리 (무한 루프 방지)
+          console.log('[UserProfilePage] 🧹 URL 정리 중 (firebase_token 제거)...')
           setIsProcessingToken(false)
+          
+          // navigate를 사용해 React Router가 인식하도록 함
+          navigate('/user/profile', { replace: true })
+          console.log('[UserProfilePage] ✅ URL 정리 완료')
         })
         .catch((error) => {
           console.error('[UserProfilePage] ❌ Firebase 로그인 실패:', error)
