@@ -182,3 +182,44 @@ export function useClearCart() {
     },
   })
 }
+
+// 🎯 장바구니 옵션 변경
+export function useUpdateCartOption() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ itemId, optionId }: { itemId: string; optionId: number }) => {
+      const response = await api.put(`/api/cart/${itemId}`, { option_id: optionId })
+      return response.data
+    },
+
+    onMutate: async ({ itemId, optionId }) => {
+      await queryClient.cancelQueries({ queryKey: ['cart'] })
+      const previousCart = queryClient.getQueryData<Cart>(['cart'])
+
+      queryClient.setQueryData<Cart>(['cart'], (old) => {
+        if (!old) return old
+
+        return {
+          ...old,
+          items: old.items.map((item) =>
+            item.id === itemId ? { ...item, option_id: optionId } : item
+          ),
+        }
+      })
+
+      return { previousCart }
+    },
+
+    onError: (err, variables, context) => {
+      if (context?.previousCart) {
+        queryClient.setQueryData(['cart'], context.previousCart)
+      }
+      console.error('❌ 옵션 변경 실패:', err)
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] })
+    },
+  })
+}
