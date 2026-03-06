@@ -9,6 +9,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
 import { getUserName, getUserId, saveUserInfo, logout } from '@/utils/auth'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import { useLiveStreams } from '@/hooks/useLiveStream'
 
 interface Stream {
   id: number
@@ -55,10 +56,11 @@ interface Banner {
 }
 
 export default function HomePage() {
-  const [streams, setStreams] = useState<Stream[]>([])
+  // React Query로 스트림 데이터 가져오기 (30초마다 자동 갱신)
+  const { data: liveStreamsData, isLoading: streamsLoading } = useLiveStreams()
+  
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
   const [banners, setBanners] = useState<Banner[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('viewers')
@@ -70,6 +72,21 @@ export default function HomePage() {
   // 검색 자동완성 상태
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // React Query 데이터를 로컬 형식으로 변환
+  const streams = (liveStreamsData || []).map((s: any) => ({
+    id: parseInt(s.id) || 0,
+    title: s.title || '',
+    description: s.description || '',
+    youtube_video_id: s.stream_url || '',
+    platform: 'youtube',
+    thumbnail_url: s.thumbnail_url,
+    seller_name: s.seller_name || '',
+    seller_profile_image: '',
+    viewer_count: s.viewer_count || 0,
+    status: s.status as 'live' | 'scheduled' | 'ended',
+    scheduled_start_time: s.scheduled_at,
+  })) as Stream[]
 
   // 카카오 로그인 콜백 처리
   useEffect(() => {
@@ -99,17 +116,10 @@ export default function HomePage() {
       showAlert(`환영합니다, ${decodeURIComponent(userName)}님!`, 'success', '로그인 성공')
     }
     
-    loadStreams()
+    // React Query가 자동으로 스트림 로딩 & 30초마다 갱신
     loadScheduledStreams()
     loadBanners()
     loadUserInfo()
-    
-    // 실시간 업데이트: 30초마다 라이브 스트림 새로고침
-    const intervalId = setInterval(() => {
-      loadStreams()
-    }, 30000) // 30초
-    
-    return () => clearInterval(intervalId)
   }, [searchParams])
 
   function loadUserInfo() {
@@ -137,29 +147,6 @@ export default function HomePage() {
     setUser(null)
     showAlert('로그아웃되었습니다.', 'success', '로그아웃 완료')
     setTimeout(() => navigate('/'), 1500)
-  }
-
-  async function loadStreams() {
-    try {
-      console.log('[HomePage] Loading streams...')
-      setLoading(true)
-      const response = await api.get('/api/streams')
-      console.log('[HomePage] API Response:', response.data)
-      if (response.data.success) {
-        const activeStreams = (response.data.data || []).filter(
-          (s: Stream) => s.status === 'live' || s.status === 'scheduled'
-        )
-        console.log('[HomePage] Active streams (live + scheduled):', activeStreams.length)
-        setStreams(activeStreams)
-      } else {
-        showAlert('라이브 방송 목록을 불러오지 못했습니다.', 'error')
-      }
-    } catch (error) {
-      console.error('[HomePage] Failed to load streams:', error)
-      showAlert('라이브 방송 목록을 불러오는 중 오류가 발생했습니다.', 'error')
-    } finally {
-      setLoading(false)
-    }
   }
 
   async function loadBanners() {
@@ -629,7 +616,7 @@ export default function HomePage() {
             )}
           </div>
 
-          {loading ? (
+          {streamsLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="animate-pulse">

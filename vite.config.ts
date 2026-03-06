@@ -135,6 +135,17 @@ export default defineConfig(({ mode }) => {
             return 'state-management'
           }
           
+          // 🎯 React Query (데이터 페칭 & 캐싱)
+          if (id.includes('node_modules/@tanstack/react-query') ||
+              id.includes('node_modules/@tanstack/query-core')) {
+            return 'react-query'
+          }
+          
+          // 🎯 Sentry (에러 추적)
+          if (id.includes('node_modules/@sentry/')) {
+            return 'sentry'
+          }
+          
           // 🎯 국제화 (i18next)
           if (id.includes('node_modules/i18next') ||
               id.includes('node_modules/react-i18next')) {
@@ -146,6 +157,11 @@ export default defineConfig(({ mode }) => {
               id.includes('node_modules/lodash') ||
               id.includes('node_modules/dayjs')) {
             return 'utils'
+          }
+          
+          // 🎯 HTTP 클라이언트 (Axios)
+          if (id.includes('node_modules/axios')) {
+            return 'http-client'
           }
           
           // 🎯 나머지 node_modules → vendor

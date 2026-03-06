@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { ArrowLeft, Search, Package, AlertCircle, Loader2 } from 'lucide-react'
 import MobileFooter from '@/components/MobileFooter'
 import BottomNav from '@/components/main/BottomNav'
+import { useSearch } from '@/hooks/useSearch'
 
 interface Product {
   id: number
@@ -36,8 +37,9 @@ export default function SearchPage() {
   const navigate = useNavigate()
   const query = searchParams.get('q') || ''
   
-  const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
-  const [loading, setLoading] = useState(true)
+  // React Query 훅 사용 (2글자 이상만 검색)
+  const { data: searchResult, isLoading: loading, isError } = useSearch(query)
+  
   const [error, setError] = useState('')
   const [inputValue, setInputValue] = useState(query)
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
@@ -48,12 +50,12 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (query) {
-      performSearch()
       setInputValue(query)
-    } else {
-      setLoading(false)
     }
-  }, [query])
+    if (isError) {
+      setError('검색 중 오류가 발생했습니다')
+    }
+  }, [query, isError])
 
   // 외부 클릭 감지
   useEffect(() => {
@@ -89,28 +91,6 @@ export default function SearchPage() {
 
     return () => clearTimeout(debounceTimer)
   }, [inputValue])
-
-  const performSearch = async () => {
-    setLoading(true)
-    setError('')
-    
-    try {
-      const response = await api.get('/api/products/search', {
-        params: { q: query, limit: 20, offset: 0 }
-      })
-      
-      if (response.data.success) {
-        setSearchResult(response.data.data)
-      } else {
-        setError(response.data.error || '검색에 실패했습니다')
-      }
-    } catch (err: any) {
-      console.error('Search error:', err)
-      setError(err.response?.data?.error || '검색 중 오류가 발생했습니다')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const getDiscountedPrice = (price: number, discountRate: number) => {
     return Math.floor(price * (1 - discountRate / 100))
