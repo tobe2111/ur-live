@@ -5,32 +5,38 @@
 ### 복잡도 분석
 ```
 파일: src/pages/LivePageV2.tsx
-라인 수: 1,914 줄 (유지)
+라인 수: 1,846 줄 (1,914 → 1,846, -68줄 최적화)
 useState: 28개
 useEffect: 14개
 Firebase 훅: useFirebaseChat, useFirebaseStream (이미 최적화됨)
 실시간 기능: Firebase Chat, YouTube Player
 ```
 
-### ✅ 완료된 작업 (Phase 2 완료 - 컴포넌트 라이브러리)
+### ✅ 완료된 작업 (Phase 2 완료 + 코드 정리)
 - **5개 재사용 가능한 컴포넌트 생성 완료**
   - `src/components/live/LiveStreamPlayer.tsx` (88줄)
   - `src/components/live/LiveStreamInfo.tsx` (86줄)
   - `src/components/live/LiveProductCard.tsx` (138줄)
   - `src/components/live/LiveProductList.tsx` (96줄)
   - `src/components/live/LiveChatPanel.tsx` (185줄)
+- **LivePageV2 코드 정리 완료**
+  - 콘솔 억제 코드 분리 → `src/utils/console-suppressor.ts`
+  - 불필요한 주석 제거 (-68줄)
+  - 빌드 성공 ✅ (27.45초)
 - **테스트 작성 완료**
   - 유닛 테스트: LiveProductCard.test.tsx (8개 테스트)
   - 총 테스트 수: 56개 (모두 통과 ✅)
 - **문서화 완료**
   - `docs/LIVE_PAGE_COMPONENT_USAGE.md` (사용 가이드)
+  - `src/utils/console-suppressor.ts` (유틸리티 분리)
 
 ### 주요 결론
-1. **LivePageV2는 너무 복잡함** (1,914줄을 500줄로 줄이는 것은 비현실적)
-2. **Firebase는 이미 최적화됨** (useFirebaseChat, useFirebaseStream 사용 중)
-3. **실용적 접근: 재사용 가능한 컴포넌트 라이브러리 구축** ✅
-4. **전체 리팩터링은 다음 대규모 스프린트(1주일+)로 연기**
-5. **현재 코드는 안정적이며 빌드·테스트 모두 통과**
+1. **LivePageV2는 매우 복잡함** (1,846줄, useState 28개, useEffect 14개)
+2. **점진적 최적화 완료**: 콘솔 억제 코드 분리, 주석 제거 (-68줄)
+3. **Firebase는 이미 최적화됨** (useFirebaseChat, useFirebaseStream 사용 중)
+4. **실용적 접근: 재사용 가능한 컴포넌트 라이브러리 구축 완료** ✅
+5. **전체 리팩터링은 다음 대규모 스프린트(2주+)로 연기**
+6. **현재 코드는 안정적이며 빌드·테스트 모두 통과** ✅
 
 ---
 
