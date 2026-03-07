@@ -195,4 +195,101 @@ export class ProductRepository {
       UPDATE products SET status = 'deleted', updated_at = datetime('now') WHERE id = ?
     `).bind(id).run();
   }
+  
+  /**
+   * Full-Text Search (FTS5) - 고성능 검색
+   */
+  async searchByText(
+    query: string,
+    filter: Omit<ProductFilter, 'search'>,
+    offset: number = 0,
+    limit: number = 20
+  ): Promise<Product[]> {
+    // FTS5 쿼리 구성
+    let ftsQuery = `
+      SELECT p.* 
+      FROM products p
+      JOIN products_fts fts ON p.id = fts.product_id
+      WHERE products_fts MATCH ?
+      AND p.status != 'deleted'
+    `;
+    
+    const params: any[] = [query];
+    
+    // 추가 필터 적용
+    if (filter.sellerId) {
+      ftsQuery += ` AND p.seller_id = ?`;
+      params.push(filter.sellerId);
+    }
+    
+    if (filter.category) {
+      ftsQuery += ` AND p.category = ?`;
+      params.push(filter.category);
+    }
+    
+    if (filter.status) {
+      ftsQuery += ` AND p.status = ?`;
+      params.push(filter.status);
+    }
+    
+    if (filter.minPrice !== undefined) {
+      ftsQuery += ` AND p.price >= ?`;
+      params.push(filter.minPrice);
+    }
+    
+    if (filter.maxPrice !== undefined) {
+      ftsQuery += ` AND p.price <= ?`;
+      params.push(filter.maxPrice);
+    }
+    
+    // 관련도 순으로 정렬 (BM25 알고리즘)
+    ftsQuery += ` ORDER BY bm25(products_fts) LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+    
+    try {
+      const result = await this.db.prepare(ftsQuery).bind(...params).all<Product>();
+      return result.results || [];
+    } catch (error) {
+      // FTS 테이블이 없으면 기존 LIKE 검색으로 폴백
+      console.warn('[ProductRepository] FTS search failed, falling back to LIKE search:', error);
+      return this.findAll({ ...filter, search: query }, offset, limit);
+    }
+  }
+  
+  /**
+   * 검색 통계 기록
+   */
+  async logSearch(userId: number | null, searchQuery: string, resultsCount: number): Promise<void> {
+    try {
+      await this.db.prepare(`
+        INSERT INTO search_logs (user_id, search_query, results_count, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+      `).bind(userId, searchQuery, resultsCount).run();
+    } catch (error) {
+      console.error('[ProductRepository] Failed to log search:', error);
+    }
+  }
+  
+  /**
+   * 인기 검색어 조회
+   */
+  async getPopularSearches(limit: number = 10, days: number = 7): Promise<Array<{ query: string; count: number }>> {
+    try {
+      const result = await this.db.prepare(`
+        SELECT 
+          search_query as query,
+          COUNT(*) as count
+        FROM search_logs
+        WHERE created_at > datetime('now', '-' || ? || ' days')
+        GROUP BY search_query
+        ORDER BY count DESC
+        LIMIT ?
+      `).bind(days, limit).all<{ query: string; count: number }>();
+      
+      return result.results || [];
+    } catch (error) {
+      console.error('[ProductRepository] Failed to get popular searches:', error);
+      return [];
+    }
+  }
 }
