@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Cloudflare Pages](https://img.shields.io/badge/deploy-Cloudflare%20Pages-orange.svg)](https://pages.cloudflare.com/)
+[![Test Coverage](https://img.shields.io/badge/coverage-27%25-yellow.svg)](./docs/TESTING_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-254%20passing-brightgreen.svg)](./docs/TESTING_COVERAGE.md)
 
 ---
 
@@ -110,6 +112,7 @@ npm run preview
 |----------|-------------|
 | [MULTI_REGION_SETUP.md](./MULTI_REGION_SETUP.md) | 전체 설정 가이드 (Step 1-4) |
 | [TESTING_GUIDE.md](./TESTING_GUIDE.md) | 로컬 & 결제 테스트 가이드 |
+| [TESTING_COVERAGE.md](./docs/TESTING_COVERAGE.md) | 테스트 커버리지 리포트 |
 | [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | Cloudflare Pages 배포 가이드 |
 | [MULTI_REGION_QUICKSTART.md](./MULTI_REGION_QUICKSTART.md) | 빠른 시작 가이드 |
 
@@ -203,7 +206,40 @@ Proxy: ✅ Proxied
 
 ## 🧪 Testing
 
-### Stripe Test Cards
+### Unit Tests
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Generate coverage report
+npm run test:unit:coverage
+
+# View coverage in browser
+open coverage/index.html
+```
+
+### Test Coverage
+- **Total Tests**: 254 tests (100% pass rate)
+- **Component Coverage**: 17/63 components tested (27%)
+- **Average Test Duration**: ~10.43s
+
+#### Coverage by Component Group
+| Group | Tests | Components | Coverage |
+|-------|-------|------------|----------|
+| Home | 39 | 4 | 100% |
+| Search | 52 | 4 | 90% |
+| Browse | 48 | 3 | 100% |
+| Product | 59 | 3 | 100% |
+| MyPage | 56 | 3 | 77% |
+
+**Full Coverage Report**: [TESTING_COVERAGE.md](./docs/TESTING_COVERAGE.md)
+
+### Payment Testing
+
+#### Stripe Test Cards
 ```
 Success:        4242 4242 4242 4242
 3D Secure:      4000 0025 0000 3155
@@ -215,7 +251,7 @@ CVC: 123
 ZIP: 12345
 ```
 
-### Toss Test Cards
+#### Toss Test Cards
 ```
 카드번호: 5570****0001****
 만료일: 01/25
