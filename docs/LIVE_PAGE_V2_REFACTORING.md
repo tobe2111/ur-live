@@ -1,6 +1,6 @@
 # LivePageV2 리팩터링 가이드
 
-## 📊 현재 상태 (2026-03-06)
+## 📊 현재 상태 (2026-03-07)
 
 ### 복잡도 분석
 ```
@@ -8,15 +8,21 @@
 라인 수: 1,914 줄
 useState: 28개
 useEffect: 14개
-API 호출: 5+ 곳
+Firebase 훅: useFirebaseChat, useFirebaseStream (이미 최적화됨)
 실시간 기능: Firebase Chat, YouTube Player
 ```
+
+### ✅ 완료된 작업 (Phase 2 부분 완료)
+- **3개 컴포넌트 생성 완료**
+  - `src/components/live/LiveStreamPlayer.tsx` (88줄)
+  - `src/components/live/LiveProductCard.tsx` (138줄)
+  - `src/components/live/LiveChatPanel.tsx` (185줄)
 
 ### 주요 문제점
 1. **너무 많은 상태 관리** (28개 useState)
 2. **복잡한 부수 효과** (14개 useEffect)
 3. **컴포넌트 미분리** (1,914 줄 단일 파일)
-4. **중복 API 호출** (스트림, 상품, 채팅)
+4. **Firebase는 이미 최적화됨** (useFirebaseChat, useFirebaseStream)
 5. **테스트 불가능** (단일 컴포넌트)
 
 ---
