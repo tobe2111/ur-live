@@ -85,13 +85,16 @@ export class OrderRepository {
     
     const orderId = orderResult.meta.last_row_id as number;
     
-    // 주문 아이템 생성
-    for (const item of data.items) {
+    // 주문 아이템 생성 (배치 INSERT로 최적화)
+    if (data.items.length > 0) {
+      const values = data.items.map(() => '(?, ?, ?, ?, datetime(\'now\'))').join(', ');
+      const bindings = data.items.flatMap(item => [orderId, item.product_id, item.quantity, item.price]);
+      
       await this.db.prepare(`
         INSERT INTO order_items (
           order_id, product_id, quantity, price, created_at
-        ) VALUES (?, ?, ?, ?, datetime('now'))
-      `).bind(orderId, item.product_id, item.quantity, item.price).run();
+        ) VALUES ${values}
+      `).bind(...bindings).run();
     }
     
     const order = await this.findById(orderId);
