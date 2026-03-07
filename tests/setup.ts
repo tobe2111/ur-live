@@ -2,6 +2,9 @@ import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
+// Import MSW server
+import './mocks/server';
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
