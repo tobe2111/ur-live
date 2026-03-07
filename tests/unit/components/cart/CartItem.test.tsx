@@ -44,8 +44,9 @@ describe('CartItem Component', () => {
       />
     )
 
-    const increaseButton = screen.getByRole('button', { name: /plus/i })
-    fireEvent.click(increaseButton)
+    const buttons = screen.getAllByRole('button')
+    const increaseButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-plus'))
+    fireEvent.click(increaseButton!)
 
     expect(mockHandlers.onUpdateQuantity).toHaveBeenCalledWith(1, 1)
   })
@@ -59,8 +60,9 @@ describe('CartItem Component', () => {
       />
     )
 
-    const decreaseButton = screen.getByRole('button', { name: /minus/i })
-    fireEvent.click(decreaseButton)
+    const buttons = screen.getAllByRole('button')
+    const decreaseButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-minus'))
+    fireEvent.click(decreaseButton!)
 
     expect(mockHandlers.onUpdateQuantity).toHaveBeenCalledWith(1, -1)
   })
@@ -76,7 +78,8 @@ describe('CartItem Component', () => {
       />
     )
 
-    const decreaseButton = screen.getByRole('button', { name: /minus/i })
+    const buttons = screen.getAllByRole('button')
+    const decreaseButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-minus'))
     expect(decreaseButton).toBeDisabled()
   })
 
@@ -89,8 +92,9 @@ describe('CartItem Component', () => {
       />
     )
 
-    const deleteButton = screen.getByRole('button', { name: /x/i })
-    fireEvent.click(deleteButton)
+    const buttons = screen.getAllByRole('button')
+    const deleteButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-x'))
+    fireEvent.click(deleteButton!)
 
     expect(mockHandlers.onRemove).toHaveBeenCalledWith(1)
   })
@@ -120,9 +124,10 @@ describe('CartItem Component', () => {
       />
     )
 
-    const increaseButton = screen.getByRole('button', { name: /plus/i })
-    const decreaseButton = screen.getByRole('button', { name: /minus/i })
-    const deleteButton = screen.getByRole('button', { name: /x/i })
+    const buttons = screen.getAllByRole('button')
+    const increaseButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-plus'))
+    const decreaseButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-minus'))
+    const deleteButton = buttons.find(btn => btn.querySelector('svg')?.classList.contains('lucide-x'))
 
     expect(increaseButton).toBeDisabled()
     expect(decreaseButton).toBeDisabled()
