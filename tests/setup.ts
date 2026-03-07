@@ -93,4 +93,15 @@ global.console = {
   error: console.error,
 };
 
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+  unobserve() {}
+} as any;
+
 console.log('[Test Setup] Vitest environment configured');

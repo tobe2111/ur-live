@@ -1,64 +1,68 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import FeaturesSection from '@/components/home/FeaturesSection'
+import { FeaturesSection } from '@/components/home/FeaturesSection'
 
 describe('FeaturesSection', () => {
-  it('renders features section title', () => {
+  it('renders section title', () => {
     render(<FeaturesSection />)
 
-    expect(screen.getByText('왜 유어 쇼핑인가?')).toBeDefined()
+    expect(screen.getByText('유어 쇼핑을 선택하는 이유')).toBeDefined()
   })
 
-  it('renders all three feature cards', () => {
+  it('renders section subtitle', () => {
+    render(<FeaturesSection />)
+
+    expect(screen.getByText('플랫폼의 모든 것이 당신을 위해 준비되어 있습니다')).toBeDefined()
+  })
+
+  it('renders three feature cards', () => {
     const { container } = render(<FeaturesSection />)
 
-    // Should have 3 feature cards
-    const featureCards = container.querySelectorAll('.apple-card')
+    const featureCards = container.querySelectorAll('.group.relative')
     expect(featureCards.length).toBe(3)
   })
 
-  it('renders feature 1: 실시간 라이브 커머스', () => {
+  it('renders feature titles', () => {
     render(<FeaturesSection />)
 
-    expect(screen.getByText('실시간 라이브 커머스')).toBeDefined()
-    expect(screen.getByText(/YouTube, TikTok과 연동/)).toBeDefined()
+    expect(screen.getByText('멀티 플랫폼 지원')).toBeDefined()
+    expect(screen.getByText('간편한 구매')).toBeDefined()
+    expect(screen.getByText('특별한 혜택')).toBeDefined()
   })
 
-  it('renders feature 2: 빠른 구매 프로세스', () => {
+  it('renders feature descriptions', () => {
     render(<FeaturesSection />)
 
-    expect(screen.getByText('빠른 구매 프로세스')).toBeDefined()
-    expect(screen.getByText(/클릭 몇 번으로 즉시 구매/)).toBeDefined()
-  })
-
-  it('renders feature 3: 안전한 결제', () => {
-    render(<FeaturesSection />)
-
-    expect(screen.getByText('안전한 결제')).toBeDefined()
-    expect(screen.getByText(/다양한 결제 수단 지원/)).toBeDefined()
+    expect(screen.getByText('YouTube, TikTok 등 익숙한 플랫폼에서 실시간 쇼핑을 즐기세요')).toBeDefined()
+    expect(screen.getByText('클릭 한 번으로 마음에 드는 상품을 바로 구매하세요')).toBeDefined()
+    expect(screen.getByText('라이브 전용 할인과 깜짝 이벤트를 만나보세요')).toBeDefined()
   })
 
   it('renders feature icons', () => {
     const { container } = render(<FeaturesSection />)
 
-    // Should have 3 icons (Video, Zap, ShieldCheck)
-    const icons = container.querySelectorAll('svg')
-    expect(icons.length).toBeGreaterThanOrEqual(3)
+    const iconContainers = container.querySelectorAll('.h-20.w-20')
+    expect(iconContainers.length).toBe(3)
   })
 
-  it('applies correct styling classes', () => {
+  it('applies gradient backgrounds to cards', () => {
     const { container } = render(<FeaturesSection />)
 
-    const section = container.querySelector('section')
-    expect(section?.classList.contains('py-16')).toBe(true)
-    expect(section?.classList.contains('bg-white')).toBe(true)
+    const cards = container.querySelectorAll('.bg-gradient-to-br')
+    expect(cards.length).toBeGreaterThan(0)
   })
 
-  it('renders feature cards in grid layout', () => {
+  it('uses grid layout for feature cards', () => {
     const { container } = render(<FeaturesSection />)
 
     const grid = container.querySelector('.grid')
-    expect(grid).toBeDefined()
     expect(grid?.classList.contains('md:grid-cols-3')).toBe(true)
+  })
+
+  it('applies hover effects to cards', () => {
+    const { container } = render(<FeaturesSection />)
+
+    const cards = container.querySelectorAll('.hover\\:shadow-2xl')
+    expect(cards.length).toBe(3)
   })
 })

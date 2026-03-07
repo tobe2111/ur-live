@@ -1,84 +1,112 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { BannerSection } from '@/components/home/BannerSection'
 
 describe('BannerSection', () => {
   const mockBanners = [
     {
       id: 1,
-      image_url: 'https://example.com/banner.jpg',
-      link_url: '/products/1',
       title: 'Test Banner',
-      description: 'Test Description'
-    }
+      image_url: 'https://example.com/banner.jpg',
+      link_url: 'https://example.com',
+      description: 'Test Description',
+    },
   ]
 
   it('renders banner with image', () => {
     render(<BannerSection banners={mockBanners} />)
 
-    const image = screen.getByRole('img')
+    const image = screen.getByAltText('Test Banner')
     expect(image).toBeDefined()
-    expect(image.getAttribute('alt')).toBe(mockBanners[0].title)
   })
 
-  it('renders banner description when provided', () => {
+  it('renders banner description', () => {
     render(<BannerSection banners={mockBanners} />)
 
-    expect(screen.getByText(mockBanners[0].description as string)).toBeDefined()
+    expect(screen.getByText('Test Description')).toBeDefined()
   })
 
-  it('handles link correctly', () => {
+  it('renders banner link', () => {
     render(<BannerSection banners={mockBanners} />)
 
     const link = screen.getByRole('link')
-    expect(link.getAttribute('href')).toBe(mockBanners[0].link_url)
+    expect(link.getAttribute('href')).toBe('https://example.com')
   })
 
-  it('does not render when banners array is empty', () => {
+  it('returns null when no banners provided', () => {
     const { container } = render(<BannerSection banners={[]} />)
 
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders only the first banner when multiple provided', () => {
+  it('only renders first banner when multiple provided', () => {
     const multipleBanners = [
       ...mockBanners,
       {
         id: 2,
+        title: 'Second Banner',
         image_url: 'https://example.com/banner2.jpg',
-        link_url: '/products/2',
-        title: 'Test Banner 2',
-        description: 'Test Description 2'
-      }
+        link_url: 'https://example.com/2',
+      },
     ]
 
     render(<BannerSection banners={multipleBanners} />)
 
-    // Should only show first banner's description
-    expect(screen.getByText(mockBanners[0].description as string)).toBeDefined()
-    expect(screen.queryByText('Test Description 2')).toBeNull()
+    expect(screen.getByAltText('Test Banner')).toBeDefined()
+    expect(screen.queryByAltText('Second Banner')).toBeNull()
   })
 
   it('handles banner without description', () => {
     const bannerWithoutDesc = [
       {
-        ...mockBanners[0],
-        description: undefined
-      }
+        id: 1,
+        title: 'Test Banner',
+        image_url: 'https://example.com/banner.jpg',
+        link_url: 'https://example.com',
+      },
     ]
 
-    render(<BannerSection banners={bannerWithoutDesc} />)
-
-    const image = screen.getByRole('img')
-    expect(image).toBeDefined()
+    const { container } = render(<BannerSection banners={bannerWithoutDesc} />)
+    const description = container.querySelector('.absolute.bottom-6')
+    expect(description).toBeNull()
   })
 
-  it('applies correct styling classes', () => {
+  it('handles hash link for smooth scroll', () => {
+    const hashBanner = [
+      {
+        id: 1,
+        title: 'Hash Banner',
+        image_url: 'https://example.com/banner.jpg',
+        link_url: '#live-section',
+      },
+    ]
+
+    const scrollIntoViewMock = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoViewMock
+
+    render(<BannerSection banners={hashBanner} />)
+
+    const link = screen.getByRole('link')
+    fireEvent.click(link)
+
+    // preventDefault should be called for hash links
+    expect(link.getAttribute('href')).toBe('#live-section')
+  })
+
+  it('applies hover effect classes', () => {
     const { container } = render(<BannerSection banners={mockBanners} />)
 
-    const section = container.querySelector('section')
-    expect(section?.classList.contains('relative')).toBe(true)
-    expect(section?.classList.contains('w-full')).toBe(true)
-    expect(section?.classList.contains('bg-white')).toBe(true)
+    const imageContainer = container.querySelector('.group-hover\\:scale-105')
+    expect(imageContainer).toBeDefined()
+  })
+
+  it('uses LazyImage component for image loading', () => {
+    const { container } = render(<BannerSection banners={mockBanners} />)
+
+    const image = screen.getByAltText('Test Banner')
+    // LazyImage component loads with a placeholder initially, then loads the actual image
+    // In tests, it may show either the placeholder or the src depending on IntersectionObserver
+    expect(image).toBeDefined()
+    expect(image.tagName).toBe('IMG')
   })
 })

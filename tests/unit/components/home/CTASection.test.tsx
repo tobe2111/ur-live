@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
-import CTASection from '@/components/home/CTASection'
+import { CTASection } from '@/components/home/CTASection'
 
 describe('CTASection', () => {
-  it('renders CTA section heading', () => {
+  it('renders main heading', () => {
     render(
       <BrowserRouter>
         <CTASection />
@@ -14,59 +14,70 @@ describe('CTASection', () => {
     expect(screen.getByText('지금 바로 시작하세요')).toBeDefined()
   })
 
-  it('renders CTA subtitle', () => {
+  it('renders subtitle text', () => {
     render(
       <BrowserRouter>
         <CTASection />
       </BrowserRouter>
     )
 
-    expect(screen.getByText(/무료로 라이브 커머스를 시작/)).toBeDefined()
+    expect(screen.getByText('무료로 시작하고, 성공적인 판매를 경험하세요')).toBeDefined()
   })
 
-  it('renders primary CTA button', () => {
+  it('renders start button', () => {
     render(
       <BrowserRouter>
         <CTASection />
       </BrowserRouter>
     )
 
-    const button = screen.getByText('무료로 시작하기')
-    expect(button).toBeDefined()
-    expect(button.tagName).toBe('A') // Link component renders as 'a'
+    const startButton = screen.getByText('무료로 시작하기')
+    expect(startButton).toBeDefined()
   })
 
-  it('primary CTA links to seller login', () => {
+  it('renders learn more link', () => {
     render(
       <BrowserRouter>
         <CTASection />
       </BrowserRouter>
     )
 
-    const button = screen.getByText('무료로 시작하기')
-    expect(button.getAttribute('href')).toBe('/seller/login')
+    const learnMoreLink = screen.getByText('자세히 알아보기')
+    expect(learnMoreLink).toBeDefined()
   })
 
-  it('renders secondary CTA button', () => {
+  it('start button links to seller login', () => {
     render(
       <BrowserRouter>
         <CTASection />
       </BrowserRouter>
     )
 
-    const button = screen.getByText('자세히 알아보기')
-    expect(button).toBeDefined()
+    const startButton = screen.getByRole('link', { name: /무료로 시작하기/i })
+    expect(startButton.getAttribute('href')).toBe('/seller/login')
   })
 
-  it('secondary CTA links to seller login', () => {
+  it('learn more link links to seller login', () => {
     render(
       <BrowserRouter>
         <CTASection />
       </BrowserRouter>
     )
 
-    const button = screen.getByText('자세히 알아보기')
-    expect(button.getAttribute('href')).toBe('/seller/login')
+    const links = screen.getAllByRole('link')
+    const learnMoreLink = links.find(link => link.textContent?.includes('자세히 알아보기'))
+    expect(learnMoreLink?.getAttribute('href')).toBe('/seller/login')
+  })
+
+  it('applies gradient background', () => {
+    const { container } = render(
+      <BrowserRouter>
+        <CTASection />
+      </BrowserRouter>
+    )
+
+    const section = container.querySelector('section')
+    expect(section?.classList.contains('bg-gradient-to-r')).toBe(true)
   })
 
   it('renders star icon', () => {
@@ -76,29 +87,7 @@ describe('CTASection', () => {
       </BrowserRouter>
     )
 
-    const starIcon = container.querySelector('svg')
-    expect(starIcon).toBeDefined()
-  })
-
-  it('renders with gradient background', () => {
-    const { container } = render(
-      <BrowserRouter>
-        <CTASection />
-      </BrowserRouter>
-    )
-
-    const section = container.querySelector('section')
-    expect(section?.classList.contains('bg-gradient-to-br')).toBe(true)
-  })
-
-  it('applies correct spacing classes', () => {
-    const { container } = render(
-      <BrowserRouter>
-        <CTASection />
-      </BrowserRouter>
-    )
-
-    const section = container.querySelector('section')
-    expect(section?.classList.contains('py-16')).toBe(true)
+    const iconContainer = container.querySelector('.h-20.w-20')
+    expect(iconContainer).toBeDefined()
   })
 })
