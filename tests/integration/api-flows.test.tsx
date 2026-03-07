@@ -42,7 +42,8 @@ describe('E-Commerce Integration Tests', () => {
 
       // Check that cart page loads
       await waitFor(() => {
-        expect(screen.getByText(/장바구니/i)).toBeInTheDocument()
+        const headings = screen.getAllByText(/장바구니/i)
+        expect(headings.length).toBeGreaterThan(0)
       })
     })
 
@@ -50,8 +51,8 @@ describe('E-Commerce Integration Tests', () => {
       renderWithProviders(<CartPage />)
 
       await waitFor(() => {
-        const body = screen.getByText(/장바구니/)
-        expect(body).toBeInTheDocument()
+        const emptyMessage = screen.getByText(/장바구니가 비어있습니다/i)
+        expect(emptyMessage).toBeInTheDocument()
       })
     })
   })
@@ -102,8 +103,8 @@ describe('E-Commerce Integration Tests', () => {
 
       // Verify cart page structure
       await waitFor(() => {
-        const heading = screen.getByText(/장바구니/i)
-        expect(heading).toBeInTheDocument()
+        const emptyMessage = screen.getByText(/장바구니가 비어있습니다/i)
+        expect(emptyMessage).toBeInTheDocument()
       })
     })
 
