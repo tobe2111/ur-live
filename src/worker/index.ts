@@ -17,7 +17,7 @@ import { compress } from 'hono/compress';
 import { serveStatic } from 'hono/cloudflare-workers';
 
 // Feature Routes
-import { kakaoRoutes, googleRoutes } from '@/features/auth';
+import { kakaoRoutes, googleRoutes, sellerRoutes, adminRoutes } from '@/features/auth';
 import { productsRoutes } from '@/features/products';
 import { ordersRoutes } from '@/features/orders';
 import { accountRoutes } from '@/features/account';
@@ -27,6 +27,7 @@ import { rateLimitMiddleware } from './middleware/rate-limiter';
 import { handleError, attachErrorContext } from './middleware/error-handler';
 import { initSentry, captureException } from './utils/sentry';
 import { initDiscord, sendCriticalAlert } from './utils/discord';
+import { APICacheStrategy, CacheConfigs } from '@/lib/api-cache-strategy';
 
 type Bindings = {
   DB: D1Database;
@@ -91,6 +92,36 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// API Response Caching (KV-backed)
+app.use('/api/products*', async (c, next) => {
+  if (!c.env.CACHE_KV) return next();
+  
+  const cacheStrategy = new APICacheStrategy(c.env.CACHE_KV);
+  const cacheKey = cacheStrategy.generateCacheKey(c.req.path, c.req.query());
+  
+  // Try to get from cache
+  const cached = await cacheStrategy.get(cacheKey);
+  if (cached && c.req.method === 'GET') {
+    c.header('X-Cache', 'HIT');
+    c.header('X-Cache-Age', Math.floor((Date.now() - cached.timestamp) / 1000).toString());
+    return c.json(cached.data);
+  }
+  
+  // Continue with request
+  await next();
+  
+  // Cache successful GET responses
+  if (c.res.ok && c.req.method === 'GET') {
+    try {
+      const responseData = await c.res.clone().json();
+      await cacheStrategy.set(cacheKey, responseData, CacheConfigs.products);
+      c.header('X-Cache', 'MISS');
+    } catch (e) {
+      // Non-JSON response, skip caching
+    }
+  }
+});
+
 // Rate Limiting (IP-based, KV-backed)
 app.use('/api/*', rateLimitMiddleware);
 app.use('/auth/*', rateLimitMiddleware);
@@ -142,9 +173,17 @@ app.get('/health', (c) => {
   return c.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    worker: 'ur-live-worker-v2.2',
-    version: '2.2.0',
-    features: ['auth-kakao', 'auth-google', 'products', 'orders'],
+    worker: 'ur-live-worker-v2.3',
+    version: '2.3.0',
+    features: [
+      'auth-kakao', 
+      'auth-google', 
+      'auth-seller', 
+      'auth-admin', 
+      'products', 
+      'orders', 
+      'account'
+    ],
     middleware: ['rate-limiting', 'error-handling', 'retry-logic', 'monitoring'],
     region: c.env.REGION || import.meta.env.VITE_REGION || 'KR',
     environment: c.env.ENVIRONMENT || 'production',
@@ -159,10 +198,12 @@ app.get('/health', (c) => {
 // Feature Routes
 // =================================
 
-// Auth Feature (KR: Kakao, WORLD: Google)
+// Auth Feature (KR: Kakao, WORLD: Google, JWT: Seller/Admin)
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
 app.route('/api/auth/google', googleRoutes);
+app.route('/api/seller', sellerRoutes);
+app.route('/api/admin', adminRoutes);
 app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
 
 // Products Feature
