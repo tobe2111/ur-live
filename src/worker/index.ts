@@ -21,6 +21,11 @@ import { kakaoRoutes, googleRoutes, sellerRoutes, adminRoutes } from '@/features
 import { productsRoutes } from '@/features/products';
 import { ordersRoutes } from '@/features/orders';
 import { accountRoutes } from '@/features/account';
+import { sellerManagementRoutes } from '@/features/seller/api/seller-management.routes';
+import { sellerOrdersRoutes } from '@/features/seller/api/seller-orders.routes';
+import { cartRoutes } from '@/features/cart/api/cart.routes';
+import { shippingAddressRoutes } from '@/features/shipping/api/shipping-address.routes';
+import { paymentRoutes } from '@/features/payments/api/payment.routes';
 
 // Middleware & Utils
 import { rateLimitMiddleware } from './middleware/rate-limiter';
@@ -206,6 +211,19 @@ app.route('/api/seller', sellerRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
 
+// Seller Management Feature (Phase 1)
+app.route('/api/seller', sellerManagementRoutes);
+app.route('/api/seller', sellerOrdersRoutes);
+
+// Cart Feature (Phase 1)
+app.route('/api/cart', cartRoutes);
+
+// Shipping Address Feature (Phase 1)
+app.route('/api/shipping-addresses', shippingAddressRoutes);
+
+// Payment Feature (Phase 1)
+app.route('/api/payments', paymentRoutes);
+
 // Products Feature
 app.route('/api/products', productsRoutes);
 
@@ -215,9 +233,10 @@ app.route('/api/orders', ordersRoutes);
 // Account Management Feature
 app.route('/api/account', accountRoutes);
 
-// TODO: 다른 Feature 라우트 추가
-// app.route('/api/live-stream', liveStreamRoutes);
-// app.route('/api/payments', paymentsRoutes);
+// TODO: Phase 2 Feature 라우트 추가
+// app.route('/api/streams', liveStreamRoutes);
+// app.route('/api/banners', bannersRoutes);
+// app.route('/api/admin/sellers', adminSellersRoutes);
 
 // =================================
 // Static Assets & SPA Fallback
