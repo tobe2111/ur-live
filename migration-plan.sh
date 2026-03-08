@@ -1,0 +1,80 @@
+#!/bin/bash
+# 아키텍처 정리 및 AuthContext 완전 마이그레이션 플랜
+
+echo "=================================================="
+echo "🔧 아키텍처 정리 및 AuthContext 마이그레이션"
+echo "=================================================="
+echo ""
+
+# Step 1: 현재 상태 파악
+echo "📊 Step 1: 현재 상태 분석"
+echo "----------------------------"
+
+# AuthContext 사용 페이지 찾기
+echo "❌ AuthContext를 사용하는 페이지:"
+grep -l "from '@/contexts/AuthContext'" src/pages/*.tsx 2>/dev/null | while read file; do
+    echo "  - $file"
+done
+
+echo ""
+echo "✅ 이미 Zustand로 마이그레이션된 페이지:"
+echo "  - src/pages/UserProfilePage.tsx"
+echo "  - src/components/TopNav.tsx"
+echo "  - src/components/auth/RouteGuards.tsx (부분)"
+
+echo ""
+echo ""
+
+# Step 2: 마이그레이션 계획
+echo "📋 Step 2: 마이그레이션 계획"
+echo "----------------------------"
+echo ""
+echo "Phase 1: AuthContext 완전 제거 (우선순위: 🔴 긴급)"
+echo "  1.1 ✅ UserProfilePage.tsx (완료)"
+echo "  1.2 ⏳ LoginPage.tsx (가장 중요)"
+echo "  1.3 ⏳ RegisterPage.tsx"
+echo "  1.4 ⏳ CheckoutPage.tsx"
+echo "  1.5 ⏳ ProductDetailPage.tsx"
+echo "  1.6 ⏳ AdminLoginPage.tsx"
+echo "  1.7 ⏳ AdminPage.tsx"
+echo "  1.8 ⏳ SellerLoginPage.tsx"
+echo "  1.9 ⏳ SellerPage.tsx"
+echo "  1.10 ⏳ RouteGuards.tsx (완전 마이그레이션)"
+echo ""
+echo "Phase 2: 죽은 코드 정리 (우선순위: 🟡 중요)"
+echo "  2.1 src/worker/index.ts 삭제 또는 문서화"
+echo "  2.2 vite.worker.config.ts 정리"
+echo "  2.3 사용 안 하는 feature 코드 문서화"
+echo ""
+echo "Phase 3: 테스트 추가 (우선순위: 🟢 필요)"
+echo "  3.1 AuthContext 마이그레이션 테스트"
+echo "  3.2 주요 페이지 E2E 테스트"
+echo ""
+
+echo ""
+echo "=================================================="
+echo "🚀 실행 방법"
+echo "=================================================="
+echo ""
+echo "Option 1: 자동 마이그레이션 (권장)"
+echo "  bash migrate-all-auth.sh"
+echo ""
+echo "Option 2: 수동 마이그레이션"
+echo "  1. 각 파일을 하나씩 수정"
+echo "  2. 빌드 & 테스트"
+echo "  3. 커밋 & 배포"
+echo ""
+echo "Option 3: 점진적 마이그레이션"
+echo "  1. 하루에 2-3개 페이지씩"
+echo "  2. 각 배포마다 프로덕션 모니터링"
+echo ""
+
+echo "=================================================="
+echo "⚠️  주의사항"
+echo "=================================================="
+echo ""
+echo "1. 백업: 현재 .env.kr, src/contexts/AuthContext.tsx 백업"
+echo "2. 테스트: 각 페이지 마이그레이션 후 로컬 테스트"
+echo "3. 배포: 작은 단위로 배포 (한 번에 2-3개 페이지)"
+echo "4. 모니터링: 배포 후 30분 프로덕션 로그 확인"
+echo ""

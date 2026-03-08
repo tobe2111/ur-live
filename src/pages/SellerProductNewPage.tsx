@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
+import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import { 
   ArrowLeft, 
   Package,
@@ -35,6 +36,8 @@ export default function SellerProductNewPage() {
     product_type: 'featured', // 'live' or 'featured'
     category: 'lifestyle' // 카테고리 기본값
   })
+  
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
     // Check authentication
@@ -101,6 +104,23 @@ export default function SellerProductNewPage() {
       })
 
       if (response.data.success) {
+        const productId = response.data.data?.id || response.data.data?.productId
+        
+        // 옵션이 있으면 저장
+        if (productOptions.length > 0 && productId) {
+          try {
+            await api.post(`/api/seller/products/${productId}/options`, {
+              options: productOptions
+            }, {
+              headers: { 'Authorization': `Bearer ${sessionToken}` }
+            })
+          } catch (optError: any) {
+            console.error('Failed to save options:', optError)
+            // 옵션 저장 실패해도 상품은 등록됨
+            alert('상품은 등록되었으나 옵션 저장에 실패했습니다. 수정 페이지에서 다시 시도해주세요.')
+          }
+        }
+        
         alert('상품이 등록되었습니다.')
         navigate('/seller/products')
       }
@@ -337,6 +357,15 @@ export default function SellerProductNewPage() {
               <p className="text-xs text-gray-500 mt-1">특정 라이브 스트림에서 판매할 상품인 경우 선택하세요</p>
             </div>
           )}
+
+          {/* Product Options */}
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <ProductOptionForm
+              options={productOptions}
+              onChange={setProductOptions}
+              disabled={loading}
+            />
+          </div>
 
           {/* Submit Button */}
           <div className="pt-4 border-t">

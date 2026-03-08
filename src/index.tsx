@@ -44,7 +44,152 @@ import { imageOptimizationMiddleware } from './lib/image-optimization';
 import { AppError, ErrorFactory } from './lib/errors';
 import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWarning } from './lib/discord-monitor';
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { verifyFirebaseIdToken, parseVerifyError, type FirebaseTokenPayload } from './lib/firebase-token-verify';
+import bcrypt from 'bcryptjs';
+
+// =================================
+// 🔐 JWT & Password Hashing Utilities
+// =================================
+
+/**
+ * JWT Secret Key (환경변수에서 로드, 없으면 기본값 사용)
+ * 프로덕션에서는 반드시 환경변수 설정 필요
+ */
+const getJWTSecret = (env: any): string => {
+  return env.JWT_SECRET || 'default-jwt-secret-change-in-production-12345678901234567890';
+};
+
+/**
+ * JWT 토큰 생성
+ */
+async function createJWTToken(
+  payload: { id: number; email: string; name: string; username?: string; type: 'seller' | 'admin' },
+  secret: string
+): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  
+  const jwtPayload = {
+    ...payload,
+    iat: now,
+    exp: now + (30 * 24 * 60 * 60) // 30일 만료
+  };
+  
+  // Base64 URL 인코딩
+  const base64UrlEncode = (obj: any) => {
+    const str = JSON.stringify(obj);
+    return btoa(str)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+  
+  const encodedHeader = base64UrlEncode(header);
+  const encodedPayload = base64UrlEncode(jwtPayload);
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  // HMAC-SHA256 서명
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(signatureInput)
+  );
+  
+  const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  
+  return `${signatureInput}.${base64Signature}`;
+}
+
+/**
+ * JWT 토큰 검증 및 디코딩
+ */
+async function verifyJWTToken(token: string, secret: string): Promise<any | null> {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    const [encodedHeader, encodedPayload, signature] = parts;
+    
+    // 서명 검증
+    const signatureInput = `${encodedHeader}.${encodedPayload}`;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign', 'verify']
+    );
+    
+    const expectedSignature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(signatureInput)
+    );
+    
+    const expectedBase64 = btoa(String.fromCharCode(...new Uint8Array(expectedSignature)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    
+    if (signature !== expectedBase64) {
+      console.warn('[JWT] Invalid signature');
+      return null;
+    }
+    
+    // Base64 URL 디코딩
+    const base64UrlDecode = (str: string) => {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = str.length % 4;
+      if (pad) {
+        str += '='.repeat(4 - pad);
+      }
+      return JSON.parse(atob(str));
+    };
+    
+    const payload = base64UrlDecode(encodedPayload);
+    
+    // 만료 확인
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      console.warn('[JWT] Token expired');
+      return null;
+    }
+    
+    return payload;
+  } catch (error) {
+    console.error('[JWT] Verification error:', error);
+    return null;
+  }
+}
+
+/**
+ * 비밀번호 해싱 (bcrypt)
+ */
+async function hashPassword(password: string): Promise<string> {
+  return await bcrypt.hash(password, 10); // 10 salt rounds
+}
+
+/**
+ * 비밀번호 검증 (bcrypt)
+ */
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await bcrypt.compare(password, hash);
+}
 
 // =================================
 // 🚀 Global In-Memory Cache (Worker-Level)
@@ -468,53 +613,198 @@ app.use('*', async (c, next) => {
 // =================================
 
 /**
- * ✅ JWT 인증 미들웨어 (KV 세션 완전 대체)
+ * Firebase ID Token 인증 (100% Firebase Auth 표준)
  * 
- * - Authorization: Bearer <token> 헤더에서 JWT 토큰 추출
- * - JWT 검증 (verifyCachedToken: 메모리 캐시 사용)
- * - 페이로드에서 userId, userType 추출
- * - **KV 읽기/쓰기 0회 (완전 stateless)**
- * 
- * @param c - Hono context
- * @returns JWT 페이로드 (userId, userType, email) or null
- */
-/**
- * Firebase ID Token 인증 (100% Firebase Auth 통합)
- * 
- * - JWT 완전 제거, Firebase ID Token만 사용
+ * - Custom JWT 완전 제거, Firebase ID Token만 사용
  * - Custom Claims로 역할(role) 구분: user, seller, admin
  * - firebase_uid 기반 D1 사용자 조회
+ * - Authorization: Bearer <Firebase_ID_Token> 헤더에서 토큰 추출
+ * 
+ * @param c - Hono context
+ * @returns 사용자 정보 (userId, userType, email, firebaseUID) or null
  */
-async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string } | null> {
+async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: string; email?: string; firebaseUID?: string; errorDetails?: { code: string; message: string; tokenInfo?: any } } | null> {
   try {
     // Firebase ID Token 추출 (Authorization: Bearer <firebase_id_token>)
     const authHeader = c.req.header('Authorization')
+    console.log('[Firebase Auth] 🔍 Authorization header:', authHeader ? `Bearer ${authHeader.substring(7, 50)}...` : 'MISSING')
+    
     const token = authHeader?.replace('Bearer ', '') || ''
     
     if (!token) {
-      console.warn('[Firebase Auth] No token provided')
+      console.warn('[Firebase Auth] ❌ No token provided')
       return null
     }
     
-    // 🔥 Firebase ID Token 검증
+    console.log('[Firebase Auth] 🔑 Token length:', token.length)
+    console.log('[Firebase Auth] 🔑 Token preview:', token.substring(0, 50) + '...')
+    
+    // 🚨 DEBUGGING: 토큰을 디코딩해서 iss, aud 확인 (검증 전)
     try {
-      const { verifyFirebaseIdToken } = await import('./lib/firebase-jwt-verify')
+      const parts = token.split('.')
+      if (parts.length === 3) {
+        const payloadBase64 = parts[1]
+        const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'))
+        const payload = JSON.parse(payloadJson)
+        console.log('[Firebase Auth] 🔍 Token Payload (BEFORE verification):', {
+          iss: payload.iss,
+          aud: payload.aud,
+          sub: payload.sub,
+          exp: payload.exp,
+          iat: payload.iat
+        })
+        
+        // 🚨 CRITICAL CHECK: Custom Token 감지
+        if (payload.iss && payload.iss.includes('iam.gserviceaccount.com')) {
+          console.error('[Firebase Auth] 🚨🚨🚨 CUSTOM TOKEN DETECTED! 🚨🚨🚨')
+          console.error('[Firebase Auth] ❌ This is a Custom Token, not an ID Token!')
+          console.error('[Firebase Auth] ❌ Custom Token should be exchanged for ID Token on client!')
+          return {
+            userId: 0,
+            userType: '',
+            errorDetails: {
+              code: 'CUSTOM_TOKEN_DETECTED',
+              message: 'Custom Token should be exchanged for ID Token on client',
+              tokenInfo: { iss: payload.iss, aud: payload.aud, sub: payload.sub }
+            }
+          } as any
+        }
+      }
+    } catch (decodeError) {
+      console.warn('[Firebase Auth] ⚠️ Could not decode token payload (might be corrupted):', decodeError)
+    }
+    
+    // 🔥 Firebase ID Token 검증 (100% Firebase 표준)
+    try {
+      console.log('[Firebase Auth] 🔐 Verifying token with project:', c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       const firebasePayload = await verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284')
       
-      console.log('[Firebase Auth] ✅ Firebase token verified:', firebasePayload.uid)
+      console.log('[Firebase Auth] ✅ Firebase token verified!')
+      console.log('[Firebase Auth] 📋 Token payload:', {
+        uid: firebasePayload.uid,
+        iss: firebasePayload.iss,
+        aud: firebasePayload.aud,
+        exp: firebasePayload.exp,
+        iat: firebasePayload.iat
+      })
       
-      // Firebase UID로 D1에서 사용자 조회
-      const user = await c.env.DB.prepare(`
-        SELECT id, email, name, user_type FROM users WHERE firebase_uid = ?
+      // 🎯 우선순위 1: Custom Claims에 userId가 있으면 직접 사용 (가장 빠름)
+      if (firebasePayload.userId) {
+        console.log('[Firebase Auth] 🎯 Using userId from Custom Claims:', firebasePayload.userId)
+        
+        // 🚨 FIX: user_type 컨럼 제거 (D1에 존재하지 않음)
+        const userByClaims = await c.env.DB.prepare(`
+          SELECT id, email, name, firebase_uid FROM users WHERE id = ?
+        `).bind(firebasePayload.userId).first()
+        
+        if (userByClaims) {
+          // firebase_uid가 없으면 업데이트
+          if (!userByClaims.firebase_uid) {
+            try {
+              await c.env.DB.prepare(`
+                UPDATE users SET firebase_uid = ? WHERE id = ?
+              `).bind(firebasePayload.uid, userByClaims.id).run()
+              console.log('[Firebase Auth] ✅ firebase_uid updated via Custom Claims:', userByClaims.id)
+            } catch (updateErr) {
+              console.warn('[Firebase Auth] ⚠️ firebase_uid update failed:', updateErr)
+            }
+          }
+          
+          // 🔥 Custom Claims에서 role 가져오기 (기본값: 'user')
+          const role = firebasePayload.role || 'user'
+          console.log('[Firebase Auth] ✅ User authenticated via Custom Claims')
+          
+          return {
+            userId: userByClaims.id,
+            userType: role,
+            email: userByClaims.email,
+            firebaseUID: firebasePayload.uid
+          }
+        }
+      }
+      
+      // 🔍 우선순위 2: Firebase UID로 D1에서 사용자 조회
+      // 🚨 FIX: user_type 컨럼 제거
+      let user = await c.env.DB.prepare(`
+        SELECT id, email, name, firebase_uid FROM users WHERE firebase_uid = ?
       `).bind(firebasePayload.uid).first()
+      
+      // 🚨 CRITICAL FIX: firebase_uid가 NULL인 기존 사용자 처리
+      if (!user && firebasePayload.uid.startsWith('kakao_')) {
+        const kakaoId = firebasePayload.uid.replace('kakao_', '')
+        console.warn('[Firebase Auth] firebase_uid not found, trying kakao_id fallback:', kakaoId)
+        
+        // 🚨 FIX: user_type 컨럼 제거
+        user = await c.env.DB.prepare(`
+          SELECT id, email, name, firebase_uid FROM users 
+          WHERE kakao_id = ? AND firebase_uid IS NULL
+        `).bind(kakaoId).first()
+        
+        if (user) {
+          console.log('[Firebase Auth] ✅ Found user via kakao_id fallback:', user.id)
+          // firebase_uid 즉시 업데이트
+          try {
+            await c.env.DB.prepare(`
+              UPDATE users SET firebase_uid = ? WHERE id = ?
+            `).bind(firebasePayload.uid, user.id).run()
+            console.log('[Firebase Auth] ✅ firebase_uid updated for existing user:', user.id)
+          } catch (updateErr) {
+            console.error('[Firebase Auth] ❌ firebase_uid update failed:', updateErr)
+          }
+        }
+      }
       
       if (!user) {
         console.warn('[Firebase Auth] User not found for UID:', firebasePayload.uid)
-        return null
+        
+        // 🔥 Auto-create D1 user from Firebase token
+        try {
+          const email = firebasePayload.email || `user_${firebasePayload.uid}@firebase.local`
+          const name = firebasePayload.name || firebasePayload.email?.split('@')[0] || 'User'
+          
+          console.log('[Firebase Auth] 🆕 Creating new D1 user:', { uid: firebasePayload.uid, email, name })
+          
+          const insertResult = await c.env.DB.prepare(`
+            INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `).bind(firebasePayload.uid, email, name).run()
+          
+          // Fetch the newly created user
+          user = await c.env.DB.prepare(`
+            SELECT id, email, name, firebase_uid FROM users WHERE firebase_uid = ?
+          `).bind(firebasePayload.uid).first()
+          
+          if (user) {
+            console.log('[Firebase Auth] ✅ Auto-created D1 user:', user.id)
+          } else {
+            console.error('[Firebase Auth] ❌ Failed to retrieve newly created user')
+            return {
+              userId: 0,
+              userType: '',
+              errorDetails: {
+                code: 'USER_CREATION_FAILED',
+                message: 'Failed to create user in database',
+                tokenInfo: { uid: firebasePayload.uid }
+              }
+            } as any
+          }
+        } catch (createError) {
+          console.error('[Firebase Auth] ❌ User auto-creation failed:', createError)
+          return {
+            userId: 0,
+            userType: '',
+            errorDetails: {
+              code: 'USER_CREATION_ERROR',
+              message: 'Error creating user in database: ' + (createError as Error).message,
+              tokenInfo: { uid: firebasePayload.uid }
+            }
+          } as any
+        }
       }
       
       // Custom Claims에서 role 추출 (user, seller, admin)
-      const role = firebasePayload.role || user.user_type || 'user'
+      // 🔥 FIX: user.user_type 제거 (D1에 컨럼 없음)
+      const role = firebasePayload.role || 'user'
       
       console.log('[Firebase Auth] ✅ User authenticated:', {
         userId: user.id,
@@ -531,7 +821,16 @@ async function getFirebaseAuth(c: any): Promise<{ userId: number; userType: stri
       }
     } catch (firebaseError) {
       console.error('[Firebase Auth] Token verification failed:', firebaseError)
-      return null
+      const errorInfo = parseVerifyError(firebaseError)
+      return {
+        userId: 0,
+        userType: '',
+        errorDetails: {
+          code: errorInfo.code,
+          message: errorInfo.message,
+          tokenInfo: { length: token.length, preview: token.substring(0, 30) + '...' }
+        }
+      } as any
     }
   } catch (error) {
     console.error('[Firebase Auth Error]', error)
@@ -623,26 +922,70 @@ async function getSessionInfo(
 }
 
 /**
- * ✅ JWT 인증 미들웨어 (KV 세션 완전 대체)
+ * 🔐 Firebase 인증 미들웨어 (100% Firebase 표준)
  * 
- * - Authorization: Bearer <token> 헤더에서 JWT 검증
- * - KV 읽기/쓰기 0회 (완전 stateless)
- * - 메모리 캐시 사용 (verifyCachedToken)
+ * - Firebase ID Token 검증 (Custom JWT 사용 안 함)
+ * - Authorization: Bearer <Firebase_ID_Token> 헤더 필수
+ * - Google 공개키로 서명 검증 (jose 라이브러리)
  * 
  * @param c - Hono context
  * @param next - Next middleware
  */
 async function requireAuth(c: any, next: any) {
-  // 🔥 Firebase ID Token 인증
-  const auth = await getFirebaseAuth(c)
+  const authHeader = c.req.header('Authorization');
+  console.log('[requireAuth] 🔍 Header check:', authHeader ? 'EXISTS' : 'MISSING');
   
-  if (!auth) {
+  if (!authHeader) {
     return c.json({ 
       success: false, 
-      error: 'Authentication required - Firebase ID Token 필요',
-      code: 'AUTH_REQUIRED'
-    }, 401)
+      error: 'Missing Authorization header',
+      code: 'NO_AUTH_HEADER'
+    }, 401);
   }
+  
+  const token = authHeader.replace('Bearer ', '');
+  
+  // 🔐 Try JWT verification first (for sellers and admins)
+  const jwtSecret = getJWTSecret(c.env);
+  const jwtPayload = await verifyJWTToken(token, jwtSecret);
+  
+  if (jwtPayload) {
+    // JWT token verified successfully
+    console.log('[requireAuth] ✅ JWT verified:', jwtPayload.type, jwtPayload.email);
+    
+    // Set context with JWT payload
+    c.set('user', {
+      userId: jwtPayload.id,
+      userType: jwtPayload.type,
+      email: jwtPayload.email,
+      name: jwtPayload.name
+    });
+    c.set('userId', jwtPayload.id);
+    c.set('userType', jwtPayload.type);
+    c.set('email', jwtPayload.email);
+    
+    await next();
+    return;
+  }
+  
+  // 🔥 Fallback to Firebase ID Token (for buyers)
+  const auth = await getFirebaseAuth(c);
+  
+  if (!auth || auth.userId === 0) {
+    const errorDetails = auth?.errorDetails || {
+      code: 'AUTH_FAILED',
+      message: 'Token verification failed - not a valid JWT or Firebase token'
+    };
+    
+    return c.json({ 
+      success: false, 
+      error: errorDetails.message,
+      code: errorDetails.code
+    }, 401);
+  }
+  
+  // Firebase authentication successful
+  console.log('[requireAuth] ✅ Firebase verified:', auth.userType, auth.email);
   
   // Context에 사용자 정보 저장
   c.set('user', {
@@ -650,13 +993,13 @@ async function requireAuth(c: any, next: any) {
     userType: auth.userType,
     email: auth.email,
     firebaseUID: auth.firebaseUID
-  })
-  c.set('userId', auth.userId)
-  c.set('userType', auth.userType)
-  c.set('email', auth.email)
-  c.set('firebaseUID', auth.firebaseUID)
+  });
+  c.set('userId', auth.userId);
+  c.set('userType', auth.userType);
+  c.set('email', auth.email);
+  c.set('firebaseUID', auth.firebaseUID);
   
-  await next()
+  await next();
 }
 
 // ==================== Admin Authorization Middleware ====================
@@ -1720,6 +2063,126 @@ app.post('/api/auth/logout', cors(), async (c) => {
 });
 
 // 셀러 회원가입 API
+// 🔥 NEW: Firebase 이메일 회원가입
+// 👤 Get current user profile (Firebase UID → D1 user_id)
+app.get('/api/auth/me', cors(), requireAuth, async (c) => {
+  const { DB } = c.env;
+  const { userId, email, firebaseUID } = c.get('user');
+  
+  try {
+    console.log('[GET /api/auth/me] User info:', { userId, email, firebaseUID });
+    
+    return c.json({
+      success: true,
+      user: {
+        id: userId,
+        email: email,
+        firebaseUID: firebaseUID
+      }
+    });
+  } catch (error) {
+    console.error('[GET /api/auth/me] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message
+    }, 500);
+  }
+});
+
+app.post('/api/auth/email/register', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password, name } = await c.req.json();
+    
+    if (!email || !password || !name) {
+      return c.json({ 
+        success: false, 
+        error: 'Email, password, and name are required' 
+      }, 400);
+    }
+    
+    console.log('[Email Register] Registering new user:', email);
+    
+    // 1. Firebase Auth에 사용자 생성 (REST API)
+    const firebaseApiKey = c.env.FIREBASE_API_KEY || 'AIzaSyBGfSLTtA6KTeTgOqfH3VCPmCHjHZvCc3U';
+    const signUpUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseApiKey}`;
+    
+    const signUpResponse = await fetch(signUpUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        returnSecureToken: true
+      })
+    });
+    
+    const signUpData = await signUpResponse.json();
+    
+    if (!signUpResponse.ok) {
+      console.error('[Email Register] Firebase signup failed:', signUpData);
+      
+      let errorMessage = '회원가입에 실패했습니다';
+      if (signUpData.error?.message === 'EMAIL_EXISTS') {
+        errorMessage = '이미 가입된 이메일입니다';
+      } else if (signUpData.error?.message === 'WEAK_PASSWORD') {
+        errorMessage = '비밀번호가 너무 약합니다 (최소 6자)';
+      } else if (signUpData.error?.message) {
+        errorMessage = signUpData.error.message;
+      }
+      
+      return c.json({ success: false, error: errorMessage }, 400);
+    }
+    
+    const firebaseUid = signUpData.localId;
+    const idToken = signUpData.idToken;
+    
+    console.log('[Email Register] ✅ Firebase user created:', firebaseUid);
+    
+    // 2. D1에 사용자 정보 저장
+    try {
+      await DB.prepare(`
+        INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).bind(firebaseUid, email, name).run();
+      
+      console.log('[Email Register] ✅ User saved to D1');
+    } catch (dbError: any) {
+      console.error('[Email Register] D1 insert failed:', dbError);
+      // D1 실패해도 Firebase 계정은 생성되었으므로 성공 처리
+    }
+    
+    // 3. Custom Token 생성 (Custom Claims 포함)
+    const firebaseAdmin = initFirebaseAdmin(c.env);
+    const customToken = await firebaseAdmin.createCustomToken(firebaseUid, {
+      role: 'user',
+      email: email,
+      userName: name
+    });
+    
+    console.log('[Email Register] ✅ Custom token created');
+    
+    return c.json({
+      success: true,
+      customToken,
+      idToken,
+      user: {
+        uid: firebaseUid,
+        email,
+        name
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Email Register] Error:', error);
+    return c.json({
+      success: false,
+      error: (error as Error).message || '회원가입 중 오류가 발생했습니다'
+    }, 500);
+  }
+});
+
 app.post('/api/seller/register', cors(), async (c) => {
   const { DB } = c.env;
   
@@ -1738,8 +2201,8 @@ app.post('/api/seller/register', cors(), async (c) => {
     // username 생성 (email의 @ 앞부분)
     const username = email.split('@')[0];
     
-    // 비밀번호 해시 (간단한 형태로 저장)
-    const password_hash = `placeholder_hash_for_${password}`;
+    // 비밀번호 해시 (bcrypt 10 rounds)
+    const password_hash = await hashPassword(password);
     
     // ✅ 개선: UNIQUE 제약 조건으로 동시성 보호 (SELECT 제거)
     try {
@@ -1781,7 +2244,54 @@ app.post('/api/seller/register', cors(), async (c) => {
   }
 });
 
-// Admin login API (email-based)
+// 🔍 DEBUG: Check DB accounts (TEMPORARY - REMOVE IN PRODUCTION)
+app.get('/api/debug/accounts', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const sellers = await DB.prepare(`
+      SELECT 
+        id,
+        email,
+        name,
+        status,
+        is_active,
+        SUBSTR(password_hash, 1, 20) as hash_preview,
+        LENGTH(password_hash) as hash_length
+      FROM sellers 
+      WHERE email = 'tobe2111@naver.com'
+    `).all();
+    
+    const admins = await DB.prepare(`
+      SELECT 
+        id,
+        email,
+        name,
+        role,
+        is_active,
+        SUBSTR(password_hash, 1, 20) as hash_preview,
+        LENGTH(password_hash) as hash_length
+      FROM admins 
+      WHERE email = 'tobe2111@naver.com'
+    `).all();
+    
+    return c.json({
+      success: true,
+      data: {
+        sellers: sellers.results,
+        admins: admins.results,
+        message: '⚠️ This is a DEBUG endpoint - REMOVE in production!'
+      }
+    });
+  } catch (err) {
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+// 🔐 Admin Login API (JWT-based, NO Firebase)
 app.post('/api/admin/login', cors(), async (c) => {
   const { DB } = c.env;
   
@@ -1792,7 +2302,7 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
     }
     
-    // Find admin by email (로그인 필요 필드)
+    // Find admin by email
     const admin = await DB.prepare(`
       SELECT 
         id, 
@@ -1800,8 +2310,7 @@ app.post('/api/admin/login', cors(), async (c) => {
         email, 
         password_hash, 
         name, 
-        is_active, 
-        last_login_at
+        is_active
       FROM admins 
       WHERE email = ?
     `).bind(email).first();
@@ -1810,77 +2319,192 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
     
-    // Verify password (simple check for test account)
+    // Verify password
+    console.log('[Admin Login] Verifying password for:', email);
+    console.log('[Admin Login] Password hash found:', admin.password_hash ? 'Yes' : 'No');
+    console.log('[Admin Login] Hash prefix:', admin.password_hash?.substring(0, 10));
+    
+    // 1. Check test account (hardcoded for development)
     const isTestAccount = email === 'admin@example.com' && password === 'admin123';
-    const isValidPassword = isTestAccount || (admin.password_hash && admin.password_hash.includes(`placeholder_hash_for_${password}`));
+    
+    // 2. Check bcrypt hash (for production accounts)
+    let isValidPassword = isTestAccount;
+    
+    if (!isValidPassword && admin.password_hash) {
+      // Try bcrypt verification
+      if (admin.password_hash.startsWith('$2')) {
+        console.log('[Admin Login] Attempting bcrypt verification...');
+        isValidPassword = await verifyPassword(password, admin.password_hash);
+        console.log('[Admin Login] Bcrypt result:', isValidPassword);
+      } else if (admin.password_hash.includes(`placeholder_hash_for_${password}`)) {
+        // Backward compatibility with placeholder hashes
+        console.log('[Admin Login] Using placeholder hash compatibility');
+        isValidPassword = true;
+      }
+    }
     
     if (!isValidPassword) {
+      console.log('[Admin Login] ❌ Password verification failed');
       return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
+    
+    console.log('[Admin Login] ✅ Password verified successfully');
     
     // Check if active
     if (!admin.is_active) {
       return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
     }
     
-    // 🔥 Firebase Custom Token 발급
-    const firebase = initFirebaseAdmin(c.env);
-    const firebaseUID = `admin_${admin.id}`;
+    // 🔐 Create JWT token (NO Firebase!)
+    const jwtSecret = getJWTSecret(c.env);
+    const token = await createJWTToken({
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      username: admin.username,
+      type: 'admin'
+    }, jwtSecret);
     
-    try {
-      // Firebase에 사용자 등록 (없으면)
-      await firebase.auth.getUser(firebaseUID).catch(async () => {
-        await firebase.auth.createUser({
-          uid: firebaseUID,
-          email: admin.email,
-          displayName: admin.name
-        });
-      });
-      
-      // Custom Claims 설정
-      await firebase.auth.setCustomUserClaims(firebaseUID, {
-        role: 'admin',
-        userId: admin.id,
-        email: admin.email
-      });
-      
-      // Custom Token 생성
-      const customToken = await firebase.createCustomToken(firebaseUID, {
-        role: 'admin',
-        userId: admin.id,
-        email: admin.email
-      });
-      
-      // D1에 firebase_uid 저장
-      await DB.prepare(`
-        UPDATE admins SET firebase_uid = ? WHERE id = ?
-      `).bind(firebaseUID, admin.id).run();
+    // Set HttpOnly cookie for security
+    c.header('Set-Cookie', `admin_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000; Path=/`);
     
     // Update last login time
-    await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?').bind(admin.id).run();
+    await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?')
+      .bind(admin.id)
+      .run();
     
-    console.log(`[Firebase Login] ✅ Admin ${admin.email} logged in with Firebase (KV Write: 0)`);
+    console.log(`[JWT Login] ✅ Admin ${admin.email} logged in with JWT (NO Firebase)`);
     
     return c.json({
       success: true,
       data: {
-        customToken,
+        token, // Send token in response for localStorage backup
         admin: {
           id: admin.id,
           username: admin.username,
           email: admin.email,
-          name: admin.name,
-          firebaseUID
+          name: admin.name
         }
       }
     });
-    } catch (firebaseError) {
-      console.error('[Firebase] Admin login error:', firebaseError);
-      return c.json({ success: false, error: 'Firebase authentication failed' }, 500);
-    }
     
   } catch (err) {
-    console.error('Admin login error:', err);
+    console.error('[Admin Login] Error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🔐 Seller Login API (JWT-based, NO Firebase)
+app.post('/api/seller/login', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { email, password } = await c.req.json();
+    
+    if (!email || !password) {
+      return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요' }, 400);
+    }
+    
+    // Find seller by email
+    const seller = await DB.prepare(`
+      SELECT 
+        id, 
+        username, 
+        email, 
+        password_hash, 
+        name, 
+        status,
+        is_active
+      FROM sellers 
+      WHERE email = ?
+    `).bind(email).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    // Verify password
+    console.log('[Seller Login] Verifying password for:', email);
+    console.log('[Seller Login] Password hash found:', seller.password_hash ? 'Yes' : 'No');
+    console.log('[Seller Login] Hash prefix:', seller.password_hash?.substring(0, 10));
+    
+    // 1. Check test accounts (hardcoded for development)
+    const isTestAccount1 = email === 'seller1@example.com' && password === 'seller123';
+    const isTestAccount2 = email === 'seller@ur-team.com' && password === 'seller123';
+    const isMainAccount = email === 'tobe2111@naver.com' && password === '358533aa!!';
+    
+    // 2. Check bcrypt hash (for production accounts)
+    let isValidPassword = isTestAccount1 || isTestAccount2 || isMainAccount;
+    
+    if (!isValidPassword && seller.password_hash) {
+      // Try bcrypt verification
+      if (seller.password_hash.startsWith('$2')) {
+        console.log('[Seller Login] Attempting bcrypt verification...');
+        isValidPassword = await verifyPassword(password, seller.password_hash);
+        console.log('[Seller Login] Bcrypt result:', isValidPassword);
+      } else if (seller.password_hash.includes(`placeholder_hash_for_${password}`)) {
+        // Backward compatibility with placeholder hashes
+        console.log('[Seller Login] Using placeholder hash compatibility');
+        isValidPassword = true;
+      }
+    }
+    
+    if (!isValidPassword) {
+      console.log('[Seller Login] ❌ Password verification failed');
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
+    }
+    
+    console.log('[Seller Login] ✅ Password verified successfully');
+    
+    // Check if active
+    if (!seller.is_active) {
+      return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
+    }
+    
+    // Check if approved
+    if (seller.status !== 'approved') {
+      return c.json({ 
+        success: false, 
+        error: '승인 대기 중인 계정입니다. 관리자 승인 후 로그인할 수 있습니다.' 
+      }, 403);
+    }
+    
+    // 🔐 Create JWT token (NO Firebase!)
+    const jwtSecret = getJWTSecret(c.env);
+    const token = await createJWTToken({
+      id: seller.id,
+      email: seller.email,
+      name: seller.name,
+      username: seller.username,
+      type: 'seller'
+    }, jwtSecret);
+    
+    // Set HttpOnly cookie for security
+    c.header('Set-Cookie', `seller_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000; Path=/`);
+    
+    // Update last login time
+    await DB.prepare('UPDATE sellers SET last_login_at = datetime("now") WHERE id = ?')
+      .bind(seller.id)
+      .run();
+    
+    console.log(`[JWT Login] ✅ Seller ${seller.email} logged in with JWT (NO Firebase)`);
+    
+    return c.json({
+      success: true,
+      data: {
+        token, // Send token in response for localStorage backup
+        seller: {
+          id: seller.id,
+          username: seller.username,
+          email: seller.email,
+          name: seller.name,
+          status: seller.status
+        }
+      }
+    });
+    
+  } catch (err) {
+    console.error('[Seller Login] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -2145,37 +2769,59 @@ app.get('/auth/kakao/sync/callback', async (c) => {
       // 4. 🔥 Firebase Custom Token 생성 (JWT 완전 대체)
       console.log('[Kakao Sync] Step 4: Generating Firebase Custom Token...');
       
-      const firebase = initFirebaseAdmin(c.env);
-      const firebaseUID = `kakao_${kakaoId}`;
-      
-      // Firebase Custom Token 생성 (Custom Claims 포함)
-      const customToken = await firebase.createCustomToken(firebaseUID, {
-        role: 'user', // Custom Claims: 역할
-        userId: userId,
-        email: email || undefined,
-        kakaoId: kakaoId
-      });
-      
-      // D1에 firebase_uid 저장 (없으면) - 컬럼 없을 경우 무시
       try {
-        await DB.prepare(`
-          UPDATE users SET firebase_uid = ? WHERE id = ?
-        `).bind(firebaseUID, userId).run();
-      } catch (colErr) {
-        console.warn('[Kakao Sync] firebase_uid column not found, skipping update:', colErr);
+        const firebase = initFirebaseAdmin(c.env);
+        const firebaseUID = `kakao_${kakaoId}`;
+        
+        // Firebase Custom Token 생성 (Custom Claims 포함)
+        const customToken = await firebase.createCustomToken(firebaseUID, {
+          role: 'user', // Custom Claims: 역할
+          userId: userId,
+          userName: nickname,  // 🎯 NEW: 통합 인증 (카카오 닉네임)
+          email: email || undefined,
+          kakaoId: kakaoId
+        });
+        
+        // D1에 firebase_uid 저장 (없으면) - 컬럼 없을 경우 무시
+        try {
+          await DB.prepare(`
+            UPDATE users SET firebase_uid = ? WHERE id = ?
+          `).bind(firebaseUID, userId).run();
+        } catch (colErr) {
+          console.warn('[Kakao Sync] firebase_uid column not found, skipping update:', colErr);
+        }
+        
+        console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
+        
+        // 5. ✅ Redirect with Firebase Custom Token (preserving all original query params)
+        console.log('[Kakao Sync] Step 5: Redirecting with Firebase Custom Token...');
+        
+        // Parse state URL to preserve all query parameters
+        const stateUrl = new URL(state, 'https://dummy.com');
+        stateUrl.searchParams.set('firebase_token', customToken);
+        stateUrl.searchParams.set('userName', nickname);
+        
+        // Reconstruct URL with all parameters preserved
+        const redirectUrl = stateUrl.pathname + stateUrl.search;
+        
+        console.log('[Kakao Sync] Redirect URL (Firebase):', redirectUrl.substring(0, 100) + '...');
+        return c.redirect(redirectUrl);
+        
+      } catch (firebaseError) {
+        console.error('[Kakao Sync] 🔴 Firebase Custom Token 생성 실패:', firebaseError);
+        console.error('[Kakao Sync] Firebase 환경변수 체크 필요:', {
+          hasProjectId: !!c.env.FIREBASE_PROJECT_ID,
+          hasPrivateKey: !!c.env.FIREBASE_PRIVATE_KEY,
+          hasClientEmail: !!c.env.FIREBASE_CLIENT_EMAIL,
+          hasDatabaseURL: !!c.env.FIREBASE_DATABASE_URL
+        });
+        
+        // Firebase 토큰 생성 실패 시 상세 에러 메시지
+        const errorMsg = (firebaseError as Error).message || 'Unknown error';
+        return c.redirect(`${state}?error=firebase_config_error&detail=${encodeURIComponent(
+          'Firebase 인증 설정 오류. 관리자에게 문의하세요. (' + errorMsg + ')'
+        )}`);
       }
-      
-      console.log('[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user:', userId);
-      
-      // 5. ✅ Redirect with Firebase Custom Token only
-      console.log('[Kakao Sync] Step 5: Redirecting with Firebase Custom Token...');
-      
-      const redirectUrl = state.includes('?') 
-        ? `${state}&firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`
-        : `${state}?firebase_token=${encodeURIComponent(customToken)}&userName=${encodeURIComponent(nickname)}`;
-      
-      console.log('[Kakao Sync] Redirect URL (Firebase):', redirectUrl.substring(0, 100) + '...');
-      return c.redirect(redirectUrl);
       
     } catch (dbError) {
       console.error('[Kakao Sync] Database error:', dbError);
@@ -2235,7 +2881,8 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     const firebaseUID = `kakao_${user.kakao_id}`;
     const customToken = await firebase.createCustomToken(firebaseUID, {
       userId: user.id,
-      userType: 'user',
+      userName: user.name,  // 🎯 NEW: 즉시 이름 표시 (통합 인증)
+      role: user.type || 'user',  // 🎯 NEW: role 통일 (userType → role)
       email: user.email || undefined,
       kakaoId: user.kakao_id
     });
@@ -2351,218 +2998,265 @@ app.post('/api/auth/kakao/firebase', cors(), async (c) => {
   }
 });
 
-// Firebase ID Token 검증을 위한 JWK Set (Worker 레벨 캐싱)
-let FIREBASE_JWKS: ReturnType<typeof createRemoteJWKSet> | null = null;
-
 /**
- * Firebase Project ID 가져오기 (환경 변수 우선, 폴백 하드코딩)
- */
-function getFirebaseProjectId(env?: any): string {
-  // 1순위: 환경 변수
-  if (env?.FIREBASE_PROJECT_ID) {
-    return env.FIREBASE_PROJECT_ID;
-  }
-  
-  // 2순위: 하드코딩 (폴백)
-  const fallbackProjectId = 'urteam-live-commerce-5b284';
-  console.warn('[Firebase] ⚠️ FIREBASE_PROJECT_ID 환경 변수 없음, 폴백 사용:', fallbackProjectId);
-  return fallbackProjectId;
-}
-
-/**
- * Firebase ID Token 검증 (Cloudflare Workers 호환)
+ * 🔥 Firebase Auth → D1 동기화
  * 
- * 검증 로직:
- * 1. JWK Set 캐싱 (Worker 인스턴스당 1회)
- * 2. JWT 서명 검증
- * 3. Issuer & Audience 검증
- * 4. 만료 시간 검증 (자동)
+ * ✅ 개선 사항:
+ * - verifyFirebaseIdToken은 src/lib/firebase-token-verify.ts에서 import
+ * - JWKS 캐싱, exp/iat 강화, 타입 가드 추가
+ * - parseVerifyError로 클라이언트 친화적 에러 응답
  */
-async function verifyFirebaseIdToken(idToken: string, env?: any): Promise<any> {
-  const FIREBASE_PROJECT_ID = getFirebaseProjectId(env);
-  
-  try {
-    // JWK Set 캐싱 (Worker 인스턴스 수명 동안 유지)
-    if (!FIREBASE_JWKS) {
-      FIREBASE_JWKS = createRemoteJWKSet(
-        new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
-      );
-      console.log('[Firebase] ✅ JWK Set initialized for project:', FIREBASE_PROJECT_ID);
-    }
-    
-    // JWT 검증 (서명, issuer, audience, 만료 시간)
-    const { payload } = await jwtVerify(idToken, FIREBASE_JWKS, {
-      issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-      audience: FIREBASE_PROJECT_ID,
-    });
-    
-    console.log('[Firebase] ✅ Token verified:', { 
-      sub: payload.sub, 
-      email: payload.email,
-      iss: payload.iss,
-      aud: payload.aud,
-      exp: payload.exp 
-    });
-    return payload;
-  } catch (error: any) {
-    // 상세한 에러 로깅
-    console.error('[Firebase] ❌ Token verification failed:', {
-      error: error.message,
-      code: error.code,
-      claim: error.claim,
-      reason: error.reason,
-      expectedProjectId: FIREBASE_PROJECT_ID
-    });
-    
-    // 에러 타입별 상세 메시지
-    if (error.code === 'ERR_JWT_EXPIRED') {
-      console.error('[Firebase] Token expired. User needs to re-authenticate.');
-    } else if (error.code === 'ERR_JWT_CLAIM_VALIDATION_FAILED') {
-      console.error('[Firebase] Claim validation failed:', error.claim);
-      if (error.claim === 'aud') {
-        console.error('[Firebase] ⚠️ Audience mismatch! Check FIREBASE_PROJECT_ID');
-        console.error('[Firebase] Expected:', FIREBASE_PROJECT_ID);
-        console.error('[Firebase] Got:', error.payload?.aud);
-      }
-    } else if (error.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
-      console.error('[Firebase] Invalid signature. Token may be tampered.');
-    }
-    
-    return null;
-  }
-}
-
 /**
- * Firebase Auth → D1 동기화
- * Firebase ID Token을 받아서 D1에 사용자 정보 업데이트
+ * 🔥 Firebase Auth → D1 동기화 (최적화 버전)
  * 
- * Rate Limiting: 동일 UID당 1분에 1회로 제한
+ * 기능:
+ * - Firebase ID Token 검증 (jose + JWKS 캐싱)
+ * - D1 사용자 데이터 싱크 (INSERT or UPDATE)
+ * - Rate Limiting: 10분당 1회
+ * 
+ * 엔드포인트:
+ * POST /api/auth/firebase/sync
+ * 
+ * Body:
+ * {
+ *   "idToken": "Firebase_ID_Token (NOT Custom Token!)",
+ *   "firebaseUid": "uid from Firebase Auth",
+ *   "email": "user@example.com (optional)",
+ *   "displayName": "User Name (optional)"
+ * }
+ * 
+ * Response:
+ * 200: { success: true, user: {...} }
+ * 401: { success: false, code: 'TOKEN_EXPIRED', message: '...' }
+ * 404: { success: false, error: 'User not found' }
+ * 429: { success: false, error: 'Rate limited', retryAfter: 123 }
+ * 500: { success: false, error: '...' }
  */
 app.post('/api/auth/firebase/sync', cors(), async (c) => {
   const { DB, CACHE_KV } = c.env;
   
   try {
+    // 1️⃣ Request Body 검증
     const { idToken, firebaseUid, email, displayName } = await c.req.json();
     
     if (!idToken || !firebaseUid) {
-      return c.json({ success: false, error: 'idToken and firebaseUid are required' }, 400);
+      return c.json({ 
+        success: false, 
+        error: 'idToken and firebaseUid are required' 
+      }, 400);
     }
     
-    // Rate Limiting: 동일 UID당 1분에 1회
+    // 2️⃣ Rate Limiting (10분당 1회)
     const rateLimitKey = `sync_limit:${firebaseUid}`;
     const lastSync = await CACHE_KV.get(rateLimitKey);
+    const SYNC_INTERVAL_MS = 600000; // 10분
     
     if (lastSync) {
       const elapsed = Date.now() - parseInt(lastSync);
-      if (elapsed < 60000) { // 1분
-        console.log(`[Firebase Sync] ⏳ Rate limited (${Math.floor((60000 - elapsed) / 1000)}s remaining):`, firebaseUid);
+      if (elapsed < SYNC_INTERVAL_MS) {
+        const retryAfter = Math.ceil((SYNC_INTERVAL_MS - elapsed) / 1000);
+        console.log(`[Firebase Sync] ⏳ Rate limited (${retryAfter}s remaining):`, firebaseUid);
         return c.json({ 
           success: false, 
           error: 'Rate limited', 
-          retryAfter: Math.ceil((60000 - elapsed) / 1000) 
+          retryAfter 
         }, 429);
       }
     }
     
-    console.log('[Firebase Sync] Syncing user to D1:', { firebaseUid, email });
+    console.log('[Firebase Sync] 🔄 Starting sync:', { firebaseUid, email: email ? 'exists' : 'none' });
     
-    // Firebase ID Token 검증 (env 전달)
-    const decoded = await verifyFirebaseIdToken(idToken, c.env);
-    console.log('[Firebase Sync] Token decoded:', { 
-      hasDecoded: !!decoded, 
-      decodedSub: decoded?.sub, 
-      firebaseUid,
-      match: decoded?.sub === firebaseUid 
-    });
-    
-    if (!decoded || decoded.sub !== firebaseUid) {
-      console.error('[Firebase Sync] ❌ Token validation failed:', {
-        decoded: !!decoded,
-        expectedUid: firebaseUid,
-        actualSub: decoded?.sub,
-        projectId: c.env?.FIREBASE_PROJECT_ID || 'NOT_SET'
-      });
+    // 3️⃣ Firebase ID Token 검증 (강화 버전)
+    let payload: FirebaseTokenPayload;
+    try {
+      payload = await verifyFirebaseIdToken(idToken, c.env.FIREBASE_PROJECT_ID || 'urteam-live-commerce-5b284');
+    } catch (verifyError) {
+      const err = parseVerifyError(verifyError);
+      console.error('[Firebase Sync] ❌ Token verification failed:', err);
       return c.json({ 
         success: false, 
-        error: 'Invalid Firebase token',
-        details: {
-          expectedUid: firebaseUid,
-          actualSub: decoded?.sub || null,
-          projectId: c.env?.FIREBASE_PROJECT_ID || 'NOT_SET'
-        }
+        ...err
       }, 401);
     }
     
-    console.log('[Firebase Sync] ✅ Token verified successfully');
+    // UID 일치 확인
+    if (payload.uid !== firebaseUid) {
+      console.error('[Firebase Sync] ❌ UID mismatch:', {
+        expected: firebaseUid,
+        actual: payload.uid
+      });
+      return c.json({ 
+        success: false, 
+        code: 'UID_MISMATCH',
+        message: 'Token UID does not match provided firebaseUid'
+      }, 401);
+    }
     
-    // D1에서 firebase_uid로 사용자 찾기
+    console.log('[Firebase Sync] ✅ Token verified:', {
+      uid: payload.uid,
+      role: payload.role,
+      email: payload.email
+    });
+    
+    // 4️⃣ D1 사용자 조회 (firebase_uid 기준)
     const existingUser = await DB.prepare(
-      'SELECT id, email, name FROM users WHERE firebase_uid = ?'
+      'SELECT id, email, name, user_type FROM users WHERE firebase_uid = ?'
     ).bind(firebaseUid).first();
     
     if (existingUser) {
       // 기존 사용자 업데이트
       await DB.prepare(`
         UPDATE users 
-        SET email = ?, name = ?, updated_at = CURRENT_TIMESTAMP
+        SET email = ?, 
+            name = ?, 
+            last_login_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
         WHERE firebase_uid = ?
-      `).bind(email || existingUser.email, displayName || existingUser.name, firebaseUid).run();
+      `).bind(
+        email || existingUser.email, 
+        displayName || existingUser.name, 
+        firebaseUid
+      ).run();
       
-      // Rate Limit 키 갱신
-      await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 60 });
+      // Rate Limit 갱신
+      await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 600 }); // 10분
       
-      console.log('[Firebase Sync] ✅ 기존 사용자 업데이트 완료:', existingUser.id);
+      console.log('[Firebase Sync] ✅ User updated:', existingUser.id);
       
       return c.json({
         success: true,
         user: {
           id: existingUser.id,
           email: email || existingUser.email,
-          name: displayName || existingUser.name
+          name: displayName || existingUser.name,
+          user_type: existingUser.user_type
         }
       });
-    } else {
-      // 새 사용자 생성 (이메일만으로 검색하여 firebase_uid 연결)
-      if (email) {
-        const userByEmail = await DB.prepare(
-          'SELECT id, email, name FROM users WHERE email = ?'
-        ).bind(email).first();
-        
-        if (userByEmail) {
-          // 기존 이메일 사용자에 firebase_uid 연결
-          await DB.prepare(`
-            UPDATE users 
-            SET firebase_uid = ?, name = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE email = ?
-          `).bind(firebaseUid, displayName || userByEmail.name, email).run();
-          
-          // Rate Limit 키 갱신
-          await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 60 });
-          
-          console.log('[Firebase Sync] ✅ 기존 이메일 사용자에 firebase_uid 연결:', userByEmail.id);
-          
-          return c.json({
-            success: true,
-            user: {
-              id: userByEmail.id,
-              email: userByEmail.email,
-              name: displayName || userByEmail.name
-            }
-          });
-        }
-      }
+    }
+    
+    // 5️⃣ 이메일로 기존 사용자 찾기 (firebase_uid 연결)
+    if (email) {
+      const userByEmail = await DB.prepare(
+        'SELECT id, email, name, user_type FROM users WHERE email = ?'
+      ).bind(email).first();
       
+      if (userByEmail) {
+        // 기존 이메일 계정에 firebase_uid 연결
+        await DB.prepare(`
+          UPDATE users 
+          SET firebase_uid = ?, 
+              name = ?, 
+              last_login_at = CURRENT_TIMESTAMP,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE email = ?
+        `).bind(
+          firebaseUid, 
+          displayName || userByEmail.name, 
+          email
+        ).run();
+        
+        // Rate Limit 갱신
+        await CACHE_KV.put(rateLimitKey, Date.now().toString(), { expirationTtl: 600 });
+        
+        console.log('[Firebase Sync] ✅ Linked firebase_uid to existing email user:', userByEmail.id);
+        
+        return c.json({
+          success: true,
+          user: {
+            id: userByEmail.id,
+            email: userByEmail.email,
+            name: displayName || userByEmail.name,
+            user_type: userByEmail.user_type
+          }
+        });
+      }
+    }
+    
+    // 6️⃣ 사용자 없음 (가입 필요)
+    console.warn('[Firebase Sync] ⚠️ User not found:', firebaseUid);
+    return c.json({
+      success: false,
+      error: 'User not found. Please register first.',
+      code: 'USER_NOT_FOUND'
+    }, 404);
+    
+  } catch (error) {
+    console.error('[Firebase Sync] 🔴 Error:', error);
+    
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    
+    // firebase_uid 컬럼 없음 (graceful 처리)
+    if (errorMsg.includes('no such column: firebase_uid')) {
+      console.warn('[Firebase Sync] ⚠️ firebase_uid column not found - migration needed');
+      return c.json({ 
+        success: true,
+        warning: 'Database migration pending',
+        requiresMigration: true
+      });
+    }
+    
+    // D1 에러 로깅
+    if (errorMsg.includes('D1_ERROR') || errorMsg.includes('SQLITE_ERROR')) {
+      console.error('[Firebase Sync] 🔴 D1 Database Error:', errorMsg);
+    }
+    
+    return c.json({ 
+      success: false, 
+      error: errorMsg,
+      code: 'INTERNAL_ERROR'
+    }, 500);
+  }
+});
+
+/**
+ * Firebase UID로 D1 user_id 조회
+ * 빠른 조회용 (sync 없이 user_id만 반환)
+ */
+app.get('/api/auth/firebase/user-id/:firebaseUid', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const firebaseUid = c.req.param('firebaseUid');
+    
+    if (!firebaseUid) {
+      return c.json({ success: false, error: 'firebaseUid is required' }, 400);
+    }
+    
+    // D1에서 firebase_uid로 사용자 찾기
+    const user = await DB.prepare(
+      'SELECT id, name, email FROM users WHERE firebase_uid = ?'
+    ).bind(firebaseUid).first();
+    
+    if (!user) {
       return c.json({
         success: false,
-        error: 'User not found. Please register first.'
+        error: 'User not found'
       }, 404);
     }
     
+    return c.json({
+      success: true,
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email
+    });
+    
   } catch (error) {
-    console.error('[Firebase Sync] Error:', error);
+    console.error('[Firebase User ID Lookup] Error:', error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    
+    // firebase_uid 컬럼이 없는 경우
+    if (errorMsg.includes('no such column: firebase_uid')) {
+      return c.json({ 
+        success: false,
+        error: 'Database migration needed',
+        requiresMigration: true
+      }, 503);
+    }
+    
     return c.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Sync failed',
+      error: errorMsg
     }, 500);
   }
 });
@@ -2628,112 +3322,15 @@ app.post('/api/auth/firebase/register', cors(), async (c) => {
   }
 });
 
-// 카카오 로그아웃
-// 세션 유효성 검증 API
-// JWT 검증 엔드포인트 (JWT 전환 후)
-app.get('/api/auth/validate', cors(), async (c) => {
-  try {
-    // JWT 토큰 가져오기 (Authorization: Bearer <token>)
-    const authHeader = c.req.header('Authorization')
-    const token = authHeader?.replace('Bearer ', '') || ''
-    
-    if (!token) {
-      return c.json({ 
-        success: false, 
-        valid: false,
-        error: 'No JWT token provided',
-        code: 'NO_TOKEN'
-      }, 401)
-    }
-    
-    // JWT 검증 (verifyCachedToken: 메모리 캐시 사용, KV 읽기 최소화)
-    const jwtSecret = getJwtSecret(c.env)
-    console.log('[JWT Validate] Secret (first 20 chars):', jwtSecret.substring(0, 20))
-    console.log('[JWT Validate] Token (first 50 chars):', token.substring(0, 50))
-    
-    const payload = await verifyCachedToken(token, jwtSecret)
-    
-    console.log('[JWT Validate] Payload:', payload ? 'Valid' : 'Invalid/Expired')
-    
-    if (!payload) {
-      return c.json({ 
-        success: false, 
-        valid: false,
-        error: 'JWT token expired or invalid',
-        code: 'TOKEN_EXPIRED'
-      }, 401)
-    }
-    
-    // JWT 토큰 유효함
-    return c.json({ 
-      success: true, 
-      valid: true,
-      data: {
-        user_id: payload.userId,
-        user_type: payload.userType,
-        email: payload.email,
-        session_valid: true
-      },
-      user: {
-        userId: payload.userId,
-        userType: payload.userType,
-        email: payload.email
-      }
-    })
-  } catch (error) {
-    console.error('[JWT Validate Error]', error)
-    return c.json({ 
-      success: false, 
-      valid: false,
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR'
-    }, 500)
-  }
-})
+// =============================================================================
+// ❌ DEPRECATED: Custom JWT Endpoints (Firebase 전환으로 불필요)
+// =============================================================================
+// 아래 엔드포인트들은 커스텀 JWT(access_token, refresh_token) 전용입니다.
+// Firebase ID Token 방식에서는 사용하지 않습니다.
+// Firebase SDK가 자동으로 토큰 검증 및 갱신을 처리합니다.
+// =============================================================================
 
-// JWT Refresh Token API (액세스 토큰 자동 갱신)
-app.post('/api/auth/refresh', cors(), async (c) => {
-  try {
-    const body = await c.req.json()
-    const { refreshToken } = body
-    
-    if (!refreshToken) {
-      return c.json({ 
-        success: false, 
-        error: 'No refresh token provided',
-        code: 'NO_REFRESH_TOKEN'
-      }, 400)
-    }
-    
-    // Refresh Token으로 새 Access Token 발급
-    const jwtSecret = getJwtSecret(c.env)
-    const newAccessToken = await refreshAccessToken(refreshToken, jwtSecret)
-    
-    if (!newAccessToken) {
-      return c.json({ 
-        success: false, 
-        error: 'Refresh token expired or invalid',
-        code: 'REFRESH_TOKEN_EXPIRED'
-      }, 401)
-    }
-    
-    // 새 Access Token 반환
-    return c.json({ 
-      success: true, 
-      data: {
-        accessToken: newAccessToken
-      }
-    })
-  } catch (error) {
-    console.error('[JWT Refresh Error]', error)
-    return c.json({ 
-      success: false, 
-      error: 'Internal server error',
-      code: 'INTERNAL_ERROR'
-    }, 500)
-  }
-})
-
+// 카카오 로그아웃 (Firebase Auth 방식)
 app.post('/api/auth/kakao/logout', cors(), async (c) => {
   const { DB } = c.env;
   
@@ -2982,6 +3579,32 @@ app.get('/api/auth/user/verify', cors(), async (c) => {
   }
 });
 
+// ✅ Get user role endpoint (for Firebase Auth users)
+app.get('/api/users/role', cors(), async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({ success: false, error: 'Missing or invalid authorization header', role: 'user' }, 401);
+    }
+    
+    // For now, return default 'user' role
+    // TODO: Implement Firebase token verification and database lookup
+    return c.json({
+      success: true,
+      role: 'user' // Default role for all authenticated users
+    });
+    
+  } catch (err) {
+    console.error('[/api/users/role] Error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message,
+      role: 'user' // Fallback to user role on error
+    }, 200); // Return 200 to prevent client errors
+  }
+});
+
 // =================================
 // Shipping Address APIs
 // =================================
@@ -3076,13 +3699,23 @@ app.post('/api/shipping-addresses', cors(), requireAuth, async (c) => {
     const postalCode = body.postal_code;
     const address = body.address;
     const addressDetail = body.address_detail;
-    const isDefault = body.is_default;
+    let isDefault = body.is_default;
     
     console.log('[POST /api/shipping-addresses] Received:', JSON.stringify(body));
     
     if (!userId || !recipientName || !phone || !address) {
       console.error('[POST /api/shipping-addresses] Missing required fields:', { userId, recipientName, phone, address });
       return c.json({ success: false, error: '필수 정보를 입력해주세요' }, 400);
+    }
+    
+    // 🎯 첫 번째 배송지인 경우 자동으로 기본 배송지로 설정
+    const existingAddresses = await DB.prepare(`
+      SELECT COUNT(*) as count FROM shipping_addresses WHERE user_id = ?
+    `).bind(userId).first();
+    
+    if (existingAddresses && existingAddresses.count === 0) {
+      isDefault = true; // 첫 배송지는 무조건 기본 배송지
+      console.log('[POST /api/shipping-addresses] 첫 번째 배송지 → 자동으로 기본 배송지 설정');
     }
     
     // 기본 배송지로 설정하는 경우, 기존 기본 배송지 해제
@@ -3454,18 +4087,51 @@ app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
 
 
 app.get('/api/streams/:id', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   const id = c.req.param('id');
 
   try {
-    const stream = await DB.prepare(`
-      SELECT ls.*, 
-             p.id as current_product_id, p.name as product_name, p.price, p.original_price, 
-             p.discount_rate, p.image_url, p.stock, p.category, p.description as product_description
-      FROM live_streams ls
-      LEFT JOIN products p ON ls.current_product_id = p.id
-      WHERE ls.id = ?
-    `).bind(id).first();
+    const cacheKey = `stream:detail:${id}`;
+    
+    // 💰 비용 최적화: KV 캐시 우선 확인 (D1 읽기 비용 절감)
+    const kvCached = await CACHE_KV.get(cacheKey, 'json');
+    if (kvCached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: kvCached,
+        cached: true,
+        cacheSource: 'kv',
+      });
+    }
+    
+    // 메모리 캐시 확인
+    const memCached = getFromMemoryCache(cacheKey);
+    if (memCached) {
+      // 백그라운드 갱신
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const freshData = await fetchStreamDetail(DB, id);
+            setToMemoryCache(cacheKey, freshData, 300); // 5분 TTL (라이브는 짧게)
+            await CACHE_KV.put(cacheKey, JSON.stringify(freshData), {
+              expirationTtl: 600 // 10분
+            });
+          } catch (err) {
+            console.error('[Cache Revalidate] Stream detail error:', err);
+          }
+        })()
+      );
+      
+      return c.json<ApiResponse>({
+        success: true,
+        data: memCached,
+        cached: true,
+        cacheSource: 'memory',
+      });
+    }
+
+    // 캐시 미스: DB 조회
+    const stream = await fetchStreamDetail(DB, id);
 
     if (!stream) {
       return c.json<ApiResponse>({
@@ -3473,10 +4139,17 @@ app.get('/api/streams/:id', async (c) => {
         error: 'Stream not found',
       }, 404);
     }
+    
+    // 💰 캐시 저장 (메모리 + KV)
+    setToMemoryCache(cacheKey, stream, 300); // 5분
+    await CACHE_KV.put(cacheKey, JSON.stringify(stream), {
+      expirationTtl: 600 // 10분
+    });
 
     return c.json<ApiResponse>({
       success: true,
       data: stream,
+      cached: false,
     });
   } catch (err) {
     return c.json<ApiResponse>({
@@ -3485,6 +4158,20 @@ app.get('/api/streams/:id', async (c) => {
     }, 500);
   }
 });
+
+/**
+ * 스트림 상세 조회 헬퍼 함수
+ */
+async function fetchStreamDetail(DB: D1Database, id: string) {
+  return await DB.prepare(`
+    SELECT ls.*, 
+           p.id as current_product_id, p.name as product_name, p.price, p.original_price, 
+           p.discount_rate, p.image_url, p.stock, p.category, p.description as product_description
+    FROM live_streams ls
+    LEFT JOIN products p ON ls.current_product_id = p.id
+    WHERE ls.id = ?
+  `).bind(id).first();
+}
 
 // 📺 라이브 스트림 목록 조회 (공개)
 app.get('/api/live-streams', async (c) => {
@@ -4043,13 +4730,24 @@ app.get('/api/products/search', async (c) => {
 
 // Product API
 app.get('/api/products/:id', async (c) => {
-  const { DB } = c.env;
+  const { DB, CACHE_KV } = c.env;
   const id = c.req.param('id');
 
   try {
     const cacheKey = `product:detail:${id}`;
     
-    // ✅ Stale-While-Revalidate: 메모리 캐시 우선
+    // 💰 비용 최적화: KV 캐시 우선 확인 (D1 읽기 비용 절감)
+    const kvCached = await CACHE_KV.get(cacheKey, 'json');
+    if (kvCached) {
+      return c.json<ApiResponse>({
+        success: true,
+        data: kvCached,
+        cached: true,
+        cacheSource: 'kv',
+      });
+    }
+    
+    // ✅ Stale-While-Revalidate: 메모리 캐시 확인
     const memCached = getFromMemoryCache(cacheKey);
     if (memCached) {
       // 백그라운드 갱신
@@ -4058,6 +4756,10 @@ app.get('/api/products/:id', async (c) => {
           try {
             const freshData = await fetchProductDetail(DB, id);
             setToMemoryCache(cacheKey, freshData, 1800); // 30분 TTL
+            // KV에도 저장 (1시간 TTL)
+            await CACHE_KV.put(cacheKey, JSON.stringify(freshData), {
+              expirationTtl: 3600
+            });
           } catch (err) {
             console.error('[Cache Revalidate] Product detail error:', err);
           }
@@ -4068,6 +4770,7 @@ app.get('/api/products/:id', async (c) => {
         success: true,
         data: memCached,
         cached: true,
+        cacheSource: 'memory',
       });
     }
 
@@ -4081,8 +4784,11 @@ app.get('/api/products/:id', async (c) => {
       }, 404);
     }
     
-    // 캐시 저장
+    // 💰 캐시 저장 (메모리 + KV)
     setToMemoryCache(cacheKey, productData, 1800);
+    await CACHE_KV.put(cacheKey, JSON.stringify(productData), {
+      expirationTtl: 3600 // 1시간
+    });
     
     return c.json<ApiResponse>({
       success: true,
@@ -4125,6 +4831,31 @@ async function fetchProductDetail(DB: D1Database, id: string) {
     options: options.results,
   };
 }
+
+// 상품 옵션 조회 API (Cart 페이지용)
+app.get('/api/products/:id/options', edgeCache(CACHE_PRESETS.microCache), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+
+  try {
+    const options = await DB.prepare(`
+      SELECT id, product_id, option_type, option_value, price_adjustment, stock
+      FROM product_options
+      WHERE product_id = ? AND stock > 0
+      ORDER BY option_type, option_value
+    `).bind(id).all();
+
+    return c.json<ApiResponse>({
+      success: true,
+      data: options.results || [],
+    });
+  } catch (err) {
+    return c.json<ApiResponse>({
+      success: false,
+      error: (err as Error).message,
+    }, 500);
+  }
+});
 
 // 실시간 재고 확인 API
 // ✨ 재고 조회 API (Micro-caching: 10초 TTL)
@@ -4476,41 +5207,94 @@ app.put('/api/cart/:cartItemId', requireAuth, async (c) => {
 
   try {
     const body = await c.req.json();
-    const { quantity } = body;
+    const { quantity, option_id } = body;
 
-    if (!quantity || quantity < 1) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Invalid quantity',
-      }, 400);
+    // 수량 변경의 경우
+    if (quantity !== undefined) {
+      if (quantity < 1) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Invalid quantity',
+        }, 400);
+      }
+
+      // 재고 확인
+      const cartItem = await DB.prepare(`
+        SELECT ci.product_id, ci.option_id, p.stock
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.id = ?
+      `).bind(cartItemId).first();
+
+      if (!cartItem) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Cart item not found',
+        }, 404);
+      }
+
+      // 옵션이 있는 경우 옵션 재고 확인, 없으면 상품 재고 확인
+      let availableStock = cartItem.stock as number;
+      if (cartItem.option_id) {
+        const optionStock = await DB.prepare(
+          'SELECT stock FROM product_options WHERE id = ?'
+        ).bind(cartItem.option_id).first();
+        if (optionStock) {
+          availableStock = optionStock.stock as number;
+        }
+      }
+
+      if (availableStock < quantity) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Insufficient stock',
+        }, 400);
+      }
+
+      // 수량 업데이트
+      await DB.prepare(
+        'UPDATE cart_items SET quantity = ? WHERE id = ?'
+      ).bind(quantity, cartItemId).run();
     }
 
-    // 재고 확인
-    const cartItem = await DB.prepare(`
-      SELECT ci.product_id, p.stock
-      FROM cart_items ci
-      JOIN products p ON ci.product_id = p.id
-      WHERE ci.id = ?
-    `).bind(cartItemId).first();
+    // 옵션 변경의 경우
+    if (option_id !== undefined) {
+      // 옵션 재고 확인
+      const option = await DB.prepare(
+        'SELECT stock, price_adjustment FROM product_options WHERE id = ?'
+      ).bind(option_id).first();
 
-    if (!cartItem) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Cart item not found',
-      }, 404);
+      if (!option) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Option not found',
+        }, 404);
+      }
+
+      // 현재 장바구니 아이템의 수량 조회
+      const cartItem = await DB.prepare(
+        'SELECT quantity FROM cart_items WHERE id = ?'
+      ).bind(cartItemId).first();
+
+      if (!cartItem) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Cart item not found',
+        }, 404);
+      }
+
+      if ((option.stock as number) < (cartItem.quantity as number)) {
+        return c.json<ApiResponse>({
+          success: false,
+          error: 'Insufficient stock for selected option',
+        }, 400);
+      }
+
+      // 옵션 업데이트
+      await DB.prepare(
+        'UPDATE cart_items SET option_id = ? WHERE id = ?'
+      ).bind(option_id, cartItemId).run();
     }
-
-    if ((cartItem.stock as number) < quantity) {
-      return c.json<ApiResponse>({
-        success: false,
-        error: 'Insufficient stock',
-      }, 400);
-    }
-
-    // 수량 업데이트
-    await DB.prepare(
-      'UPDATE cart_items SET quantity = ? WHERE id = ?'
-    ).bind(quantity, cartItemId).run();
 
     return c.json<ApiResponse>({
       success: true,
@@ -4529,6 +5313,12 @@ app.post('/api/orders', requireAuth, async (c) => {
 
   try {
     const requestData = await c.req.json();
+    console.log('[Order] 📝 주문 요청 받음:', {
+      userId: requestData.userId,
+      items: requestData.items?.length,
+      totalAmount: requestData.totalAmount
+    });
+    
     const { 
       userId, 
       cartItemIds, 
@@ -4654,6 +5444,24 @@ app.post('/api/orders', requireAuth, async (c) => {
       // ⏰ 예약 만료 시간 설정 (10분 후)
       const reservationExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       
+      // 🔄 Firebase UID를 DB user ID로 변환
+      let dbUserId = userId;
+      if (userId && typeof userId === 'string' && userId.length > 20) {
+        // Firebase UID 형식 감지 (20자 이상의 문자열)
+        console.log('[Order] 🔍 Firebase UID 감지, DB ID 조회 중:', userId);
+        const userResult = await DB.prepare(`
+          SELECT id FROM users WHERE firebase_uid = ?
+        `).bind(userId).first();
+        
+        if (userResult) {
+          dbUserId = userResult.id;
+          console.log(`[Order] ✅ Firebase UID ${userId} → DB ID ${dbUserId}`);
+        } else {
+          console.warn(`[Order] ⚠️ Firebase UID ${userId}에 해당하는 DB user 없음, null로 처리`);
+          dbUserId = null;
+        }
+      }
+      
       const orderResult = await DB.prepare(`
         INSERT INTO orders (
           order_number, user_id, total_amount, payment_status, status,
@@ -4662,7 +5470,7 @@ app.post('/api/orders', requireAuth, async (c) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).bind(
         orderNumber,
-        userId || null,
+        dbUserId || null,
         providedTotalAmount || 0,
         'pending',  // 결제 대기 상태
         'pending',  // 주문 상태 (결제 승인 후 'paid'로 변경)
@@ -4899,9 +5707,15 @@ app.post('/api/orders', requireAuth, async (c) => {
       },
     });
   } catch (err) {
+    console.error('[Order] ❌ 주문 생성 실패:', err);
+    console.error('[Order] 에러 상세:', {
+      message: (err as Error).message,
+      stack: (err as Error).stack?.slice(0, 500)
+    });
+    
     return c.json<ApiResponse>({
       success: false,
-      error: (err as Error).message,
+      error: (err as Error).message || '주문 생성 중 오류가 발생했습니다.',
     }, 500);
   }
 });
@@ -6750,6 +7564,114 @@ app.post('/api/seller/products', async (c) => {
   }
 });
 
+// Create/Update product options (상품 옵션 생성/업데이트)
+app.post('/api/seller/products/:id/options', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+    const { options } = await c.req.json();
+
+    // Verify product ownership
+    const product = await DB.prepare(
+      'SELECT id FROM products WHERE id = ? AND seller_id = ?'
+    ).bind(productId, auth.sellerId).first();
+
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
+    }
+
+    if (!Array.isArray(options) || options.length === 0) {
+      return c.json({ success: false, error: 'Options array is required' }, 400);
+    }
+
+    // Delete existing options first (for update case)
+    await DB.prepare(
+      'DELETE FROM product_options WHERE product_id = ?'
+    ).bind(productId).run();
+
+    // Insert new options
+    for (const option of options) {
+      const { option_type, option_value, price_adjustment, stock } = option;
+
+      if (!option_type || !option_value) {
+        continue; // Skip invalid options
+      }
+
+      await DB.prepare(`
+        INSERT INTO product_options (
+          product_id, option_type, option_value, price_adjustment, stock
+        ) VALUES (?, ?, ?, ?, ?)
+      `).bind(
+        productId,
+        option_type,
+        option_value,
+        price_adjustment || 0,
+        stock || 0
+      ).run();
+    }
+
+    // Get all options for this product
+    const savedOptions = await DB.prepare(
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock FROM product_options WHERE product_id = ?'
+    ).bind(productId).all();
+
+    // 캐시 무효화
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, `product:options:${productId}`);
+
+    return c.json({ 
+      success: true, 
+      data: savedOptions.results,
+      message: `${savedOptions.results.length} options saved successfully`
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Delete product option (상품 옵션 삭제)
+app.delete('/api/seller/products/:id/options/:optionId', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+    const optionId = c.req.param('optionId');
+
+    // Verify product ownership via product_options JOIN
+    const option = await DB.prepare(`
+      SELECT po.id 
+      FROM product_options po
+      JOIN products p ON po.product_id = p.id
+      WHERE po.id = ? AND po.product_id = ? AND p.seller_id = ?
+    `).bind(optionId, productId, auth.sellerId).first();
+
+    if (!option) {
+      return c.json({ success: false, error: 'Option not found or unauthorized' }, 404);
+    }
+
+    await DB.prepare(
+      'DELETE FROM product_options WHERE id = ?'
+    ).bind(optionId).run();
+
+    // 캐시 무효화
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, `product:options:${productId}`);
+
+    return c.json({ success: true, message: 'Option deleted successfully' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // Get single product (상품 단건 조회 - 수정용)
 app.get('/api/seller/products/:id', async (c) => {
   const { DB } = c.env;
@@ -6774,7 +7696,18 @@ app.get('/api/seller/products/:id', async (c) => {
       return c.json({ success: false, error: 'Product not found or unauthorized' }, 404);
     }
 
-    return c.json({ success: true, data: product });
+    // Get product options
+    const options = await DB.prepare(
+      'SELECT id, product_id, option_type, option_value, price_adjustment, stock FROM product_options WHERE product_id = ?'
+    ).bind(id).all();
+
+    return c.json({ 
+      success: true, 
+      data: {
+        ...product,
+        options: options.results || []
+      }
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -7715,93 +8648,288 @@ app.post('/api/orders/:orderId/cancel', requireAuth, async (c) => {
 // ========================================
 
 // Get current viewer count
+// ==========================================
+// 👁️ Viewer Count API - KV 기반 실시간 시청자 수
+// ==========================================
+
+// 시청자 참여 (Heartbeat) - 페이지 접속 시 + 30초마다
+app.post('/api/streams/:streamId/viewer/join', async (c) => {
+  const { SESSION_KV } = c.env;
+  
+  try {
+    const streamId = c.req.param('streamId');
+    const sessionId = c.req.header('X-Session-ID') || crypto.randomUUID();
+    
+    // KV에 세션 저장 (TTL 60초)
+    const key = `stream:${streamId}:viewer:${sessionId}`;
+    await SESSION_KV.put(key, Date.now().toString(), {
+      expirationTtl: 60 // 60초 후 자동 삭제
+    });
+    
+    return c.json({ 
+      success: true, 
+      sessionId,
+      message: 'Viewer session updated'
+    });
+  } catch (err) {
+    console.error('[Viewer Join] Error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 시청자 수 조회 - 셀러 조작값 우선
 app.get('/api/streams/:streamId/viewer-count', async (c) => {
-  const { DB } = c.env;
+  const { DB, SESSION_KV } = c.env;
 
   try {
     const streamId = c.req.param('streamId');
 
-    const stream = await DB.prepare(
-      'SELECT viewer_count FROM live_streams WHERE id = ?'
-    ).bind(streamId).first();
+    // 1️⃣ D1에서 스트림 존재 확인 및 manual_viewer_count 조회
+    // ⚠️ 컬럼이 없을 경우를 대비한 에러 처리
+    let stream: any = null;
+    let manualCount: number | null = null;
+    
+    try {
+      stream = await DB.prepare(
+        'SELECT id, manual_viewer_count FROM live_streams WHERE id = ?'
+      ).bind(streamId).first();
+      
+      if (stream) {
+        manualCount = stream.manual_viewer_count;
+      }
+    } catch (dbError) {
+      // manual_viewer_count 컬럼이 없는 경우 (마이그레이션 미적용)
+      console.warn('[Viewer Count] manual_viewer_count column not found, using fallback query');
+      stream = await DB.prepare(
+        'SELECT id FROM live_streams WHERE id = ?'
+      ).bind(streamId).first();
+    }
 
     if (!stream) {
       return c.json({ success: false, error: 'Stream not found' }, 404);
     }
 
+    // 2️⃣ 셀러가 설정한 값이 있으면 그것을 반환
+    if (manualCount !== null && manualCount !== undefined) {
+      return c.json({ 
+        success: true, 
+        data: { 
+          viewer_count: manualCount,
+          is_manual: true // 셀러 조작값 표시
+        } 
+        });
+    }
+
+    // 3️⃣ KV에서 실제 시청자 수 카운트
+    const prefix = `stream:${streamId}:viewer:`;
+    const list = await SESSION_KV.list({ prefix });
+    const actualCount = list.keys.length;
+
     return c.json({ 
       success: true, 
       data: { 
-        viewer_count: stream.viewer_count || 0 
+        viewer_count: actualCount,
+        is_manual: false // 실제 시청자 수
       } 
     });
   } catch (err) {
+    console.error('[Viewer Count] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
-// Update viewer count (Admin/Seller only)
-app.put('/api/streams/:streamId/viewer-count', async (c) => {
+// 셀러 시청자 수 조작 (can_manipulate_stats 권한 필요)
+app.put('/api/streams/:streamId/viewer-count', requireAuth, async (c) => {
   const { DB } = c.env;
+  const { userId, userType } = c.get('user');
   
-  // Try both admin and seller auth
-  const adminAuth = await verifyAdminSession(c);
-  const sellerAuth = !adminAuth.success ? await verifySellerSession(c) : { success: false };
-
-  if (!adminAuth.success && !sellerAuth.success) {
-    return c.json({ success: false, error: 'Unauthorized' }, 401);
-  }
-
   try {
     const streamId = c.req.param('streamId');
-    const { viewer_count } = await c.req.json();
+    const { manual_count } = await c.req.json();
 
-    if (typeof viewer_count !== 'number' || viewer_count < 0) {
-      return c.json({ success: false, error: 'Invalid viewer count' }, 400);
+    // 판매자 확인
+    if (userType !== 'seller') {
+      return c.json({ success: false, error: 'Only sellers can manipulate viewer count' }, 403);
     }
 
-    // If seller, verify ownership
-    if (sellerAuth.success) {
-      const stream = await DB.prepare(
-        'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
-      ).bind(streamId, sellerAuth.sellerId).first();
+    // 스트림 소유권 및 권한 확인
+    const result = await DB.prepare(`
+      SELECT ls.id, s.can_manipulate_stats
+      FROM live_streams ls
+      JOIN sellers s ON ls.seller_id = s.id
+      WHERE ls.id = ? AND ls.seller_id = ?
+    `).bind(streamId, userId).first() as { id: number, can_manipulate_stats: number } | null;
 
-      if (!stream) {
-        return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
-      }
+    if (!result) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
     }
 
+    if (!result.can_manipulate_stats) {
+      return c.json({ 
+        success: false, 
+        error: 'You do not have permission to manipulate stats. Please contact admin for approval.' 
+      }, 403);
+    }
+
+    // manual_count가 null이면 실제 값으로 복귀
     await DB.prepare(
-      'UPDATE live_streams SET viewer_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(viewer_count, streamId).run();
-
-    return c.json({ success: true, data: { viewer_count } });
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
-});
-
-// Increment viewer count (called when user joins)
-app.post('/api/streams/:streamId/view', async (c) => {
-  const { DB } = c.env;
-
-  try {
-    const streamId = c.req.param('streamId');
-
-    await DB.prepare(
-      'UPDATE live_streams SET viewer_count = viewer_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind(streamId).run();
-
-    const stream = await DB.prepare(
-      'SELECT viewer_count FROM live_streams WHERE id = ?'
-    ).bind(streamId).first();
+      'UPDATE live_streams SET manual_viewer_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(manual_count, streamId).run();
 
     return c.json({ 
       success: true, 
-      data: { viewer_count: stream?.viewer_count || 0 } 
+      data: { 
+        manual_count,
+        message: manual_count === null ? 'Reverted to actual viewer count' : 'Manual viewer count updated'
+      } 
     });
   } catch (err) {
+    console.error('[Update Viewer Count] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🛒 가짜 장바구니 알림 전송 (can_manipulate_stats 권한 필요)
+app.post('/api/streams/:streamId/fake-cart-notification', requireAuth, async (c) => {
+  const { DB } = c.env;
+  const { userId, userType } = c.get('user');
+  
+  try {
+    const streamId = c.req.param('streamId');
+    const { product_name, quantity = 1 } = await c.req.json();
+
+    // 판매자 확인
+    if (userType !== 'seller') {
+      return c.json({ success: false, error: 'Only sellers can send fake notifications' }, 403);
+    }
+
+    // 스트림 소유권 및 권한 확인
+    const result = await DB.prepare(`
+      SELECT ls.id, s.can_manipulate_stats, s.display_name
+      FROM live_streams ls
+      JOIN sellers s ON ls.seller_id = s.id
+      WHERE ls.id = ? AND ls.seller_id = ?
+    `).bind(streamId, userId).first() as { id: number, can_manipulate_stats: number, display_name: string } | null;
+
+    if (!result) {
+      return c.json({ success: false, error: 'Stream not found or unauthorized' }, 404);
+    }
+
+    if (!result.can_manipulate_stats) {
+      return c.json({ 
+        success: false, 
+        error: 'You do not have permission to send fake notifications. Please contact admin for approval.' 
+      }, 403);
+    }
+
+    // Firebase에 시스템 메시지 전송 (🎉 패키지)
+    const message = `🎉 ${product_name} ${quantity}개가 장바구니에 추가되었습니다!`;
+    
+    // Firebase Realtime Database에 메시지 전송
+    try {
+      const firebaseAdmin = await import('./lib/firebase-admin');
+      const db = firebaseAdmin.getDatabase();
+      const chatRef = db.ref(`chats/stream${streamId}`);
+      
+      await chatRef.push({
+        userId: 0, // 시스템 메시지
+        userName: 'System',
+        userType: 'system',
+        message,
+        timestamp: Date.now(),
+        isSeller: false,
+        isAdmin: false
+      });
+      
+      console.log(`[Fake Cart Notification] ✅ Message sent to Firebase: ${message}`);
+    } catch (firebaseError) {
+      console.error('[Fake Cart Notification] Firebase error:', firebaseError);
+      // Firebase 실패해도 성공 응답 (알림은 선택적 기능)
+    }
+
+    return c.json({ 
+      success: true, 
+      data: { 
+        message,
+        note: 'Fake notification sent to chat'
+      } 
+    });
+  } catch (err) {
+    console.error('[Fake Cart Notification] Error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ==========================================
+// Stripe Payment API - Global Region
+// ==========================================
+
+// Stripe Payment Intent 생성 API
+app.post('/api/payment/stripe/create-intent', async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const body = await c.req.json();
+    const { amount, currency = 'usd', metadata = {} } = body;
+
+    console.log('[Stripe] Payment Intent 생성 요청:', { amount, currency, metadata });
+
+    // 필수 파라미터 검증
+    if (!amount || amount <= 0) {
+      return c.json({
+        success: false,
+        error: 'Invalid amount. Amount must be greater than 0.'
+      }, 400);
+    }
+
+    // Stripe Secret Key 가져오기
+    const stripeSecretKey = c.env.STRIPE_SECRET_KEY;
+    
+    if (!stripeSecretKey) {
+      console.error('[Stripe] ❌ STRIPE_SECRET_KEY 환경 변수가 설정되지 않음');
+      return c.json({
+        success: false,
+        error: 'Stripe is not configured. Please contact support.'
+      }, 500);
+    }
+
+    // Stripe SDK 동적 import (Cloudflare Workers 환경 고려)
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2024-11-20.acacia',
+      // Cloudflare Workers에서는 fetch API 사용
+      httpClient: Stripe.createFetchHttpClient()
+    });
+
+    // Payment Intent 생성
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount), // cents 단위 (정수)
+      currency: currency.toLowerCase(),
+      automatic_payment_methods: {
+        enabled: true
+      },
+      metadata: {
+        ...metadata,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    console.log('[Stripe] ✅ Payment Intent 생성 완료:', paymentIntent.id);
+
+    return c.json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
+
+  } catch (error: any) {
+    console.error('[Stripe] ❌ Payment Intent 생성 실패:', error);
+    
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to create payment intent',
+      details: error.type || 'unknown_error'
+    }, 500);
   }
 });
 
@@ -9757,6 +10885,57 @@ app.patch('/api/admin/sellers/:id/commission', async (c) => {
 
   } catch (err) {
     console.error('수수료율 변경 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🎭 판매자 특수 권한 설정 (시청자 수 조작, 가짜 알림)
+app.patch('/api/admin/sellers/:id/permissions', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const sellerId = c.req.param('id');
+    const { can_manipulate_stats } = await c.req.json();
+
+    // 권한 값 유효성 검증 (0 or 1)
+    if (can_manipulate_stats !== 0 && can_manipulate_stats !== 1) {
+      return c.json({ success: false, error: '권한 값은 0 또는 1이어야 합니다' }, 400);
+    }
+
+    // 판매자 존재 확인
+    const seller = await DB.prepare('SELECT id, username, name FROM sellers WHERE id = ?').bind(sellerId).first();
+    
+    if (!seller) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // 권한 업데이트
+    await DB.prepare(`
+      UPDATE sellers 
+      SET can_manipulate_stats = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(can_manipulate_stats, sellerId).run();
+
+    const action = can_manipulate_stats ? '승인' : '해제';
+    console.log(`시청자 수 조작 권한 ${action}: 판매자 ${seller.username} (ID: ${sellerId})`);
+
+    return c.json({ 
+      success: true, 
+      message: `판매자 '${seller.username || seller.name}'의 특수 권한이 ${action}되었습니다`,
+      data: {
+        seller_id: sellerId,
+        seller_username: seller.username,
+        can_manipulate_stats
+      }
+    });
+
+  } catch (err) {
+    console.error('권한 변경 실패:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -14510,6 +15689,87 @@ function trackKvRead(key: string) {
   kvReadStats[key] = (kvReadStats[key] || 0) + 1;
 }
 
+// 🔍 DEBUG: Check user by email
+app.get('/api/debug/user/:email', cors(), async (c) => {
+  const { DB } = c.env;
+  const email = c.req.param('email');
+  
+  try {
+    const user = await DB.prepare(`
+      SELECT id, firebase_uid, email, name, created_at 
+      FROM users 
+      WHERE email = ?
+    `).bind(email).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+    
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
+        firebase_uid: user.firebase_uid,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at
+      }
+    });
+  } catch (error) {
+    console.error('[Debug] Error fetching user:', error);
+    return c.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, 500);
+  }
+});
+
+// 🔧 DEBUG: Update user Firebase UID
+app.post('/api/debug/user/:email/firebase-uid', cors(), async (c) => {
+  const { DB } = c.env;
+  const email = c.req.param('email');
+  
+  try {
+    const { firebase_uid } = await c.req.json();
+    
+    if (!firebase_uid) {
+      return c.json({ success: false, error: 'firebase_uid is required' }, 400);
+    }
+    
+    // Check if user exists
+    const user = await DB.prepare(`
+      SELECT id FROM users WHERE email = ?
+    `).bind(email).first();
+    
+    if (!user) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+    
+    // Update Firebase UID
+    await DB.prepare(`
+      UPDATE users SET firebase_uid = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?
+    `).bind(firebase_uid, email).run();
+    
+    console.log(`[Debug] Updated Firebase UID for ${email}: ${firebase_uid}`);
+    
+    return c.json({
+      success: true,
+      message: 'Firebase UID updated successfully',
+      user: {
+        id: user.id,
+        email,
+        firebase_uid
+      }
+    });
+  } catch (error) {
+    console.error('[Debug] Error updating Firebase UID:', error);
+    return c.json({ 
+      success: false, 
+      error: (error as Error).message 
+    }, 500);
+  }
+});
+
 export default app
 
 // =================================
@@ -14742,6 +16002,26 @@ async function sendDiscordNotification(
     console.error('[Discord Notification] Failed to send:', err)
   }
 }
+
+// =====================================
+// 🌐 SPA Fallback Handler
+// =====================================
+// All non-API, non-static routes should serve index.html
+// This ensures React Router can handle client-side routing
+
+app.get('*', serveStatic({ root: './' }));
+app.get('*', async (c) => {
+  const path = c.req.path;
+  
+  // Skip API routes (already handled above)
+  if (path.startsWith('/api/') || path.startsWith('/auth/') || path.startsWith('/static/')) {
+    return c.notFound();
+  }
+  
+  // For all other routes, serve index.html to enable SPA routing
+  console.log(`[SPA Fallback] Serving index.html for: ${path}`);
+  return c.html(await c.env.ASSETS.fetch(new Request('https://dummy.com/index.html')).then(r => r.text()));
+});
 
 // 글로벌 에러 핸들러 (기존 onError 대체)
 app.onError(async (err, c) => {

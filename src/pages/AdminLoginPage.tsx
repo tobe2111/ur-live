@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { useAuth } from '@/contexts/AuthContext'
 import { getUserType } from '@/utils/auth'
+// ✅ Zustand 직접 사용
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/config/region'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-  const { isLoggedIn, isAuthReady } = useAuth()
+  
+  // ✅ Region 기반 Store 선택
+  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  
+  // ✅ Selector로 필요한 상태만 구독
+  const user = useAuth(state => state.user)
+  const isAuthReady = useAuth(state => state.isAuthReady)
+  const logout = useAuth(state => state.logout)
+  
+  // ✅ 계산된 값
+  const isLoggedIn = !!user
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,13 +32,14 @@ export default function AdminLoginPage() {
       if (userType === 'admin') {
         console.log('[AdminLoginPage] 이미 관리자 로그인됨 - /admin으로 리다이렉트')
         navigate('/admin', { replace: true })
-      } else {
-        console.log('[AdminLoginPage] 다른 사용자 타입으로 로그인됨:', userType)
-        // 관리자가 아닌 경우 로그아웃 필요
+      } else if (userType) {
+        console.log('[AdminLoginPage] 다른 사용자 타입으로 로그인됨:', userType, '- 자동 로그아웃')
+        // 관리자가 아닌 경우 자동 로그아웃
+        logout()
         setError('관리자 계정으로 로그인해주세요.')
       }
     }
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isAuthReady, isLoggedIn, navigate, logout])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -33,51 +47,42 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      const response = await api.post('/api/auth/login', {
-        username: email, // API uses 'username' field
-        password,
-        userType: 'admin'
+      // 🔐 JWT-based Login (NO Firebase!)
+      const response = await api.post('/api/admin/login', {
+        email,
+        password
       })
 
       if (response.data.success) {
-        // ✅ 1단계: 기존 세션 완전 삭제 (seller 세션 등)
-        console.log('[AdminLogin] Step 0: Clearing old sessions...')
-        localStorage.clear()  // 모든 localStorage 클리어
+        // Clear old sessions
+        console.log('[AdminLogin] Clearing old sessions...')
+        localStorage.clear()
         
-        // ✅ 2단계: JWT 토큰 저장
-        const { accessToken, refreshToken } = response.data.data
-        const adminId = response.data.data.user.id
+        // Store JWT token and admin info
+        const { token, admin } = response.data.data
         
-        console.log('[AdminLogin] 🚀 JWT Login successful')
-        console.log('[AdminLogin] Access token:', accessToken?.substring(0, 20) + '...')
-        console.log('[AdminLogin] Refresh token:', refreshToken?.substring(0, 20) + '...')
-        console.log('[AdminLogin] Admin ID:', adminId)
+        console.log('[AdminLogin] ✅ JWT Login successful')
+        console.log('[AdminLogin] Admin ID:', admin.id)
         
-        console.log('[AdminLogin] Step 1: Setting user_type to admin...')
+        localStorage.setItem('admin_token', token)
         localStorage.setItem('user_type', 'admin')
+        localStorage.setItem('admin_id', admin.id.toString())
+        localStorage.setItem('user_id', admin.id.toString())
+        localStorage.setItem('user_name', admin.name || admin.email)
         
-        console.log('[AdminLogin] Step 2: Setting JWT tokens...')
-        localStorage.setItem('access_token', accessToken)
-        localStorage.setItem('refresh_token', refreshToken)
+        console.log('[AdminLogin] ✅ All localStorage set')
+        console.log('  - user_type:', localStorage.getItem('user_type'))
+        console.log('  - admin_token:', token.substring(0, 20) + '...')
+        console.log('  - admin_id:', admin.id)
         
-        console.log('[AdminLogin] Step 3: Setting admin ID...')
-        localStorage.setItem('admin_id', adminId.toString())
-        
-        // 🔍 검증
-        const verifyUserType = localStorage.getItem('user_type')
-        const verifyAccessToken = localStorage.getItem('access_token')
-        
-        if (verifyUserType === 'admin' && verifyAccessToken === accessToken) {
-          console.log('[AdminLogin] ✅ JWT verification passed! Navigating to /admin...')
-          navigate('/admin', { replace: true })
-        } else {
-          console.error('[AdminLogin] ❌ JWT verification failed!')
-          setError('로그인 성공했으나 데이터 저장에 실패했습니다. 다시 시도해주세요.')
-        }
+        // Navigate to admin dashboard
+        console.log('[AdminLogin] ✅ Navigating to /admin...')
+        navigate('/admin', { replace: true })
       } else {
         setError(response.data.error || '로그인 실패')
       }
     } catch (err: any) {
+      console.error('[AdminLogin] Error:', err)
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)

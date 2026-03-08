@@ -1,11 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { requireLogin, getUserId, isLoggedIn, saveUserInfo } from '@/utils/auth'
+// ✅ Zustand 직접 사용
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { CustomModal, useModal } from '@/components/CustomModal'
+import { isKorea } from '@/config/region'
+import { captureError, captureMessage } from '@/lib/sentry'
+
+// 🔥 Region-based lazy loading for payment components
+const TossPaymentWidget = lazy(() => 
+  import('@/components/payments/TossPaymentWidget').then(m => ({ default: m.TossPaymentWidget }))
+)
+const StripeCheckout = lazy(() => 
+  import('@/components/payments/StripeCheckout').then(m => ({ default: m.StripeCheckout }))
+)
 
 // 🚨 중요: 결제위젯 SDK는 HTML에서 로드됨 (index.html 참고)
 // window.PaymentWidget 전역 함수 사용 (V1 공식 샘플 방식)
@@ -58,6 +71,15 @@ function generateRandomString() {
 
 export default function CheckoutPage() {
   console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
+  
+  // ✅ Region 기반 Store 선택
+  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  
+  // ✅ Selector로 필요한 상태만 구독
+  const user = useAuth(state => state.user)
+  const authLoading = useAuth(state => state.isLoading)
+  const isAuthReady = useAuth(state => state.isAuthReady)
+  
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -90,6 +112,26 @@ export default function CheckoutPage() {
     address_detail: '',
     is_default: 0
   })
+  
+  // ✅ 인증 초기화 대기
+  if (!isAuthReady || authLoading) {
+    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...', { authLoading, isAuthReady })
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ 인증 완료 후 user가 없으면 로그인 페이지로 리다이렉트
+  if (!user) {
+    console.log('[CheckoutPage] ❌ 사용자 없음 - 로그인 필요')
+    requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
+    return null
+  }
 
   // 셀러별 장바구니 그룹화 및 배송비 계산
   const sellerGroups = cartItems.reduce((groups, item) => {
@@ -166,151 +208,11 @@ export default function CheckoutPage() {
     checkFirebaseAuth()
   }, [navigate]) // 컴포넌트 마운트 시 한 번만 실행
 
-  // 🎯 Step 1: 토스페이먼츠 SDK 초기화 및 위젯 인스턴스 생성
-  useEffect(() => {
-    async function fetchPaymentWidgets() {
-      if (!userId || cartItems.length === 0) {
-        console.log('[TossPayments] Step 1 대기 중: userId 또는 cartItems 없음')
-        return
-      }
-
-      try {
-        console.log('[TossPayments] Step 1: SDK 초기화 시작')
-        console.log('[TossPayments] window.PaymentWidget 존재 여부:', typeof window.PaymentWidget)
-        
-        // 전역 객체에서 SDK 로드 확인
-        if (typeof window.PaymentWidget === 'undefined') {
-          throw new Error('결제위젯 SDK가 로드되지 않았습니다. index.html을 확인하세요.')
-        }
-        
-        // 결제위젯 초기화 (Version 1 공식 샘플 방식 - new 키워드 없음)
-        const customerKey = `customer_${userId}`  // 고유한 구매자 ID
-        const widgetsInstance = window.PaymentWidget(clientKey, customerKey)
-        console.log('[TossPayments] ✅ PaymentWidget 인스턴스 생성 완료 (V1 함수 호출 방식)')
-        
-        setWidgets(widgetsInstance)
-        console.log('[TossPayments] ✅ Step 1 완료: widgets 인스턴스 생성')
-      } catch (err) {
-        console.error('[TossPayments] ❌ Step 1 실패:', err)
-        setError('결제 시스템을 불러올 수 없습니다.')
-      }
-    }
-
-    fetchPaymentWidgets()
-  }, [userId, cartItems])
-
-  // 🎯 Step 2: 결제 UI 렌더링 (한 번만 실행, 금액은 Step 3에서 업데이트)
-  useEffect(() => {
-    async function renderPaymentWidgets() {
-      if (widgets == null) {
-        console.log('[TossPayments] Step 2: widgets 없음, 대기 중')
-        return
-      }
-      
-      // 이미 렌더링되었다면 중복 실행 방지
-      if (ready) {
-        console.log('[TossPayments] Step 2: 이미 렌더링됨, 스킵')
-        return
-      }
-
-      try {
-        console.log('[TossPayments] Step 2: 결제 UI 렌더링 시작')
-        console.log('[TossPayments] totalAmount:', totalAmount)
-        console.log('[TossPayments] cartItems:', cartItems.length)
-        
-        // DOM 요소가 존재할 때까지 대기 (최적화: 최대 5초)
-        let paymentMethodEl = null
-        let agreementEl = null
-        let attempts = 0
-        const maxAttempts = 50  // 50번 시도 (5초) - 최적화
-        
-        while (attempts < maxAttempts) {
-          paymentMethodEl = document.getElementById('payment-method')
-          agreementEl = document.getElementById('agreement')
-          
-          if (paymentMethodEl && agreementEl) {
-            console.log('[TossPayments] ✅ DOM 요소 발견! (', attempts * 100, 'ms)')
-            
-            // 모바일에서 높이 강제 설정
-            if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
-              paymentMethodEl.style.minHeight = '350px'
-              console.log('[TossPayments] 📱 모바일 최소 높이 설정: 350px')
-            }
-            
-            break
-          }
-          
-          console.log('[TossPayments] ⏳ DOM 대기 중... (', attempts * 100, 'ms)')
-          await new Promise(resolve => setTimeout(resolve, 100))
-          attempts++
-        }
-        
-        if (!paymentMethodEl || !agreementEl) {
-          console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음 (10초 초과)')
-          console.error('[TossPayments] payment-method:', paymentMethodEl)
-          console.error('[TossPayments] agreement:', agreementEl)
-          console.error('[TossPayments] 디버그 - document.body.innerHTML 길이:', document.body.innerHTML.length)
-          setError('결제 UI를 불러올 수 없습니다. 페이지를 새로고침해주세요.')
-          return
-        }
-        
-        // 결제 수단 UI 렌더링 전 로그
-        console.log('[TossPayments] renderPaymentMethods 호출 직전')
-        console.log('[TossPayments] widgets:', widgets)
-        console.log('[TossPayments] widgets.renderPaymentMethods:', typeof widgets.renderPaymentMethods)
-        console.log('[TossPayments] 모바일 환경:', /Mobile|Android|iPhone/i.test(navigator.userAgent))
-        console.log('[TossPayments] 화면 크기:', window.innerWidth, 'x', window.innerHeight)
-        
-        // 결제 수단 UI 렌더링 (Version 1 - 동기 메서드, 반환값 저장)
-        console.log('[TossPayments] 초기 금액으로 렌더링:', totalAmount)
-        
-        // 모바일 환경에서 추가 대기 시간
-        if (/Mobile|Android|iPhone/i.test(navigator.userAgent)) {
-          console.log('[TossPayments] 📱 모바일 환경 - 500ms 추가 대기')
-          await new Promise(resolve => setTimeout(resolve, 500))
-        }
-        
-        const paymentMethodWidgetInstance = widgets.renderPaymentMethods(
-          '#payment-method',
-          { value: totalAmount },
-          { variantKey: 'DEFAULT' }
-        )
-        
-        console.log('[TossPayments] renderPaymentMethods 완료, 반환값:', paymentMethodWidgetInstance)
-        console.log('[TossPayments] renderPaymentMethods.on:', typeof paymentMethodWidgetInstance?.on)
-        
-        // 이용약관 UI 렌더링 (Version 1 - 동기 메서드)
-        console.log('[TossPayments] renderAgreement 호출')
-        widgets.renderAgreement(
-          '#agreement',
-          { variantKey: 'AGREEMENT' }
-        )
-        console.log('[TossPayments] renderAgreement 완료')
-        
-        // V1 공식: 'ready' 이벤트로 렌더링 완료 확인
-        if (paymentMethodWidgetInstance && typeof paymentMethodWidgetInstance.on === 'function') {
-          console.log('[TossPayments] ready 이벤트 리스너 등록')
-          paymentMethodWidgetInstance.on('ready', function() {
-            console.log('[TossPayments] 🎉 ready 이벤트 발생!')
-            setPaymentMethodWidget(paymentMethodWidgetInstance)  // 저장
-            setReady(true)
-            console.log('[TossPayments] ✅ Step 2 완료: UI 렌더링 준비됨 (ready 이벤트)')
-          })
-        } else {
-          console.error('[TossPayments] ❌ paymentMethodWidgetInstance.on이 함수가 아님')
-          console.error('[TossPayments] paymentMethodWidgetInstance:', paymentMethodWidgetInstance)
-        }
-      } catch (err: any) {
-        console.error('[TossPayments] ❌ Step 2 실패:', err)
-        console.error('[TossPayments] 에러 메시지:', err.message)
-        console.error('[TossPayments] 에러 스택:', err.stack)
-        setError('결제 UI 렌더링에 실패했습니다: ' + err.message)
-      }
-    }
-
-    renderPaymentWidgets()
-  }, [widgets, totalAmount, cartItems])  // totalAmount와 cartItems 추가하여 변경 시 재렌더링
-
+  /* ====================================================================
+   * 🔥 LEGACY: Toss Payment 관련 로직 제거됨
+   * TossPaymentWidget 컴포넌트로 이동됨 (Region 기반 lazy loading)
+   * ==================================================================== */
+  
   // 🎯 Step 3: 금액 변경 시 업데이트 (V1 - 동기 메서드)
   useEffect(() => {
     if (paymentMethodWidget == null || !ready) {
@@ -373,8 +275,27 @@ export default function CheckoutPage() {
     }
     
     console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
-    const uid = getUserId()
-    console.log('[CheckoutPage] userId:', uid)
+    
+    // 🔥 Fix: Use Firebase UID directly if getUserId() returns null
+    let uid = getUserId()
+    
+    // Fallback to Firebase UID if userId is not in localStorage
+    if (!uid && user) {
+      console.log('[CheckoutPage] ⚠️ localStorage에 userId 없음, Firebase UID 사용:', user.uid)
+      uid = user.uid
+      // Save Firebase UID as user_id for future use
+      localStorage.setItem('user_id', user.uid)
+    }
+    
+    console.log('[CheckoutPage] 👤 userId:', uid)
+    console.log('[CheckoutPage] 🔍 localStorage 전체 확인:', {
+      user_id: localStorage.getItem('user_id'),
+      userId: localStorage.getItem('userId'),
+      firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
+      user_name: localStorage.getItem('user_name'),
+      user_type: localStorage.getItem('user_type'),
+      firebase_uid: user?.uid
+    })
     console.log('[CheckoutPage] isLoggedIn:', isLoggedIn())
     
     if (!isLoggedIn()) {
@@ -385,6 +306,7 @@ export default function CheckoutPage() {
 
     if (!uid) {
       console.log('[CheckoutPage] ❌ userId 없음')
+      captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })
       setError('사용자 정보를 확인할 수 없습니다.')
       setLoading(false)
       return
@@ -426,6 +348,7 @@ export default function CheckoutPage() {
         }
       } catch (err) {
         console.error('[CheckoutPage] ❌ API 에러:', err)
+        captureError(err as Error, { context: 'CheckoutPage.loadData', userId: uid })
         handleApiError(err, '데이터 로드 실패')
         setError('데이터를 불러올 수 없습니다.')
       } finally {
@@ -858,35 +781,54 @@ export default function CheckoutPage() {
             <section className="bg-white px-5 py-4">
               <h2 className="text-[17px] font-bold text-gray-900 mb-3">결제 수단</h2>
               
-              {/* TossPayments widget - DO NOT MODIFY */}
-              <div 
-                id="payment-method" 
-                className="w-full"
-                style={{
-                  minHeight: '120px',
-                  width: '100%',
-                  maxWidth: '100%',
-                  overflow: 'visible'
-                }}
-              />
-              
-              {!ready && (
-                <div className="flex items-center justify-center py-6 text-gray-500 text-sm">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
-                  <p>결제 수단 불러오는 중...</p>
-                </div>
+              {/* 🔥 Region-based payment widget */}
+              {isKorea() ? (
+                /* 한국: Toss Payments */
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                    <p>결제 수단 불러오는 중...</p>
+                  </div>
+                }>
+                  <TossPaymentWidget
+                    userId={userId || ''}
+                    cartItems={cartItems}
+                    totalAmount={subtotal}
+                    shippingFee={totalShippingFee}
+                    onPaymentSuccess={(orderId, paymentKey, amount) => {
+                      console.log('[CheckoutPage] 결제 성공:', { orderId, paymentKey, amount })
+                      navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
+                    }}
+                    onPaymentError={(error) => {
+                      console.error('[CheckoutPage] 결제 실패:', error)
+                      showErrorToast(error)
+                    }}
+                  />
+                </Suspense>
+              ) : (
+                /* 글로벌: Stripe */
+                <Suspense fallback={
+                  <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                    <p>Loading payment method...</p>
+                  </div>
+                }>
+                  <StripeCheckout
+                    userId={userId || ''}
+                    cartItems={cartItems}
+                    totalAmount={subtotal}
+                    shippingFee={totalShippingFee}
+                    onPaymentSuccess={(orderId, paymentIntentId, amount) => {
+                      console.log('[CheckoutPage] Payment success:', { orderId, paymentIntentId, amount })
+                      navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
+                    }}
+                    onPaymentError={(error) => {
+                      console.error('[CheckoutPage] Payment failed:', error)
+                      showErrorToast(error)
+                    }}
+                  />
+                </Suspense>
               )}
-              
-              {/* 약관 동의 위젯 */}
-              <div 
-                id="agreement" 
-                className="w-full mt-0.5"
-                style={{
-                  width: '100%',
-                  maxWidth: '100%',
-                  overflow: 'visible'
-                }}
-              />
             </section>
           </div>
 
@@ -928,31 +870,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Desktop payment button */}
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    onClick={handlePayment}
-                    disabled={!ready || !selectedAddress || isProcessing || !widgets}
-                    className="flex w-full items-center justify-center rounded-2xl bg-blue-600 py-[18px] text-[16px] font-bold text-white transition-all hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {isProcessing ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                        <span>결제 처리중</span>
-                      </div>
-                    ) : !widgets ? (
-                      '결제 시스템 로딩 중...'
-                    ) : !selectedAddress ? (
-                      '⚠️ 배송지를 선택해주세요'
-                    ) : !ready ? (
-                      '결제 UI 준비 중...'
-                    ) : (
-                      <span>{totalAmount.toLocaleString()}원 결제하기</span>
-                    )}
-                  </button>
-                </div>
-
+                {/* Payment button is inside TossPaymentWidget */}
                 {!selectedAddress && (
                   <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-xs text-amber-800 text-center">
@@ -1006,83 +924,8 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {/* Mobile pay bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 lg:hidden z-50">
-        <button
-          type="button"
-          onClick={handlePayment}
-          onTouchEnd={(e) => {
-            // 모바일 터치 이벤트 지원
-            e.preventDefault()
-            if (!isProcessing && ready && selectedAddress) {
-              handlePayment(e)
-            }
-          }}
-          disabled={!ready || !selectedAddress || isProcessing || !widgets}
-          className="w-full flex items-center justify-center rounded-2xl bg-blue-600 py-4 text-[16px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
-          style={{
-            backgroundColor: !ready || !selectedAddress || !widgets ? '#e5e7eb' : undefined,
-            color: !ready || !selectedAddress || !widgets ? '#9ca3af' : undefined,
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          {isProcessing ? (
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              <span>결제 처리중</span>
-            </div>
-          ) : !widgets ? (
-            '결제 시스템 로딩 중...'
-          ) : !selectedAddress ? (
-            '⚠️ 배송지를 선택해주세요'
-          ) : !ready ? (
-            '결제 UI 준비 중...'
-          ) : (
-            <span>{totalAmount.toLocaleString()}원 결제하기</span>
-          )}
-        </button>
-
-      {/* 약관 링크 - 최하단 (모바일만) */}
-      <div className="bg-gray-50 py-4 border-t border-gray-200 lg:hidden">
-        <div className="mx-auto max-w-lg px-5">
-          {/* 약관 및 개인정보 수집 동의 */}
-          <p className="text-[11px] text-gray-500 text-center mb-3">
-            결제 진행 시 아래 약관 및 개인정보 수집에 동의한 것으로 간주됩니다
-          </p>
-          
-          {/* 개인정보 수집 동의 체크박스 */}
-          <label className="flex items-start gap-2 justify-center mb-3 cursor-pointer group px-4">
-            <input
-              type="checkbox"
-              checked={agreedToPrivacy}
-              onChange={(e) => setAgreedToPrivacy(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <span className="text-[12px] text-gray-700 group-hover:text-gray-900 transition-colors">
-              <span className="font-medium text-red-600">(필수)</span> 개인정보 수집 및 이용에 동의합니다
-            </span>
-          </label>
-          
-          <div className="flex justify-center gap-2 text-[11px]">
-            <Link 
-              to="/terms" 
-              target="_blank"
-              className="text-gray-600 hover:text-blue-600 underline"
-            >
-              이용약관
-            </Link>
-            <span className="text-gray-300">|</span>
-            <Link 
-              to="/privacy" 
-              target="_blank"
-              className="text-gray-600 hover:text-blue-600 underline"
-            >
-              개인정보 처리방침
-            </Link>
-          </div>
-        </div>
-      </div>
+      {/* Mobile payment button removed - now inside TossPaymentWidget */}
+      {/* Terms section removed as it's now inside TossPaymentWidget's agreement component */}
 
       {/* 배송지 선택 모달 */}
       {console.log('[CheckoutPage] 배송지 모달 렌더링 - showAddressModal:', showAddressModal, 'addresses:', addresses.length)}
@@ -1288,7 +1131,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </CustomModal>
-      </div>
     </div>
   )
 }

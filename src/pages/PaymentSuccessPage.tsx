@@ -88,6 +88,7 @@ export default function PaymentSuccessPage() {
       
       // localStorage에서 배송지 정보 가져오기
       const shippingAddress = localStorage.getItem('checkoutShippingAddress') || ''
+      const shippingAddressDetail = localStorage.getItem('checkoutShippingAddressDetail') || ''
       const recipientName = localStorage.getItem('checkoutRecipientName') || ''
       const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
       
@@ -101,11 +102,12 @@ export default function PaymentSuccessPage() {
       }))
 
       const orderData = {
-        userId: userId,
+        userId: userId,  // Firebase UID (백엔드에서 DB ID로 매핑됨)
         orderNumber: orderId,
         items: orderItems,
         totalAmount: parseInt(amount || '0'),
         shippingAddress: shippingAddress,
+        shippingAddressDetail: shippingAddressDetail,  // ← 추가
         recipientName: recipientName,
         recipientPhone: recipientPhone,
         status: 'pending'

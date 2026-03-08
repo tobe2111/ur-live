@@ -9,7 +9,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 
 export default function MainHomePage() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
       <TopNav />
       <main>
         <HeroBanner />
@@ -18,8 +18,10 @@ export default function MainHomePage() {
         <ProductGrid />
         <div className="h-px bg-border" />
         <LiveNow />
+        <SiteFooter />
       </main>
-      <SiteFooter />
+      {/* Bottom Navigation Spacer */}
+      <div className="h-20" aria-hidden="true"></div>
       <BottomNav />
     </div>
   )

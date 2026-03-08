@@ -9,6 +9,11 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
 import { getUserName, getUserId, saveUserInfo, logout } from '@/utils/auth'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import { useLiveStreams } from '@/hooks/useLiveStream'
+import { BannerSection } from '@/components/home/BannerSection'
+import { HeroSection } from '@/components/home/HeroSection'
+import { FeaturesSection } from '@/components/home/FeaturesSection'
+import { CTASection } from '@/components/home/CTASection'
 
 interface Stream {
   id: number
@@ -55,10 +60,11 @@ interface Banner {
 }
 
 export default function HomePage() {
-  const [streams, setStreams] = useState<Stream[]>([])
+  // React Query로 스트림 데이터 가져오기 (30초마다 자동 갱신)
+  const { data: liveStreamsData, isLoading: streamsLoading } = useLiveStreams()
+  
   const [scheduledStreams, setScheduledStreams] = useState<Stream[]>([])
   const [banners, setBanners] = useState<Banner[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('viewers')
@@ -70,6 +76,21 @@ export default function HomePage() {
   // 검색 자동완성 상태
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // React Query 데이터를 로컬 형식으로 변환
+  const streams = (liveStreamsData || []).map((s: any) => ({
+    id: parseInt(s.id) || 0,
+    title: s.title || '',
+    description: s.description || '',
+    youtube_video_id: s.stream_url || '',
+    platform: 'youtube',
+    thumbnail_url: s.thumbnail_url,
+    seller_name: s.seller_name || '',
+    seller_profile_image: '',
+    viewer_count: s.viewer_count || 0,
+    status: s.status as 'live' | 'scheduled' | 'ended',
+    scheduled_start_time: s.scheduled_at,
+  })) as Stream[]
 
   // 카카오 로그인 콜백 처리
   useEffect(() => {
@@ -99,17 +120,10 @@ export default function HomePage() {
       showAlert(`환영합니다, ${decodeURIComponent(userName)}님!`, 'success', '로그인 성공')
     }
     
-    loadStreams()
+    // React Query가 자동으로 스트림 로딩 & 30초마다 갱신
     loadScheduledStreams()
     loadBanners()
     loadUserInfo()
-    
-    // 실시간 업데이트: 30초마다 라이브 스트림 새로고침
-    const intervalId = setInterval(() => {
-      loadStreams()
-    }, 30000) // 30초
-    
-    return () => clearInterval(intervalId)
   }, [searchParams])
 
   function loadUserInfo() {
@@ -137,29 +151,6 @@ export default function HomePage() {
     setUser(null)
     showAlert('로그아웃되었습니다.', 'success', '로그아웃 완료')
     setTimeout(() => navigate('/'), 1500)
-  }
-
-  async function loadStreams() {
-    try {
-      console.log('[HomePage] Loading streams...')
-      setLoading(true)
-      const response = await api.get('/api/streams')
-      console.log('[HomePage] API Response:', response.data)
-      if (response.data.success) {
-        const activeStreams = (response.data.data || []).filter(
-          (s: Stream) => s.status === 'live' || s.status === 'scheduled'
-        )
-        console.log('[HomePage] Active streams (live + scheduled):', activeStreams.length)
-        setStreams(activeStreams)
-      } else {
-        showAlert('라이브 방송 목록을 불러오지 못했습니다.', 'error')
-      }
-    } catch (error) {
-      console.error('[HomePage] Failed to load streams:', error)
-      showAlert('라이브 방송 목록을 불러오는 중 오류가 발생했습니다.', 'error')
-    } finally {
-      setLoading(false)
-    }
   }
 
   async function loadBanners() {
@@ -231,6 +222,11 @@ export default function HomePage() {
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`)
     }
+  }
+
+  function handleShopNowClick() {
+    const liveSection = document.getElementById('live-section')
+    liveSection?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -345,220 +341,13 @@ export default function HomePage() {
       </header>
 
       {/* Main Banner Section */}
-      {banners.length > 0 && (
-        <section className="relative w-full bg-white">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
-            <div className="relative overflow-hidden rounded-2xl shadow-2xl group cursor-pointer">
-              <a
-                href={banners[0].link_url || '#'}
-                onClick={(e) => {
-                  if (banners[0].link_url?.startsWith('#')) {
-                    e.preventDefault()
-                    const element = document.querySelector(banners[0].link_url)
-                    element?.scrollIntoView({ behavior: 'smooth' })
-                  }
-                }}
-                className="block"
-              >
-                <div className="relative aspect-[16/9] w-full overflow-hidden">
-                  <LazyImage
-                    src={banners[0].image_url}
-                    alt={banners[0].title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </div>
-                {banners[0].description && (
-                  <div className="absolute bottom-6 left-6 right-6 text-white">
-                    <p className="text-lg sm:text-xl font-bold drop-shadow-lg">
-                      {banners[0].description}
-                    </p>
-                  </div>
-                )}
-              </a>
-            </div>
-          </div>
-        </section>
-      )}
+      <BannerSection banners={banners} />
 
-      {/* Hero Section - Toon.at Style with Big Banner */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-white to-yellow-50">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(138,90,205,0.08),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,215,0,0.08),transparent_50%)]"></div>
-        
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20 md:py-28 lg:py-36">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: Text Content */}
-            <div className="text-left space-y-8">
-              {/* Eyebrow */}
-              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-[#6A5ACD]/10 to-[#FFD700]/10 px-4 py-2 rounded-full border border-[#6A5ACD]/20">
-                <Sparkles className="h-4 w-4 text-[#6A5ACD]" />
-                <span className="text-sm font-bold text-[#6A5ACD]">
-                  새로운 쇼핑 경험
-                </span>
-              </div>
+      {/* Hero Section */}
+      <HeroSection liveStreamCount={streams.length} onShopNowClick={handleShopNowClick} />
 
-              {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight tracking-tight">
-                <span className="text-gray-900">누구나 쉽고</span>
-                <br />
-                <span className="text-gray-900">간편하게</span>
-                <br />
-                <span className="bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#6A5ACD] bg-clip-text text-transparent">
-                  라이브 커머스 시작
-                </span>
-              </h1>
-
-              {/* Subheadline */}
-              <p className="text-xl sm:text-2xl text-gray-600 font-medium leading-relaxed">
-                YouTube & TikTok 영상으로<br className="sm:hidden" /> 보는 순간 바로 구매!
-              </p>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <button 
-                  onClick={() => {
-                    const liveSection = document.getElementById('live-section')
-                    liveSection?.scrollIntoView({ behavior: 'smooth' })
-                  }}
-                  className="group relative w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFC700] hover:to-[#FF9500] text-gray-900 font-bold text-lg rounded-2xl shadow-2xl hover:shadow-[0_20px_50px_rgba(255,215,0,0.4)] transition-all duration-300 transform hover:scale-105"
-                >
-                  <span className="flex items-center justify-center space-x-2">
-                    <Play className="h-5 w-5 fill-current" />
-                    <span>영상 쇼핑 시작하기</span>
-                  </span>
-                </button>
-                
-                <Link 
-                  to="/seller/login"
-                  className="group w-full sm:w-auto px-8 py-4 bg-white hover:bg-gray-50 text-[#6A5ACD] font-bold text-lg rounded-2xl border-2 border-[#6A5ACD] transition-all duration-300 flex items-center justify-center space-x-2"
-                >
-                  <Zap className="h-5 w-5" />
-                  <span>판매자 시작하기</span>
-                  <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
-
-              {/* Stats */}
-              <div className="flex flex-wrap items-center gap-8 pt-4">
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-pink-500 animate-pulse">
-                    <Circle className="h-5 w-5 text-white fill-white" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-gray-900">{streams.length}</div>
-                    <div className="text-sm text-gray-600">라이브 진행 중</div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500]">
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-gray-900">1,000+</div>
-                    <div className="text-sm text-gray-600">활성 사용자</div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-[#6A5ACD] to-[#9370DB]">
-                    <ShoppingBag className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-gray-900">5,000+</div>
-                    <div className="text-sm text-gray-600">성공 거래</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: 3D Illustration Placeholder */}
-            <div className="relative hidden lg:block">
-              <div className="relative w-full aspect-square max-w-xl mx-auto">
-                {/* 3D Style Background Elements */}
-                <div className="absolute top-10 right-10 w-32 h-32 bg-gradient-to-br from-[#FFD700] to-[#FFA500] rounded-3xl transform rotate-12 opacity-20 blur-xl animate-pulse"></div>
-                <div className="absolute bottom-10 left-10 w-40 h-40 bg-gradient-to-br from-[#6A5ACD] to-[#9370DB] rounded-3xl transform -rotate-12 opacity-20 blur-xl animate-pulse delay-75"></div>
-                
-                {/* Main 3D Card */}
-                <div className="relative z-10 w-full h-full bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl p-8 transform hover:scale-105 transition-all duration-300">
-                  <div className="flex flex-col items-center justify-center h-full space-y-6">
-                    {/* Icon Cluster */}
-                    <div className="relative">
-                      <div className="flex items-center justify-center h-32 w-32 rounded-3xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-2xl">
-                        <Play className="h-16 w-16 text-white fill-white" />
-                      </div>
-                      <div className="absolute -top-4 -right-4 flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-[#6A5ACD] to-[#9370DB] shadow-xl">
-                        <ShoppingBag className="h-10 w-10 text-white" />
-                      </div>
-                      <div className="absolute -bottom-4 -left-4 flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-pink-500 to-red-500 shadow-xl">
-                        <Gift className="h-10 w-10 text-white" />
-                      </div>
-                    </div>
-                    
-                    <div className="text-center space-y-2">
-                      <h3 className="text-2xl font-bold text-gray-900">영상 쇼핑</h3>
-                      <p className="text-gray-600">보는 순간 바로 구매</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features - Card Layout with Rounded Corners & Shadows */}
-      <section className="py-16 sm:py-20 md:py-24 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-              유어 쇼핑을 선택하는 이유
-            </h2>
-            <p className="text-xl text-gray-600">
-              플랫폼의 모든 것이 당신을 위해 준비되어 있습니다
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="group relative bg-gradient-to-br from-purple-50 to-white rounded-3xl p-8 border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2">
-              <div className="flex items-center justify-center h-20 w-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#6A5ACD] to-[#9370DB] shadow-xl">
-                <Play className="h-10 w-10 text-white fill-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 text-center">
-                멀티 플랫폼 지원
-              </h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                YouTube, TikTok 등 익숙한 플랫폼에서 실시간 쇼핑을 즐기세요
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="group relative bg-gradient-to-br from-yellow-50 to-white rounded-3xl p-8 border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2">
-              <div className="flex items-center justify-center h-20 w-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-xl">
-                <Zap className="h-10 w-10 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 text-center">
-                간편한 구매
-              </h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                클릭 한 번으로 마음에 드는 상품을 바로 구매하세요
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="group relative bg-gradient-to-br from-pink-50 to-white rounded-3xl p-8 border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2">
-              <div className="flex items-center justify-center h-20 w-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-pink-500 to-red-500 shadow-xl">
-                <Gift className="h-10 w-10 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-3 text-center">
-                특별한 혜택
-              </h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                라이브 전용 할인과 깜짝 이벤트를 만나보세요
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Features Section */}
+      <FeaturesSection />
 
       {/* Category Navigation */}
       <section className="py-8 bg-white border-y border-gray-100 sticky top-16 sm:top-20 z-40 shadow-sm">
@@ -629,7 +418,7 @@ export default function HomePage() {
             )}
           </div>
 
-          {loading ? (
+          {streamsLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="animate-pulse">
@@ -732,33 +521,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 sm:py-20 md:py-24 bg-gradient-to-r from-[#6A5ACD] to-[#9370DB]">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center justify-center h-20 w-20 mb-8 rounded-3xl bg-white/20 backdrop-blur-sm">
-            <Star className="h-10 w-10 text-white" />
-          </div>
-          
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-6">
-            지금 바로 시작하세요
-          </h2>
-          <p className="text-xl sm:text-2xl text-purple-100 mb-10 leading-relaxed">
-            무료로 시작하고, 성공적인 판매를 경험하세요
-          </p>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button className="w-full sm:w-auto px-10 py-6 bg-white hover:bg-gray-100 text-[#6A5ACD] font-bold text-lg rounded-2xl shadow-2xl hover:shadow-[0_20px_50px_rgba(255,255,255,0.3)] transition-all" asChild>
-              <Link to="/seller/login">무료로 시작하기</Link>
-            </Button>
-            <Link 
-              to="/seller/login"
-              className="group w-full sm:w-auto px-10 py-6 bg-transparent border-2 border-white hover:bg-white/10 text-white font-bold text-lg rounded-2xl transition-all flex items-center justify-center space-x-2"
-            >
-              <span>자세히 알아보기</span>
-              <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </div>
-      </section>
+      <CTASection />
 
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-gray-50">

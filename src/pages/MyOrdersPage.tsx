@@ -2,26 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { logout as authLogout } from '@/utils/auth'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
+import { CartTab } from '@/components/mypage/CartTab'
+import { OrdersTab } from '@/components/mypage/OrdersTab'
+import { ProfileTab } from '@/components/mypage/ProfileTab'
 import { 
   ArrowLeft, 
   Package, 
   ShoppingCart,
-  MapPin,
-  CreditCard,
-  Truck,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  ChevronRight,
   User,
-  Settings,
-  LogOut,
-  Plus,
-  Minus,
-  Trash2,
   X
 } from 'lucide-react'
 import { getUserId, getUserName, getUserEmail, isLoggedIn, requireLogin } from '@/utils/auth'
@@ -135,7 +125,6 @@ export default function MyOrdersPage() {
 
   async function handleUpdateQuantity(itemId: number, newQuantity: number) {
     if (newQuantity < 1) return
-
     try {
       const response = await api.put(`/api/cart/${itemId}`, { quantity: newQuantity })
       if (response.data.success) {
@@ -149,7 +138,6 @@ export default function MyOrdersPage() {
 
   async function handleRemoveItem(itemId: number) {
     if (!confirm('장바구니에서 삭제하시겠습니까?')) return
-
     try {
       const response = await api.delete(`/api/cart/${itemId}`)
       if (response.data.success) {
@@ -169,22 +157,6 @@ export default function MyOrdersPage() {
     navigate('/checkout')
   }
 
-  function getTrackingUrl(courier?: string, trackingNumber?: string): string {
-    if (!courier || !trackingNumber) return ''
-    
-    const courierUrls: { [key: string]: string } = {
-      'CJ대한통운': `https://www.cjlogistics.com/ko/tool/parcel/tracking?gnbInvNo=${trackingNumber}`,
-      '우체국택배': `https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm?sid1=${trackingNumber}`,
-      '한진택배': `https://www.hanjin.com/kor/CMS/DeliveryMgr/WaybillResult.do?mCode=MN038&schLang=KR&wblnumText2=${trackingNumber}`,
-      '로젠택배': `https://www.ilogen.com/web/personal/trace/${trackingNumber}`,
-      'GS Postbox 택배': `https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${trackingNumber}`,
-      '롯데택배': `https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=${trackingNumber}`,
-      '쿠팡로켓배송': `https://www.coupang.com/my/orders/lookup?q=${trackingNumber}`
-    }
-    
-    return courierUrls[courier] || `https://tracker.delivery/#/${courier}/${trackingNumber}`
-  }
-
   async function handleCancelOrder(orderId: number, orderNumber: string) {
     // 취소 모달 열기
     setCancelModal({
@@ -198,12 +170,10 @@ export default function MyOrdersPage() {
   async function confirmCancelOrder() {
     const { orderId } = cancelModal
     if (!orderId) return
-    
     if (!cancelReason.trim()) {
       alert('취소 사유를 입력해주세요.')
       return
     }
-
     setProcessing(true)
     try {
       const response = await api.post(`/api/orders/${orderId}/cancel`, {
@@ -227,14 +197,10 @@ export default function MyOrdersPage() {
 
   function handleLogout() {
     if (confirm('로그아웃 하시겠습니까?')) {
-      // 🔧 표준 logout 함수 사용 (JWT + 레거시 키 모두 삭제)
       authLogout()
-      console.log('[MyOrdersPage] 🚪 사용자 로그아웃 완료')
       navigate('/login')
     }
   }
-
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0)
 
   return (
     <div className="mx-auto min-h-screen max-w-md bg-[#fbfbfd]">
@@ -324,437 +290,78 @@ export default function MyOrdersPage() {
           </div>
         ) : (
           <>
-            {/* Cart Tab */}
             {activeTab === 'cart' && (
-              <div className="space-y-6">
-                {cartItems.length === 0 ? (
-                  <div className="apple-card p-12 text-center">
-                    <div className="w-24 h-24 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-6">
-                      <ShoppingCart className="h-12 w-12 text-[#6e6e73]" />
-                    </div>
-                    <h2 className="text-[28px] font-semibold text-[#1d1d1f] mb-4">
-                      장바구니가 비어있습니다
-                    </h2>
-                    <p className="text-[17px] text-[#6e6e73] mb-8">
-                      라이브를 시청하며 상품을 담아보세요
-                    </p>
-                    <Button className="apple-button" asChild>
-                      <Link to="/">라이브 보러가기</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="apple-card divide-y divide-[#e5e5ea]">
-                      {cartItems.map(item => (
-                        <div key={item.id} className="p-4 sm:p-6 flex gap-4">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-[15px] sm:text-[17px] font-semibold text-[#1d1d1f] mb-1 line-clamp-2">
-                              {item.product_name}
-                            </h3>
-                            {item.option_value && (
-                              <p className="text-[13px] text-[#6e6e73] mb-2">
-                                옵션: {item.option_value}
-                              </p>
-                            )}
-                            <p className="text-[19px] sm:text-[21px] font-bold text-[#1d1d1f] mb-3">
-                              {(item.price_snapshot * item.quantity).toLocaleString()}원
-                            </p>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                                  disabled={item.quantity <= 1}
-                                  className="w-10 h-10 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e5e5ea] transition-colors disabled:opacity-30"
-                                >
-                                  <Minus className="h-4 w-4 text-[#1d1d1f]" />
-                                </button>
-                                <span className="text-[15px] font-medium text-[#1d1d1f] w-10 text-center">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                                  className="w-10 h-10 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e5e5ea] transition-colors"
-                                >
-                                  <Plus className="h-4 w-4 text-[#1d1d1f]" />
-                                </button>
-                              </div>
-                              <button
-                                onClick={() => handleRemoveItem(item.id)}
-                                className="text-[#ff3b30] text-[14px] font-medium hover:opacity-60 transition-opacity flex items-center"
-                              >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                삭제
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Cart Summary */}
-                    <div className="apple-card p-6">
-                      <div className="space-y-4 pb-6 border-b border-[#e5e5ea]">
-                        <div className="flex justify-between">
-                          <span className="text-[15px] text-[#6e6e73]">상품 금액</span>
-                          <span className="text-[15px] font-medium text-[#1d1d1f]">
-                            {totalAmount.toLocaleString()}원
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[15px] text-[#6e6e73]">배송비</span>
-                          <span className="text-[15px] font-medium text-[#1d1d1f]">
-                            {totalAmount >= 30000 ? '무료' : '3,000원'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between items-baseline pt-6 mb-6">
-                        <span className="text-[17px] font-semibold text-[#1d1d1f]">
-                          총 결제 금액
-                        </span>
-                        <div className="text-right">
-                          <span className="text-[28px] font-bold text-[#1d1d1f]">
-                            {(totalAmount + (totalAmount >= 30000 ? 0 : 3000)).toLocaleString()}
-                          </span>
-                          <span className="text-[17px] font-medium text-[#6e6e73]">원</span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleCheckout}
-                        className="apple-button w-full py-4"
-                      >
-                        주문하기 ({cartItems.length}개)
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              <CartTab 
+                cartItems={cartItems}
+                onUpdateQuantity={handleUpdateQuantity}
+                onRemoveItem={handleRemoveItem}
+                onCheckout={handleCheckout}
+              />
             )}
-
-            {/* Orders Tab */}
+            
             {activeTab === 'orders' && (
-              <div className="space-y-6">
-                {/* Status Filter */}
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  <button
-                    onClick={() => setStatusFilter('all')}
-                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                      statusFilter === 'all'
-                        ? 'bg-[#007aff] text-white'
-                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
-                    }`}
-                  >
-                    전체
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('pending')}
-                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                      statusFilter === 'pending'
-                        ? 'bg-[#007aff] text-white'
-                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
-                    }`}
-                  >
-                    결제완료
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('preparing')}
-                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                      statusFilter === 'preparing'
-                        ? 'bg-[#007aff] text-white'
-                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
-                    }`}
-                  >
-                    상품준비중
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('shipping')}
-                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                      statusFilter === 'shipping'
-                        ? 'bg-[#007aff] text-white'
-                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
-                    }`}
-                  >
-                    배송중
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('delivered')}
-                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                      statusFilter === 'delivered'
-                        ? 'bg-[#007aff] text-white'
-                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
-                    }`}
-                  >
-                    배송완료
-                  </button>
-                  <button
-                    onClick={() => setStatusFilter('cancelled')}
-                    className={`px-4 py-2 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                      statusFilter === 'cancelled'
-                        ? 'bg-[#007aff] text-white'
-                        : 'bg-[#f5f5f7] text-[#6e6e73] hover:bg-[#e5e5ea]'
-                    }`}
-                  >
-                    취소/환불
-                  </button>
-                </div>
-
-                {orders.filter(order => statusFilter === 'all' || order.status === statusFilter).length === 0 ? (
-                  <div className="apple-card p-12 text-center">
-                    <div className="w-24 h-24 bg-[#f5f5f7] rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Package className="h-12 w-12 text-[#6e6e73]" />
-                    </div>
-                    <h2 className="text-[28px] font-semibold text-[#1d1d1f] mb-4">
-                      주문 내역이 없습니다
-                    </h2>
-                    <p className="text-[17px] text-[#6e6e73] mb-8">
-                      라이브에서 마음에 드는 상품을 구매해보세요
-                    </p>
-                    <Button className="apple-button" asChild>
-                      <Link to="/">라이브 보러가기</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {orders.filter(order => statusFilter === 'all' || order.status === statusFilter).map(order => (
-                      <div key={order.id} className="apple-card p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <p className="text-[13px] text-[#6e6e73] mb-1">
-                              {new Date(order.created_at).toLocaleDateString('ko-KR', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </p>
-                            <p className="text-[15px] font-semibold text-[#1d1d1f]">
-                              주문번호: {order.order_number}
-                            </p>
-                          </div>
-                          <Badge 
-                            className={`
-                              border-0 px-3 py-1
-                              ${order.status === 'delivered' 
-                                ? 'bg-[#34c759] text-white' 
-                                : order.status === 'shipping'
-                                ? 'bg-[#007aff] text-white'
-                                : order.status === 'cancelled'
-                                ? 'bg-[#ff3b30] text-white'
-                                : order.status === 'preparing'
-                                ? 'bg-[#ff9500] text-white'
-                                : 'bg-[#8e8e93] text-white'
-                              }
-                            `}
-                          >
-                            {order.status === 'delivered' 
-                              ? '배송완료' 
-                              : order.status === 'shipping'
-                              ? '배송중'
-                              : order.status === 'cancelled'
-                              ? '취소/환불'
-                              : order.status === 'preparing'
-                              ? '상품준비중'
-                              : '결제완료'
-                            }
-                          </Badge>
-                        </div>
-
-                        {/* Order Items */}
-                        <div className="space-y-3 mb-4">
-                          {order.items?.slice(0, 2).map((item, idx) => (
-                            <div key={idx} className="flex gap-3">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-medium text-[#1d1d1f] line-clamp-1">
-                                  {item.product_name}
-                                </p>
-                                {item.option_value && (
-                                  <p className="text-[12px] text-[#6e6e73]">
-                                    옵션: {item.option_value}
-                                  </p>
-                                )}
-                                <p className="text-[13px] text-[#6e6e73]">
-                                  {item.quantity}개 · {(item.price_snapshot * item.quantity).toLocaleString()}원
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                          {order.items && order.items.length > 2 && (
-                            <p className="text-[13px] text-[#6e6e73] text-center">
-                              외 {order.items.length - 2}개
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Shipping Info */}
-                        <div className="p-4 bg-[#f5f5f7] rounded-xl mb-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <MapPin className="h-4 w-4 text-[#6e6e73]" />
-                            <span className="text-[14px] font-medium text-[#1d1d1f]">
-                              {order.shipping_name}
-                            </span>
-                          </div>
-                          <p className="text-[14px] text-[#6e6e73] ml-6">
-                            [{order.shipping_postal_code}] {order.shipping_address}
-                          </p>
-                          {order.shipping_address_detail && (
-                            <p className="text-[14px] text-[#6e6e73] ml-6">
-                              {order.shipping_address_detail}
-                            </p>
-                          )}
-                          {order.courier && order.tracking_number && (
-                            <div className="mt-3 pt-3 border-t border-[#d2d2d7]">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <Truck className="h-4 w-4 text-[#007aff]" />
-                                  <div className="text-[13px]">
-                                    <span className="text-[#6e6e73]">{order.courier} · </span>
-                                    <span className="font-medium text-[#1d1d1f]">
-                                      {order.tracking_number}
-                                    </span>
-                                  </div>
-                                </div>
-                                {getTrackingUrl(order.courier, order.tracking_number) && (
-                                  <a
-                                    href={getTrackingUrl(order.courier, order.tracking_number)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-1"
-                                  >
-                                    배송조회
-                                    <ChevronRight className="h-3 w-3" />
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-[19px] font-bold text-[#1d1d1f]">
-                            {order.total_amount.toLocaleString()}원
-                          </span>
-                          <div className="flex gap-2">
-                            {order.status === 'pending' && (
-                              <button
-                                onClick={() => handleCancelOrder(order.id, order.order_number)}
-                                className="px-4 py-2 text-[13px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-full hover:bg-[#ff3b30] hover:text-white transition-colors"
-                              >
-                                주문취소
-                              </button>
-                            )}
-                            <button
-                              onClick={() => setSelectedOrder(order)}
-                              className="flex items-center text-[15px] text-[#007aff] font-medium hover:opacity-60 transition-opacity"
-                            >
-                              상세보기
-                              <ChevronRight className="h-4 w-4 ml-1" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <OrdersTab 
+                orders={orders}
+                onCancelOrder={handleCancelOrder}
+                onSelectOrder={setSelectedOrder}
+              />
             )}
-
-            {/* Profile Tab */}
+            
             {activeTab === 'profile' && (
-              <div className="space-y-6">
-                {/* Profile Card */}
-                <div className="apple-card p-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <img
-                      src={userProfileImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName)}
-                      alt={userName}
-                      className="w-20 h-20 rounded-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName)
-                      }}
-                    />
-                    <div>
-                      <h2 className="text-[21px] font-semibold text-[#1d1d1f] mb-1">
-                        {userName}
-                      </h2>
-                      {userEmail && (
-                        <p className="text-[15px] text-[#6e6e73]">
-                          {userEmail}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <button 
-                      onClick={() => navigate('/shipping-addresses')}
-                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <MapPin className="h-5 w-5 text-[#6e6e73]" />
-                        <span className="text-[15px] font-medium text-[#1d1d1f]">
-                          배송지 관리
-                        </span>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-[#6e6e73]" />
-                    </button>
-
-                    <button 
-                      onClick={() => navigate('/payment-methods')}
-                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="h-5 w-5 text-[#6e6e73]" />
-                        <span className="text-[15px] font-medium text-[#1d1d1f]">
-                          결제 수단
-                        </span>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-[#6e6e73]" />
-                    </button>
-
-                    <button 
-                      onClick={() => navigate('/settings')}
-                      className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#f5f5f7] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Settings className="h-5 w-5 text-[#6e6e73]" />
-                        <span className="text-[15px] font-medium text-[#1d1d1f]">
-                          설정
-                        </span>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-[#6e6e73]" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="apple-card overflow-hidden">
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 p-4 hover:bg-[#f5f5f7] transition-colors text-[#ff3b30]"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span className="text-[15px] font-medium">
-                      로그아웃
-                    </span>
-                  </button>
-                </div>
-
-                {/* App Info */}
-                <div className="text-center pt-4">
-                  <p className="text-[13px] text-[#8e8e93]">
-                    리스터코퍼레이션 커머스 v2.1.0
-                  </p>
-                  <p className="text-[13px] text-[#8e8e93] mt-1">
-                    © 2026 Your Live Commerce
-                  </p>
-                </div>
-              </div>
+              <ProfileTab 
+                userName={userName}
+                userEmail={userEmail}
+                userProfileImage={null}
+                onLogout={handleLogout}
+              />
             )}
           </>
         )}
       </main>
+
+      {/* Cancel Order Modal */}
+      {cancelModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-[#1d1d1f] mb-4">
+                주문 취소
+              </h3>
+              <p className="text-[14px] text-[#6e6e73] mb-4">
+                주문번호: {cancelModal.orderNumber}
+              </p>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="취소 사유를 입력해주세요"
+                className="w-full p-3 border border-[#e5e5ea] rounded-xl text-[14px] resize-none"
+                rows={4}
+              />
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
+                    setCancelReason('')
+                  }}
+                  className="flex-1 px-4 py-2 text-[14px] font-medium text-[#6e6e73] border border-[#e5e5ea] rounded-full hover:bg-[#f5f5f7] transition-colors"
+                  disabled={processing}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={confirmCancelOrder}
+                  className="flex-1 px-4 py-2 text-[14px] font-medium text-white bg-[#ff3b30] rounded-full hover:opacity-80 transition-opacity"
+                  disabled={processing || !cancelReason.trim()}
+                >
+                  {processing ? '처리 중...' : '확인'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
       {/* Order Detail Modal */}
       {selectedOrder && (

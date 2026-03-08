@@ -2,13 +2,66 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import './i18n' // ✅ i18n 초기화
 import { initSentry } from './lib/sentry'
+import { logRegionInfo, isKorea } from '@/shared/config/region'
+// ✅ Week 5 Day 2: 런타임 환경 변수 검증
+import { validateEnvForRuntime } from '@/shared/config/env-validator'
+
+console.log('[App] 🚀 앱 시작...')
+console.log('[App] 📍 Location:', window.location.href)
+console.log('[App] 🌐 User Agent:', navigator.userAgent)
+
+// ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
+validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
+
+// Region 정보 출력 (디버깅용)
+if (import.meta.env.DEV) {
+  logRegionInfo()
+}
 
 // Sentry 초기화 (앱 시작 전)
-initSentry()
+try {
+  initSentry()
+  console.log('[App] ✅ Sentry 초기화 완료')
+} catch (error) {
+  console.error('[App] ❌ Sentry 초기화 실패:', error)
+}
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+console.log('[App] ⚛️ React DOM 렌더링 시작...')
+
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  console.error('[App] ❌ Root element not found!')
+  document.body.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fbfbfd;">
+      <div style="text-align: center; padding: 2rem;">
+        <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
+        <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
+        <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+      </div>
+    </div>
+  `
+} else {
+  console.log('[App] ✅ Root element found')
+  
+  try {
+    // ✅ React StrictMode 제거 (중복 마운트 방지)
+    ReactDOM.createRoot(rootElement).render(
+      <App />
+    )
+    console.log('[App] ✅ React 렌더링 완료')
+  } catch (error) {
+    console.error('[App] ❌ React 렌더링 실패:', error)
+    rootElement.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fbfbfd;">
+        <div style="text-align: center; padding: 2rem;">
+          <h1 style="color: #dc2626; margin-bottom: 1rem;">React 렌더링 실패</h1>
+          <p style="color: #6e6e73;">${error}</p>
+          <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+        </div>
+      </div>
+    `
+  }
+}
+

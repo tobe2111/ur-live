@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
+import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import { 
   ArrowLeft, 
   Package,
@@ -53,6 +54,8 @@ export default function SellerProductEditPage() {
     product_type: 'featured', // 'live' or 'featured'
     category: 'lifestyle' // 카테고리 기본값
   })
+  
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
     // Check authentication
@@ -105,6 +108,11 @@ export default function SellerProductEditPage() {
           product_type: productData.product_type || 'featured',
           category: productData.category || 'lifestyle'
         })
+        
+        // Set product options if they exist
+        if (productData.options && Array.isArray(productData.options)) {
+          setProductOptions(productData.options)
+        }
       }
     } catch (error: any) {
       console.error('Failed to load product:', error)
@@ -163,6 +171,18 @@ export default function SellerProductEditPage() {
       })
 
       if (response.data.success) {
+        // Save options if they changed
+        try {
+          await api.post(`/api/seller/products/${id}/options`, {
+            options: productOptions
+          }, {
+            headers: { 'Authorization': `Bearer ${sessionToken}` }
+          })
+        } catch (optError: any) {
+          console.error('Failed to save options:', optError)
+          alert('상품은 수정되었으나 옵션 저장에 실패했습니다.')
+        }
+        
         alert('상품이 수정되었습니다.')
         navigate('/seller/products')
       }
@@ -521,6 +541,15 @@ export default function SellerProductEditPage() {
                 <p className="text-xs text-gray-500">체크하면 고객에게 상품이 표시됩니다</p>
               </div>
             </label>
+          </div>
+
+          {/* Product Options */}
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <ProductOptionForm
+              options={productOptions}
+              onChange={setProductOptions}
+              disabled={submitting}
+            />
           </div>
 
           {/* Submit Button */}

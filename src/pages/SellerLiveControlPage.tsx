@@ -35,6 +35,14 @@ export default function SellerLiveControlPage() {
   const [changing, setChanging] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [viewerCounts, setViewerCounts] = useState<Record<number, number>>({})
+  
+  // 🎭 Special Controls (권한 필요)
+  const [canManipulateStats, setCanManipulateStats] = useState(false)
+  const [manualViewerCount, setManualViewerCount] = useState<string>('')
+  const [fakeProductName, setFakeProductName] = useState<string>('')
+  const [fakeQuantity, setFakeQuantity] = useState<number>(1)
+  const [sendingFakeNotification, setSendingFakeNotification] = useState(false)
+  const [updatingViewerCount, setUpdatingViewerCount] = useState(false)
 
   // 🔥 Firebase 실시간 스트림 구독 (선택된 스트림)
   const { streamData: firebaseStream } = useFirebaseStream(selectedStream?.id || null)
@@ -115,6 +123,87 @@ export default function SellerLiveControlPage() {
       setLoading(false)
     }
   }
+
+  // 🎭 권한 확인 (can_manipulate_stats)
+  async function checkPermissions() {
+    try {
+      const response = await api.get('/api/seller/profile')
+      if (response.data.success) {
+        setCanManipulateStats(!!response.data.data.can_manipulate_stats)
+      }
+    } catch (error) {
+      console.error('Failed to check permissions:', error)
+    }
+  }
+
+  // 🔢 시청자 수 조작
+  async function handleUpdateViewerCount() {
+    if (!selectedStream || updatingViewerCount) return
+    
+    const count = manualViewerCount ? parseInt(manualViewerCount) : null
+    
+    if (count !== null && (isNaN(count) || count < 0)) {
+      alert('올바른 숫자를 입력하세요 (0 이상)')
+      return
+    }
+
+    setUpdatingViewerCount(true)
+    try {
+      const response = await api.put(`/api/streams/${selectedStream.id}/viewer-count`, {
+        manual_count: count
+      })
+
+      if (response.data.success) {
+        alert(count === null ? '실제 시청자 수로 복귀했습니다!' : `시청자 수가 ${count}명으로 설정되었습니다!`)
+        setManualViewerCount('')
+        
+        // 시청자 수 즉시 업데이트
+        setViewerCounts(prev => ({
+          ...prev,
+          [selectedStream.id]: count || 0
+        }))
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || '시청자 수 업데이트 실패'
+      alert(errorMsg)
+    } finally {
+      setUpdatingViewerCount(false)
+    }
+  }
+
+  // 🛒 가짜 장바구니 알림 전송
+  async function handleSendFakeNotification() {
+    if (!selectedStream || sendingFakeNotification) return
+    
+    if (!fakeProductName.trim()) {
+      alert('상품명을 입력하세요')
+      return
+    }
+
+    setSendingFakeNotification(true)
+    try {
+      const response = await api.post(`/api/streams/${selectedStream.id}/fake-cart-notification`, {
+        product_name: fakeProductName.trim(),
+        quantity: fakeQuantity
+      })
+
+      if (response.data.success) {
+        alert('🎉 가짜 알림이 전송되었습니다!')
+        setFakeProductName('')
+        setFakeQuantity(1)
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || '알림 전송 실패'
+      alert(errorMsg)
+    } finally {
+      setSendingFakeNotification(false)
+    }
+  }
+
+  // 권한 확인 (초기 로드)
+  useEffect(() => {
+    checkPermissions()
+  }, [])
 
   async function changeProduct(productId: number) {
     if (!selectedStream || changing) return
@@ -282,6 +371,88 @@ export default function SellerLiveControlPage() {
                 >
                   {window.location.origin}/live/{selectedStream.id}
                 </a>
+              </div>
+            )}
+
+            {/* 🎭 Special Controls (권한 필요) */}
+            {canManipulateStats && selectedStream && (
+              <div className="mt-4 space-y-4">
+                {/* 시청자 수 조작 */}
+                <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4">
+                  <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
+                    🔢 시청자 수 조작
+                    <span className="text-xs bg-purple-200 px-2 py-0.5 rounded">관리자 승인됨</span>
+                  </h3>
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      min="0"
+                      value={manualViewerCount}
+                      onChange={(e) => setManualViewerCount(e.target.value)}
+                      placeholder={`현재: ${viewerCounts[selectedStream.id] || 0}명`}
+                      className="w-full px-3 py-2 border border-purple-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleUpdateViewerCount}
+                        disabled={updatingViewerCount || !manualViewerCount}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        {updatingViewerCount ? '설정 중...' : '설정'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setManualViewerCount('')
+                          handleUpdateViewerCount()
+                        }}
+                        disabled={updatingViewerCount}
+                        className="flex-1 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        실제값 복귀
+                      </button>
+                    </div>
+                    <p className="text-xs text-purple-700">
+                      💡 실제: {viewerCounts[selectedStream.id] || 0}명
+                    </p>
+                  </div>
+                </div>
+
+                {/* 가짜 장바구니 알림 */}
+                <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+                  <h3 className="text-sm font-bold text-yellow-900 mb-3 flex items-center gap-2">
+                    🛒 장바구니 알림 전송
+                    <span className="text-xs bg-yellow-200 px-2 py-0.5 rounded">관리자 승인됨</span>
+                  </h3>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={fakeProductName}
+                      onChange={(e) => setFakeProductName(e.target.value)}
+                      placeholder="상품명 (예: 프리미엄 텀블러)"
+                      className="w-full px-3 py-2 border border-yellow-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-yellow-900">수량:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={fakeQuantity}
+                        onChange={(e) => setFakeQuantity(parseInt(e.target.value) || 1)}
+                        className="w-20 px-2 py-1 border border-yellow-300 rounded text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSendFakeNotification}
+                      disabled={sendingFakeNotification || !fakeProductName.trim()}
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      {sendingFakeNotification ? '전송 중...' : '🎉 알림 전송'}
+                    </button>
+                    <p className="text-xs text-yellow-700">
+                      💡 채팅창에 "🎉 {fakeProductName || '상품명'} {fakeQuantity}개가 장바구니에 추가되었습니다!" 메시지가 표시됩니다
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

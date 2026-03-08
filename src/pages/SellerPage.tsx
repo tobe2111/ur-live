@@ -4,7 +4,9 @@ import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import NotificationBell from '@/components/NotificationBell'
-import { useAuth } from '@/contexts/AuthContext'
+import { isKorea } from '@/config/region'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { getSellerToken, isSellerAuthenticated, getSellerId, redirectToLogin, logoutSeller } from '@/lib/seller-auth'
 import { 
   ArrowLeft, 
@@ -61,7 +63,8 @@ interface Product {
 
 export default function SellerPage() {
   const navigate = useNavigate()
-  const { isAuthReady } = useAuth()  // ✅ AuthContext 사용
+  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  const isAuthReady = useAuth(state => state.isAuthReady)  // ✅ Direct Zustand selector
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalOrders: 0,

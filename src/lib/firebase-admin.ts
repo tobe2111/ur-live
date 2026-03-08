@@ -222,10 +222,19 @@ export class FirebaseAdmin {
   async createCustomToken(uid: string, claims?: Record<string, any>): Promise<string> {
     try {
       console.log(`[Firebase Custom Token] Creating for UID: ${uid}`)
+      console.log(`[Firebase Custom Token] Claims:`, JSON.stringify(claims))
       
+      // Enhanced credential checking
       if (!this.privateKey || !this.clientEmail || !this.projectId) {
-        throw new Error('Firebase credentials not configured')
+        const missingCreds = []
+        if (!this.privateKey) missingCreds.push('FIREBASE_PRIVATE_KEY')
+        if (!this.clientEmail) missingCreds.push('FIREBASE_CLIENT_EMAIL')
+        if (!this.projectId) missingCreds.push('FIREBASE_PROJECT_ID')
+        throw new Error(`Firebase credentials not configured: missing ${missingCreds.join(', ')}`)
       }
+      
+      console.log(`[Firebase Custom Token] Using project: ${this.projectId}`)
+      console.log(`[Firebase Custom Token] Using service account: ${this.clientEmail}`)
 
       // JWT Header
       const header = {
@@ -245,21 +254,46 @@ export class FirebaseAdmin {
         claims: claims || {}
       }
 
-      // Base64url encode
+      // Base64url encode (UTF-8 safe for Cloudflare Workers)
       const base64url = (data: any) => {
         const json = JSON.stringify(data)
-        const base64 = btoa(json)
+        // Convert string to UTF-8 bytes using TextEncoder
+        const utf8Bytes = new TextEncoder().encode(json)
+        
+        // Convert byte array to binary string (each byte becomes one char)
+        let binaryString = ''
+        for (let i = 0; i < utf8Bytes.length; i++) {
+          binaryString += String.fromCharCode(utf8Bytes[i])
+        }
+        
+        // Encode to base64
+        const base64 = btoa(binaryString)
+        
+        // Make it URL-safe (JWT base64url format)
         return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
       }
 
+      console.log('[Firebase Custom Token] Encoding header and payload...')
       const headerEncoded = base64url(header)
       const payloadEncoded = base64url(payload)
       const signatureInput = `${headerEncoded}.${payloadEncoded}`
 
+      console.log('[Firebase Custom Token] Parsing private key...')
       // Sign with RS256
       const privateKeyPem = this.privateKey.replace(/\\n/g, '\n')
+      
+      // Validate PEM format
+      if (!privateKeyPem.includes('-----BEGIN PRIVATE KEY-----')) {
+        throw new Error('Invalid private key format: missing PEM header')
+      }
+      if (!privateKeyPem.includes('-----END PRIVATE KEY-----')) {
+        throw new Error('Invalid private key format: missing PEM footer')
+      }
+      
+      console.log('[Firebase Custom Token] Converting PEM to DER...')
       const privateKeyDer = await this.pemToDer(privateKeyPem)
       
+      console.log('[Firebase Custom Token] Importing crypto key...')
       const cryptoKey = await crypto.subtle.importKey(
         'pkcs8',
         privateKeyDer,
@@ -271,6 +305,7 @@ export class FirebaseAdmin {
         ['sign']
       )
 
+      console.log('[Firebase Custom Token] Signing token...')
       const signature = await crypto.subtle.sign(
         'RSASSA-PKCS1-v1_5',
         cryptoKey,
@@ -288,7 +323,12 @@ export class FirebaseAdmin {
 
     } catch (error) {
       console.error('[Firebase Custom Token] ❌ Failed to create token:', error)
-      throw new Error('Failed to create Firebase custom token')
+      console.error('[Firebase Custom Token] Error name:', (error as Error).name)
+      console.error('[Firebase Custom Token] Error message:', (error as Error).message)
+      console.error('[Firebase Custom Token] Error stack:', (error as Error).stack)
+      
+      // Re-throw with more context
+      throw new Error(`Failed to create Firebase custom token: ${(error as Error).message}`)
     }
   }
 

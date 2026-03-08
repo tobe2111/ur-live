@@ -13,6 +13,7 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { auth } from './firebase';
 
 // API 클라이언트 생성
 const api = axios.create({
@@ -27,8 +28,8 @@ const api = axios.create({
 });
 
 /**
- * 공개 API 엔드포인트 (Firebase ID Token 불필요)
- * 비회원도 접근 가능한 페이지용 API
+ * 공개 API 엔드포인트 (토큰 불필요)
+ * 비회원도 접근 가능한 페이지용 API + 로그인/회원가입 엔드포인트
  */
 const PUBLIC_API_PATHS = [
   '/api/streams',              // 라이브 스트림 목록
@@ -38,12 +39,15 @@ const PUBLIC_API_PATHS = [
   '/api/banners',              // 배너 목록
   '/api/categories',           // 카테고리
   '/api/health',               // 헬스 체크
-  '/api/auth/login',           // 로그인
-  '/api/auth/register',        // 회원가입
-  '/api/auth/refresh',         // 토큰 갱신
+  '/api/auth/login',           // 유저 로그인 (deprecated - Firebase 사용)
+  '/api/auth/register',        // 유저 회원가입 (deprecated - Firebase 사용)
   '/api/auth/kakao',           // 카카오 로그인 (모든 카카오 엔드포인트)
   '/api/auth/firebase/sync',   // Firebase 동기화 (인증 프로세스의 일부)
   '/api/auth/firebase/register', // Firebase 회원가입
+  '/api/seller/login',         // 셀러 로그인 (JWT 방식)
+  '/api/seller/register',      // 셀러 회원가입 (JWT 방식)
+  '/api/admin/login',          // 어드민 로그인 (JWT 방식)
+  '/api/debug',                // 디버그 엔드포인트 (임시, 프로덕션에서 제거 필요)
 ];
 
 /**
@@ -54,21 +58,72 @@ function isPublicAPI(url: string): boolean {
 }
 
 /**
- * 요청 인터셉터: Firebase ID Token 자동 추가
+ * 요청 인터셉터: JWT & Firebase ID Token 자동 추가
  * 
- * 모든 사용자(일반/셀러/관리자): Firebase ID Token 사용
+ * - Seller/Admin: JWT Token (localStorage에서 읽기)
+ * - Buyers: Firebase ID Token (Firebase Auth에서 읽기)
  */
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     if (!config.headers) return config;
     
-    // 🔐 Firebase ID Token 추가
-    const firebaseToken = localStorage.getItem('firebase_token');
-    if (firebaseToken) {
-      config.headers['Authorization'] = `Bearer ${firebaseToken}`;
-      console.log('[API] 🔥 Firebase token attached');
-    } else if (!isPublicAPI(config.url || '')) {
-      console.warn('[API] ⚠️ No Firebase token for protected API:', config.url);
+    // 공개 API는 토큰 불필요
+    if (isPublicAPI(config.url || '')) {
+      return config;
+    }
+    
+    const userType = localStorage.getItem('user_type');
+    
+    // 🔐 Seller: JWT Token
+    if (userType === 'seller') {
+      const sellerToken = localStorage.getItem('seller_token');
+      if (sellerToken) {
+        config.headers['Authorization'] = `Bearer ${sellerToken}`;
+        console.log('[API] 🔐 JWT Token attached (seller)');
+        return config;
+      }
+    }
+    
+    // 🔐 Admin: JWT Token
+    if (userType === 'admin') {
+      const adminToken = localStorage.getItem('admin_token');
+      if (adminToken) {
+        config.headers['Authorization'] = `Bearer ${adminToken}`;
+        console.log('[API] 🔐 JWT Token attached (admin)');
+        return config;
+      }
+    }
+    
+    // 🔥 Buyers/Others: Firebase ID Token
+    try {
+      let user = auth.currentUser;
+      
+      // auth.currentUser가 null이면 onAuthStateChanged로 대기 (최대 3초)
+      if (!user) {
+        console.log('[API] ⏳ Waiting for Firebase Auth initialization...');
+        user = await new Promise<typeof auth.currentUser>((resolve) => {
+          const timeout = setTimeout(() => {
+            console.warn('[API] ⚠️ Firebase Auth initialization timeout (3s)');
+            resolve(null);
+          }, 3000);
+          
+          const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+            clearTimeout(timeout);
+            unsubscribe();
+            resolve(currentUser);
+          });
+        });
+      }
+      
+      if (user) {
+        const idToken = await user.getIdToken(false);
+        config.headers['Authorization'] = `Bearer ${idToken}`;
+        console.log('[API] 🔥 Firebase ID Token attached (buyer)');
+      } else {
+        console.warn('[API] ⚠️ No auth token for protected API:', config.url);
+      }
+    } catch (error) {
+      console.error('[API] ❌ Failed to get auth token:', error);
     }
     
     return config;
@@ -91,6 +146,20 @@ api.interceptors.response.use(
     // 401 Unauthorized 처리
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+      
+      // 🔄 토큰 갱신 재시도 (모바일 네트워크 이슈 대응)
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          console.log('[API] 🔄 Retrying with refreshed token...');
+          const newToken = await user.getIdToken(true); // 강제 갱신
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error('[API] ❌ Token refresh failed:', refreshError);
+          captureError(refreshError as Error, { context: 'API.tokenRefresh', url: originalRequest.url });
+        }
+      }
       
       // 1️⃣ 공개 API는 401 무시
       if (isPublicAPI(originalRequest.url || '')) {
@@ -121,7 +190,28 @@ api.interceptors.response.use(
       }
       
       // 3️⃣ Firebase 인증 실패 → 로그아웃
-      console.warn('[API] Firebase auth failed (401) - redirecting to login');
+      console.error('[API] 🚨 Firebase auth failed (401)');
+      console.error('[API] 📊 Server error details:', errorData);
+      captureError(new Error(`API 401 Unauthorized: ${errorData?.error || 'Unknown'}`), { 
+        context: 'API.401', 
+        url: originalRequest.url,
+        errorCode: errorData?.code 
+      });
+      
+      // Display detailed error information from server
+      if (errorData?.code) {
+        console.error('[API] 🔍 Error Code:', errorData.code);
+        console.error('[API] 💬 Error Message:', errorData.error);
+        if (errorData.debug) {
+          console.error('[API] 🐛 Debug Info:', errorData.debug);
+        }
+      }
+      
+      // Alert user with detailed error
+      const errorMsg = errorData?.error || 'Authentication failed';
+      const errorCode = errorData?.code || 'UNKNOWN';
+      alert(`인증 실패 (${errorCode})\n\n${errorMsg}\n\n다시 로그인해주세요.`);
+      
       localStorage.clear();
       sessionStorage.clear();
       

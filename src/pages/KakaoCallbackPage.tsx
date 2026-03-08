@@ -49,6 +49,11 @@ export default function KakaoCallbackPage() {
           const userCredential = await signInWithCustomToken(auth, customToken)
           console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
+          // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)
+          userCredential.user.getIdToken(true)
+            .then(() => console.log('[KakaoCallback] 🔥 ID Token 강제 갱신 완료 (백그라운드)'))
+            .catch((err) => console.warn('[KakaoCallback] ⚠️ Token 갱신 실패 (무시):', err))
+          
           // ✅ returnUrl 우선순위: state > localStorage > default
           let returnUrl = '/'
           

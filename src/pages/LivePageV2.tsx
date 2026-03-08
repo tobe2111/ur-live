@@ -6,52 +6,13 @@ import { getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
 // import { useLiveChat } from '@/hooks/useLiveChat' // ❌ SSE 폴링 방식 (5초 지연)
-import { useFirebaseChat } from '@/hooks/useFirebaseChat' // ✅ Firebase 실시간 (0.2초)
+import { useFirebaseChat } from '@/hooks/useFirebaseChat'
 import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
+import { createLogger } from '@/utils/logger'
+import '@/utils/console-suppressor'
 
-// ============================================
-// Suppress YouTube Console Errors
-// ============================================
-if (typeof window !== 'undefined') {
-  const originalError = console.error
-  const originalWarn = console.warn
-  
-  console.error = (...args: any[]) => {
-    const message = args[0]?.toString() || ''
-    // Filter out YouTube-related errors
-    if (
-      message.includes('postMessage') ||
-      message.includes('touchstart') ||
-      message.includes('touchmove') ||
-      message.includes('www-embed-player') ||
-      message.includes('www-widgetapi') ||
-      message.includes('youtube.com') ||
-      message.includes('DOMWindow')
-    ) {
-      return // Suppress these errors
-    }
-    originalError.apply(console, args)
-  }
-  
-  console.warn = (...args: any[]) => {
-    const message = args[0]?.toString() || ''
-    // Filter out YouTube-related warnings
-    if (
-      message.includes('passive event listener') ||
-      message.includes('touchstart') ||
-      message.includes('touchmove') ||
-      message.includes('[Violation]')
-    ) {
-      return // Suppress these warnings
-    }
-    originalWarn.apply(console, args)
-  }
-}
-
-// ============================================
-// TypeScript Interfaces
-// ============================================
+const log = createLogger('LivePageV2')
 interface Stream {
   id: number
   title: string
@@ -95,184 +56,8 @@ interface ReelData {
 }
 
 // ============================================
-// Demo Data (for fallback)
+// Demo Data - Removed (using real API data only)
 // ============================================
-const demoStreams: Stream[] = [
-  {
-    id: 1,
-    title: '프리미엄 헤드폰 라이브',
-    streamerName: 'Marcus Chen',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtube_video_id: 'dQw4w9WgXcQ',
-    status: 'live',
-    viewerCount: 12400,
-    products: []
-  },
-  {
-    id: 2,
-    title: '골드 주얼리 특가',
-    streamerName: 'Sofia Laurent',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtube_video_id: 'dQw4w9WgXcQ',
-    status: 'live',
-    viewerCount: 34200,
-    products: []
-  },
-  {
-    id: 3,
-    title: '스니커즈 신상품',
-    streamerName: 'Jake Morrison',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    youtube_video_id: 'dQw4w9WgXcQ',
-    status: 'live',
-    viewerCount: 52000,
-    products: []
-  }
-]
-
-const demoProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Nova Pro Wireless Headphones',
-    price: 89.99,
-    originalPrice: 149.99,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
-    description: 'Premium noise-cancelling headphones with 30-hour battery life and studio-quality sound.',
-    rating: 4.8,
-    sold: 2340,
-    colors: [
-      { name: 'Midnight Black', hex: '#1a1a1a' },
-      { name: 'Space Gray', hex: '#6b6b6b' },
-      { name: 'Rose Gold', hex: '#b76e79' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Luna Gold Jewelry Set',
-    price: 45.00,
-    originalPrice: 78.00,
-    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800',
-    description: 'Elegant 18K gold-plated necklace and earring set, perfect for special occasions.',
-    rating: 4.9,
-    sold: 8720,
-    colors: [
-      { name: 'Gold', hex: '#ffd700' },
-      { name: 'Silver', hex: '#c0c0c0' },
-      { name: 'Rose Gold', hex: '#b76e79' }
-    ]
-  },
-  {
-    id: 3,
-    name: 'StreetX Cloud Sneakers',
-    price: 62.00,
-    originalPrice: 120.00,
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
-    description: 'Ultra-comfortable running shoes with cloud-like cushioning and breathable mesh.',
-    rating: 4.7,
-    sold: 15600,
-    sizes: ['US 7', 'US 8', 'US 9', 'US 10', 'US 11', 'US 12'],
-    colors: [
-      { name: 'Triple White', hex: '#ffffff' },
-      { name: 'Core Black', hex: '#000000' },
-      { name: 'Navy Blue', hex: '#000080' }
-    ]
-  },
-  {
-    id: 4,
-    name: 'Glow Elixir Vitamin C Serum',
-    price: 24.99,
-    originalPrice: 55.00,
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800',
-    description: 'Brightening serum with 20% vitamin C for radiant, youthful skin.',
-    rating: 4.9,
-    sold: 42100
-  },
-  {
-    id: 5,
-    name: 'Pulse Ultra Smartwatch',
-    price: 129.00,
-    originalPrice: 249.00,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800',
-    description: 'Advanced fitness tracking, heart rate monitoring, and 7-day battery life.',
-    rating: 4.6,
-    sold: 6890,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Silver', hex: '#c0c0c0' },
-      { name: 'Gold', hex: '#ffd700' }
-    ]
-  },
-  {
-    id: 6,
-    name: 'Premium Leather Wallet',
-    price: 35.00,
-    originalPrice: 65.00,
-    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=800',
-    description: 'Genuine leather bifold wallet with RFID protection and card slots.',
-    rating: 4.7,
-    sold: 12300,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Brown', hex: '#8b4513' },
-      { name: 'Tan', hex: '#d2b48c' }
-    ]
-  },
-  {
-    id: 7,
-    name: 'Wireless Charging Pad',
-    price: 19.99,
-    originalPrice: 39.99,
-    image: 'https://images.unsplash.com/photo-1591290619762-0c0a6b5c2e7a?w=800',
-    description: 'Fast wireless charger compatible with all Qi-enabled devices.',
-    rating: 4.5,
-    sold: 18900
-  },
-  {
-    id: 8,
-    name: 'Eco-Friendly Water Bottle',
-    price: 12.99,
-    originalPrice: 24.99,
-    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800',
-    description: 'Stainless steel insulated bottle keeps drinks cold for 24 hours.',
-    rating: 4.8,
-    sold: 31200,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Blue', hex: '#0000ff' },
-      { name: 'Pink', hex: '#ff69b4' }
-    ]
-  },
-  {
-    id: 9,
-    name: 'Minimalist Backpack',
-    price: 49.00,
-    originalPrice: 89.00,
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800',
-    description: 'Sleek design with laptop compartment and water-resistant material.',
-    rating: 4.6,
-    sold: 9800,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Gray', hex: '#808080' },
-      { name: 'Navy', hex: '#000080' }
-    ]
-  },
-  {
-    id: 10,
-    name: 'Bluetooth Speaker',
-    price: 39.99,
-    originalPrice: 79.99,
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=800',
-    description: 'Portable speaker with 360° sound and 12-hour playtime.',
-    rating: 4.7,
-    sold: 22500,
-    colors: [
-      { name: 'Black', hex: '#000000' },
-      { name: 'Red', hex: '#ff0000' },
-      { name: 'Blue', hex: '#0000ff' }
-    ]
-  }
-]
 
 // ============================================
 // Utility Functions
@@ -383,21 +168,16 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
   )
 }
 
-// LiveChat Component with SSE
 function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  
-  // 🔥 SSE 기반 실시간 채팅
   const { messages, isConnected, error, sendMessage } = useFirebaseChat(streamId, !!streamId)
 
-  // 자동 스크롤 - 새 메시지가 올 때 하단으로
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
 
-  // 최근 5개 메시지만 표시
   const recentMessages = messages.slice(-5)
 
   return (
@@ -406,9 +186,7 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
       className="flex flex-col gap-0.5 overflow-y-auto max-h-32 cursor-pointer no-scrollbar"
       onClick={onChatClick}
     >
-      {/* SSE 메시지 렌더링 (최대 5개) */}
       {recentMessages.map((msg) => {
-        // 시스템 메시지 (담기, 구매) 감지
         const isSystemMessage = msg.message.includes('장바구니') || 
                                  msg.message.includes('담았습니다') || 
                                  msg.message.includes('구매했습니다') ||
@@ -434,7 +212,6 @@ function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: ()
   )
 }
 
-// ProductListSheet Component (KREAM Style - Product Grid)
 function ProductListSheet({
   products,
   currentProductId,
@@ -448,20 +225,16 @@ function ProductListSheet({
   onSelectProduct: (product: Product) => void
   loading: boolean
 }) {
-  // ✅ 방어 코드: products가 undefined인 경우 빈 배열로 처리
   const safeProducts = products || []
   
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
       />
 
-      {/* Sheet - 60% height */}
       <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
-        {/* Handle */}
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="h-1 w-10 rounded-full bg-gray-300" />
           <button
@@ -473,13 +246,11 @@ function ProductListSheet({
           </button>
         </div>
 
-        {/* Header */}
         <div className="px-5 pt-4 pb-3 border-b border-gray-100">
           <h3 className="text-lg font-bold text-gray-900">라이브 상품 ({safeProducts.length}개)</h3>
           <p className="text-sm text-gray-500 mt-1">상품을 선택해서 구매하세요</p>
         </div>
 
-        {/* Product Grid */}
         <div className="px-5 py-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -491,8 +262,7 @@ function ProductListSheet({
               <p className="text-gray-500">등록된 상품이 없습니다</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {safeProducts.map((product) => {
+            <div className="flex flex-col gap-3">{safeProducts.map((product) => {
                 const isCurrentProduct = product.id === currentProductId
                 const isOutOfStock = product.stock !== undefined && product.stock === 0
                 const discount = product.original_price && product.original_price > product.price
@@ -512,7 +282,6 @@ function ProductListSheet({
                         : 'hover:shadow-lg border border-gray-200 active:scale-[0.98]'
                     }`}
                   >
-                    {/* Out of Stock Overlay */}
                     {isOutOfStock && (
                       <div className="absolute inset-0 bg-black/40 z-20 flex items-center justify-center">
                         <div className="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm">
@@ -521,7 +290,6 @@ function ProductListSheet({
                       </div>
                     )}
 
-                    {/* LIVE Badge for current product */}
                     {isCurrentProduct && !isOutOfStock && (
                       <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-full shadow-lg">
                         <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
@@ -529,12 +297,17 @@ function ProductListSheet({
                       </div>
                     )}
 
-                    {/* Product Image - 작은 썸네일 (80x80) */}
                     <div className="relative h-20 w-20 shrink-0 rounded-xl bg-gray-100 overflow-hidden">
                       <img
-                        src={product.image_url || product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200'}
+                        src={product.image_url || product.image || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
                         alt={product.name}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          if (img.src !== stream.thumbnail_url) {
+                            img.src = stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`
+                          }
+                        }}
                       />
                       {discount > 0 && (
                         <div className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">
@@ -543,7 +316,6 @@ function ProductListSheet({
                       )}
                     </div>
 
-                    {/* Product Info */}
                     <div className="flex-1 text-left">
                       <h4 className="text-base font-bold text-gray-900 line-clamp-2 mb-2">
                         {product.name}
@@ -575,262 +347,6 @@ function ProductListSheet({
   )
 }
 
-// ProductSheet Component (KREAM Style)
-function ProductSheet({
-  product,
-  onClose,
-  onAddToCart,
-  onBuyNow,
-}: {
-  product: Product
-  onClose: () => void
-  onAddToCart: (quantity: number) => Promise<void>
-  onBuyNow: (quantity: number) => Promise<void>
-}) {
-  const [selectedColor, setSelectedColor] = useState(0)
-  const [selectedSize, setSelectedSize] = useState(0)
-  const [quantity, setQuantity] = useState(1)
-  const [addingToCart, setAddingToCart] = useState(false)
-  const [buyingNow, setBuyingNow] = useState(false)
-
-  const originalPrice = product.originalPrice || product.original_price || product.price
-  const currentPrice = product.price || 0
-
-  const discount = originalPrice > currentPrice
-    ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-    : 0
-
-  async function handleAddToCart() {
-    if (addingToCart || buyingNow) return
-    setAddingToCart(true)
-    try {
-      await onAddToCart(quantity)
-      // onClose() will be called by parent after showing toast
-    } catch (error) {
-      console.error('Failed to add to cart:', error)
-    } finally {
-      setAddingToCart(false)
-    }
-  }
-
-  async function handleBuyNow() {
-    if (addingToCart || buyingNow) return
-    setBuyingNow(true)
-    try {
-      await onBuyNow(quantity)
-      // Navigation will be handled by parent
-    } catch (error) {
-      console.error('Failed to buy now:', error)
-      setBuyingNow(false)
-    }
-  }
-
-  return (
-    <>
-      {/* Overlay */}
-      <div
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
-        onClick={onClose}
-      />
-
-      {/* Sheet - KREAM Style with 60% max height */}
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 animate-sheet-up no-scrollbar shadow-2xl">
-        {/* Handle */}
-        <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/60 backdrop-blur-md">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
-          <button
-            onClick={onClose}
-            className="absolute right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4 text-gray-800" />
-          </button>
-        </div>
-
-        <div className="px-5 pb-8">
-          {/* Product header */}
-          <div className="flex items-start gap-4 mb-6">
-            <div className="h-20 w-20 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
-              <img
-                src={product.image || product.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">
-                {product.name}
-              </h3>
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="flex items-center gap-0.5">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-sm font-semibold text-gray-900">{product.rating || 4.5}</span>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {(product.sold || product.sold_count || 0).toLocaleString()} sold
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold text-red-500">
-                  ₩{(product.price || 0).toLocaleString()}
-                </span>
-                {(product.originalPrice || product.original_price) && (
-                  <>
-                    <span className="text-sm text-gray-400 line-through">
-                      ₩{(product.originalPrice || product.original_price || 0).toLocaleString()}
-                    </span>
-                    <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-bold text-red-500">
-                      -{discount}%
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          {product.description && (
-            <p className="text-sm text-gray-600 leading-relaxed mb-5">
-              {product.description}
-            </p>
-          )}
-
-          {/* Colors */}
-          {product.colors && (
-            <div className="mb-5">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                {'Color: '}
-                <span className="font-normal text-gray-500">
-                  {product.colors[selectedColor].name}
-                </span>
-              </h4>
-              <div className="flex items-center gap-3">
-                {product.colors.map((color, i) => (
-                  <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(i)}
-                    className={`relative h-9 w-9 rounded-full transition-all duration-200 ${
-                      selectedColor === i
-                        ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-white scale-110'
-                        : 'ring-1 ring-gray-300'
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    aria-label={color.name}
-                  >
-                    {selectedColor === i && (
-                      <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow-md" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sizes */}
-          {product.sizes && (
-            <div className="mb-5">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Size</h4>
-              <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size, i) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(i)}
-                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                      selectedSize === i
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quantity */}
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Quantity</h4>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
-                aria-label="Decrease quantity"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="text-lg font-bold text-gray-900 w-8 text-center">{quantity}</span>
-              <button
-                onClick={() => setQuantity(quantity + 1)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
-                aria-label="Increase quantity"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons - KREAM Style Split Buttons */}
-          {product.stock === 0 ? (
-            // 품절 상태
-            <div className="bg-gray-100 rounded-xl py-4 text-center">
-              <p className="text-gray-900 font-bold text-lg mb-1">품절된 상품입니다</p>
-              <p className="text-gray-500 text-sm">다른 상품을 선택해주세요</p>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              {/* 담기 버튼 */}
-              <button
-                onClick={handleAddToCart}
-                disabled={addingToCart || buyingNow}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 border-2 ${
-                  addingToCart
-                    ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border-gray-900 text-gray-900 active:scale-[0.98] hover:bg-gray-50'
-                }`}
-              >
-                {addingToCart ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                    담는 중...
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="h-5 w-5" />
-                    담기
-                  </>
-                )}
-              </button>
-
-              {/* 구매하기 버튼 */}
-              <button
-                onClick={handleBuyNow}
-                disabled={addingToCart || buyingNow}
-                className={`flex-[1.5] flex items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all duration-200 ${
-                  buyingNow
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : 'bg-gray-900 text-white active:scale-[0.98] hover:bg-gray-800 shadow-lg'
-                }`}
-              >
-                {buyingNow ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    처리 중...
-                  </>
-                ) : (
-                  <>
-                    ₩{((product.price || 0) * quantity).toLocaleString()} 구매하기
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  )
-}
-
 // ReelCard Component
 function ReelCard({ 
   reel, 
@@ -843,15 +359,17 @@ function ReelCard({
 }) {
   const navigate = useNavigate()
   const { showAlert } = useModal()
-  const [sheetOpen, setSheetOpen] = useState(false)
   const [productListSheetOpen, setProductListSheetOpen] = useState(false)
   const [streamProducts, setStreamProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
+  // Check if user came from homepage or direct link
+  const [isDirectLink, setIsDirectLink] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
+  const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
   
   // Cart & Purchase state
   const [addingToCart, setAddingToCart] = useState(false)
@@ -881,8 +399,9 @@ function ReelCard({
   // Handle null product case
   const safeProduct = product || {
     name: stream.title || '상품 정보 없음',
-    image: stream.thumbnail_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
-    image_url: stream.thumbnail_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800',
+    // ✅ 이미지 없을 때: undefined로 두어 배경 이미지 비활성화
+    image: undefined,
+    image_url: undefined,
     price: 0,
     originalPrice: 0,
     original_price: 0
@@ -902,24 +421,24 @@ function ReelCard({
 
     const initializePlayer = () => {
       try {
-        console.log(`[ReelCard] Initializing player for stream ${stream.id}:`, stream.youtube_video_id)
+        log.debug(`[ReelCard] Initializing player for stream ${stream.id}:`, stream.youtube_video_id)
         // @ts-ignore
         if (!window.YT || !window.YT.Player) {
-          console.log(`[ReelCard] YouTube API not ready for stream ${stream.id}`)
+          log.debug(`[ReelCard] YouTube API not ready for stream ${stream.id}`)
           return
         }
         if (!isMounted) {
-          console.log(`[ReelCard] Component unmounted for stream ${stream.id}`)
+          log.debug(`[ReelCard] Component unmounted for stream ${stream.id}`)
           return
         }
 
         const playerElement = document.getElementById(`youtube-player-${stream.id}`)
         if (!playerElement) {
-          console.log(`[ReelCard] Player element not found for stream ${stream.id}`)
+          log.debug(`[ReelCard] Player element not found for stream ${stream.id}`)
           return
         }
 
-        console.log(`[ReelCard] Creating YouTube player for stream ${stream.id}`)
+        log.debug(`[ReelCard] Creating YouTube player for stream ${stream.id}`)
         playerElement.innerHTML = ''
 
         // @ts-ignore
@@ -946,7 +465,7 @@ function ReelCard({
           events: {
             onReady: (event: any) => {
               if (!isMounted) return
-              console.log(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
+              log.debug(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
               playerRef.current = event.target
               setPlayerReady(true)
               setShowPlayButton(true) // Show play button overlay
@@ -982,13 +501,13 @@ function ReelCard({
 
     // @ts-ignore
     if (window.YT && window.YT.Player) {
-      console.log(`[ReelCard] YouTube API already loaded, initializing stream ${stream.id}`)
+      log.debug(`[ReelCard] YouTube API already loaded, initializing stream ${stream.id}`)
       initializePlayer()
     } else {
-      console.log(`[ReelCard] YouTube API not loaded, queueing callback for stream ${stream.id}`)
+      log.debug(`[ReelCard] YouTube API not loaded, queueing callback for stream ${stream.id}`)
       const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]')
       if (!existingScript) {
-        console.log('[ReelCard] Loading YouTube IFrame API script')
+        log.debug('[ReelCard] Loading YouTube IFrame API script')
         const tag = document.createElement('script')
         tag.src = 'https://www.youtube.com/iframe_api'
         tag.async = true
@@ -999,12 +518,12 @@ function ReelCard({
       // Store callback in array to support multiple reels
       // @ts-ignore
       if (!window.youtubeCallbacks) {
-        console.log('[ReelCard] Creating YouTube callbacks array')
+        log.debug('[ReelCard] Creating YouTube callbacks array')
         // @ts-ignore
         window.youtubeCallbacks = []
         // @ts-ignore
         window.onYouTubeIframeAPIReady = () => {
-          console.log('[ReelCard] YouTube IFrame API ready, executing callbacks:', window.youtubeCallbacks.length)
+          log.debug('[ReelCard] YouTube IFrame API ready, executing callbacks:', window.youtubeCallbacks.length)
           // @ts-ignore
           window.youtubeCallbacks.forEach(cb => cb())
           // @ts-ignore
@@ -1013,7 +532,7 @@ function ReelCard({
       }
       // @ts-ignore
       window.youtubeCallbacks.push(() => {
-        console.log(`[ReelCard] Executing queued callback for stream ${stream.id}`)
+        log.debug(`[ReelCard] Executing queued callback for stream ${stream.id}`)
         if (isMounted) initializePlayer()
       })
     }
@@ -1030,10 +549,47 @@ function ReelCard({
     }
   }, [stream.youtube_video_id, stream.id])  // isActive removed from dependencies
 
+  // Cleanup: Pause video when component unmounts or becomes inactive
+  useEffect(() => {
+    return () => {
+      if (playerRef.current && !isActive) {
+        try {
+          playerRef.current.pauseVideo()
+          log.debug(`[ReelCard] Paused video for stream ${stream.id} (inactive)`)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    }
+  }, [isActive, stream.id])
+
+  // Pause video when no longer active
+  useEffect(() => {
+    if (!isActive && playerRef.current && playerReady) {
+      try {
+        playerRef.current.pauseVideo()
+        setShowPlayButton(true)
+        log.debug(`[ReelCard] Paused video for stream ${stream.id} (not active)`)
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  }, [isActive, playerReady, stream.id])
+  
+  // Handle video click to unmute and play
   const handleVideoClick = () => {
     if (playerRef.current && playerReady) {
-      playerRef.current.playVideo()
-      setShowPlayButton(false)
+      try {
+        // Unmute and play for better UX
+        playerRef.current.unMute()
+        playerRef.current.setVolume(100)
+        playerRef.current.playVideo()
+        setIsMuted(false)
+        setShowPlayButton(false)
+        log.debug('[ReelCard] Video started with audio enabled')
+      } catch (error) {
+        log.error('[ReelCard] Failed to start video:', error)
+      }
     }
   }
 
@@ -1070,7 +626,7 @@ function ReelCard({
               setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
             }
             
-            console.log(`🔥 Firebase: Product changed to ${newProduct.name}`)
+            log.debug(`🔥 Firebase: Product changed to ${newProduct.name}`)
           }
         } catch (error) {
           console.error('[Firebase] Error loading new product:', error)
@@ -1095,7 +651,7 @@ function ReelCard({
         }
       })
       
-      console.log(`🔥 Firebase: Stock updated to ${firebaseProduct.stock}`)
+      log.debug(`🔥 Firebase: Stock updated to ${firebaseProduct.stock}`)
       
       // 품절 알림
       if (firebaseProduct.stock === 0) {
@@ -1115,7 +671,7 @@ function ReelCard({
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data.product)
-          console.log('✅ Initial product loaded')
+          log.debug('✅ Initial product loaded')
         }
       } catch (error) {
         console.error('[InitialProduct] Error loading:', error)
@@ -1194,7 +750,7 @@ function ReelCard({
     try {
       const userId = getUserId()
       
-      console.log('[handleAddToCart] 🛒 Starting add to cart:', {
+      log.debug('[handleAddToCart] 🛒 Starting add to cart:', {
         userId,
         productId: currentProduct.id,
         productName: currentProduct.name,
@@ -1221,7 +777,7 @@ function ReelCard({
       }
       
       // POST to server (JWT에서 userId 자동 추출)
-      console.log('[handleAddToCart] 📡 Calling API /api/cart')
+      log.debug('[handleAddToCart] 📡 Calling API /api/cart')
       
       const response = await api.post('/api/cart', {
         productId: currentProduct.id,
@@ -1230,7 +786,7 @@ function ReelCard({
         liveStreamId: stream.id
       })
       
-      console.log('[handleAddToCart] ✅ API response:', response.data)
+      log.debug('[handleAddToCart] ✅ API response:', response.data)
       
       // Set flag
       localStorage.setItem('hasCartItems', 'true')
@@ -1243,14 +799,14 @@ function ReelCard({
         const userName = localStorage.getItem('user_name') || '익명'
         const maskedName = maskUserName(userName)
         
-        console.log('[handleAddToCart] 📢 Sending system message...')
+        log.debug('[handleAddToCart] 📢 Sending system message...')
         await sendChatMessage(
           `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
           0, // System user ID
           '🎉 시스템',
           'system' // 'viewer' 대신 'system'으로 변경
         )
-        console.log('[handleAddToCart] ✅ System message sent successfully')
+        log.debug('[handleAddToCart] ✅ System message sent successfully')
       } catch (error) {
         console.error('[handleAddToCart] ❌ 시스템 메시지 전송 실패:', error)
       }
@@ -1318,7 +874,7 @@ function ReelCard({
         liveStreamId: reel.stream.id  // ✅ Fixed: currentStream → reel.stream
       }
       
-      console.log('[Checkout] Adding current product to cart:', cartData)
+      log.debug('[Checkout] Adding current product to cart:', cartData)
       
       await api.post('/api/cart', cartData)
       localStorage.setItem('hasCartItems', 'true')
@@ -1327,7 +883,7 @@ function ReelCard({
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
       
       // ✅ 장바구니 페이지로 이동
-      console.log('[Checkout] Navigating to cart')
+      log.debug('[Checkout] Navigating to cart')
       navigate('/cart')
       
     } catch (error: any) {
@@ -1390,7 +946,7 @@ function ReelCard({
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
 
-      console.log('[Seller] Product changed successfully to:', product.id)
+      log.debug('[Seller] Product changed successfully to:', product.id)
     } catch (error: any) {
       console.error('[Seller] Failed to change product:', error)
       showAlert(error.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
@@ -1464,14 +1020,24 @@ function ReelCard({
         </div>
       )}
       
-      {/* Background image */}
-      <img
-        src={safeProduct.image || safeProduct.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800'}
-        alt={safeProduct.name}
-        className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
-          isActive ? 'scale-100' : 'scale-110'
-        }`}
-      />
+      {/* Background image - 상품 이미지만 표시 (오류 시 자동 숨김) */}
+      {(safeProduct.image || safeProduct.image_url) && (
+        <img
+          src={safeProduct.image || safeProduct.image_url}
+          alt={safeProduct.name}
+          className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
+            isActive ? 'scale-100' : 'scale-110'
+          }`}
+          onError={(e) => {
+            // 이미지 로드 실패 시 숨기기
+            e.currentTarget.style.display = 'none'
+            log.debug(`[ReelCard] Image load failed for stream ${stream.id}:`, safeProduct.image || safeProduct.image_url)
+          }}
+        />
+      )}
+      
+      {/* 기본 배경: 어두운 그라데이션 (항상 표시) */}
+      <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-10" />
 
       {/* YouTube Player Container */}
       <div
@@ -1479,17 +1045,32 @@ function ReelCard({
         className="absolute inset-0 w-full h-full z-[5]"
       />
 
-      {/* Play Button Overlay */}
+      {/* 방송 입장 버튼 */}
       {showPlayButton && playerReady && (
         <button
           onClick={handleVideoClick}
-          className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[1px] transition-opacity hover:bg-black/30"
-          aria-label="Play video"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-b from-black/40 via-black/60 to-black/80 backdrop-blur-sm transition-all hover:bg-black/70"
+          aria-label="방송 입장하기"
         >
-          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center transition-transform hover:scale-110">
-            <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+          <div className="flex flex-col items-center gap-4 animate-fade-in">
+            {/* Live Badge */}
+            <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-sm font-bold">LIVE</span>
+            </div>
+            
+            {/* Play Icon */}
+            <div className="w-20 h-20 rounded-full bg-white/90 shadow-2xl flex items-center justify-center transition-all hover:scale-110 hover:bg-white active:scale-95">
+              <svg className="w-10 h-10 text-red-600 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            
+            {/* Text */}
+            <div className="text-center px-6">
+              <p className="text-white text-xl font-bold mb-1.5">방송 입장하기</p>
+              <p className="text-white/80 text-sm">탭하여 라이브 시청 시작</p>
+            </div>
           </div>
         </button>
       )}
@@ -1545,9 +1126,8 @@ function ReelCard({
           {/* Unified bottom bar: product info + basket + buy */}
           <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
             
-            {/* Product info - left side */}
-            <button
-              onClick={() => setSheetOpen(true)}
+            {/* Product info - left side - 클릭 비활성화 */}
+            <div
               className="flex flex-col items-start min-w-0 flex-1 text-left animate-fade-in"
               key={currentProduct?.id || 'default'}
             >
@@ -1564,20 +1144,20 @@ function ReelCard({
                   </span>
                 )}
               </div>
-            </button>
+            </div>
 
             {/* Basket button - Opens product list */}
             <button
-              onClick={openProductListSheet}
-              disabled={!product}
+              onClick={handleAddToCart}
+              disabled={!product || addingToCart}
               className={`flex items-center gap-1 shrink-0 rounded-lg bg-white/10 px-2 py-1.5 transition-all active:scale-95 ${
-                !product ? 'opacity-50 cursor-not-allowed' : ''
+                !product || addingToCart ? 'opacity-50 cursor-not-allowed' : ''
               }`}
-              aria-label="Open product list"
+              aria-label="Add to cart"
             >
               <ShoppingBag className="h-3.5 w-3.5 text-white/80" />
               <span className="text-[11px] font-bold text-white/90">
-                담기
+                {addingToCart ? '추가 중...' : '담기'}
               </span>
             </button>
 
@@ -1601,9 +1181,8 @@ function ReelCard({
               /* Buy button - 일반 유저만 "구매하기" 버튼 표시 */
               <button
                 onClick={() => {
-                  // 현재 상품이 있으면 바로 Quick View 모달 열기
                   if (currentProduct) {
-                    setSheetOpen(true)
+                    handleCheckout() // 직접 결제 처리
                   } else {
                     showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                   }
@@ -1630,80 +1209,10 @@ function ReelCard({
             onSelectProduct={(selectedProduct) => {
               setProductListSheetOpen(false)
               setCurrentProduct(selectedProduct)
-              setSheetOpen(true)
+              // 모달 열기 대신 바로 장바구니 추가
+              handleAddToCart()
             }}
             loading={loadingProducts}
-          />
-        </div>
-      )}
-
-      {/* Product sheet */}
-      {sheetOpen && product && (
-        <div className="pointer-events-auto">
-          <ProductSheet 
-            product={product} 
-            onClose={() => setSheetOpen(false)}
-            onAddToCart={async (quantity) => {
-              // 담기: 장바구니에 추가만 하고 토스트 표시
-              try {
-                const userId = getUserId()
-                if (!userId) {
-                  showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
-                  return
-                }
-                
-                await api.post('/api/cart', {
-                  userId: parseInt(userId),
-                  productId: product.id,
-                  quantity,
-                  priceSnapshot: product.price,
-                  liveStreamId: stream.id
-                })
-                
-                localStorage.setItem('hasCartItems', 'true')
-                
-                // 🎯 장바구니 아이템 추가 이벤트 발생
-                window.dispatchEvent(new CustomEvent('cartItemAdded'))
-                
-                // 토스트 표시
-                setNotificationText(`✅ 장바구니에 ${quantity}개 담았습니다`)
-                setShowNotification(true)
-                setTimeout(() => setShowNotification(false), 2000)
-                
-                // 시트 닫기
-                setSheetOpen(false)
-              } catch (error: any) {
-                showAlert(error.response?.data?.error || '장바구니 담기 실패', 'error', '오류')
-              }
-            }}
-            onBuyNow={async (quantity) => {
-              // 구매하기: 장바구니에 추가 후 즉시 /cart로 이동
-              try {
-                const userId = getUserId()
-                if (!userId) {
-                  showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
-                  return
-                }
-                
-                await api.post('/api/cart', {
-                  userId: parseInt(userId),
-                  productId: product.id,
-                  quantity,
-                  priceSnapshot: product.price,
-                  liveStreamId: stream.id
-                })
-                
-                localStorage.setItem('hasCartItems', 'true')
-                
-                // 🎯 장바구니 아이템 추가 이벤트 발생
-                window.dispatchEvent(new CustomEvent('cartItemAdded'))
-                
-                // 즉시 장바구니 페이지로 이동
-                navigate('/cart')
-              } catch (error: any) {
-                showAlert(error.response?.data?.error || '구매 진행 실패', 'error', '오류')
-              }
-            }}
           />
         </div>
       )}
@@ -1794,7 +1303,7 @@ export default function LivePageV2() {
     const userName = urlParams.get('userName')
 
     if (loginSuccess === 'success' && session && userId) {
-      console.log('[LivePageV2] 💾 로그인 성공 - localStorage 저장:', {
+      log.debug('[LivePageV2] 💾 로그인 성공 - localStorage 저장:', {
         session: session ? '있음' : '없음',
         userId,
         userName: userName ? decodeURIComponent(userName) : null
@@ -1827,7 +1336,7 @@ export default function LivePageV2() {
       const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
       window.history.replaceState({}, '', newUrl)
 
-      console.log('[LivePageV2] ✅ localStorage 저장 완료:', {
+      log.debug('[LivePageV2] ✅ localStorage 저장 완료:', {
         user_session_token: localStorage.getItem('user_session_token') ? '있음' : '없음',
         user_type: localStorage.getItem('user_type'),
         user_id: localStorage.getItem('user_id'),
@@ -1860,45 +1369,76 @@ export default function LivePageV2() {
     return () => observerRef.current?.disconnect()
   }, [])
 
-  // Load reels data - MODIFIED: Load ALL streams, not just one
+  // Load reels data - MODIFIED: Check if direct link or from homepage
   useEffect(() => {
     const loadReels = async () => {
       try {
         setLoading(true)
 
-        // Load ALL active streams
+        // Check if user came directly to this URL (not from homepage)
+        const referrer = document.referrer
+        const isFromHomepage = referrer.includes(window.location.origin) && 
+                               (referrer.includes('/') || referrer.includes('/home'))
+        const hasStreamId = !!streamId
+        
+        // Direct link: Show ONLY the requested stream (no scroll)
+        // Homepage link: Show ALL streams (with scroll)
+        const shouldShowSingleStream = hasStreamId && !isFromHomepage
+        setIsDirectLink(shouldShowSingleStream)
+        
+        log.debug('[LivePageV2] Navigation context:', {
+          hasStreamId,
+          isFromHomepage,
+          shouldShowSingleStream,
+          referrer
+        })
+
+        // Load streams (single or all based on context)
         let streams: Stream[] = []
         
-        try {
-          const streamsResponse = await axios.get('/api/streams')
-          console.log('[LivePageV2] Streams API response:', streamsResponse.data)
-          
-          if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
-            streams = streamsResponse.data.data
-            console.log('[LivePageV2] Loaded all streams:', streams.length)
+        if (shouldShowSingleStream && streamId) {
+          // DIRECT LINK: Load only the requested stream
+          try {
+            const singleStreamResponse = await axios.get(`/api/streams/${streamId}`)
+            log.debug('[LivePageV2] Single stream API response:', singleStreamResponse.data)
             
-            // Set current stream from URL parameter
-            if (streamId) {
-              const currentStreamData = streams.find(s => s.id === parseInt(streamId))
-              if (currentStreamData) {
-                setCurrentStream(currentStreamData)
-                
-                // Check streamer permission
-                const userType = localStorage.getItem('user_type')
-                const userId = getUserId()
-                if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
-                  setIsStreamer(true)
-                  console.log('[LivePageV2] 스트리머 권한 확인됨')
-                }
-              }
+            if (singleStreamResponse.data.success && singleStreamResponse.data.data) {
+              streams = [singleStreamResponse.data.data]
+              log.debug('[LivePageV2] Loaded single stream (direct link)')
             }
-          } else {
-            console.error('[LivePageV2] No streams found in API response')
-            throw new Error('No streams available')
+          } catch (error) {
+            console.error('[LivePageV2] Single stream API failed:', error)
           }
-        } catch (error) {
-          console.error('[LivePageV2] Streams API failed:', error)
-          throw error // Re-throw to outer catch block
+        } else {
+          // HOMEPAGE LINK: Load ALL active streams
+          try {
+            const streamsResponse = await axios.get('/api/streams')
+            log.debug('[LivePageV2] All streams API response:', streamsResponse.data)
+            
+            if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
+              streams = streamsResponse.data.data
+              log.debug('[LivePageV2] Loaded all streams:', streams.length)
+            }
+          } catch (error) {
+            console.error('[LivePageV2] Streams API failed:', error)
+            throw error
+          }
+        }
+            
+        // Set current stream from URL parameter
+        if (streamId) {
+          const currentStreamData = streams.find(s => s.id === parseInt(streamId))
+          if (currentStreamData) {
+            setCurrentStream(currentStreamData)
+            
+            // Check streamer permission
+            const userType = localStorage.getItem('user_type')
+            const userId = getUserId()
+            if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
+              setIsStreamer(true)
+              log.debug('[LivePageV2] 스트리머 권한 확인됨')
+            }
+          }
         }
 
         // Create reels: ONE reel per stream (not per product)
@@ -1911,11 +1451,11 @@ export default function LivePageV2() {
           
           try {
             const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
-            console.log(`[LivePageV2] Products API response for stream ${stream.id}:`, productsResponse.data)
+            log.debug(`[LivePageV2] Products API response for stream ${stream.id}:`, productsResponse.data)
             
             if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
               products = productsResponse.data.data
-              console.log(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
+              log.debug(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
             } else {
               console.warn(`[LivePageV2] No products found for stream ${stream.id}`)
             }
@@ -1930,7 +1470,7 @@ export default function LivePageV2() {
           })
         }
 
-        console.log('[LivePageV2] Created reels:', reelsData.length)
+        log.debug('[LivePageV2] Created reels:', reelsData.length)
         
         // Set initial active index based on streamId BEFORE setReels
         let initialIndex = 0
@@ -1938,7 +1478,7 @@ export default function LivePageV2() {
           const foundIndex = reelsData.findIndex(r => r.stream.id === parseInt(streamId))
           if (foundIndex !== -1) {
             initialIndex = foundIndex
-            console.log('[LivePageV2] Initial index for stream', streamId, ':', initialIndex)
+            log.debug('[LivePageV2] Initial index for stream', streamId, ':', initialIndex)
           }
         }
         
@@ -1971,7 +1511,7 @@ export default function LivePageV2() {
     // Update URL without reload
     if (window.location.pathname !== `/live/${activeStreamId}`) {
       window.history.replaceState(null, '', `/live/${activeStreamId}`)
-      console.log('[LivePageV2] URL updated to:', `/live/${activeStreamId}`)
+      log.debug('[LivePageV2] URL updated to:', `/live/${activeStreamId}`)
     }
     
     // Update currentStream
@@ -1983,7 +1523,7 @@ export default function LivePageV2() {
       const userId = getUserId()
       const accessToken = localStorage.getItem('access_token')
       
-      console.log('[LivePageV2] Checking seller permission:', {
+      log.debug('[LivePageV2] Checking seller permission:', {
         userType,
         userId,
         hasAccessToken: !!accessToken,
@@ -1992,7 +1532,7 @@ export default function LivePageV2() {
       
       if (userType === 'seller' && userId && activeReel.stream.seller_id === parseInt(userId)) {
         setIsStreamer(true)
-        console.log('[LivePageV2] ✅ User is seller of this stream')
+        log.debug('[LivePageV2] ✅ User is seller of this stream')
       } else {
         setIsStreamer(false)
       }
@@ -2007,15 +1547,34 @@ export default function LivePageV2() {
     // Scroll to the active reel
     const targetElement = containerRef.current.children[activeIndex] as HTMLElement
     if (targetElement) {
-      console.log('[LivePageV2] Scrolling to index:', activeIndex)
+      log.debug('[LivePageV2] Scrolling to index:', activeIndex)
       targetElement.scrollIntoView({ behavior: 'instant' as any })
     }
   }, [reels])
 
-  // 실시간 시청자 수 업데이트 (10초마다)
+  // 🔥 KV 기반 실시간 시청자 수 추적 (Session-based)
   useEffect(() => {
     if (!currentStream?.id) return
 
+    // 세션 ID 생성 또는 가져오기
+    let sessionId = sessionStorage.getItem('viewer_session_id')
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem('viewer_session_id', sessionId)
+    }
+
+    // 시청자 등록 (Heartbeat)
+    const joinViewer = async () => {
+      try {
+        await axios.post(`/api/streams/${currentStream.id}/viewer/join`, {}, {
+          headers: { 'X-Session-ID': sessionId }
+        })
+      } catch (error) {
+        console.error('[LivePageV2] Failed to join viewer:', error)
+      }
+    }
+
+    // 시청자 수 조회
     const fetchViewerCount = async () => {
       try {
         const response = await axios.get(`/api/streams/${currentStream.id}/viewer-count`)
@@ -2027,13 +1586,20 @@ export default function LivePageV2() {
       }
     }
 
-    // 초기 로드
+    // 초기 등록
+    joinViewer()
     fetchViewerCount()
 
-    // 10초마다 업데이트
-    const interval = setInterval(fetchViewerCount, 10000)
+    // 30초마다 Heartbeat 전송 (KV TTL 60초)
+    const heartbeatInterval = setInterval(joinViewer, 30000)
 
-    return () => clearInterval(interval)
+    // 10초마다 시청자 수 조회
+    const countInterval = setInterval(fetchViewerCount, 10000)
+
+    return () => {
+      clearInterval(heartbeatInterval)
+      clearInterval(countInterval)
+    }
   }, [currentStream?.id])
 
   // 스트리머 전용: 상품 변경 함수
@@ -2080,21 +1646,21 @@ export default function LivePageV2() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    )
-  }
-
   // ✅ 로딩 중 표시
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-          <div className="text-white text-lg">라이브 로딩 중...</div>
+          <div className="relative">
+            {/* Outer spinning ring */}
+            <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
+            {/* Inner pulsing dot */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <div className="text-white text-xl font-bold">라이브 입장 중...</div>
+          <div className="text-white/60 text-sm">잠시만 기다려주세요</div>
         </div>
       </div>
     )
@@ -2112,6 +1678,24 @@ export default function LivePageV2() {
           >
             홈으로 돌아가기
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ activeIndex가 유효한 범위인지 확인
+  const currentReel = reels[activeIndex]
+  if (!currentReel || !currentReel.stream) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <div className="text-white text-xl font-bold">라이브 준비 중...</div>
         </div>
       </div>
     )
@@ -2136,7 +1720,7 @@ export default function LivePageV2() {
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              console.log('[LivePageV2] 배경 클릭으로 모달 닫기')
+              log.debug('[LivePageV2] 배경 클릭으로 모달 닫기')
               setShowProductSelector(false)
             }
           }}
@@ -2236,7 +1820,11 @@ export default function LivePageV2() {
       
       <div
         ref={containerRef}
-        className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
+        className={`h-dvh w-full no-scrollbar ${
+          isDirectLink 
+            ? 'overflow-hidden' // Direct link: No scroll, single stream only
+            : 'overflow-y-scroll snap-y snap-mandatory' // Homepage: Scrollable reels
+        }`}
       >
         {reels.map((reel, index) => (
           <div

@@ -1,11 +1,17 @@
-// React Router App - v2.1 (Cache Buster)
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
-import { AuthProvider } from './contexts/AuthContext'
-// import { useSessionValidation } from './hooks/useSessionValidation' // ❌ JWT 전용 - 제거됨
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/shared/config/region'
+import { QueryProvider } from './lib/react-query'
+import { initSentry } from './lib/sentry'
+
+// Sentry 초기화 (최상위에서 한 번만)
+initSentry()
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -51,6 +57,11 @@ const AddressManagementPage = lazy(() => import('./pages/AddressManagementPage')
 const MyOrdersPage = lazy(() => import('./pages/MyOrdersPage'))
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
 
+// Account (탈퇴) 페이지들
+const AccountSettingsPage = lazy(() => import('./pages/AccountSettingsPage'))
+const AccountDeleteWarningPage = lazy(() => import('./pages/AccountDeleteWarningPage'))
+const AccountDeletedPage = lazy(() => import('./pages/AccountDeletedPage'))
+
 // Admin 페이지들
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'))
@@ -67,6 +78,9 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 
+// 🔧 Debug 페이지
+const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
+
 // 로딩 컴포넌트
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -79,11 +93,32 @@ const PageLoader = () => (
 
 // ✅ Router 내부에서 실행될 컴포넌트
 function AppContent() {
-  // 🔒 세션 검증: Firebase Auth가 자동으로 처리 (JWT 제거됨)
-  // useSessionValidation() // ❌ JWT 전용 - 더 이상 사용 안 함
+  console.log('[App] 📱 AppContent 마운트됨')
+  
+  // ✅ Zustand Store 인증 초기화 (Week 5 Day 1)
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (isKorea()) {
+          console.log('[App] 🇰🇷 KR 인증 초기화 시작')
+          await useAuthKR.getState().initializeAuth()
+          console.log('[App] ✅ KR 인증 초기화 완료')
+        } else {
+          console.log('[App] 🌍 WORLD 인증 초기화 시작')
+          await useAuthWorld.getState().initializeAuth()
+          console.log('[App] ✅ WORLD 인증 초기화 완료')
+        }
+      } catch (err) {
+        console.error('[App] ❌ 인증 초기화 실패:', err)
+      }
+    }
+    initAuth()
+  }, [])
   
   // 🔄 다중 탭 동기화: 다른 탭의 로그인/로그아웃 감지
   useMultiTabSync()
+  
+  console.log('[App] 📍 현재 경로:', window.location.pathname)
   
   return (
     <>
@@ -140,11 +175,19 @@ function AppContent() {
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
             
+            {/* Account Settings & Delete Pages */}
+            <Route path="/account/settings" element={<AccountSettingsPage />} />
+            <Route path="/account/delete-warning" element={<AccountDeleteWarningPage />} />
+            <Route path="/account/deleted" element={<AccountDeletedPage />} />
+            
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
+            
+            {/* 🔧 Debug Pages */}
+            <Route path="/debug/kakao" element={<KakaoDebugPage />} />
             
             {/* Error Pages */}
             <Route path="/500" element={<ServerErrorPage />} />
@@ -156,16 +199,42 @@ function AppContent() {
   )
 }
 
-// ✅ App 컴포넌트: BrowserRouter와 AuthProvider를 최상위에 배치
+// ✅ App 컴포넌트: BrowserRouter 최상위 배치 (AuthProvider 제거)
 function App() {
+  console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand + React Query + Sentry)')
+  
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </BrowserRouter>
-    </ErrorBoundary>
+    <Sentry.ErrorBoundary 
+      fallback={({ error }) => (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">오류가 발생했습니다</h2>
+            <p className="text-gray-600 mb-4">{error.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+      )}
+      showDialog={false}
+    >
+      <ErrorBoundary>
+        <QueryProvider>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            {/* ❌ <AuthProvider> REMOVED - Migrated to Zustand Stores */}
+            <AppContent />
+          </BrowserRouter>
+        </QueryProvider>
+      </ErrorBoundary>
+    </Sentry.ErrorBoundary>
   )
 }
 

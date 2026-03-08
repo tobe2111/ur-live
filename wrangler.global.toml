@@ -1,0 +1,47 @@
+name = "ur-live-global"
+# Global version configuration for world.ur-team.com
+# Deploy command: npx wrangler pages deploy dist --config wrangler.global.toml
+compatibility_date = "2026-02-01"
+pages_build_output_dir = "./dist"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment Variables (Set via Cloudflare Pages Dashboard)
+# Required for Global Version:
+# Frontend:
+# - VITE_REGION=GLOBAL
+# - VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID
+# - VITE_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_STRIPE_KEY
+# - VITE_DEFAULT_LANGUAGE=en
+# - VITE_API_BASE_URL=https://world.ur-team.com
+#
+# Backend:
+# - STRIPE_SECRET_KEY=sk_test_YOUR_STRIPE_SECRET_KEY
+# - JWT_SECRET=your-jwt-secret
+# - RESEND_API_KEY=re_your_resend_api_key
+# - EMAIL_FROM=UR World <noreply@ur-team.com>
+# - FIREBASE_PROJECT_ID=your-firebase-project-id
+# - FIREBASE_DATABASE_URL=https://your-project.firebaseio.com
+#
+# Set production secrets via Dashboard or:
+# npx wrangler pages secret put STRIPE_SECRET_KEY --project-name=ur-live-global
+# npx wrangler pages secret put JWT_SECRET --project-name=ur-live-global
+
+# D1 Database (shared with Korean version)
+[[d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+
+# KV Namespaces (shared with Korean version)
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "3b522e69651f4d4f84a0cdf9430eeb72"
+
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "25ecc9ce2c464dd59edf5eb7d5fd1a10"
+
+[[kv_namespaces]]
+binding = "LIVE_CACHE"
+id = "e6667599e01d4af8b4687560eb39394c"
+preview_id = "750e3b6ed7714a8999abe19d8771be00"

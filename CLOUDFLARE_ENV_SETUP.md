@@ -1,263 +1,290 @@
-# Cloudflare Pages 환경변수 설정 가이드
+# Cloudflare Pages 환경 변수 설정 가이드
 
-## 🔑 필수 환경변수
-
-### 1. Toss Payments 클라이언트 키
-**변수명**: `VITE_TOSS_CLIENT_KEY`  
-**값**: `test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN` (테스트)  
-**용도**: 프론트엔드 결제 위젯 초기화
-
-### 2. Toss Payments 시크릿 키
-**변수명**: `TOSS_SECRET_KEY`  
-**값**: `test_sk_...` (비공개)  
-**용도**: 백엔드 결제 승인 API
+## 📍 목적
+Sentry를 프로덕션 환경에서 활성화하여 에러 추적 및 성능 모니터링을 수행합니다.
 
 ---
 
-## 📝 Cloudflare Pages Dashboard 설정 방법
+## 🔧 Step 1: Sentry 프로젝트 생성
 
-### Step 1: Cloudflare Dashboard 접속
+### 1.1 Sentry 계정 접속
+- URL: https://sentry.io
+- 로그인 또는 회원가입
+
+### 1.2 새 프로젝트 생성
+1. **Projects** → **Create Project** 클릭
+2. **Platform**: **React** 선택
+3. **Project Name**: `ur-live-kr` (또는 원하는 이름)
+4. **Create Project** 클릭
+
+### 1.3 DSN 복사
+- 프로젝트 생성 후 표시되는 **DSN** 주소를 복사합니다.
+- 형식: `https://<key>@<org>.ingest.sentry.io/<project-id>`
+- 예: `https://abc123def456@o123456.ingest.sentry.io/7890`
+
+---
+
+## 🚀 Step 2: Cloudflare Pages 환경 변수 설정
+
+### 2.1 Cloudflare Dashboard 접속
 1. https://dash.cloudflare.com 로그인
-2. **Pages** 선택
-3. **toss-live-commerce** 프로젝트 선택
+2. **Workers & Pages** 클릭
+3. **ur-live** 프로젝트 선택
 
-### Step 2: Environment Variables 설정
-1. **Settings** 탭 클릭
-2. **Environment variables** 섹션 찾기
-3. **Add variable** 버튼 클릭
+### 2.2 환경 변수 추가
+1. **Settings** → **Environment variables** 클릭
+2. **Add variable** 버튼 클릭
+3. 아래 변수들을 **Production** 환경에 추가:
 
-### Step 3: 변수 추가
+#### ✅ 필수 환경 변수
 
-#### Production 환경
-```
-Variable name: VITE_TOSS_CLIENT_KEY
-Value: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-Environment: Production
-```
+| Variable Name | Value | Environment |
+|--------------|-------|-------------|
+| `VITE_SENTRY_DSN` | `https://<key>@<org>.ingest.sentry.io/<project-id>` | Production |
+| `VITE_SENTRY_ENVIRONMENT` | `production` | Production |
 
-```
-Variable name: TOSS_SECRET_KEY
-Value: test_sk_zXLkKEypNArWmo50nX3G69R5gvNL (실제 값으로 교체)
-Environment: Production
-Type: Secret (권장)
-```
+#### 🔍 옵션 환경 변수 (추가 권장)
 
-#### Preview 환경 (선택)
-```
-Variable name: VITE_TOSS_CLIENT_KEY
-Value: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-Environment: Preview
-```
+| Variable Name | Value | Description |
+|--------------|-------|-------------|
+| `VITE_SENTRY_RELEASE` | `v1.0.0` | 배포 버전 (선택사항) |
+| `VITE_SENTRY_TRACES_SAMPLE_RATE` | `0.1` | 성능 추적 샘플링 비율 (10%) |
 
-```
-Variable name: TOSS_SECRET_KEY
-Value: test_sk_zXLkKEypNArWmo50nX3G69R5gvNL
-Environment: Preview
-Type: Secret
-```
+### 2.3 환경 변수 저장
+- **Save** 버튼 클릭
+- ⚠️ **중요**: 환경 변수 추가 후 **재배포**가 필요합니다.
 
-### Step 4: 재배포
-환경변수를 설정한 후 **반드시 재배포**해야 적용됩니다:
+---
+
+## 🔄 Step 3: 재배포 (환경 변수 적용)
+
+### 3.1 로컬에서 재배포 (권장)
 
 ```bash
-cd /home/user/webapp
-npm run deploy:prod
-# 또는
-npm run deploy
+# 1. 빌드 (환경 변수 자동 주입)
+npm run build:kr
+
+# 2. Cloudflare Pages에 배포
+npx wrangler pages deploy dist --project-name ur-live
+
+# 3. 배포 확인
+# https://live.ur-team.com 접속 후 콘솔 확인
+# "[Sentry] Initialized: production" 메시지 확인
+```
+
+### 3.2 GitHub 연동 자동 배포 (선택사항)
+
+```bash
+# main 브랜치에 push하면 자동 배포
+git add .
+git commit -m "feat: Enable Sentry production monitoring"
+git push origin main
+
+# Cloudflare Pages 자동 빌드 시작
+# 약 2-3분 후 배포 완료
 ```
 
 ---
 
-## ⚠️ 현재 상태
+## ✅ Step 4: Sentry 동작 확인
 
-### 임시 해결책 (코드에 하드코딩)
+### 4.1 콘솔 로그 확인
+1. https://live.ur-team.com 접속
+2. **F12** → **Console** 탭 열기
+3. 다음 메시지 확인:
+   ```
+   [Sentry] Initialized: { environment: 'production', dsn: 'https://...' }
+   ```
+
+### 4.2 테스트 에러 발생시키기 (선택사항)
+
+브라우저 콘솔에서 실행:
+
+```javascript
+// 1. 테스트 에러 발생
+window.Sentry?.captureException(new Error('Sentry Test Error'))
+
+// 2. 커스텀 메시지 전송
+window.Sentry?.captureMessage('Sentry Test Message', 'info')
+```
+
+### 4.3 Sentry Dashboard 확인
+1. https://sentry.io 접속
+2. **ur-live-kr** 프로젝트 선택
+3. **Issues** 탭에서 테스트 에러 확인 (1-2분 소요)
+
+---
+
+## 🎯 Step 5: 커스텀 이벤트 추적 활성화
+
+### 5.1 로그인 이벤트 추적
+
+**파일**: `src/pages/LoginPage.tsx`
+
 ```typescript
-// src/pages/CheckoutPage.tsx
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
+import { trackLoginSuccess, trackLoginFailure } from '@/lib/sentry'
+
+// 로그인 성공 시
+const handleLoginSuccess = async (user) => {
+  trackLoginSuccess('kakao', user.uid)
+  // ... 기존 로직
+}
+
+// 로그인 실패 시
+const handleLoginError = (error) => {
+  trackLoginFailure('kakao', error.message)
+  // ... 기존 로직
+}
 ```
 
-**문제점**:
-- ❌ 테스트 키가 코드에 노출됨
-- ❌ Git에 커밋되어 공개 저장소에 노출될 수 있음
-- ❌ 운영 키로 쉽게 전환하기 어려움
+### 5.2 결제 이벤트 추적
 
-### 권장 방법 (환경변수 사용)
+**파일**: `src/components/payments/TossPaymentWidget.tsx`
+
 ```typescript
-// src/pages/CheckoutPage.tsx
-const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY
-// Cloudflare Pages Dashboard에서 설정된 값 사용
+import { trackPaymentSuccess, trackPaymentFailure } from '@/lib/sentry'
+
+// 결제 성공 시
+const handlePaymentSuccess = (orderId, amount) => {
+  trackPaymentSuccess(orderId, amount, 'toss')
+  // ... 기존 로직
+}
+
+// 결제 실패 시
+const handlePaymentError = (orderId, error) => {
+  trackPaymentFailure(orderId, 0, error.message)
+  // ... 기존 로직
+}
 ```
 
-**장점**:
-- ✅ 키가 코드에 노출되지 않음
-- ✅ 환경별로 다른 키 사용 가능 (테스트/운영)
-- ✅ 키 변경 시 재배포만 하면 됨
+### 5.3 페이지 로드 시간 추적
 
----
+**파일**: `src/pages/CheckoutPage.tsx`
 
-## 🔒 보안 주의사항
-
-### 1. 클라이언트 키 (VITE_TOSS_CLIENT_KEY)
-- **공개 가능**: 브라우저에서 보임
-- **타입**: Plain text
-- **용도**: 프론트엔드 결제 위젯 초기화
-
-### 2. 시크릿 키 (TOSS_SECRET_KEY)
-- **비공개 필수**: 절대 노출 금지
-- **타입**: Secret (암호화됨)
-- **용도**: 백엔드 결제 승인 API
-
-### ⚠️ 절대 하지 말 것
 ```typescript
-// ❌ 시크릿 키를 프론트엔드에 노출 금지!
-const secretKey = 'test_sk_...' // 절대 안됨!
+import { trackPageLoadTime } from '@/lib/sentry'
 
-// ❌ .env 파일을 Git에 커밋 금지!
-git add .env  // 절대 안됨!
+useEffect(() => {
+  const startTime = Date.now()
+  
+  // 데이터 로드 후
+  const loadTime = Date.now() - startTime
+  trackPageLoadTime('CheckoutPage', loadTime)
+}, [])
 ```
 
 ---
 
-## 🧪 테스트 방법
+## 📊 Step 6: Sentry 대시보드 모니터링
 
-### 1. 환경변수 설정 확인
-```bash
-# Cloudflare Pages에서 환경변수 확인
-npx wrangler pages project list
-npx wrangler pages project view toss-live-commerce
-```
+### 6.1 주요 메트릭 확인
 
-### 2. 로컬 테스트 (.env.local)
-```bash
-# .env.local 파일 생성 (Git에 커밋하지 않음)
-cat > .env.local << 'EOF'
-VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3G69R5gvNL
-EOF
+| 메트릭 | 목표값 | 확인 위치 |
+|-------|--------|----------|
+| **Error Rate** | < 0.1% | Issues → Overview |
+| **Avg Response Time** | < 1s | Performance → Overview |
+| **Uptime** | ≥ 99.9% | Performance → Web Vitals |
+| **User Impact** | < 50 users/day | Issues → Users Affected |
 
-# 로컬 개발 서버 실행
-npm run dev
-```
+### 6.2 알림 설정 (권장)
 
-### 3. Production 테스트
-```
-1. https://live.ur-team.com/checkout 접속
-2. 브라우저 콘솔 열기 (F12)
-3. 결제 위젯 로드 확인
-4. 오류 메시지 확인
-```
+1. **Settings** → **Alerts** → **Create Alert**
+2. **Alert Type**: **Issues**
+3. **Conditions**:
+   - Error count > 10 in 1 hour
+   - New issue appears
+4. **Actions**:
+   - Email notification
+   - Slack webhook (선택사항)
 
 ---
 
-## 📊 환경별 설정
+## 🔐 보안 주의사항
 
-### Development (로컬)
-```bash
-# .env.local (Git에 커밋 안됨)
-VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3G69R5gvNL
-```
+### ⚠️ DSN은 공개되어도 안전합니다
+- Sentry DSN은 **클라이언트에서 사용**되므로 공개되어도 문제없습니다.
+- 단, **Auth Token**은 절대 공개하지 마세요!
 
-### Preview (Cloudflare Pages)
-```
-Cloudflare Dashboard → Environment Variables
-Environment: Preview
-VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-TOSS_SECRET_KEY=test_sk_zXLkKEypNArWmo50nX3G69R5gvNL
-```
+### ✅ 환경 변수 분리 권장
 
-### Production (Cloudflare Pages)
-```
-Cloudflare Dashboard → Environment Variables
-Environment: Production
-VITE_TOSS_CLIENT_KEY=live_ck_... (운영 키)
-TOSS_SECRET_KEY=live_sk_... (운영 시크릿 키)
-```
+| 환경 | DSN 프로젝트 | 용도 |
+|------|-------------|------|
+| Development | `ur-live-dev` | 개발 중 에러 테스트 |
+| Production | `ur-live-prod` | 실제 사용자 에러 추적 |
 
 ---
 
-## 🚀 Go-Live 체크리스트
+## 🛠️ 문제 해결
 
-### 운영 환경 전환 시
-- [ ] Toss Payments 심사 완료
-- [ ] 운영 클라이언트 키 발급받기
-- [ ] 운영 시크릿 키 발급받기
-- [ ] Cloudflare Pages에 운영 키 설정
-- [ ] 코드에서 하드코딩된 테스트 키 제거
-- [ ] 재배포 및 테스트
-- [ ] 실제 결제 테스트 (소액)
-
----
-
-## 🔧 문제 해결
-
-### 1. "등록할 수 있는 결제 수단이 존재하지 않습니다"
-**원인**: 클라이언트 키가 없거나 잘못됨
+### Q1: "Sentry가 초기화되지 않았습니다"
+**원인**: `VITE_SENTRY_DSN` 환경 변수 누락
 
 **해결**:
-```bash
-# 1. Cloudflare Dashboard에서 VITE_TOSS_CLIENT_KEY 설정 확인
-# 2. 재배포
-npm run deploy:prod
-```
+1. Cloudflare Pages → Settings → Environment variables 확인
+2. `VITE_SENTRY_DSN` 변수 추가
+3. 재배포 (`npm run build:kr && npx wrangler pages deploy dist`)
 
-### 2. "결제 승인에 실패했습니다"
-**원인**: 시크릿 키가 없거나 잘못됨
+---
+
+### Q2: "에러가 Sentry에 표시되지 않습니다"
+**원인**: 개발 환경에서는 Sentry 전송이 차단됨
 
 **해결**:
-```bash
-# 1. Cloudflare Dashboard에서 TOSS_SECRET_KEY 설정 확인
-# 2. 타입을 Secret으로 설정
-# 3. 재배포
-```
-
-### 3. 환경변수가 적용되지 않음
-**원인**: 환경변수 설정 후 재배포하지 않음
-
-**해결**:
-```bash
-# 반드시 재배포 필요!
-npm run deploy:prod
-```
-
----
-
-## 📚 참고 자료
-
-### Cloudflare Pages 공식 문서
-- [Environment Variables](https://developers.cloudflare.com/pages/configuration/build-configuration/)
-- [Secrets](https://developers.cloudflare.com/pages/configuration/secrets/)
-
-### Toss Payments 공식 문서
-- [API Keys](https://docs.tosspayments.com/reference/using-api/api-keys)
-- [결제위젯 SDK](https://docs.tosspayments.com/reference/widget-sdk)
-
-### 프로젝트 문서
-- `PAYMENT_WIDGET_FIX.md`: 결제 위젯 수정 가이드
-- `PAYMENT_FIX_SUMMARY.md`: 결제 시스템 요약
-- `SAFE_DEVELOPMENT_GUIDE.md`: 안전한 개발 가이드
+1. `src/lib/sentry.ts` 파일 확인:
+   ```typescript
+   // 개발 환경에서는 전송 안 함
+   if (environment === 'development') {
+     return null; // ← 이 로직 때문
+   }
+   ```
+2. **프로덕션 빌드**로 테스트:
+   ```bash
+   npm run build:kr
+   npm run preview
+   # http://localhost:4173 에서 테스트
+   ```
 
 ---
 
-## 📝 현재 배포 상태
+### Q3: "Sentry 요금이 초과될까 걱정됩니다"
+**현재 설정**:
+- **Performance 샘플링**: 10% (90% 트랜잭션 무시)
+- **Replay 샘플링**: 10% (에러 발생 시 100%)
 
-### URLs
-- **Preview**: https://2e24bd41.toss-live-commerce.pages.dev
-- **Production**: https://live.ur-team.com
+**무료 티어**:
+- **5,000 errors/month** (초과 시 $26/month)
+- **10,000 performance units/month** (초과 시 $16/month)
 
-### Git 커밋
-```
-[main 23c465d] fix: Add fallback Toss Payments client key for testing
-```
-
-### 다음 단계
-1. **브라우저 테스트**: https://live.ur-team.com/checkout
-2. **환경변수 설정**: Cloudflare Dashboard
-3. **하드코딩 제거**: 환경변수 설정 후 코드 정리
-4. **재배포 및 최종 테스트**
+**권장**:
+- 샘플링 비율을 낮춰서 비용 절감 (5% → `tracesSampleRate: 0.05`)
 
 ---
 
-**작성일**: 2026-02-11  
-**커밋**: 23c465d  
-**작성자**: AI Assistant
+## 📝 체크리스트
+
+배포 전 확인 사항:
+
+- [ ] Sentry 프로젝트 생성 완료
+- [ ] Cloudflare Pages 환경 변수 `VITE_SENTRY_DSN` 추가
+- [ ] Cloudflare Pages 환경 변수 `VITE_SENTRY_ENVIRONMENT` = `production` 설정
+- [ ] `npm run build:kr` 빌드 성공
+- [ ] 프로덕션 배포 완료
+- [ ] 콘솔에서 "[Sentry] Initialized" 메시지 확인
+- [ ] Sentry 대시보드에서 테스트 에러 확인
+- [ ] (선택) 커스텀 이벤트 추적 코드 추가 (로그인, 결제)
+- [ ] (선택) Sentry 알림 설정
+
+---
+
+## 🎯 다음 단계
+
+1. ✅ Sentry 설정 완료
+2. 📊 48시간 모니터링 (48H_MONITORING_GUIDE.md 참고)
+3. 🧪 프로덕션 테스트 체크리스트 실행 (PRODUCTION_TEST_CHECKLIST.md)
+4. 🔥 에러 발생 시 대응 (ERROR_RESPONSE_FLOW.md)
+
+---
+
+**작성일**: 2026-03-05  
+**작성자**: UR Live Development Team  
+**문서 버전**: v1.0

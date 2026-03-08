@@ -1,257 +1,227 @@
-# 카카오 로그인 문제 완전 해결 보고서
+# 카카오 로그인 무한 루프 해결 완료 🎉
 
-## ✅ 해결 완료 (2026-02-10)
+## 문제 분석
 
-### 📊 문제 발생 원인 분석
+### 증상
+- 카카오 로그인 성공 후 `/user/profile` 페이지로 이동
+- `UserProfilePage`가 `userId: null`을 감지하고 `/login`으로 리다이렉트
+- 무한 로그인 루프 발생
 
-#### 1. **근본 원인: DB 스키마와 코드 불일치**
-- **발생 시점**: 2026-02-09 (어제)
-- **원인**: Service Terms 기능 추가 시도 중 DB 마이그레이션 없이 코드만 수정
-- **결과**: 존재하지 않는 컬럼(`access_token`, `service_terms_agreed`, `terms_agreed_at`) UPDATE 시도 → SQLite 에러 → 500 Internal Server Error
+### 근본 원인
+```typescript
+// UserProfilePage.tsx
+const userId = getUserId()  // localStorage.getItem('user_id') 반환
 
-#### 2. **문제 타임라인**
+// utils/auth.ts
+export function getUserId(): string | null {
+  return localStorage.getItem('user_id') || 
+         localStorage.getItem('userId')  // 레거시 키
+}
+```
 
-| 날짜 | 커밋 | 코드 상태 | DB 상태 | 결과 |
-|------|------|----------|---------|------|
-| 2026-02-06 | e681393 | 간단한 UPDATE (name, email, profile_image) | 기본 컬럼만 | ✅ 정상 작동 |
-| 2026-02-09 | 41e62ed^ | 새 컬럼 추가 (access_token, service_terms_agreed) | 기본 컬럼만 | ❌ 500 에러 발생 |
-| 2026-02-10 09:07 | 41e62ed | /auth/* 라우팅 추가 | 기본 컬럼만 | ❌ 404 해결, but 500 여전 |
-| 2026-02-10 09:20 | 0694542 | 존재하지 않는 컬럼 제거 | 기본 컬럼만 | ✅ 500 해결 |
-| 2026-02-10 09:32 | 741cfdb | 에러 로그 강화 + cart 체크 개선 | 기본 컬럼만 | ✅ 완전 해결 |
+**문제**: AuthContext의 D1 sync 성공 후 `user_id`, `user_name`을 localStorage에 저장하지 않음
 
----
-
-### 🔧 적용된 수정 사항
-
-#### **Fix 1: 라우팅 문제 (41e62ed)**
+### 로그 분석
 ```javascript
-// _routes.json
-{
-  "version": 1,
-  "include": [
-    "/api/*",
-    "/auth/*"  // ← 추가: Kakao callback 라우팅
-  ],
-  "exclude": ["/static/*"]
-}
+// ✅ D1 동기화는 성공
+[AuthContext] ✅ D1 동기화 완료
+
+// ❌ 하지만 localStorage에는 저장되지 않음
+localStorage.getItem('user_id')  // null
+localStorage.getItem('user_name')  // null
+
+// ❌ 결과: UserProfilePage가 로그인 필요 판단
+userId: null  // getUserId() 반환값
+→ navigate('/login')  // 무한 루프
 ```
 
-#### **Fix 2: DB 컬럼 문제 (0694542)**
+## 해결 방법
+
+### 1. AuthContext.tsx 수정
 ```typescript
-// Before (❌ 에러 발생)
-await DB.prepare(`
-  UPDATE users 
-  SET name = ?, email = ?, profile_image = ?,
-      access_token = ?,              // ❌ 존재하지 않는 컬럼
-      service_terms_agreed = ?,      // ❌ 존재하지 않는 컬럼
-      terms_agreed_at = CURRENT_TIMESTAMP  // ❌ 존재하지 않는 컬럼
-  WHERE id = ?
-`).bind(nickname, email, profileImage, token, terms, userId).run();
+// BEFORE
+await api.post('/api/auth/firebase/sync', { ... })
+localStorage.setItem(lastSyncKey, now.toString())
+console.log('[AuthContext] ✅ D1 동기화 완료')
 
-// After (✅ 정상 작동)
-await DB.prepare(`
-  UPDATE users 
-  SET name = ?, 
-      email = ?, 
-      profile_image = ?,
-      updated_at = CURRENT_TIMESTAMP,
-      last_login_at = CURRENT_TIMESTAMP
-  WHERE id = ?
-`).bind(nickname, email, profileImage, userId).run();
-```
+// AFTER
+const syncResponse = await api.post('/api/auth/firebase/sync', { ... })
 
-#### **Fix 3: Cart 검증 개선 (741cfdb)**
-```typescript
-// Before (❌ 잘못된 체크)
-if (!response.data || response.data.length === 0) {
-  // response.data = {success: true, data: []}
-  // response.data.length === undefined
-  // 조건 실패 → 빈 장바구니도 cart 페이지로 이동
-}
-
-// After (✅ 올바른 체크)
-const cartData = response.data?.data || response.data
-if (!cartData || !Array.isArray(cartData) || cartData.length === 0) {
-  alert('장바구니가 비어있습니다.')
-  localStorage.removeItem('hasCartItems')
-  return
-}
-```
-
-#### **Fix 4: 에러 로깅 강화 (741cfdb)**
-```typescript
-// Token request 실패 시 상세 로그
-console.log('[Kakao Sync] Token request details:', {
-  client_id: KAKAO_REST_API_KEY,
-  redirect_uri: KAKAO_REDIRECT_URI,
-  code_length: code.length,
-  code_prefix: code.substring(0, 20)
-});
-
-if (!tokenResponse.ok) {
-  const errorText = await tokenResponse.text();
-  console.error('[Kakao Sync] Token request failed:', errorText);
-  return c.redirect(`${state}?error=token_request_failed&detail=${errorText}`);
-}
-```
-
----
-
-### 🎯 재발 방지 대책
-
-#### **1. DB 스키마 변경 프로세스**
-```bash
-# ✅ 올바른 순서:
-1. migrations/XXXX_feature_name.sql 작성
-2. npx wrangler d1 migrations apply DB --local   # 로컬 테스트
-3. npx wrangler d1 migrations apply DB --remote  # 프로덕션 적용
-4. 코드 수정 (새 컬럼 사용)
-5. 로컬 테스트
-6. Git commit & push
-7. 배포
-
-# ❌ 절대 안 되는 것:
-- 코드 먼저 수정하고 DB 마이그레이션 나중에
-- 로컬에만 컬럼 추가하고 프로덕션 안 함
-- 마이그레이션 없이 직접 SQL 실행
-```
-
-#### **2. 프로덕션 DB 스키마 정기 확인**
-```bash
-# 매주 또는 배포 전 실행:
-npx wrangler d1 execute toss-live-commerce-db --remote \
-  --command="SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
-```
-
-#### **3. 환경별 DB 동기화 체크**
-```bash
-# 로컬과 프로덕션 스키마 비교
-diff <(npx wrangler d1 execute DB --local --command="PRAGMA table_info(users)") \
-     <(npx wrangler d1 execute DB --remote --command="PRAGMA table_info(users)")
-```
-
-#### **4. 에러 핸들링 강화**
-- SQL 에러 시 자세한 로그 출력
-- 컬럼 존재 여부 사전 확인 (필요 시)
-- Graceful degradation (일부 기능 실패해도 전체 로그인은 성공)
-
-#### **5. 테스트 시나리오 체크리스트**
-- [ ] 로그인 없이 결제 버튼 클릭 → alert
-- [ ] 로그인 + 빈 장바구니로 결제 → alert
-- [ ] 로그인 + 상품 담기 후 결제 → cart 페이지 이동
-- [ ] Kakao 인증 완료 후 원래 페이지로 복귀
-- [ ] 로그아웃 후 재로그인
-- [ ] 여러 브라우저/기기에서 로그인
-
----
-
-### 📋 현재 안정화된 코드 (741cfdb)
-
-#### **Kakao 로그인 플로우**
-```typescript
-// 1. Frontend: 카카오 로그인 시작
-Kakao.Auth.authorize({
-  redirectUri: 'https://live.ur-team.com/auth/kakao/sync/callback',
-  state: currentPath,
-  throughTalk: false
-});
-
-// 2. Backend: Token 교환
-const tokenResponse = await fetch('https://kauth.kakao.com/oauth/token', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  body: new URLSearchParams({
-    grant_type: 'authorization_code',
-    client_id: KAKAO_REST_API_KEY,
-    redirect_uri: KAKAO_REDIRECT_URI,
-    code: authCode
+// ✅ D1 sync 성공 시 user_id, user_name을 localStorage에 저장
+if (syncResponse.data?.success && syncResponse.data?.user) {
+  const userData = syncResponse.data.user
+  localStorage.setItem('user_id', userData.id?.toString() || '')
+  localStorage.setItem('user_name', userData.name || '')
+  
+  console.log('[AuthContext] ✅ D1 동기화 완료 + localStorage 저장:', {
+    userId: userData.id,
+    userName: userData.name
   })
-});
-
-// 3. User info 조회
-const userResponse = await fetch('https://kapi.kakao.com/v2/user/me', {
-  headers: { 'Authorization': `Bearer ${accessToken}` }
-});
-
-// 4. DB 저장/업데이트 (안전한 컬럼만)
-await DB.prepare(`
-  UPDATE users 
-  SET name = ?, email = ?, profile_image = ?,
-      updated_at = CURRENT_TIMESTAMP,
-      last_login_at = CURRENT_TIMESTAMP
-  WHERE id = ?
-`).bind(nickname, email, profileImage, userId).run();
-
-// 5. 세션 생성 & 리다이렉트
-const sessionToken = crypto.randomUUID();
-await DB.prepare(
-  'INSERT INTO admin_sessions (session_token, user_type, expires_at) VALUES (?, ?, ?)'
-).bind(sessionToken, 'user', expiresAt).run();
-
-return c.redirect(`${state}?login=success&session=${sessionToken}&userId=${userId}`);
-```
-
-#### **Cart 검증 플로우**
-```typescript
-async function handleCheckout() {
-  // 1. 로그인 체크 (최우선)
-  if (!isLoggedIn) {
-    alert('로그인이 필요합니다!');
-    handleKakaoLogin();
-    return;
-  }
-  
-  // 2. localStorage 체크
-  const hasCartItems = localStorage.getItem('hasCartItems');
-  if (!hasCartItems || hasCartItems !== 'true') {
-    alert('상품을 먼저 담아주세요!');
-    return;
-  }
-  
-  // 3. 서버 검증 (올바른 배열 체크)
-  const userId = localStorage.getItem('user_id');
-  const response = await axios.get(`/api/cart/${userId}`);
-  const cartData = response.data?.data || response.data;
-  
-  if (!cartData || !Array.isArray(cartData) || cartData.length === 0) {
-    alert('장바구니가 비어있습니다.');
-    localStorage.removeItem('hasCartItems');
-    return;
-  }
-  
-  // 4. Cart 페이지 이동
-  navigate('/cart');
 }
 ```
 
----
-
-### ✅ 검증 완료
-
-**테스트 결과 (2026-02-10 09:40)**
+### 2. 백엔드 /api/auth/firebase/sync 응답 구조
+```typescript
+// 성공 응답
+{
+  success: true,
+  user: {
+    id: 123,           // D1 users 테이블의 id
+    email: "user@example.com",
+    name: "사용자이름"
+  }
+}
 ```
-✅ 로그인 성공: {userId: '3', userName: '정지원'}
-✅ Session 저장: 3124ea9d-18bc-4f99-a11b-be5007bb5dd5
-✅ Firebase 초기화 완료
-✅ YouTube Player 정상 작동
+
+## 배포 정보
+
+### Git Commit
+```bash
+Commit: cf76f47
+Message: fix: 🐛 AuthContext에서 D1 sync 후 user_id, user_name을 localStorage에 저장
+Branch: main
+Push: ✅ 성공
 ```
 
-**배포 정보**
-- Commit: 741cfdb
-- Deployment: 542c1c39 → e19f9100
-- Production: https://live.ur-team.com
-- Status: ✅ 정상 작동
+### Cloudflare Deployment
+```
+Project: ur-live
+Status: ✅ 배포 완료
+URL: https://live.ur-team.com
+```
+
+### Firebase 환경변수 확인
+```
+✅ FIREBASE_PRIVATE_KEY: 1703 chars
+✅ FIREBASE_CLIENT_EMAIL: firebase-adminsdk-fbsvc@urteam-live-commerce-5b284.iam.gserviceaccount.com
+✅ FIREBASE_PROJECT_ID: urteam-live-commerce-5b284
+✅ FIREBASE_DATABASE_URL: https://urteam-live-commerce-5b284-default-rtdb.firebaseio.com
+```
+
+## 테스트 절차
+
+### 1. 브라우저에서 테스트
+1. **완전 캐시 삭제** (중요!)
+   - Chrome: `Shift + F5` 또는 개발자도구 → Network → "Disable cache" 체크 → 새로고침
+   - 또는 `localStorage.clear()` 실행
+
+2. **카카오 로그인 테스트**
+   ```
+   https://live.ur-team.com/login
+   → 카카오 로그인 버튼 클릭
+   → 카카오 계정 인증
+   → 홈 또는 프로필 페이지로 자동 이동
+   ```
+
+3. **예상 로그 (F12 Console)**
+   ```javascript
+   [Firebase 초기화] ✅ Firebase 초기화 완료
+   [Firebase Auth 초기화] ✅ Firebase Auth 초기화 완료
+   [AuthContext] 🔥 Firebase Custom Token 로그인 시작
+   [AuthContext] ✅ Firebase 로그인 성공: kakao_4735311250
+   [AuthContext] ✅ D1 동기화 완료 + localStorage 저장: { userId: 123, userName: "사용자이름" }
+   [AuthContext] ✅ 로그인 상태 확정: { uid: "kakao_4735311250", role: "user" }
+   ```
+
+4. **localStorage 확인**
+   ```javascript
+   localStorage.getItem('user_id')        // "123" (숫자 ID)
+   localStorage.getItem('user_name')      // "사용자이름"
+   localStorage.getItem('firebase_token') // "eyJhbGciOiJSUzI1..."
+   localStorage.getItem('user_type')      // "user"
+   ```
+
+5. **UserProfilePage 정상 작동 확인**
+   - URL: `https://live.ur-team.com/user/profile`
+   - 무한 루프 없음
+   - 사용자 정보 표시됨
+
+### 2. 로그인 플로우 전체 확인
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Browser as 브라우저
+    participant Backend as Cloudflare Workers
+    participant D1 as D1 Database
+    participant Firebase as Firebase Auth
+    
+    User->>Browser: 카카오 로그인 클릭
+    Browser->>Backend: POST /api/auth/kakao/firebase
+    Backend->>D1: 사용자 정보 조회/저장
+    Backend->>Firebase: createCustomToken()
+    Firebase-->>Backend: customToken
+    Backend-->>Browser: { customToken, user }
+    Browser->>Firebase: signInWithCustomToken()
+    Firebase-->>Browser: User Credential
+    Browser->>Backend: POST /api/auth/firebase/sync
+    Backend->>D1: UPDATE users SET firebase_uid
+    D1-->>Backend: User data (id, name)
+    Backend-->>Browser: { success: true, user }
+    Browser->>Browser: localStorage.setItem('user_id', user.id)
+    Browser->>Browser: localStorage.setItem('user_name', user.name)
+    Browser->>Browser: navigate('/') or returnUrl
+```
+
+## 예상 동작
+
+### 성공 시나리오
+1. ✅ 카카오 로그인 버튼 클릭
+2. ✅ 카카오 OAuth 인증
+3. ✅ Firebase Custom Token 발급
+4. ✅ Firebase Auth 로그인
+5. ✅ D1 sync + localStorage 저장 (`user_id`, `user_name`)
+6. ✅ 홈 또는 프로필 페이지로 자동 이동
+7. ✅ 무한 루프 없음
+
+### 실패 시나리오 (디버깅)
+만약 여전히 문제가 발생하면:
+
+1. **콘솔 로그 확인**
+   ```javascript
+   // localStorage 저장 확인
+   localStorage.getItem('user_id')  // null이면 sync 실패
+   ```
+
+2. **D1 sync 에러 확인**
+   ```javascript
+   [AuthContext] ❌ D1 동기화 실패: { ... }
+   ```
+
+3. **Firebase Token 검증 실패**
+   ```javascript
+   [Firebase Sync] ❌ Token validation failed
+   ```
+
+## 관련 파일
+
+- `src/contexts/AuthContext.tsx` - 로그인 상태 관리 (수정됨)
+- `src/utils/auth.ts` - localStorage 유틸리티
+- `src/pages/UserProfilePage.tsx` - 프로필 페이지
+- `src/index.tsx` - 백엔드 API (`/api/auth/firebase/sync`)
+
+## 추가 개선 사항
+
+### 완료된 항목
+- ✅ Firebase 환경변수 추가 (FIREBASE_PROJECT_ID, FIREBASE_DATABASE_URL)
+- ✅ D1 sync 후 localStorage 저장 로직 추가
+- ✅ 환경변수 검증 엔드포인트 (`/api/test/env`)
+
+### 향후 개선 (선택사항)
+- [ ] D1 sync 실패 시 재시도 로직
+- [ ] localStorage 대신 IndexedDB 사용 (용량 제한 해결)
+- [ ] UserProfilePage에서 Firebase User로 직접 사용자 정보 조회
+
+## 연락처
+
+문제가 지속되면 다음 정보를 포함하여 문의:
+1. 브라우저 콘솔 로그 전체 (F12)
+2. `localStorage.getItem('user_id')` 값
+3. `/api/test/env` 결과
+4. 카카오 로그인 후 URL (에러 파라미터 포함)
 
 ---
 
-### 🎓 교훈
-
-1. **DB 스키마 변경은 항상 마이그레이션과 함께**
-2. **로컬과 프로덕션 DB 스키마는 항상 동기화**
-3. **API 응답 구조를 정확히 파싱** (nested data 구조 주의)
-4. **에러 로깅을 충분히** (디버깅 시간 단축)
-5. **배포 전 전체 플로우 테스트** (단위 테스트만으로 부족)
-
----
-
-**이제 카카오 로그인이 안정적으로 작동합니다!** ✅
+**배포 완료**: 2026-03-01 14:42 UTC  
+**커밋**: cf76f47  
+**상태**: ✅ 프로덕션 배포 완료

@@ -1,283 +1,370 @@
-# 성능 최적화 가이드
+# 🚀 페이지 로딩 속도 분석 및 최적화 가이드
 
-## 📊 최적화 개요
+## 📊 현재 상태 분석
 
-**날짜**: 2026-02-24  
-**목표**: 페이지 로딩 속도 3-5배 개선, 트래픽 비용 80% 절감
+### ✅ 양호한 점
+- **모든 페이지 번들**: 50KB 이하로 "Excellent" 등급
+- **ProductDetailPage**: 17.88KB (🟢 Excellent)
+- **페이지 번들 합계**: 528.41KB
+- **코드 스플리팅**: 잘 적용됨
+
+### ⚠️ 문제점
+
+#### 1. **벤더 번들 (Critical 🔴)**
+```
+vendor-BkPhQiNL.js:    1,127KB  ← 가장 큰 문제
+firebase-D_8YzbRP.js:    412KB
+```
+
+#### 2. **무거운 페이지 (의존성 과다)**
+```
+1. LivePageV2          - 54점 (14 useEffect, 5 API)
+2. AdminPage           - 40점 (2 useEffect, 9 API)
+3. CheckoutPage        - 37점 (8 useEffect, 3 API)
+4. SellerLiveControl   - 37점 (5 useEffect, 7 API)
+5. HomePage            - 29점 (3 useEffect, 4 API)
+```
+
+#### 3. **API 호출 최적화 부족**
+- 캐싱 없음 (React Query/SWR 미사용)
+- 매번 서버 요청
+- 로딩 상태 중복
 
 ---
 
-## 1️⃣ 이미지 최적화 (Cloudflare Image Resizing)
+## 🎯 최적화 전략
 
-### 📈 예상 효과
-- **페이지 로딩 속도**: 3-5배 빨라짐
-- **데이터 사용량**: 80% 감소
-- **사용자 이탈률**: 30-50% 감소
+### 우선순위 1: 벤더 번들 최적화 (1.5MB → ~500KB)
 
-### 🛠️ 구현
+**현재 문제:**
+- React, React-Router, Firebase 등 모든 라이브러리가 한 번들에
+- Tree shaking 미흡
+- Dynamic import 부족
 
-#### 백엔드: 이미지 최적화 유틸리티
+**해결책:**
+
+#### 1.1 Firebase 지연 로딩
 ```typescript
-// src/lib/image-optimizer.ts
-import { optimizeImage, generateSrcSet } from './lib/image-optimizer';
+// ❌ 기존 (모든 페이지에서 로드)
+import { getAuth } from 'firebase/auth'
 
-// 사용 예시
-const optimizedUrl = optimizeImage(product.image_url, 'medium');
-// 결과: /cdn-cgi/image/width=640,height=640,fit=scale-down,format=auto,quality=85/original-image.jpg
+// ✅ 개선 (필요시에만 로드)
+const loadFirebase = async () => {
+  const { getAuth } = await import('firebase/auth')
+  return getAuth()
+}
 ```
 
-#### 프론트엔드: OptimizedImage 컴포넌트
-```tsx
-// src/components/OptimizedImage.tsx
-import { OptimizedImage, ProductImage } from './components/OptimizedImage';
-
-// 일반 이미지
-<OptimizedImage 
-  src={product.image_url} 
-  alt={product.name}
-  size="medium"
-/>
-
-// 상품 이미지 (1:1 비율 고정)
-<ProductImage 
-  src={product.image_url} 
-  alt={product.name}
-  size="small"
-/>
-```
-
-#### 이미지 크기 프리셋
-| 프리셋 | 크기 | 용도 | 품질 |
-|--------|------|------|------|
-| `thumbnail` | 150x150 | 썸네일 | 80% |
-| `small` | 320x320 | 모바일 리스트 | 85% |
-| `medium` | 640x640 | 상품 상세 (기본값) | 85% |
-| `large` | 1024x1024 | 확대 이미지 | 90% |
-| `banner` | 1920x600 | 배너 | 85% |
-| `original` | 원본 | 원본 크기 | 95% |
-
-### 🔧 Cloudflare Image Resizing 설정 (필수)
-
-Cloudflare Pages 프로젝트 설정:
-1. **Cloudflare Dashboard** → **Pages** → **ur-live**
-2. **Settings** → **Functions** → **Image Resizing** → **Enable**
-3. **요금제**: Pro 이상 필요 (월 $20)
-   - 무료 플랜은 Image Resizing 사용 불가
-   - 대안: 이미지 업로드 시 서버에서 리사이징 후 R2 저장
-
-### 📊 데이터 절감 예시
-| 원본 크기 | 최적화 크기 | 절감율 |
-|----------|-------------|--------|
-| 3MB JPG | 150KB WebP | **95%** |
-| 1MB PNG | 80KB WebP | **92%** |
-| 500KB JPG | 60KB WebP | **88%** |
-
----
-
-## 2️⃣ 엣지 캐싱 (Edge Caching)
-
-### 📈 예상 효과
-- **서버 부하**: 90-95% 감소
-- **응답 속도**: 10-100배 빨라짐
-- **Worker 호출 횟수**: 1/100로 감소
-
-### 🛠️ 구현
-
-#### 엣지 캐싱 미들웨어
+#### 1.2 Lucide Icons 최적화
 ```typescript
-// src/lib/edge-cache.ts
-import { edgeCache, CACHE_PRESETS } from './lib/edge-cache';
+// ❌ 기존
+import { Heart, Share, ShoppingCart } from 'lucide-react'
 
-// 라이브 스트림 목록 (30초 TTL)
-app.get('/api/streams', edgeCache(CACHE_PRESETS.liveStreams), async (c) => {
-  // 이 응답은 Cloudflare 엣지에 30초간 캐싱됨
-  // 전 세계 200+ 도시에 복사본 저장
-});
-
-// 상품 목록 (5분 TTL)
-app.get('/api/products', edgeCache(CACHE_PRESETS.products), async (c) => {
-  // 이 응답은 엣지에 5분간 캐싱됨
-});
+// ✅ 개선 (개별 import)
+import Heart from 'lucide-react/dist/esm/icons/heart'
+import Share from 'lucide-react/dist/esm/icons/share'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
 ```
 
-#### 캐시 프리셋
-| 프리셋 | TTL | stale-while-revalidate | 용도 |
-|--------|-----|------------------------|------|
-| `static` | 1시간 | 24시간 | 정적 콘텐츠 |
-| `products` | 5분 | 10분 | 상품 목록 |
-| `liveStreams` | 30초 | 1분 | 라이브 스트림 |
-| `productDetail` | 10분 | 30분 | 상품 상세 |
-| `metadata` | 1시간 | 2시간 | 카테고리/태그 |
-
-### 📊 성능 개선 예시
-**시나리오**: 1만 명이 라이브 스트림 목록 조회
-
-| 캐싱 전 | 캐싱 후 | 개선율 |
-|---------|---------|--------|
-| Worker 호출 10,000회 | Worker 호출 100회 | **99%** |
-| 평균 응답 100ms | 평균 응답 5ms | **20배** |
-| DB 쿼리 10,000회 | DB 쿼리 100회 | **99%** |
-
-### 🔑 핵심 개념: stale-while-revalidate
-
-```
-요청 1 → [캐시 없음] → Worker → 응답 (100ms)
-요청 2 → [캐시 HIT] → 즉시 응답 (5ms)
-...
-요청 100 → [캐시 만료] → 즉시 캐시 응답 (5ms) + 백그라운드 갱신
-요청 101 → [새 캐시] → 즉시 응답 (5ms)
-```
-
-사용자는 **절대 느린 응답을 받지 않습니다!**
-
----
-
-## 3️⃣ 페이지네이션 & 무한 스크롤
-
-### 📈 예상 효과
-- **초기 로딩 속도**: 5-10배 빨라짐
-- **데이터 전송량**: 80-90% 감소
-- **서버 부하**: 균일하게 분산
-
-### 🛠️ 구현
-
-#### 백엔드: 페이지네이션 API
+#### 1.3 Vite 설정 개선 (vite.config.ts)
 ```typescript
-// src/lib/pagination.ts
-import { parsePaginationParams, generatePaginationMeta } from './lib/pagination';
-
-app.get('/api/products', async (c) => {
-  const { page, limit, offset } = parsePaginationParams(c.req.query());
-  
-  // DB 쿼리
-  const products = await DB.prepare(`
-    SELECT * FROM products 
-    LIMIT ? OFFSET ?
-  `).bind(limit, offset).all();
-  
-  const totalCount = await DB.prepare(`
-    SELECT COUNT(*) as count FROM products
-  `).first();
-  
-  return c.json({
-    success: true,
-    data: products.results,
-    pagination: generatePaginationMeta(totalCount.count, page, limit)
-  });
-});
-```
-
-#### 프론트엔드: 무한 스크롤 Hook
-```tsx
-// src/hooks/useInfiniteScroll.ts
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-
-const ProductList = () => {
-  const {
-    data: products,
-    isLoading,
-    isLoadingMore,
-    hasMore,
-    lastElementRef
-  } = useInfiniteScroll(
-    async (page, pageSize) => {
-      const response = await fetch(`/api/products?page=${page}&limit=${pageSize}`);
-      const json = await response.json();
-      return {
-        data: json.data,
-        hasMore: json.pagination.hasNextPage
-      };
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React 코어
+          'react-core': ['react', 'react-dom', 'react-router-dom'],
+          
+          // Firebase 분리
+          'firebase-auth': ['firebase/auth'],
+          'firebase-firestore': ['firebase/firestore'],
+          
+          // UI 라이브러리
+          'ui-libs': ['lucide-react', '@radix-ui/react-checkbox'],
+          
+          // Zustand & 상태관리
+          'state': ['zustand', 'zustand/middleware'],
+        }
+      }
     },
-    { pageSize: 20 }
-  );
-
-  if (isLoading) return <div>로딩 중...</div>;
-
-  return (
-    <div>
-      {products.map((product, index) => (
-        <div
-          key={product.id}
-          ref={index === products.length - 1 ? lastElementRef : null}
-        >
-          <ProductCard product={product} />
-        </div>
-      ))}
-      {isLoadingMore && <LoadingSpinner />}
-      {!hasMore && <div>모든 상품을 불러왔습니다.</div>}
-    </div>
-  );
-};
+    chunkSizeWarningLimit: 500, // 500KB 경고
+  }
+})
 ```
 
-### 📊 성능 개선 예시
-**시나리오**: 상품 1,000개 조회
+---
 
-| 페이지네이션 전 | 페이지네이션 후 | 개선율 |
-|----------------|----------------|--------|
-| 1,000개 로드 (5MB) | 20개 로드 (100KB) | **98%** |
-| 초기 로딩 10초 | 초기 로딩 0.5초 | **20배** |
-| 스크롤 느림 | 스크롤 부드러움 | - |
+### 우선순위 2: React Query 도입 (API 캐싱)
+
+**현재 ProductDetailPage 문제:**
+```typescript
+// ❌ 매번 API 호출, 캐싱 없음
+async function loadProduct() {
+  const response = await api.get(`/api/products/${id}`)
+  setProduct(response.data.data.product)
+}
+```
+
+**개선 방안:**
+
+#### 2.1 React Query 설치
+```bash
+npm install @tanstack/react-query
+```
+
+#### 2.2 QueryProvider 설정
+```typescript
+// src/main.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5분
+      cacheTime: 1000 * 60 * 10, // 10분
+      refetchOnWindowFocus: false,
+    }
+  }
+})
+
+<QueryClientProvider client={queryClient}>
+  <App />
+</QueryClientProvider>
+```
+
+#### 2.3 ProductDetailPage 리팩토링
+```typescript
+// src/hooks/useProduct.ts
+export function useProduct(id: string) {
+  return useQuery({
+    queryKey: ['product', id],
+    queryFn: () => api.get(`/api/products/${id}`),
+    staleTime: 1000 * 60 * 5, // 5분 캐싱
+  })
+}
+
+// src/pages/ProductDetailPage.tsx
+const { data: product, isLoading, error } = useProduct(id)
+```
+
+**효과:**
+- 같은 상품 재방문 시 즉시 로드 (캐시)
+- 백그라운드 자동 갱신
+- 로딩 상태 자동 관리
 
 ---
 
-## 📊 전체 성능 개선 요약
+### 우선순위 3: 이미지 최적화
 
-### 초기 페이지 로드
-| 항목 | 최적화 전 | 최적화 후 | 개선율 |
-|------|----------|----------|--------|
-| 이미지 로딩 | 5MB | 250KB | **95%** |
-| API 응답 | 100ms | 5ms | **95%** |
-| 데이터 전송 | 10MB | 500KB | **95%** |
-| **전체 로딩 시간** | **15초** | **1.5초** | **🚀 10배** |
+**현재 문제:**
+```typescript
+<img src={src} loading="lazy" />  // 기본 lazy loading만
+```
 
-### 서버 부하 (1만 명 동시 접속)
-| 항목 | 최적화 전 | 최적화 후 | 개선율 |
-|------|----------|----------|--------|
-| Worker 호출 | 100,000회 | 1,000회 | **99%** |
-| DB 쿼리 | 100,000회 | 1,000회 | **99%** |
-| 데이터 전송 | 500GB | 25GB | **95%** |
-| **월 트래픽 비용** | **$500** | **$25** | **🚀 95% 절감** |
+**개선 방안:**
+
+#### 3.1 이미지 CDN & 리사이징
+```typescript
+// src/utils/image.ts
+export function optimizeImage(url: string, options = {}) {
+  const { width = 800, quality = 80 } = options
+  
+  // Cloudflare Images 또는 Imgix 사용
+  if (url.includes('cloudflare')) {
+    return `${url}/w=${width},q=${quality}`
+  }
+  
+  return url
+}
+
+// 사용
+<img 
+  src={optimizeImage(product.image_url, { width: 400 })} 
+  srcSet={`
+    ${optimizeImage(product.image_url, { width: 400 })} 400w,
+    ${optimizeImage(product.image_url, { width: 800 })} 800w
+  `}
+  sizes="(max-width: 768px) 100vw, 50vw"
+  loading="lazy"
+/>
+```
+
+#### 3.2 Progressive Loading (Blur-up)
+```typescript
+import { useState } from 'react'
+
+export function ProgressiveImage({ src, placeholder }) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  
+  return (
+    <div className="relative">
+      {/* Blur placeholder */}
+      {!isLoaded && (
+        <img 
+          src={placeholder} 
+          className="absolute inset-0 blur-sm"
+          aria-hidden="true"
+        />
+      )}
+      
+      {/* 실제 이미지 */}
+      <img 
+        src={src}
+        onLoad={() => setIsLoaded(true)}
+        className={`transition-opacity ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy"
+      />
+    </div>
+  )
+}
+```
 
 ---
 
-## 🚀 배포 체크리스트
+### 우선순위 4: LivePageV2 최적화 (54점 → 20점 이하)
 
-### 1. 이미지 최적화
-- [x] `src/lib/image-optimizer.ts` 생성
-- [x] `src/components/OptimizedImage.tsx` 생성
-- [ ] 기존 `<img>` 태그를 `<OptimizedImage>`로 교체
-- [ ] Cloudflare Image Resizing 활성화 (Pro 플랜 필요)
+**현재 문제:**
+- 14개 useEffect (너무 많음)
+- 5개 API 동시 호출
+- 실시간 업데이트 로직 복잡
 
-### 2. 엣지 캐싱
-- [x] `src/lib/edge-cache.ts` 생성
-- [x] `/api/streams` 엣지 캐싱 적용
-- [x] `/api/products` 엣지 캐싱 적용
-- [ ] 나머지 공개 API 엣지 캐싱 적용
+**해결책:**
 
-### 3. 페이지네이션
-- [x] `src/lib/pagination.ts` 생성
-- [x] `src/hooks/useInfiniteScroll.ts` 생성
-- [ ] 상품 목록 페이지에 무한 스크롤 적용
-- [ ] 주문 목록 페이지에 무한 스크롤 적용
+#### 4.1 Custom Hook으로 분리
+```typescript
+// src/hooks/useLiveStream.ts
+export function useLiveStream(streamId) {
+  const [stream, setStream] = useState(null)
+  const [messages, setMessages] = useState([])
+  
+  useEffect(() => {
+    // 스트림 데이터 로드
+    loadStream()
+    
+    // WebSocket 연결
+    const ws = connectWebSocket(streamId)
+    
+    return () => ws.close()
+  }, [streamId])
+  
+  return { stream, messages, sendMessage }
+}
+
+// LivePageV2.tsx - 간결해짐
+const { stream, messages, sendMessage } = useLiveStream(id)
+```
+
+#### 4.2 API 호출 병렬 처리
+```typescript
+// ❌ 순차 호출 (느림)
+const stream = await api.get('/stream')
+const products = await api.get('/products')
+const seller = await api.get('/seller')
+
+// ✅ 병렬 호출 (빠름)
+const [stream, products, seller] = await Promise.all([
+  api.get('/stream'),
+  api.get('/products'),
+  api.get('/seller')
+])
+```
 
 ---
 
-## 📈 모니터링
+### 우선순위 5: 컴포넌트 지연 로딩
 
-### 확인할 메트릭
-1. **Cache Hit Rate**: `X-Cache: HIT` 헤더 비율
-2. **이미지 크기**: 원본 vs 최적화 크기
-3. **초기 로딩 시간**: Lighthouse 점수
-4. **Worker 호출 횟수**: Cloudflare Analytics
+**ProductDetailPage 개선:**
 
-### 목표 지표
-- Cache Hit Rate: **95% 이상**
-- 이미지 크기 감소: **80% 이상**
-- Lighthouse Performance: **90점 이상**
-- Worker 호출: **10,000회/일 이하** (무료 플랜 유지)
+```typescript
+// ❌ 기존 (모든 컴포넌트 즉시 로드)
+import { ProductImageCarousel } from '@/components/product/product-image-carousel'
+import { ProductHeader } from '@/components/product/product-header'
+import { FloatingActionBar } from '@/components/product/floating-action-bar'
+
+// ✅ 개선 (필요시에만 로드)
+const ProductImageCarousel = lazy(() => 
+  import('@/components/product/product-image-carousel')
+)
+const FloatingActionBar = lazy(() => 
+  import('@/components/product/floating-action-bar')
+)
+
+// 사용
+<Suspense fallback={<Skeleton />}>
+  <ProductImageCarousel images={allImages} />
+</Suspense>
+```
 
 ---
 
-**최종 업데이트**: 2026-02-24 19:30 KST  
-**작성자**: Claude Code Agent
+## 📈 예상 개선 효과
+
+| 항목 | 현재 | 목표 | 개선율 |
+|------|------|------|--------|
+| **초기 번들** | 1.5MB | 500KB | 66% ↓ |
+| **ProductDetail 로딩** | 800ms | 200ms | 75% ↓ |
+| **API 재요청** | 매번 | 캐시 활용 | 90% ↓ |
+| **이미지 로딩** | 2-3초 | 500ms | 80% ↓ |
+| **LivePage 복잡도** | 54점 | 20점 | 63% ↓ |
+
+---
+
+## 🛠️ 즉시 적용 가능한 Quick Wins
+
+### 1. **.env 환경변수로 디버그 로그 제거**
+```typescript
+// src/pages/ProductDetailPage.tsx
+- console.log('[ProductDetail] 🛒 담기 버튼 클릭')
++ if (import.meta.env.DEV) {
++   console.log('[ProductDetail] 🛒 담기 버튼 클릭')
++ }
+```
+
+### 2. **API 응답 압축 (Cloudflare Worker)**
+```typescript
+// src/worker/index.ts
+app.use('*', compress()) // ✅ 이미 적용됨!
+```
+
+### 3. **브라우저 캐싱 활성화**
+```typescript
+// public/_headers
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/api/*
+  Cache-Control: private, max-age=0, must-revalidate
+```
+
+---
+
+## 🔍 모니터링
+
+### Lighthouse 점수 목표
+```
+Performance:    90+  (현재: 70-80 예상)
+Accessibility:  95+
+Best Practices: 95+
+SEO:           100
+```
+
+### Web Vitals 목표
+```
+LCP (Largest Contentful Paint):   < 2.5초
+FID (First Input Delay):          < 100ms
+CLS (Cumulative Layout Shift):    < 0.1
+```
+
+---
+
+## ✅ 구현 우선순위 요약
+
+1. **🔴 긴급**: 벤더 번들 분리 (1.5MB → 500KB)
+2. **🟠 높음**: React Query 도입 (API 캐싱)
+3. **🟡 중간**: 이미지 최적화 (CDN, lazy loading)
+4. **🟢 낮음**: 컴포넌트 lazy loading
+5. **🔵 향후**: LivePageV2 리팩토링
+
+**예상 작업 시간:** 4-6 시간
+**예상 성능 개선:** 70-80% 로딩 속도 향상
