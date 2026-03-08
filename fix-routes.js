@@ -4,13 +4,12 @@ import path from 'path';
 const routesPath = path.join(process.cwd(), 'dist', '_routes.json');
 
 // Configuration for Cloudflare Pages routing:
-// - include: Routes that should be handled by the Worker (API + Auth)
-// - exclude: Static files
-// - All other routes are served as React SPA
+// - include: ALL routes handled by Worker (SPA + API)
+// - exclude: Static assets only
 const routes = {
   version: 1,
-  include: ['/api/*', '/auth/*'],  // API and Auth routes go to Worker
-  exclude: ['/static/*']  // Static assets excluded
+  include: ['/*'],  // Worker handles ALL routes (SPA + API)
+  exclude: ['/assets/*', '/*.png', '/*.jpg', '/*.svg', '/*.ico', '/*.webp']  // Only exclude static assets
 };
 
 fs.writeFileSync(routesPath, JSON.stringify(routes, null, 2));
