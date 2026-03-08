@@ -2,6 +2,7 @@ import path from 'path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
+import viteCompression from 'vite-plugin-compression'
 // ✅ Week 5 Day 2: 환경 변수 검증
 import { validateEnvForBuild } from './src/shared/config/env-validator'
 
@@ -54,6 +55,18 @@ export default defineConfig(({ mode }) => {
       open: false,
       gzipSize: true,
       brotliSize: true,
+    }),
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 10240, // 10KB 이상 파일만 압축
+      deleteOriginFile: false,
+    }),
+    viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 10240,
+      deleteOriginFile: false,
     }),
   ],
   resolve: {

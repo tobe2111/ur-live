@@ -8,6 +8,8 @@
 // Routes
 export { default as kakaoRoutes } from './api/kakao.routes';
 export { default as googleRoutes } from './api/google.routes';
+export { default as sellerRoutes } from './api/seller.routes';
+export { default as adminRoutes } from './api/admin.routes';
 
 // Services
 export { KakaoAuthService } from './services/KakaoAuthService';
