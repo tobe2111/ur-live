@@ -87,10 +87,13 @@ async function createAccessToken(
     tokenType: 'access'
   };
   
-  // Base64 URL 인코딩
+  // Base64 URL 인코딩 (UTF-8 안전)
   const base64UrlEncode = (obj: any) => {
     const str = JSON.stringify(obj);
-    return btoa(str)
+    // UTF-8 문자를 안전하게 처리
+    const utf8Bytes = new TextEncoder().encode(str);
+    const binaryString = String.fromCharCode(...utf8Bytes);
+    return btoa(binaryString)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
@@ -143,10 +146,13 @@ async function createRefreshToken(
     tokenType: 'refresh'
   };
   
-  // Base64 URL 인코딩
+  // Base64 URL 인코딩 (UTF-8 안전)
   const base64UrlEncode = (obj: any) => {
     const str = JSON.stringify(obj);
-    return btoa(str)
+    // UTF-8 문자를 안전하게 처리
+    const utf8Bytes = new TextEncoder().encode(str);
+    const binaryString = String.fromCharCode(...utf8Bytes);
+    return btoa(binaryString)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '');
