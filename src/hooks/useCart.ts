@@ -25,8 +25,18 @@ export function useCart() {
     queryFn: async () => {
       console.log('[useCart] 🛒 장바구니 데이터 조회 중...')
       const response = await api.get('/api/cart')
-      console.log('[useCart] ✅ 장바구니 데이터:', response.data.data)
-      return response.data.data as Cart
+      console.log('[useCart] 📡 API 전체 응답:', response)
+      console.log('[useCart] 📡 response.data:', response.data)
+      console.log('[useCart] 📡 response.data.data:', response.data.data)
+      console.log('[useCart] 📡 response.data.items:', response.data.items)
+      
+      // ✅ API 응답 구조 확인 후 올바른 경로 반환
+      const cartData = response.data.data || response.data
+      console.log('[useCart] ✅ 최종 장바구니 데이터:', cartData)
+      console.log('[useCart] ✅ items 배열:', cartData?.items)
+      console.log('[useCart] ✅ items 길이:', cartData?.items?.length)
+      
+      return cartData as Cart
     },
     staleTime: 0, // ✅ 항상 최신 데이터 가져오기 (캐시 사용 안 함)
     gcTime: 5 * 60 * 1000,   // 5분 후 메모리 해제

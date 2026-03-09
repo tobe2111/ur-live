@@ -85,6 +85,14 @@ export default function CartPage() {
   const removeItemMutation = useRemoveFromCart()
   const updateOptionMutation = useUpdateCartOption()
   
+  // ✅ 디버깅: cartData 전체 구조 확인
+  useEffect(() => {
+    console.log('[CartPage] 📦 cartData:', cartData)
+    console.log('[CartPage] 📦 cartData?.items:', cartData?.items)
+    console.log('[CartPage] 📦 cartData?.items 타입:', typeof cartData?.items)
+    console.log('[CartPage] 📦 cartData?.items 길이:', cartData?.items?.length)
+  }, [cartData])
+  
   const cartItems = cartData?.items || []
   const [updating, setUpdating] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
