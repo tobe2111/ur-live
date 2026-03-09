@@ -30,8 +30,39 @@ export function useCart() {
       console.log('[useCart] 📡 response.data.data:', response.data.data)
       console.log('[useCart] 📡 response.data.items:', response.data.items)
       
-      // ✅ API 응답 구조 확인 후 올바른 경로 반환
-      const cartData = response.data.data || response.data
+      // ✅ API 응답 구조 확인: {success: true, data: Array} 형태인 경우
+      let cartData: any;
+      
+      if (response.data.data && Array.isArray(response.data.data)) {
+        // Case 1: {success: true, data: Array} → items: data
+        console.log('[useCart] 📦 Case 1: response.data.data is Array')
+        cartData = {
+          items: response.data.data,
+          total_price: 0,
+          total_quantity: response.data.data.length
+        }
+      } else if (response.data.items && Array.isArray(response.data.items)) {
+        // Case 2: {items: Array, ...} → 그대로 사용
+        console.log('[useCart] 📦 Case 2: response.data.items is Array')
+        cartData = response.data
+      } else if (Array.isArray(response.data)) {
+        // Case 3: response.data 자체가 Array
+        console.log('[useCart] 📦 Case 3: response.data itself is Array')
+        cartData = {
+          items: response.data,
+          total_price: 0,
+          total_quantity: response.data.length
+        }
+      } else {
+        // Case 4: 알 수 없는 구조
+        console.warn('[useCart] ⚠️ Unknown cart structure:', response.data)
+        cartData = {
+          items: [],
+          total_price: 0,
+          total_quantity: 0
+        }
+      }
+      
       console.log('[useCart] ✅ 최종 장바구니 데이터:', cartData)
       console.log('[useCart] ✅ items 배열:', cartData?.items)
       console.log('[useCart] ✅ items 길이:', cartData?.items?.length)
