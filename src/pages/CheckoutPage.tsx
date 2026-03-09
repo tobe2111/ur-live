@@ -196,7 +196,7 @@ export default function CheckoutPage() {
       
       console.log('[CheckoutPage] ✅ URL 파라미터 정리 완료')
     }
-  }, []) // 컴포넌트 마운트 시 한 번만 실행
+  }, [searchParams]) // searchParams 의존성 추가
 
   // 🔐 Step 0: Firebase 인증 상태 체크 (로그인되지 않으면 리다이렉트)
   useEffect(() => {
