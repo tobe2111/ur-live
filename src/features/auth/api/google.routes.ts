@@ -11,6 +11,13 @@ import { GoogleAuthService } from '../services/GoogleAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { verifyFirebaseIdToken } from '@/lib/firebase-token-verify';
 import type { AuthResponse } from '../types';
+import {
+  successResponse,
+  badRequestResponse,
+  unauthorizedResponse,
+  internalServerErrorResponse
+} from '@/worker/utils/response';
+import { validateRequired } from '@/worker/utils/validation';
 
 type Bindings = {
   DB: D1Database;
@@ -40,11 +47,9 @@ googleRoutes.post('/register', cors(), async (c) => {
     const { idToken } = await c.req.json();
     
     // Validation
-    if (!idToken) {
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: 'Firebase ID token is required' 
-      }, 400);
+    const validationErrors = validateRequired({ idToken }, ['idToken']);
+    if (validationErrors.length > 0) {
+      return badRequestResponse(c, 'Firebase ID token is required');
     }
     
     console.log('[Google Auth] Verifying Firebase ID token...');
@@ -53,11 +58,7 @@ googleRoutes.post('/register', cors(), async (c) => {
     const tokenPayload = await verifyFirebaseIdToken(idToken);
     
     if (!tokenPayload || !tokenPayload.email) {
-      return c.json<AuthResponse>({
-        success: false,
-        error: 'Invalid Firebase ID token',
-        code: 'INVALID_TOKEN'
-      }, 401);
+      return unauthorizedResponse(c, 'Invalid Firebase ID token');
     }
     
     console.log('[Google Auth] Token verified for user:', tokenPayload.email);
@@ -92,33 +93,21 @@ googleRoutes.post('/register', cors(), async (c) => {
     console.log('[Google Auth] ✅ Login successful for user:', user.id);
     
     // 6. 응답 반환
-    return c.json<AuthResponse>({
-      success: true,
-      data: {
-        customToken: customToken,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          profile_image: user.profile_image,
-          firebaseUID: firebaseUID
-        },
+    return successResponse(c, {
+      customToken: customToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profile_image: user.profile_image,
+        firebaseUID: firebaseUID
       },
-    });
+    }, 'Login successful');
     
   } catch (error) {
     console.error('[Google Auth] Error:', error);
-    
     const errorMsg = (error as Error).message || 'Unknown error';
-    const statusCode = errorMsg.includes('Firebase') ? 500 :
-                      errorMsg.includes('Database') ? 500 :
-                      errorMsg.includes('token') ? 401 : 500;
-    
-    return c.json<AuthResponse>({
-      success: false,
-      error: errorMsg,
-      code: 'GOOGLE_LOGIN_FAILED'
-    }, statusCode);
+    return internalServerErrorResponse(c, errorMsg);
   }
 });
 

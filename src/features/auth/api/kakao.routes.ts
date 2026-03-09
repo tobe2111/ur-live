@@ -11,6 +11,12 @@ import { cors } from 'hono/cors';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
+import {
+  successResponse,
+  badRequestResponse,
+  internalServerErrorResponse
+} from '@/worker/utils/response';
+import { validateRequired } from '@/worker/utils/validation';
 
 type Bindings = {
   DB: D1Database;
@@ -162,20 +168,14 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     const { code, redirect_uri } = await c.req.json();
     
     // Validation
-    if (!code) {
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: 'Authorization code is required' 
-      }, 400);
+    const validationErrors = validateRequired({ code }, ['code']);
+    if (validationErrors.length > 0) {
+      return badRequestResponse(c, 'Authorization code is required');
     }
     
     if (!c.env.KAKAO_REST_API_KEY) {
       console.error('[Kakao Callback] KAKAO_REST_API_KEY not configured');
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: 'Server configuration error',
-        code: 'MISSING_API_KEY'
-      }, 500);
+      return internalServerErrorResponse(c, 'Server configuration error');
     }
     
     const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
@@ -210,33 +210,21 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     console.log('[Kakao Callback] ✅ Login successful for user:', user.id);
     
     // 6. 응답 반환
-    return c.json<AuthResponse<KakaoLoginResponse>>({
-      success: true,
-      data: {
-        customToken: customToken,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          profile_image: user.profile_image,
-          firebaseUID: firebaseUID
-        },
+    return successResponse(c, {
+      customToken: customToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profile_image: user.profile_image,
+        firebaseUID: firebaseUID
       },
-    });
+    }, 'Login successful');
     
   } catch (error) {
     console.error('[Kakao Callback] Error:', error);
-    
     const errorMsg = (error as Error).message || 'Unknown error';
-    const statusCode = errorMsg.includes('Firebase') ? 500 :
-                      errorMsg.includes('Database') ? 500 :
-                      errorMsg.includes('Kakao') ? 502 : 500;
-    
-    return c.json<AuthResponse>({
-      success: false,
-      error: errorMsg,
-      code: 'KAKAO_LOGIN_FAILED'
-    }, statusCode);
+    return internalServerErrorResponse(c, errorMsg);
   }
 });
 
@@ -252,25 +240,16 @@ kakaoRoutes.get('/users/role', cors(), async (c) => {
     const authHeader = c.req.header('Authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ 
-        success: true, 
-        role: 'user' 
-      }, 200); // Return default role instead of 401
+      return successResponse(c, { role: 'user' }, 'Default role');
     }
     
     // For now, return default 'user' role
     // TODO: Implement Firebase token verification and database lookup
-    return c.json({
-      success: true,
-      role: 'user' // Default role for all authenticated users
-    }, 200);
+    return successResponse(c, { role: 'user' }, 'User role retrieved');
     
   } catch (err) {
     console.error('[/api/users/role] Error:', err);
-    return c.json({ 
-      success: true, 
-      role: 'user' // Fallback to user role on error
-    }, 200);
+    return successResponse(c, { role: 'user' }, 'Fallback role');
   }
 });
 
