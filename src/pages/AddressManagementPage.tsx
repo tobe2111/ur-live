@@ -55,8 +55,8 @@ export default function AddressManagementPage() {
 
   async function loadAddresses() {
     try {
-      const userId = getUserId()
-      const response = await api.get(`/api/shipping-addresses/${userId}`)
+      // ✅ API는 Firebase 토큰에서 userId 자동 추출
+      const response = await api.get('/api/shipping-addresses')
       
       if (response.data.success) {
         setAddresses(response.data.data || [])
@@ -76,12 +76,10 @@ export default function AddressManagementPage() {
     }
 
     try {
-      const userId = getUserId()
-      
+      // ✅ API는 Firebase 토큰에서 userId 자동 추출
       if (editingId) {
         // 수정
         await api.put(`/api/shipping-addresses/${editingId}`, {
-          userId: parseInt(userId!),
           ...formData,
           is_default: formData.is_default ? 1 : 0
         })
@@ -89,7 +87,6 @@ export default function AddressManagementPage() {
       } else {
         // 추가
         await api.post('/api/shipping-addresses', {
-          userId: parseInt(userId!),
           ...formData,
           is_default: formData.is_default ? 1 : 0
         })
@@ -120,10 +117,8 @@ export default function AddressManagementPage() {
     }
 
     try {
-      const userId = getUserId()
-      await api.delete(`/api/shipping-addresses/${id}`, {
-        params: { userId }
-      })
+      // ✅ API는 Firebase 토큰에서 userId 자동 추출
+      await api.delete(`/api/shipping-addresses/${id}`)
       alert('배송지가 삭제되었습니다.')
       loadAddresses()
     } catch (error) {
@@ -134,12 +129,11 @@ export default function AddressManagementPage() {
 
   async function handleSetDefault(id: number) {
     try {
-      const userId = getUserId()
+      // ✅ API는 Firebase 토큰에서 userId 자동 추출
       const address = addresses.find(a => a.id === id)
       if (!address) return
 
       await api.put(`/api/shipping-addresses/${id}`, {
-        userId: parseInt(userId!),
         ...address,
         is_default: 1
       })

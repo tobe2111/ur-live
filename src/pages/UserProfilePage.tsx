@@ -30,6 +30,7 @@ export default function UserProfilePage() {
   // ✅ firebase_token 한 번만 처리
   useEffect(() => {
     const firebaseToken = searchParams.get('firebase_token')
+    const userName = searchParams.get('userName')
     
     // 조건: 토큰 있음 + 아직 안 처리 + 인증 준비됨 + 로그인 안 됨
     if (firebaseToken && !hasProcessedToken.current && isAuthReady && !user) {
@@ -43,8 +44,8 @@ export default function UserProfilePage() {
           console.log('[UserProfilePage] ✅ 로그인 완료, URL 정리 중...')
           setIsProcessingToken(false)
           
-          // ✅ URL 정리 - navigate로 React Router 상태 업데이트
-          navigate('/user/profile', { replace: true })
+          // ✅ URL 완전 정리 - 모든 파라미터 제거
+          window.history.replaceState({}, '', '/user/profile')
           console.log('[UserProfilePage] ✅ URL 정리 완료')
         })
         .catch((error) => {
@@ -54,6 +55,11 @@ export default function UserProfilePage() {
           // 실패하면 로그인 페이지로
           navigate('/login', { replace: true })
         })
+    } 
+    // ✅ 이미 로그인되어 있는데 URL에 토큰이 남아있으면 정리
+    else if ((firebaseToken || userName) && user) {
+      console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
+      window.history.replaceState({}, '', '/user/profile')
     }
   }, [searchParams, isAuthReady, user, navigate])
 
