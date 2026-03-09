@@ -18,6 +18,10 @@ interface CartItem {
   price_snapshot: number
   option_id?: number
   option_value?: string
+  seller_id?: number
+  seller_name?: string
+  shipping_fee?: number
+  free_shipping_threshold?: number
 }
 
 interface ModalProps {
@@ -295,19 +299,52 @@ export default function CartPage() {
     )
   }, [selectedIds, removeItemMutation])
 
-  const { totalItems, subtotal } = useMemo(() => {
+  const { totalItems, subtotal, shippingFee } = useMemo(() => {
     let count = 0
     let sum = 0
-    for (const item of cartItems) {
-      if (selectedIds.has(item.id)) {
-        count += item.quantity
-        sum += item.price_snapshot * item.quantity
+    
+    // 선택된 상품들
+    const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
+    
+    // 셀러별로 그룹화
+    const sellerGroups = selectedItems.reduce((groups, item) => {
+      const sellerId = item.seller_id || 0
+      if (!groups[sellerId]) {
+        groups[sellerId] = {
+          items: [],
+          subtotal: 0,
+          shipping_fee: item.shipping_fee || 3000,
+          free_shipping_threshold: item.free_shipping_threshold || 0,
+        }
       }
+      groups[sellerId].items.push(item)
+      groups[sellerId].subtotal += item.price_snapshot * item.quantity
+      return groups
+    }, {} as Record<number, {
+      items: any[]
+      subtotal: number
+      shipping_fee: number
+      free_shipping_threshold: number
+    }>)
+    
+    // 전체 상품 개수 및 소계 계산
+    for (const item of selectedItems) {
+      count += item.quantity
+      sum += item.price_snapshot * item.quantity
     }
-    return { totalItems: count, subtotal: sum }
+    
+    // 셀러별 배송비 계산
+    const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
+      // 무료배송 기준액이 설정되어 있고, 해당 셀러의 소계가 기준액 이상이면 배송비 0원
+      if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
+        return total
+      }
+      return total + group.shipping_fee
+    }, 0)
+    
+    return { totalItems: count, subtotal: sum, shippingFee: totalShippingFee }
   }, [cartItems, selectedIds])
 
-  const shippingFee = subtotal >= 100000 ? 0 : 3000
   const total = subtotal + shippingFee
 
   const handleCheckout = () => {

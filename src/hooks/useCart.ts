@@ -10,6 +10,10 @@ export interface CartItem {
   quantity: number
   selected_options?: string[]
   stock_quantity?: number
+  seller_id?: number
+  seller_name?: string
+  shipping_fee?: number
+  free_shipping_threshold?: number
 }
 
 export interface Cart {
