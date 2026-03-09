@@ -1,14 +1,10 @@
 {
   "version": 1,
   "include": [
-    "/*"
+    "/api/*",
+    "/auth/*"
   ],
   "exclude": [
-    "/assets/*",
-    "/*.png",
-    "/*.jpg",
-    "/*.svg",
-    "/*.ico",
-    "/*.webp"
+    "/static/*"
   ]
 }
