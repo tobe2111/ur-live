@@ -163,7 +163,8 @@ export const useAuthWorld = create<AuthWorldState>()(
       {
         name: 'auth-world-storage',
         partialize: (state) => ({
-          user: state.user,
+          // ❌ user 객체는 persist 하지 않음 (Firebase가 관리)
+          // user: state.user,
           userRole: state.userRole,
         }),
       }

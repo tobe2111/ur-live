@@ -201,7 +201,31 @@ export async function logout(): Promise<void> {
       console.warn('[LoginFlow] ⚠️ Firebase 로그아웃 실패 (무시):', err)
     }
     
-    // 2. localStorage 완전 정리 (Zustand persist 포함)
+    // 2. Zustand 스토어 초기화 (persist 포함)
+    try {
+      const { isKorea } = await import('@/shared/config/region')
+      const isKR = isKorea()
+      
+      if (isKR) {
+        const { useAuthKR } = await import('@/shared/stores/useAuthKR')
+        const store = useAuthKR.getState()
+        // 스토어 상태 초기화
+        store.setUser(null)
+        store.setLoading(false)
+        store.setAuthReady(true)
+      } else {
+        const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+        const store = useAuthWorld.getState()
+        store.setUser(null)
+        store.setLoading(false)
+        store.setAuthReady(true)
+      }
+      console.log('[LoginFlow] ✅ Zustand 스토어 초기화 완료')
+    } catch (err) {
+      console.warn('[LoginFlow] ⚠️ Zustand 스토어 초기화 실패 (무시):', err)
+    }
+    
+    // 3. localStorage 완전 정리 (Zustand persist 포함)
     const keysToRemove = [
       'user_name',
       'loginReturnUrl',
@@ -222,7 +246,9 @@ export async function logout(): Promise<void> {
       }
     })
     
-    // 3. sessionStorage 정리
+    console.log('[LoginFlow] ✅ localStorage 정리 완료')
+    
+    // 4. sessionStorage 정리
     try {
       sessionStorage.clear()
       console.log('[LoginFlow] ✅ sessionStorage 정리 완료')
@@ -230,17 +256,7 @@ export async function logout(): Promise<void> {
       console.warn('[LoginFlow] sessionStorage.clear() failed:', e)
     }
     
-    // 4. Zustand 스토어 직접 초기화 (persist bypass)
-    try {
-      // localStorage에서 완전히 제거
-      localStorage.removeItem('auth-kr-storage')
-      localStorage.removeItem('auth-world-storage')
-      console.log('[LoginFlow] ✅ Zustand persist storage 정리 완료')
-    } catch (e) {
-      console.warn('[LoginFlow] Zustand storage clear failed:', e)
-    }
-    
-    console.log('[LoginFlow] ✅ 로그아웃 완료 - 페이지 새로고침 권장')
+    console.log('[LoginFlow] ✅ 로그아웃 완료 - 홈으로 이동')
     
     // 5. 강제 페이지 새로고침으로 모든 상태 초기화
     setTimeout(() => {

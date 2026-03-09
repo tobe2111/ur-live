@@ -238,7 +238,8 @@ export const useAuthKR = create<AuthKRState>()(
       {
         name: 'auth-kr-storage', // localStorage 키
         partialize: (state) => ({
-          user: state.user,
+          // ❌ user 객체는 persist 하지 않음 (Firebase가 관리)
+          // user: state.user,
           userRole: state.userRole,
         }),
       }
