@@ -25,49 +25,54 @@ export function useCart() {
     queryFn: async () => {
       console.log('[useCart] 🛒 장바구니 데이터 조회 중...')
       const response = await api.get('/api/cart')
-      console.log('[useCart] 📡 API 전체 응답:', response)
-      console.log('[useCart] 📡 response.data:', response.data)
-      console.log('[useCart] 📡 response.data.data:', response.data.data)
-      console.log('[useCart] 📡 response.data.items:', response.data.items)
+      console.log('[useCart] 📡 API 전체 응답:', JSON.stringify(response.data, null, 2))
       
-      // ✅ API 응답 구조 확인: {success: true, data: Array} 형태인 경우
-      let cartData: any;
+      // ✅ API 응답 구조 파싱
+      let items: CartItem[] = []
       
-      if (response.data.data && Array.isArray(response.data.data)) {
-        // Case 1: {success: true, data: Array} → items: data
-        console.log('[useCart] 📦 Case 1: response.data.data is Array')
-        cartData = {
-          items: response.data.data,
-          total_price: 0,
-          total_quantity: response.data.data.length
-        }
-      } else if (response.data.items && Array.isArray(response.data.items)) {
-        // Case 2: {items: Array, ...} → 그대로 사용
-        console.log('[useCart] 📦 Case 2: response.data.items is Array')
-        cartData = response.data
-      } else if (Array.isArray(response.data)) {
-        // Case 3: response.data 자체가 Array
-        console.log('[useCart] 📦 Case 3: response.data itself is Array')
-        cartData = {
-          items: response.data,
-          total_price: 0,
-          total_quantity: response.data.length
-        }
-      } else {
-        // Case 4: 알 수 없는 구조
-        console.warn('[useCart] ⚠️ Unknown cart structure:', response.data)
-        cartData = {
-          items: [],
-          total_price: 0,
-          total_quantity: 0
-        }
+      // Case 1: {success: true, data: Array} → 표준 응답 구조
+      if (response.data?.success && response.data?.data && Array.isArray(response.data.data)) {
+        console.log('[useCart] 📦 Case 1: Standard API response {success:true, data:Array}')
+        items = response.data.data
+      } 
+      // Case 2: {items: Array, ...} → 직접 items 필드
+      else if (response.data?.items && Array.isArray(response.data.items)) {
+        console.log('[useCart] 📦 Case 2: Direct items field')
+        items = response.data.items
+      } 
+      // Case 3: response.data 자체가 Array
+      else if (Array.isArray(response.data)) {
+        console.log('[useCart] 📦 Case 3: response.data is Array')
+        items = response.data
+      }
+      // Case 4: response.data.data만 존재
+      else if (response.data?.data && Array.isArray(response.data.data)) {
+        console.log('[useCart] 📦 Case 4: Nested data field')
+        items = response.data.data
+      }
+      else {
+        console.warn('[useCart] ⚠️ Unknown cart structure, using empty array')
+        items = []
       }
       
-      console.log('[useCart] ✅ 최종 장바구니 데이터:', cartData)
-      console.log('[useCart] ✅ items 배열:', cartData?.items)
-      console.log('[useCart] ✅ items 길이:', cartData?.items?.length)
+      // 총 금액 계산
+      const total_price = items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      const total_quantity = items.reduce((sum, item) => sum + item.quantity, 0)
       
-      return cartData as Cart
+      const cartData: Cart = {
+        items,
+        total_price,
+        total_quantity
+      }
+      
+      console.log('[useCart] ✅ 최종 장바구니 데이터:', {
+        items_count: cartData.items.length,
+        total_price: cartData.total_price,
+        total_quantity: cartData.total_quantity,
+        first_item: cartData.items[0]
+      })
+      
+      return cartData
     },
     staleTime: 0, // ✅ 항상 최신 데이터 가져오기 (캐시 사용 안 함)
     gcTime: 5 * 60 * 1000,   // 5분 후 메모리 해제
