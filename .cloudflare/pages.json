@@ -1,0 +1,15 @@
+{
+  "$schema": "https://developers.cloudflare.com/pages/platform/build-configuration/",
+  "production": {
+    "build": {
+      "command": "npm run build",
+      "output_directory": "dist"
+    }
+  },
+  "preview": {
+    "build": {
+      "command": "npm run build",
+      "output_directory": "dist"
+    }
+  }
+}
