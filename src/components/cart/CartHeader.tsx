@@ -20,14 +20,24 @@ export const CartHeader = React.memo(function CartHeader({
 }: CartHeaderProps) {
   const navigate = useNavigate()
 
+  // 🎯 스마트 네비게이션: 히스토리가 있으면 뒤로, 없으면 홈으로
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)  // 히스토리가 있으면 뒤로
+    } else {
+      navigate('/')  // 없으면 홈으로
+    }
+  }
+
   return (
     <>
       {/* 상단 헤더 */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="text-gray-600 hover:text-gray-900"
+            aria-label="뒤로 가기"
           >
             <ChevronLeft size={24} />
           </button>
