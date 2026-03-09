@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
@@ -27,7 +27,7 @@ jobs:
       - name: Build project
         run: npm run build
         env:
-          NODE_VERSION: 18
+          NODE_VERSION: 20
           VITE_REGION: KR
           VITE_DEFAULT_LANGUAGE: ko
           VITE_API_BASE_URL: https://live.ur-team.com
