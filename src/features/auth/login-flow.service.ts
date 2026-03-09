@@ -201,20 +201,58 @@ export async function logout(): Promise<void> {
       console.warn('[LoginFlow] ⚠️ Firebase 로그아웃 실패 (무시):', err)
     }
     
-    // 2. localStorage 정리
+    // 2. localStorage 완전 정리 (Zustand persist 포함)
     const keysToRemove = [
       'user_name',
       'loginReturnUrl',
       'seller_token',
       'admin_token',
       'user_type',
+      'auth-kr-storage',  // Zustand persist key (KR)
+      'auth-world-storage',  // Zustand persist key (WORLD)
+      'kakao_token',
+      'hasCartItems',
     ]
     
-    keysToRemove.forEach(key => localStorage.removeItem(key))
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key)
+      } catch (e) {
+        console.warn(`[LoginFlow] localStorage.removeItem("${key}") failed:`, e)
+      }
+    })
     
-    console.log('[LoginFlow] ✅ 로그아웃 완료')
+    // 3. sessionStorage 정리
+    try {
+      sessionStorage.clear()
+      console.log('[LoginFlow] ✅ sessionStorage 정리 완료')
+    } catch (e) {
+      console.warn('[LoginFlow] sessionStorage.clear() failed:', e)
+    }
+    
+    // 4. Zustand 스토어 직접 초기화 (persist bypass)
+    try {
+      // localStorage에서 완전히 제거
+      localStorage.removeItem('auth-kr-storage')
+      localStorage.removeItem('auth-world-storage')
+      console.log('[LoginFlow] ✅ Zustand persist storage 정리 완료')
+    } catch (e) {
+      console.warn('[LoginFlow] Zustand storage clear failed:', e)
+    }
+    
+    console.log('[LoginFlow] ✅ 로그아웃 완료 - 페이지 새로고침 권장')
+    
+    // 5. 강제 페이지 새로고침으로 모든 상태 초기화
+    setTimeout(() => {
+      window.location.href = '/'
+    }, 100)
+    
   } catch (error) {
     console.error('[LoginFlow] ❌ 로그아웃 실패:', error)
+    // 에러가 발생해도 강제 새로고침
+    setTimeout(() => {
+      window.location.href = '/'
+    }, 100)
     throw error
   }
 }
