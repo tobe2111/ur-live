@@ -32,6 +32,13 @@ export default function UserProfilePage() {
     const firebaseToken = searchParams.get('firebase_token')
     const userName = searchParams.get('userName')
     
+    // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
+    if ((firebaseToken || userName) && user) {
+      console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
+      navigate('/user/profile', { replace: true })
+      return  // Early return to prevent further processing
+    }
+    
     // 조건: 토큰 있음 + 아직 안 처리 + 인증 준비됨 + 로그인 안 됨
     if (firebaseToken && !hasProcessedToken.current && isAuthReady && !user) {
       hasProcessedToken.current = true
@@ -57,12 +64,6 @@ export default function UserProfilePage() {
           // 실패하면 로그인 페이지로
           navigate('/login', { replace: true })
         })
-    } 
-    // ✅ 이미 로그인되어 있는데 URL에 토큰이 남아있으면 정리
-    else if ((firebaseToken || userName) && user && !hasProcessedToken.current) {
-      console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
-      hasProcessedToken.current = true
-      navigate('/user/profile', { replace: true })
     }
   }, [searchParams, isAuthReady, user, navigate])
 

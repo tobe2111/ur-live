@@ -69,9 +69,21 @@ export function TossPaymentWidget({
         // ✅ Sanitize userId to meet TossPayments requirements
         // CustomerKey format: 영문 대소문자, 숫자, 특수문자('-', '_', '=', '.', '@')로 2~50자
         // Remove any invalid characters and ensure proper format
-        const sanitizedUserId = userId
+        
+        // Ensure userId is a string
+        const userIdString = String(userId || '')
+        
+        if (!userIdString) {
+          throw new Error('userId is required but was empty')
+        }
+        
+        const sanitizedUserId = userIdString
           .replace(/[^a-zA-Z0-9\-_=.@]/g, '') // Remove invalid characters
           .substring(0, 44) // Ensure we have room for 'user_' prefix (max 50 chars total)
+        
+        if (sanitizedUserId.length < 2) {
+          throw new Error(`userId "${userIdString}" is too short after sanitization`)
+        }
         
         const customerKey = `user_${sanitizedUserId}`
         
