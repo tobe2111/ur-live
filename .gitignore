@@ -37,3 +37,9 @@ logs/
 
 # Wrangler temporary files
 .wrangler/tmp/
+
+# ⚠️ 보안 파일 (절대 Git에 커밋하지 않음)
+scripts/*-generated.sql
+scripts/migrate-accounts-generated.sql
+*.secret
+.env.production
