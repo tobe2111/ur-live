@@ -1,9 +1,9 @@
-// Firebase Configuration for Frontend
-// Auto-generated: 2026-02-27
+// Firebase Configuration for Frontend - Lazy Loading Optimized
+// Updated: 2026-03-09
 
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getDatabase, Database } from 'firebase/database';
-import { getAuth, Auth } from 'firebase/auth';
+import type { FirebaseApp } from 'firebase/app'
+import type { Database } from 'firebase/database'
+import type { Auth } from 'firebase/auth'
 
 // Firebase configuration from environment
 const firebaseConfig = {
@@ -14,23 +14,78 @@ const firebaseConfig = {
   storageBucket: "urteam-live-commerce-5b284.firebasestorage.app",
   messagingSenderId: "352937066044",
   appId: "1:352937066044:web:e5bfd5e1d8f61688e30d39"
-};
-
-// Initialize Firebase
-let app: FirebaseApp;
-let database: Database;
-let auth: Auth;
-
-try {
-  app = initializeApp(firebaseConfig);
-  database = getDatabase(app);
-  auth = getAuth(app);
-  console.log('✅ Firebase initialized successfully');
-  console.log('✅ Firebase Auth initialized');
-} catch (error) {
-  console.error('❌ Firebase initialization failed:', error);
-  throw error;
 }
 
-export { app, database, auth };
-export default database;
+// Lazy-initialized instances (null until first use)
+let appInstance: FirebaseApp | null = null
+let databaseInstance: Database | null = null
+let authInstance: Auth | null = null
+
+/**
+ * Initialize Firebase App (lazy)
+ * Only loads firebase/app when first called
+ */
+export async function initializeFirebase(): Promise<FirebaseApp> {
+  if (appInstance) {
+    return appInstance
+  }
+
+  console.log('🔥 Lazy loading Firebase App...')
+  const { initializeApp } = await import('firebase/app')
+  appInstance = initializeApp(firebaseConfig)
+  console.log('✅ Firebase App initialized')
+  
+  return appInstance
+}
+
+/**
+ * Get Firebase Realtime Database (lazy)
+ * Only loads firebase/database when first called
+ */
+export async function getFirebaseDatabase(): Promise<Database> {
+  if (databaseInstance) {
+    return databaseInstance
+  }
+
+  console.log('🔥 Lazy loading Firebase Database...')
+  const app = await initializeFirebase()
+  const { getDatabase } = await import('firebase/database')
+  databaseInstance = getDatabase(app)
+  console.log('✅ Firebase Database initialized')
+  
+  return databaseInstance
+}
+
+/**
+ * Get Firebase Auth (lazy)
+ * Only loads firebase/auth when first called
+ */
+export async function getFirebaseAuth(): Promise<Auth> {
+  if (authInstance) {
+    return authInstance
+  }
+
+  console.log('🔥 Lazy loading Firebase Auth...')
+  const app = await initializeFirebase()
+  const { getAuth } = await import('firebase/auth')
+  authInstance = getAuth(app)
+  console.log('✅ Firebase Auth initialized')
+  
+  return authInstance
+}
+
+/**
+ * Get Firebase App instance (lazy)
+ * Use this if you need the app instance directly
+ */
+export async function getFirebaseApp(): Promise<FirebaseApp> {
+  return initializeFirebase()
+}
+
+// For backward compatibility - deprecated, use async functions instead
+export const app = null as any // Will be replaced by getFirebaseApp()
+export const database = null as any // Will be replaced by getFirebaseDatabase()
+export const auth = null as any // Will be replaced by getFirebaseAuth()
+
+// Default export for backward compatibility
+export default null as any

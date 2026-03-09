@@ -1,8 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { signInWithCustomToken } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { signInWithCustomToken } from '@/lib/firebase-auth'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 
 export default function KakaoCallbackPage() {
@@ -46,7 +45,7 @@ export default function KakaoCallbackPage() {
           })
 
           // 🔥 Firebase Auth에 Custom Token으로 로그인
-          const userCredential = await signInWithCustomToken(auth, customToken)
+          const userCredential = await signInWithCustomToken(customToken)
           console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
           // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)

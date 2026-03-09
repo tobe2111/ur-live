@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { signInWithCustomToken } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+// Firebase Auth will be lazy loaded when needed
 import { isKorea } from '@/config/region'
 import api from '@/lib/api'
 // ✅ Zustand 직접 사용
@@ -157,8 +156,11 @@ export default function LoginPage() {
           hasCustomToken: !!customToken
         })
 
-        // ✅ Firebase signInWithCustomToken (Zustand가 자동으로 상태 업데이트)
-        const credential = await signInWithCustomToken(auth, customToken)
+        // ✅ Lazy load Firebase Auth
+        const { signInWithCustomToken } = await import('@/lib/firebase-auth')
+        
+        // Firebase signInWithCustomToken (Zustand가 자동으로 상태 업데이트)
+        const credential = await signInWithCustomToken(customToken)
         
         // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)
         credential.user.getIdToken(true)
@@ -235,14 +237,10 @@ export default function LoginPage() {
     setError('')
     
     try {
-      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth')
-      const { auth } = await import('@/lib/firebase')
+      // Lazy load Firebase Auth
+      const { signInWithGoogle } = await import('@/lib/firebase-auth')
       
-      const provider = new GoogleAuthProvider()
-      provider.addScope('email')
-      provider.addScope('profile')
-      
-      const result = await signInWithPopup(auth, provider)
+      const result = await signInWithGoogle()
       
       // 백엔드에 사용자 정보 저장 (D1 DB)
       await api.post('/api/auth/google/register', {

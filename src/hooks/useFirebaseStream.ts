@@ -48,14 +48,11 @@ export function useFirebaseStream(streamId: number | null) {
       try {
         console.log(`🔥 Firebase: Lazy loading database for stream ${streamId}...`)
         
-        // Lazy load Firebase Database
-        const [{ getDatabase }, { ref, onValue, off }] = await Promise.all([
-          import('firebase/database'),
-          import('firebase/database')
-        ])
+        // Lazy load Firebase Database using new API
+        const { getFirebaseDatabase } = await import('@/lib/firebase-config')
+        const { ref, onValue, off } = await import('firebase/database')
         
-        const { app } = await import('@/lib/firebase')
-        const database = getDatabase(app!)
+        const database = await getFirebaseDatabase()
         
         // Firebase Realtime Database 참조 생성
         const streamRef = ref(database, `streams/stream${streamId}`)
@@ -231,11 +228,11 @@ export function useFirebaseConnectionMonitor(streamId: number | null, threshold 
 
     async function connectFirebase() {
       try {
-        // Lazy load Firebase Database
-        const { getDatabase } = await import('firebase/database')
+        // Lazy load Firebase Database using new API
+        const { getFirebaseDatabase } = await import('@/lib/firebase-config')
         const { ref, onValue, off } = await import('firebase/database')
-        const { app } = await import('@/lib/firebase')
-        const database = getDatabase(app!)
+        
+        const database = await getFirebaseDatabase()
         
         const streamRef = ref(database, `streams/stream${streamId}`)
 

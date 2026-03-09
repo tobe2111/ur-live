@@ -5,9 +5,9 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  onAuthStateChanged,
   type User as FirebaseUser,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+} from '@/lib/firebase-auth';
 
 /**
  * ✅ Zustand Store - KR 전용 인증 (Kakao + Firebase Email)
@@ -59,7 +59,7 @@ export const useAuthKR = create<AuthKRState>()(
         loginWithEmail: async (email, password) => {
           try {
             set({ isLoading: true, error: null });
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const userCredential = await signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
             // 사용자 역할 조회 (API 호출)
@@ -89,7 +89,7 @@ export const useAuthKR = create<AuthKRState>()(
         signupWithEmail: async (email, password, displayName) => {
           try {
             set({ isLoading: true, error: null });
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
 
             // 사용자 프로필 초기화
@@ -140,7 +140,7 @@ export const useAuthKR = create<AuthKRState>()(
         sendPasswordResetEmail: async (email) => {
           try {
             set({ isLoading: true, error: null });
-            await firebaseSendPasswordResetEmail(auth, email);
+            await firebaseSendPasswordResetEmail(email);
             set({
               isLoading: false,
               error: null,
@@ -159,7 +159,7 @@ export const useAuthKR = create<AuthKRState>()(
         logout: async () => {
           try {
             set({ isLoading: true, error: null });
-            await firebaseSignOut(auth);
+            await firebaseSignOut();
 
             // 로컬 스토리지 클리어
             localStorage.removeItem('user');
@@ -187,8 +187,8 @@ export const useAuthKR = create<AuthKRState>()(
             set({ isLoading: true, error: null });
 
             // Firebase Auth 상태 확인
-            return new Promise<void>((resolve) => {
-              const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            return new Promise<void>(async (resolve) => {
+              const unsubscribe = await onAuthStateChanged(async (user) => {
                 if (user) {
                   // 사용자 역할 조회
                   try {

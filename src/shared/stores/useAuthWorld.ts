@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import {
-  signInWithPopup,
-  GoogleAuthProvider,
+  signInWithGoogle,
   signOut as firebaseSignOut,
+  onAuthStateChanged,
   type User as FirebaseUser,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+} from '@/lib/firebase-auth';
 
 /**
  * ✅ Zustand Store - WORLD 전용 인증 (Google OAuth)
@@ -50,8 +49,7 @@ export const useAuthWorld = create<AuthWorldState>()(
           try {
             set({ isLoading: true, error: null });
 
-            const provider = new GoogleAuthProvider();
-            const userCredential = await signInWithPopup(auth, provider);
+            const userCredential = await signInWithGoogle();
             const user = userCredential.user;
 
             // 사용자 역할 조회
@@ -90,7 +88,7 @@ export const useAuthWorld = create<AuthWorldState>()(
         logout: async () => {
           try {
             set({ isLoading: true, error: null });
-            await firebaseSignOut(auth);
+            await firebaseSignOut();
 
             localStorage.removeItem('user');
 
@@ -115,8 +113,8 @@ export const useAuthWorld = create<AuthWorldState>()(
           try {
             set({ isLoading: true, error: null });
 
-            return new Promise<void>((resolve) => {
-              const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            return new Promise<void>(async (resolve) => {
+              const unsubscribe = await onAuthStateChanged(async (user) => {
                 if (user) {
                   try {
                     const roleResponse = await fetch('/api/users/role', {

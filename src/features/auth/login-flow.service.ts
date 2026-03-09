@@ -6,14 +6,14 @@
  * 2. 셀러 - 이메일/비밀번호 + JWT
  * 3. 어드민 - 이메일/비밀번호 + JWT
  * 4. Custom Token - Firebase Custom Token 직접 처리
+ * 
+ * Updated: 2026-03-09 - Lazy loading Firebase Auth
  */
 
-import { signInWithCustomToken } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
 import api from '@/lib/api'
 
 // ============================================
-// 1. 일반 사용자 로그인 (Firebase)
+// 1. 일반 사용자 로그인 (Firebase) - Lazy Loaded
 // ============================================
 
 /**
@@ -42,13 +42,17 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
 
     const customToken = data.firebaseToken || data.customToken
 
-    // 2. Firebase Custom Token으로 로그인
+    // 2. Lazy load Firebase Auth
+    console.log('[LoginFlow] 🔥 Lazy loading Firebase Auth...')
+    const { signInWithCustomToken } = await import('@/lib/firebase-auth')
+    
+    // 3. Firebase Custom Token으로 로그인
     console.log('[LoginFlow] 🔥 Firebase Custom Token으로 로그인 중...')
-    const credential = await signInWithCustomToken(auth, customToken)
+    const credential = await signInWithCustomToken(customToken)
     
     console.log('[LoginFlow] ✅ Firebase 로그인 성공:', credential.user.uid)
 
-    // 3. 백그라운드에서 Token 갱신 (속도 최적화)
+    // 4. 백그라운드에서 Token 갱신 (속도 최적화)
     credential.user.getIdToken(true)
       .then(() => console.log('[LoginFlow] 🔥 ID Token 강제 갱신 완료'))
       .catch((err) => console.warn('[LoginFlow] ⚠️ Token 갱신 실패 (무시):', err))
@@ -66,7 +70,10 @@ export async function loginWithFirebaseToken(firebaseToken: string): Promise<voi
   console.log('[LoginFlow] 🔑 Firebase Custom Token으로 직접 로그인')
   
   try {
-    const credential = await signInWithCustomToken(auth, firebaseToken)
+    // Lazy load Firebase Auth
+    const { signInWithCustomToken } = await import('@/lib/firebase-auth')
+    
+    const credential = await signInWithCustomToken(firebaseToken)
     console.log('[LoginFlow] ✅ Firebase 로그인 성공:', credential.user.uid)
 
     // 백그라운드 Token 갱신
@@ -187,7 +194,8 @@ export async function logout(): Promise<void> {
   try {
     // 1. Firebase 로그아웃
     try {
-      await auth.signOut()
+      const { signOut } = await import('@/lib/firebase-auth')
+      await signOut()
       console.log('[LoginFlow] ✅ Firebase 로그아웃 완료')
     } catch (err) {
       console.warn('[LoginFlow] ⚠️ Firebase 로그아웃 실패 (무시):', err)
@@ -218,7 +226,7 @@ export async function logout(): Promise<void> {
 /**
  * 현재 로그인 타입 확인
  */
-export function getLoginType(): 'user' | 'seller' | 'admin' | null {
+export async function getLoginType(): Promise<'user' | 'seller' | 'admin' | null> {
   const userType = localStorage.getItem('user_type')
   
   if (userType === 'seller' && localStorage.getItem('seller_token')) {
@@ -229,7 +237,11 @@ export function getLoginType(): 'user' | 'seller' | 'admin' | null {
     return 'admin'
   }
   
-  if (auth.currentUser) {
+  // 현재 로그인 타입 확인 (Lazy load)
+  const { getCurrentUser } = await import('@/lib/firebase-auth')
+  const currentUser = await getCurrentUser()
+  
+  if (currentUser) {
     return 'user'
   }
   

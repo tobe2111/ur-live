@@ -1,8 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { Database } from 'firebase/database'
-
-// Lazy load Firebase Database SDK
-let databaseInstance: Database | null = null
 
 /**
  * 채팅 메시지 타입
@@ -94,14 +90,12 @@ export function useFirebaseChat(
         messagePreview: message.substring(0, 50)
       })
 
-      // Lazy load Firebase Database for sending
-      if (!databaseInstance) {
-        const { database: db } = await import('@/lib/firebase-config')
-        databaseInstance = db
-      }
-
+      // Lazy load Firebase Database using new API
+      const { getFirebaseDatabase } = await import('@/lib/firebase-config')
       const { ref, push, set } = await import('firebase/database')
-      const chatRef = ref(databaseInstance, `chats/stream${liveId}`)
+      
+      const database = await getFirebaseDatabase()
+      const chatRef = ref(database, `chats/stream${liveId}`)
       const newMessageRef = push(chatRef)
       
       const timestamp = Date.now()
@@ -143,17 +137,14 @@ export function useFirebaseChat(
     // Lazy load Firebase Database
     const loadFirebaseDatabase = async () => {
       try {
-        // Load Firebase Database instance if not already loaded
-        if (!databaseInstance) {
-          const { database: db } = await import('@/lib/firebase-config')
-          databaseInstance = db
-        }
-
-        // Load Firebase Database functions
+        // Load Firebase Database instance using new API
+        const { getFirebaseDatabase } = await import('@/lib/firebase-config')
         const { ref, onValue, query, orderByChild, limitToLast, off } = await import('firebase/database')
+        
+        const database = await getFirebaseDatabase()
 
         // Firebase Realtime Database 참조
-        const chatRef = ref(databaseInstance, `chats/stream${liveId}`)
+        const chatRef = ref(database, `chats/stream${liveId}`)
         chatRefCache.current = chatRef
 
         // 최근 50개 메시지만 조회

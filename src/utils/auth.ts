@@ -12,8 +12,7 @@
  */
 
 import { NavigateFunction } from 'react-router-dom'
-import { getAuth } from 'firebase/auth'
-import { app } from '@/lib/firebase'
+import { getFirebaseAuth } from '@/lib/firebase-auth'
 
 // Firebase 표준 localStorage 키
 const FIREBASE_STORAGE_KEYS = {
@@ -66,7 +65,7 @@ export function getRefreshToken(): string | null {
  * 
  * Priority: JWT tokens first (seller/admin), then Firebase (buyers)
  */
-export function isLoggedIn(): boolean {
+export async function isLoggedIn(): Promise<boolean> {
   try {
     // 1️⃣ Check JWT tokens first (seller/admin)
     const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
@@ -88,7 +87,7 @@ export function isLoggedIn(): boolean {
     }
     
     // 2️⃣ Check Firebase Auth (buyers with Kakao/Email login)
-    const auth = getAuth(app)
+    const auth = await getFirebaseAuth()
     if (auth.currentUser) {
       console.log('[Auth] isLoggedIn: Firebase user found ✅')
       return true
@@ -113,7 +112,7 @@ export function getUserType(): string | null {
  * 사용자 ID 가져오기 (JWT + Firebase Custom Claims 통합)
  * ✅ Multi-auth Support: JWT sellers/admins first, then Firebase buyers
  */
-export function getUserId(): string | null {
+export async function getUserId(): Promise<string | null> {
   // 1️⃣ Check localStorage first (JWT sellers/admins store user_id here)
   const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
                  localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
@@ -123,7 +122,7 @@ export function getUserId(): string | null {
   
   // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)
   try {
-    const auth = getAuth(app)
+    const auth = await getFirebaseAuth()
     const user = auth.currentUser
     if (user) {
       // @ts-ignore - Firebase custom claims
@@ -246,7 +245,7 @@ export function clearTempCartItem(): void {
 /**
  * 로그아웃 (Firebase + 레거시 JWT 키 모두 삭제)
  */
-export function logout(): void {
+export async function logout(): Promise<void> {
   // Firebase 키 제거
   Object.values(FIREBASE_STORAGE_KEYS).forEach(key => {
     localStorage.removeItem(key)
@@ -267,7 +266,7 @@ export function logout(): void {
   
   // Firebase 로그아웃
   try {
-    const auth = getAuth(app)
+    const auth = await getFirebaseAuth()
     auth.signOut()
   } catch (e) {
     console.error('[Auth] Firebase signOut 실패:', e)
