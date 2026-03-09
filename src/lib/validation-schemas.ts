@@ -15,22 +15,29 @@ export const LoginSchema = z.object({
   password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다')
 });
 
-// 회원가입 스키마
+// 🔐 강화된 비밀번호 정책 (프로덕션용)
+const StrongPasswordSchema = z.string()
+  .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
+  .max(128, '비밀번호는 128자 이하여야 합니다')
+  .regex(/[a-z]/, '최소 1개의 소문자를 포함해야 합니다')
+  .regex(/[A-Z]/, '최소 1개의 대문자를 포함해야 합니다')
+  .regex(/[0-9]/, '최소 1개의 숫자를 포함해야 합니다')
+  .regex(/[!@#$%^&*(),.?":{}|<>]/, '최소 1개의 특수문자를 포함해야 합니다');
+
+// 회원가입 스키마 (강화된 비밀번호 정책 적용)
 export const RegisterSchema = z.object({
   email: z.string().email('유효한 이메일을 입력하세요'),
-  password: z.string()
-    .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
-    .regex(/^(?=.*[A-Za-z])(?=.*\d)/, '영문과 숫자를 포함해야 합니다'),
+  password: StrongPasswordSchema,
   name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다').max(50),
   phone: z.string()
     .regex(/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/, '올바른 휴대폰 번호를 입력하세요')
     .optional()
 });
 
-// Seller 회원가입 스키마
+// Seller 회원가입 스키마 (강화된 비밀번호 정책 적용)
 export const SellerRegisterSchema = z.object({
   email: z.string().email('유효한 이메일을 입력하세요'),
-  password: z.string().min(8, '비밀번호는 최소 8자 이상이어야 합니다'),
+  password: StrongPasswordSchema,
   name: z.string().min(2, '판매자명은 최소 2자 이상이어야 합니다'),
   phone: z.string().regex(/^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/),
   business_number: z.string().min(10, '사업자등록번호를 입력하세요'),

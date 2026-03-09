@@ -52,17 +52,28 @@ import bcrypt from 'bcryptjs';
 // =================================
 
 /**
- * JWT Secret Key (환경변수에서 로드, 없으면 기본값 사용)
- * 프로덕션에서는 반드시 환경변수 설정 필요
+ * JWT Secret Key (환경변수에서 로드 - 필수)
+ * ⚠️ PRODUCTION: JWT_SECRET 환경변수 반드시 설정 필요
  */
 const getJWTSecret = (env: any): string => {
-  return env.JWT_SECRET || 'default-jwt-secret-change-in-production-12345678901234567890';
+  if (!env.JWT_SECRET) {
+    console.error('❌ CRITICAL: JWT_SECRET environment variable is not set!');
+    throw new Error('JWT_SECRET is required. Please set it in Cloudflare Pages environment variables.');
+  }
+  
+  // Validate minimum length (256 bits = 32 characters)
+  if (env.JWT_SECRET.length < 32) {
+    console.error('❌ CRITICAL: JWT_SECRET is too short! Minimum 32 characters required.');
+    throw new Error('JWT_SECRET must be at least 32 characters long for security.');
+  }
+  
+  return env.JWT_SECRET;
 };
 
 /**
- * JWT 토큰 생성
+ * Access Token 생성 (15분 만료)
  */
-async function createJWTToken(
+async function createAccessToken(
   payload: { id: number; email: string; name: string; username?: string; type: 'seller' | 'admin' },
   secret: string
 ): Promise<string> {
@@ -72,7 +83,64 @@ async function createJWTToken(
   const jwtPayload = {
     ...payload,
     iat: now,
-    exp: now + (30 * 24 * 60 * 60) // 30일 만료
+    exp: now + (15 * 60), // 15분 만료
+    tokenType: 'access'
+  };
+  
+  // Base64 URL 인코딩
+  const base64UrlEncode = (obj: any) => {
+    const str = JSON.stringify(obj);
+    return btoa(str)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+  
+  const encodedHeader = base64UrlEncode(header);
+  const encodedPayload = base64UrlEncode(jwtPayload);
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  // HMAC-SHA256 서명
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(signatureInput)
+  );
+  
+  const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  
+  return `${signatureInput}.${base64Signature}`;
+}
+
+/**
+ * Refresh Token 생성 (7일 만료)
+ */
+async function createRefreshToken(
+  payload: { id: number; email: string; type: 'seller' | 'admin' },
+  secret: string
+): Promise<string> {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  
+  const jwtPayload = {
+    id: payload.id,
+    email: payload.email,
+    type: payload.type,
+    iat: now,
+    exp: now + (7 * 24 * 60 * 60), // 7일 만료
+    tokenType: 'refresh'
   };
   
   // Base64 URL 인코딩
@@ -2292,7 +2360,15 @@ app.get('/api/debug/accounts', cors(), async (c) => {
 });
 
 // 🔐 Admin Login API (JWT-based, NO Firebase)
-app.post('/api/admin/login', cors(), async (c) => {
+// ⚡ Rate Limiting: 5 attempts per 5 minutes
+app.post('/api/admin/login', 
+  cors(),
+  rateLimit({
+    windowMs: 300, // 5분
+    maxRequests: 5,
+    message: '로그인 시도 횟수를 초과했습니다. 5분 후 다시 시도해주세요.'
+  }),
+  async (c) => {
   const { DB } = c.env;
   
   try {
@@ -2322,26 +2398,16 @@ app.post('/api/admin/login', cors(), async (c) => {
     // Verify password
     console.log('[Admin Login] Verifying password for:', email);
     console.log('[Admin Login] Password hash found:', admin.password_hash ? 'Yes' : 'No');
-    console.log('[Admin Login] Hash prefix:', admin.password_hash?.substring(0, 10));
     
-    // 1. Check test account (hardcoded for development)
-    const isTestAccount = email === 'admin@example.com' && password === 'admin123';
-    
-    // 2. Check bcrypt hash (for production accounts)
-    let isValidPassword = isTestAccount;
-    
-    if (!isValidPassword && admin.password_hash) {
-      // Try bcrypt verification
-      if (admin.password_hash.startsWith('$2')) {
-        console.log('[Admin Login] Attempting bcrypt verification...');
-        isValidPassword = await verifyPassword(password, admin.password_hash);
-        console.log('[Admin Login] Bcrypt result:', isValidPassword);
-      } else if (admin.password_hash.includes(`placeholder_hash_for_${password}`)) {
-        // Backward compatibility with placeholder hashes
-        console.log('[Admin Login] Using placeholder hash compatibility');
-        isValidPassword = true;
-      }
+    // ✅ PRODUCTION: Only use bcrypt verification (no hardcoded accounts)
+    if (!admin.password_hash) {
+      console.log('[Admin Login] ❌ No password hash found');
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
+    
+    // Verify bcrypt hash
+    const isValidPassword = await verifyPassword(password, admin.password_hash);
+    console.log('[Admin Login] Bcrypt verification result:', isValidPassword);
     
     if (!isValidPassword) {
       console.log('[Admin Login] ❌ Password verification failed');
@@ -2355,9 +2421,10 @@ app.post('/api/admin/login', cors(), async (c) => {
       return c.json({ success: false, error: '비활성화된 계정입니다' }, 403);
     }
     
-    // 🔐 Create JWT token (NO Firebase!)
+    // 🔐 Create Access Token (15분) & Refresh Token (7일)
     const jwtSecret = getJWTSecret(c.env);
-    const token = await createJWTToken({
+    
+    const accessToken = await createAccessToken({
       id: admin.id,
       email: admin.email,
       name: admin.name,
@@ -2365,20 +2432,31 @@ app.post('/api/admin/login', cors(), async (c) => {
       type: 'admin'
     }, jwtSecret);
     
-    // Set HttpOnly cookie for security
-    c.header('Set-Cookie', `admin_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000; Path=/`);
+    const refreshToken = await createRefreshToken({
+      id: admin.id,
+      email: admin.email,
+      type: 'admin'
+    }, jwtSecret);
+    
+    // Set HttpOnly cookies for security (Access Token 15분, Refresh Token 7일)
+    c.header('Set-Cookie', `admin_access_token=${accessToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=900; Path=/`);
+    c.header('Set-Cookie', `admin_refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/`);
     
     // Update last login time
     await DB.prepare('UPDATE admins SET last_login_at = datetime("now") WHERE id = ?')
       .bind(admin.id)
       .run();
     
-    console.log(`[JWT Login] ✅ Admin ${admin.email} logged in with JWT (NO Firebase)`);
+    console.log(`[JWT Login] ✅ Admin ${admin.email} logged in with JWT`);
+    console.log(`[JWT Login] Access Token expires in 15 minutes`);
+    console.log(`[JWT Login] Refresh Token expires in 7 days`);
     
     return c.json({
       success: true,
       data: {
-        token, // Send token in response for localStorage backup
+        accessToken,
+        refreshToken,
+        expiresIn: 900, // 15분 (초)
         admin: {
           id: admin.id,
           username: admin.username,
@@ -2395,7 +2473,15 @@ app.post('/api/admin/login', cors(), async (c) => {
 });
 
 // 🔐 Seller Login API (JWT-based, NO Firebase)
-app.post('/api/seller/login', cors(), async (c) => {
+// ⚡ Rate Limiting: 5 attempts per 5 minutes
+app.post('/api/seller/login',
+  cors(),
+  rateLimit({
+    windowMs: 300, // 5분
+    maxRequests: 5,
+    message: '로그인 시도 횟수를 초과했습니다. 5분 후 다시 시도해주세요.'
+  }),
+  async (c) => {
   const { DB } = c.env;
   
   try {
@@ -2426,28 +2512,16 @@ app.post('/api/seller/login', cors(), async (c) => {
     // Verify password
     console.log('[Seller Login] Verifying password for:', email);
     console.log('[Seller Login] Password hash found:', seller.password_hash ? 'Yes' : 'No');
-    console.log('[Seller Login] Hash prefix:', seller.password_hash?.substring(0, 10));
     
-    // 1. Check test accounts (hardcoded for development)
-    const isTestAccount1 = email === 'seller1@example.com' && password === 'seller123';
-    const isTestAccount2 = email === 'seller@ur-team.com' && password === 'seller123';
-    const isMainAccount = email === 'tobe2111@naver.com' && password === '358533aa!!';
-    
-    // 2. Check bcrypt hash (for production accounts)
-    let isValidPassword = isTestAccount1 || isTestAccount2 || isMainAccount;
-    
-    if (!isValidPassword && seller.password_hash) {
-      // Try bcrypt verification
-      if (seller.password_hash.startsWith('$2')) {
-        console.log('[Seller Login] Attempting bcrypt verification...');
-        isValidPassword = await verifyPassword(password, seller.password_hash);
-        console.log('[Seller Login] Bcrypt result:', isValidPassword);
-      } else if (seller.password_hash.includes(`placeholder_hash_for_${password}`)) {
-        // Backward compatibility with placeholder hashes
-        console.log('[Seller Login] Using placeholder hash compatibility');
-        isValidPassword = true;
-      }
+    // ✅ PRODUCTION: Only use bcrypt verification (no hardcoded accounts)
+    if (!seller.password_hash) {
+      console.log('[Seller Login] ❌ No password hash found');
+      return c.json({ success: false, error: '이메일 또는 비밀번호가 일치하지 않습니다' }, 401);
     }
+    
+    // Verify bcrypt hash
+    const isValidPassword = await verifyPassword(password, seller.password_hash);
+    console.log('[Seller Login] Bcrypt verification result:', isValidPassword);
     
     if (!isValidPassword) {
       console.log('[Seller Login] ❌ Password verification failed');
@@ -2469,9 +2543,10 @@ app.post('/api/seller/login', cors(), async (c) => {
       }, 403);
     }
     
-    // 🔐 Create JWT token (NO Firebase!)
+    // 🔐 Create Access Token (15분) & Refresh Token (7일)
     const jwtSecret = getJWTSecret(c.env);
-    const token = await createJWTToken({
+    
+    const accessToken = await createAccessToken({
       id: seller.id,
       email: seller.email,
       name: seller.name,
@@ -2479,20 +2554,31 @@ app.post('/api/seller/login', cors(), async (c) => {
       type: 'seller'
     }, jwtSecret);
     
-    // Set HttpOnly cookie for security
-    c.header('Set-Cookie', `seller_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000; Path=/`);
+    const refreshToken = await createRefreshToken({
+      id: seller.id,
+      email: seller.email,
+      type: 'seller'
+    }, jwtSecret);
+    
+    // Set HttpOnly cookies for security (Access Token 15분, Refresh Token 7일)
+    c.header('Set-Cookie', `seller_access_token=${accessToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=900; Path=/`);
+    c.header('Set-Cookie', `seller_refresh_token=${refreshToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=604800; Path=/`);
     
     // Update last login time
     await DB.prepare('UPDATE sellers SET last_login_at = datetime("now") WHERE id = ?')
       .bind(seller.id)
       .run();
     
-    console.log(`[JWT Login] ✅ Seller ${seller.email} logged in with JWT (NO Firebase)`);
+    console.log(`[JWT Login] ✅ Seller ${seller.email} logged in with JWT`);
+    console.log(`[JWT Login] Access Token expires in 15 minutes`);
+    console.log(`[JWT Login] Refresh Token expires in 7 days`);
     
     return c.json({
       success: true,
       data: {
-        token, // Send token in response for localStorage backup
+        accessToken,
+        refreshToken,
+        expiresIn: 900, // 15분 (초)
         seller: {
           id: seller.id,
           username: seller.username,
@@ -2506,6 +2592,95 @@ app.post('/api/seller/login', cors(), async (c) => {
   } catch (err) {
     console.error('[Seller Login] Error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// 🔄 Refresh Token API - Access Token 갱신
+app.post('/api/auth/refresh', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { refreshToken, userType } = await c.req.json();
+    
+    if (!refreshToken || !userType) {
+      return c.json({ success: false, error: 'Refresh token and user type are required' }, 400);
+    }
+    
+    if (userType !== 'seller' && userType !== 'admin') {
+      return c.json({ success: false, error: 'Invalid user type' }, 400);
+    }
+    
+    // Verify refresh token
+    const jwtSecret = getJWTSecret(c.env);
+    const payload = await verifyJWTToken(refreshToken, jwtSecret);
+    
+    if (!payload) {
+      console.log('[Refresh Token] ❌ Invalid or expired refresh token');
+      return c.json({ success: false, error: 'Invalid or expired refresh token' }, 401);
+    }
+    
+    // Check token type
+    if (payload.tokenType !== 'refresh') {
+      console.log('[Refresh Token] ❌ Not a refresh token');
+      return c.json({ success: false, error: 'Invalid token type' }, 401);
+    }
+    
+    // Verify user type matches
+    if (payload.type !== userType) {
+      console.log('[Refresh Token] ❌ User type mismatch');
+      return c.json({ success: false, error: 'User type mismatch' }, 401);
+    }
+    
+    // Fetch updated user data from DB
+    const table = userType === 'seller' ? 'sellers' : 'admins';
+    const user = await DB.prepare(`
+      SELECT id, username, email, name, is_active
+      FROM ${table}
+      WHERE id = ?
+    `).bind(payload.id).first();
+    
+    if (!user || !user.is_active) {
+      console.log('[Refresh Token] ❌ User not found or inactive');
+      return c.json({ success: false, error: 'User not found or inactive' }, 401);
+    }
+    
+    // For sellers, check approval status
+    if (userType === 'seller') {
+      const seller = await DB.prepare(`
+        SELECT status FROM sellers WHERE id = ?
+      `).bind(payload.id).first();
+      
+      if (seller.status !== 'approved') {
+        return c.json({ success: false, error: 'Seller not approved' }, 403);
+      }
+    }
+    
+    // Create new access token
+    const newAccessToken = await createAccessToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      username: user.username,
+      type: userType
+    }, jwtSecret);
+    
+    // Set new access token cookie
+    const cookieName = userType === 'seller' ? 'seller_access_token' : 'admin_access_token';
+    c.header('Set-Cookie', `${cookieName}=${newAccessToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=900; Path=/`);
+    
+    console.log(`[Refresh Token] ✅ New access token issued for ${userType} ${user.email}`);
+    
+    return c.json({
+      success: true,
+      data: {
+        accessToken: newAccessToken,
+        expiresIn: 900 // 15분
+      }
+    });
+    
+  } catch (err) {
+    console.error('[Refresh Token] Error:', err);
+    return c.json({ success: false, error: 'Failed to refresh token' }, 500);
   }
 });
 
