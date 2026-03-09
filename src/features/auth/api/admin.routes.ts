@@ -10,6 +10,14 @@ import { cors } from 'hono/cors';
 import { sign } from 'hono/jwt';
 import { verifyPassword } from '@/lib/password';
 import type { AuthResponse } from '../types';
+import {
+  successResponse,
+  badRequestResponse,
+  unauthorizedResponse,
+  internalServerErrorResponse
+} from '@/worker/utils/response';
+import { validateRequired } from '@/worker/utils/validation';
+import { executeQuery } from '@/worker/utils/database';
 
 type Bindings = {
   DB: D1Database;
@@ -53,11 +61,7 @@ adminRoutes.post('/login', cors(), async (c) => {
     // JWT_SECRET 확인
     if (!JWT_SECRET) {
       console.error('[Admin Login] JWT_SECRET not configured');
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: 'Server configuration error',
-        code: 'MISSING_JWT_SECRET'
-      }, 500);
+      return internalServerErrorResponse(c, 'Server configuration error');
     }
 
     // Request body 파싱
@@ -65,30 +69,26 @@ adminRoutes.post('/login', cors(), async (c) => {
     const { email, password } = body;
     
     // Validation
-    if (!email || !password) {
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: '이메일과 비밀번호를 입력해주세요.' 
-      }, 400);
+    const validationErrors = validateRequired(body, ['email', 'password']);
+    if (validationErrors.length > 0) {
+      return badRequestResponse(c, '이메일과 비밀번호를 입력해주세요.');
     }
     
     console.log('[Admin Login] Attempting login for:', email);
     
     // 1. 이메일로 관리자 조회
-    const admin = await DB.prepare(`
-      SELECT 
-        id, username, email, password_hash, name, role, created_at
-      FROM admins 
-      WHERE email = ?
-    `).bind(email).first();
+    const admins = await executeQuery<any>(
+      DB,
+      'SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ?',
+      [email]
+    );
     
-    if (!admin) {
+    if (admins.length === 0) {
       console.warn('[Admin Login] Admin not found:', email);
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: '이메일 또는 비밀번호가 올바르지 않습니다.' 
-      }, 401);
+      return unauthorizedResponse(c, '이메일 또는 비밀번호가 올바르지 않습니다.');
     }
+    
+    const admin = admins[0];
     
     // 2. 비밀번호 검증
     const passwordHash = admin.password_hash as string;
@@ -96,10 +96,7 @@ adminRoutes.post('/login', cors(), async (c) => {
     
     if (!isValid) {
       console.warn('[Admin Login] Invalid password for:', email);
-      return c.json<AuthResponse>({ 
-        success: false, 
-        error: '이메일 또는 비밀번호가 올바르지 않습니다.' 
-      }, 401);
+      return unauthorizedResponse(c, '이메일 또는 비밀번호가 올바르지 않습니다.');
     }
     
     // 3. JWT 생성
@@ -119,31 +116,21 @@ adminRoutes.post('/login', cors(), async (c) => {
     console.log('[Admin Login] ✅ Login successful for admin:', admin.id, 'role:', admin.role);
     
     // 4. 응답 반환
-    return c.json<AuthResponse<AdminLoginResponse>>({
-      success: true,
-      data: {
-        token,
-        admin: {
-          id: admin.id as number,
-          username: admin.username as string,
-          email: admin.email as string,
-          name: admin.name as string,
-          role: admin.role as string
-        }
+    return successResponse(c, {
+      token,
+      admin: {
+        id: admin.id as number,
+        username: admin.username as string,
+        email: admin.email as string,
+        name: admin.name as string,
+        role: admin.role as string
       }
-    });
+    }, 'Login successful');
     
   } catch (error) {
     console.error('[Admin Login] Error:', error);
-    
     const errorMsg = (error as Error).message || 'Unknown error';
-    const statusCode = errorMsg.includes('Database') ? 500 : 500;
-    
-    return c.json<AuthResponse>({
-      success: false,
-      error: '로그인 중 오류가 발생했습니다.',
-      code: 'ADMIN_LOGIN_FAILED'
-    }, statusCode);
+    return internalServerErrorResponse(c, '로그인 중 오류가 발생했습니다.');
   }
 });
 
