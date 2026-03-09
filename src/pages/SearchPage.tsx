@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import MobileFooter from '@/components/MobileFooter'
 import BottomNav from '@/components/main/BottomNav'
 import { useSearch } from '@/hooks/useSearch'
 import SearchHeader from '@/components/search/SearchHeader'
@@ -137,9 +136,6 @@ export default function SearchPage() {
             </div>
           </>
         )}
-
-        {/* Mobile Footer */}
-        <MobileFooter />
       </div>
       
       {/* Bottom Navigation Spacer */}
