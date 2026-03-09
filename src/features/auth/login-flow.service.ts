@@ -56,21 +56,29 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
 
     // ✅ 중요: onAuthStateChanged가 발화될 때까지 대기 (최대 2초)
     console.log('[LoginFlow] ⏳ Auth State 업데이트 대기 중...')
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<void>(async (resolve) => {
+      let unsubscribe: (() => void) | null = null
+      
       const timeout = setTimeout(() => {
-        unsubscribe()
+        if (unsubscribe) unsubscribe()
         console.warn('[LoginFlow] ⚠️ Auth State 대기 타임아웃 (2초)')
         resolve() // 타임아웃되어도 계속 진행
       }, 2000)
 
-      const unsubscribe = onAuthStateChanged(async (user) => {
-        if (user && user.uid === credential.user.uid) {
-          clearTimeout(timeout)
-          unsubscribe()
-          console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
-          resolve()
-        }
-      })
+      try {
+        unsubscribe = await onAuthStateChanged(async (user) => {
+          if (user && user.uid === credential.user.uid) {
+            clearTimeout(timeout)
+            if (unsubscribe) unsubscribe()
+            console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
+            resolve()
+          }
+        })
+      } catch (err) {
+        clearTimeout(timeout)
+        console.error('[LoginFlow] ❌ Auth State listener 설정 실패:', err)
+        resolve() // 실패해도 계속 진행
+      }
     })
 
     // 4. 백그라운드에서 Token 갱신 (속도 최적화)
@@ -101,21 +109,29 @@ export async function loginWithFirebaseToken(firebaseToken: string): Promise<voi
 
     // ✅ 중요: onAuthStateChanged가 발화될 때까지 대기 (최대 2초)
     console.log('[LoginFlow] ⏳ Auth State 업데이트 대기 중...')
-    await new Promise<void>((resolve, reject) => {
+    await new Promise<void>(async (resolve) => {
+      let unsubscribe: (() => void) | null = null
+      
       const timeout = setTimeout(() => {
-        unsubscribe()
+        if (unsubscribe) unsubscribe()
         console.warn('[LoginFlow] ⚠️ Auth State 대기 타임아웃 (2초)')
         resolve() // 타임아웃되어도 계속 진행
       }, 2000)
 
-      const unsubscribe = onAuthStateChanged(async (user) => {
-        if (user && user.uid === credential.user.uid) {
-          clearTimeout(timeout)
-          unsubscribe()
-          console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
-          resolve()
-        }
-      })
+      try {
+        unsubscribe = await onAuthStateChanged(async (user) => {
+          if (user && user.uid === credential.user.uid) {
+            clearTimeout(timeout)
+            if (unsubscribe) unsubscribe()
+            console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
+            resolve()
+          }
+        })
+      } catch (err) {
+        clearTimeout(timeout)
+        console.error('[LoginFlow] ❌ Auth State listener 설정 실패:', err)
+        resolve() // 실패해도 계속 진행
+      }
     })
 
     // 백그라운드 Token 갱신
