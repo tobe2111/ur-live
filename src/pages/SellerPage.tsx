@@ -423,14 +423,14 @@ export default function SellerPage() {
           </button>
 
           <button
-            onClick={() => navigate('/seller/live-control')}
-            className="apple-card p-4 hover:shadow-lg transition-all text-left"
+            onClick={() => navigate('/seller/settlements')}
+            className="apple-card p-4 hover:shadow-lg transition-all text-left bg-gradient-to-br from-emerald-50 to-green-50"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-[#ff3b30] to-[#ff9500] rounded-full flex items-center justify-center mb-3">
-              <Play className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 bg-emerald-600/10 rounded-full flex items-center justify-center mb-3">
+              <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
-            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">🎥 라이브 컨트롤</p>
-            <p className="text-[13px] text-[#6e6e73]">실시간 상품 전환</p>
+            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">💰 정산 관리</p>
+            <p className="text-[13px] text-[#6e6e73]">수익 정산 조회</p>
           </button>
         </div>
 

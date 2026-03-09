@@ -49,6 +49,7 @@ const SellerStreamNewPage = lazy(() => import('./pages/SellerStreamNewPage'))
 const SellerStreamEditPage = lazy(() => import('./pages/SellerStreamEditPage'))
 const SellerProfileEditPage = lazy(() => import('./pages/SellerProfileEditPage'))
 const SellerPublicPage = lazy(() => import('./pages/SellerPublicPage'))
+const SellerSettlementsPage = lazy(() => import('./pages/SellerSettlementsPage'))
 
 // User 페이지들
 const MyPage = lazy(() => import('./pages/MyPage'))
@@ -66,6 +67,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'))
 const AdminSettlementPage = lazy(() => import('./pages/AdminSettlementPage'))
 const AdminBannersPage = lazy(() => import('./pages/AdminBannersPage'))
+const AdminOrdersPage = lazy(() => import('./pages/AdminOrdersPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -201,6 +203,7 @@ function AppContent() {
             <Route path="/seller/streams/new" element={<SellerStreamNewPage />} />
             <Route path="/seller/streams/:id" element={<SellerStreamEditPage />} />
             <Route path="/seller/profile" element={<SellerProfileEditPage />} />
+            <Route path="/seller/settlements" element={<SellerSettlementsPage />} />
             {/* Redirect /mypage to /user/profile */}
             <Route path="/mypage" element={<UserProfilePage />} />
             <Route path="/user/profile" element={<UserProfilePage />} />
@@ -211,6 +214,7 @@ function AppContent() {
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/settlement" element={<AdminSettlementPage />} />
             <Route path="/admin/banners" element={<AdminBannersPage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
