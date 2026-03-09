@@ -198,10 +198,22 @@ export const useAuthKR = create<AuthKRState>()(
             // ✅ 2. Firebase Auth 상태 확인 (최대 1.5초 대기)
             return new Promise<void>(async (resolve) => {
               let resolved = false;
+              let unsubscribe: (() => void) | null = null;
+              
               const timeout = setTimeout(() => {
                 if (!resolved) {
                   console.warn('[useAuthKR] ⚠️ onAuthStateChanged 타임아웃 (1.5초)');
                   resolved = true;
+                  
+                  // ✅ 타임아웃 시 unsubscribe 안전하게 호출
+                  if (unsubscribe) {
+                    try {
+                      unsubscribe();
+                    } catch (e) {
+                      console.error('[useAuthKR] ❌ unsubscribe 실패:', e);
+                    }
+                  }
+                  
                   set({
                     user: null,
                     userRole: null,
@@ -212,54 +224,86 @@ export const useAuthKR = create<AuthKRState>()(
                 }
               }, 1500);
 
-              const unsubscribe = await onAuthStateChanged(async (user) => {
-                if (resolved) return; // 이미 타임아웃으로 해결됨
-                clearTimeout(timeout);
-                resolved = true;
-
-                if (user) {
-                  console.log('[useAuthKR] ✅ Firebase 로그인 상태 확인:', user.uid);
+              try {
+                unsubscribe = await onAuthStateChanged(async (user) => {
+                  if (resolved) {
+                    // 이미 타임아웃으로 해결됨, unsubscribe만 호출
+                    if (unsubscribe) {
+                      try {
+                        unsubscribe();
+                      } catch (e) {
+                        console.error('[useAuthKR] ❌ unsubscribe 실패 (타임아웃 후):', e);
+                      }
+                    }
+                    return;
+                  }
                   
-                  // ✅ lastLoginUid 저장 (다음 로드 시 즉시 체크)
-                  localStorage.setItem('lastLoginUid', user.uid);
-                  
-                  // 사용자 역할 조회
-                  try {
-                    const roleResponse = await fetch('/api/users/role', {
-                      headers: { Authorization: `Bearer ${await user.getIdToken()}` },
-                    });
-                    const { role } = await roleResponse.json();
+                  clearTimeout(timeout);
+                  resolved = true;
 
+                  if (user) {
+                    console.log('[useAuthKR] ✅ Firebase 로그인 상태 확인:', user.uid);
+                    
+                    // ✅ lastLoginUid 저장 (다음 로드 시 즉시 체크)
+                    localStorage.setItem('lastLoginUid', user.uid);
+                    
+                    // 사용자 역할 조회
+                    try {
+                      const roleResponse = await fetch('/api/users/role', {
+                        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+                      });
+                      const { role } = await roleResponse.json();
+
+                      set({
+                        user,
+                        userRole: role,
+                        isLoading: false,
+                        isAuthReady: true,
+                      });
+                      console.log('[useAuthKR] ✅ 사용자 역할:', role);
+                    } catch (err) {
+                      console.error('[useAuthKR] ❌ Failed to fetch user role:', err);
+                      set({
+                        user,
+                        userRole: 'user', // 기본값
+                        isLoading: false,
+                        isAuthReady: true,
+                      });
+                    }
+                  } else {
+                    console.log('[useAuthKR] ℹ️ 로그인 상태 아님');
+                    // ✅ lastLoginUid 제거
+                    localStorage.removeItem('lastLoginUid');
                     set({
-                      user,
-                      userRole: role,
-                      isLoading: false,
-                      isAuthReady: true,
-                    });
-                    console.log('[useAuthKR] ✅ 사용자 역할:', role);
-                  } catch (err) {
-                    console.error('[useAuthKR] ❌ Failed to fetch user role:', err);
-                    set({
-                      user,
-                      userRole: 'user', // 기본값
+                      user: null,
+                      userRole: null,
                       isLoading: false,
                       isAuthReady: true,
                     });
                   }
-                } else {
-                  console.log('[useAuthKR] ℹ️ 로그인 상태 아님');
-                  // ✅ lastLoginUid 제거
-                  localStorage.removeItem('lastLoginUid');
-                  set({
-                    user: null,
-                    userRole: null,
-                    isLoading: false,
-                    isAuthReady: true,
-                  });
-                }
-                unsubscribe();
+                  
+                  // ✅ unsubscribe 안전하게 호출
+                  if (unsubscribe) {
+                    try {
+                      unsubscribe();
+                    } catch (e) {
+                      console.error('[useAuthKR] ❌ unsubscribe 실패:', e);
+                    }
+                  }
+                  resolve();
+                });
+              } catch (err) {
+                clearTimeout(timeout);
+                console.error('[useAuthKR] ❌ onAuthStateChanged 설정 실패:', err);
+                resolved = true;
+                set({
+                  user: null,
+                  userRole: null,
+                  isLoading: false,
+                  isAuthReady: true,
+                });
                 resolve();
-              });
+              }
             });
           } catch (err: any) {
             console.error('[useAuthKR] ❌ initializeAuth failed:', err);
