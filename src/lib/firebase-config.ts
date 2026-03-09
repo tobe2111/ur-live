@@ -83,9 +83,22 @@ export async function getFirebaseApp(): Promise<FirebaseApp> {
 }
 
 // For backward compatibility - deprecated, use async functions instead
-export const app = null as any // Will be replaced by getFirebaseApp()
-export const database = null as any // Will be replaced by getFirebaseDatabase()
-export const auth = null as any // Will be replaced by getFirebaseAuth()
+// ⚠️ IMPORTANT: Don't use these directly - they might be null
+// Use getFirebaseApp(), getFirebaseDatabase(), getFirebaseAuth() instead
+export let app: FirebaseApp | null = null
+export let database: Database | null = null
+export let auth: Auth | null = null
+
+// Update exports when initialized
+export async function initializeAll() {
+  const firebaseApp = await initializeFirebase()
+  app = firebaseApp
+  return firebaseApp
+}
 
 // Default export for backward compatibility
-export default null as any
+export default {
+  get app() { return app },
+  get database() { return database },
+  get auth() { return auth }
+}

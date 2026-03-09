@@ -1,6 +1,50 @@
 <!doctype html>
 <html lang="ko">
   <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- 🔐 Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+        https://cdn.jsdelivr.net 
+        https://www.googletagmanager.com 
+        https://www.google-analytics.com 
+        https://js.stripe.com 
+        https://widget.tosspayments.com
+        https://js.tosspayments.com
+        https://t1.kakaocdn.net 
+        https://developers.kakao.com
+        https://static.cloudflareinsights.com
+        blob:;
+      style-src 'self' 'unsafe-inline' 
+        https://cdn.jsdelivr.net
+        https://fonts.googleapis.com;
+      font-src 'self' 
+        https://fonts.gstatic.com 
+        https://cdn.jsdelivr.net;
+      img-src 'self' data: blob: 
+        https://*.cloudflare.com 
+        https://*.cloudflareinsights.com
+        https://q.stripe.com 
+        https://m.stripe.com
+        https://*.kakaocdn.net;
+      connect-src 'self' 
+        https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+        https://identitytoolkit.googleapis.com
+        https://www.googleapis.com
+        https://api.stripe.com
+        https://api.tosspayments.com
+        wss://*.cloudflare.com;
+      frame-src 'self' 
+        https://js.stripe.com 
+        https://m.stripe.network
+        https://widget.tosspayments.com;
+      worker-src 'self' blob:;
+    " />
+    
     <!-- TikTok, YouTube, and TossPayments Console Filter - Must be first to catch all warnings -->
     <script>
       (function() {
@@ -89,7 +133,6 @@
       gtag('config', 'G-B1ST2L37CM');
     </script>
     
-    <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     
     <!-- 🎨 CSS Variables for new introduce page design -->
@@ -228,13 +271,13 @@
     <meta name="twitter:image" content="https://live.ur-team.com/og-image.png" />
     
     <title>리스터코퍼레이션 - 지금 당장 만나는 라이브 쇼핑</title>
-    <script type="module" crossorigin src="/assets/index-CpZdXGgM.js"></script>
+    <script type="module" crossorigin src="/assets/index-CyS3pqki.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/react-core-Lx7D2Dyp.js">
-    <link rel="modulepreload" crossorigin href="/assets/sentry-C3EmoD8e.js">
+    <link rel="modulepreload" crossorigin href="/assets/sentry-339mPwka.js">
     <link rel="modulepreload" crossorigin href="/assets/ui-libs-rMB0XVm6.js">
     <link rel="modulepreload" crossorigin href="/assets/state-management-B12TvfeF.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-C9BTucUt.js">
-    <link rel="modulepreload" crossorigin href="/assets/i18n-CBck4wGz.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-BO1LsrRn.js">
+    <link rel="modulepreload" crossorigin href="/assets/i18n-B3g3Q3vi.js">
     <link rel="modulepreload" crossorigin href="/assets/react-router-BhWQSZuB.js">
     <link rel="modulepreload" crossorigin href="/assets/react-query-VwwAOT8j.js">
     <link rel="stylesheet" crossorigin href="/assets/index-BoBLPiGg.css">

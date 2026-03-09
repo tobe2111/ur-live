@@ -30,7 +30,10 @@ export async function getFirebaseAuth(): Promise<Auth> {
   try {
     // Lazy load firebase/auth
     const { getAuth } = await import('firebase/auth');
-    const { app } = await import('./firebase-config');
+    const { initializeAll } = await import('./firebase-config');
+    
+    // Initialize Firebase app first
+    const app = await initializeAll();
     
     if (!app) {
       throw new Error('Firebase app not initialized');

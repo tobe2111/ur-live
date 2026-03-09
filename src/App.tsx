@@ -8,10 +8,9 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import { QueryProvider } from './lib/react-query'
-import { initSentry } from './lib/sentry'
 
-// Sentry 초기화 (최상위에서 한 번만)
-initSentry()
+// ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
+// initSentry() was causing "Multiple Sentry Session Replay instances" error
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
 const HomePage = lazy(() => import('./pages/HomePage'))
