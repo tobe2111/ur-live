@@ -66,7 +66,17 @@ export function TossPaymentWidget({
           throw new Error('TossPayments SDK failed to load after 3 seconds')
         }
 
-        const customerKey = `user_${userId}`
+        // ✅ Sanitize userId to meet TossPayments requirements
+        // CustomerKey format: 영문 대소문자, 숫자, 특수문자('-', '_', '=', '.', '@')로 2~50자
+        // Remove any invalid characters and ensure proper format
+        const sanitizedUserId = userId
+          .replace(/[^a-zA-Z0-9\-_=.@]/g, '') // Remove invalid characters
+          .substring(0, 44) // Ensure we have room for 'user_' prefix (max 50 chars total)
+        
+        const customerKey = `user_${sanitizedUserId}`
+        
+        console.log('[TossPayments] CustomerKey:', customerKey, 'Length:', customerKey.length)
+        
         const widgetsInstance = window.PaymentWidget(TOSS_CLIENT_KEY, customerKey)
         console.log('[TossPayments] ✅ 인스턴스 생성 완료')
 
@@ -84,6 +94,8 @@ export function TossPaymentWidget({
           userFriendlyError = '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
         } else if (err.message?.includes('SDK failed to load')) {
           userFriendlyError = '결제 시스템을 불러오지 못했습니다. 페이지를 새로고침해주세요.'
+        } else if (err.message?.includes('CustomerKey')) {
+          userFriendlyError = '사용자 인증 정보가 올바르지 않습니다. 다시 로그인해주세요.'
         }
         
         setErrorMessage(userFriendlyError)

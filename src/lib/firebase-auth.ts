@@ -56,7 +56,11 @@ export async function getFirebaseAuth(): Promise<Auth> {
 export async function signInWithCustomToken(token: string): Promise<UserCredential> {
   try {
     const auth = await getFirebaseAuth();
-    const { signInWithCustomToken: signInFn } = await import('firebase/auth');
+    const { signInWithCustomToken: signInFn, setPersistence, browserLocalPersistence } = await import('firebase/auth');
+    
+    // Set persistence to LOCAL to keep user logged in across browser sessions
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('[Firebase Auth] ✅ Persistence set to LOCAL');
     
     const credential = await signInFn(auth, token);
     console.log('[Firebase Auth] ✅ Sign in successful:', credential.user.uid);
@@ -82,7 +86,11 @@ export async function signInWithCustomToken(token: string): Promise<UserCredenti
 export async function signInWithEmailAndPassword(email: string, password: string): Promise<UserCredential> {
   try {
     const auth = await getFirebaseAuth();
-    const { signInWithEmailAndPassword: signInFn } = await import('firebase/auth');
+    const { signInWithEmailAndPassword: signInFn, setPersistence, browserLocalPersistence } = await import('firebase/auth');
+    
+    // Set persistence to LOCAL to keep user logged in across browser sessions
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('[Firebase Auth] ✅ Persistence set to LOCAL');
     
     const credential = await signInFn(auth, email, password);
     console.log('[Firebase Auth] ✅ Email sign in successful:', credential.user.uid);
@@ -120,7 +128,11 @@ export async function createUserWithEmailAndPassword(email: string, password: st
 export async function signInWithGoogle(): Promise<UserCredential> {
   try {
     const auth = await getFirebaseAuth();
-    const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
+    const { GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } = await import('firebase/auth');
+    
+    // Set persistence to LOCAL to keep user logged in across browser sessions
+    await setPersistence(auth, browserLocalPersistence);
+    console.log('[Firebase Auth] ✅ Persistence set to LOCAL');
     
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
