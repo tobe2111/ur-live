@@ -25,3 +25,15 @@ core
 core
 src/index-api-only.tsx.backup
 dist-global/
+
+# Build artifacts (auto-generated, don't track)
+dist/
+dist/version.json
+public/version.json
+
+# Log files (PM2, etc.)
+logs/
+*.log
+
+# Wrangler temporary files
+.wrangler/tmp/
