@@ -41,14 +41,14 @@ export default function UserProfilePage() {
       
       loginWithFirebaseToken(firebaseToken)
         .then(() => {
-          console.log('[UserProfilePage] ✅ 로그인 완료, URL 정리 중...')
+          console.log('[UserProfilePage] ✅ 로그인 완료 - Auth State 동기화됨')
           
           // ✅ URL 완전 정리 - React Router navigate 사용
           navigate('/user/profile', { replace: true })
           console.log('[UserProfilePage] ✅ URL 정리 완료')
           
-          // 로딩 해제는 약간 지연
-          setTimeout(() => setIsProcessingToken(false), 100)
+          // ✅ 로딩 해제 - 이제 Auth State가 확실히 동기화되어 있음
+          setIsProcessingToken(false)
         })
         .catch((error) => {
           console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)

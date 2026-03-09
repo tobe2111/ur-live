@@ -18,6 +18,8 @@ import api from '@/lib/api'
 
 /**
  * 카카오 액세스 토큰으로 Firebase 로그인
+ * 
+ * ✅ 인증 상태 전파 대기 추가 - 타이밍 이슈 해결
  */
 export async function loginWithKakaoToken(accessToken: string): Promise<void> {
   console.log('[LoginFlow] 🔑 카카오 토큰으로 Firebase 로그인 시작')
@@ -44,13 +46,32 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
 
     // 2. Lazy load Firebase Auth
     console.log('[LoginFlow] 🔥 Lazy loading Firebase Auth...')
-    const { signInWithCustomToken } = await import('@/lib/firebase-auth')
+    const { signInWithCustomToken, onAuthStateChanged } = await import('@/lib/firebase-auth')
     
     // 3. Firebase Custom Token으로 로그인
     console.log('[LoginFlow] 🔥 Firebase Custom Token으로 로그인 중...')
     const credential = await signInWithCustomToken(customToken)
     
     console.log('[LoginFlow] ✅ Firebase 로그인 성공:', credential.user.uid)
+
+    // ✅ 중요: onAuthStateChanged가 발화될 때까지 대기 (최대 2초)
+    console.log('[LoginFlow] ⏳ Auth State 업데이트 대기 중...')
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        unsubscribe()
+        console.warn('[LoginFlow] ⚠️ Auth State 대기 타임아웃 (2초)')
+        resolve() // 타임아웃되어도 계속 진행
+      }, 2000)
+
+      const unsubscribe = onAuthStateChanged(async (user) => {
+        if (user && user.uid === credential.user.uid) {
+          clearTimeout(timeout)
+          unsubscribe()
+          console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
+          resolve()
+        }
+      })
+    })
 
     // 4. 백그라운드에서 Token 갱신 (속도 최적화)
     credential.user.getIdToken(true)
@@ -65,16 +86,37 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
 
 /**
  * Firebase Custom Token으로 직접 로그인 (URL에서 받은 경우)
+ * 
+ * ✅ 인증 상태 전파 대기 추가 - 타이밍 이슈 해결
  */
 export async function loginWithFirebaseToken(firebaseToken: string): Promise<void> {
   console.log('[LoginFlow] 🔑 Firebase Custom Token으로 직접 로그인')
   
   try {
     // Lazy load Firebase Auth
-    const { signInWithCustomToken } = await import('@/lib/firebase-auth')
+    const { signInWithCustomToken, onAuthStateChanged } = await import('@/lib/firebase-auth')
     
     const credential = await signInWithCustomToken(firebaseToken)
     console.log('[LoginFlow] ✅ Firebase 로그인 성공:', credential.user.uid)
+
+    // ✅ 중요: onAuthStateChanged가 발화될 때까지 대기 (최대 2초)
+    console.log('[LoginFlow] ⏳ Auth State 업데이트 대기 중...')
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        unsubscribe()
+        console.warn('[LoginFlow] ⚠️ Auth State 대기 타임아웃 (2초)')
+        resolve() // 타임아웃되어도 계속 진행
+      }, 2000)
+
+      const unsubscribe = onAuthStateChanged(async (user) => {
+        if (user && user.uid === credential.user.uid) {
+          clearTimeout(timeout)
+          unsubscribe()
+          console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
+          resolve()
+        }
+      })
+    })
 
     // 백그라운드 Token 갱신
     credential.user.getIdToken(true)
