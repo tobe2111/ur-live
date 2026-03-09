@@ -66,7 +66,13 @@ declare global {
 }
 
 function generateRandomString() {
-  return window.btoa(Math.random().toString()).slice(0, 20)
+  // TossPayments orderId 제약: 영문 대소문자, 숫자, -, _ 만 허용
+  // base64의 +, /, = 문자를 안전한 문자로 변환
+  return window.btoa(Math.random().toString())
+    .slice(0, 20)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
 }
 
 export default function CheckoutPage() {
