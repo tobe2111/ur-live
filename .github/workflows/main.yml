@@ -45,9 +45,8 @@ jobs:
           VITE_SENTRY_DSN: https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
           VITE_SENTRY_ENVIRONMENT: production
 
-            - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist --project-name=ur-live --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
