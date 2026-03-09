@@ -23,11 +23,15 @@ export function useCart() {
   return useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
+      console.log('[useCart] 🛒 장바구니 데이터 조회 중...')
       const response = await api.get('/api/cart')
+      console.log('[useCart] ✅ 장바구니 데이터:', response.data.data)
       return response.data.data as Cart
     },
-    staleTime: 2 * 60 * 1000, // 2분간 캐시
-    gcTime: 10 * 60 * 1000,   // 10분 후 메모리 해제
+    staleTime: 0, // ✅ 항상 최신 데이터 가져오기 (캐시 사용 안 함)
+    gcTime: 5 * 60 * 1000,   // 5분 후 메모리 해제
+    refetchOnMount: 'always', // ✅ 컴포넌트 마운트 시 항상 새로고침
+    refetchOnWindowFocus: true, // ✅ 윈도우 포커스 시 새로고침
   })
 }
 

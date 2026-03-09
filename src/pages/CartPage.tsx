@@ -79,8 +79,8 @@ export default function CartPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   
-  // 🎯 React Query 훅 사용
-  const { data: cartData, isLoading: loading } = useCart()
+  // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
+  const { data: cartData, isLoading: loading, refetch } = useCart()
   const updateQuantityMutation = useUpdateCartQuantity()
   const removeItemMutation = useRemoveFromCart()
   const updateOptionMutation = useUpdateCartOption()
@@ -141,6 +141,10 @@ export default function CartPage() {
     // ✅ React Query가 자동으로 데이터 로딩
     if (!isLoggedIn()) {
       requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
+    } else {
+      // ✅ 페이지 마운트 시 항상 최신 장바구니 데이터 새로고침
+      console.log('[CartPage] 🔄 장바구니 데이터 새로고침')
+      refetch()
     }
   }, [])
   
