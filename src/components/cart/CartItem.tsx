@@ -54,7 +54,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
       
       {/* 상품 정보 */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 mb-1 truncate">
+        <h3 className="font-medium text-gray-900 mb-1 truncate text-[18px]">
           {item.product_name}
         </h3>
         

@@ -1,452 +1,622 @@
-# 토스 라이브 커머스 시스템 아키텍처 문서
+# 🏗️ UR-Live E-Commerce Platform Architecture
 
-## 1. 전체 시스템 아키텍처
-
-### 1.1 High-Level Architecture
+## 📁 프로젝트 구조 (Feature-Based Architecture)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Client Layer                              │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │ 시청자 브라우저 │  │ 관리자 브라우저│  │  모바일 앱   │          │
-│  │ (Live View)  │  │ (Admin Panel)│  │ (Toss App)  │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-│         ↓                  ↓                  ↓                  │
-│    WebSocket           HTTP API         Toss Bridge              │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                    Cloudflare Edge Network                       │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌─────────────────────────────┐         │
-│  │ Durable Objects  │  │    Hono Application         │         │
-│  │ (WebSocket Srv)  │  │   (API Routes + SSR)        │         │
-│  └──────────────────┘  └─────────────────────────────┘         │
-│           ↓                        ↓                             │
-│    State Management          Business Logic                      │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                      Data Layer                                  │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌─────────────────────────────┐         │
-│  │  Cloudflare D1   │  │   External Services         │         │
-│  │  (SQLite DB)     │  │   - YouTube Live API        │         │
-│  │                  │  │   - Toss Payments API       │         │
-│  └──────────────────┘  └─────────────────────────────┘         │
-└─────────────────────────────────────────────────────────────────┘
+src/
+├── 📱 App.tsx                          # Root component, Router setup
+├── 🔐 auth-utils.ts                   # Authentication utilities
+│
+├── 📦 components/                      # Presentational Components (UI)
+│   ├── auth/                          # Authentication UI components
+│   ├── browse/                        # Product browsing components
+│   ├── cart/                          # Shopping cart UI
+│   │   ├── CartHeader.tsx
+│   │   ├── CartItem.tsx
+│   │   ├── CartSummary.tsx
+│   │   └── EmptyCart.tsx
+│   ├── charts/                        # Dashboard charts
+│   ├── home/                          # Landing page sections
+│   ├── live/                          # Live streaming components
+│   ├── main/                          # Main layout (Nav, Footer, etc.)
+│   ├── my-page/                       # User profile components
+│   ├── payments/                      # Payment widgets (Toss, Stripe)
+│   ├── product/                       # Product detail components
+│   ├── search/                        # Search UI
+│   ├── seller-public/                 # Public seller pages
+│   └── ui/                            # Reusable UI primitives
+│
+├── 🎯 features/                        # Feature Modules (Business Logic)
+│   ├── account/                       # User account management
+│   │   ├── api/                       # Account API calls
+│   │   └── types/                     # Account types
+│   │
+│   ├── auth/                          # Authentication & Authorization
+│   │   ├── api/                       # Auth API calls
+│   │   ├── services/                  # Auth services (Firebase, Kakao, Google)
+│   │   │   ├── FirebaseAuthService.ts
+│   │   │   ├── GoogleAuthService.ts
+│   │   │   ├── KakaoAuthService.ts
+│   │   │   └── login-flow.service.ts
+│   │   └── types/                     # Auth types
+│   │
+│   ├── cart/                          # Shopping Cart
+│   │   └── api/                       # Cart API calls
+│   │
+│   ├── orders/                        # Order Management
+│   │   ├── api/                       # Order API calls
+│   │   ├── repositories/              # Order data access
+│   │   ├── services/                  # Order business logic
+│   │   └── types/                     # Order types
+│   │
+│   ├── payments/                      # Payment Processing
+│   │   └── api/                       # Payment API calls
+│   │
+│   ├── products/                      # Product Catalog
+│   │   ├── api/                       # Product API calls
+│   │   ├── repositories/              # Product data access
+│   │   ├── services/                  # Product business logic
+│   │   └── types/                     # Product types
+│   │
+│   ├── seller/                        # Seller Dashboard
+│   │   └── api/                       # Seller API calls
+│   │
+│   └── shipping/                      # Shipping & Delivery
+│       └── api/                       # Shipping API calls
+│
+├── 🎣 hooks/                           # Custom React Hooks
+│   ├── useCart.ts                     # Cart state & mutations (React Query)
+│   ├── useAuth.ts                     # Auth state
+│   ├── useProducts.ts                 # Product queries
+│   └── ...
+│
+├── 📚 lib/                             # External Libraries Integration
+│   ├── api.ts                         # Axios instance with interceptors
+│   ├── firebase.ts                    # Firebase config
+│   ├── firebase-auth.ts               # Firebase Auth lazy loading
+│   ├── firebase-admin.ts              # Firebase Admin SDK
+│   ├── firebase-config.ts             # Firebase configuration
+│   └── ...
+│
+├── 🛡️ middleware/                      # Request/Response Middleware
+│
+├── 📄 pages/                           # Page Components (Routes)
+│   ├── HomePage.tsx
+│   ├── CartPage.tsx
+│   ├── CheckoutPage.tsx
+│   ├── ProductDetailPage.tsx
+│   ├── UserProfilePage.tsx
+│   ├── admin/                         # Admin dashboard pages
+│   └── seller/                        # Seller dashboard pages
+│
+├── 🔧 services/                        # Shared Services
+│   └── payment/                       # Payment service integrations
+│
+├── 🗄️ shared/                          # Shared Resources
+│   ├── config/                        # App configuration
+│   ├── db/                            # Database utilities
+│   ├── repositories/                  # Shared data access patterns
+│   └── stores/                        # Global State (Zustand)
+│       ├── useAuthKR.ts               # Korean auth store
+│       ├── useAuthWorld.ts            # Global auth store
+│       └── useAuthUI.ts               # Auth UI state
+│
+├── 🎨 styles/                          # Global styles
+│
+├── 🧪 tests/                           # Test files
+│
+├── 📝 types/                           # Global TypeScript types
+│
+├── 🛠️ utils/                           # Utility functions
+│
+└── 👷 worker/                          # Cloudflare Worker (SSR/API)
+    ├── middleware/                    # Worker middleware
+    ├── services/                      # Worker services
+    └── utils/                         # Worker utilities
 ```
 
-## 2. 실시간 상품 전환 메커니즘
+## 🏛️ 아키텍처 패턴
 
-### 2.1 WebSocket 통신 흐름
-
-```
-관리자 (상품 전환 요청)
-    │
-    │ POST /api/admin/streams/1/change-product
-    │ { productId: 2 }
-    ↓
-┌──────────────────────────────────────┐
-│      Hono Backend (Worker)           │
-│                                      │
-│  1. 상품 정보 조회 (D1)               │
-│  2. 라이브 스트림 업데이트             │
-│  3. Durable Object 호출              │
-└──────────────────────────────────────┘
-    │
-    │ HTTP Request to Durable Object
-    │ POST /broadcast
-    │ { type: 'product_change', data: {...} }
-    ↓
-┌──────────────────────────────────────┐
-│   Durable Object (WebSocket Server)  │
-│                                      │
-│  1. 메시지 수신                       │
-│  2. 현재 상품 상태 업데이트            │
-│  3. 모든 연결된 세션에 브로드캐스트    │
-└──────────────────────────────────────┘
-    │
-    │ WebSocket.send()
-    │ (모든 시청자에게 동시 전송)
-    ↓
-┌──────────────────────────────────────┐
-│   시청자 브라우저 (N명)                │
-│                                      │
-│  1. WebSocket 메시지 수신             │
-│  2. 상품 정보 파싱                    │
-│  3. UI 업데이트 (새로고침 없음)        │
-│  4. 알림 표시                         │
-└──────────────────────────────────────┘
-```
-
-### 2.2 시간 순서도 (Sequence Diagram)
+### 1. **Feature-Based Architecture** (핵심 패턴)
 
 ```
-관리자      Hono API      D1 DB      Durable Object    시청자 (N명)
-  │            │            │              │                │
-  │ 상품 전환   │            │              │                │
-  │───────────>│            │              │                │
-  │            │ 상품 조회   │              │                │
-  │            │───────────>│              │                │
-  │            │<───────────│              │                │
-  │            │ 스트림 업데이트│            │                │
-  │            │───────────>│              │                │
-  │            │            │  브로드캐스트 │                │
-  │            │───────────────────────────>│                │
-  │            │            │              │ 메시지 전송     │
-  │            │            │              │───────────────>│
-  │            │            │              │───────────────>│
-  │            │            │              │───────────────>│
-  │<───────────│            │              │                │
-  │  응답      │            │              │                │
-  │            │            │              │                │  UI 업데이트
-  │            │            │              │                │  (실시간)
+feature/
+├── api/           # API 호출 레이어
+├── services/      # 비즈니스 로직 레이어
+├── repositories/  # 데이터 접근 레이어
+└── types/         # 타입 정의
 ```
 
-## 3. Durable Object 상세 설계
+**장점:**
+- ✅ 기능별 코드 응집도 증가
+- ✅ 팀 단위 개발 용이
+- ✅ 독립적 테스트 가능
+- ✅ 수평 확장 가능
 
-### 3.1 LiveStreamDurableObject 클래스 구조
+---
 
-```typescript
-class LiveStreamDurableObject {
-  // 상태 관리
-  private sessions: Set<WebSocket>      // 연결된 WebSocket 세션들
-  private viewerCount: number           // 현재 시청자 수
-  private currentProduct: Product       // 현재 소개 중인 상품
-
-  // 생명주기 메서드
-  constructor(state, env)
-  
-  // 요청 처리
-  async fetch(request): Promise<Response>
-    - WebSocket 업그레이드
-    - HTTP API (브로드캐스트, 상태 조회)
-  
-  // WebSocket 관리
-  handleSession(webSocket)
-    - 세션 등록
-    - 메시지 수신 처리
-    - 연결 종료 처리
-  
-  // 브로드캐스트
-  broadcast(message)
-    - 모든 세션에 메시지 전송
-    - 실패한 세션 제거
-  
-  broadcastViewerCount()
-    - 시청자 수 업데이트 전송
-}
-```
-
-### 3.2 WebSocket 메시지 프로토콜
-
-```typescript
-// 메시지 타입 정의
-type WSMessageType = 
-  | 'product_change'      // 상품 전환
-  | 'viewer_count'        // 시청자 수 업데이트
-  | 'cart_update'         // 장바구니 변경
-  | 'stream_status'       // 스트림 상태 변경
-  | 'chat_message';       // 채팅 메시지
-
-// 기본 메시지 구조
-interface WSMessage {
-  type: WSMessageType;
-  data: any;
-  timestamp: number;
-}
-
-// 상품 전환 메시지
-interface ProductChangeMessage {
-  type: 'product_change';
-  data: {
-    product: {
-      id: number;
-      name: string;
-      price: number;
-      image_url: string;
-      // ...
-    };
-    options: Array<{
-      id: number;
-      option_type: string;
-      option_value: string;
-      // ...
-    }>;
-  };
-  timestamp: number;
-}
-```
-
-## 4. 데이터베이스 스키마
-
-### 4.1 ER Diagram
+### 2. **Layered Architecture** (계층화)
 
 ```
-┌─────────────────┐         ┌─────────────────┐
-│  live_streams   │1       *│    products     │
-│─────────────────│────────>│─────────────────│
-│ id (PK)         │         │ id (PK)         │
-│ title           │         │ name            │
-│ youtube_vid     │         │ price           │
-│ status          │         │ stock           │
-│ current_prod_id │         │ live_stream_id  │
-└─────────────────┘         └─────────────────┘
-                                    │1
-                                    │
-                                    │*
-                            ┌───────────────────┐
-                            │ product_options   │
-                            │───────────────────│
-                            │ id (PK)           │
-                            │ product_id (FK)   │
-                            │ option_type       │
-                            │ option_value      │
-                            │ stock             │
-                            └───────────────────┘
-
-┌─────────────────┐         ┌─────────────────┐
-│     users       │1       *│   cart_items    │
-│─────────────────│────────>│─────────────────│
-│ id (PK)         │         │ id (PK)         │
-│ toss_user_id    │         │ user_id (FK)    │
-│ name            │         │ product_id (FK) │
-│ email           │         │ option_id (FK)  │
-└─────────────────┘         │ quantity        │
-      │1                    └─────────────────┘
-      │
-      │*
-┌─────────────────┐         ┌─────────────────┐
-│     orders      │1       *│   order_items   │
-│─────────────────│────────>│─────────────────│
-│ id (PK)         │         │ id (PK)         │
-│ order_number    │         │ order_id (FK)   │
-│ user_id (FK)    │         │ product_id (FK) │
-│ total_amount    │         │ quantity        │
-│ payment_status  │         │ price           │
-└─────────────────┘         └─────────────────┘
-```
-
-### 4.2 인덱스 전략
-
-```sql
--- 성능 최적화를 위한 인덱스
-CREATE INDEX idx_live_streams_status ON live_streams(status);
-CREATE INDEX idx_products_live_stream ON products(live_stream_id);
-CREATE INDEX idx_products_active ON products(is_active);
-CREATE INDEX idx_cart_items_user ON cart_items(user_id);
-CREATE INDEX idx_cart_items_product ON cart_items(product_id);
-CREATE INDEX idx_orders_user ON orders(user_id);
-CREATE INDEX idx_orders_status ON orders(payment_status);
-CREATE INDEX idx_users_toss_id ON users(toss_user_id);
-```
-
-## 5. API 엔드포인트 명세
-
-### 5.1 REST API
-
-```
-[라이브 스트림]
-GET    /api/streams                - 진행 중인 라이브 목록
-GET    /api/streams/:id            - 라이브 상세 정보
-GET    /api/streams/:id/products   - 라이브의 상품 목록
-
-[상품]
-GET    /api/products/:id           - 상품 상세 (옵션 포함)
-
-[장바구니]
-GET    /api/cart/:userId           - 장바구니 조회
-POST   /api/cart                   - 장바구니 추가
-DELETE /api/cart/:cartItemId       - 장바구니 삭제
-
-[주문]
-GET    /api/orders/:userId         - 주문 내역
-POST   /api/orders                 - 주문 생성
-
-[관리자]
-POST   /api/admin/streams/:id/change-product  - 상품 전환
-```
-
-### 5.2 WebSocket API
-
-```
-[연결]
-GET    /api/ws/:streamId           - WebSocket 연결
-       (Upgrade: websocket)
-
-[메시지]
-Client -> Server:
-  - ping/pong (연결 유지)
-  - 추가 메시지 타입 (향후 확장)
-
-Server -> Client:
-  - product_change: 상품 전환 알림
-  - viewer_count: 시청자 수 업데이트
-  - stream_status: 스트림 상태 변경
-```
-
-## 6. 프론트엔드 아키텍처
-
-### 6.1 페이지 구조
-
-```
-/                               - 메인 (라이브 목록)
-  │
-  ├── /live/:streamId           - 라이브 스트림 뷰어
-  │   ├── YouTube Player        - 영상 플레이어
-  │   ├── Product Bottom Sheet  - 상품 플로팅 바텀시트
-  │   └── Cart Floating Button  - 장바구니 버튼
-  │
-  ├── /cart                     - 장바구니
-  │   ├── Cart Items List       - 장바구니 상품 목록
-  │   ├── Shipping Form         - 배송 정보 입력
-  │   └── Payment Button        - 결제 버튼
-  │
-  ├── /payment/success          - 결제 성공
-  ├── /payment/fail             - 결제 실패
-  │
-  └── /admin                    - 관리자 대시보드
-      ├── Current Stream Info   - 현재 라이브 정보
-      └── Product List          - 상품 목록 및 전환
-```
-
-### 6.2 상태 관리
-
-```javascript
-// 라이브 스트림 페이지 상태
-const liveState = {
-  streamId: string,
-  ws: WebSocket,
-  currentProduct: Product | null,
-  cart: CartItem[],
-  userId: string,
-  viewerCount: number,
-  player: YouTubePlayer,
-  sheetExpanded: boolean,
-};
-
-// 관리자 대시보드 상태
-const adminState = {
-  currentStream: LiveStream | null,
-  products: Product[],
-  selectedProductId: number | null,
-};
-```
-
-## 7. 보안 고려사항
-
-### 7.1 인증 및 권한
-
-```
-[시청자]
-- 토스 로그인 (구현 예정)
-- JWT 토큰 기반 세션 관리
-- WebSocket 연결 시 토큰 검증
-
-[관리자]
-- 별도의 관리자 인증
-- IP 화이트리스트 (옵션)
-- API 키 기반 인증
-```
-
-### 7.2 데이터 보안
-
-```
-[전송 암호화]
-- HTTPS 강제 (TLS 1.2+)
-- WSS (WebSocket Secure)
-
-[데이터베이스]
-- Prepared Statements (SQL Injection 방지)
-- 입력 검증 및 이스케이프
-- 민감 정보 암호화 (결제 정보 등)
-
-[API 보안]
-- Rate Limiting
-- CORS 정책
-- XSS 방지
-```
-
-## 8. 성능 최적화
-
-### 8.1 Cloudflare Edge 활용
-
-```
-[전역 배포]
-- 전 세계 200+ 데이터센터
-- 사용자와 가장 가까운 엣지에서 응답
-- 낮은 레이턴시 (< 50ms)
-
-[캐싱 전략]
-- 정적 파일 CDN 캐싱
-- API 응답 캐싱 (적절한 경우)
-- 이미지 최적화 (Cloudflare Images)
-```
-
-### 8.2 데이터베이스 최적화
-
-```
-[쿼리 최적화]
-- 인덱스 활용
-- JOIN 최소화
-- N+1 쿼리 방지
-
-[연결 관리]
-- D1의 자동 연결 풀링
-- Prepared Statement 재사용
-```
-
-## 9. 모니터링 및 로깅
-
-### 9.1 로그 수집
-
-```
-[애플리케이션 로그]
-- console.log() → Cloudflare Workers Logs
-- 에러 로그 별도 수집
-- 성능 메트릭 (응답 시간, CPU 사용량)
-
-[WebSocket 로그]
-- 연결/종료 이벤트
-- 메시지 전송/수신 통계
-- 에러 발생 추적
-```
-
-### 9.2 알림
-
-```
-[중요 이벤트]
-- 서버 에러 (5xx)
-- 데이터베이스 오류
-- WebSocket 연결 실패
-- 높은 에러율
-```
-
-## 10. 확장 가능성
-
-### 10.1 수평 확장
-
-```
-[Cloudflare 자동 스케일링]
-- 요청량에 따라 자동 스케일
-- 무제한 동시 연결 (Durable Objects)
-- 글로벌 분산 처리
-```
-
-### 10.2 기능 확장
-
-```
-[향후 추가 기능]
-- 실시간 채팅
-- 좋아요/반응 이모지
-- 라이브 리플레이
-- AI 추천 시스템
-- 다국어 지원
+┌─────────────────────────────────────────┐
+│         Presentation Layer              │
+│   (Pages + Components)                  │
+│   - UI 렌더링                            │
+│   - 사용자 인터랙션                       │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│         Business Logic Layer            │
+│   (Hooks + Services)                    │
+│   - React Query (캐시/상태)              │
+│   - 비즈니스 룰                          │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│         Data Access Layer               │
+│   (API + Repositories)                  │
+│   - HTTP 요청                            │
+│   - 데이터 변환                          │
+└──────────────┬──────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│         Infrastructure Layer            │
+│   (lib + worker)                        │
+│   - Firebase, Axios 설정                 │
+│   - Cloudflare Worker                   │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-**문서 버전**: 1.0
-**최종 업데이트**: 2026-02-01
+### 3. **React Query Architecture** (데이터 페칭)
+
+```typescript
+// 🎣 Custom Hook (Business Logic)
+export function useCart() {
+  return useQuery({
+    queryKey: ['cart'],
+    queryFn: async () => {
+      const response = await api.get('/api/cart')
+      return parseCartResponse(response.data)
+    },
+    staleTime: 0,
+    refetchOnMount: 'always'
+  })
+}
+
+// 📄 Page Component (Presentation)
+function CartPage() {
+  const { data: cartData, isLoading } = useCart()
+  
+  if (isLoading) return <Loading />
+  
+  return <CartUI items={cartData?.items} />
+}
+```
+
+**장점:**
+- ✅ 자동 캐시 관리
+- ✅ 낙관적 업데이트
+- ✅ 백그라운드 새로고침
+- ✅ 중복 요청 제거
+
+---
+
+### 4. **Zustand State Management** (전역 상태)
+
+```typescript
+// 🗄️ Auth Store
+export const useAuthKR = create<AuthState>()(
+  devtools(
+    persist(
+      (set, get) => ({
+        user: null,
+        isLoading: true,
+        isAuthReady: false,
+        
+        // Actions
+        loginWithEmail: async (email, password) => { ... },
+        loginWithKakao: () => { ... },
+        logout: async () => { ... },
+        initializeAuth: async () => { ... }
+      }),
+      { name: 'auth-kr-storage' }
+    )
+  )
+)
+```
+
+**사용:**
+- 🔐 Authentication state
+- 🌍 Multi-region support (KR vs World)
+- 💾 LocalStorage persistence
+- 🔄 Real-time sync
+
+---
+
+## 🔄 데이터 흐름 (Data Flow)
+
+### 예시: 장바구니 → 결제 흐름
+
+```
+┌─────────────────┐
+│  ProductDetail  │ 상품 상세
+└────────┬────────┘
+         │ addToCart()
+         ▼
+┌─────────────────┐
+│   useAddToCart  │ React Query Mutation
+└────────┬────────┘
+         │ api.post('/api/cart')
+         ▼
+┌─────────────────┐
+│  Backend API    │ Cloudflare Worker
+│  /api/cart      │
+└────────┬────────┘
+         │ DB Insert
+         ▼
+┌─────────────────┐
+│   Database      │ PostgreSQL
+└────────┬────────┘
+         │ Success Response
+         ▼
+┌─────────────────┐
+│  Query Invalid  │ React Query Cache
+└────────┬────────┘
+         │ Auto Refetch
+         ▼
+┌─────────────────┐
+│    CartPage     │ 장바구니 페이지
+└────────┬────────┘
+         │ navigate('/checkout')
+         ▼
+┌─────────────────┐
+│  CheckoutPage   │ 결제 페이지
+└────────┬────────┘
+         │ TossPayments.requestPayment()
+         ▼
+┌─────────────────┐
+│  Payment APIs   │ Toss/Stripe
+└─────────────────┘
+```
+
+---
+
+## 🔐 인증 흐름 (Authentication Flow)
+
+### Firebase + Kakao/Google OAuth
+
+```
+┌──────────────┐
+│   User       │
+└──────┬───────┘
+       │ Click "Login with Kakao"
+       ▼
+┌──────────────────┐
+│ KakaoAuthService │
+└──────┬───────────┘
+       │ Redirect to Kakao
+       ▼
+┌──────────────────┐
+│   Kakao OAuth    │
+└──────┬───────────┘
+       │ accessToken
+       ▼
+┌──────────────────┐
+│  Backend API     │
+│  /auth/kakao     │
+└──────┬───────────┘
+       │ Firebase Custom Token
+       ▼
+┌──────────────────┐
+│ FirebaseAuthSvc  │
+│ signInWithToken  │
+└──────┬───────────┘
+       │ onAuthStateChanged
+       ▼
+┌──────────────────┐
+│   useAuthKR      │ Zustand Store
+└──────┬───────────┘
+       │ setUser()
+       ▼
+┌──────────────────┐
+│  App Components  │ Auto Re-render
+└──────────────────┘
+```
+
+---
+
+## 📦 핵심 모듈 상세
+
+### 1. **Cart Module** (장바구니)
+
+```
+features/cart/
+└── api/
+    └── cartApi.ts          # API 함수
+
+hooks/
+└── useCart.ts              # React Query 훅
+    ├── useCart()           # GET /api/cart
+    ├── useAddToCart()      # POST /api/cart
+    ├── useUpdateQuantity() # PATCH /api/cart/:id
+    └── useRemoveFromCart() # DELETE /api/cart/:id
+
+pages/
+└── CartPage.tsx            # UI 컴포넌트
+
+components/cart/
+├── CartHeader.tsx
+├── CartItem.tsx
+├── CartSummary.tsx
+└── EmptyCart.tsx
+```
+
+**특징:**
+- ✅ 낙관적 업데이트 (Optimistic Updates)
+- ✅ 자동 캐시 무효화
+- ✅ 에러 롤백 (Error Rollback)
+
+---
+
+### 2. **Auth Module** (인증)
+
+```
+features/auth/
+├── services/
+│   ├── FirebaseAuthService.ts    # Firebase 인증
+│   ├── KakaoAuthService.ts       # 카카오 로그인
+│   ├── GoogleAuthService.ts      # 구글 로그인
+│   └── login-flow.service.ts     # 통합 로그인 플로우
+├── api/
+│   └── authApi.ts                # 인증 API
+└── types/
+    └── auth.types.ts             # 인증 타입
+
+lib/
+├── firebase-auth.ts              # Firebase Lazy Loading
+└── firebase-config.ts            # Firebase 설정
+
+shared/stores/
+├── useAuthKR.ts                  # 한국 인증 스토어
+├── useAuthWorld.ts               # 글로벌 인증 스토어
+└── useAuthUI.ts                  # 인증 UI 상태
+```
+
+**특징:**
+- ✅ Multi-provider (Kakao, Google, Email)
+- ✅ Firebase Custom Token
+- ✅ Lazy Loading (성능 최적화)
+- ✅ Multi-region support
+
+---
+
+### 3. **Payment Module** (결제)
+
+```
+features/payments/
+└── api/
+    └── paymentApi.ts
+
+components/payments/
+├── TossPaymentWidget.tsx         # 토스페이먼츠
+└── StripeCheckout.tsx            # Stripe (글로벌)
+
+pages/
+├── CheckoutPage.tsx              # 결제 페이지
+├── PaymentSuccessPage.tsx        # 결제 성공
+└── PaymentFailPage.tsx           # 결제 실패
+
+services/payment/
+└── tossPaymentsService.ts        # 토스 통합
+```
+
+**특징:**
+- ✅ 토스페이먼츠 (한국)
+- ✅ Stripe (글로벌)
+- ✅ 셀러별 배송비 계산
+- ✅ 주문 백업 (localStorage)
+
+---
+
+## 🚀 성능 최적화
+
+### 1. **Code Splitting**
+
+```typescript
+// Lazy Loading Pages
+const CartPage = lazy(() => import('./pages/CartPage'))
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
+
+// Lazy Loading Libraries
+const getFirebaseAuth = async () => {
+  const { getAuth } = await import('firebase/auth')
+  return getAuth(app)
+}
+```
+
+### 2. **React Query Caching**
+
+```typescript
+{
+  staleTime: 0,              // 항상 최신
+  gcTime: 5 * 60 * 1000,     // 5분 후 GC
+  refetchOnMount: 'always',  // 마운트 시 새로고침
+  refetchOnWindowFocus: true // 포커스 시 새로고침
+}
+```
+
+### 3. **Image Optimization**
+
+```typescript
+<OptimizedImage
+  src={product.image}
+  alt={product.name}
+  loading="lazy"
+  width={300}
+  height={300}
+/>
+```
+
+---
+
+## 🛡️ 에러 처리
+
+### 1. **API 레벨**
+
+```typescript
+// lib/api.ts - Axios Interceptor
+api.interceptors.response.use(
+  response => response,
+  async error => {
+    if (error.response?.status === 401) {
+      // Token refresh
+      const newToken = await refreshToken()
+      error.config.headers.Authorization = `Bearer ${newToken}`
+      return api.request(error.config)
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+### 2. **React Query 레벨**
+
+```typescript
+useMutation({
+  mutationFn: addToCart,
+  onMutate: async (newItem) => {
+    // 낙관적 업데이트
+    const previousCart = queryClient.getQueryData(['cart'])
+    queryClient.setQueryData(['cart'], old => [...old, newItem])
+    return { previousCart }
+  },
+  onError: (err, variables, context) => {
+    // 롤백
+    queryClient.setQueryData(['cart'], context.previousCart)
+  }
+})
+```
+
+### 3. **UI 레벨**
+
+```typescript
+<ErrorBoundary>
+  <Suspense fallback={<Loading />}>
+    <Routes />
+  </Suspense>
+</ErrorBoundary>
+```
+
+---
+
+## 📊 모니터링
+
+### Sentry Integration
+
+```typescript
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  environment: import.meta.env.MODE,
+  tracesSampleRate: 1.0,
+  integrations: [
+    new Sentry.BrowserTracing(),
+    new Sentry.Replay()
+  ]
+})
+```
+
+---
+
+## 🌍 Multi-Region Support
+
+```typescript
+// Region Detection
+const isKorea = region === 'KR'
+
+// Region-specific Auth Store
+const useAuth = isKorea ? useAuthKR : useAuthWorld
+
+// Region-specific Payment
+const PaymentWidget = isKorea ? TossPaymentWidget : StripeCheckout
+```
+
+---
+
+## 🔧 Development Tools
+
+- **TypeScript**: Type safety
+- **Vite**: Fast dev server & build
+- **React Query**: Data fetching & caching
+- **Zustand**: Global state management
+- **Tailwind CSS**: Utility-first styling
+- **Sentry**: Error tracking
+- **ESLint + Prettier**: Code quality
+
+---
+
+## 📝 핵심 설계 원칙
+
+1. **Separation of Concerns** (관심사 분리)
+   - UI ↔ Business Logic ↔ Data Access 명확히 분리
+
+2. **Single Responsibility** (단일 책임)
+   - 각 모듈/함수는 하나의 책임만
+
+3. **DRY (Don't Repeat Yourself)** (반복 금지)
+   - 재사용 가능한 훅/유틸 활용
+
+4. **Composition over Inheritance** (상속보다 조합)
+   - React 컴포넌트 합성 패턴
+
+5. **API-First Design** (API 우선 설계)
+   - 백엔드 API 구조가 프론트엔드 구조 결정
+
+---
+
+## 📈 확장성 고려사항
+
+1. **Horizontal Scaling** (수평 확장)
+   - Feature 단위로 팀 분할 가능
+   - 독립적인 모듈 개발
+
+2. **Vertical Scaling** (수직 확장)
+   - Layer 단위로 최적화 가능
+   - Caching, CDN, SSR 적용
+
+3. **Multi-tenancy** (멀티 테넌시)
+   - 셀러별 독립적인 상품/주문 관리
+   - Region별 다른 인증/결제
+
+---
+
+## 🎯 최근 개선 사항 (2026-03-09)
+
+### 1. 배송비 계산 통일
+- CartPage ↔ CheckoutPage 로직 일치
+- 셀러별 배송비 정확히 계산
+
+### 2. API 응답 파싱 개선
+- 일관된 파싱 로직 (`{success: true, data: ...}`)
+- React Query 캐시 최적화
+
+### 3. 인증 안정화
+- Firebase persistence 강제 적용
+- 전역 onAuthStateChanged 리스너
+- lastLoginUid 즉시 복원
+
+### 4. 에러 처리 개선
+- useAuthKR unsubscribe null 체크
+- Sentry 에러 완전 제거
+
+---
+
+## 🔮 향후 개선 계획
+
+1. **E2E Testing** (Playwright/Cypress)
+2. **Performance Monitoring** (Web Vitals)
+3. **A/B Testing** (LaunchDarkly)
+4. **GraphQL** (REST → GraphQL 마이그레이션)
+5. **Micro-frontends** (대규모 팀 확장 시)
+
