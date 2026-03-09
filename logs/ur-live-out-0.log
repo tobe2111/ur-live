@@ -44,3 +44,40 @@
 2026-03-09 03:54:57 +00:00: _headers modified. Re-evaluating...
 2026-03-09 03:54:57 +00:00: ✨ Parsed 0 valid redirect rules.
 2026-03-09 03:54:57 +00:00: ✨ Parsed 5 valid header rules.
+2026-03-09 07:50:01 +00:00: 
+2026-03-09 07:50:01 +00:00:  ⛅️ wrangler 4.70.0 (update available 4.71.0)
+2026-03-09 07:50:01 +00:00: ─────────────────────────────────────────────
+2026-03-09 07:50:01 +00:00: ✨ Compiled Worker successfully
+2026-03-09 07:50:02 +00:00: ✨ Parsed 0 valid redirect rules.
+2026-03-09 07:50:02 +00:00: ✨ Parsed 5 valid header rules.
+2026-03-09 07:50:02 +00:00: Using secrets defined in .dev.vars
+2026-03-09 07:50:02 +00:00: Your Worker has access to the following bindings:
+2026-03-09 07:50:02 +00:00: Binding                                                                            Resource                  Mode
+2026-03-09 07:50:02 +00:00: env.SESSION_KV (SESSION_KV)                                                        KV Namespace              local
+2026-03-09 07:50:02 +00:00: env.CACHE_KV (CACHE_KV)                                                            KV Namespace              local
+2026-03-09 07:50:02 +00:00: env.LIVE_CACHE (LIVE_CACHE)                                                        KV Namespace              local
+2026-03-09 07:50:02 +00:00: env.DB (toss-live-commerce-db)                                                     D1 Database               local
+2026-03-09 07:50:02 +00:00: env.toss-live-commerce-db (local-toss-live-commerce-db)                            D1 Database               local
+2026-03-09 07:50:02 +00:00: env.CF_PAGES ("1")                                                                 Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.CF_PAGES_BRANCH ("main")                                                       Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.CF_PAGES_COMMIT_SHA ("78f226328238e13e722b2dfc4cfd2cddc62f0...")               Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.CF_PAGES_URL ("https://78f22632.ur-live.pages.dev")                            Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_DATABASE_URL ("(hidden)")                                             Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_API_KEY ("(hidden)")                                                  Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_PROJECT_ID ("(hidden)")                                               Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_AUTH_DOMAIN ("(hidden)")                                              Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_STORAGE_BUCKET ("(hidden)")                                           Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_MESSAGING_SENDER_ID ("(hidden)")                                      Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_APP_ID ("(hidden)")                                                   Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_PRIVATE_KEY ("(hidden)")                                              Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.FIREBASE_CLIENT_EMAIL ("(hidden)")                                             Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.JWT_SECRET ("(hidden)")                                                        Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.REFRESH_TOKEN_SECRET ("(hidden)")                                              Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.TOSS_SECRET_KEY ("(hidden)")                                                   Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.RESEND_API_KEY ("(hidden)")                                                    Environment Variable      local
+2026-03-09 07:50:02 +00:00: env.EMAIL_FROM ("(hidden)")                                                        Environment Variable      local
+2026-03-09 07:50:02 +00:00: 
+2026-03-09 07:50:02 +00:00: ⎔ Starting local server...
+2026-03-09 07:50:03 +00:00: [wrangler:info] Ready on http://0.0.0.0:3000
+2026-03-09 07:50:03 +00:00: [wrangler:info] - http://127.0.0.1:3000
+2026-03-09 07:50:03 +00:00: [wrangler:info] - http://169.254.0.21:3000

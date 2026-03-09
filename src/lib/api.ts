@@ -13,7 +13,7 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { auth } from './firebase';
+import { getFirebaseAuth } from './firebase';
 
 // API 클라이언트 생성
 const api = axios.create({
@@ -96,6 +96,7 @@ api.interceptors.request.use(
     
     // 🔥 Buyers/Others: Firebase ID Token
     try {
+      const auth = await getFirebaseAuth();
       let user = auth.currentUser;
       
       // auth.currentUser가 null이면 onAuthStateChanged로 대기 (최대 3초)
@@ -148,17 +149,22 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       
       // 🔄 토큰 갱신 재시도 (모바일 네트워크 이슈 대응)
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          console.log('[API] 🔄 Retrying with refreshed token...');
-          const newToken = await user.getIdToken(true); // 강제 갱신
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          console.error('[API] ❌ Token refresh failed:', refreshError);
-          captureError(refreshError as Error, { context: 'API.tokenRefresh', url: originalRequest.url });
+      try {
+        const auth = await getFirebaseAuth();
+        const user = auth.currentUser;
+        if (user) {
+          try {
+            console.log('[API] 🔄 Retrying with refreshed token...');
+            const newToken = await user.getIdToken(true); // 강제 갱신
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            return api(originalRequest);
+          } catch (refreshError) {
+            console.error('[API] ❌ Token refresh failed:', refreshError);
+            captureError(refreshError as Error, { context: 'API.tokenRefresh', url: originalRequest.url });
+          }
         }
+      } catch (error) {
+        console.error('[API] ❌ Failed to load Firebase Auth:', error);
       }
       
       // 1️⃣ 공개 API는 401 무시
