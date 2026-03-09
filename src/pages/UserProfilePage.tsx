@@ -42,11 +42,13 @@ export default function UserProfilePage() {
       loginWithFirebaseToken(firebaseToken)
         .then(() => {
           console.log('[UserProfilePage] ✅ 로그인 완료, URL 정리 중...')
-          setIsProcessingToken(false)
           
-          // ✅ URL 완전 정리 - 모든 파라미터 제거
-          window.history.replaceState({}, '', '/user/profile')
+          // ✅ URL 완전 정리 - React Router navigate 사용
+          navigate('/user/profile', { replace: true })
           console.log('[UserProfilePage] ✅ URL 정리 완료')
+          
+          // 로딩 해제는 약간 지연
+          setTimeout(() => setIsProcessingToken(false), 100)
         })
         .catch((error) => {
           console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
@@ -57,9 +59,10 @@ export default function UserProfilePage() {
         })
     } 
     // ✅ 이미 로그인되어 있는데 URL에 토큰이 남아있으면 정리
-    else if ((firebaseToken || userName) && user) {
+    else if ((firebaseToken || userName) && user && !hasProcessedToken.current) {
       console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
-      window.history.replaceState({}, '', '/user/profile')
+      hasProcessedToken.current = true
+      navigate('/user/profile', { replace: true })
     }
   }, [searchParams, isAuthReady, user, navigate])
 
