@@ -94,6 +94,47 @@ const PageLoader = () => (
 function AppContent() {
   console.log('[App] 📱 AppContent 마운트됨')
   
+  // ✅ 전역 onAuthStateChanged 리스너 등록 (최상단, 한 번만)
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    
+    const setupGlobalAuthListener = async () => {
+      try {
+        const { onAuthStateChanged } = await import('@/lib/firebase-auth');
+        const { isKorea } = await import('@/shared/config/region');
+        const isKR = isKorea();
+        
+        console.log(`[App] 🔐 전역 Auth 리스너 설정 (${isKR ? 'KR' : 'WORLD'})`);
+        
+        unsubscribe = await onAuthStateChanged(async (user) => {
+          console.log('[App] 🔄 Auth State 변경 감지:', user?.uid || 'null');
+          
+          // Zustand store에 즉시 반영
+          if (isKR) {
+            const { useAuthKR } = await import('@/shared/stores/useAuthKR');
+            useAuthKR.getState().setUser(user);
+            useAuthKR.getState().setAuthReady(true);
+          } else {
+            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
+            useAuthWorld.getState().setUser(user);
+            useAuthWorld.getState().setAuthReady(true);
+          }
+        });
+      } catch (err) {
+        console.error('[App] ❌ 전역 Auth 리스너 설정 실패:', err);
+      }
+    };
+    
+    setupGlobalAuthListener();
+    
+    return () => {
+      if (unsubscribe) {
+        console.log('[App] 🔌 전역 Auth 리스너 해제');
+        unsubscribe();
+      }
+    };
+  }, []);
+  
   // ✅ Zustand Store 인증 초기화 (Week 5 Day 1)
   useEffect(() => {
     const initAuth = async () => {

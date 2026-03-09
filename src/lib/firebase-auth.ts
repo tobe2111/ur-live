@@ -29,7 +29,7 @@ export async function getFirebaseAuth(): Promise<Auth> {
 
   try {
     // Lazy load firebase/auth
-    const { getAuth } = await import('firebase/auth');
+    const { getAuth, setPersistence, browserLocalPersistence } = await import('firebase/auth');
     const { initializeAll } = await import('./firebase-config');
     
     // Initialize Firebase app first
@@ -40,6 +40,15 @@ export async function getFirebaseAuth(): Promise<Auth> {
     }
 
     authInstance = getAuth(app);
+    
+    // ✅ 무조건 browserLocalPersistence 설정 (세션 유지 핵심)
+    try {
+      await setPersistence(authInstance, browserLocalPersistence);
+      console.log('[Firebase Auth] ✅ Persistence set to browserLocalPersistence (세션 유지)');
+    } catch (persistErr) {
+      console.error('[Firebase Auth] ❌ Persistence 설정 실패:', persistErr);
+    }
+    
     console.log('[Firebase Auth] ✅ Lazy loaded successfully');
     return authInstance;
   } catch (error) {

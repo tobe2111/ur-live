@@ -46,7 +46,7 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
 
     // 2. Lazy load Firebase Auth
     console.log('[LoginFlow] 🔥 Lazy loading Firebase Auth...')
-    const { signInWithCustomToken, onAuthStateChanged } = await import('@/lib/firebase-auth')
+    const { signInWithCustomToken, getFirebaseAuth } = await import('@/lib/firebase-auth')
     
     // 3. Firebase Custom Token으로 로그인
     console.log('[LoginFlow] 🔥 Firebase Custom Token으로 로그인 중...')
@@ -54,32 +54,34 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
     
     console.log('[LoginFlow] ✅ Firebase 로그인 성공:', credential.user.uid)
 
-    // ✅ 중요: onAuthStateChanged가 발화될 때까지 대기 (최대 2초)
-    console.log('[LoginFlow] ⏳ Auth State 업데이트 대기 중...')
-    await new Promise<void>(async (resolve) => {
-      let unsubscribe: (() => void) | null = null
-      
-      const timeout = setTimeout(() => {
-        if (unsubscribe) unsubscribe()
-        console.warn('[LoginFlow] ⚠️ Auth State 대기 타임아웃 (2초)')
-        resolve() // 타임아웃되어도 계속 진행
-      }, 2000)
-
-      try {
-        unsubscribe = await onAuthStateChanged(async (user) => {
-          if (user && user.uid === credential.user.uid) {
-            clearTimeout(timeout)
-            if (unsubscribe) unsubscribe()
-            console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
-            resolve()
-          }
-        })
-      } catch (err) {
-        clearTimeout(timeout)
-        console.error('[LoginFlow] ❌ Auth State listener 설정 실패:', err)
-        resolve() // 실패해도 계속 진행
-      }
+    // ✅ 중요: Auth State 동기화 대기 (800ms + currentUser 확인)
+    console.log('[LoginFlow] ⏳ Auth State 동기화 대기 중...')
+    const auth = await getFirebaseAuth()
+    
+    await new Promise<void>((resolve) => {
+      const startTime = Date.now()
+      const checkInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime
+        
+        // currentUser가 설정되었는지 체크
+        if (auth.currentUser && auth.currentUser.uid === credential.user.uid) {
+          clearInterval(checkInterval)
+          console.log(`[LoginFlow] ✅ Auth State 동기화 완료 (${elapsed}ms):`, auth.currentUser.uid)
+          resolve()
+          return
+        }
+        
+        // 최대 1000ms 대기
+        if (elapsed >= 1000) {
+          clearInterval(checkInterval)
+          console.warn('[LoginFlow] ⚠️ Auth State 동기화 타임아웃 (1000ms)')
+          resolve() // 타임아웃되어도 계속 진행
+        }
+      }, 50) // 50ms마다 체크
     })
+    
+    // ✅ lastLoginUid 저장 (다음 로드 시 즉시 인식)
+    localStorage.setItem('lastLoginUid', credential.user.uid)
 
     // 4. 백그라운드에서 Token 갱신 (속도 최적화)
     credential.user.getIdToken(true)
@@ -102,37 +104,39 @@ export async function loginWithFirebaseToken(firebaseToken: string): Promise<voi
   
   try {
     // Lazy load Firebase Auth
-    const { signInWithCustomToken, onAuthStateChanged } = await import('@/lib/firebase-auth')
+    const { signInWithCustomToken, getFirebaseAuth } = await import('@/lib/firebase-auth')
     
     const credential = await signInWithCustomToken(firebaseToken)
     console.log('[LoginFlow] ✅ Firebase 로그인 성공:', credential.user.uid)
 
-    // ✅ 중요: onAuthStateChanged가 발화될 때까지 대기 (최대 2초)
-    console.log('[LoginFlow] ⏳ Auth State 업데이트 대기 중...')
-    await new Promise<void>(async (resolve) => {
-      let unsubscribe: (() => void) | null = null
-      
-      const timeout = setTimeout(() => {
-        if (unsubscribe) unsubscribe()
-        console.warn('[LoginFlow] ⚠️ Auth State 대기 타임아웃 (2초)')
-        resolve() // 타임아웃되어도 계속 진행
-      }, 2000)
-
-      try {
-        unsubscribe = await onAuthStateChanged(async (user) => {
-          if (user && user.uid === credential.user.uid) {
-            clearTimeout(timeout)
-            if (unsubscribe) unsubscribe()
-            console.log('[LoginFlow] ✅ Auth State 업데이트 완료:', user.uid)
-            resolve()
-          }
-        })
-      } catch (err) {
-        clearTimeout(timeout)
-        console.error('[LoginFlow] ❌ Auth State listener 설정 실패:', err)
-        resolve() // 실패해도 계속 진행
-      }
+    // ✅ 중요: Auth State 동기화 대기 (800ms + currentUser 확인)
+    console.log('[LoginFlow] ⏳ Auth State 동기화 대기 중...')
+    const auth = await getFirebaseAuth()
+    
+    await new Promise<void>((resolve) => {
+      const startTime = Date.now()
+      const checkInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime
+        
+        // currentUser가 설정되었는지 체크
+        if (auth.currentUser && auth.currentUser.uid === credential.user.uid) {
+          clearInterval(checkInterval)
+          console.log(`[LoginFlow] ✅ Auth State 동기화 완료 (${elapsed}ms):`, auth.currentUser.uid)
+          resolve()
+          return
+        }
+        
+        // 최대 1000ms 대기
+        if (elapsed >= 1000) {
+          clearInterval(checkInterval)
+          console.warn('[LoginFlow] ⚠️ Auth State 동기화 타임아웃 (1000ms)')
+          resolve() // 타임아웃되어도 계속 진행
+        }
+      }, 50) // 50ms마다 체크
     })
+    
+    // ✅ lastLoginUid 저장 (다음 로드 시 즉시 인식)
+    localStorage.setItem('lastLoginUid', credential.user.uid)
 
     // 백그라운드 Token 갱신
     credential.user.getIdToken(true)
