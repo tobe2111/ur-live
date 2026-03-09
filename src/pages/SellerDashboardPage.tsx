@@ -8,24 +8,9 @@
  * - 기간 선택 (7일, 30일, 90일)
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts'
 import { 
   TrendingUp, 
   Package, 
@@ -38,6 +23,9 @@ import {
   Clock,
   XCircle
 } from 'lucide-react'
+
+// Lazy load DashboardCharts component
+const DashboardCharts = lazy(() => import('@/components/charts/DashboardCharts'))
 
 interface DailyStats {
   date: string
@@ -69,8 +57,6 @@ interface DashboardData {
   summary: Summary
   topProducts: TopProduct[]
 }
-
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
 
 export default function SellerDashboardPage() {
   const navigate = useNavigate()

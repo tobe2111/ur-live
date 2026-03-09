@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ref, onValue, push, set, query, orderByChild, limitToLast, off } from 'firebase/database'
-import { database } from '@/lib/firebase-config'
+import type { Database } from 'firebase/database'
+
+// Lazy load Firebase Database SDK
+let databaseInstance: Database | null = null
 
 /**
  * 채팅 메시지 타입
@@ -37,6 +39,7 @@ export interface UseFirebaseChatReturn {
  * - 자동 재연결
  * - 에러 핸들링 및 연결 상태 관리
  * - 컴포넌트 언마운트 시 자동 정리
+ * - Lazy loading for Firebase Database SDK (성능 최적화)
  * 
  * @param liveId - 라이브 스트림 ID
  * @param enabled - Firebase 연결 활성화 여부 (기본값: true)
@@ -91,7 +94,14 @@ export function useFirebaseChat(
         messagePreview: message.substring(0, 50)
       })
 
-      const chatRef = ref(database, `chats/stream${liveId}`)
+      // Lazy load Firebase Database for sending
+      if (!databaseInstance) {
+        const { database: db } = await import('@/lib/firebase-config')
+        databaseInstance = db
+      }
+
+      const { ref, push, set } = await import('firebase/database')
+      const chatRef = ref(databaseInstance, `chats/stream${liveId}`)
       const newMessageRef = push(chatRef)
       
       const timestamp = Date.now()
@@ -130,66 +140,80 @@ export function useFirebaseChat(
 
     console.log(`[useFirebaseChat] 🔥 Connecting to Firebase chat for stream ${liveId}`)
 
-    try {
-      // Firebase Realtime Database 참조
-      const chatRef = ref(database, `chats/stream${liveId}`)
-      chatRefCache.current = chatRef
-
-      // 최근 50개 메시지만 조회
-      const chatQuery = query(
-        chatRef,
-        orderByChild('timestamp'),
-        limitToLast(50)
-      )
-
-      // 실시간 리스너 등록
-      const unsubscribe = onValue(
-        chatQuery,
-        (snapshot) => {
-          console.log('[useFirebaseChat] 📩 Firebase data received')
-          
-          if (snapshot.exists()) {
-            const data = snapshot.val()
-            const messagesArray: ChatMessage[] = Object.keys(data).map(key => ({
-              id: key,
-              userId: data[key].userId || 0,
-              userName: data[key].userName || '익명',
-              userType: data[key].userType || 'viewer',
-              message: data[key].message || '',
-              timestamp: data[key].timestamp || Date.now(),
-              isSeller: data[key].isSeller || false,
-              isAdmin: data[key].isAdmin || false
-            }))
-
-            // 시간 순 정렬
-            messagesArray.sort((a, b) => a.timestamp - b.timestamp)
-            
-            setMessages(messagesArray)
-            setIsConnected(true)
-            setError(null)
-            
-            console.log(`[useFirebaseChat] ✅ Loaded ${messagesArray.length} messages`)
-          } else {
-            console.log('[useFirebaseChat] ℹ️ No messages yet')
-            setMessages([])
-            setIsConnected(true)
-            setError(null)
-          }
-        },
-        (err) => {
-          console.error('[useFirebaseChat] ❌ Firebase error:', err)
-          setError(err.message)
-          setIsConnected(false)
+    // Lazy load Firebase Database
+    const loadFirebaseDatabase = async () => {
+      try {
+        // Load Firebase Database instance if not already loaded
+        if (!databaseInstance) {
+          const { database: db } = await import('@/lib/firebase-config')
+          databaseInstance = db
         }
-      )
 
-      unsubscribeRef.current = unsubscribe
+        // Load Firebase Database functions
+        const { ref, onValue, query, orderByChild, limitToLast, off } = await import('firebase/database')
 
-    } catch (err) {
-      console.error('[useFirebaseChat] ❌ Firebase 연결 오류:', err)
-      setError('채팅 연결 실패')
-      setIsConnected(false)
+        // Firebase Realtime Database 참조
+        const chatRef = ref(databaseInstance, `chats/stream${liveId}`)
+        chatRefCache.current = chatRef
+
+        // 최근 50개 메시지만 조회
+        const chatQuery = query(
+          chatRef,
+          orderByChild('timestamp'),
+          limitToLast(50)
+        )
+
+        // 실시간 리스너 등록
+        const unsubscribe = onValue(
+          chatQuery,
+          (snapshot) => {
+            console.log('[useFirebaseChat] 📩 Firebase data received')
+            
+            if (snapshot.exists()) {
+              const data = snapshot.val()
+              const messagesArray: ChatMessage[] = Object.keys(data).map(key => ({
+                id: key,
+                userId: data[key].userId || 0,
+                userName: data[key].userName || '익명',
+                userType: data[key].userType || 'viewer',
+                message: data[key].message || '',
+                timestamp: data[key].timestamp || Date.now(),
+                isSeller: data[key].isSeller || false,
+                isAdmin: data[key].isAdmin || false
+              }))
+
+              // 시간 순 정렬
+              messagesArray.sort((a, b) => a.timestamp - b.timestamp)
+              
+              setMessages(messagesArray)
+              setIsConnected(true)
+              setError(null)
+              
+              console.log(`[useFirebaseChat] ✅ Loaded ${messagesArray.length} messages`)
+            } else {
+              console.log('[useFirebaseChat] ℹ️ No messages yet')
+              setMessages([])
+              setIsConnected(true)
+              setError(null)
+            }
+          },
+          (err) => {
+            console.error('[useFirebaseChat] ❌ Firebase error:', err)
+            setError(err.message)
+            setIsConnected(false)
+          }
+        )
+
+        unsubscribeRef.current = unsubscribe
+
+      } catch (err) {
+        console.error('[useFirebaseChat] ❌ Firebase 연결 오류:', err)
+        setError('채팅 연결 실패')
+        setIsConnected(false)
+      }
     }
+
+    loadFirebaseDatabase()
 
     // 정리 함수
     return () => {
@@ -201,8 +225,12 @@ export function useFirebaseChat(
       }
       
       if (chatRefCache.current) {
-        off(chatRefCache.current)
-        chatRefCache.current = null
+        import('firebase/database').then(({ off }) => {
+          off(chatRefCache.current)
+          chatRefCache.current = null
+        }).catch(err => {
+          console.error('[useFirebaseChat] ❌ Error cleaning up Firebase:', err)
+        })
       }
     }
   }, [liveId, enabled])
