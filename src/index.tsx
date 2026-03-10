@@ -1724,24 +1724,24 @@ app.use('*', async (c, next) => {
   c.header('Content-Security-Policy', 
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
-      "https://*.cloudflare.com https://static.cloudflareinsights.com " +
+      "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://cdn.jsdelivr.net https://unpkg.com " +
       "https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
+      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://googletagmanager.com " +
       "https://*.firebaseapp.com; " +
     "script-src-elem 'self' 'unsafe-inline' " +
-      "https://*.cloudflare.com https://static.cloudflareinsights.com " +
+      "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://cdn.jsdelivr.net https://unpkg.com " +
       "https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
+      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://googletagmanager.com " +
       "https://*.firebaseapp.com; " +
     "style-src 'self' 'unsafe-inline' " +
       "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com " +
@@ -4016,20 +4016,32 @@ async function verifyAdminSession(c: any) {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      const decoded = await verifyJWT(token, c.env.JWT_SECRET);
+      const jwtSecret = getJWTSecret(c.env);
+      const decoded = await verifyJWTToken(token, jwtSecret);
+      
+      // Check if decoded has required fields
+      if (!decoded) {
+        console.error('[verifyAdminSession] JWT decode returned null');
+        throw new Error('Invalid token structure');
+      }
       
       // Check if user is admin
-      if (decoded.userType !== 'admin') {
+      if (decoded.userType !== 'admin' && decoded.type !== 'admin') {
+        console.warn('[verifyAdminSession] User is not an admin:', decoded.userType || decoded.type);
         return { success: false, error: '관리자 권한이 필요합니다' };
       }
       
+      console.log('[verifyAdminSession] ✅ JWT verified successfully for admin:', decoded.id || decoded.userId);
+      
       return { 
         success: true, 
-        adminId: decoded.userId,  // For admins, userId IS adminId
+        adminId: decoded.userId || decoded.id,  // For admins, userId IS adminId
         userData: decoded 
       };
     } catch (err) {
       console.error('[verifyAdminSession] JWT verification failed:', err);
+      console.error('[verifyAdminSession] Token preview:', token.substring(0, 30));
+      console.error('[verifyAdminSession] JWT_SECRET exists:', !!c.env.JWT_SECRET);
       // Fall through to try session token
     }
   }
@@ -4054,20 +4066,32 @@ async function verifySellerSession(c: any) {
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
-      const decoded = await verifyJWT(token, c.env.JWT_SECRET);
+      const jwtSecret = getJWTSecret(c.env);
+      const decoded = await verifyJWTToken(token, jwtSecret);
+      
+      // Check if decoded has required fields
+      if (!decoded) {
+        console.error('[verifySellerSession] JWT decode returned null');
+        throw new Error('Invalid token structure');
+      }
       
       // Check if user is seller
-      if (decoded.userType !== 'seller') {
+      if (decoded.userType !== 'seller' && decoded.type !== 'seller') {
+        console.warn('[verifySellerSession] User is not a seller:', decoded.userType || decoded.type);
         return { success: false, error: '판매자 권한이 필요합니다' };
       }
       
+      console.log('[verifySellerSession] ✅ JWT verified successfully for seller:', decoded.id || decoded.userId);
+      
       return { 
         success: true, 
-        sellerId: decoded.userId,  // For sellers, userId IS sellerId
+        sellerId: decoded.userId || decoded.id,  // For sellers, userId IS sellerId
         userData: decoded 
       };
     } catch (err) {
       console.error('[verifySellerSession] JWT verification failed:', err);
+      console.error('[verifySellerSession] Token preview:', token.substring(0, 30));
+      console.error('[verifySellerSession] JWT_SECRET exists:', !!c.env.JWT_SECRET);
       // Fall through to try session token
     }
   }

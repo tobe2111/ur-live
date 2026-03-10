@@ -245,26 +245,50 @@ api.interceptors.response.use(
       console.error('[API] 📊 Server error:', errorData);
       
       // ============================================================
-      // 🔐 SELLER/ADMIN: JWT 만료 → 바로 로그아웃 (재발급 없음)
+      // 🔐 SELLER/ADMIN: JWT 401 처리
       // ============================================================
       if (url.includes('/api/seller/') || url.includes('/api/admin/')) {
-        console.error('[API] 🚨 Seller/Admin JWT expired or invalid');
+        const isSeller = url.includes('/api/seller/');
+        const tokenKey = isSeller ? 'seller_token' : 'admin_token';
+        const fallbackKey = 'access_token';
+        const existingToken = localStorage.getItem(tokenKey) || localStorage.getItem(fallbackKey);
         
-        captureError(new Error(`Seller/Admin 401: ${errorData?.error || 'Unauthorized'}`), {
-          context: url.includes('/api/seller/') ? 'SELLER.401' : 'ADMIN.401',
+        // 🚨 CRITICAL: 토큰이 실제로 있는데 401이 나면 → 서버 검증 문제 (clear 하지 않음!)
+        if (existingToken) {
+          console.error('[API] 🚨 Token exists but server rejected it!');
+          console.error('[API] 📍 This is likely a server-side verification issue');
+          console.error('[API] 🔑 Token preview:', existingToken.substring(0, 30) + '...');
+          console.error('[API] 📊 Server response:', errorData);
+          
+          // Sentry에 보고만 하고 clear 하지 않음
+          captureError(new Error(`${isSeller ? 'Seller' : 'Admin'} token rejected: ${errorData?.error || 'Unknown'}`), {
+            context: isSeller ? 'SELLER.TOKEN_REJECTED' : 'ADMIN.TOKEN_REJECTED',
+            url: url,
+            tokenPreview: existingToken.substring(0, 30)
+          });
+          
+          // 사용자에게 알림 (재로그인 요구하지 않음)
+          console.warn('[API] ⚠️ NOT clearing localStorage - keeping token for debugging');
+          
+          return Promise.reject(error);
+        }
+        
+        // 토큰이 실제로 없는 경우에만 로그아웃 처리
+        console.error('[API] 🚨 No token found - redirecting to login');
+        
+        captureError(new Error(`${isSeller ? 'Seller' : 'Admin'} 401: No token`), {
+          context: isSeller ? 'SELLER.NO_TOKEN' : 'ADMIN.NO_TOKEN',
           url: url
         });
         
-        // Clear all tokens
         localStorage.clear();
         sessionStorage.clear();
         
-        // Redirect to appropriate login
-        if (url.includes('/api/seller/')) {
-          alert('셀러 인증이 만료되었습니다.\n\n다시 로그인해주세요.');
+        if (isSeller) {
+          alert('셀러 인증이 필요합니다.\n\n로그인해주세요.');
           window.location.href = '/seller/login';
         } else {
-          alert('관리자 인증이 만료되었습니다.\n\n다시 로그인해주세요.');
+          alert('관리자 인증이 필요합니다.\n\n로그인해주세요.');
           window.location.href = '/admin/login';
         }
         

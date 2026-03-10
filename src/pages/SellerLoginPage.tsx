@@ -60,11 +60,13 @@ export default function SellerLoginPage() {
         console.log('[SellerLogin] Seller ID:', seller.id)
         
         // ✅ Store JWT tokens (required for authentication)
+        // 🚨 CRITICAL: seller_token (NOT access_token) to distinguish from buyer tokens
         if (accessToken) {
-          localStorage.setItem('access_token', accessToken)
+          localStorage.setItem('seller_token', accessToken)
+          localStorage.setItem('access_token', accessToken) // Fallback for compatibility
         }
         if (refreshToken) {
-          localStorage.setItem('refresh_token', refreshToken)
+          localStorage.setItem('seller_refresh_token', refreshToken)
         }
         
         // Store user info
@@ -78,7 +80,8 @@ export default function SellerLoginPage() {
         console.log('[SellerLogin] ✅ Tokens and user info saved to localStorage')
         console.log('  - user_type:', localStorage.getItem('user_type'))
         console.log('  - seller_id:', seller.id)
-        console.log('  - access_token:', accessToken ? 'stored' : 'missing')
+        console.log('  - seller_token:', accessToken ? 'stored' : 'missing')
+        console.log('  - access_token (fallback):', accessToken ? 'stored' : 'missing')
         
         // Navigate to seller dashboard
         console.log('[SellerLogin] ✅ Navigating to /seller...')
