@@ -12584,7 +12584,10 @@ app.post('/api/orders/:orderNumber/refund', cors(), requireAuth, async (c) => {
 });
 
 // ==================== Seller APIs (JWT 인증 적용) ====================
-app.use('/api/seller/*', requireAuth)
+// ⚠️ REMOVED: app.use('/api/seller/*', requireAuth)
+// 이유: Line 1928에 공개 API 체크 미들웨어가 이미 있음
+// 공개 API(/api/seller/public/*)는 인증 불필요
+// 비공개 API는 Line 1928 미들웨어에서 requireAuth 호출
 
 // 셀러 매출 조회 API
 app.get('/api/seller/sales', cors(), async (c) => {
