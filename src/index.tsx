@@ -1733,6 +1733,16 @@ app.use('*', async (c, next) => {
       "https://*.sentry.io " +
       "https://www.googletagmanager.com https://www.google-analytics.com " +
       "https://*.firebaseapp.com; " +
+    "script-src-elem 'self' 'unsafe-inline' " +
+      "https://*.cloudflare.com https://static.cloudflareinsights.com " +
+      "https://*.tosspayments.com https://js.tosspayments.com " +
+      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
+      "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
+      "https://cdn.jsdelivr.net https://unpkg.com " +
+      "https://*.sentry.io " +
+      "https://www.googletagmanager.com https://www.google-analytics.com " +
+      "https://*.firebaseapp.com; " +
     "style-src 'self' 'unsafe-inline' " +
       "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com " +
       "https://m.stripe.network; " +

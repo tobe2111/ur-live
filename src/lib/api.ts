@@ -99,9 +99,16 @@ api.interceptors.request.use(
       return config;
     }
     
+    // 🔐 Seller/Admin: JWT Token (stored as 'access_token')
+    // Check if Authorization header is already set (manual override)
+    const hasManualAuth = config.headers['Authorization'] || config.headers['authorization'];
+    if (hasManualAuth) {
+      console.log(`[API] 🔐 Manual Authorization header detected, skipping auto-attach`);
+      return config;
+    }
+    
     const userType = localStorage.getItem('user_type');
     
-    // 🔐 Seller/Admin: JWT Token (stored as 'access_token')
     if (userType === 'seller' || userType === 'admin') {
       const jwtToken = localStorage.getItem('access_token');
       if (jwtToken) {
@@ -110,6 +117,16 @@ api.interceptors.request.use(
         return config;
       } else {
         console.warn(`[API] ⚠️ No JWT token found for ${userType}`);
+        // Give localStorage a moment to synchronize (race condition fix)
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const retryToken = localStorage.getItem('access_token');
+        if (retryToken) {
+          config.headers['Authorization'] = `Bearer ${retryToken}`;
+          console.log(`[API] 🔐 JWT Token attached after retry (${userType})`);
+          return config;
+        } else {
+          console.error(`[API] ❌ JWT token still missing after retry for ${userType}`);
+        }
       }
     }
     

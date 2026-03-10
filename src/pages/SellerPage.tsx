@@ -110,9 +110,8 @@ export default function SellerPage() {
 
       if (token) {
         try {
-          const statsResponse = await api.get('/api/seller/stats', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
+          // API interceptor will automatically add Authorization header
+          const statsResponse = await api.get('/api/seller/stats')
           
           if (statsResponse.data.success) {
             setStats(statsResponse.data.data)
@@ -128,12 +127,8 @@ export default function SellerPage() {
         }
       }
 
-      // Load streams
-      const streamsResponse = await api.get('/api/seller/streams', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      // Load streams (API interceptor adds auth automatically)
+      const streamsResponse = await api.get('/api/seller/streams')
       if (streamsResponse.data.success) {
         setStreams(streamsResponse.data.data || [])
       }
