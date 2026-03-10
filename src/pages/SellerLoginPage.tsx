@@ -1,19 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
-import { isKorea } from '@/config/region'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { getUserType } from '@/utils/auth'
 import { ArrowLeft } from 'lucide-react'
 
 export default function SellerLoginPage() {
   const navigate = useNavigate()
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  const isAuthReady = useAuth(state => state.isAuthReady)
-  const user = useAuth(state => state.user)
-  const isLoggedIn = !!user
-  const logout = useAuth(state => state.logout)
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -21,21 +12,16 @@ export default function SellerLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // ✅ 이미 로그인되어 있고 판매자면 리다이렉트
+  // ✅ 이미 셀러 로그인되어 있으면 리다이렉트 (Firebase 절대 사용 안 함!)
   useEffect(() => {
-    if (isAuthReady && isLoggedIn) {
-      const userType = getUserType()
-      if (userType === 'seller') {
-        console.log('[SellerLoginPage] 이미 판매자 로그인됨 - /seller로 리다이렉트')
-        navigate('/seller', { replace: true })
-      } else if (userType) {
-        console.log('[SellerLoginPage] 다른 사용자 타입으로 로그인됨:', userType, '- 자동 로그아웃')
-        // 판매자가 아닌 경우 자동 로그아웃
-        logout()
-        setError('판매자 계정으로 로그인해주세요.')
-      }
+    const sellerToken = localStorage.getItem('seller_token')
+    const userType = localStorage.getItem('user_type')
+    
+    if (sellerToken && userType === 'seller') {
+      console.log('[SellerLoginPage] 이미 판매자 로그인됨 - /seller로 리다이렉트')
+      navigate('/seller', { replace: true })
     }
-  }, [isAuthReady, isLoggedIn, navigate, logout])
+  }, [navigate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -43,6 +29,8 @@ export default function SellerLoginPage() {
     setLoading(true)
     
     try {
+      console.log('[SellerLogin] 🔐 Starting JWT-only login (NO Firebase!)')
+      
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/seller/login', {
         email: formData.email,
@@ -50,24 +38,20 @@ export default function SellerLoginPage() {
       })
 
       if (response.data.success) {
-        // Clear old sessions
-        console.log('[SellerLogin] Clearing old sessions...')
+        console.log('[SellerLogin] ✅ JWT Login successful')
+        
+        // Clear ALL old sessions to avoid conflicts
         localStorage.clear()
+        sessionStorage.clear()
         
         const { seller, accessToken, refreshToken } = response.data.data
         
-        console.log('[SellerLogin] ✅ JWT Login successful')
         console.log('[SellerLogin] Seller ID:', seller.id)
         
-        // ✅ Store JWT tokens (required for authentication)
-        // 🚨 CRITICAL: seller_token (NOT access_token) to distinguish from buyer tokens
-        if (accessToken) {
-          localStorage.setItem('seller_token', accessToken)
-          localStorage.setItem('access_token', accessToken) // Fallback for compatibility
-        }
-        if (refreshToken) {
-          localStorage.setItem('seller_refresh_token', refreshToken)
-        }
+        // ✅ Store JWT tokens (PRIMARY: seller_token)
+        localStorage.setItem('seller_token', accessToken)
+        localStorage.setItem('access_token', accessToken) // Fallback compatibility
+        localStorage.setItem('seller_refresh_token', refreshToken)
         
         // Store user info
         localStorage.setItem('user_type', 'seller')
@@ -77,18 +61,17 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
         
-        console.log('[SellerLogin] ✅ Tokens and user info saved to localStorage')
-        console.log('  - user_type:', localStorage.getItem('user_type'))
-        console.log('  - seller_id:', seller.id)
-        console.log('  - seller_token:', accessToken ? 'stored' : 'missing')
-        console.log('  - access_token (fallback):', accessToken ? 'stored' : 'missing')
+        console.log('[SellerLogin] ✅ Tokens and user info saved')
+        console.log('  ✅ seller_token:', accessToken ? 'STORED' : 'MISSING')
+        console.log('  ✅ user_type:', 'seller')
+        console.log('  ✅ seller_id:', seller.id)
         
         // Navigate to seller dashboard
         console.log('[SellerLogin] ✅ Navigating to /seller...')
         navigate('/seller', { replace: true })
       }
     } catch (error: any) {
-      console.error('[SellerLogin] Error:', error)
+      console.error('[SellerLogin] ❌ Error:', error)
       setError(error.response?.data?.error || '로그인에 실패했습니다.')
     } finally {
       setLoading(false)

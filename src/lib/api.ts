@@ -115,64 +115,71 @@ api.interceptors.request.use(
     console.log(`[API] 🔍 Checking auth for ${url}`);
     
     // ============================================================
-    // 🔐 SELLER API: /api/seller/* + /api/notifications → seller_token 또는 access_token
+    // 🔐 SELLER API: /api/seller/* → seller_token ONLY
     // Firebase 절대 사용 안함!
     // ============================================================
-    if (url.includes('/api/seller/') || url.includes('/api/notifications')) {
-      const apiType = url.includes('/api/notifications') ? 'Notifications' : 'Seller';
-      console.log(`[API] 🏪 ${apiType} API detected, using JWT only (NO FIREBASE)`);
+    if (url.startsWith('/api/seller/')) {
+      console.log('[API] 🏪 Seller API detected - using seller_token ONLY (NO FIREBASE!)');
       
-      // Priority: seller_token > access_token
-      let jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
-      const tokenSource = localStorage.getItem('seller_token') ? 'seller_token' : 'access_token';
+      const sellerToken = localStorage.getItem('seller_token');
       
-      if (!jwtToken) {
-        // Retry after 100ms (localStorage sync)
-        console.warn('[API] ⚠️ Seller token not found, retrying...');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
+      if (!sellerToken) {
+        console.error('[API] ❌ seller_token missing! This WILL cause 401!');
+        console.error('[API] 📦 localStorage keys:', Object.keys(localStorage));
+        throw new Error('Seller token missing - please login again');
       }
       
-      if (jwtToken) {
-        config.headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log(`[API] ✅ Seller JWT attached from ${tokenSource}`);
-        console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
-        return config;
-      } else {
-        console.error('[API] ❌ Seller token missing! localStorage:', Object.keys(localStorage));
-        console.error('[API] 🚨 This will result in 401 error!');
-        return config;
-      }
+      config.headers['Authorization'] = `Bearer ${sellerToken}`;
+      console.log('[API] ✅ seller_token attached');
+      console.log('[API] 🔑 Token preview:', sellerToken.substring(0, 20) + '...');
+      return config; // ⚠️ EARLY RETURN - Firebase 절대 안 씀!
     }
     
     // ============================================================
-    // 🔐 ADMIN API: /api/admin/* → admin_token 또는 access_token
+    // 🔐 ADMIN API: /api/admin/* → admin_token ONLY
     // Firebase 절대 사용 안함!
     // ============================================================
-    if (url.includes('/api/admin/')) {
-      console.log('[API] 👑 Admin API detected, using JWT only (NO FIREBASE)');
+    if (url.startsWith('/api/admin/')) {
+      console.log('[API] 👑 Admin API detected - using admin_token ONLY (NO FIREBASE!)');
       
-      // Priority: admin_token > access_token
-      let jwtToken = localStorage.getItem('admin_token') || localStorage.getItem('access_token');
-      const tokenSource = localStorage.getItem('admin_token') ? 'admin_token' : 'access_token';
+      const adminToken = localStorage.getItem('admin_token');
       
-      if (!jwtToken) {
-        // Retry after 100ms (localStorage sync)
-        console.warn('[API] ⚠️ Admin token not found, retrying...');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        jwtToken = localStorage.getItem('admin_token') || localStorage.getItem('access_token');
+      if (!adminToken) {
+        console.error('[API] ❌ admin_token missing! This WILL cause 401!');
+        console.error('[API] 📦 localStorage keys:', Object.keys(localStorage));
+        throw new Error('Admin token missing - please login again');
       }
       
-      if (jwtToken) {
-        config.headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log(`[API] ✅ Admin JWT attached from ${tokenSource}`);
-        console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
-        return config;
-      } else {
-        console.error('[API] ❌ Admin token missing! localStorage:', Object.keys(localStorage));
-        console.error('[API] 🚨 This will result in 401 error!');
-        return config;
+      config.headers['Authorization'] = `Bearer ${adminToken}`;
+      console.log('[API] ✅ admin_token attached');
+      console.log('[API] 🔑 Token preview:', adminToken.substring(0, 20) + '...');
+      return config; // ⚠️ EARLY RETURN - Firebase 절대 안 씀!
+    }
+    
+    // ============================================================
+    // 🔔 NOTIFICATIONS API: /api/notifications
+    // user_type에 따라 seller_token, admin_token, 또는 Firebase 사용
+    // ============================================================
+    if (url.startsWith('/api/notifications')) {
+      const userType = localStorage.getItem('user_type');
+      console.log(`[API] 🔔 Notifications API - user_type: ${userType}`);
+      
+      if (userType === 'seller') {
+        const sellerToken = localStorage.getItem('seller_token');
+        if (sellerToken) {
+          config.headers['Authorization'] = `Bearer ${sellerToken}`;
+          console.log('[API] ✅ Seller JWT attached for notifications');
+          return config;
+        }
+      } else if (userType === 'admin') {
+        const adminToken = localStorage.getItem('admin_token');
+        if (adminToken) {
+          config.headers['Authorization'] = `Bearer ${adminToken}`;
+          console.log('[API] ✅ Admin JWT attached for notifications');
+          return config;
+        }
       }
+      // Fall through to Firebase for regular users
     }
     
     // ============================================================

@@ -1,22 +1,35 @@
 /**
  * 셀러 JWT 인증 헬퍼 함수
- * seller_session_token 대신 access_token (JWT) 사용
+ * ⚠️ Firebase 절대 사용 안 함! seller_token만 사용!
  */
 
 export function getSellerToken(): string | null {
-  // JWT 우선 사용
+  // PRIMARY: seller_token (최우선!)
+  const sellerToken = localStorage.getItem('seller_token')
+  if (sellerToken) {
+    return sellerToken
+  }
+  
+  // Fallback: access_token (호환성)
   const accessToken = localStorage.getItem('access_token')
-  if (accessToken) {
+  const userType = localStorage.getItem('user_type')
+  if (accessToken && userType === 'seller') {
     return accessToken
   }
   
-  // 레거시 호환성
-  return localStorage.getItem('seller_session_token')
+  return null
 }
 
 export function isSellerAuthenticated(): boolean {
   const token = getSellerToken()
   const userType = localStorage.getItem('user_type')
+  
+  console.log('[SellerAuth] 🔍 Checking:', {
+    hasToken: !!token,
+    userType,
+    result: !!token && userType === 'seller'
+  })
+  
   return !!token && userType === 'seller'
 }
 
@@ -26,14 +39,30 @@ export function getSellerId(): string | null {
 
 export function redirectToLogin(navigate: any) {
   console.log('[SellerAuth] ❌ Not authenticated, redirecting to login')
+  
+  // Clear invalid tokens
+  localStorage.removeItem('seller_token')
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('seller_refresh_token')
+  localStorage.removeItem('user_type')
+  localStorage.removeItem('seller_id')
+  
   navigate('/seller/login', { replace: true })
 }
 
 export function logoutSeller(navigate: any) {
-  // 🔧 표준 logout 함수 사용 (JWT + 레거시 키 모두 삭제)
-  const { logout } = require('@/utils/auth')
-  logout()
+  console.log('[SellerAuth] 🚪 Logging out seller...')
   
-  console.log('[SellerAuth] 🚪 셀러 로그아웃 완료')
-  navigate('/seller/login')
+  // Clear all seller-related data
+  localStorage.removeItem('seller_token')
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('seller_refresh_token')
+  localStorage.removeItem('user_type')
+  localStorage.removeItem('seller_id')
+  localStorage.removeItem('user_id')
+  localStorage.removeItem('seller_name')
+  localStorage.removeItem('seller_email')
+  
+  console.log('[SellerAuth] ✅ Seller logged out')
+  navigate('/seller/login', { replace: true })
 }

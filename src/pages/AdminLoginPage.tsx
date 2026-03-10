@@ -1,45 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { getUserType } from '@/utils/auth'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/config/region'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-  
-  // ✅ Region 기반 Store 선택
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  
-  // ✅ Selector로 필요한 상태만 구독
-  const user = useAuth(state => state.user)
-  const isAuthReady = useAuth(state => state.isAuthReady)
-  const logout = useAuth(state => state.logout)
-  
-  // ✅ 계산된 값
-  const isLoggedIn = !!user
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // ✅ 이미 로그인되어 있고 관리자면 리다이렉트
+  // ✅ 이미 관리자 로그인되어 있으면 리다이렉트 (Firebase 절대 사용 안 함!)
   useEffect(() => {
-    if (isAuthReady && isLoggedIn) {
-      const userType = getUserType()
-      if (userType === 'admin') {
-        console.log('[AdminLoginPage] 이미 관리자 로그인됨 - /admin으로 리다이렉트')
-        navigate('/admin', { replace: true })
-      } else if (userType) {
-        console.log('[AdminLoginPage] 다른 사용자 타입으로 로그인됨:', userType, '- 자동 로그아웃')
-        // 관리자가 아닌 경우 자동 로그아웃
-        logout()
-        setError('관리자 계정으로 로그인해주세요.')
-      }
+    const adminToken = localStorage.getItem('admin_token')
+    const userType = localStorage.getItem('user_type')
+    
+    if (adminToken && userType === 'admin') {
+      console.log('[AdminLoginPage] 이미 관리자 로그인됨 - /admin으로 리다이렉트')
+      navigate('/admin', { replace: true })
     }
-  }, [isAuthReady, isLoggedIn, navigate, logout])
+  }, [navigate])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -47,6 +26,8 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
+      console.log('[AdminLogin] 🔐 Starting JWT-only login (NO Firebase!)')
+      
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
         email,
@@ -54,33 +35,33 @@ export default function AdminLoginPage() {
       })
 
       if (response.data.success) {
-        // Clear old sessions
-        console.log('[AdminLogin] Clearing old sessions...')
+        console.log('[AdminLogin] ✅ JWT Login successful')
+        
+        // Clear ALL old sessions to avoid conflicts
         localStorage.clear()
+        sessionStorage.clear()
         
         const { admin, accessToken, refreshToken } = response.data.data
         
-        console.log('[AdminLogin] ✅ JWT Login successful')
         console.log('[AdminLogin] Admin ID:', admin.id)
         
-        // ✅ Store JWT tokens (required for authentication)
-        if (accessToken) {
-          localStorage.setItem('access_token', accessToken)
-        }
-        if (refreshToken) {
-          localStorage.setItem('refresh_token', refreshToken)
-        }
+        // ✅ Store JWT tokens (PRIMARY: admin_token)
+        localStorage.setItem('admin_token', accessToken)
+        localStorage.setItem('access_token', accessToken) // Fallback compatibility
+        localStorage.setItem('admin_refresh_token', refreshToken)
         
         // Store user info
         localStorage.setItem('user_type', 'admin')
         localStorage.setItem('admin_id', admin.id.toString())
         localStorage.setItem('user_id', admin.id.toString())
         localStorage.setItem('user_name', admin.name || admin.email)
+        localStorage.setItem('admin_name', admin.name || '')
+        localStorage.setItem('admin_email', admin.email || '')
         
-        console.log('[AdminLogin] ✅ Tokens and user info saved to localStorage')
-        console.log('  - user_type:', localStorage.getItem('user_type'))
-        console.log('  - admin_id:', admin.id)
-        console.log('  - access_token:', accessToken ? 'stored' : 'missing')
+        console.log('[AdminLogin] ✅ Tokens and user info saved')
+        console.log('  ✅ admin_token:', accessToken ? 'STORED' : 'MISSING')
+        console.log('  ✅ user_type:', 'admin')
+        console.log('  ✅ admin_id:', admin.id)
         
         // Navigate to admin dashboard
         console.log('[AdminLogin] ✅ Navigating to /admin...')
@@ -89,7 +70,7 @@ export default function AdminLoginPage() {
         setError(response.data.error || '로그인 실패')
       }
     } catch (err: any) {
-      console.error('[AdminLogin] Error:', err)
+      console.error('[AdminLogin] ❌ Error:', err)
       setError(err.response?.data?.message || err.response?.data?.error || '로그인 실패')
     } finally {
       setLoading(false)

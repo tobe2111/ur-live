@@ -83,13 +83,14 @@ export default function AdminPage() {
     }
     
     // Check admin session
-    const token = localStorage.getItem('access_token')
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
     const userType = localStorage.getItem('user_type')
     const adminId = localStorage.getItem('admin_id')
     
     console.log('[AdminPage] 🔍 Authentication check:', {
       hasToken: !!token,
       tokenLength: token?.length,
+      tokenSource: localStorage.getItem('admin_token') ? 'admin_token' : 'access_token',
       userType,
       adminId,
       allKeys: Object.keys(localStorage),
@@ -97,7 +98,7 @@ export default function AdminPage() {
     })
     
     if (!token) {
-      console.log('[AdminPage] ❌ No session token found')
+      console.log('[AdminPage] ❌ No admin token found')
       navigate('/admin/login', { replace: true })
       return
     }
@@ -120,17 +121,13 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const token = localStorage.getItem('access_token')
+      // Note: Authorization header will be added automatically by the API interceptor
       
       // Load all sellers
-      const sellersRes = await api.get('/api/admin/sellers', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const sellersRes = await api.get('/api/admin/sellers')
 
       // Load pending sellers
-      const pendingRes = await api.get('/api/admin/sellers/pending', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const pendingRes = await api.get('/api/admin/sellers/pending')
       
       // Load streams
       const streamsRes = await api.get('/api/streams')
@@ -155,6 +152,8 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error('Failed to load data:', err)
       if (err.response?.status === 401) {
+        console.log('[AdminPage] ❌ 401 Unauthorized - clearing admin session')
+        localStorage.removeItem('admin_token')
         localStorage.removeItem('access_token')
         localStorage.removeItem('user_type')
         navigate('/admin/login')
@@ -165,10 +164,8 @@ export default function AdminPage() {
 
   async function loadDashboardStats() {
     try {
-      const token = localStorage.getItem('access_token')
-      const response = await api.get('/api/admin/dashboard/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      // Note: Authorization header will be added automatically by the API interceptor
+      const response = await api.get('/api/admin/dashboard/stats')
       
       if (response.data.success) {
         setDashboardStats(response.data.stats)
@@ -183,11 +180,10 @@ export default function AdminPage() {
     if (!confirm('이 판매자를 승인하시겠습니까?')) return
 
     try {
-      const token = localStorage.getItem('access_token')
+      // Note: Authorization header will be added automatically by the API interceptor
       const response = await api.patch(
         `/api/admin/sellers/${sellerId}/approve`,
-        {},
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        {}
       )
       alert(response.data.message || '판매자 승인 완료!')
       loadData()
@@ -203,11 +199,10 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('access_token')
+      // Note: Authorization header will be added automatically by the API interceptor
       const response = await api.patch(
         `/api/admin/sellers/${selectedSeller.id}/reject`,
-        { reason: rejectionReason },
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { reason: rejectionReason }
       )
       alert(response.data.message || '판매자 승인이 거부되었습니다')
       setRejectModalOpen(false)
@@ -229,10 +224,8 @@ export default function AdminPage() {
     if (!confirm('정말 이 라이브를 삭제하시겠습니까?')) return
 
     try {
-      const token = localStorage.getItem('access_token')
-      await api.delete(`/api/admin/streams/${streamId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      // Note: Authorization header will be added automatically by the API interceptor
+      await api.delete(`/api/admin/streams/${streamId}`)
       alert('라이브 삭제 완료!')
       loadData()
     } catch (err: any) {
@@ -251,11 +244,10 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('access_token')
+      // Note: Authorization header will be added automatically by the API interceptor
       await api.patch(
         `/api/admin/sellers/${sellerId}/commission`,
-        { commission_rate: rate },
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { commission_rate: rate }
       )
       alert(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
       loadData()
@@ -274,11 +266,10 @@ export default function AdminPage() {
     }
 
     try {
-      const token = localStorage.getItem('access_token')
+      // Note: Authorization header will be added automatically by the API interceptor
       await api.patch(
         `/api/admin/sellers/${sellerId}/permissions`,
-        { can_manipulate_stats: newValue },
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { can_manipulate_stats: newValue }
       )
       alert(`권한이 ${action}되었습니다!`)
       loadData() // 데이터 새로고침
