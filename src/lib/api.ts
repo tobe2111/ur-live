@@ -53,15 +53,35 @@ const PUBLIC_API_PATHS = [
   '/api/auth/firebase/register', // Firebase 회원가입
   '/api/seller/login',         // 셀러 로그인 (JWT 방식)
   '/api/seller/register',      // 셀러 회원가입 (JWT 방식)
+  '/api/seller/public/',       // 셀러 공개 프로필 페이지 (/s/:sellerId)
   '/api/admin/login',          // 어드민 로그인 (JWT 방식)
   '/api/debug',                // 디버그 엔드포인트 (임시, 프로덕션에서 제거 필요)
+];
+
+/**
+ * 셀러 공개 API (인증 불필요, 공개 정보만 제공)
+ * URL 패턴으로 체크 (정규식)
+ */
+const SELLER_PUBLIC_API_PATTERNS = [
+  /^\/api\/seller\/\d+\/streams$/,          // /api/seller/:id/streams
+  /^\/api\/seller\/\d+\/products-public$/,  // /api/seller/:id/products-public
 ];
 
 /**
  * 공개 API 경로 체크
  */
 function isPublicAPI(url: string): boolean {
-  return PUBLIC_API_PATHS.some(path => url.startsWith(path));
+  // 기본 공개 API 경로 체크
+  if (PUBLIC_API_PATHS.some(path => url.startsWith(path))) {
+    return true;
+  }
+  
+  // 셀러 공개 API 패턴 체크
+  if (SELLER_PUBLIC_API_PATTERNS.some(pattern => pattern.test(url))) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**
