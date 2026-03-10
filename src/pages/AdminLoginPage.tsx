@@ -58,17 +58,17 @@ export default function AdminLoginPage() {
         console.log('[AdminLogin] Clearing old sessions...')
         localStorage.clear()
         
-        const { admin, access_token, refresh_token } = response.data.data
+        const { admin, accessToken, refreshToken } = response.data.data
         
         console.log('[AdminLogin] ✅ JWT Login successful')
         console.log('[AdminLogin] Admin ID:', admin.id)
         
         // ✅ Store JWT tokens (required for authentication)
-        if (access_token) {
-          localStorage.setItem('access_token', access_token)
+        if (accessToken) {
+          localStorage.setItem('access_token', accessToken)
         }
-        if (refresh_token) {
-          localStorage.setItem('refresh_token', refresh_token)
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken)
         }
         
         // Store user info
@@ -80,7 +80,7 @@ export default function AdminLoginPage() {
         console.log('[AdminLogin] ✅ Tokens and user info saved to localStorage')
         console.log('  - user_type:', localStorage.getItem('user_type'))
         console.log('  - admin_id:', admin.id)
-        console.log('  - access_token:', access_token ? 'stored' : 'missing')
+        console.log('  - access_token:', accessToken ? 'stored' : 'missing')
         
         // Navigate to admin dashboard
         console.log('[AdminLogin] ✅ Navigating to /admin...')

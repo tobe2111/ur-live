@@ -54,17 +54,17 @@ export default function SellerLoginPage() {
         console.log('[SellerLogin] Clearing old sessions...')
         localStorage.clear()
         
-        const { seller, access_token, refresh_token } = response.data.data
+        const { seller, accessToken, refreshToken } = response.data.data
         
         console.log('[SellerLogin] ✅ JWT Login successful')
         console.log('[SellerLogin] Seller ID:', seller.id)
         
         // ✅ Store JWT tokens (required for authentication)
-        if (access_token) {
-          localStorage.setItem('access_token', access_token)
+        if (accessToken) {
+          localStorage.setItem('access_token', accessToken)
         }
-        if (refresh_token) {
-          localStorage.setItem('refresh_token', refresh_token)
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken)
         }
         
         // Store user info
@@ -78,7 +78,7 @@ export default function SellerLoginPage() {
         console.log('[SellerLogin] ✅ Tokens and user info saved to localStorage')
         console.log('  - user_type:', localStorage.getItem('user_type'))
         console.log('  - seller_id:', seller.id)
-        console.log('  - access_token:', access_token ? 'stored' : 'missing')
+        console.log('  - access_token:', accessToken ? 'stored' : 'missing')
         
         // Navigate to seller dashboard
         console.log('[SellerLogin] ✅ Navigating to /seller...')
