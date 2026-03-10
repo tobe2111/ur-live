@@ -27,7 +27,6 @@ import { sellerStreamsRoutes } from '@/features/seller/api/seller-streams.routes
 import { cartRoutes } from '@/features/cart/api/cart.routes';
 import { shippingAddressRoutes } from '@/features/shipping/api/shipping-address.routes';
 import { paymentRoutes } from '@/features/payments/api/payment.routes';
-import youtubeRoutes from '@/features/youtube/api/youtube.routes';
 
 // Middleware & Utils
 import { rateLimitMiddleware } from './middleware/rate-limiter';
@@ -217,9 +216,6 @@ app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
 app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller', sellerStreamsRoutes);
-
-// YouTube Live Streaming Feature (Phase 2)
-app.route('/api/youtube', youtubeRoutes);
 
 // Cart Feature (Phase 1)
 app.route('/api/cart', cartRoutes);
