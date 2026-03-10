@@ -16709,10 +16709,92 @@ app.post('/api/admin/insert-dummy-sellers', cors(), async (c) => {
     
     console.log('[Admin] Dummy sellers inserted successfully');
     
+    // Insert dummy live streams for each seller
+    const streams = [
+      // Seller 5 (Fashion)
+      { seller_id: 5, title: '🔥 봄 신상 의류 특가 라이브!', description: '2024 S/S 신상품 최대 60% 할인! 트렌디한 패션 아이템 대방출', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 86400000).toISOString() },
+      { seller_id: 5, title: '데일리룩 완성하기 🌸', description: '봄맞이 감성 데일리룩 스타일링 꿀팁 공개', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 172800000).toISOString() },
+      // Seller 6 (Beauty)
+      { seller_id: 6, title: '✨ 봄 메이크업 신상품 리뷰', description: '2024년 봄 메이크업 트렌드와 추천 제품 소개', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 7200000).toISOString() },
+      { seller_id: 6, title: '피부타입별 스킨케어 루틴 💄', description: '건성/지성/복합성 피부별 맞춤 관리법', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 259200000).toISOString() },
+      // Seller 7 (Tech)
+      { seller_id: 7, title: '🎧 신제품 이어폰 언박싱!', description: '최신 무선 이어폰 리뷰와 비교 분석', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 18000000).toISOString() },
+      { seller_id: 7, title: '스마트폰 특가 방송 📱', description: '2024 최신 스마트폰 최대 30% 할인', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 345600000).toISOString() },
+      // Seller 8 (Home)
+      { seller_id: 8, title: '🏡 봄맞이 집꾸미기 특집', description: '새학기 홈 인테리어 아이템 대방출', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 43200000).toISOString() },
+      { seller_id: 8, title: '감성 조명 추천 💡', description: '무드등부터 스탠드까지 분위기 완성 조명', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 432000000).toISOString() },
+      // Seller 9 (Food)
+      { seller_id: 9, title: '🍜 전국 맛집 간식 특가전', description: '지역 특산물 및 인기 간식 최대 50% 할인', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 64800000).toISOString() },
+      { seller_id: 9, title: '건강 간식 추천 🥗', description: '다이어트 중에도 맛있는 건강 간식', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 518400000).toISOString() },
+      // Seller 10 (Baby)
+      { seller_id: 10, title: '👶 유아용품 신상 소개', description: '안전하고 실용적인 육아 필수템', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 10800000).toISOString() },
+      { seller_id: 10, title: '베이비 의류 특가 👕', description: '아기 옷 대방출 최대 70% 할인', youtube_video_id: 'dQw4w9WgXcQ', status: 'scheduled', scheduled_at: new Date(Date.now() + 604800000).toISOString() }
+    ];
+    
+    for (const stream of streams) {
+      await DB.prepare(`
+        INSERT INTO live_streams (seller_id, title, description, youtube_video_id, status, viewer_count, scheduled_at, created_at)
+        VALUES (?, ?, ?, ?, ?, 0, ?, datetime('now'))
+      `).bind(
+        stream.seller_id, stream.title, stream.description, 
+        stream.youtube_video_id, stream.status, stream.scheduled_at
+      ).run();
+    }
+    
+    // Insert dummy products for each seller
+    const products = [
+      // Seller 5 (Fashion) - 의류/패션
+      { seller_id: 5, name: '봄 신상 니트 가디건', price: 29900, original_price: 59900, discount_rate: 50, stock: 150, image_url: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400', category: '의류' },
+      { seller_id: 5, name: '데일리 와이드 팬츠', price: 24900, original_price: 39900, discount_rate: 38, stock: 200, image_url: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400', category: '의류' },
+      { seller_id: 5, name: '봄 플라워 원피스', price: 39900, original_price: 79900, discount_rate: 50, stock: 100, image_url: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400', category: '의류' },
+      { seller_id: 5, name: '레더 크로스백', price: 34900, original_price: 54900, discount_rate: 36, stock: 80, image_url: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400', category: '액세서리' },
+      // Seller 6 (Beauty) - 화장품/뷰티
+      { seller_id: 6, name: '수분 진정 토너 300ml', price: 18900, original_price: 32000, discount_rate: 41, stock: 300, image_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400', category: '스킨케어' },
+      { seller_id: 6, name: '글로우 쿠션 팩트', price: 25900, original_price: 38000, discount_rate: 32, stock: 250, image_url: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400', category: '메이크업' },
+      { seller_id: 6, name: '비타민 앰플 세럼 50ml', price: 29900, original_price: 49900, discount_rate: 40, stock: 180, image_url: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=400', category: '스킨케어' },
+      { seller_id: 6, name: '틴트 립스틱 세트', price: 21900, original_price: 36000, discount_rate: 39, stock: 220, image_url: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400', category: '메이크업' },
+      // Seller 7 (Tech) - IT/전자제품
+      { seller_id: 7, name: '무선 블루투스 이어폰', price: 49900, original_price: 89900, discount_rate: 44, stock: 150, image_url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400', category: '이어폰' },
+      { seller_id: 7, name: '스마트 워치 밴드', price: 15900, original_price: 29900, discount_rate: 47, stock: 200, image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', category: '웨어러블' },
+      { seller_id: 7, name: '고속 충전 보조배터리 20000mAh', price: 34900, original_price: 59900, discount_rate: 42, stock: 120, image_url: 'https://images.unsplash.com/photo-1609592806955-89a5f2520781?w=400', category: '액세서리' },
+      { seller_id: 7, name: 'USB-C 멀티 허브', price: 24900, original_price: 39900, discount_rate: 38, stock: 180, image_url: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=400', category: '액세서리' },
+      // Seller 8 (Home) - 인테리어/가구
+      { seller_id: 8, name: '무드 LED 간접조명', price: 19900, original_price: 35900, discount_rate: 45, stock: 250, image_url: 'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=400', category: '조명' },
+      { seller_id: 8, name: '북유럽 스타일 쿠션 세트', price: 14900, original_price: 29900, discount_rate: 50, stock: 300, image_url: 'https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=400', category: '패브릭' },
+      { seller_id: 8, name: '우드 원목 선반', price: 29900, original_price: 49900, discount_rate: 40, stock: 100, image_url: 'https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=400', category: '가구' },
+      { seller_id: 8, name: '감성 액자 세트 (5P)', price: 24900, original_price: 39900, discount_rate: 38, stock: 150, image_url: 'https://images.unsplash.com/photo-1513519245088-0e12902e35ca?w=400', category: '소품' },
+      // Seller 9 (Food) - 식품/간식
+      { seller_id: 9, name: '제주 한라봉 선물세트 3kg', price: 29900, original_price: 45000, discount_rate: 34, stock: 200, image_url: 'https://images.unsplash.com/photo-1587049352846-4a222e784422?w=400', category: '과일' },
+      { seller_id: 9, name: '프리미엄 건과일 믹스 500g', price: 19900, original_price: 32000, discount_rate: 38, stock: 250, image_url: 'https://images.unsplash.com/photo-1519996409144-56c88c9aa612?w=400', category: '간식' },
+      { seller_id: 9, name: '수제 견과류 세트 1kg', price: 24900, original_price: 39900, discount_rate: 38, stock: 180, image_url: 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400', category: '간식' },
+      { seller_id: 9, name: '전통 한과 선물세트', price: 34900, original_price: 49900, discount_rate: 30, stock: 150, image_url: 'https://images.unsplash.com/photo-1559181567-c3190ca9959b?w=400', category: '한과' },
+      // Seller 10 (Baby) - 유아용품
+      { seller_id: 10, name: '유아 면 내의 5종 세트', price: 19900, original_price: 39900, discount_rate: 50, stock: 300, image_url: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400', category: '의류' },
+      { seller_id: 10, name: '아기 안전 실리콘 식기 세트', price: 24900, original_price: 39900, discount_rate: 38, stock: 250, image_url: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400', category: '육아용품' },
+      { seller_id: 10, name: '오가닉 아기 로션 300ml', price: 17900, original_price: 29900, discount_rate: 40, stock: 280, image_url: 'https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=400', category: '위생용품' },
+      { seller_id: 10, name: '유아 교육 장난감 세트', price: 29900, original_price: 49900, discount_rate: 40, stock: 200, image_url: 'https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=400', category: '장난감' }
+    ];
+    
+    for (const product of products) {
+      await DB.prepare(`
+        INSERT INTO products (seller_id, name, price, original_price, discount_rate, stock, image_url, category, is_active, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
+      `).bind(
+        product.seller_id, product.name, product.price, product.original_price,
+        product.discount_rate, product.stock, product.image_url, product.category
+      ).run();
+    }
+    
+    console.log('[Admin] Dummy streams and products inserted successfully');
+    
     return c.json({ 
       success: true, 
       message: '더미 셀러 데이터가 성공적으로 추가되었습니다',
-      inserted_count: sellers.length + 1  // +1 for seller ID 5
+      inserted_count: {
+        sellers: sellers.length + 1,
+        streams: streams.length,
+        products: products.length
+      }
     });
     
   } catch (err) {
