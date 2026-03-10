@@ -1,420 +1,374 @@
-# 🚀 UR-Live 배포 상태
+# 배포 현황 (2026-03-10)
 
-**생성 시간**: 2026-03-07  
-**프로젝트**: UR-Live Multi-Region E-Commerce Platform  
-**Repository**: https://github.com/tobe2111/ur-live  
-**최신 커밋**: 852ff25d
+## 📊 전체 진행 상황
+
+```
+Phase 1 (YouTube Integration): ✅ 100% 완료
+Phase 2 (Zero-Click Streaming): ✅ 100% 완료 (코드)
+Deployment: ⏳ 60% 완료 (사용자 액션 필요)
+```
 
 ---
 
-## 📊 현재 상태
+## ✅ 완료된 작업
 
-### ✅ 완료된 작업
+### 1. 코드 개발 (100%)
+- [x] YouTube OAuth 인증 시스템
+- [x] YouTube Live API 통합 (방송 생성/시작/종료)
+- [x] RTMP URL/Key 생성 및 제공
+- [x] Prism QR 코드 자동 생성
+- [x] 웹 브라우저 직접 스트리밍 (MediaRecorder → WebSocket → FFmpeg)
+- [x] 실시간 제품 오버레이 시스템
+- [x] YouTube Live Chat 통합 (폴링/캐싱)
+- [x] 판매자 대시보드 UI (`/seller/live-broadcast`)
+- [x] 데이터베이스 스키마 (마이그레이션 0105, 0106)
+- [x] API 엔드포인트 (11개)
+- [x] TypeScript 타입 정의
+- [x] 에러 핸들링 & 로깅
 
-#### 1. 코드 리팩토링 (100%)
-- ✓ 7개 주요 페이지 리팩토링 완료
-- ✓ 27개 재사용 가능한 컴포넌트 생성
-- ✓ 1,397줄 코드 감소 (-26%)
-- ✓ TypeScript 100% 적용
-- ✓ ESLint 규칙 준수
-- **연간 비용 절감**: ~$19,650
+### 2. 문서화 (100%)
+- [x] `YOUTUBE_LIVE_GUIDE.md` - YouTube 통합 가이드
+- [x] `PHASE_2_IMPLEMENTATION.md` - Phase 2 기술 상세
+- [x] `DEPLOYMENT_GUIDE.md` - 전체 배포 가이드
+- [x] `MINIMAL_DEPLOYMENT_CHECKLIST.md` - 최소 배포 체크리스트
+- [x] `docs/GOOGLE_OAUTH_SETUP.md` - OAuth 설정
+- [x] `docs/BACKEND_YOUTUBE_API.md` - 백엔드 API
+- [x] `docs/FRONTEND_YOUTUBE_INTEGRATION.md` - 프론트엔드 통합
+- [x] `docs/ISSUES_AND_SOLUTIONS.md` - 문제 해결
+- [x] `docs/PRISM_INTEGRATION.md` - Prism 통합
 
-#### 2. 테스팅 인프라 (100%)
-```
-✓ Unit Tests:         464/464 (100%)  [~22초]
-✓ Integration Tests:    8/8   (100%)  [~5초]
-✓ E2E Tests:          79/79  (100%)  [~15분]
-  - Critical Flows:   13/13
-  - Checkout Flow:    18/18
-  - Auth Flow:        23/23
-  - Accessibility:    25/25
-─────────────────────────────────────────────
-✓ Total:             551/551 (100%)  [~17분]
-```
-
-**추가 도구**:
-- ✓ MSW (Mock Service Worker) 설정
-- ✓ Playwright E2E 테스팅
-- ✓ Axe-Core 접근성 테스트
-- ✓ Lighthouse CI 성능 모니터링
-- **연간 비용 절감**: ~$25,000
-
-#### 3. CI/CD 파이프라인 (100%)
-- ✓ GitHub Actions 워크플로우 3개 생성
-  - `ci-cd.yml`: 테스트 + 빌드 + 배포
-  - `pr-checks.yml`: PR 검증 + 커버리지
-  - `performance.yml`: 성능 모니터링
-- ✓ 자동 배포 설정 (main 브랜치)
-- ✓ PR 미리보기 생성
-- ✓ 일일 성능 감사
-- **연간 비용 절감**: ~$25,000
-
-#### 4. 문서화
-- ✓ `DEPLOYMENT_GUIDE.md`: 상세 배포 가이드
-- ✓ `QUICK_DEPLOY.sh`: 자동화 배포 스크립트
-- ✓ `docs/E2E_TESTING.md`: E2E 테스트 가이드
-- ✓ `docs/CI_CD.md`: CI/CD 설정 가이드
-- ✓ `docs/MSW_SETUP.md`: MSW 설정 가이드
-- ✓ `docs/TESTING_COVERAGE.md`: 테스트 커버리지 문서
+### 3. 로컬 준비 (60%)
+- [x] ✅ `qrcode.react` 패키지 설치
+- [x] ✅ `.env.example` YouTube 변수 추가
+- [x] ✅ Git 커밋 & 푸시
+- [ ] ⏳ 데이터베이스 마이그레이션 (사용자 액션 필요)
+- [ ] ⏳ Cloudflare Pages 시크릿 설정 (사용자 액션 필요)
+- [ ] ⏳ Google Cloud OAuth 설정 (사용자 액션 필요)
 
 ---
 
-## 🔄 배포 프로세스
+## ⏳ 남은 작업 (사용자가 직접 수행)
 
-### 로컬 준비 완료
-- ✅ 프로덕션 빌드 완료 (dist/, 14MB)
-- ✅ 모든 테스트 통과 (551/551)
-- ✅ Git 커밋 완료 (852ff25d)
-- ⏳ **GitHub 푸시 대기 중** (인증 문제로 수동 푸시 필요)
+### Step 1: 데이터베이스 마이그레이션 (5분)
 
-### 배포 옵션
-
-#### 옵션 1: Cloudflare Dashboard (권장) ⭐
-**장점**: 
-- 가장 직관적이고 안정적
-- 환경 변수 관리 용이
-- 배포 히스토리 시각화
-- 롤백 간편
-
-**단계**:
-1. https://dash.cloudflare.com 로그인
-2. Pages > ur-live 프로젝트 선택
-3. "Create deployment" 클릭
-4. Branch: main 선택
-5. "Save and Deploy" 클릭
-
-**예상 시간**: 5-7분
-
-#### 옵션 2: Wrangler CLI (로컬)
-**장점**:
-- 명령줄에서 즉시 배포
-- 빌드 스킵 가능 (기존 dist/ 사용)
-- 스크립트 자동화 가능
-
-**전제 조건**: Cloudflare 인증 필요
-```bash
-wrangler login
-```
-
-**단계**:
+**옵션 A: Wrangler CLI (권장)**
 ```bash
 cd /home/user/webapp
-npm run deploy
-# 또는
-wrangler pages deploy dist --project-name ur-live --branch main
+npx wrangler d1 migrations apply toss-live-commerce-db --remote
 ```
 
-**예상 시간**: 3-5분
-
-#### 옵션 3: GitHub Actions (자동) 🤖
-**장점**:
-- 완전 자동화
-- main 브랜치 푸시 시 자동 배포
-- 테스트 실패 시 배포 차단
-- 배포 히스토리 GitHub에서 관리
-
-**전제 조건**: GitHub Secrets 설정
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-
-**단계**:
-1. GitHub에 푸시
-2. Actions 탭에서 진행 상황 모니터링
-3. 배포 완료 대기
-
-**예상 시간**: 10-15분
-
----
-
-## ⚠️ 배포 전 체크리스트
-
-### 필수 확인 사항
-- [x] 모든 테스트 통과 (551/551)
-- [x] 프로덕션 빌드 성공
-- [x] Git 커밋 완료
-- [ ] **GitHub에 푸시 완료**
-- [ ] Cloudflare 환경 변수 설정
-- [ ] Firebase 설정 확인
-
-### Cloudflare 환경 변수 (필수)
-```env
-VITE_FIREBASE_API_KEY=<your-api-key>
-VITE_FIREBASE_AUTH_DOMAIN=<your-auth-domain>
-VITE_FIREBASE_PROJECT_ID=<your-project-id>
-VITE_FIREBASE_STORAGE_BUCKET=<your-storage-bucket>
-VITE_FIREBASE_MESSAGING_SENDER_ID=<your-sender-id>
-VITE_FIREBASE_APP_ID=<your-app-id>
-VITE_FIREBASE_MEASUREMENT_ID=<your-measurement-id>
-```
-
-### GitHub Secrets (GitHub Actions 사용 시)
-```
-CLOUDFLARE_API_TOKEN      # Cloudflare Pages 편집 권한
-CLOUDFLARE_ACCOUNT_ID     # Cloudflare 계정 ID
-```
-
----
-
-## 📦 빌드 정보
-
-### 현재 빌드 크기
-```
-Total Size:    14 MB
-Assets:        12 MB
-JS Files:      79 files
-CSS Files:     1 file
-```
-
-### 주요 번들
-| 파일 | 원본 크기 | Gzip 크기 |
-|------|-----------|-----------|
-| vendor-DCJXSpxo.js | 709 KB | 221 KB |
-| firebase-core-B8-GNJVe.js | 226 KB | 51 KB |
-| firebase-auth-DuP_6EK2.js | 195 KB | 39 KB |
-| react-core-DX_CeP0U.js | 144 KB | 46 KB |
-| sentry-DYAbDn9a.js | 113 KB | 39 KB |
-
-### 성능 최적화
-- ✓ Code Splitting 적용
-- ✓ Tree Shaking 활성화
-- ✓ Lazy Loading 구현
-- ✓ 이미지 최적화 (WebP)
-- ✓ CSS 압축
-- ⚠️ vendor 번들 크기 큼 (709KB)
-  - 권장: 더 세밀한 청크 분할 고려
-
----
-
-## 📈 성능 목표
-
-### Lighthouse CI 임계값
-```yaml
-Performance:    ≥ 80 (현재: 예상 85+)
-Accessibility:  ≥ 90 (현재: 예상 95+)
-Best Practices: ≥ 80 (현재: 예상 90+)
-SEO:           ≥ 80 (현재: 예상 95+)
-```
-
-### Core Web Vitals
-```yaml
-LCP (Largest Contentful Paint):  ≤ 2.5초
-FID (First Input Delay):          ≤ 100ms
-CLS (Cumulative Layout Shift):    ≤ 0.1
-```
-
-### 성능 개선 결과
-- API 지연 시간: -79%
-- 검색 속도: -98%
-- LCP: -57%
-- DB CPU 사용률: -60%
-
----
-
-## 🔗 중요 링크
-
-### 프로덕션
-- **프로덕션 사이트**: https://live.ur-team.com
-- **미리보기 사이트**: https://ur-live.pages.dev
-
-### 개발 도구
-- **GitHub Repository**: https://github.com/tobe2111/ur-live
-- **GitHub Actions**: https://github.com/tobe2111/ur-live/actions
-- **Cloudflare Dashboard**: https://dash.cloudflare.com/pages
-- **Cloudflare Analytics**: https://dash.cloudflare.com/analytics
-
-### 문서
-- **배포 가이드**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-- **E2E 테스팅**: [docs/E2E_TESTING.md](./docs/E2E_TESTING.md)
-- **CI/CD 설정**: [docs/CI_CD.md](./docs/CI_CD.md)
-- **MSW 설정**: [docs/MSW_SETUP.md](./docs/MSW_SETUP.md)
-- **테스트 커버리지**: [docs/TESTING_COVERAGE.md](./docs/TESTING_COVERAGE.md)
-
----
-
-## 🚦 배포 후 검증
-
-### 기본 체크리스트
+**옵션 B: 개별 파일 실행**
 ```bash
-# 1. 사이트 접속 확인
-curl -I https://live.ur-team.com
-
-# 2. 빌드 버전 확인
-curl https://live.ur-team.com/version.json
-
-# 3. API 응답 확인
-curl https://live.ur-team.com/api/health
+npx wrangler d1 execute toss-live-commerce-db --remote --file=migrations/0105_add_seller_youtube_oauth.sql
+npx wrangler d1 execute toss-live-commerce-db --remote --file=migrations/0106_add_live_chat_and_overlay.sql
 ```
 
-### 기능 테스트
-- [ ] 홈페이지 로드
-- [ ] 로그인/로그아웃
-- [ ] 상품 검색
-- [ ] 장바구니 추가/제거
-- [ ] 결제 플로우
-- [ ] 모바일 반응형
-- [ ] 라이브 스트리밍
-
-### 성능 테스트
-- [ ] Lighthouse 점수 확인
-- [ ] Core Web Vitals 측정
-- [ ] 페이지 로드 시간 (< 3초)
-- [ ] API 응답 시간 (< 500ms)
-
----
-
-## 📊 비즈니스 임팩트
-
-### 개발 생산성
-- ✅ 버그 감소: ~60% → 80%
-- ✅ 개발 속도: +40% → +60%
-- ✅ 배포 신뢰도: 95% → 98%
-- ✅ 유지보수 비용: -30% → -50%
-
-### 연간 비용 절감
-| 항목 | 절감액 |
-|------|--------|
-| 리팩토링 효율성 | $19,650 |
-| 테스트 자동화 | $25,000 |
-| CI/CD 자동화 | $25,000 |
-| **총계** | **$69,650** |
-
-### 사용자 경험 개선
-- API 응답 속도: -79%
-- 검색 속도: -98%
-- LCP (페이지 로딩): -57%
-- 데이터베이스 CPU: -60%
-
----
-
-## 🛠️ 빠른 명령어
-
-### 배포
+**검증**:
 ```bash
-# 자동 배포 스크립트 실행
-./QUICK_DEPLOY.sh
+npx wrangler d1 execute toss-live-commerce-db --remote --command="SELECT COUNT(*) FROM seller_youtube_oauth;"
+```
 
-# 수동 빌드 + 배포
+---
+
+### Step 2: Google Cloud Console 설정 (10분)
+
+1. **프로젝트 생성**:
+   - https://console.cloud.google.com/
+   - 새 프로젝트: `UR-Live YouTube Integration`
+
+2. **API 활성화**:
+   - YouTube Data API v3
+   - YouTube Live Streaming API
+
+3. **OAuth 클라이언트 ID 생성**:
+   - 애플리케이션 유형: 웹 애플리케이션
+   - 승인된 리디렉션 URI:
+     - `https://live.ur-team.com/seller/youtube/callback`
+     - `http://localhost:5173/seller/youtube/callback`
+
+4. **OAuth 동의 화면 설정**:
+   - 범위 추가:
+     - `https://www.googleapis.com/auth/youtube`
+     - `https://www.googleapis.com/auth/youtube.force-ssl`
+     - `https://www.googleapis.com/auth/youtube.readonly`
+
+5. **클라이언트 ID & Secret 복사** (다음 단계에서 사용)
+
+---
+
+### Step 3: Cloudflare Pages 시크릿 설정 (3분)
+
+```bash
+cd /home/user/webapp
+
+# YouTube Client ID (Google Cloud에서 복사한 값 붙여넣기)
+npx wrangler pages secret put YOUTUBE_CLIENT_ID --project-name=ur-live
+
+# YouTube Client Secret (Google Cloud에서 복사한 값 붙여넣기)
+npx wrangler pages secret put YOUTUBE_CLIENT_SECRET --project-name=ur-live
+
+# Redirect URI
+npx wrangler pages secret put YOUTUBE_REDIRECT_URI --project-name=ur-live
+# 입력 값: https://live.ur-team.com/seller/youtube/callback
+```
+
+**검증**:
+```bash
+npx wrangler pages secret list --project-name=ur-live | grep YOUTUBE
+```
+
+예상 출력:
+```
+YOUTUBE_CLIENT_ID
+YOUTUBE_CLIENT_SECRET
+YOUTUBE_REDIRECT_URI
+```
+
+---
+
+### Step 4: 빌드 & 배포 (5분)
+
+```bash
+cd /home/user/webapp
+
+# 빌드
 npm run build
+
+# 배포
 npm run deploy
-
-# 빌드 없이 배포 (기존 dist/ 사용)
-wrangler pages deploy dist --project-name ur-live --branch main
-```
-
-### 테스트
-```bash
-# 전체 테스트
-npm run test:all
-
-# 단위 테스트만
-npm run test:unit
-
-# E2E 테스트만
-npm run test:e2e
-
-# 커버리지 포함
-npm run test:unit:coverage
-```
-
-### 모니터링
-```bash
-# 실시간 로그
-wrangler pages deployment tail --project-name ur-live
-
-# 배포 목록
-wrangler pages deployment list --project-name ur-live
-
-# Lighthouse CI 실행
-npm run lighthouse:ci
 ```
 
 ---
 
-## 🚨 트러블슈팅
+### Step 5: 기능 테스트 (10분)
 
-### 문제: GitHub 푸시 실패 (현재 상태)
-**증상**: `Authentication failed for 'https://github.com/tobe2111/ur-live.git/'`
+1. **판매자 로그인**:
+   - https://live.ur-team.com/seller/login
 
-**해결 방법**:
-1. GitHub Personal Access Token 생성
-   - https://github.com/settings/tokens
-   - 권한: `repo` 전체 선택
-   
-2. 토큰으로 푸시
-   ```bash
-   git push https://<YOUR_TOKEN>@github.com/tobe2111/ur-live.git main
-   ```
+2. **YouTube 계정 연결**:
+   - 대시보드 → "YouTube Live" 버튼
+   - `/seller/live-broadcast` 페이지
+   - "YouTube 계정 연결" 버튼 클릭
+   - Google 계정 선택 & 권한 승인
 
-3. 또는 SSH 사용
-   ```bash
-   git remote set-url origin git@github.com:tobe2111/ur-live.git
-   git push origin main
-   ```
+3. **라이브 스트림 생성**:
+   - 제목: `테스트 라이브 방송`
+   - 제품 선택
+   - "방송 만들기" 클릭
+   - ✅ RTMP URL & Stream Key 확인
 
-### 문제: 배포 후 사이트 작동 안 함
-**원인**: 환경 변수 누락
+4. **Prism QR 코드**:
+   - QR 코드 표시 확인
+   - 모바일로 스캔
+   - RTMP 정보 자동 입력 확인
 
+5. **OBS 스트리밍** (선택):
+   - RTMP URL/Key 복사
+   - OBS 설정
+   - 방송 시작
+
+---
+
+## 📁 파일 구조
+
+```
+/home/user/webapp/
+├── src/
+│   ├── features/
+│   │   ├── youtube/
+│   │   │   ├── api/
+│   │   │   │   ├── youtube.routes.ts         (11 API 엔드포인트)
+│   │   │   │   └── youtube-chat.routes.ts    (채팅 API)
+│   │   │   ├── services/
+│   │   │   │   └── youtube-api.service.ts    (YouTube API 래퍼)
+│   │   │   └── types.ts                      (TypeScript 타입)
+│   │   └── streaming/
+│   │       └── rtmp-bridge.ts                (WebSocket → RTMP)
+│   ├── components/
+│   │   └── streaming/
+│   │       ├── WebStreaming.tsx              (브라우저 스트리밍)
+│   │       ├── PrismQRCode.tsx               (QR 코드)
+│   │       └── LiveControlPanel.tsx          (제어판)
+│   └── pages/
+│       ├── SellerLiveBroadcastPage.tsx       (메인 대시보드)
+│       └── RTMPSetupPage.tsx                 (QR 랜딩)
+├── migrations/
+│   ├── 0105_add_seller_youtube_oauth.sql     (OAuth 테이블)
+│   └── 0106_add_live_chat_and_overlay.sql    (채팅/오버레이)
+├── ffmpeg-service/                           (Option B 전용)
+│   ├── Dockerfile
+│   ├── package.json
+│   └── server.js
+├── docs/
+│   ├── GOOGLE_OAUTH_SETUP.md
+│   ├── BACKEND_YOUTUBE_API.md
+│   ├── FRONTEND_YOUTUBE_INTEGRATION.md
+│   ├── ISSUES_AND_SOLUTIONS.md
+│   └── PRISM_INTEGRATION.md
+├── YOUTUBE_LIVE_GUIDE.md
+├── PHASE_2_IMPLEMENTATION.md
+├── DEPLOYMENT_GUIDE.md
+├── MINIMAL_DEPLOYMENT_CHECKLIST.md
+└── DEPLOYMENT_STATUS.md (이 파일)
+```
+
+---
+
+## 🎯 성공 기준
+
+### ✅ Phase 1 성공 (최소 배포)
+- [ ] `/seller/live-broadcast` 페이지 로드 (에러 없음)
+- [ ] YouTube 계정 연결 버튼 작동
+- [ ] OAuth 인증 후 채널 목록 표시
+- [ ] 방송 생성 시 RTMP URL/Key 반환
+- [ ] Prism QR 코드 생성 & 스캔 가능
+
+### 🚀 Phase 2 성공 (전체 기능)
+- [ ] 브라우저 직접 스트리밍 (FFmpeg 서비스 필요)
+- [ ] 실시간 제품 오버레이 전환
+- [ ] YouTube Live Chat 표시 & 자동 응답
+- [ ] 시청자 통계 실시간 업데이트
+
+---
+
+## 💰 비용
+
+### Option A (최소 배포)
+- **Cloudflare Pages**: $0
+- **Cloudflare D1**: $0
+- **YouTube API**: $0 (10,000 유닛/일 무료)
+- **총 비용**: **$0/월**
+
+### Option B (전체 기능)
+- Option A + **Google Cloud Run (FFmpeg)**: $0.50-$1/시간
+- **총 비용**: **$0 + 사용량 기반**
+
+---
+
+## 📊 API 엔드포인트 목록
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/youtube/auth-url` | OAuth URL 생성 |
+| POST | `/api/youtube/oauth/callback` | OAuth 콜백 처리 |
+| GET | `/api/youtube/channels` | 연결된 채널 목록 |
+| POST | `/api/youtube/live/create` | 방송 생성 |
+| POST | `/api/youtube/live/:id/start` | 방송 시작 |
+| POST | `/api/youtube/live/:id/end` | 방송 종료 |
+| DELETE | `/api/youtube/oauth/:id` | 계정 연결 해제 |
+| GET | `/api/youtube/chat/:streamId` | 채팅 메시지 가져오기 |
+| POST | `/api/youtube/chat/:streamId` | 채팅 메시지 전송 |
+| GET | `/api/youtube/chat/:streamId/cached` | 캐시된 채팅 (D1) |
+| POST | `/api/youtube/overlay/:streamId` | 오버레이 업데이트 |
+
+---
+
+## 🔧 데이터베이스 스키마
+
+### seller_youtube_oauth
+```sql
+- id, seller_id, google_email
+- access_token, refresh_token, expires_at
+- channel_id, channel_title, channel_thumbnail
+- subscriber_count, is_active
+- created_at, updated_at
+```
+
+### live_streams (확장)
+```sql
+- youtube_broadcast_id, youtube_stream_key
+- youtube_live_chat_id, rtmp_url, rtmp_key
+- youtube_embed_url
+```
+
+### live_chat_cache
+```sql
+- id, stream_id, chat_id
+- author, message, timestamp
+- created_at
+```
+
+### live_stream_overlays
+```sql
+- id, stream_id, current_product_id
+- overlay_position, show_price, show_discount
+- show_buy_button, custom_css
+- updated_at
+```
+
+### stream_analytics
+```sql
+- id, stream_id, event_type
+- product_id, user_id, metadata
+- timestamp, created_at
+```
+
+---
+
+## 🐛 알려진 이슈 & 해결 방법
+
+### 1. YOUTUBE_CLIENT_ID is not defined
+**해결**: Cloudflare Pages 시크릿 설정 (Step 3)
+
+### 2. OAuth Redirect URI Mismatch
+**해결**: Google Cloud Console에서 URI 확인 & 수정
+
+### 3. YouTube API Quota 초과
+**해결**: 
+- 할당량 모니터링: https://console.cloud.google.com/apis/dashboard
+- 캐싱 활용 (D1 `live_chat_cache`)
+- 필요시 할당량 증가 요청
+
+### 4. D1 마이그레이션 실패
 **해결**:
-1. Cloudflare Pages 대시보드
-2. Settings > Environment variables
-3. 필수 Firebase 변수 모두 설정
-4. Redeploy 클릭
-
-### 문제: 빌드 실패
-**원인**: Node.js 버전 또는 의존성 문제
-
-**해결**:
 ```bash
-# Node.js 버전 확인 (18 이상 필요)
-node --version
+# 인증 확인
+npx wrangler whoami
 
-# 의존성 재설치
-rm -rf node_modules package-lock.json
-npm install
-
-# 다시 빌드
-npm run build
+# 개별 실행
+npx wrangler d1 execute toss-live-commerce-db --remote --file=migrations/0105_add_seller_youtube_oauth.sql
 ```
 
 ---
 
-## 📞 지원 및 연락처
+## 📅 권장 일정
 
-### 이슈 리포트
-- **GitHub Issues**: https://github.com/tobe2111/ur-live/issues
-- **Email**: tobe2111@naver.com
+### Week 1 (현재)
+- [ ] Step 1-5 완료 (사용자 액션)
+- [ ] 내부 테스트 (팀원 2-3명)
 
-### 참고 문서
-- Cloudflare Pages: https://developers.cloudflare.com/pages
-- Wrangler CLI: https://developers.cloudflare.com/workers/wrangler
-- GitHub Actions: https://docs.github.com/en/actions
+### Week 2
+- [ ] Prism QR 기능 홍보
+- [ ] 베타 사용자 피드백 수집
 
----
+### Week 3
+- [ ] Option B 고려 (브라우저 스트리밍)
+- [ ] FFmpeg 서비스 배포 (필요시)
 
-## ✅ 다음 단계
-
-### 즉시 수행
-1. [ ] **GitHub에 푸시 완료** (인증 문제 해결 후)
-2. [ ] Cloudflare 환경 변수 설정 확인
-3. [ ] 배포 실행 (Dashboard/CLI/GitHub Actions)
-4. [ ] 프로덕션 사이트 검증
-
-### 배포 후 (1-2일 내)
-- [ ] 프로덕션 모니터링 설정
-- [ ] 알림 설정 (Slack/Discord/Email)
-- [ ] 백업 정책 수립
-- [ ] 팀 교육 (배포 프로세스)
-
-### 장기 개선 (1-2개월)
-- [ ] Visual Regression Testing (Percy/Chromatic)
-- [ ] Advanced Monitoring (Sentry, DataDog)
-- [ ] A/B Testing 인프라
-- [ ] Multi-Region 최적화
+### Week 4
+- [ ] 정식 런칭
+- [ ] 사용자 온보딩 튜토리얼
 
 ---
 
-**마지막 업데이트**: 2026-03-07  
-**프로젝트 상태**: ✅ 배포 준비 완료  
-**다음 작업**: GitHub 푸시 및 배포 실행
+## 📞 지원 & 연락처
 
-🎉 **모든 준비가 완료되었습니다!**
+**문의**: support@ur-team.com
+**문서**: https://github.com/tobe2111/ur-live/pull/4
+**대시보드**: https://live.ur-team.com/seller/login
+
+---
+
+## 🎉 다음 단계
+
+1. ✅ **지금 바로 시작**: `MINIMAL_DEPLOYMENT_CHECKLIST.md` 파일 열기
+2. 📝 **Step 1-5 수행**: 약 30분 소요
+3. 🧪 **테스트**: 판매자 계정으로 로그인 & 방송 생성
+4. 🚀 **피드백**: 문제 발견 시 GitHub Issue 생성
+
+---
+
+**마지막 업데이트**: 2026-03-10 12:10 (KST)
+**버전**: 1.0.0
+**브랜치**: `fix/seller-streams-api-endpoint`
+**PR**: https://github.com/tobe2111/ur-live/pull/4
