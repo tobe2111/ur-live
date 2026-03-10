@@ -4,9 +4,6 @@ import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import NotificationBell from '@/components/NotificationBell'
-import { isKorea } from '@/config/region'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { getSellerToken, isSellerAuthenticated, getSellerId, redirectToLogin, logoutSeller } from '@/lib/seller-auth'
 import { 
   ArrowLeft, 
@@ -63,8 +60,6 @@ interface Product {
 
 export default function SellerPage() {
   const navigate = useNavigate()
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  const isAuthReady = useAuth(state => state.isAuthReady)  // ✅ Direct Zustand selector
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalOrders: 0,
@@ -82,18 +77,14 @@ export default function SellerPage() {
   const sellerEmail = 'seller@listercorp.com'
 
   useEffect(() => {
-    // ⏳ 인증 초기화가 완료될 때까지 대기
-    if (!isAuthReady) {
-      console.log('[SellerPage] ⏳ 인증 초기화 대기 중...')
-      return
-    }
-    
-    // ✅ JWT 기반 인증 확인
+    // ✅ JWT 기반 인증 확인 (Firebase auth는 체크하지 않음)
     if (!isSellerAuthenticated()) {
       console.log('[SellerPage] ❌ Not authenticated')
       redirectToLogin(navigate)
       return
     }
+    
+    console.log('[SellerPage] ✅ Authenticated as seller')
     
     const token = getSellerToken()
     const sellerIdStr = getSellerId()
@@ -105,7 +96,7 @@ export default function SellerPage() {
     })
     
     loadDashboardData()
-  }, [navigate, isAuthReady])
+  }, [navigate])
 
   async function loadDashboardData() {
     try {
