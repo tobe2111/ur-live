@@ -10,14 +10,23 @@ import { Loader2, AlertCircle } from 'lucide-react'
 
 interface Seller {
   id: number
+  username: string
   name: string
   email: string
+  phone?: string
+  business_name?: string
+  business_number?: string
+  profile_image?: string
   bio?: string
-  profile_image_url?: string
-  instagram_url?: string
-  kakaotalk_url?: string
-  instagram_handle?: string
-  kakaotalk_name?: string
+  sns_instagram?: string
+  sns_youtube?: string
+  sns_facebook?: string
+  sns_twitter?: string
+  website_url?: string
+  kakao_chat_link?: string
+  is_active: number
+  status: string
+  created_at: string
 }
 
 interface LiveStream {
