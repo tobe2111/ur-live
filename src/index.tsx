@@ -1724,21 +1724,26 @@ app.use('*', async (c, next) => {
   c.header('Content-Security-Policy', 
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
-      "https://*.cloudflare.com " +
-      "https://static.cloudflareinsights.com " +
+      "https://*.cloudflare.com https://static.cloudflareinsights.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://cdn.jsdelivr.net https://unpkg.com " +
       "https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com; " +
+      "https://www.googletagmanager.com https://www.google-analytics.com " +
+      "https://*.firebaseapp.com; " +
     "style-src 'self' 'unsafe-inline' " +
-      "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+      "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com " +
+      "https://m.stripe.network; " +
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     "connect-src 'self' https:; " +
-    "frame-src 'self' https://www.youtube.com https://youtube.com https://m.stripe.com https://m.stripe.network; " +
+    "frame-src 'self' " +
+      "https://www.youtube.com https://youtube.com " +
+      "https://m.stripe.com https://m.stripe.network " +
+      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
+      "https://kauth.kakao.com https://*.kakao.com; " +
     "media-src 'self' https:; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +

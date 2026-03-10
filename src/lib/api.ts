@@ -14,6 +14,13 @@
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getFirebaseAuth } from './firebase';
+import * as Sentry from '@sentry/react';
+
+// Sentry error capture helper
+function captureError(error: Error, context?: Record<string, any>) {
+  console.error('[API] Error captured:', error, context);
+  Sentry.captureException(error, { extra: context });
+}
 
 // API 클라이언트 생성
 const api = axios.create({
@@ -74,23 +81,15 @@ api.interceptors.request.use(
     
     const userType = localStorage.getItem('user_type');
     
-    // 🔐 Seller: JWT Token
-    if (userType === 'seller') {
-      const sellerToken = localStorage.getItem('seller_token');
-      if (sellerToken) {
-        config.headers['Authorization'] = `Bearer ${sellerToken}`;
-        console.log('[API] 🔐 JWT Token attached (seller)');
+    // 🔐 Seller/Admin: JWT Token (stored as 'access_token')
+    if (userType === 'seller' || userType === 'admin') {
+      const jwtToken = localStorage.getItem('access_token');
+      if (jwtToken) {
+        config.headers['Authorization'] = `Bearer ${jwtToken}`;
+        console.log(`[API] 🔐 JWT Token attached (${userType})`);
         return config;
-      }
-    }
-    
-    // 🔐 Admin: JWT Token
-    if (userType === 'admin') {
-      const adminToken = localStorage.getItem('admin_token');
-      if (adminToken) {
-        config.headers['Authorization'] = `Bearer ${adminToken}`;
-        console.log('[API] 🔐 JWT Token attached (admin)');
-        return config;
+      } else {
+        console.warn(`[API] ⚠️ No JWT token found for ${userType}`);
       }
     }
     
