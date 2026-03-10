@@ -23,9 +23,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Copy,
-  Trash2
+  Trash2,
+  Monitor,
+  Smartphone,
+  Zap
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
+import WebStreaming from '@/components/streaming/WebStreaming'
+import PrismQRCode from '@/components/streaming/PrismQRCode'
+import LiveControlPanel from '@/components/streaming/LiveControlPanel'
 
 interface YouTubeChannel {
   id: number
@@ -73,6 +79,8 @@ export default function SellerLiveBroadcastPage() {
   const [showSetup, setShowSetup] = useState(false)
   const [newStream, setNewStream] = useState<LiveStream | null>(null)
   const [copiedRTMP, setCopiedRTMP] = useState(false)
+  const [streamingMethod, setStreamingMethod] = useState<'web' | 'prism' | 'obs'>('web')
+  const [showControlPanel, setShowControlPanel] = useState(false)
 
   // Form state
   const [title, setTitle] = useState('')
