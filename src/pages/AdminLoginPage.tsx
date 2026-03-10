@@ -58,24 +58,29 @@ export default function AdminLoginPage() {
         console.log('[AdminLogin] Clearing old sessions...')
         localStorage.clear()
         
-        // ⚠️ SECURITY: Store minimal user info ONLY (NO tokens in localStorage)
-        // Tokens are securely stored in HttpOnly cookies
-        const { admin } = response.data.data
+        const { admin, access_token, refresh_token } = response.data.data
         
         console.log('[AdminLogin] ✅ JWT Login successful')
         console.log('[AdminLogin] Admin ID:', admin.id)
-        console.log('[AdminLogin] ⚠️ Tokens stored in HttpOnly cookies (secure)')
         
-        // Store user info only (NO tokens!)
+        // ✅ Store JWT tokens (required for authentication)
+        if (access_token) {
+          localStorage.setItem('access_token', access_token)
+        }
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token)
+        }
+        
+        // Store user info
         localStorage.setItem('user_type', 'admin')
         localStorage.setItem('admin_id', admin.id.toString())
         localStorage.setItem('user_id', admin.id.toString())
         localStorage.setItem('user_name', admin.name || admin.email)
         
-        console.log('[AdminLogin] ✅ User info saved to localStorage')
+        console.log('[AdminLogin] ✅ Tokens and user info saved to localStorage')
         console.log('  - user_type:', localStorage.getItem('user_type'))
         console.log('  - admin_id:', admin.id)
-        console.log('  - Tokens: HttpOnly cookies only (XSS-protected)')
+        console.log('  - access_token:', access_token ? 'stored' : 'missing')
         
         // Navigate to admin dashboard
         console.log('[AdminLogin] ✅ Navigating to /admin...')

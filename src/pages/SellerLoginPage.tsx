@@ -54,15 +54,20 @@ export default function SellerLoginPage() {
         console.log('[SellerLogin] Clearing old sessions...')
         localStorage.clear()
         
-        // ⚠️ SECURITY: Store minimal user info ONLY (NO tokens in localStorage)
-        // Tokens are securely stored in HttpOnly cookies
-        const { seller } = response.data.data
+        const { seller, access_token, refresh_token } = response.data.data
         
         console.log('[SellerLogin] ✅ JWT Login successful')
         console.log('[SellerLogin] Seller ID:', seller.id)
-        console.log('[SellerLogin] ⚠️ Tokens stored in HttpOnly cookies (secure)')
         
-        // Store user info only (NO tokens!)
+        // ✅ Store JWT tokens (required for authentication)
+        if (access_token) {
+          localStorage.setItem('access_token', access_token)
+        }
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token)
+        }
+        
+        // Store user info
         localStorage.setItem('user_type', 'seller')
         localStorage.setItem('seller_id', seller.id.toString())
         localStorage.setItem('user_id', seller.id.toString())
@@ -70,10 +75,10 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
         
-        console.log('[SellerLogin] ✅ User info saved to localStorage')
+        console.log('[SellerLogin] ✅ Tokens and user info saved to localStorage')
         console.log('  - user_type:', localStorage.getItem('user_type'))
         console.log('  - seller_id:', seller.id)
-        console.log('  - Tokens: HttpOnly cookies only (XSS-protected)')
+        console.log('  - access_token:', access_token ? 'stored' : 'missing')
         
         // Navigate to seller dashboard
         console.log('[SellerLogin] ✅ Navigating to /seller...')
