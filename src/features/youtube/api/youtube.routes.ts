@@ -1,0 +1,570 @@
+/**
+ * YouTube OAuth & Live Streaming API Routes
+ * Prism-style zero-setup live streaming
+ */
+
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { jwt } from '@tsndr/cloudflare-worker-jwt'
+import { YouTubeAPIService } from '../services/youtube-api.service'
+import type { 
+  YouTubeOAuthTokens, 
+  YouTubeChannel, 
+  YouTubeLiveSetup,
+  SellerYouTubeAuth 
+} from '../types'
+
+type Bindings = {
+  DB: D1Database
+  JWT_SECRET: string
+  YOUTUBE_CLIENT_ID?: string
+  YOUTUBE_CLIENT_SECRET?: string
+  YOUTUBE_REDIRECT_URI?: string
+}
+
+const app = new Hono<{ Bindings: Bindings }>()
+
+// CORS configuration
+app.use('/*', cors({
+  origin: [
+    'https://live.ur-team.com',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+}))
+
+/**
+ * Helper: Extract seller ID from JWT
+ */
+async function getSellerIdFromToken(authHeader: string | undefined, secret: string): Promise<number | null> {
+  if (!authHeader?.startsWith('Bearer ')) return null
+  
+  try {
+    const token = authHeader.substring(7)
+    const isValid = await jwt.verify(token, secret)
+    
+    if (!isValid) return null
+    
+    const payload = jwt.decode(token).payload as any
+    return payload.seller_id || payload.sub || null
+  } catch (error) {
+    console.error('[YouTube Auth] JWT verification error:', error)
+    return null
+  }
+}
+
+/**
+ * Helper: Get or refresh access token
+ */
+async function getValidAccessToken(
+  db: D1Database,
+  sellerId: number,
+  youtubeService: YouTubeAPIService
+): Promise<string | null> {
+  const auth = await db.prepare(`
+    SELECT * FROM seller_youtube_oauth 
+    WHERE seller_id = ? AND is_active = 1 
+    ORDER BY created_at DESC LIMIT 1
+  `).bind(sellerId).first<SellerYouTubeAuth>()
+
+  if (!auth) return null
+
+  // Check if token is expired (with 5-minute buffer)
+  if (auth.expires_at > Date.now() + 5 * 60 * 1000) {
+    return auth.access_token
+  }
+
+  // Refresh token
+  try {
+    const tokens = await youtubeService.refreshAccessToken(auth.refresh_token)
+    
+    // Update database
+    await db.prepare(`
+      UPDATE seller_youtube_oauth 
+      SET access_token = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(tokens.access_token, tokens.expires_at, auth.id).run()
+
+    return tokens.access_token
+  } catch (error) {
+    console.error('[YouTube] Token refresh failed:', error)
+    return null
+  }
+}
+
+/**
+ * GET /api/youtube/auth-url
+ * Get YouTube OAuth authorization URL
+ */
+app.get('/auth-url', async (c) => {
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback'
+
+  if (!clientId) {
+    return c.json({
+      success: false,
+      error: 'YouTube OAuth not configured'
+    }, 500)
+  }
+
+  const scopes = [
+    'https://www.googleapis.com/auth/youtube',
+    'https://www.googleapis.com/auth/youtube.force-ssl',
+    'https://www.googleapis.com/auth/youtube.readonly'
+  ]
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(clientId)}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `response_type=code&` +
+    `scope=${encodeURIComponent(scopes.join(' '))}&` +
+    `access_type=offline&` +
+    `prompt=consent`
+
+  return c.json({
+    success: true,
+    data: {
+      authUrl,
+      redirectUri
+    }
+  })
+})
+
+/**
+ * POST /api/youtube/oauth/callback
+ * Handle OAuth callback
+ */
+app.post('/oauth/callback', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  
+  if (!sellerId) {
+    return c.json({
+      success: false,
+      error: '로그인이 필요합니다',
+      error_code: 'AUTH_REQUIRED'
+    }, 401)
+  }
+
+  const { code } = await c.req.json()
+  
+  if (!code) {
+    return c.json({
+      success: false,
+      error: 'Authorization code is required'
+    }, 400)
+  }
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+  const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback'
+
+  if (!clientId || !clientSecret) {
+    return c.json({
+      success: false,
+      error: 'YouTube OAuth not configured'
+    }, 500)
+  }
+
+  try {
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    
+    // Exchange code for tokens
+    const tokens = await youtubeService.exchangeCodeForTokens(code, redirectUri)
+    
+    // Get user's channels
+    const channels = await youtubeService.getChannels(tokens.access_token)
+    
+    if (channels.length === 0) {
+      return c.json({
+        success: false,
+        error: 'No YouTube channels found'
+      }, 400)
+    }
+
+    // Use the first channel (or let user select)
+    const channel = channels[0]
+
+    // Get Google email from token (decode ID token if available)
+    // For now, use channel ID as identifier
+    const googleEmail = channel.customUrl || `${channel.id}@youtube.com`
+
+    // Save to database
+    const result = await c.env.DB.prepare(`
+      INSERT INTO seller_youtube_oauth (
+        seller_id, google_email, access_token, refresh_token, expires_at,
+        channel_id, channel_title, channel_thumbnail, subscriber_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(seller_id, channel_id) DO UPDATE SET
+        access_token = excluded.access_token,
+        refresh_token = excluded.refresh_token,
+        expires_at = excluded.expires_at,
+        channel_thumbnail = excluded.channel_thumbnail,
+        subscriber_count = excluded.subscriber_count,
+        is_active = 1,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(
+      sellerId,
+      googleEmail,
+      tokens.access_token,
+      tokens.refresh_token,
+      tokens.expires_at,
+      channel.id,
+      channel.title,
+      channel.thumbnail,
+      channel.subscriberCount
+    ).run()
+
+    return c.json({
+      success: true,
+      data: {
+        channel,
+        allChannels: channels
+      }
+    })
+  } catch (error: any) {
+    console.error('[YouTube OAuth] Error:', error)
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to authenticate with YouTube'
+    }, 500)
+  }
+})
+
+/**
+ * GET /api/youtube/channels
+ * Get seller's YouTube channels
+ */
+app.get('/channels', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  
+  if (!sellerId) {
+    return c.json({
+      success: false,
+      error: '로그인이 필요합니다'
+    }, 401)
+  }
+
+  try {
+    const auth = await c.env.DB.prepare(`
+      SELECT * FROM seller_youtube_oauth 
+      WHERE seller_id = ? AND is_active = 1
+      ORDER BY created_at DESC
+    `).bind(sellerId).all()
+
+    return c.json({
+      success: true,
+      data: auth.results.map((a: any) => ({
+        id: a.id,
+        channel_id: a.channel_id,
+        channel_title: a.channel_title,
+        channel_thumbnail: a.channel_thumbnail,
+        subscriber_count: a.subscriber_count,
+        google_email: a.google_email,
+        is_active: a.is_active,
+        created_at: a.created_at
+      }))
+    })
+  } catch (error: any) {
+    console.error('[YouTube Channels] Error:', error)
+    return c.json({
+      success: false,
+      error: 'Failed to fetch channels'
+    }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/live/create
+ * Create a new YouTube live broadcast (zero-setup)
+ */
+app.post('/live/create', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  
+  if (!sellerId) {
+    return c.json({
+      success: false,
+      error: '로그인이 필요합니다'
+    }, 401)
+  }
+
+  const { title, description, product_ids, scheduled_start_time } = await c.req.json()
+
+  if (!title) {
+    return c.json({
+      success: false,
+      error: 'Title is required'
+    }, 400)
+  }
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+
+  if (!clientId || !clientSecret) {
+    return c.json({
+      success: false,
+      error: 'YouTube API not configured'
+    }, 500)
+  }
+
+  try {
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    
+    // Get valid access token
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    
+    if (!accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube authentication required',
+        error_code: 'YOUTUBE_AUTH_REQUIRED'
+      }, 401)
+    }
+
+    // Create YouTube live setup
+    const scheduledTime = scheduled_start_time || new Date().toISOString()
+    const liveSetup = await youtubeService.setupLiveStream(
+      accessToken,
+      title,
+      description || '',
+      scheduledTime
+    )
+
+    // Save to database
+    const streamResult = await c.env.DB.prepare(`
+      INSERT INTO live_streams (
+        seller_id, title, description, status,
+        youtube_video_id, youtube_broadcast_id, youtube_stream_key, youtube_live_chat_id,
+        rtmp_url, rtmp_key, youtube_embed_url,
+        scheduled_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(
+      sellerId,
+      title,
+      description || '',
+      'scheduled',
+      liveSetup.broadcast.id,
+      liveSetup.broadcast.id,
+      liveSetup.stream.ingestionInfo.streamName,
+      liveSetup.broadcast.liveChatId || null,
+      liveSetup.rtmpUrl,
+      liveSetup.rtmpKey,
+      liveSetup.embedUrl,
+      scheduledTime
+    ).run()
+
+    const streamId = streamResult.meta.last_row_id
+
+    // Link products if provided
+    if (product_ids && product_ids.length > 0) {
+      for (const productId of product_ids) {
+        await c.env.DB.prepare(`
+          INSERT INTO stream_products (stream_id, product_id, created_at)
+          VALUES (?, ?, CURRENT_TIMESTAMP)
+        `).bind(streamId, productId).run()
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        stream_id: streamId,
+        youtube_url: liveSetup.youtubeUrl,
+        embed_url: liveSetup.embedUrl,
+        rtmp_url: liveSetup.rtmpUrl,
+        rtmp_key: liveSetup.rtmpKey,
+        broadcast: liveSetup.broadcast,
+        stream: liveSetup.stream
+      }
+    })
+  } catch (error: any) {
+    console.error('[YouTube Live Create] Error:', error)
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to create live stream'
+    }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/live/:id/start
+ * Transition broadcast to live
+ */
+app.post('/live/:id/start', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  
+  if (!sellerId) {
+    return c.json({
+      success: false,
+      error: '로그인이 필요합니다'
+    }, 401)
+  }
+
+  const streamId = parseInt(c.req.param('id'))
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+
+  if (!clientId || !clientSecret) {
+    return c.json({
+      success: false,
+      error: 'YouTube API not configured'
+    }, 500)
+  }
+
+  try {
+    // Get stream info
+    const stream = await c.env.DB.prepare(`
+      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+    `).bind(streamId, sellerId).first()
+
+    if (!stream) {
+      return c.json({
+        success: false,
+        error: 'Stream not found'
+      }, 404)
+    }
+
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    
+    if (!accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube authentication required'
+      }, 401)
+    }
+
+    // Transition to live
+    await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+
+    // Update database
+    await c.env.DB.prepare(`
+      UPDATE live_streams 
+      SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(streamId).run()
+
+    return c.json({
+      success: true,
+      message: 'Stream is now live'
+    })
+  } catch (error: any) {
+    console.error('[YouTube Live Start] Error:', error)
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to start stream'
+    }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/live/:id/end
+ * End broadcast
+ */
+app.post('/live/:id/end', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  
+  if (!sellerId) {
+    return c.json({
+      success: false,
+      error: '로그인이 필요합니다'
+    }, 401)
+  }
+
+  const streamId = parseInt(c.req.param('id'))
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+
+  if (!clientId || !clientSecret) {
+    return c.json({
+      success: false,
+      error: 'YouTube API not configured'
+    }, 500)
+  }
+
+  try {
+    const stream = await c.env.DB.prepare(`
+      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+    `).bind(streamId, sellerId).first()
+
+    if (!stream) {
+      return c.json({
+        success: false,
+        error: 'Stream not found'
+      }, 404)
+    }
+
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    
+    if (!accessToken) {
+      return c.json({
+        success: false,
+        error: 'YouTube authentication required'
+      }, 401)
+    }
+
+    // End broadcast
+    await youtubeService.endBroadcast(accessToken, stream.youtube_broadcast_id as string)
+
+    // Update database
+    await c.env.DB.prepare(`
+      UPDATE live_streams 
+      SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(streamId).run()
+
+    return c.json({
+      success: true,
+      message: 'Stream ended successfully'
+    })
+  } catch (error: any) {
+    console.error('[YouTube Live End] Error:', error)
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to end stream'
+    }, 500)
+  }
+})
+
+/**
+ * DELETE /api/youtube/oauth/:id
+ * Disconnect YouTube account
+ */
+app.delete('/oauth/:id', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  
+  if (!sellerId) {
+    return c.json({
+      success: false,
+      error: '로그인이 필요합니다'
+    }, 401)
+  }
+
+  const authId = parseInt(c.req.param('id'))
+
+  try {
+    await c.env.DB.prepare(`
+      UPDATE seller_youtube_oauth 
+      SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND seller_id = ?
+    `).bind(authId, sellerId).run()
+
+    return c.json({
+      success: true,
+      message: 'YouTube account disconnected'
+    })
+  } catch (error: any) {
+    console.error('[YouTube Disconnect] Error:', error)
+    return c.json({
+      success: false,
+      error: 'Failed to disconnect YouTube account'
+    }, 500)
+  }
+})
+
+export default app
