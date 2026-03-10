@@ -1723,12 +1723,22 @@ app.use('*', async (c, next) => {
   // Content Security Policy
   c.header('Content-Security-Policy', 
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://t1.kakaocdn.net https://developers.kakao.com https://js.tosspayments.com; " +
-    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+      "https://*.cloudflare.com " +
+      "https://static.cloudflareinsights.com " +
+      "https://*.tosspayments.com https://js.tosspayments.com " +
+      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
+      "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
+      "https://cdn.jsdelivr.net https://unpkg.com " +
+      "https://*.sentry.io " +
+      "https://www.googletagmanager.com https://www.google-analytics.com; " +
+    "style-src 'self' 'unsafe-inline' " +
+      "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
     "img-src 'self' data: https: blob:; " +
-    "font-src 'self' data: https://cdn.jsdelivr.net; " +
-    "connect-src 'self' https://api.tosspayments.com https://kauth.kakao.com https://kapi.kakao.com https://www.youtube.com; " +
-    "frame-src 'self' https://www.youtube.com https://youtube.com; " +
+    "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
+    "connect-src 'self' https:; " +
+    "frame-src 'self' https://www.youtube.com https://youtube.com https://m.stripe.com https://m.stripe.network; " +
     "media-src 'self' https:; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
@@ -1793,29 +1803,16 @@ app.use('/api/*', rateLimit(RateLimitPolicies.api));
 app.use('*', async (c, next) => {
   await next();
   
-  // HSTS: HTTPS 강제 적용 (1년)
-  c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  // HSTS: HTTPS 강제 적용 (1년) - only in production
+  const url = new URL(c.req.url);
+  if (url.hostname !== 'localhost' && url.protocol === 'https:') {
+    c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
   
-  // CSP: XSS 공격 방어
-  c.header('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; " +
-    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
-    "img-src 'self' data: https: blob:; " +
-    "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-    "connect-src 'self' https:; " +
-    "frame-src 'self' https://www.youtube.com; " +
-    "media-src 'self' https:; " +
-    "object-src 'none'; " +
-    "base-uri 'self'; " +
-    "form-action 'self'; " +
-    "frame-ancestors 'none';"
-  );
+  // Clickjacking 방지
+  c.header('X-Frame-Options', 'SAMEORIGIN');
   
-  // 클릭재킹 방어
-  c.header('X-Frame-Options', 'DENY');
-  
-  // MIME 타입 스니핑 방지
+  // MIME 스니핑 방지
   c.header('X-Content-Type-Options', 'nosniff');
   
   // XSS 필터 활성화
@@ -1824,11 +1821,14 @@ app.use('*', async (c, next) => {
   // Referrer 정책
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   
-  // 권한 정책
+  // Permissions Policy
   c.header('Permissions-Policy', 
     'geolocation=(), microphone=(), camera=(), payment=(self), usb=()'
   );
 });
+
+// CORS 설정
+app.use('/api/*', cors());
 
 // =================================
 // Performance Monitoring Middleware
