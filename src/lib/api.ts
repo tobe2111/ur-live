@@ -115,11 +115,12 @@ api.interceptors.request.use(
     console.log(`[API] 🔍 Checking auth for ${url}`);
     
     // ============================================================
-    // 🔐 SELLER API: /api/seller/* → seller_token 또는 access_token
+    // 🔐 SELLER API: /api/seller/* + /api/notifications → seller_token 또는 access_token
     // Firebase 절대 사용 안함!
     // ============================================================
-    if (url.includes('/api/seller/')) {
-      console.log('[API] 🏪 Seller API detected, using JWT only (NO FIREBASE)');
+    if (url.includes('/api/seller/') || url.includes('/api/notifications')) {
+      const apiType = url.includes('/api/notifications') ? 'Notifications' : 'Seller';
+      console.log(`[API] 🏪 ${apiType} API detected, using JWT only (NO FIREBASE)`);
       
       // Priority: seller_token > access_token
       let jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
