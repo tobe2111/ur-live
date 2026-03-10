@@ -2204,67 +2204,129 @@ app.delete('/api/account/delete', cors(), requireAuth, async (c) => {
       // 경고만 하고 진행 (사용자가 이미 동의함)
     }
     
-    // 3. 연관 데이터 삭제 시작 (트랜잭션 없이 순차 삭제)
-    console.log('[Account Delete] 연관 데이터 삭제 시작...');
+    // 3. 연관 데이터 삭제 시작 (✅ 트랜잭션으로 원자성 보장)
+    console.log('[Account Delete] 연관 데이터 삭제 시작 (트랜잭션)...');
     
-    // 3-1. 장바구니 삭제
-    await DB.prepare(`DELETE FROM cart WHERE user_id = ?`).bind(userId).run();
-    console.log('[Account Delete] ✅ 장바구니 삭제 완료');
+    // 🔐 D1 Batch API를 사용한 트랜잭션 (원자성 보장)
+    // 모두 성공하거나 모두 실패 (All or Nothing)
+    const deleteStatements = [
+      // 3-1. 장바구니 삭제
+      DB.prepare(`DELETE FROM cart WHERE user_id = ?`).bind(userId),
+      
+      // 3-2. 찜 목록 삭제
+      DB.prepare(`DELETE FROM wishlists WHERE user_id = ?`).bind(userId),
+      
+      // 3-3. 배송지 삭제
+      DB.prepare(`DELETE FROM shipping_addresses WHERE user_id = ?`).bind(userId),
+      
+      // 3-4. 주문 아이템 삭제 (주문보다 먼저 삭제)
+      DB.prepare(`
+        DELETE FROM order_items 
+        WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?)
+      `).bind(userId),
+      
+      // 3-5. 주문 삭제
+      DB.prepare(`DELETE FROM orders WHERE user_id = ?`).bind(userId),
+      
+      // 3-6. 사용자 계정 삭제 (최종)
+      DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId),
+    ];
     
-    // 3-2. 찜 목록 삭제
-    await DB.prepare(`DELETE FROM wishlists WHERE user_id = ?`).bind(userId).run();
-    console.log('[Account Delete] ✅ 찜 목록 삭제 완료');
+    // 선택적 테이블 삭제 (있는 경우만)
+    const optionalDeletes = [];
     
-    // 3-3. 배송지 삭제
-    await DB.prepare(`DELETE FROM shipping_addresses WHERE user_id = ?`).bind(userId).run();
-    console.log('[Account Delete] ✅ 배송지 삭제 완료');
-    
-    // 3-4. 리뷰 삭제 (있는 경우)
+    // 리뷰 테이블 확인
     try {
-      await DB.prepare(`DELETE FROM reviews WHERE user_id = ?`).bind(userId).run();
-      console.log('[Account Delete] ✅ 리뷰 삭제 완료');
+      const reviewCheck = await DB.prepare(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='reviews'
+      `).first();
+      
+      if (reviewCheck) {
+        optionalDeletes.push(
+          DB.prepare(`DELETE FROM reviews WHERE user_id = ?`).bind(userId)
+        );
+      }
     } catch (e) {
-      console.warn('[Account Delete] 리뷰 테이블 없음 또는 에러:', e);
+      console.warn('[Account Delete] 리뷰 테이블 체크 실패:', e);
     }
     
-    // 3-5. 알림 삭제 (있는 경우)
+    // 알림 테이블 확인
     try {
-      await DB.prepare(`DELETE FROM notifications WHERE user_id = ?`).bind(userId).run();
-      console.log('[Account Delete] ✅ 알림 삭제 완료');
+      const notificationCheck = await DB.prepare(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='notifications'
+      `).first();
+      
+      if (notificationCheck) {
+        optionalDeletes.push(
+          DB.prepare(`DELETE FROM notifications WHERE user_id = ?`).bind(userId)
+        );
+      }
     } catch (e) {
-      console.warn('[Account Delete] 알림 테이블 없음 또는 에러:', e);
+      console.warn('[Account Delete] 알림 테이블 체크 실패:', e);
     }
     
-    // 3-6. 포인트 내역 삭제 (있는 경우)
+    // 포인트 테이블 확인
     try {
-      await DB.prepare(`DELETE FROM points WHERE user_id = ?`).bind(userId).run();
-      console.log('[Account Delete] ✅ 포인트 삭제 완료');
+      const pointsCheck = await DB.prepare(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='points'
+      `).first();
+      
+      if (pointsCheck) {
+        optionalDeletes.push(
+          DB.prepare(`DELETE FROM points WHERE user_id = ?`).bind(userId)
+        );
+      }
     } catch (e) {
-      console.warn('[Account Delete] 포인트 테이블 없음 또는 에러:', e);
+      console.warn('[Account Delete] 포인트 테이블 체크 실패:', e);
     }
     
-    // 3-7. 쿠폰 삭제 (있는 경우)
+    // 쿠폰 테이블 확인
     try {
-      await DB.prepare(`DELETE FROM user_coupons WHERE user_id = ?`).bind(userId).run();
-      console.log('[Account Delete] ✅ 쿠폰 삭제 완료');
+      const couponsCheck = await DB.prepare(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='user_coupons'
+      `).first();
+      
+      if (couponsCheck) {
+        optionalDeletes.push(
+          DB.prepare(`DELETE FROM user_coupons WHERE user_id = ?`).bind(userId)
+        );
+      }
     } catch (e) {
-      console.warn('[Account Delete] 쿠폰 테이블 없음 또는 에러:', e);
+      console.warn('[Account Delete] 쿠폰 테이블 체크 실패:', e);
     }
     
-    // 3-8. 주문 아이템 삭제
-    await DB.prepare(`
-      DELETE FROM order_items 
-      WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?)
-    `).bind(userId).run();
-    console.log('[Account Delete] ✅ 주문 아이템 삭제 완료');
+    // 선택적 삭제문 추가
+    if (optionalDeletes.length > 0) {
+      // 선택적 삭제는 메인 사용자 삭제 전에 실행
+      deleteStatements.splice(deleteStatements.length - 1, 0, ...optionalDeletes);
+    }
     
-    // 3-9. 주문 삭제
-    await DB.prepare(`DELETE FROM orders WHERE user_id = ?`).bind(userId).run();
-    console.log('[Account Delete] ✅ 주문 내역 삭제 완료');
-    
-    // 4. 사용자 계정 삭제 (최종)
-    await DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
-    console.log('[Account Delete] ✅ 사용자 계정 삭제 완료');
+    // 🔥 트랜잭션 실행 (원자성 보장)
+    try {
+      const results = await DB.batch(deleteStatements);
+      
+      console.log('[Account Delete] ✅ 트랜잭션 성공:', {
+        totalStatements: deleteStatements.length,
+        results: results.length
+      });
+      
+      // 각 결과 로깅
+      console.log('[Account Delete] ✅ 장바구니 삭제 완료');
+      console.log('[Account Delete] ✅ 찜 목록 삭제 완료');
+      console.log('[Account Delete] ✅ 배송지 삭제 완료');
+      console.log('[Account Delete] ✅ 주문 아이템 삭제 완료');
+      console.log('[Account Delete] ✅ 주문 내역 삭제 완료');
+      
+      if (optionalDeletes.length > 0) {
+        console.log('[Account Delete] ✅ 선택적 테이블 삭제 완료:', optionalDeletes.length, '개');
+      }
+      
+      console.log('[Account Delete] ✅ 사용자 계정 삭제 완료');
+      
+    } catch (batchError) {
+      console.error('[Account Delete] ❌ 트랜잭션 실패 (롤백됨):', batchError);
+      throw new Error('데이터 삭제 중 오류가 발생했습니다. 모든 작업이 롤백되었습니다.');
+    }
     
     // 5. Firebase Auth 삭제 (선택적 - Admin SDK 필요)
     // Firebase Admin SDK가 있다면 여기서 Firebase 계정도 삭제
