@@ -153,6 +153,7 @@ export default function SellerLoginPage() {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
                 className="w-full px-4 py-3 border border-gray-300 bg-white text-sm font-light placeholder-gray-400 focus:border-gray-900 focus:outline-none transition-colors"
                 placeholder="이메일을 입력하세요"
                 disabled={loading}
@@ -167,6 +168,7 @@ export default function SellerLoginPage() {
               <input
                 type="password"
                 name="password"
+                autoComplete="current-password"
                 value={formData.password}
                 onChange={handleChange}
                 required
