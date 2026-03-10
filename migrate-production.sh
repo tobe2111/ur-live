@@ -6,8 +6,8 @@ set -e
 
 echo "🔍 Checking Cloudflare D1 database..."
 
-# Get D1 database ID
-DB_NAME="ur-live-db"
+# Get D1 database name from wrangler.toml
+DB_NAME="toss-live-commerce-db"
 
 echo "📦 Applying migration: add-ended-at-to-live-streams.sql"
 wrangler d1 execute $DB_NAME --file=./migrations/add-ended-at-to-live-streams.sql --remote
