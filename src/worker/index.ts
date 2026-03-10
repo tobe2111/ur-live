@@ -23,6 +23,7 @@ import { ordersRoutes } from '@/features/orders';
 import { accountRoutes } from '@/features/account';
 import { sellerManagementRoutes } from '@/features/seller/api/seller-management.routes';
 import { sellerOrdersRoutes } from '@/features/seller/api/seller-orders.routes';
+import { sellerStreamsRoutes } from '@/features/seller/api/seller-streams.routes';
 import { cartRoutes } from '@/features/cart/api/cart.routes';
 import { shippingAddressRoutes } from '@/features/shipping/api/shipping-address.routes';
 import { paymentRoutes } from '@/features/payments/api/payment.routes';
@@ -214,6 +215,7 @@ app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
 // Seller Management Feature (Phase 1)
 app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
+app.route('/api/seller', sellerStreamsRoutes);
 
 // Cart Feature (Phase 1)
 app.route('/api/cart', cartRoutes);

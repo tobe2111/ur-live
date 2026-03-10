@@ -193,11 +193,17 @@ sellerManagementRoutes.post('/register', async (c) => {
  */
 sellerManagementRoutes.get('/profile', async (c) => {
   try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    const authorization = c.req.header('Authorization');
+    console.log('[Profile] Authorization header:', authorization ? 'Present' : 'Missing');
+    console.log('[Profile] JWT_SECRET:', c.env.JWT_SECRET ? 'Present' : 'Missing');
+    
+    const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+    console.log('[Profile] Seller ID extracted:', sellerId);
+    
     if (!sellerId) {
       return c.json({
         success: false,
-        error: 'Unauthorized'
+        error: '로그인이 필요합니다'
       }, 401);
     }
 
