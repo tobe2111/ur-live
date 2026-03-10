@@ -1914,8 +1914,26 @@ app.use('/api/admin*', async (c, next) => {
 
 // 🔒 Seller API 보호: /api/seller로 시작하는 모든 경로
 app.use('/api/seller*', async (c, next) => {
-  // 회원가입 엔드포인트는 인증 제외
-  if (c.req.path === '/api/seller/register') {
+  // 공개 엔드포인트는 인증 제외
+  const publicPaths = [
+    '/api/seller/register',
+    '/api/seller/login',
+  ];
+  
+  // 공개 API 패턴 (정규식)
+  const publicPatterns = [
+    /^\/api\/seller\/public\//,           // /api/seller/public/:id
+    /^\/api\/seller\/\d+\/streams$/,      // /api/seller/:id/streams
+    /^\/api\/seller\/\d+\/products-public$/, // /api/seller/:id/products-public
+  ];
+  
+  // 정확한 경로 매칭
+  if (publicPaths.includes(c.req.path)) {
+    return next();
+  }
+  
+  // 패턴 매칭
+  if (publicPatterns.some(pattern => pattern.test(c.req.path))) {
     return next();
   }
   
