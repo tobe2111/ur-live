@@ -16455,6 +16455,94 @@ app.get('*', async (c) => {
 });
 
 // 글로벌 에러 핸들러 (기존 onError 대체)
+// ==================== 더미 데이터 삽입 API (개발/테스트용) ====================
+app.post('/api/admin/insert-dummy-sellers', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  // 관리자 인증 확인
+  const auth = await verifyAdminSession(c);
+  if (!auth.success) {
+    return c.json({ success: false, error: '관리자 권한이 필요합니다' }, 401);
+  }
+  
+  try {
+    console.log('[Admin] Inserting dummy seller data...');
+    
+    // Seller ID 5 업데이트
+    await DB.prepare(`
+      UPDATE sellers SET
+        username = ?,
+        name = ?,
+        email = ?,
+        phone = ?,
+        business_name = ?,
+        business_number = ?,
+        profile_image = ?,
+        bio = ?,
+        sns_instagram = ?,
+        sns_youtube = ?,
+        sns_facebook = ?,
+        sns_twitter = ?,
+        website_url = ?,
+        kakao_chat_link = ?,
+        is_active = 1,
+        status = 'approved'
+      WHERE id = 5
+    `).bind(
+      'fashion_queen', '김패션', 'fashion@example.com', '010-1234-5678',
+      '패션퀸 의류', '123-45-67890',
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+      '안녕하세요! 패션퀸 김패션입니다. 트렌디한 의류와 액세서리를 합리적인 가격에 제공합니다. 매주 신상품 업데이트! 실시간 라이브 방송으로 여러분을 만나요 💕',
+      'https://instagram.com/fashion_queen',
+      'https://youtube.com/@fashion_queen',
+      'https://facebook.com/fashionqueen',
+      'https://twitter.com/fashion_queen',
+      'https://fashionqueen.com',
+      'https://open.kakao.com/o/fashion123'
+    ).run();
+    
+    // Seller ID 6-10 삽입
+    const sellers = [
+      { id: 6, username: 'beauty_expert', name: '박뷰티', email: 'beauty@example.com', phone: '010-2345-6789', business_name: '뷰티엑스퍼트', business_number: '234-56-78901', profile_image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500', bio: '💄 뷰티 전문가 박뷰티입니다! 화장품, 스킨케어, 메이크업 제품을 직접 사용하고 추천드립니다. 피부타입별 맞춤 상담 가능! 라이브에서 실시간 메이크업 시연도 진행합니다 ✨', sns_instagram: 'https://instagram.com/beauty_expert_kr', sns_youtube: 'https://youtube.com/@beauty_expert', sns_facebook: 'https://facebook.com/beautyexpert', website_url: 'https://beautyexpert.co.kr', kakao_chat_link: 'https://open.kakao.com/o/beauty456' },
+      { id: 7, username: 'tech_guru', name: '이테크', email: 'tech@example.com', phone: '010-3456-7890', business_name: '테크구루', business_number: '345-67-89012', profile_image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500', bio: '🔌 최신 IT 기기와 가전제품 전문! 스마트폰, 태블릿, 노트북, 이어폰 등 합리적인 가격으로 제공합니다. 제품 리뷰와 비교 분석도 함께 진행해요! 라이브 방송 시청자 특별 할인 제공 🎁', sns_instagram: 'https://instagram.com/tech_guru_official', sns_youtube: 'https://youtube.com/@techguru', sns_twitter: 'https://twitter.com/techguru_kr', website_url: 'https://techguru.shop', kakao_chat_link: 'https://open.kakao.com/o/tech789' },
+      { id: 8, username: 'home_deco', name: '최인테리어', email: 'home@example.com', phone: '010-4567-8901', business_name: '홈데코 인테리어', business_number: '456-78-90123', profile_image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500', bio: '🏡 따뜻한 집을 만드는 홈데코 인테리어입니다. 가구, 소품, 조명, 패브릭까지! 감각적인 인테리어 소품으로 우리집을 특별하게 꾸며보세요. 실사용 후기와 스타일링 팁도 공유합니다 💝', sns_instagram: 'https://instagram.com/home_deco_official', sns_youtube: 'https://youtube.com/@homedeco', sns_facebook: 'https://facebook.com/homedeco', website_url: 'https://homedeco.kr', kakao_chat_link: 'https://open.kakao.com/o/home101' },
+      { id: 9, username: 'food_master', name: '정푸드', email: 'food@example.com', phone: '010-5678-9012', business_name: '푸드마스터', business_number: '567-89-01234', profile_image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500', bio: '🍜 전국 맛집 간식과 특산물을 소개하는 푸드마스터입니다! 직접 먹어보고 엄선한 제품만 판매합니다. 건강한 먹거리, 특별한 선물용 상품까지! 라이브 방송에서 시식하며 생생한 후기 전달해요 🎉', sns_instagram: 'https://instagram.com/food_master_official', sns_youtube: 'https://youtube.com/@foodmaster', website_url: 'https://foodmaster.net', kakao_chat_link: 'https://open.kakao.com/o/food202' },
+      { id: 10, username: 'baby_shop', name: '강베이비', email: 'baby@example.com', phone: '010-6789-0123', business_name: '베이비샵', business_number: '678-90-12345', profile_image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500', bio: '👶 엄마의 마음으로 선택한 유아용품 전문샵입니다. 아기 옷, 장난감, 육아용품까지 안전하고 실용적인 제품만 엄선했습니다. 육아 정보와 꿀팁도 함께 나눠요! 우리 아이를 위한 최고의 선택 💕', sns_instagram: 'https://instagram.com/baby_shop_official', sns_youtube: 'https://youtube.com/@babyshop', sns_facebook: 'https://facebook.com/babyshop', website_url: 'https://babyshop.co.kr', kakao_chat_link: 'https://open.kakao.com/o/baby303' }
+    ];
+    
+    for (const seller of sellers) {
+      await DB.prepare(`
+        INSERT OR REPLACE INTO sellers (
+          id, username, name, email, phone, business_name, business_number,
+          profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+          website_url, kakao_chat_link, is_active, status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'approved', datetime('now', '-30 days'))
+      `).bind(
+        seller.id, seller.username, seller.name, seller.email, seller.phone,
+        seller.business_name, seller.business_number, seller.profile_image, seller.bio,
+        seller.sns_instagram || null, seller.sns_youtube || null, 
+        seller.sns_facebook || null, seller.sns_twitter || null,
+        seller.website_url || null, seller.kakao_chat_link || null
+      ).run();
+    }
+    
+    console.log('[Admin] Dummy sellers inserted successfully');
+    
+    return c.json({ 
+      success: true, 
+      message: '더미 셀러 데이터가 성공적으로 추가되었습니다',
+      inserted_count: sellers.length + 1  // +1 for seller ID 5
+    });
+    
+  } catch (err) {
+    console.error('[Admin] Failed to insert dummy data:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
 app.onError(async (err, c) => {
   console.error('[Error]', err)
   
