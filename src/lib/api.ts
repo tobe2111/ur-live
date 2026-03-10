@@ -115,10 +115,10 @@ api.interceptors.request.use(
     console.log(`[API] 🔍 Checking auth for ${url}`);
     
     // ============================================================
-    // 🔐 SELLER API: /api/seller/* → seller_token ONLY
+    // 🔐 SELLER API: /api/seller/* OR /api/youtube/* → seller_token ONLY
     // Firebase 절대 사용 안함!
     // ============================================================
-    if (url.startsWith('/api/seller/')) {
+    if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/')) {
       console.log('[API] 🏪 Seller API detected - using seller_token ONLY (NO FIREBASE!)');
       
       const sellerToken = localStorage.getItem('seller_token');
