@@ -6414,7 +6414,6 @@ app.get('/api/seller/streams', async (c) => {
         current_product_id, 
         seller_id,
         scheduled_at, 
-        started_at, 
         ended_at, 
         created_at, 
         updated_at
@@ -6533,7 +6532,6 @@ app.post('/api/seller/streams', async (c) => {
         current_product_id, 
         seller_id,
         scheduled_at, 
-        started_at, 
         ended_at, 
         created_at, 
         updated_at
