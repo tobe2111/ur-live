@@ -5,6 +5,7 @@ import {
   FileText,
   Shield,
   Truck,
+  Settings,
   ChevronRight,
 } from "lucide-react"
 
@@ -20,6 +21,12 @@ const menuItems = [
     title: "주문 내역",
     subtitle: "구매한 상품을 확인하세요",
     path: "/my-orders",
+  },
+  {
+    icon: Settings,
+    title: "계정 설정",
+    subtitle: "프로필 및 계정 관리",
+    path: "/account/settings",
   },
   {
     icon: FileText,

@@ -305,7 +305,7 @@ export default function AccountDeleteWarningPage() {
             type="text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="회원탈퇴"
+            placeholder="회원탈퇴 (정확히 입력)"
             className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 ${
               confirmText === '회원탈퇴'
                 ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
@@ -313,12 +313,12 @@ export default function AccountDeleteWarningPage() {
             }`}
           />
           {confirmText && confirmText !== '회원탈퇴' && (
-            <p className="text-sm text-red-500 mt-2">
-              정확히 "회원탈퇴"를 입력해주세요.
+            <p className="text-sm text-red-500 mt-2 font-medium">
+              ⚠️ 정확히 "회원탈퇴"를 입력해주세요. (현재: "{confirmText}")
             </p>
           )}
           {confirmText === '회원탈퇴' && (
-            <p className="text-sm text-green-600 mt-2 flex items-center">
+            <p className="text-sm text-green-600 mt-2 flex items-center font-medium">
               <CheckCircle2 className="w-4 h-4 mr-1" />
               확인되었습니다.
             </p>
@@ -343,7 +343,7 @@ export default function AccountDeleteWarningPage() {
             disabled={!canProceed || isLoading}
             className={`w-full py-4 rounded-xl font-semibold transition-all ${
               canProceed && !isLoading
-                ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95'
+                ? 'bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-lg'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
@@ -353,7 +353,7 @@ export default function AccountDeleteWarningPage() {
                 탈퇴 처리 중...
               </span>
             ) : (
-              '회원 탈퇴하기'
+              '정말 탈퇴하기'
             )}
           </button>
 

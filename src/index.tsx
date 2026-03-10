@@ -2170,6 +2170,134 @@ app.post('/api/auth/logout', cors(), async (c) => {
   }
 });
 
+// 🚨 계정 삭제 API (완전 삭제 - 복구 불가)
+app.delete('/api/account/delete', cors(), requireAuth, async (c) => {
+  const { DB } = c.env;
+  const { userId, email, firebaseUID } = c.get('user');
+  
+  try {
+    console.log('[Account Delete] 계정 삭제 요청:', { userId, email, firebaseUID });
+    
+    // 1. 사용자 확인
+    const user = await DB.prepare(`
+      SELECT id, email, name, created_at
+      FROM users
+      WHERE id = ?
+    `).bind(userId).first();
+    
+    if (!user) {
+      return c.json({ 
+        success: false, 
+        error: '사용자를 찾을 수 없습니다.' 
+      }, 404);
+    }
+    
+    // 2. 진행 중인 주문 확인 (배송 중이거나 처리 중인 주문이 있으면 경고)
+    const activeOrders = await DB.prepare(`
+      SELECT COUNT(*) as count
+      FROM orders
+      WHERE user_id = ? AND status IN ('pending', 'processing', 'shipped')
+    `).bind(userId).first();
+    
+    if (activeOrders && activeOrders.count > 0) {
+      console.warn('[Account Delete] 진행 중인 주문 존재:', activeOrders.count);
+      // 경고만 하고 진행 (사용자가 이미 동의함)
+    }
+    
+    // 3. 연관 데이터 삭제 시작 (트랜잭션 없이 순차 삭제)
+    console.log('[Account Delete] 연관 데이터 삭제 시작...');
+    
+    // 3-1. 장바구니 삭제
+    await DB.prepare(`DELETE FROM cart WHERE user_id = ?`).bind(userId).run();
+    console.log('[Account Delete] ✅ 장바구니 삭제 완료');
+    
+    // 3-2. 찜 목록 삭제
+    await DB.prepare(`DELETE FROM wishlists WHERE user_id = ?`).bind(userId).run();
+    console.log('[Account Delete] ✅ 찜 목록 삭제 완료');
+    
+    // 3-3. 배송지 삭제
+    await DB.prepare(`DELETE FROM shipping_addresses WHERE user_id = ?`).bind(userId).run();
+    console.log('[Account Delete] ✅ 배송지 삭제 완료');
+    
+    // 3-4. 리뷰 삭제 (있는 경우)
+    try {
+      await DB.prepare(`DELETE FROM reviews WHERE user_id = ?`).bind(userId).run();
+      console.log('[Account Delete] ✅ 리뷰 삭제 완료');
+    } catch (e) {
+      console.warn('[Account Delete] 리뷰 테이블 없음 또는 에러:', e);
+    }
+    
+    // 3-5. 알림 삭제 (있는 경우)
+    try {
+      await DB.prepare(`DELETE FROM notifications WHERE user_id = ?`).bind(userId).run();
+      console.log('[Account Delete] ✅ 알림 삭제 완료');
+    } catch (e) {
+      console.warn('[Account Delete] 알림 테이블 없음 또는 에러:', e);
+    }
+    
+    // 3-6. 포인트 내역 삭제 (있는 경우)
+    try {
+      await DB.prepare(`DELETE FROM points WHERE user_id = ?`).bind(userId).run();
+      console.log('[Account Delete] ✅ 포인트 삭제 완료');
+    } catch (e) {
+      console.warn('[Account Delete] 포인트 테이블 없음 또는 에러:', e);
+    }
+    
+    // 3-7. 쿠폰 삭제 (있는 경우)
+    try {
+      await DB.prepare(`DELETE FROM user_coupons WHERE user_id = ?`).bind(userId).run();
+      console.log('[Account Delete] ✅ 쿠폰 삭제 완료');
+    } catch (e) {
+      console.warn('[Account Delete] 쿠폰 테이블 없음 또는 에러:', e);
+    }
+    
+    // 3-8. 주문 아이템 삭제
+    await DB.prepare(`
+      DELETE FROM order_items 
+      WHERE order_id IN (SELECT id FROM orders WHERE user_id = ?)
+    `).bind(userId).run();
+    console.log('[Account Delete] ✅ 주문 아이템 삭제 완료');
+    
+    // 3-9. 주문 삭제
+    await DB.prepare(`DELETE FROM orders WHERE user_id = ?`).bind(userId).run();
+    console.log('[Account Delete] ✅ 주문 내역 삭제 완료');
+    
+    // 4. 사용자 계정 삭제 (최종)
+    await DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId).run();
+    console.log('[Account Delete] ✅ 사용자 계정 삭제 완료');
+    
+    // 5. Firebase Auth 삭제 (선택적 - Admin SDK 필요)
+    // Firebase Admin SDK가 있다면 여기서 Firebase 계정도 삭제
+    // 현재는 Firebase Auth는 클라이언트가 직접 삭제하도록 함
+    
+    // 6. 세션 삭제 (있는 경우)
+    const sessionToken = c.req.header('X-Session-Token');
+    if (sessionToken) {
+      await c.env.SESSION_KV.delete(`session:${sessionToken}`);
+    }
+    
+    console.log('[Account Delete] ✅✅✅ 계정 삭제 완료:', email);
+    
+    return c.json({
+      success: true,
+      message: '계정이 성공적으로 삭제되었습니다.',
+      data: {
+        deletedUserId: userId,
+        deletedEmail: email,
+        deletedAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Account Delete] ❌ 계정 삭제 실패:', error);
+    return c.json({
+      success: false,
+      error: '계정 삭제 중 오류가 발생했습니다.',
+      message: (error as Error).message
+    }, 500);
+  }
+});
+
 // 셀러 회원가입 API
 // 🔥 NEW: Firebase 이메일 회원가입
 // 👤 Get current user profile (Firebase UID → D1 user_id)
