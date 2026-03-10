@@ -87,8 +87,8 @@ function isPublicAPI(url: string): boolean {
 /**
  * 요청 인터셉터: JWT & Firebase ID Token 자동 추가
  * 
- * - Seller/Admin: JWT Token (localStorage에서 읽기)
- * - Buyers: Firebase ID Token (Firebase Auth에서 읽기)
+ * - Seller/Admin: JWT Token (seller_token 우선, access_token fallback)
+ * - Buyers: Firebase ID Token (항상 갱신)
  */
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -96,10 +96,10 @@ api.interceptors.request.use(
     
     // 공개 API는 토큰 불필요
     if (isPublicAPI(config.url || '')) {
+      console.log('[API] 🌍 Public API - no auth required:', config.url);
       return config;
     }
     
-    // 🔐 Seller/Admin: JWT Token (stored as 'access_token')
     // Check if Authorization header is already set (manual override)
     const hasManualAuth = config.headers['Authorization'] || config.headers['authorization'];
     if (hasManualAuth) {
@@ -108,30 +108,49 @@ api.interceptors.request.use(
     }
     
     const userType = localStorage.getItem('user_type');
+    console.log(`[API] 🔍 Checking auth for ${config.url}, userType:`, userType);
     
+    // 🔐 Seller/Admin: JWT Token
+    // Priority: seller_token > access_token
     if (userType === 'seller' || userType === 'admin') {
-      const jwtToken = localStorage.getItem('access_token');
+      // Try seller_token first (셀러 전용)
+      let jwtToken = localStorage.getItem('seller_token');
+      let tokenSource = 'seller_token';
+      
+      // Fallback to access_token (호환성)
+      if (!jwtToken) {
+        jwtToken = localStorage.getItem('access_token');
+        tokenSource = 'access_token';
+      }
+      
       if (jwtToken) {
         config.headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log(`[API] 🔐 JWT Token attached (${userType})`);
+        console.log(`[API] ✅ JWT Token attached from ${tokenSource} (${userType})`);
+        console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
         return config;
       } else {
-        console.warn(`[API] ⚠️ No JWT token found for ${userType}`);
+        console.warn(`[API] ⚠️ No JWT token found for ${userType}, retrying...`);
         // Give localStorage a moment to synchronize (race condition fix)
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const retryToken = localStorage.getItem('access_token');
-        if (retryToken) {
-          config.headers['Authorization'] = `Bearer ${retryToken}`;
-          console.log(`[API] 🔐 JWT Token attached after retry (${userType})`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Retry with priority
+        jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
+        if (jwtToken) {
+          config.headers['Authorization'] = `Bearer ${jwtToken}`;
+          tokenSource = localStorage.getItem('seller_token') ? 'seller_token' : 'access_token';
+          console.log(`[API] ✅ JWT Token attached after retry from ${tokenSource} (${userType})`);
+          console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
           return config;
         } else {
           console.error(`[API] ❌ JWT token still missing after retry for ${userType}`);
+          console.error(`[API] 🔍 localStorage keys:`, Object.keys(localStorage));
         }
       }
     }
     
-    // 🔥 Buyers/Others: Firebase ID Token
+    // 🔥 Buyers/Others: Firebase ID Token (항상 최신 토큰 갱신)
     try {
+      console.log('[API] 🔥 Attempting Firebase Auth for buyers/others...');
       const auth = await getFirebaseAuth();
       let user = auth.currentUser;
       
@@ -153,11 +172,13 @@ api.interceptors.request.use(
       }
       
       if (user) {
-        const idToken = await user.getIdToken(false);
+        // 항상 최신 토큰 갱신 (force refresh)
+        const idToken = await user.getIdToken(true);
         config.headers['Authorization'] = `Bearer ${idToken}`;
-        console.log('[API] 🔥 Firebase ID Token attached (buyer)');
+        console.log('[API] ✅ Firebase ID Token attached and refreshed (buyer)');
+        console.log(`[API] 🔑 Token preview: ${idToken.substring(0, 20)}...`);
       } else {
-        console.warn('[API] ⚠️ No auth token for protected API:', config.url);
+        console.warn('[API] ⚠️ No Firebase user for protected API:', config.url);
       }
     } catch (error) {
       console.error('[API] ❌ Failed to get auth token:', error);

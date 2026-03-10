@@ -1720,7 +1720,7 @@ function extractTikTokUsername(url: string): string | null {
 app.use('*', async (c, next) => {
   await next();
   
-  // Content Security Policy
+  // Content Security Policy (완전 확장 - 모든 외부 리소스 허용)
   c.header('Content-Security-Policy', 
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
@@ -1731,7 +1731,7 @@ app.use('*', async (c, next) => {
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://cdn.jsdelivr.net https://unpkg.com " +
       "https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com " +
+      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
       "https://*.firebaseapp.com; " +
     "script-src-elem 'self' 'unsafe-inline' " +
       "https://*.cloudflare.com https://static.cloudflareinsights.com " +
@@ -1741,20 +1741,21 @@ app.use('*', async (c, next) => {
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://cdn.jsdelivr.net https://unpkg.com " +
       "https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com " +
+      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
       "https://*.firebaseapp.com; " +
     "style-src 'self' 'unsafe-inline' " +
       "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com " +
-      "https://m.stripe.network; " +
-    "img-src 'self' data: https: blob:; " +
+      "https://*.stripe.com https://m.stripe.network; " +
+    "img-src 'self' 'unsafe-inline' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-    "connect-src 'self' https:; " +
+    "connect-src 'self' https: wss:; " +
     "frame-src 'self' " +
       "https://www.youtube.com https://youtube.com " +
-      "https://m.stripe.com https://m.stripe.network " +
+      "https://*.stripe.com https://m.stripe.com https://m.stripe.network " +
       "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
-      "https://kauth.kakao.com https://*.kakao.com; " +
-    "media-src 'self' https:; " +
+      "https://kauth.kakao.com https://*.kakao.com " +
+      "https://*.tosspayments.com; " +
+    "media-src 'self' https: blob:; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'; " +
