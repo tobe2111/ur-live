@@ -13653,6 +13653,187 @@ app.patch('/api/seller/profile', async (c) => {
   }
 });
 
+// Update seller business information
+app.patch('/api/seller/business-info', async (c) => {
+  const { DB } = c.env;
+  
+  // Get seller session
+  const auth = await verifySellerSession(c);
+  if (!auth.success || !auth.sellerId) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  }
+
+  try {
+    const { business_name, business_number, company_name } = await c.req.json();
+
+    await DB.prepare(`
+      UPDATE sellers 
+      SET business_name = ?,
+          business_number = ?,
+          company_name = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      business_name || null,
+      business_number || null,
+      company_name || null,
+      auth.sellerId
+    ).run();
+
+    const updatedSeller = await DB.prepare(`
+      SELECT id, username, name, email, phone, business_name, business_number,
+             company_name, profile_image, bio, sns_instagram, sns_youtube,
+             sns_facebook, sns_twitter, website_url, kakao_chat_link, status, created_at
+      FROM sellers WHERE id = ?
+    `).bind(auth.sellerId).first();
+
+    return c.json({ 
+      success: true, 
+      message: '사업자 정보가 업데이트되었습니다',
+      data: updatedSeller 
+    });
+  } catch (err) {
+    console.error('사업자 정보 업데이트 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Update seller personal information
+app.patch('/api/seller/personal-info', async (c) => {
+  const { DB } = c.env;
+  
+  const auth = await verifySellerSession(c);
+  if (!auth.success || !auth.sellerId) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  }
+
+  try {
+    const { name, email, phone } = await c.req.json();
+
+    // Check if email is already taken by another seller
+    if (email) {
+      const existing = await DB.prepare(`
+        SELECT id FROM sellers WHERE email = ? AND id != ?
+      `).bind(email, auth.sellerId).first();
+      
+      if (existing) {
+        return c.json({ success: false, error: '이미 사용 중인 이메일입니다' }, 400);
+      }
+    }
+
+    await DB.prepare(`
+      UPDATE sellers 
+      SET name = ?,
+          email = ?,
+          phone = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      name || null,
+      email || null,
+      phone || null,
+      auth.sellerId
+    ).run();
+
+    const updatedSeller = await DB.prepare(`
+      SELECT id, username, name, email, phone, business_name, business_number,
+             company_name, profile_image, bio, sns_instagram, sns_youtube,
+             sns_facebook, sns_twitter, website_url, kakao_chat_link, status, created_at
+      FROM sellers WHERE id = ?
+    `).bind(auth.sellerId).first();
+
+    return c.json({ 
+      success: true, 
+      message: '개인정보가 업데이트되었습니다',
+      data: updatedSeller 
+    });
+  } catch (err) {
+    console.error('개인정보 업데이트 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Change seller password
+app.post('/api/seller/change-password', async (c) => {
+  const { DB } = c.env;
+  
+  const auth = await verifySellerSession(c);
+  if (!auth.success || !auth.sellerId) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  }
+
+  try {
+    const { current_password, new_password } = await c.req.json();
+
+    if (!current_password || !new_password) {
+      return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요' }, 400);
+    }
+
+    if (new_password.length < 8) {
+      return c.json({ success: false, error: '새 비밀번호는 8자 이상이어야 합니다' }, 400);
+    }
+
+    // Get current seller with password
+    const seller = await DB.prepare(`
+      SELECT id, password FROM sellers WHERE id = ?
+    `).bind(auth.sellerId).first();
+
+    if (!seller || !seller.password) {
+      return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    }
+
+    // Verify current password (assuming bcrypt is used)
+    // Note: You'll need to import bcrypt or use native crypto
+    const bcrypt = await import('bcryptjs');
+    const isMatch = await bcrypt.compare(current_password, seller.password as string);
+    
+    if (!isMatch) {
+      return c.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다' }, 400);
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+
+    // Update password
+    await DB.prepare(`
+      UPDATE sellers 
+      SET password = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(hashedPassword, auth.sellerId).run();
+
+    return c.json({ 
+      success: true, 
+      message: '비밀번호가 성공적으로 변경되었습니다'
+    });
+  } catch (err) {
+    console.error('비밀번호 변경 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// Upload seller profile image
+app.post('/api/seller/upload-image', async (c) => {
+  const auth = await verifySellerSession(c);
+  if (!auth.success || !auth.sellerId) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  }
+
+  try {
+    // Note: File upload handling requires multipart/form-data parsing
+    // This is a placeholder - actual implementation depends on your setup
+    // You might use Cloudflare Images, R2, or external service like S3
+    
+    return c.json({ 
+      success: false, 
+      error: '이미지 업로드 기능은 현재 개발 중입니다. URL을 직접 입력해주세요.' 
+    }, 501);
+  } catch (err) {
+    console.error('이미지 업로드 실패:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // =================================
 // Seller Public APIs (공개 프로필 및 콘텐츠)
 // =================================

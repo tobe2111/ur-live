@@ -26,6 +26,7 @@ interface SellerProfile {
   phone?: string
   business_name?: string
   business_number?: string
+  company_name?: string
   profile_image?: string
   bio?: string
   sns_instagram?: string
@@ -46,10 +47,13 @@ export default function SellerProfileEditPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   
-  // Form state
-  const [formData, setFormData] = useState({
+  // Form states - separated into sections
+  const [profileData, setProfileData] = useState({
     profile_image: '',
-    bio: '',
+    bio: ''
+  })
+  
+  const [snsData, setSnsData] = useState({
     sns_instagram: '',
     sns_youtube: '',
     sns_facebook: '',
@@ -57,6 +61,27 @@ export default function SellerProfileEditPage() {
     website_url: '',
     kakao_chat_link: ''
   })
+  
+  const [businessData, setBusinessData] = useState({
+    business_name: '',
+    business_number: '',
+    company_name: ''
+  })
+  
+  const [personalData, setPersonalData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  })
+  
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  })
+  
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'personal' | 'password'>('profile')
 
   useEffect(() => {
     // Check authentication
@@ -83,15 +108,30 @@ export default function SellerProfileEditPage() {
         setProfile(seller)
         
         // Initialize form with current values
-        setFormData({
+        setProfileData({
           profile_image: seller.profile_image || '',
-          bio: seller.bio || '',
+          bio: seller.bio || ''
+        })
+        
+        setSnsData({
           sns_instagram: seller.sns_instagram || '',
           sns_youtube: seller.sns_youtube || '',
           sns_facebook: seller.sns_facebook || '',
           sns_twitter: seller.sns_twitter || '',
           website_url: seller.website_url || '',
           kakao_chat_link: seller.kakao_chat_link || ''
+        })
+        
+        setBusinessData({
+          business_name: seller.business_name || '',
+          business_number: seller.business_number || '',
+          company_name: seller.company_name || ''
+        })
+        
+        setPersonalData({
+          name: seller.name || '',
+          email: seller.email || '',
+          phone: seller.phone || ''
         })
       }
     } catch (error) {
@@ -102,24 +142,20 @@ export default function SellerProfileEditPage() {
     }
   }
 
-  async function handleSave() {
+  async function handleSaveProfile() {
     setSaving(true)
     setSuccessMessage('')
     setErrorMessage('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
-      const response = await api.patch(
-        '/api/seller/profile',
-        formData,
-        { headers: { 'Authorization': `Bearer ${sessionToken}` } }
-      )
+      const response = await api.patch('/api/seller/profile', {
+        ...profileData,
+        ...snsData
+      })
 
       if (response.data.success) {
         setProfile(response.data.data)
         setSuccessMessage('✅ 프로필이 성공적으로 업데이트되었습니다!')
-        
-        // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: any) {
@@ -127,6 +163,133 @@ export default function SellerProfileEditPage() {
       setErrorMessage(error.response?.data?.error || '프로필 업데이트에 실패했습니다')
     } finally {
       setSaving(false)
+    }
+  }
+  
+  async function handleSaveBusiness() {
+    setSaving(true)
+    setSuccessMessage('')
+    setErrorMessage('')
+
+    try {
+      const response = await api.patch('/api/seller/business-info', businessData)
+
+      if (response.data.success) {
+        setProfile(response.data.data)
+        setSuccessMessage('✅ 사업자 정보가 성공적으로 업데이트되었습니다!')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      }
+    } catch (error: any) {
+      console.error('Failed to update business info:', error)
+      setErrorMessage(error.response?.data?.error || '사업자 정보 업데이트에 실패했습니다')
+    } finally {
+      setSaving(false)
+    }
+  }
+  
+  async function handleSavePersonal() {
+    setSaving(true)
+    setSuccessMessage('')
+    setErrorMessage('')
+
+    try {
+      const response = await api.patch('/api/seller/personal-info', personalData)
+
+      if (response.data.success) {
+        setProfile(response.data.data)
+        setSuccessMessage('✅ 개인정보가 성공적으로 업데이트되었습니다!')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      }
+    } catch (error: any) {
+      console.error('Failed to update personal info:', error)
+      setErrorMessage(error.response?.data?.error || '개인정보 업데이트에 실패했습니다')
+    } finally {
+      setSaving(false)
+    }
+  }
+  
+  async function handleChangePassword() {
+    setSaving(true)
+    setSuccessMessage('')
+    setErrorMessage('')
+
+    // Validation
+    if (!passwordData.current_password) {
+      setErrorMessage('현재 비밀번호를 입력해주세요')
+      setSaving(false)
+      return
+    }
+    
+    if (passwordData.new_password.length < 8) {
+      setErrorMessage('새 비밀번호는 8자 이상이어야 합니다')
+      setSaving(false)
+      return
+    }
+    
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setErrorMessage('새 비밀번호가 일치하지 않습니다')
+      setSaving(false)
+      return
+    }
+
+    try {
+      const response = await api.post('/api/seller/change-password', {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password
+      })
+
+      if (response.data.success) {
+        setSuccessMessage('✅ 비밀번호가 성공적으로 변경되었습니다!')
+        setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
+        setTimeout(() => setSuccessMessage(''), 3000)
+      }
+    } catch (error: any) {
+      console.error('Failed to change password:', error)
+      setErrorMessage(error.response?.data?.error || '비밀번호 변경에 실패했습니다')
+    } finally {
+      setSaving(false)
+    }
+  }
+  
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('이미지 파일만 업로드 가능합니다')
+      return
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage('이미지 크기는 5MB 이하여야 합니다')
+      return
+    }
+    
+    setUploadingImage(true)
+    setErrorMessage('')
+    
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+      
+      const response = await api.post('/api/seller/upload-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
+      if (response.data.success) {
+        setProfileData({ ...profileData, profile_image: response.data.url })
+        setSuccessMessage('✅ 이미지가 업로드되었습니다!')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      }
+    } catch (error: any) {
+      console.error('Failed to upload image:', error)
+      setErrorMessage(error.response?.data?.error || '이미지 업로드에 실패했습니다')
+    } finally {
+      setUploadingImage(false)
     }
   }
 
