@@ -1750,11 +1750,12 @@ app.use('*', async (c, next) => {
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     "connect-src 'self' https: wss:; " +
     "frame-src 'self' " +
-      "https://www.youtube.com https://youtube.com " +
-      "https://*.stripe.com https://js.stripe.com https://m.stripe.com https://m.stripe.network " +
+      "https://*.tosspayments.com https://js.tosspayments.com " +
+      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com " +
       "https://kauth.kakao.com https://*.kakao.com " +
-      "https://*.tosspayments.com; " +
+      "https://www.youtube.com https://youtube.com https://player.vimeo.com; " +
     "media-src 'self' https: blob:; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
