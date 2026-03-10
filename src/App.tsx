@@ -50,6 +50,8 @@ const SellerStreamEditPage = lazy(() => import('./pages/SellerStreamEditPage'))
 const SellerProfileEditPage = lazy(() => import('./pages/SellerProfileEditPage'))
 const SellerPublicPage = lazy(() => import('./pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('./pages/SellerSettlementsPage'))
+const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
+const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 
 // User 페이지들
 const MyPage = lazy(() => import('./pages/MyPage'))
@@ -204,6 +206,8 @@ function AppContent() {
             <Route path="/seller/streams/:id" element={<SellerStreamEditPage />} />
             <Route path="/seller/profile" element={<SellerProfileEditPage />} />
             <Route path="/seller/settlements" element={<SellerSettlementsPage />} />
+            <Route path="/seller/live-broadcast" element={<SellerLiveBroadcastPage />} />
+            <Route path="/seller/youtube/callback" element={<YouTubeCallbackPage />} />
             {/* Redirect /mypage to /user/profile */}
             <Route path="/mypage" element={<UserProfilePage />} />
             <Route path="/user/profile" element={<UserProfilePage />} />

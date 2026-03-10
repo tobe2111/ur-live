@@ -137,6 +137,7 @@ sellerRoutes.post('/login', cors(), async (c) => {
     // 4. JWT 생성
     const payload = {
       sub: seller.id.toString(),
+      seller_id: seller.id as number, // ✅ Added for compatibility with seller-management routes
       email: seller.email,
       name: seller.name,
       username: seller.username,
@@ -148,13 +149,22 @@ sellerRoutes.post('/login', cors(), async (c) => {
     
     const token = await sign(payload, JWT_SECRET);
     
+    // ✅ Generate refresh token (longer expiry: 30 days)
+    const refreshPayload = {
+      ...payload,
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30일
+    };
+    const refreshToken = await sign(refreshPayload, JWT_SECRET);
+    
     console.log('[Seller Login] ✅ Login successful for seller:', seller.id);
     
-    // 5. 응답 반환
+    // 5. 응답 반환 (frontend expects accessToken & refreshToken)
     return c.json<AuthResponse<SellerLoginResponse>>({
       success: true,
       data: {
-        token,
+        accessToken: token, // ✅ Changed from 'token' to 'accessToken'
+        refreshToken: refreshToken, // ✅ Added refreshToken
+        token, // ✅ Keep for backward compatibility
         seller: {
           id: seller.id as number,
           username: seller.username as string,

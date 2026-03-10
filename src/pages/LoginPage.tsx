@@ -7,9 +7,7 @@ import api from '@/lib/api'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play, Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 // Kakao SDK 타입 선언
 declare global {
@@ -266,237 +264,239 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isAuthReady && isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
-        <div className="text-white text-xl">Redirecting...</div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-600">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl">
-        <CardHeader className="space-y-1 pb-6">
-          <div className="flex items-center justify-center mb-4">
-            <Play className="h-12 w-12 text-pink-600" />
-          </div>
-          <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-[380px]">
+        {/* Logo - 29CM Style: Ultra minimal */}
+        <div className="text-center mb-14">
+          <h1 className="text-[28px] font-extralight tracking-[0.02em] text-[#111] mb-1">
+            UR LIVE
+          </h1>
+          <p className="text-[12px] font-light text-[#666] tracking-wide mt-3">
             {t('auth.loginTitle')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-          
-          {successMessage && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-              {successMessage}
-            </div>
-          )}
+          </p>
+        </div>
 
-          {!showEmailLogin && !showForgotPassword && (
-            <>
-              {/* Kakao Login Button (KR only) */}
-              {isKorea() && (
-                <Button
-                  onClick={handleKakaoLogin}
-                  disabled={loading || !kakaoReady}
-                  className="w-full bg-[#FEE500] hover:bg-[#FDD835] text-gray-900 font-semibold py-6 text-base transition-all duration-200 shadow-lg hover:shadow-xl"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {t('common.loading')}
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center">
-                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
-                      </svg>
-                      {t('auth.loginWithKakao')}
-                    </span>
-                  )}
-                </Button>
-              )}
+        {/* Error/Success Messages - 29CM Style */}
+        {error && (
+          <div className="mb-6 p-4 bg-[#FFF8F8] border border-[#FFEBEB] text-[13px] text-[#D32F2F] font-light">
+            {error}
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="mb-6 p-4 bg-[#F0F8F4] border border-[#D4EDDA] text-[13px] text-[#2E7D32] font-light">
+            {successMessage}
+          </div>
+        )}
 
-              {/* Google Login Button (World only) */}
-              {!isKorea() && (
-                <Button
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  className="w-full bg-white hover:bg-gray-50 text-gray-900 font-semibold py-6 text-base transition-all duration-200 shadow-lg hover:shadow-xl border border-gray-300"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {t('common.loading')}
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center">
-                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                      {t('auth.loginWithGoogle')}
-                    </span>
-                  )}
-                </Button>
-              )}
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">{t('common.or')}</span>
-                </div>
-              </div>
-
-              <Button
-                onClick={() => setShowEmailLogin(true)}
-                variant="outline"
-                className="w-full py-6 text-base font-semibold border-2 hover:bg-gray-50 transition-all duration-200"
+        {/* Main Login Form */}
+        {!showEmailLogin && !showForgotPassword && (
+          <div className="space-y-3">
+            {/* Kakao Login Button (KR only) - 29CM Style: Minimal, clean lines */}
+            {isKorea() && (
+              <button
+                onClick={handleKakaoLogin}
+                disabled={loading || !kakaoReady}
+                className="w-full h-[48px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-[#F9D900]"
               >
-                <Mail className="w-5 h-5 mr-2" />
-                {t('auth.loginWithEmail')}
-              </Button>
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
+                    </svg>
+                    {t('auth.loginWithKakao')}
+                  </>
+                )}
+              </button>
+            )}
 
-              <div className="text-center text-sm text-gray-600 mt-4">
-                {t('auth.noAccount')}{' '}
-                <Link to="/register" className="text-pink-600 hover:text-pink-700 font-semibold hover:underline">
-                  {t('auth.signUp')}
-                </Link>
+            {/* Google Login Button (World only) - 29CM Style */}
+            {!isKorea() && (
+              <button
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full h-[48px] bg-white hover:bg-[#FAFAFA] text-[#111] text-[13px] font-normal tracking-wide border border-[#E0E0E0] hover:border-[#111] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    {t('auth.loginWithGoogle')}
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Divider - 29CM Style: Ultra minimal */}
+            <div className="relative py-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[#F0F0F0]"></div>
               </div>
-            </>
-          )}
-
-          {showEmailLogin && !showForgotPassword && (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('auth.email')}
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
-                    placeholder={t('auth.emailPlaceholder')}
-                    required
-                  />
-                </div>
+              <div className="relative flex justify-center">
+                <span className="px-4 text-[11px] text-[#999] bg-white font-light tracking-widest">OR</span>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('auth.password')}
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
-                    placeholder={t('auth.passwordPlaceholder')}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
+            {/* Email Login Button - 29CM Style: Black minimal button */}
+            <button
+              onClick={() => setShowEmailLogin(true)}
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide flex items-center justify-center transition-all"
+            >
+              {t('auth.loginWithEmail')}
+            </button>
 
-              <div className="flex items-center justify-end">
+            {/* Sign Up Link - 29CM Style: Minimal, understated */}
+            <div className="text-center text-[12px] text-[#666] mt-8 font-light">
+              {t('auth.noAccount')}{' '}
+              <Link to="/register" className="text-[#111] font-normal hover:underline underline-offset-4 decoration-1">
+                {t('auth.signUp')}
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Email Login Form - 29CM Style */}
+        {showEmailLogin && !showForgotPassword && (
+          <form onSubmit={handleEmailLogin} className="space-y-5">
+            <div>
+              <label className="block text-[11px] font-normal text-[#666] mb-2 tracking-wide uppercase">
+                {t('auth.email')}
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-[48px] px-4 border border-[#E0E0E0] text-[13px] font-light focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
+                placeholder={t('auth.emailPlaceholder')}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-normal text-[#666] mb-2 tracking-wide uppercase">
+                {t('auth.password')}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] text-[13px] font-light focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
+                  placeholder={t('auth.passwordPlaceholder')}
+                  required
+                />
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForgotPassword(true)
-                    setShowEmailLogin(false)
-                  }}
-                  className="text-sm text-pink-600 hover:text-pink-700 font-medium hover:underline"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#999] hover:text-[#111]"
                 >
-                  {t('auth.forgotPassword')}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-semibold py-6 text-base transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                {loading ? t('common.loading') : t('auth.login')}
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setShowEmailLogin(false)}
-                variant="outline"
-                className="w-full py-3 text-sm"
-              >
-                {t('common.back')}
-              </Button>
-            </form>
-          )}
-
-          {showForgotPassword && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('auth.email')}
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
-                    placeholder={t('auth.emailPlaceholder')}
-                    required
-                  />
-                </div>
-              </div>
-
-              <Button
-                onClick={handleResetPassword}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-semibold py-6 text-base transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                {loading ? t('common.loading') : t('auth.sendResetLink')}
-              </Button>
-
-              <Button
+            <div className="flex items-center justify-end">
+              <button
                 type="button"
                 onClick={() => {
-                  setShowForgotPassword(false)
-                  setShowEmailLogin(true)
+                  setShowForgotPassword(true)
+                  setShowEmailLogin(false)
                 }}
-                variant="outline"
-                className="w-full py-3 text-sm"
+                className="text-[11px] text-[#666] hover:text-[#111] underline underline-offset-4 decoration-1 font-light"
               >
-                {t('common.back')}
-              </Button>
+                {t('auth.forgotPassword')}
+              </button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? t('common.loading') : t('auth.login')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowEmailLogin(false)}
+              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#111] text-[#111] text-[13px] font-normal tracking-wide transition-all"
+            >
+              {t('common.back')}
+            </button>
+          </form>
+        )}
+
+        {/* Forgot Password Form - 29CM Style */}
+        {showForgotPassword && (
+          <div className="space-y-5">
+            <div className="text-center mb-8">
+              <p className="text-[13px] text-[#666] font-light leading-relaxed">
+                Enter your email to receive a password reset link
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-normal text-[#666] mb-2 tracking-wide uppercase">
+                {t('auth.email')}
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-[48px] px-4 border border-[#E0E0E0] text-[13px] font-light focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
+                placeholder={t('auth.emailPlaceholder')}
+                required
+              />
+            </div>
+
+            <button
+              onClick={handleResetPassword}
+              disabled={loading}
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? t('common.loading') : t('auth.sendResetLink')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowForgotPassword(false)
+                setShowEmailLogin(true)
+              }}
+              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#111] text-[#111] text-[13px] font-normal tracking-wide transition-all"
+            >
+              {t('common.back')}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
