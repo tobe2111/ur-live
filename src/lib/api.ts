@@ -85,18 +85,23 @@ function isPublicAPI(url: string): boolean {
 }
 
 /**
- * 요청 인터셉터: JWT & Firebase ID Token 자동 추가
+ * 요청 인터셉터: 완전 분리된 인증 시스템
  * 
- * - Seller/Admin: JWT Token (seller_token 우선, access_token fallback)
- * - Buyers: Firebase ID Token (항상 갱신)
+ * ✅ CRITICAL: Seller/Admin은 Firebase를 절대 사용하지 않음!
+ * 
+ * - /api/seller/* → seller_token (자체 JWT)
+ * - /api/admin/* → admin_token (자체 JWT)  
+ * - /api/* (일반) → Firebase ID Token (카카오 OAuth)
  */
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (!config.headers) return config;
     
+    const url = config.url || '';
+    
     // 공개 API는 토큰 불필요
-    if (isPublicAPI(config.url || '')) {
-      console.log('[API] 🌍 Public API - no auth required:', config.url);
+    if (isPublicAPI(url)) {
+      console.log('[API] 🌍 Public API - no auth required:', url);
       return config;
     }
     
@@ -107,59 +112,83 @@ api.interceptors.request.use(
       return config;
     }
     
-    const userType = localStorage.getItem('user_type');
-    console.log(`[API] 🔍 Checking auth for ${config.url}, userType:`, userType);
+    console.log(`[API] 🔍 Checking auth for ${url}`);
     
-    // 🔐 Seller/Admin: JWT Token
-    // Priority: seller_token > access_token
-    if (userType === 'seller' || userType === 'admin') {
-      // Try seller_token first (셀러 전용)
-      let jwtToken = localStorage.getItem('seller_token');
-      let tokenSource = 'seller_token';
+    // ============================================================
+    // 🔐 SELLER API: /api/seller/* → seller_token 또는 access_token
+    // Firebase 절대 사용 안함!
+    // ============================================================
+    if (url.includes('/api/seller/')) {
+      console.log('[API] 🏪 Seller API detected, using JWT only (NO FIREBASE)');
       
-      // Fallback to access_token (호환성)
+      // Priority: seller_token > access_token
+      let jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
+      const tokenSource = localStorage.getItem('seller_token') ? 'seller_token' : 'access_token';
+      
       if (!jwtToken) {
-        jwtToken = localStorage.getItem('access_token');
-        tokenSource = 'access_token';
+        // Retry after 100ms (localStorage sync)
+        console.warn('[API] ⚠️ Seller token not found, retrying...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
       }
       
       if (jwtToken) {
         config.headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log(`[API] ✅ JWT Token attached from ${tokenSource} (${userType})`);
+        console.log(`[API] ✅ Seller JWT attached from ${tokenSource}`);
         console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
         return config;
       } else {
-        console.warn(`[API] ⚠️ No JWT token found for ${userType}, retrying...`);
-        // Give localStorage a moment to synchronize (race condition fix)
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Retry with priority
-        jwtToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token');
-        if (jwtToken) {
-          config.headers['Authorization'] = `Bearer ${jwtToken}`;
-          tokenSource = localStorage.getItem('seller_token') ? 'seller_token' : 'access_token';
-          console.log(`[API] ✅ JWT Token attached after retry from ${tokenSource} (${userType})`);
-          console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
-          return config;
-        } else {
-          console.error(`[API] ❌ JWT token still missing after retry for ${userType}`);
-          console.error(`[API] 🔍 localStorage keys:`, Object.keys(localStorage));
-        }
+        console.error('[API] ❌ Seller token missing! localStorage:', Object.keys(localStorage));
+        console.error('[API] 🚨 This will result in 401 error!');
+        return config;
       }
     }
     
-    // 🔥 Buyers/Others: Firebase ID Token (항상 최신 토큰 갱신)
+    // ============================================================
+    // 🔐 ADMIN API: /api/admin/* → admin_token 또는 access_token
+    // Firebase 절대 사용 안함!
+    // ============================================================
+    if (url.includes('/api/admin/')) {
+      console.log('[API] 👑 Admin API detected, using JWT only (NO FIREBASE)');
+      
+      // Priority: admin_token > access_token
+      let jwtToken = localStorage.getItem('admin_token') || localStorage.getItem('access_token');
+      const tokenSource = localStorage.getItem('admin_token') ? 'admin_token' : 'access_token';
+      
+      if (!jwtToken) {
+        // Retry after 100ms (localStorage sync)
+        console.warn('[API] ⚠️ Admin token not found, retrying...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        jwtToken = localStorage.getItem('admin_token') || localStorage.getItem('access_token');
+      }
+      
+      if (jwtToken) {
+        config.headers['Authorization'] = `Bearer ${jwtToken}`;
+        console.log(`[API] ✅ Admin JWT attached from ${tokenSource}`);
+        console.log(`[API] 🔑 Token preview: ${jwtToken.substring(0, 20)}...`);
+        return config;
+      } else {
+        console.error('[API] ❌ Admin token missing! localStorage:', Object.keys(localStorage));
+        console.error('[API] 🚨 This will result in 401 error!');
+        return config;
+      }
+    }
+    
+    // ============================================================
+    // 🔥 BUYER API: /api/* (일반) → Firebase ID Token
+    // 카카오 OAuth 사용자만 여기 도달
+    // ============================================================
+    console.log('[API] 👤 General API - using Firebase ID Token for buyers');
     try {
-      console.log('[API] 🔥 Attempting Firebase Auth for buyers/others...');
       const auth = await getFirebaseAuth();
       let user = auth.currentUser;
       
-      // auth.currentUser가 null이면 onAuthStateChanged로 대기 (최대 3초)
+      // Wait for Firebase Auth initialization
       if (!user) {
-        console.log('[API] ⏳ Waiting for Firebase Auth initialization...');
+        console.log('[API] ⏳ Waiting for Firebase Auth...');
         user = await new Promise<typeof auth.currentUser>((resolve) => {
           const timeout = setTimeout(() => {
-            console.warn('[API] ⚠️ Firebase Auth initialization timeout (3s)');
+            console.warn('[API] ⚠️ Firebase Auth timeout (3s)');
             resolve(null);
           }, 3000);
           
@@ -172,16 +201,16 @@ api.interceptors.request.use(
       }
       
       if (user) {
-        // 항상 최신 토큰 갱신 (force refresh)
+        // Force refresh token
         const idToken = await user.getIdToken(true);
         config.headers['Authorization'] = `Bearer ${idToken}`;
-        console.log('[API] ✅ Firebase ID Token attached and refreshed (buyer)');
+        console.log('[API] ✅ Firebase ID Token attached (buyer)');
         console.log(`[API] 🔑 Token preview: ${idToken.substring(0, 20)}...`);
       } else {
-        console.warn('[API] ⚠️ No Firebase user for protected API:', config.url);
+        console.warn('[API] ⚠️ No Firebase user for protected API:', url);
       }
     } catch (error) {
-      console.error('[API] ❌ Failed to get auth token:', error);
+      console.error('[API] ❌ Firebase Auth failed:', error);
     }
     
     return config;
@@ -190,104 +219,95 @@ api.interceptors.request.use(
 );
 
 /**
- * 응답 인터셉터: 401 에러 시 자동 로그아웃
+ * 응답 인터셉터: 401 에러 처리 (완전 분리)
  * 
- * - Firebase Auth가 토큰 만료 시 자동으로 갱신
- * - 401 발생 = 진짜 인증 실패 → 로그아웃 처리
- * - Custom Claims로 권한 체크 (role: user, seller, admin)
+ * - Seller/Admin: JWT 재발급 없음, 바로 로그아웃
+ * - Buyers: Firebase Token 재발급 시도
  */
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const url = originalRequest.url || '';
     
     // 401 Unauthorized 처리
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
-      // 🔄 토큰 갱신 재시도 (모바일 네트워크 이슈 대응)
-      try {
-        const auth = await getFirebaseAuth();
-        const user = auth.currentUser;
-        if (user) {
-          try {
-            console.log('[API] 🔄 Retrying with refreshed token...');
-            const newToken = await user.getIdToken(true); // 강제 갱신
-            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-            return api(originalRequest);
-          } catch (refreshError) {
-            console.error('[API] ❌ Token refresh failed:', refreshError);
-            captureError(refreshError as Error, { context: 'API.tokenRefresh', url: originalRequest.url });
-          }
-        }
-      } catch (error) {
-        console.error('[API] ❌ Failed to load Firebase Auth:', error);
-      }
-      
-      // 1️⃣ 공개 API는 401 무시
-      if (isPublicAPI(originalRequest.url || '')) {
+      // 공개 API는 401 무시
+      if (isPublicAPI(url)) {
         console.log('[API] Public API - 401 ignored');
         return Promise.reject(error);
       }
       
-      // 2️⃣ 권한 문제 체크 (Custom Claims 불일치)
       const errorData = error.response?.data as any;
-      const errorMessage = errorData?.error || '';
+      console.error('[API] 🚨 401 Unauthorized:', url);
+      console.error('[API] 📊 Server error:', errorData);
       
-      if (errorMessage.includes('권한') || errorMessage.includes('admin') || errorMessage.includes('seller')) {
-        console.error('[API] ❌ Permission denied (Firebase Custom Claims 불일치)');
-        localStorage.clear();
+      // ============================================================
+      // 🔐 SELLER/ADMIN: JWT 만료 → 바로 로그아웃 (재발급 없음)
+      // ============================================================
+      if (url.includes('/api/seller/') || url.includes('/api/admin/')) {
+        console.error('[API] 🚨 Seller/Admin JWT expired or invalid');
         
-        const currentPath = window.location.pathname;
-        if (currentPath.startsWith('/admin')) {
-          alert('관리자 권한이 필요합니다.');
-          window.location.href = '/admin/login';
-        } else if (currentPath.startsWith('/seller')) {
-          alert('판매자 권한이 필요합니다.');
+        captureError(new Error(`Seller/Admin 401: ${errorData?.error || 'Unauthorized'}`), {
+          context: url.includes('/api/seller/') ? 'SELLER.401' : 'ADMIN.401',
+          url: url
+        });
+        
+        // Clear all tokens
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to appropriate login
+        if (url.includes('/api/seller/')) {
+          alert('셀러 인증이 만료되었습니다.\n\n다시 로그인해주세요.');
           window.location.href = '/seller/login';
         } else {
-          window.location.href = '/login';
+          alert('관리자 인증이 만료되었습니다.\n\n다시 로그인해주세요.');
+          window.location.href = '/admin/login';
         }
         
         return Promise.reject(error);
       }
       
-      // 3️⃣ Firebase 인증 실패 → 로그아웃
-      console.error('[API] 🚨 Firebase auth failed (401)');
-      console.error('[API] 📊 Server error details:', errorData);
-      captureError(new Error(`API 401 Unauthorized: ${errorData?.error || 'Unknown'}`), { 
-        context: 'API.401', 
-        url: originalRequest.url,
-        errorCode: errorData?.code 
-      });
-      
-      // Display detailed error information from server
-      if (errorData?.code) {
-        console.error('[API] 🔍 Error Code:', errorData.code);
-        console.error('[API] 💬 Error Message:', errorData.error);
-        if (errorData.debug) {
-          console.error('[API] 🐛 Debug Info:', errorData.debug);
+      // ============================================================
+      // 🔥 BUYER: Firebase Token 재발급 시도
+      // ============================================================
+      console.log('[API] 🔥 Buyer 401 - attempting token refresh...');
+      try {
+        const auth = await getFirebaseAuth();
+        const user = auth.currentUser;
+        
+        if (user) {
+          try {
+            console.log('[API] 🔄 Refreshing Firebase token...');
+            const newToken = await user.getIdToken(true);
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            console.log('[API] ✅ Token refreshed, retrying request...');
+            return api(originalRequest);
+          } catch (refreshError) {
+            console.error('[API] ❌ Token refresh failed:', refreshError);
+            captureError(refreshError as Error, { context: 'BUYER.tokenRefresh', url: url });
+          }
         }
+      } catch (error) {
+        console.error('[API] ❌ Firebase Auth failed:', error);
       }
       
-      // Alert user with detailed error
-      const errorMsg = errorData?.error || 'Authentication failed';
-      const errorCode = errorData?.code || 'UNKNOWN';
-      alert(`인증 실패 (${errorCode})\n\n${errorMsg}\n\n다시 로그인해주세요.`);
+      // Firebase 재발급 실패 → 로그아웃
+      console.error('[API] 🚨 Buyer auth failed, logging out...');
+      
+      captureError(new Error(`Buyer 401: ${errorData?.error || 'Unauthorized'}`), {
+        context: 'BUYER.401',
+        url: url
+      });
+      
+      alert('인증이 만료되었습니다.\n\n다시 로그인해주세요.');
       
       localStorage.clear();
       sessionStorage.clear();
-      
-      const currentPath = window.location.pathname;
-      if (!currentPath.includes('/login')) {
-        if (currentPath.startsWith('/admin')) {
-          window.location.href = '/admin/login';
-        } else if (currentPath.startsWith('/seller')) {
-          window.location.href = '/seller/login';
-        } else {
-          window.location.href = '/login';
-        }
-      }
+      window.location.href = '/login';
       
       return Promise.reject(error);
     }
