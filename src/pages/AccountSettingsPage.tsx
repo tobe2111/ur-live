@@ -27,19 +27,23 @@ export default function AccountSettingsPage() {
   });
 
   useEffect(() => {
-    const userId = getUserId();
-    if (!userId) {
-      alert('로그인이 필요합니다.');
-      navigate('/login');
-      return;
-    }
+    const loadUserData = async () => {
+      const userId = await getUserId();
+      if (!userId) {
+        alert('로그인이 필요합니다.');
+        navigate('/login');
+        return;
+      }
 
-    setUser({
-      id: userId,
-      name: getUserName() || '사용자',
-      email: getUserEmail() || '',
-      phone: '010-1234-5678', // TODO: 실제 전화번호 가져오기
-    });
+      setUser({
+        id: userId,
+        name: getUserName() || '사용자',
+        email: getUserEmail() || '',
+        phone: '010-1234-5678', // TODO: 실제 전화번호 가져오기
+      });
+    };
+    
+    loadUserData();
   }, [navigate]);
 
   return (

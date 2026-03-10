@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { getUserId, logout as authLogout } from '@/utils/auth';
 import { DELETE_ACCOUNT_WARNINGS } from '@/features/account/types/delete-account.types';
+import api from '@/lib/api';
 
 export default function AccountDeleteWarningPage() {
   const navigate = useNavigate();
@@ -21,12 +22,14 @@ export default function AccountDeleteWarningPage() {
   const [showScrollHint, setShowScrollHint] = useState(true);
 
   useEffect(() => {
-    const userId = getUserId();
-    if (!userId) {
-      alert('로그인이 필요합니다.');
-      navigate('/login');
-      return;
-    }
+    const checkAuth = async () => {
+      const userId = await getUserId();
+      if (!userId) {
+        alert('로그인이 필요합니다.');
+        navigate('/login');
+      }
+    };
+    checkAuth();
   }, [navigate]);
 
   useEffect(() => {
@@ -66,43 +69,68 @@ export default function AccountDeleteWarningPage() {
     setIsLoading(true);
 
     try {
-      const userId = getUserId();
+      const userId = await getUserId();
       if (!userId) {
         throw new Error('사용자 ID를 찾을 수 없습니다.');
       }
 
-      // 실제 탈퇴 API 호출
-      const response = await fetch('/api/account/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          reason: '사용자 요청',
-        }),
+      console.log('[Account Delete] 탈퇴 요청 시작:', { userId });
+      console.log('[Account Delete] localStorage 확인:', {
+        seller_token: !!localStorage.getItem('seller_token'),
+        admin_token: !!localStorage.getItem('admin_token'),
+        access_token: !!localStorage.getItem('access_token'),
+        user_type: localStorage.getItem('user_type'),
       });
 
-      const data = await response.json();
+      // ✅ API 인스턴스 사용 (자동으로 Authorization 헤더 추가됨)
+      // Note: userId는 서버에서 requireAuth 미들웨어를 통해 자동으로 추출되므로
+      // body에 포함하지 않아도 되지만, 호환성을 위해 유지
+      const response = await api.delete('/api/account/delete');
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || '탈퇴 처리에 실패했습니다.');
+      console.log('[Account Delete] API 응답:', response.data);
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || response.data.message || '탈퇴 처리에 실패했습니다.');
       }
 
-      console.log('[Account Delete] Success:', data);
+      console.log('[Account Delete] ✅ 탈퇴 성공:', response.data);
 
       // 로그아웃 처리
-      authLogout();
+      await authLogout();
+      console.log('[Account Delete] ✅ 로그아웃 완료');
 
       // 탈퇴 완료 페이지로 이동
       navigate('/account/deleted', { replace: true });
-    } catch (error) {
-      console.error('Account deletion failed:', error);
-      alert(
-        error instanceof Error 
-          ? error.message 
-          : '탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-      );
+    } catch (error: any) {
+      console.error('[Account Delete] ❌ 탈퇴 실패:', error);
+      console.error('[Account Delete] ❌ 에러 상세:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      
+      // Axios 에러 처리
+      let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.';
+      
+      if (error.response?.status === 401) {
+        errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.';
+        console.error('[Account Delete] 401 Unauthorized - 토큰 확인 필요');
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
+      
+      // 401 에러인 경우 로그인 페이지로 리다이렉트
+      if (error.response?.status === 401) {
+        setTimeout(() => {
+          navigate('/login');
+        }, 1000);
+      }
     } finally {
       setIsLoading(false);
     }
