@@ -1,7 +1,6 @@
 name = "ur-live"
 # Note: When deploying, use --project-name ur-live
 # This project is connected to live.ur-team.com
-main = "dist/_worker.js"
 compatibility_date = "2026-02-01"
 pages_build_output_dir = "./dist"
 compatibility_flags = ["nodejs_compat"]
