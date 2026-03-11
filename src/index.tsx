@@ -16599,29 +16599,46 @@ app.get('/api/youtube/channels', cors(), async (c) => {
 
 // YouTube OAuth Callback
 app.post('/api/youtube/oauth/callback', cors(), async (c) => {
+  console.log('[YouTube OAuth Callback] 🚀 Request received');
+  
   const auth = await verifySellerSession(c);
   
   if (!auth.success) {
+    console.error('[YouTube OAuth Callback] ❌ Authentication failed:', auth.error);
     return c.json({ success: false, error: auth.error }, 401);
   }
+
+  console.log('[YouTube OAuth Callback] ✅ Authentication successful, seller ID:', auth.sellerId);
 
   const { DB } = c.env;
   
   try {
-    const { code } = await c.req.json();
+    const body = await c.req.json();
+    console.log('[YouTube OAuth Callback] 📦 Request body received:', Object.keys(body));
+    
+    const { code } = body;
     
     if (!code) {
+      console.error('[YouTube OAuth Callback] ❌ No authorization code in request');
       return c.json({
         success: false,
         error: 'Authorization code is required'
       }, 400);
     }
 
+    console.log('[YouTube OAuth Callback] 🔑 Authorization code received (length:', code.length, ')');
+
     const clientId = c.env.YOUTUBE_CLIENT_ID;
     const clientSecret = c.env.YOUTUBE_CLIENT_SECRET;
     const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback';
 
+    console.log('[YouTube OAuth Callback] 🔧 Config check:');
+    console.log('  - Client ID:', clientId ? `${clientId.substring(0, 20)}...` : 'NOT SET');
+    console.log('  - Client Secret:', clientSecret ? 'SET' : 'NOT SET');
+    console.log('  - Redirect URI:', redirectUri);
+
     if (!clientId || !clientSecret) {
+      console.error('[YouTube OAuth Callback] ❌ Missing OAuth credentials');
       return c.json({
         success: false,
         error: 'YouTube OAuth가 설정되지 않았습니다.',
@@ -16630,49 +16647,101 @@ app.post('/api/youtube/oauth/callback', cors(), async (c) => {
     }
 
     // Exchange code for tokens
-    console.log('[YouTube OAuth] Exchanging code for tokens...');
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: 'authorization_code',
-      }),
-    });
+    console.log('[YouTube OAuth Callback] 🔄 Exchanging authorization code for tokens...');
+    
+    let tokenResponse;
+    try {
+      tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+    } catch (fetchError: any) {
+      console.error('[YouTube OAuth Callback] ❌ Network error during token exchange:', fetchError.message);
+      return c.json({
+        success: false,
+        error: '토큰 교환 중 네트워크 오류가 발생했습니다.',
+        error_details: fetchError.message
+      }, 500);
+    }
+
+    console.log('[YouTube OAuth Callback] 📡 Token exchange response status:', tokenResponse.status);
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
-      console.error('[YouTube OAuth] Token exchange failed:', errorData);
-      throw new Error('Failed to exchange authorization code for tokens');
+      console.error('[YouTube OAuth Callback] ❌ Token exchange failed:', errorData);
+      
+      let errorMessage = '토큰 교환에 실패했습니다.';
+      try {
+        const errorJson = JSON.parse(errorData);
+        if (errorJson.error === 'invalid_grant') {
+          errorMessage = '인증 코드가 만료되었거나 이미 사용되었습니다. 다시 시도해주세요.';
+        } else if (errorJson.error === 'invalid_client') {
+          errorMessage = 'YouTube OAuth 설정이 올바르지 않습니다. 관리자에게 문의하세요.';
+        }
+        console.error('[YouTube OAuth Callback] Error details:', errorJson);
+      } catch (e) {
+        // Not JSON, use text
+      }
+      
+      return c.json({
+        success: false,
+        error: errorMessage,
+        error_code: 'TOKEN_EXCHANGE_FAILED',
+        error_details: errorData
+      }, 500);
     }
 
     const tokens = await tokenResponse.json();
-    console.log('[YouTube OAuth] Tokens received, fetching channel info...');
+    console.log('[YouTube OAuth Callback] ✅ Tokens received successfully');
+    console.log('[YouTube OAuth Callback] 📺 Fetching YouTube channel information...');
 
     // Fetch channel information
-    const channelResponse = await fetch(
-      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true',
-      {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      }
-    );
+    let channelResponse;
+    try {
+      channelResponse = await fetch(
+        'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true',
+        {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+          },
+        }
+      );
+    } catch (fetchError: any) {
+      console.error('[YouTube OAuth Callback] ❌ Network error fetching channel:', fetchError.message);
+      return c.json({
+        success: false,
+        error: '채널 정보를 가져오는 중 오류가 발생했습니다.',
+        error_details: fetchError.message
+      }, 500);
+    }
+
+    console.log('[YouTube OAuth Callback] 📡 Channel fetch response status:', channelResponse.status);
 
     if (!channelResponse.ok) {
       const errorData = await channelResponse.text();
-      console.error('[YouTube OAuth] Channel fetch failed:', errorData);
-      throw new Error('Failed to fetch channel information');
+      console.error('[YouTube OAuth Callback] ❌ Channel fetch failed:', errorData);
+      return c.json({
+        success: false,
+        error: '채널 정보를 가져올 수 없습니다.',
+        error_code: 'CHANNEL_FETCH_FAILED',
+        error_details: errorData
+      }, 500);
     }
 
     const channelData = await channelResponse.json();
+    console.log('[YouTube OAuth Callback] 📊 Channel data received, items:', channelData.items?.length || 0);
     
     if (!channelData.items || channelData.items.length === 0) {
+      console.error('[YouTube OAuth Callback] ❌ No YouTube channel found for this account');
       return c.json({
         success: false,
         error: 'YouTube 채널을 찾을 수 없습니다. YouTube 계정에 채널이 있는지 확인해주세요.',
@@ -16683,6 +16752,8 @@ app.post('/api/youtube/oauth/callback', cors(), async (c) => {
     const channel = channelData.items[0];
     const tokenExpiry = Math.floor(Date.now() / 1000) + (tokens.expires_in || 3600);
 
+    console.log('[YouTube OAuth Callback] 📧 Fetching Google account email...');
+    
     // Get Google account email
     const userinfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
@@ -16694,37 +16765,66 @@ app.post('/api/youtube/oauth/callback', cors(), async (c) => {
     if (userinfoResponse.ok) {
       const userinfo = await userinfoResponse.json();
       googleEmail = userinfo.email;
+      console.log('[YouTube OAuth Callback] ✅ Email fetched:', googleEmail);
+    } else {
+      console.warn('[YouTube OAuth Callback] ⚠️ Could not fetch email, status:', userinfoResponse.status);
     }
 
-    console.log('[YouTube OAuth] Saving channel info to database...');
+    console.log('[YouTube OAuth Callback] 💾 Saving to database...');
+    console.log('[YouTube OAuth Callback] 📺 Channel info:', {
+      id: channel.id,
+      title: channel.snippet.title,
+      subscribers: channel.statistics.subscriberCount
+    });
 
     // Deactivate existing OAuth records for this seller
-    await DB.prepare(`
-      UPDATE seller_youtube_oauth 
-      SET is_active = 0 
-      WHERE seller_id = ?
-    `).bind(auth.sellerId).run();
+    try {
+      const deactivateResult = await DB.prepare(`
+        UPDATE seller_youtube_oauth 
+        SET is_active = 0 
+        WHERE seller_id = ?
+      `).bind(auth.sellerId).run();
+      
+      console.log('[YouTube OAuth Callback] 🔄 Deactivated old records:', deactivateResult.meta.changes, 'rows');
+    } catch (dbError: any) {
+      console.error('[YouTube OAuth Callback] ⚠️ Error deactivating old records:', dbError.message);
+      // Continue anyway, this is not critical
+    }
 
     // Insert new OAuth record
-    const insertResult = await DB.prepare(`
-      INSERT INTO seller_youtube_oauth (
-        seller_id, channel_id, channel_title, channel_thumbnail,
-        subscriber_count, google_email, access_token, refresh_token,
-        token_expiry, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
-    `).bind(
-      auth.sellerId,
-      channel.id,
-      channel.snippet.title,
-      channel.snippet.thumbnails.default?.url || channel.snippet.thumbnails.medium?.url || null,
-      parseInt(channel.statistics.subscriberCount) || 0,
-      googleEmail,
-      tokens.access_token,
-      tokens.refresh_token || null,
-      tokenExpiry
-    ).run();
+    let insertResult;
+    try {
+      insertResult = await DB.prepare(`
+        INSERT INTO seller_youtube_oauth (
+          seller_id, channel_id, channel_title, channel_thumbnail,
+          subscriber_count, google_email, access_token, refresh_token,
+          token_expiry, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      `).bind(
+        auth.sellerId,
+        channel.id,
+        channel.snippet.title,
+        channel.snippet.thumbnails.default?.url || channel.snippet.thumbnails.medium?.url || null,
+        parseInt(channel.statistics.subscriberCount) || 0,
+        googleEmail,
+        tokens.access_token,
+        tokens.refresh_token || null,
+        tokenExpiry
+      ).run();
 
-    console.log('[YouTube OAuth] ✅ Channel info saved successfully!');
+      console.log('[YouTube OAuth Callback] ✅ Database INSERT successful! Row ID:', insertResult.meta.last_row_id);
+    } catch (dbError: any) {
+      console.error('[YouTube OAuth Callback] ❌ Database INSERT failed:', dbError.message);
+      console.error('[YouTube OAuth Callback] Error details:', dbError);
+      return c.json({
+        success: false,
+        error: '데이터베이스 저장 중 오류가 발생했습니다.',
+        error_code: 'DB_INSERT_FAILED',
+        error_details: dbError.message
+      }, 500);
+    }
+
+    console.log('[YouTube OAuth Callback] 🎉 ✅ Channel info saved successfully!');
 
     return c.json({
       success: true,
