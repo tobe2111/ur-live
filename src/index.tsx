@@ -16490,40 +16490,111 @@ app.post('/api/debug/user/:email/firebase-uid', cors(), async (c) => {
 });
 
 // =================================
-// YouTube API Redirects
+// YouTube API Compatibility Routes
 // =================================
-// Redirect /api/youtube/* to /api/seller/youtube/* for compatibility
+// Direct implementation of /api/youtube/* endpoints
+// NOTE: Using redirects causes Authorization headers to be dropped!
 
+/**
+ * Get YouTube OAuth URL
+ * GET /api/youtube/auth-url
+ */
 app.get('/api/youtube/auth-url', cors(), async (c) => {
-  // Forward to seller YouTube route
-  return c.redirect('/api/seller/youtube/auth-url', 307);
+  const auth = await verifySellerSession(c);
+  
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const clientId = c.env.YOUTUBE_CLIENT_ID;
+    const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback';
+
+    if (!clientId) {
+      return c.json({
+        success: false,
+        error: 'YouTube OAuth가 설정되지 않았습니다. 관리자에게 문의하세요.',
+        error_code: 'YOUTUBE_NOT_CONFIGURED'
+      }, 500);
+    }
+
+    const scopes = [
+      'https://www.googleapis.com/auth/youtube',
+      'https://www.googleapis.com/auth/youtube.force-ssl',
+      'https://www.googleapis.com/auth/youtube.readonly'
+    ].join(' ');
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(clientId)}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `scope=${encodeURIComponent(scopes)}&` +
+      `access_type=offline&` +
+      `prompt=consent&` +
+      `state=${auth.sellerId}`;
+
+    return c.json({
+      success: true,
+      data: {
+        authUrl,
+        redirectUri
+      }
+    });
+  } catch (error: any) {
+    console.error('[YouTube OAuth] Error:', error);
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to generate OAuth URL'
+    }, 500);
+  }
 });
 
+/**
+ * Get seller's YouTube channels
+ * GET /api/youtube/channels
+ */
 app.get('/api/youtube/channels', cors(), async (c) => {
-  return c.redirect('/api/seller/youtube/channels', 307);
-});
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+  
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
 
-app.post('/api/youtube/oauth/callback', cors(), async (c) => {
-  return c.redirect('/api/seller/youtube/oauth/callback', 307);
-});
+  try {
+    const oauthRecord = await DB.prepare(`
+      SELECT * FROM seller_youtube_oauth 
+      WHERE seller_id = ? AND is_active = 1
+      ORDER BY created_at DESC LIMIT 1
+    `).bind(auth.sellerId).first();
 
-app.post('/api/youtube/live/create', cors(), async (c) => {
-  return c.redirect('/api/seller/youtube/create-live', 307);
-});
+    if (!oauthRecord) {
+      return c.json({
+        success: true,
+        data: []
+      });
+    }
 
-app.post('/api/youtube/live/:id/start', cors(), async (c) => {
-  const id = c.req.param('id');
-  return c.redirect(`/api/seller/youtube/start-live/${id}`, 307);
-});
-
-app.post('/api/youtube/live/:id/end', cors(), async (c) => {
-  const id = c.req.param('id');
-  return c.redirect(`/api/seller/youtube/end-live/${id}`, 307);
-});
-
-app.delete('/api/youtube/oauth/:id', cors(), async (c) => {
-  const id = c.req.param('id');
-  return c.redirect(`/api/seller/youtube/disconnect/${id}`, 307);
+    return c.json({
+      success: true,
+      data: [{
+        id: oauthRecord.id,
+        channel_id: oauthRecord.channel_id,
+        channel_title: oauthRecord.channel_title || 'YouTube Channel',
+        channel_thumbnail: oauthRecord.channel_thumbnail,
+        subscriber_count: oauthRecord.subscriber_count || 0,
+        google_email: oauthRecord.google_email,
+        is_active: oauthRecord.is_active,
+        created_at: oauthRecord.created_at
+      }]
+    });
+  } catch (error: any) {
+    console.error('[YouTube Channels] Error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to fetch channels'
+    }, 500);
+  }
 });
 
 export default app
