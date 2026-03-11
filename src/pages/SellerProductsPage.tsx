@@ -129,35 +129,36 @@ export default function SellerProductsPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <button
             onClick={() => navigate('/seller')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors text-sm sm:text-base"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>판매자 대시보드로 돌아가기</span>
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">판매자 대시보드로 돌아가기</span>
+            <span className="sm:hidden">뒤로</span>
           </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         {/* Title & Actions */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Package className="w-10 h-10 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">상품 관리</h1>
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              <Package className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">상품 관리</h1>
             </div>
-            <p className="text-gray-600 mt-2">
+            <p className="text-sm sm:text-base text-gray-600">
               판매 상품을 등록하고 관리할 수 있습니다.
             </p>
           </div>
           <Button
             onClick={() => navigate('/seller/products/new')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 flex items-center gap-2 justify-center text-sm sm:text-base w-full sm:w-auto"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>상품 등록</span>
           </Button>
         </div>
@@ -178,116 +179,219 @@ export default function SellerProductsPage() {
             <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
           </div>
         ) : (
-          /* Products Grid */
-          <div className="bg-white rounded-lg shadow-sm border">
+          /* Products List */
+          <div>
             {products.length === 0 ? (
-              <div className="text-center py-20">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">등록된 상품이 없습니다.</p>
+              <div className="bg-white rounded-lg shadow-sm border text-center py-12 sm:py-20">
+                <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-sm sm:text-base text-gray-600 mb-4">등록된 상품이 없습니다.</p>
                 <Button
                   onClick={() => navigate('/seller/products/new')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                   첫 상품 등록하기
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이미지</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">가격</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">재고</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상태</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">라이브 스트림</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">액션</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {products.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                            {product.image_url ? (
-                              <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64'
-                                }}
-                              />
-                            ) : (
-                              <ImageIcon className="w-10 h-10 text-gray-400" />
-                            )}
+              <>
+                {/* Desktop Table View - Hidden on mobile */}
+                <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이미지</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">가격</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">재고</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상태</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">라이브 스트림</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">액션</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {products.map((product) => (
+                        <tr key={product.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                              {product.image_url ? (
+                                <img
+                                  src={product.image_url}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64'
+                                  }}
+                                />
+                              ) : (
+                                <ImageIcon className="w-10 h-10 text-gray-400" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                              <p className="text-xs text-gray-500 line-clamp-1 mt-1">{product.description || '설명 없음'}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
+                            {formatPrice(product.price)}원
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                              {product.stock > 0 ? `${product.stock}개` : '품절'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleToggleActive(product.id, product.is_active)}
+                              className="inline-flex items-center gap-1"
+                            >
+                              {product.is_active ? (
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  판매중
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  비활성
+                                </Badge>
+                              )}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {product.live_stream_title || '-'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => navigate(`/seller/products/${product.id}/edit`)}
+                                className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                                title="수정"
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(product.id)}
+                                disabled={deleting === product.id}
+                                className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50"
+                                title="삭제"
+                              >
+                                {deleting === product.id ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-5 h-5" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View - Shown on mobile/tablet */}
+                <div className="lg:hidden space-y-3 sm:space-y-4">
+                  {products.map((product) => (
+                    <div key={product.id} className="bg-white rounded-lg shadow-sm border p-3 sm:p-4">
+                      <div className="flex gap-3 sm:gap-4">
+                        {/* Product Image */}
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/96'
+                              }}
+                            />
+                          ) : (
+                            <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                          )}
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2">
+                              {product.name}
+                            </h3>
+                            <button
+                              onClick={() => handleToggleActive(product.id, product.is_active)}
+                              className="flex-shrink-0"
+                            >
+                              {product.is_active ? (
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200 text-xs">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  판매중
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200 text-xs">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  비활성
+                                </Badge>
+                              )}
+                            </button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                            <p className="text-xs text-gray-500 line-clamp-1 mt-1">{product.description || '설명 없음'}</p>
+
+                          {product.description && (
+                            <p className="text-xs sm:text-sm text-gray-500 line-clamp-1 mb-2">
+                              {product.description}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-1 text-gray-900">
+                              <DollarSign className="w-4 h-4 text-green-600" />
+                              <span className="text-base sm:text-lg font-bold">
+                                {formatPrice(product.price)}원
+                              </span>
+                            </div>
+                            <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                              <Box className="w-3 h-3 mr-1" />
+                              {product.stock > 0 ? `${product.stock}개` : '품절'}
+                            </Badge>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                          {formatPrice(product.price)}원
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
-                            {product.stock > 0 ? `${product.stock}개` : '품절'}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleToggleActive(product.id, product.is_active)}
-                            className="inline-flex items-center gap-1"
-                          >
-                            {product.is_active ? (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200">
-                                <Eye className="w-3 h-3 mr-1" />
-                                판매중
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200">
-                                <EyeOff className="w-3 h-3 mr-1" />
-                                비활성
-                              </Badge>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {product.live_stream_title || '-'}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
+
+                          {product.live_stream_title && (
+                            <p className="text-xs text-gray-500 mb-2">
+                              📺 {product.live_stream_title}
+                            </p>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                              title="수정"
+                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
                             >
-                              <Edit className="w-5 h-5" />
+                              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              수정
                             </button>
                             <button
                               onClick={() => handleDelete(product.id)}
                               disabled={deleting === product.id}
-                              className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50"
-                              title="삭제"
+                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 text-xs sm:text-sm"
                             >
                               {deleting === product.id ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                               ) : (
-                                <Trash2 className="w-5 h-5" />
+                                <>
+                                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  삭제
+                                </>
                               )}
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
