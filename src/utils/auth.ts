@@ -85,6 +85,7 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'user_name',
       'user_email',
       'user_profile_image',
+      'user_session_token',  // 레거시 세션 토큰
       'hasCartItems',
       'tempCartItem',
       'loginReturnUrl',
