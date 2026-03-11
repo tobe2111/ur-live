@@ -115,11 +115,13 @@ api.interceptors.request.use(
     console.log(`[API] 🔍 Checking auth for ${url}`);
     
     // ============================================================
-    // 🔐 SELLER API: /api/seller/* → seller_token ONLY
+    // 🔐 SELLER API: /api/seller/* OR /api/youtube/* → seller_token ONLY
     // Firebase 절대 사용 안함!
+    // YouTube API는 Seller가 사용하므로 seller_token 필요
     // ============================================================
-    if (url.startsWith('/api/seller/')) {
-      console.log('[API] 🏪 Seller API detected - using seller_token ONLY (NO FIREBASE!)');
+    if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/')) {
+      const apiType = url.startsWith('/api/youtube/') ? 'YouTube' : 'Seller';
+      console.log(`[API] 🏪 ${apiType} API detected - using seller_token ONLY (NO FIREBASE!)`);
       
       const sellerToken = localStorage.getItem('seller_token');
       
@@ -254,9 +256,10 @@ api.interceptors.response.use(
       
       // ============================================================
       // 🔐 SELLER/ADMIN: JWT 401 처리
+      // YouTube API도 Seller JWT 사용
       // ============================================================
-      if (url.includes('/api/seller/') || url.includes('/api/admin/')) {
-        const isSeller = url.includes('/api/seller/');
+      if (url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/')) {
+        const isSeller = url.includes('/api/seller/') || url.includes('/api/youtube/');
         const tokenKey = isSeller ? 'seller_token' : 'admin_token';
         const fallbackKey = 'access_token';
         const existingToken = localStorage.getItem(tokenKey) || localStorage.getItem(fallbackKey);
