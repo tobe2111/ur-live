@@ -16761,13 +16761,14 @@ app.post('/api/youtube/oauth/callback', cors(), async (c) => {
       },
     });
 
-    let googleEmail = null;
+    let googleEmail = 'unknown@email.com'; // Default value
     if (userinfoResponse.ok) {
       const userinfo = await userinfoResponse.json();
-      googleEmail = userinfo.email;
+      googleEmail = userinfo.email || 'unknown@email.com';
       console.log('[YouTube OAuth Callback] ✅ Email fetched:', googleEmail);
     } else {
       console.warn('[YouTube OAuth Callback] ⚠️ Could not fetch email, status:', userinfoResponse.status);
+      console.warn('[YouTube OAuth Callback] Using default email');
     }
 
     console.log('[YouTube OAuth Callback] 💾 Saving to database...');
@@ -16794,6 +16795,26 @@ app.post('/api/youtube/oauth/callback', cors(), async (c) => {
     // Insert new OAuth record
     let insertResult;
     try {
+      // Ensure all required fields have valid values
+      const channelId = channel.id || 'unknown';
+      const channelTitle = channel.snippet?.title || 'Unknown Channel';
+      const channelThumbnail = channel.snippet?.thumbnails?.default?.url || 
+                               channel.snippet?.thumbnails?.medium?.url || 
+                               '';
+      const subscriberCount = parseInt(channel.statistics?.subscriberCount) || 0;
+      const accessToken = tokens.access_token || '';
+      const refreshToken = tokens.refresh_token || '';
+      
+      console.log('[YouTube OAuth Callback] 📝 Prepared values for INSERT:', {
+        seller_id: auth.sellerId,
+        channel_id: channelId,
+        channel_title: channelTitle,
+        google_email: googleEmail,
+        has_access_token: !!accessToken,
+        has_refresh_token: !!refreshToken,
+        token_expiry: tokenExpiry
+      });
+      
       insertResult = await DB.prepare(`
         INSERT INTO seller_youtube_oauth (
           seller_id, channel_id, channel_title, channel_thumbnail,
@@ -16802,13 +16823,13 @@ app.post('/api/youtube/oauth/callback', cors(), async (c) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
       `).bind(
         auth.sellerId,
-        channel.id,
-        channel.snippet.title,
-        channel.snippet.thumbnails.default?.url || channel.snippet.thumbnails.medium?.url || null,
-        parseInt(channel.statistics.subscriberCount) || 0,
+        channelId,
+        channelTitle,
+        channelThumbnail,
+        subscriberCount,
         googleEmail,
-        tokens.access_token,
-        tokens.refresh_token || null,
+        accessToken,
+        refreshToken,
         tokenExpiry
       ).run();
 
