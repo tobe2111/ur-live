@@ -3,6 +3,8 @@
  * ⚠️ Firebase 절대 사용 안 함! seller_token만 사용!
  */
 
+import { clearAuthData } from '@/utils/auth'
+
 export function getSellerToken(): string | null {
   // PRIMARY: seller_token (최우선!)
   const sellerToken = localStorage.getItem('seller_token')
@@ -40,12 +42,8 @@ export function getSellerId(): string | null {
 export function redirectToLogin(navigate: any) {
   console.log('[SellerAuth] ❌ Not authenticated, redirecting to login')
   
-  // Clear invalid tokens
-  localStorage.removeItem('seller_token')
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('seller_refresh_token')
-  localStorage.removeItem('user_type')
-  localStorage.removeItem('seller_id')
+  // ✅ Clear only seller session (preserves User and Admin sessions)
+  clearAuthData('seller')
   
   navigate('/seller/login', { replace: true })
 }
@@ -53,16 +51,9 @@ export function redirectToLogin(navigate: any) {
 export function logoutSeller(navigate: any) {
   console.log('[SellerAuth] 🚪 Logging out seller...')
   
-  // Clear all seller-related data
-  localStorage.removeItem('seller_token')
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('seller_refresh_token')
-  localStorage.removeItem('user_type')
-  localStorage.removeItem('seller_id')
-  localStorage.removeItem('user_id')
-  localStorage.removeItem('seller_name')
-  localStorage.removeItem('seller_email')
+  // ✅ Clear only seller session (preserves User and Admin sessions)
+  clearAuthData('seller')
   
-  console.log('[SellerAuth] ✅ Seller logged out')
+  console.log('[SellerAuth] ✅ Seller logged out (User/Admin sessions preserved)')
   navigate('/seller/login', { replace: true })
 }
