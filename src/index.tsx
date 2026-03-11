@@ -7078,6 +7078,113 @@ app.get('/api/seller/youtube/chat/:streamId', async (c) => {
 });
 
 // =================================
+// Seller YouTube OAuth APIs
+// =================================
+
+/**
+ * Get YouTube OAuth authorization URL
+ * GET /api/seller/youtube/auth-url
+ */
+app.get('/api/seller/youtube/auth-url', cors(), async (c) => {
+  const auth = await verifySellerSession(c);
+  
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const clientId = c.env.YOUTUBE_CLIENT_ID;
+    const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback';
+
+    if (!clientId) {
+      return c.json({
+        success: false,
+        error: 'YouTube OAuth가 설정되지 않았습니다. 관리자에게 문의하세요.',
+        error_code: 'YOUTUBE_NOT_CONFIGURED'
+      }, 500);
+    }
+
+    const scopes = [
+      'https://www.googleapis.com/auth/youtube',
+      'https://www.googleapis.com/auth/youtube.force-ssl',
+      'https://www.googleapis.com/auth/youtube.readonly'
+    ].join(' ');
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(clientId)}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `scope=${encodeURIComponent(scopes)}&` +
+      `access_type=offline&` +
+      `prompt=consent&` +
+      `state=${auth.sellerId}`; // seller ID를 state로 전달
+
+    return c.json({
+      success: true,
+      data: {
+        authUrl,
+        redirectUri
+      }
+    });
+  } catch (error: any) {
+    console.error('[YouTube OAuth] Error:', error);
+    return c.json({
+      success: false,
+      error: error.message || 'Failed to generate OAuth URL'
+    }, 500);
+  }
+});
+
+/**
+ * Get seller's YouTube channels
+ * GET /api/seller/youtube/channels
+ */
+app.get('/api/seller/youtube/channels', cors(), async (c) => {
+  const { DB } = c.env;
+  const auth = await verifySellerSession(c);
+  
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    // D1에서 seller의 YouTube OAuth 토큰 조회
+    const oauthRecord = await DB.prepare(`
+      SELECT * FROM seller_youtube_oauth 
+      WHERE seller_id = ? AND is_active = 1
+      ORDER BY created_at DESC LIMIT 1
+    `).bind(auth.sellerId).first();
+
+    if (!oauthRecord) {
+      return c.json({
+        success: true,
+        data: [] // 연동된 채널 없음
+      });
+    }
+
+    return c.json({
+      success: true,
+      data: [{
+        id: oauthRecord.id,
+        channel_id: oauthRecord.channel_id,
+        channel_title: oauthRecord.channel_title || 'YouTube Channel',
+        channel_thumbnail: oauthRecord.channel_thumbnail,
+        subscriber_count: oauthRecord.subscriber_count || 0,
+        google_email: oauthRecord.google_email,
+        is_active: oauthRecord.is_active,
+        created_at: oauthRecord.created_at
+      }]
+    });
+  } catch (error: any) {
+    console.error('[YouTube Channels] Error:', error);
+    return c.json({
+      success: false,
+      error: 'Failed to fetch channels'
+    }, 500);
+  }
+});
+
+// =================================
 // Admin Stream Management APIs
 // =================================
 
