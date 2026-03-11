@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { clearAuthData } from '@/utils/auth'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
@@ -37,9 +38,8 @@ export default function AdminLoginPage() {
       if (response.data.success) {
         console.log('[AdminLogin] ✅ JWT Login successful')
         
-        // Clear ALL old sessions to avoid conflicts
-        localStorage.clear()
-        sessionStorage.clear()
+        // ✅ 선택적 삭제: Admin 관련 키만 삭제 (User 세션 보호)
+        clearAuthData('admin')
         
         const { admin, accessToken, refreshToken } = response.data.data
         

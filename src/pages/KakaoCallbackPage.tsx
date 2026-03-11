@@ -73,6 +73,11 @@ export default function KakaoCallbackPage() {
           // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
           await new Promise(resolve => setTimeout(resolve, 100))
           
+          // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
+          localStorage.setItem('user_type', 'user')
+          localStorage.setItem('user_name', user.name)
+          console.log('[KakaoCallback] ✅ localStorage에 user_type 설정: user')
+          
           // ✅ Zustand Store 업데이트 (사용자 정보 동기화)
           setUser(userCredential.user)
           setAuthReady(true)

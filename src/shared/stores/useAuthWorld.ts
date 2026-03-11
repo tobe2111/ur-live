@@ -62,6 +62,11 @@ export const useAuthWorld = create<AuthWorldState>()(
             // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
             await new Promise(resolve => setTimeout(resolve, 100));
 
+            // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
+            localStorage.setItem('user_type', 'user');
+            localStorage.setItem('user_name', user.displayName || user.email?.split('@')[0] || 'User');
+            console.log('[useAuthWorld] ✅ localStorage에 user_type 설정: user');
+
             // 사용자 역할 조회
             console.log('[useAuthWorld] 📡 사용자 역할 조회 API 호출...');
             try {
