@@ -16597,6 +16597,160 @@ app.get('/api/youtube/channels', cors(), async (c) => {
   }
 });
 
+// YouTube OAuth Callback
+app.post('/api/youtube/oauth/callback', cors(), async (c) => {
+  const auth = await verifySellerSession(c);
+  
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  const { DB } = c.env;
+  
+  try {
+    const { code } = await c.req.json();
+    
+    if (!code) {
+      return c.json({
+        success: false,
+        error: 'Authorization code is required'
+      }, 400);
+    }
+
+    const clientId = c.env.YOUTUBE_CLIENT_ID;
+    const clientSecret = c.env.YOUTUBE_CLIENT_SECRET;
+    const redirectUri = c.env.YOUTUBE_REDIRECT_URI || 'https://live.ur-team.com/seller/youtube/callback';
+
+    if (!clientId || !clientSecret) {
+      return c.json({
+        success: false,
+        error: 'YouTube OAuth가 설정되지 않았습니다.',
+        error_code: 'YOUTUBE_NOT_CONFIGURED'
+      }, 500);
+    }
+
+    // Exchange code for tokens
+    console.log('[YouTube OAuth] Exchanging code for tokens...');
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error('[YouTube OAuth] Token exchange failed:', errorData);
+      throw new Error('Failed to exchange authorization code for tokens');
+    }
+
+    const tokens = await tokenResponse.json();
+    console.log('[YouTube OAuth] Tokens received, fetching channel info...');
+
+    // Fetch channel information
+    const channelResponse = await fetch(
+      'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true',
+      {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+        },
+      }
+    );
+
+    if (!channelResponse.ok) {
+      const errorData = await channelResponse.text();
+      console.error('[YouTube OAuth] Channel fetch failed:', errorData);
+      throw new Error('Failed to fetch channel information');
+    }
+
+    const channelData = await channelResponse.json();
+    
+    if (!channelData.items || channelData.items.length === 0) {
+      return c.json({
+        success: false,
+        error: 'YouTube 채널을 찾을 수 없습니다. YouTube 계정에 채널이 있는지 확인해주세요.',
+        error_code: 'NO_CHANNEL_FOUND'
+      }, 404);
+    }
+
+    const channel = channelData.items[0];
+    const tokenExpiry = Math.floor(Date.now() / 1000) + (tokens.expires_in || 3600);
+
+    // Get Google account email
+    const userinfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    });
+
+    let googleEmail = null;
+    if (userinfoResponse.ok) {
+      const userinfo = await userinfoResponse.json();
+      googleEmail = userinfo.email;
+    }
+
+    console.log('[YouTube OAuth] Saving channel info to database...');
+
+    // Deactivate existing OAuth records for this seller
+    await DB.prepare(`
+      UPDATE seller_youtube_oauth 
+      SET is_active = 0 
+      WHERE seller_id = ?
+    `).bind(auth.sellerId).run();
+
+    // Insert new OAuth record
+    const insertResult = await DB.prepare(`
+      INSERT INTO seller_youtube_oauth (
+        seller_id, channel_id, channel_title, channel_thumbnail,
+        subscriber_count, google_email, access_token, refresh_token,
+        token_expiry, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+    `).bind(
+      auth.sellerId,
+      channel.id,
+      channel.snippet.title,
+      channel.snippet.thumbnails.default?.url || channel.snippet.thumbnails.medium?.url || null,
+      parseInt(channel.statistics.subscriberCount) || 0,
+      googleEmail,
+      tokens.access_token,
+      tokens.refresh_token || null,
+      tokenExpiry
+    ).run();
+
+    console.log('[YouTube OAuth] ✅ Channel info saved successfully!');
+
+    return c.json({
+      success: true,
+      message: 'YouTube 계정이 성공적으로 연동되었습니다.',
+      data: {
+        channel: {
+          id: insertResult.meta.last_row_id,
+          channel_id: channel.id,
+          title: channel.snippet.title,
+          thumbnail: channel.snippet.thumbnails.default?.url || channel.snippet.thumbnails.medium?.url || null,
+          subscriber_count: parseInt(channel.statistics.subscriberCount) || 0,
+          google_email: googleEmail,
+        }
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[YouTube OAuth Callback] Error:', error);
+    return c.json({
+      success: false,
+      error: error.message || 'YouTube 연동 중 오류가 발생했습니다.',
+      error_code: 'OAUTH_CALLBACK_ERROR'
+    }, 500);
+  }
+});
+
 export default app
 
 // =================================
