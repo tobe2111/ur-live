@@ -83,7 +83,7 @@ async function createAccessToken(
   const jwtPayload = {
     ...payload,
     iat: now,
-    exp: now + (15 * 60), // 15분 만료
+    exp: now + (24 * 60 * 60), // 24시간 만료 (개발용)
     tokenType: 'access'
   };
   
