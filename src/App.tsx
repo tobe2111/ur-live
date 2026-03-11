@@ -195,7 +195,8 @@ function AppContent() {
             <Route path="/seller" element={<SellerPage />} />
             <Route path="/seller/login" element={<SellerLoginPage />} />
             <Route path="/seller/register" element={<SellerRegisterPage />} />
-            <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
+            {/* Redirect /seller/dashboard to /seller (통합됨) */}
+            <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
             <Route path="/seller/business-info" element={<SellerBusinessInfoPage />} />
             <Route path="/seller/tax-invoices" element={<SellerTaxInvoicesPage />} />
             <Route path="/seller/orders" element={<SellerOrdersPage />} />
