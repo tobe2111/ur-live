@@ -5,7 +5,7 @@ import pages from '@hono/vite-cloudflare-pages'
 export default defineConfig({
   plugins: [
     pages({
-      entry: 'src/worker/index.ts', // ✅ New Worker entry point with YouTube routes
+      entry: 'src/index.tsx', // ✅ Stable worker with all routes (rollback from modular worker)
     }),
   ],
   resolve: {

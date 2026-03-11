@@ -46,6 +46,8 @@ import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWa
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
 import { verifyFirebaseIdToken, parseVerifyError, type FirebaseTokenPayload } from './lib/firebase-token-verify';
 import bcrypt from 'bcryptjs';
+import youtubeRoutes from './features/youtube/api/youtube.routes';
+import youtubeChatRoutes from './features/youtube/api/youtube-chat.routes';
 
 // =================================
 // 🔐 JWT & Password Hashing Utilities
@@ -16381,6 +16383,12 @@ app.post('/api/debug/user/:email/firebase-uid', cors(), async (c) => {
     }, 500);
   }
 });
+
+// =================================
+// YouTube Integration Routes
+// =================================
+app.route('/api/youtube', youtubeRoutes);
+app.route('/api/youtube/chat', youtubeChatRoutes);
 
 export default app
 

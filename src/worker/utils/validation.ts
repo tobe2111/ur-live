@@ -476,3 +476,23 @@ export function validateBatch(
     throw new ValidationError(message, undefined, 'BATCH_VALIDATION_FAILED');
   }
 }
+
+/**
+ * Validate required fields in an object
+ * Returns an array of missing field names
+ */
+export function validateRequired(
+  data: Record<string, any>,
+  requiredFields: string[]
+): string[] {
+  const missing: string[] = [];
+  
+  for (const field of requiredFields) {
+    const value = data[field];
+    if (value === undefined || value === null || value === '') {
+      missing.push(field);
+    }
+  }
+  
+  return missing;
+}
