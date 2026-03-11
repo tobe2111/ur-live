@@ -48,16 +48,34 @@ export const useAuthWorld = create<AuthWorldState>()(
         loginWithGoogle: async () => {
           try {
             set({ isLoading: true, error: null });
+            console.log('[useAuthWorld] 🔐 Google 로그인 시작...');
 
             const userCredential = await signInWithGoogle();
             const user = userCredential.user;
+            console.log('[useAuthWorld] ✅ Google 로그인 성공:', user.uid);
+
+            // 🔥 중요: Firebase ID Token을 강제로 갱신하여 최신 상태 보장
+            console.log('[useAuthWorld] 🔄 ID Token 강제 갱신 중...');
+            const idToken = await user.getIdToken(true); // force refresh
+            console.log('[useAuthWorld] ✅ ID Token 갱신 완료:', idToken.substring(0, 30) + '...');
+
+            // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // 사용자 역할 조회
+            console.log('[useAuthWorld] 📡 사용자 역할 조회 API 호출...');
             try {
               const roleResponse = await fetch('/api/users/role', {
-                headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+                headers: { Authorization: `Bearer ${idToken}` },
               });
+              
+              if (!roleResponse.ok) {
+                console.error('[useAuthWorld] ❌ 역할 조회 실패:', roleResponse.status, roleResponse.statusText);
+                throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
+              }
+              
               const { role } = await roleResponse.json();
+              console.log('[useAuthWorld] ✅ 사용자 역할 확인:', role);
 
               set({
                 user,
@@ -66,7 +84,7 @@ export const useAuthWorld = create<AuthWorldState>()(
                 isAuthReady: true,
               });
             } catch (err) {
-              console.error('[useAuthWorld] Failed to fetch user role:', err);
+              console.error('[useAuthWorld] ❌ Failed to fetch user role:', err);
               set({
                 user,
                 userRole: 'user', // 기본값
@@ -74,8 +92,10 @@ export const useAuthWorld = create<AuthWorldState>()(
                 isAuthReady: true,
               });
             }
+            
+            console.log('[useAuthWorld] ✅ 로그인 완료 - Zustand 상태 업데이트됨');
           } catch (err: any) {
-            console.error('[useAuthWorld] loginWithGoogle failed:', err);
+            console.error('[useAuthWorld] ❌ loginWithGoogle failed:', err);
             set({
               error: err.message || 'Google 로그인 실패',
               isLoading: false,
