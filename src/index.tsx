@@ -46,8 +46,6 @@ import { sendDiscordAlert, sendDiscordSuccess, sendDiscordWarning, sendKVUsageWa
 import { initFirebaseAdmin, syncD1ToFirebase, type FirebaseAdmin } from './lib/firebase-admin';
 import { verifyFirebaseIdToken, parseVerifyError, type FirebaseTokenPayload } from './lib/firebase-token-verify';
 import bcrypt from 'bcryptjs';
-import youtubeRoutes from './features/youtube/api/youtube.routes';
-import youtubeChatRoutes from './features/youtube/api/youtube-chat.routes';
 
 // =================================
 // 🔐 JWT & Password Hashing Utilities
@@ -16384,12 +16382,6 @@ app.post('/api/debug/user/:email/firebase-uid', cors(), async (c) => {
   }
 });
 
-// =================================
-// YouTube Integration Routes
-// =================================
-app.route('/api/youtube', youtubeRoutes);
-app.route('/api/youtube/chat', youtubeChatRoutes);
-
 export default app
 
 // =================================
@@ -16845,3 +16837,40 @@ app.onError(async (err, c) => {
 // Export default app
 // =====================================
 
+
+// =================================
+// YouTube API Redirects
+// =================================
+// Redirect /api/youtube/* to /api/seller/youtube/* for compatibility
+
+app.get('/api/youtube/auth-url', cors(), async (c) => {
+  // Forward to seller YouTube route
+  return c.redirect('/api/seller/youtube/auth-url', 307);
+});
+
+app.get('/api/youtube/channels', cors(), async (c) => {
+  return c.redirect('/api/seller/youtube/channels', 307);
+});
+
+app.post('/api/youtube/oauth/callback', cors(), async (c) => {
+  return c.redirect('/api/seller/youtube/oauth/callback', 307);
+});
+
+app.post('/api/youtube/live/create', cors(), async (c) => {
+  return c.redirect('/api/seller/youtube/create-live', 307);
+});
+
+app.post('/api/youtube/live/:id/start', cors(), async (c) => {
+  const id = c.req.param('id');
+  return c.redirect(`/api/seller/youtube/start-live/${id}`, 307);
+});
+
+app.post('/api/youtube/live/:id/end', cors(), async (c) => {
+  const id = c.req.param('id');
+  return c.redirect(`/api/seller/youtube/end-live/${id}`, 307);
+});
+
+app.delete('/api/youtube/oauth/:id', cors(), async (c) => {
+  const id = c.req.param('id');
+  return c.redirect(`/api/seller/youtube/disconnect/${id}`, 307);
+});
