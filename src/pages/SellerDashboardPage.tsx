@@ -8,7 +8,7 @@
  * - 기간 선택 (7일, 30일, 90일)
  */
 
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { 
@@ -23,9 +23,18 @@ import {
   Clock,
   XCircle
 } from 'lucide-react'
-
-// Lazy load DashboardCharts component
-const DashboardCharts = lazy(() => import('@/components/charts/DashboardCharts'))
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts'
 
 interface DailyStats {
   date: string
