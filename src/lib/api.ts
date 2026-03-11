@@ -342,7 +342,16 @@ api.interceptors.response.use(
       
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = '/login';
+      
+      // 현재 페이지가 seller/admin 페이지인 경우 적절한 로그인 페이지로 리다이렉트
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/seller')) {
+        window.location.href = '/seller/login';
+      } else if (currentPath.startsWith('/admin')) {
+        window.location.href = '/admin/login';
+      } else {
+        window.location.href = '/login';
+      }
       
       return Promise.reject(error);
     }
