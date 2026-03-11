@@ -48,6 +48,13 @@ preview_id = "750e3b6ed7714a8999abe19d8771be00"
 # ❌ RATE_LIMIT_KV 제거됨 (Task 4: Code Cleanup)
 # 사용하지 않는 KV 네임스페이스로 리소스 낭비 제거
 
+# R2 Object Storage for images
+# Create bucket: npx wrangler r2 bucket create ur-live-images
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "ur-live-images"
+preview_bucket_name = "ur-live-images-preview"
+
 # Cron Triggers (Scheduled Events) - Workers only, not supported in Pages
 # For Pages, use Cloudflare Workers cron triggers or external schedulers
 # [triggers]

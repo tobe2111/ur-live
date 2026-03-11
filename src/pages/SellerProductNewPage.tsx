@@ -254,13 +254,21 @@ export default function SellerProductNewPage() {
             </div>
           </div>
 
-          {/* Image Upload */}
-          <ImageUpload
-            value={formData.image_url}
-            onChange={(url) => setFormData({ ...formData, image_url: url })}
-            label="상품 이미지"
-            maxSizeKB={800}
-          />
+          {/* Image Upload - Optional */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상품 이미지 <span className="text-gray-400">(선택사항)</span>
+            </label>
+            <ImageUpload
+              value={formData.image_url}
+              onChange={(url) => setFormData({ ...formData, image_url: url })}
+              label=""
+              maxSizeKB={800}
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              이미지를 등록하지 않으면 기본 이미지가 표시됩니다.
+            </p>
+          </div>
 
           {/* Image Preview - Removed as ImageUpload component handles it */}
 
