@@ -42,13 +42,14 @@ export default function SellerProductNewPage() {
   useEffect(() => {
     // Check authentication
     const sessionToken = localStorage.getItem('seller_session_token')
-    const userType = localStorage.getItem('user_type')
     
-    if (!sessionToken || userType !== 'seller') {
+    if (!sessionToken) {
+      console.log('[SellerProductNewPage] No session token, redirecting to login')
       navigate('/seller/login')
       return
     }
     
+    console.log('[SellerProductNewPage] Session token found, loading page')
     loadLiveStreams()
   }, [])
 
