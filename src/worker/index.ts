@@ -27,6 +27,8 @@ import { sellerStreamsRoutes } from '@/features/seller/api/seller-streams.routes
 import { cartRoutes } from '@/features/cart/api/cart.routes';
 import { shippingAddressRoutes } from '@/features/shipping/api/shipping-address.routes';
 import { paymentRoutes } from '@/features/payments/api/payment.routes';
+import youtubeRoutes from '@/features/youtube/api/youtube.routes';
+import youtubeChatRoutes from '@/features/youtube/api/youtube-chat.routes';
 
 // Middleware & Utils
 import { rateLimitMiddleware } from './middleware/rate-limiter';
@@ -234,6 +236,10 @@ app.route('/api/orders', ordersRoutes);
 
 // Account Management Feature
 app.route('/api/account', accountRoutes);
+
+// YouTube Integration Feature
+app.route('/api/youtube', youtubeRoutes);
+app.route('/api/youtube/chat', youtubeChatRoutes);
 
 // TODO: Phase 2 Feature 라우트 추가
 // app.route('/api/streams', liveStreamRoutes);
