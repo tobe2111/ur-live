@@ -310,6 +310,12 @@ export default function AdminPage() {
               📦 주문 관리
             </button>
             <button
+              onClick={() => navigate('/admin/products')}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 font-medium"
+            >
+              🏷️ 상품 관리
+            </button>
+            <button
               onClick={() => navigate('/admin/banners')}
               className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium"
             >

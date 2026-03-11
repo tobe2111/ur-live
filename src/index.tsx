@@ -8219,6 +8219,286 @@ app.delete('/api/seller/products/:id/options/:optionId', async (c) => {
   }
 });
 
+// ==================== Admin Product Management APIs ====================
+
+/**
+ * Get all products (Admin only)
+ * GET /api/admin/products
+ */
+app.get('/api/admin/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const products = await DB.prepare(`
+      SELECT 
+        p.*,
+        s.business_name as seller_name
+      FROM products p
+      LEFT JOIN sellers s ON p.seller_id = s.id
+      ORDER BY p.created_at DESC
+    `).all();
+
+    return c.json({ 
+      success: true, 
+      data: products.results || []
+    });
+  } catch (err) {
+    console.error('[Admin Products] Error:', err);
+    return c.json({ 
+      success: false, 
+      error: (err as Error).message 
+    }, 500);
+  }
+});
+
+/**
+ * Create product (Admin only - can create 'featured' products)
+ * POST /api/admin/products
+ */
+app.post('/api/admin/products', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const { 
+      name, 
+      description, 
+      price, 
+      original_price, 
+      discount_rate,
+      image_url, 
+      stock, 
+      category, 
+      product_type,
+      is_active 
+    } = await c.req.json();
+
+    // Validate required fields
+    if (!name || !price) {
+      return c.json({ success: false, error: 'Name and price are required' }, 400);
+    }
+
+    // Admin can create both 'live' and 'featured' products
+    if (product_type && !['live', 'featured'].includes(product_type)) {
+      return c.json({ 
+        success: false, 
+        error: 'Invalid product type. Must be "live" or "featured"' 
+      }, 400);
+    }
+
+    // Insert product (no seller_id for admin-created products, or set to null)
+    const result = await DB.prepare(`
+      INSERT INTO products (
+        name, description, price, original_price, discount_rate, 
+        image_url, stock, category, seller_id, is_active, product_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+    `).bind(
+      name,
+      description || null,
+      price,
+      original_price || null,
+      discount_rate || 0,
+      image_url || null,
+      stock || 0,
+      category || null,
+      is_active !== undefined ? is_active : 1,
+      product_type || 'featured' // Default to 'featured' for admin
+    ).run();
+
+    // Get created product
+    const product = await DB.prepare(
+      'SELECT * FROM products WHERE id = ?'
+    ).bind(result.meta.last_row_id).first();
+
+    // Cache invalidation
+    await deleteCachedData(c.env.CACHE_KV, 'public:products', 'public:featured');
+
+    return c.json({ success: true, data: product });
+  } catch (err) {
+    console.error('[Admin Products] Create error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+/**
+ * Update product (Admin only)
+ * PUT /api/admin/products/:id
+ */
+app.put('/api/admin/products/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+    const { 
+      name, 
+      description, 
+      price, 
+      original_price, 
+      discount_rate,
+      image_url, 
+      stock, 
+      category,
+      product_type,
+      is_active 
+    } = await c.req.json();
+
+    // Verify product exists
+    const existingProduct = await DB.prepare(
+      'SELECT id FROM products WHERE id = ?'
+    ).bind(productId).first();
+
+    if (!existingProduct) {
+      return c.json({ success: false, error: 'Product not found' }, 404);
+    }
+
+    // Validate product type
+    if (product_type && !['live', 'featured'].includes(product_type)) {
+      return c.json({ 
+        success: false, 
+        error: 'Invalid product type. Must be "live" or "featured"' 
+      }, 400);
+    }
+
+    // Update product
+    await DB.prepare(`
+      UPDATE products 
+      SET 
+        name = ?,
+        description = ?,
+        price = ?,
+        original_price = ?,
+        discount_rate = ?,
+        image_url = ?,
+        stock = ?,
+        category = ?,
+        product_type = ?,
+        is_active = ?,
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(
+      name,
+      description || null,
+      price,
+      original_price || null,
+      discount_rate || 0,
+      image_url || null,
+      stock || 0,
+      category || null,
+      product_type || 'featured',
+      is_active !== undefined ? is_active : 1,
+      productId
+    ).run();
+
+    // Get updated product
+    const product = await DB.prepare(
+      'SELECT * FROM products WHERE id = ?'
+    ).bind(productId).first();
+
+    // Cache invalidation
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, 'public:products', 'public:featured');
+
+    return c.json({ success: true, data: product });
+  } catch (err) {
+    console.error('[Admin Products] Update error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+/**
+ * Toggle product active status (Admin only)
+ * PATCH /api/admin/products/:id
+ */
+app.patch('/api/admin/products/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+    const { is_active } = await c.req.json();
+
+    // Verify product exists
+    const product = await DB.prepare(
+      'SELECT id FROM products WHERE id = ?'
+    ).bind(productId).first();
+
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found' }, 404);
+    }
+
+    // Update is_active
+    await DB.prepare(
+      'UPDATE products SET is_active = ?, updated_at = datetime(\'now\') WHERE id = ?'
+    ).bind(is_active ? 1 : 0, productId).run();
+
+    // Cache invalidation
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, 'public:products', 'public:featured');
+
+    return c.json({ success: true, message: 'Product status updated' });
+  } catch (err) {
+    console.error('[Admin Products] Toggle active error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+/**
+ * Delete product (Admin only)
+ * DELETE /api/admin/products/:id
+ */
+app.delete('/api/admin/products/:id', async (c) => {
+  const { DB } = c.env;
+  const auth = await verifyAdminSession(c);
+
+  if (!auth.success) {
+    return c.json({ success: false, error: auth.error }, 401);
+  }
+
+  try {
+    const productId = c.req.param('id');
+
+    // Verify product exists
+    const product = await DB.prepare(
+      'SELECT id FROM products WHERE id = ?'
+    ).bind(productId).first();
+
+    if (!product) {
+      return c.json({ success: false, error: 'Product not found' }, 404);
+    }
+
+    // Delete product options first (foreign key constraint)
+    await DB.prepare('DELETE FROM product_options WHERE product_id = ?').bind(productId).run();
+
+    // Delete product
+    await DB.prepare('DELETE FROM products WHERE id = ?').bind(productId).run();
+
+    // Cache invalidation
+    await deleteCachedData(c.env.CACHE_KV, `product:detail:${productId}`, 'public:products', 'public:featured');
+
+    return c.json({ success: true, message: 'Product deleted successfully' });
+  } catch (err) {
+    console.error('[Admin Products] Delete error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+
 // Get single product (상품 단건 조회 - 수정용)
 app.get('/api/seller/products/:id', async (c) => {
   const { DB } = c.env;
