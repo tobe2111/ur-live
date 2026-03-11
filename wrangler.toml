@@ -48,12 +48,20 @@ preview_id = "750e3b6ed7714a8999abe19d8771be00"
 # ❌ RATE_LIMIT_KV 제거됨 (Task 4: Code Cleanup)
 # 사용하지 않는 KV 네임스페이스로 리소스 낭비 제거
 
-# R2 Object Storage for images
-# Create bucket: npx wrangler r2 bucket create ur-live-images
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "ur-live-images"
-preview_bucket_name = "ur-live-images-preview"
+# R2 Object Storage for images (Optional)
+# ⚠️ R2 바인딩은 선택사항입니다. R2를 사용하려면:
+# 1. Cloudflare Dashboard에서 R2 구독 활성화
+# 2. 버킷 생성: npx wrangler r2 bucket create ur-live-images
+# 3. 아래 주석 제거 후 배포
+# 4. Cloudflare Pages → Settings → Functions → R2 bucket bindings 설정
+#
+# R2가 없어도 시스템은 정상 작동합니다 (Base64 이미지 사용)
+# 자세한 설정 방법: R2_SETUP_GUIDE.md 참조
+#
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "ur-live-images"
+# preview_bucket_name = "ur-live-images-preview"
 
 # Cron Triggers (Scheduled Events) - Workers only, not supported in Pages
 # For Pages, use Cloudflare Workers cron triggers or external schedulers

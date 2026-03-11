@@ -1,4 +1,9 @@
-# 🚀 Cloudflare R2 활성화 가이드
+# 🚀 Cloudflare R2 활성화 가이드 (선택사항)
+
+## ⚠️ 중요: R2는 선택사항입니다
+R2를 활성화하지 않아도 시스템은 **정상 작동**합니다. Base64 인코딩 방식으로 이미지를 저장합니다.
+
+**현재 상태:** R2 바인딩이 비활성화되어 있습니다 (배포 안정성을 위해)
 
 ## 📋 개요
 이 가이드는 Cloudflare R2 Object Storage를 활성화하여 이미지 업로드 성능을 향상시키는 방법을 설명합니다.
@@ -9,7 +14,18 @@
 - ✅ **무료**: 월 10GB까지 무료 (Egress 무료!)
 - ✅ **CDN**: 전 세계 빠른 배포
 
+## 🔴 R2 없이 사용하기 (기본 설정)
+R2를 설정하지 않으면:
+- ✅ 이미지는 Base64로 D1 데이터베이스에 저장됩니다
+- ✅ 최대 1MB 크기 제한
+- ✅ 추가 설정 불필요
+- ⚠️ 대용량 이미지 업로드 시 성능 저하 가능
+
 ---
+
+## 🟢 R2 활성화하기 (선택사항)
+
+R2를 활성화하려면 아래 단계를 따르세요:
 
 ## 🔧 1단계: Cloudflare R2 활성화 (브라우저)
 
@@ -65,7 +81,38 @@
 
 ---
 
-## 🔧 3단계: 로컬 개발 설정 (선택사항)
+## 🔧 3단계: wrangler.toml 수정
+
+프로젝트 루트의 `wrangler.toml` 파일을 수정합니다:
+
+```toml
+# 아래 주석을 제거하세요:
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "ur-live-images"
+preview_bucket_name = "ur-live-images-preview"
+```
+
+---
+
+## 🔧 4단계: 코드 배포
+
+```bash
+# 변경사항 커밋
+git add wrangler.toml
+git commit -m "feat(r2): Enable R2 bucket binding"
+git push origin main
+
+# 또는 직접 배포
+npm run build
+npx wrangler pages deploy dist --project-name=ur-live
+```
+
+배포 후 2-3분 기다리면 R2가 활성화됩니다.
+
+---
+
+## 🔧 5단계: 로컬 개발 설정 (선택사항)
 
 로컬에서 R2를 테스트하려면:
 
@@ -73,19 +120,14 @@
 # R2 버킷 생성 확인
 npx wrangler r2 bucket list
 
-# wrangler.toml은 이미 설정되어 있음
-# [[r2_buckets]]
-# binding = "IMAGES"
-# bucket_name = "ur-live-images"
-# preview_bucket_name = "ur-live-images-preview"
-
-# 로컬 개발 서버 실행 (자동으로 R2 연결)
+# wrangler.toml의 주석을 제거했다면 자동으로 연결됨
+# 로컬 개발 서버 실행
 npm run dev
 ```
 
 ---
 
-## ✅ 4단계: 테스트
+## ✅ 6단계: 테스트
 
 ### 배포 후 테스트 (약 2-3분 후):
 ```
@@ -166,11 +208,19 @@ npm run dev
 
 ## 🎯 완료 체크리스트
 
+### R2 사용하지 않는 경우 (기본 설정)
+- [x] wrangler.toml에서 R2 바인딩 주석 처리됨
+- [x] Base64 이미지 저장 방식 사용 중
+- [x] 별도 설정 불필요
+
+### R2 활성화 시
 - [ ] Cloudflare R2 구독 완료
 - [ ] ur-live-images 버킷 생성
 - [ ] ur-live-images-preview 버킷 생성
 - [ ] Cloudflare Pages R2 바인딩 설정 (Production)
 - [ ] Cloudflare Pages R2 바인딩 설정 (Preview)
+- [ ] wrangler.toml에서 R2 바인딩 주석 제거
+- [ ] 코드 커밋 및 배포
 - [ ] 자동 재배포 완료 (2-3분)
 - [ ] 이미지 업로드 테스트 성공
 - [ ] "R2 활성화" 경고 메시지 사라짐
@@ -186,4 +236,6 @@ npm run dev
 
 ---
 
-**설정 완료 후 즉시 적용됩니다!** 🚀
+**현재 상태: R2 비활성화 (Base64 사용 중)** ✅
+
+R2를 활성화하려면 위의 단계를 따르세요. R2 없이도 시스템은 정상 작동합니다! 🚀
