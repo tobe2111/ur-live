@@ -340,3 +340,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 🌐 **Live**: [live.ur-team.com](https://live.ur-team.com)  
 🌍 **World**: [world.ur-team.com](https://world.ur-team.com)
+
+## YouTube OAuth 설정
+
+YouTube 계정 연동 기능을 사용하려면 환경 변수 설정이 필요합니다.
+자세한 내용은 [YOUTUBE_OAUTH_SETUP.md](./YOUTUBE_OAUTH_SETUP.md) 참고.
