@@ -175,13 +175,23 @@ export function getUserType(): string | null {
 /**
  * 사용자 ID 가져오기 (JWT + Firebase Custom Claims 통합)
  * ✅ Multi-auth Support: JWT sellers/admins first, then Firebase buyers
+ * 
+ * ⚠️ user_type이 'user'인 경우에만 localStorage user_id를 읽음
+ * Seller는 seller_id, Admin은 admin_id를 사용해야 함
  */
 export async function getUserId(): Promise<string | null> {
-  // 1️⃣ Check localStorage first (JWT sellers/admins store user_id here)
-  const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
-                 localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
-  if (userId) {
-    return userId
+  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
+  
+  // 1️⃣ Check localStorage first (user_type이 'user'인 경우에만!)
+  if (userType === 'user' || !userType) {
+    const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
+                   localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
+    if (userId) {
+      console.log('[Auth] getUserId: localStorage found (user_type=user):', userId)
+      return userId
+    }
+  } else {
+    console.log(`[Auth] getUserId: Skipping localStorage (user_type=${userType}, not 'user')`)
   }
   
   // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)
@@ -194,6 +204,7 @@ export async function getUserId(): Promise<string | null> {
       if (claims) {
         const parsed = JSON.parse(claims)
         if (parsed.userId) {
+          console.log('[Auth] getUserId: Firebase Custom Claims userId found:', parsed.userId)
           return parsed.userId.toString()
         }
       }
@@ -202,6 +213,7 @@ export async function getUserId(): Promise<string | null> {
     console.warn('[Auth] getUserId - Firebase claims 조회 실패:', error)
   }
   
+  console.log('[Auth] getUserId: no ID found')
   return null
 }
 
@@ -211,7 +223,9 @@ export async function getUserId(): Promise<string | null> {
  * 우선순위:
  * 1. Firebase Custom Claims (Kakao 로그인 시 userName 포함)
  * 2. Firebase displayName
- * 3. localStorage (레거시)
+ * 3. localStorage (user_type이 'user'인 경우에만)
+ * 
+ * ⚠️ Seller/Admin은 seller_name, admin_name을 사용해야 하므로 제외
  */
 export async function getUserName(): Promise<string | null> {
   try {
@@ -240,13 +254,20 @@ export async function getUserName(): Promise<string | null> {
     console.warn('[Auth] getUserName - Firebase 조회 실패:', error)
   }
   
-  // 3️⃣ localStorage 폴백 (레거시, JWT sellers/admins)
-  const localName = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || 
-                    localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
+  // 3️⃣ localStorage 폴백 (user_type이 'user'인 경우에만!)
+  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
   
-  if (localName) {
-    console.log('[Auth] getUserName: localStorage found:', localName)
-    return localName
+  // ✅ Only read user_name if user_type is 'user' (not 'seller' or 'admin')
+  if (userType === 'user' || !userType) {
+    const localName = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || 
+                      localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
+    
+    if (localName) {
+      console.log('[Auth] getUserName: localStorage found (user_type=user):', localName)
+      return localName
+    }
+  } else {
+    console.log(`[Auth] getUserName: Skipping localStorage (user_type=${userType}, not 'user')`)
   }
   
   console.log('[Auth] getUserName: no name found')
@@ -255,10 +276,28 @@ export async function getUserName(): Promise<string | null> {
 
 /**
  * 사용자 이메일 가져오기 (레거시 키 호환)
+ * 
+ * ⚠️ user_type이 'user'인 경우에만 localStorage user_email을 읽음
+ * Seller는 seller_email, Admin은 admin_email을 사용해야 함
  */
 export function getUserEmail(): string | null {
-  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_EMAIL) || 
-         localStorage.getItem(LEGACY_KEYS.USER_EMAIL_ALT)
+  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
+  
+  // ✅ Only read user_email if user_type is 'user' (not 'seller' or 'admin')
+  if (userType === 'user' || !userType) {
+    const email = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_EMAIL) || 
+                  localStorage.getItem(LEGACY_KEYS.USER_EMAIL_ALT)
+    
+    if (email) {
+      console.log('[Auth] getUserEmail: localStorage found (user_type=user):', email)
+      return email
+    }
+  } else {
+    console.log(`[Auth] getUserEmail: Skipping localStorage (user_type=${userType}, not 'user')`)
+  }
+  
+  console.log('[Auth] getUserEmail: no email found')
+  return null
 }
 
 /**
