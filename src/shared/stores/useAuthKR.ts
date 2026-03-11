@@ -59,14 +59,33 @@ export const useAuthKR = create<AuthKRState>()(
         loginWithEmail: async (email, password) => {
           try {
             set({ isLoading: true, error: null });
+            console.log('[useAuthKR] 🔐 이메일 로그인 시작:', email);
+            
             const userCredential = await signInWithEmailAndPassword(email, password);
             const user = userCredential.user;
+            console.log('[useAuthKR] ✅ Firebase 로그인 성공:', user.uid);
+
+            // 🔥 중요: Firebase ID Token을 강제로 갱신하여 최신 상태 보장
+            console.log('[useAuthKR] 🔄 ID Token 강제 갱신 중...');
+            const idToken = await user.getIdToken(true); // force refresh
+            console.log('[useAuthKR] ✅ ID Token 갱신 완료:', idToken.substring(0, 30) + '...');
+
+            // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // 사용자 역할 조회 (API 호출)
+            console.log('[useAuthKR] 📡 사용자 역할 조회 API 호출...');
             const roleResponse = await fetch('/api/users/role', {
-              headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+              headers: { Authorization: `Bearer ${idToken}` },
             });
+            
+            if (!roleResponse.ok) {
+              console.error('[useAuthKR] ❌ 역할 조회 실패:', roleResponse.status, roleResponse.statusText);
+              throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
+            }
+            
             const { role } = await roleResponse.json();
+            console.log('[useAuthKR] ✅ 사용자 역할 확인:', role);
 
             set({
               user,
@@ -75,8 +94,10 @@ export const useAuthKR = create<AuthKRState>()(
               isAuthReady: true,
               error: null,
             });
+            
+            console.log('[useAuthKR] ✅ 로그인 완료 - Zustand 상태 업데이트됨');
           } catch (err: any) {
-            console.error('[useAuthKR] loginWithEmail failed:', err);
+            console.error('[useAuthKR] ❌ loginWithEmail failed:', err);
             set({
               error: err.message || '로그인 실패',
               isLoading: false,

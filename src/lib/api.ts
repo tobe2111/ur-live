@@ -193,18 +193,20 @@ api.interceptors.request.use(
       const auth = await getFirebaseAuth();
       let user = auth.currentUser;
       
-      // Wait for Firebase Auth initialization
+      // Wait for Firebase Auth initialization (reduced timeout: 500ms)
       if (!user) {
-        console.log('[API] ⏳ Waiting for Firebase Auth...');
+        console.log('[API] ⏳ Waiting for Firebase Auth initialization...');
         user = await new Promise<typeof auth.currentUser>((resolve) => {
           const timeout = setTimeout(() => {
-            console.warn('[API] ⚠️ Firebase Auth timeout (3s)');
+            console.warn('[API] ⚠️ Firebase Auth timeout (500ms) - user not initialized yet');
+            console.warn('[API] 💡 This usually happens on first login - retry should work');
             resolve(null);
-          }, 3000);
+          }, 500);
           
           const unsubscribe = auth.onAuthStateChanged((currentUser) => {
             clearTimeout(timeout);
             unsubscribe();
+            console.log('[API] ✅ Firebase Auth state resolved:', currentUser ? currentUser.uid : 'null');
             resolve(currentUser);
           });
         });

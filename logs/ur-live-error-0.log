@@ -178,3 +178,17 @@
 2026-03-11 13:24:06 +00:00:   
 2026-03-11 13:24:06 +00:00: 
 2026-03-11 13:24:06 +00:00: 
+2026-03-11 13:33:50 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-11 13:33:50 +00:00: 
+2026-03-11 13:33:50 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-11 13:33:50 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-11 13:33:50 +00:00:   
+2026-03-11 13:33:50 +00:00:   
+2026-03-11 13:33:50 +00:00: 
+2026-03-11 13:33:50 +00:00: 
+2026-03-11 13:33:50 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid header rule:[0m
+2026-03-11 13:33:50 +00:00: 
+2026-03-11 13:33:50 +00:00:   ▶︎ Ignoring line 9 as it exceeds the maximum allowed length of 2000.
+2026-03-11 13:33:50 +00:00:   
+2026-03-11 13:33:50 +00:00: 
+2026-03-11 13:33:50 +00:00: 
