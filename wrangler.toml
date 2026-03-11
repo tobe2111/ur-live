@@ -5,6 +5,16 @@ compatibility_date = "2026-02-01"
 pages_build_output_dir = "./dist"
 compatibility_flags = ["nodejs_compat"]
 
+# Cloudflare Pages Build Configuration
+# This ensures correct deployment commands are used
+[build]
+command = "npm run build"
+cwd = "/"
+watch_dir = "src"
+
+[build.upload]
+format = "service-worker"
+
 # Environment Variables (Set via Cloudflare Pages Dashboard or wrangler secret)
 # Required secrets:
 # - RESEND_API_KEY: Resend API key for email notifications
