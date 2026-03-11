@@ -253,136 +253,144 @@ export default function SellerDashboardPage() {
         </div>
 
         {/* Sales Trend Chart */}
-        <div className="bg-white rounded-lg shadow mb-6 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
+        <div className="bg-white rounded-lg shadow mb-6 p-3 sm:p-4 lg:p-6">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
             일별 매출 추이
           </h2>
           
           {daily && daily.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={daily} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => {
-                    const date = new Date(value)
-                    return `${date.getMonth() + 1}/${date.getDate()}`
-                  }}
-                />
-                <YAxis 
-                  yAxisId="left"
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => formatShortPrice(value)}
-                />
-                <YAxis 
-                  yAxisId="right" 
-                  orientation="right"
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip 
-                  formatter={(value: any, name: string) => {
-                    if (name === '매출액') return formatPrice(value)
-                    return formatNumber(value)
-                  }}
-                  labelFormatter={(label) => {
-                    const date = new Date(label)
-                    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
-                  }}
-                />
-                <Legend />
-                <Line 
-                  yAxisId="left"
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  name="매출액"
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-                <Line 
-                  yAxisId="right"
-                  type="monotone" 
-                  dataKey="orders" 
-                  stroke="#10B981" 
-                  strokeWidth={2}
-                  name="주문 수"
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="w-full overflow-x-auto -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6">
+              <div className="min-w-[300px]">
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={daily} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(value) => {
+                        const date = new Date(value)
+                        return `${date.getMonth() + 1}/${date.getDate()}`
+                      }}
+                    />
+                    <YAxis 
+                      yAxisId="left"
+                      tick={{ fontSize: 10 }}
+                      tickFormatter={(value) => formatShortPrice(value)}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right"
+                      tick={{ fontSize: 10 }}
+                    />
+                    <Tooltip 
+                      formatter={(value: any, name: string) => {
+                        if (name === '매출액') return formatPrice(value)
+                        return formatNumber(value)
+                      }}
+                      labelFormatter={(label) => {
+                        const date = new Date(label)
+                        return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    <Line 
+                      yAxisId="left"
+                      type="monotone" 
+                      dataKey="sales" 
+                      stroke="#3B82F6" 
+                      strokeWidth={2}
+                      name="매출액"
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="orders" 
+                      stroke="#10B981" 
+                      strokeWidth={2}
+                      name="주문 수"
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
+            <div className="h-48 sm:h-64 flex items-center justify-center text-gray-500 text-sm sm:text-base">
               데이터가 없습니다
             </div>
           )}
         </div>
 
         {/* Top Products Bar Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-purple-600" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 lg:p-6">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+            <Package className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
             상품별 매출 Top 5
           </h2>
           
           {topProducts && topProducts.length > 0 ? (
             <>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topProducts.slice(0, 5)} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="product_name" 
-                    tick={{ fontSize: 12 }}
-                    angle={-15}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => formatShortPrice(value)}
-                  />
-                  <Tooltip 
-                    formatter={(value: any, name: string) => {
-                      if (name === '매출액') return formatPrice(value)
-                      return formatNumber(value)
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="total_revenue" fill="#8B5CF6" name="매출액" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="w-full overflow-x-auto -mx-3 sm:-mx-4 lg:-mx-6 px-3 sm:px-4 lg:px-6 mb-4 sm:mb-6">
+                <div className="min-w-[300px]">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={topProducts.slice(0, 5)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="product_name" 
+                        tick={{ fontSize: 10 }}
+                        angle={-15}
+                        textAnchor="end"
+                        height={70}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(value) => formatShortPrice(value)}
+                      />
+                      <Tooltip 
+                        formatter={(value: any, name: string) => {
+                          if (name === '매출액') return formatPrice(value)
+                          return formatNumber(value)
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Bar dataKey="total_revenue" fill="#8B5CF6" name="매출액" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
               {/* Product Table */}
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto -mx-3 sm:-mx-4 lg:-mx-6">
+                <table className="w-full min-w-[500px]">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">순위</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">주문 수</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">판매량</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">매출액</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase">순위</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase">상품명</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-500 uppercase">주문</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-500 uppercase">판매량</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-[10px] sm:text-xs font-medium text-gray-500 uppercase">매출액</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {topProducts.map((product, index) => (
                       <tr key={product.product_id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900">
                           {index + 1}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 max-w-[150px] truncate">
                           {product.product_name}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right whitespace-nowrap">
                           {formatNumber(product.order_count)}건
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 text-right whitespace-nowrap">
                           {formatNumber(product.total_quantity)}개
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 text-right whitespace-nowrap">
                           {formatPrice(product.total_revenue)}
                         </td>
                       </tr>
@@ -392,7 +400,7 @@ export default function SellerDashboardPage() {
               </div>
             </>
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
+            <div className="h-48 sm:h-64 flex items-center justify-center text-gray-500 text-sm sm:text-base">
               판매 데이터가 없습니다
             </div>
           )}
