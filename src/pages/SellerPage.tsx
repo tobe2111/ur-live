@@ -19,7 +19,6 @@ import {
   Calendar,
   ChevronRight,
   Building2,
-  FileText,
   LogOut,
   XCircle,
   Loader2
