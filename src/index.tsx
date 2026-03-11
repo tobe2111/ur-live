@@ -8046,12 +8046,23 @@ app.post('/api/seller/products', async (c) => {
       stock, 
       category, 
       live_stream_id,
-      is_active 
+      is_active,
+      product_type
     } = await c.req.json();
 
     // Validate required fields
     if (!name || !price) {
       return c.json({ success: false, error: 'Name and price are required' }, 400);
+    }
+
+    // 🔒 SECURITY: Sellers can ONLY create 'live' products
+    // 'featured' products (Ur 특가) can ONLY be created by admins
+    if (product_type && product_type !== 'live') {
+      return c.json({ 
+        success: false, 
+        error: '판매자는 라이브 방송 전용 상품만 등록할 수 있습니다. "Ur 특가" 상품은 어드민 대시보드에서 등록해주세요.',
+        error_code: 'INVALID_PRODUCT_TYPE'
+      }, 403);
     }
 
     // If live_stream_id provided, verify ownership
@@ -8065,12 +8076,12 @@ app.post('/api/seller/products', async (c) => {
       }
     }
 
-    // Insert product
+    // Insert product (sellers can only create 'live' products)
     const result = await DB.prepare(`
       INSERT INTO products (
         name, description, price, original_price, discount_rate, 
-        image_url, stock, category, live_stream_id, seller_id, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        image_url, stock, category, live_stream_id, seller_id, is_active, product_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       name,
       description || null,
@@ -8082,7 +8093,8 @@ app.post('/api/seller/products', async (c) => {
       category || null,
       live_stream_id || null,
       auth.sellerId,
-      is_active !== undefined ? is_active : 1
+      is_active !== undefined ? is_active : 1,
+      'live' // Force 'live' for all seller products
     ).run();
 
     // Get created product
