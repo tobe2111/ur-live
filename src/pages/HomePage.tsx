@@ -126,18 +126,23 @@ export default function HomePage() {
     loadUserInfo()
   }, [searchParams])
 
-  function loadUserInfo() {
-    // localStorage에서 사용자 정보 읽기
-    // 통합 인증 사용
-    const userName = getUserName() || '게스트'
-    const userId = getUserId()
-    const session = localStorage.getItem('session')
-    
-    if (userName && (userId || session)) {
-      setUser({
-        name: userName,
-        email: ''
-      })
+  async function loadUserInfo() {
+    // Firebase Custom Claims에서 사용자 정보 읽기
+    try {
+      const userName = await getUserName()
+      const userId = await getUserId()
+      
+      if (userName && userId) {
+        setUser({
+          name: userName,
+          email: ''
+        })
+        console.log('[HomePage] User info loaded:', { userName, userId })
+      } else {
+        console.log('[HomePage] No user info found')
+      }
+    } catch (error) {
+      console.error('[HomePage] Failed to load user info:', error)
     }
   }
 

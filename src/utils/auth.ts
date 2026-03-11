@@ -142,11 +142,51 @@ export async function getUserId(): Promise<string | null> {
 }
 
 /**
- * 사용자 이름 가져오기 (레거시 키 호환)
+ * 사용자 이름 가져오기 (Firebase Custom Claims 우선)
+ * 
+ * 우선순위:
+ * 1. Firebase Custom Claims (Kakao 로그인 시 userName 포함)
+ * 2. Firebase displayName
+ * 3. localStorage (레거시)
  */
-export function getUserName(): string | null {
-  return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || 
-         localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
+export async function getUserName(): Promise<string | null> {
+  try {
+    // 1️⃣ Firebase Custom Claims 체크 (Kakao 로그인 시 userName 포함)
+    const auth = await getFirebaseAuth()
+    const user = auth.currentUser
+    
+    if (user) {
+      // Force token refresh to get latest claims
+      const idTokenResult = await user.getIdTokenResult()
+      const claims = idTokenResult.claims
+      
+      // Custom Claims에서 userName 추출
+      if (claims.userName && typeof claims.userName === 'string') {
+        console.log('[Auth] getUserName: Firebase Custom Claims userName found:', claims.userName)
+        return claims.userName
+      }
+      
+      // 2️⃣ Firebase displayName (Google 로그인 등)
+      if (user.displayName) {
+        console.log('[Auth] getUserName: Firebase displayName found:', user.displayName)
+        return user.displayName
+      }
+    }
+  } catch (error) {
+    console.warn('[Auth] getUserName - Firebase 조회 실패:', error)
+  }
+  
+  // 3️⃣ localStorage 폴백 (레거시, JWT sellers/admins)
+  const localName = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || 
+                    localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
+  
+  if (localName) {
+    console.log('[Auth] getUserName: localStorage found:', localName)
+    return localName
+  }
+  
+  console.log('[Auth] getUserName: no name found')
+  return null
 }
 
 /**
