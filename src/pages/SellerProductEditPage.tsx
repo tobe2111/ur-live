@@ -59,7 +59,7 @@ export default function SellerProductEditPage() {
 
   useEffect(() => {
     // Check authentication
-    const sessionToken = localStorage.getItem('seller_session_token')
+    const sessionToken = localStorage.getItem('seller_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -73,7 +73,7 @@ export default function SellerProductEditPage() {
 
   async function loadProduct() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -124,7 +124,7 @@ export default function SellerProductEditPage() {
 
   async function loadLiveStreams() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       if (!sessionToken) return
 
@@ -146,7 +146,7 @@ export default function SellerProductEditPage() {
     setSubmitting(true)
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       if (!sessionToken) {
         navigate('/seller/login')

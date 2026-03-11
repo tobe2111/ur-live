@@ -40,22 +40,22 @@ export default function SellerProductNewPage() {
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
-    // Check authentication
-    const sessionToken = localStorage.getItem('seller_session_token')
+    // Check authentication - use 'seller_token' (same as login page)
+    const sessionToken = localStorage.getItem('seller_token')
     
     if (!sessionToken) {
-      console.log('[SellerProductNewPage] No session token, redirecting to login')
+      console.log('[SellerProductNewPage] ❌ No seller_token, redirecting to login')
       navigate('/seller/login')
       return
     }
     
-    console.log('[SellerProductNewPage] Session token found, loading page')
+    console.log('[SellerProductNewPage] ✅ seller_token found, loading page')
     loadLiveStreams()
   }, [])
 
   async function loadLiveStreams() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -82,7 +82,7 @@ export default function SellerProductNewPage() {
     setLoading(true)
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       if (!sessionToken) {
         navigate('/seller/login')

@@ -30,7 +30,7 @@ export default function SellerStreamEditPage() {
   })
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('seller_session_token')
+    const sessionToken = localStorage.getItem('seller_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -43,7 +43,7 @@ export default function SellerStreamEditPage() {
 
   async function loadStream() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       const response = await api.get(`/api/seller/streams`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
@@ -76,7 +76,7 @@ export default function SellerStreamEditPage() {
     setLoading(true)
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       const response = await api.put(`/api/seller/streams/${id}`, {
         title: formData.title,
@@ -106,7 +106,7 @@ export default function SellerStreamEditPage() {
     }
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       const response = await api.delete(`/api/seller/streams/${id}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }

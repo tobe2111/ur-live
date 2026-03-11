@@ -90,7 +90,7 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       if (!sessionToken) {
@@ -198,7 +198,7 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       const response = await api.patch(
@@ -228,7 +228,7 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       const response = await api.put(

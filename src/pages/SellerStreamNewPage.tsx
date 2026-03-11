@@ -35,7 +35,7 @@ export default function SellerStreamNewPage() {
     setLoading(true)
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
       if (!sessionToken) {
         setError('로그인이 필요합니다')

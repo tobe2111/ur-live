@@ -72,7 +72,7 @@ export default function SellerBusinessInfoPage() {
 
   async function loadBusinessInfo() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       if (!sessionToken) {
@@ -116,7 +116,7 @@ export default function SellerBusinessInfoPage() {
     setSubmitting(true)
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       if (!sessionToken) {

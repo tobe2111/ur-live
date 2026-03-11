@@ -53,7 +53,7 @@ export default function SellerSettlementsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('seller_session_token')
+    const sessionToken = localStorage.getItem('seller_token')
     if (!sessionToken) {
       navigate('/seller/login')
       return
@@ -66,7 +66,7 @@ export default function SellerSettlementsPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
       // Get settlements
       const response = await api.get('/api/seller/settlements', {
@@ -101,7 +101,7 @@ export default function SellerSettlementsPage() {
     if (!confirm('이번 달 정산을 신청하시겠습니까?')) return
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       const response = await api.post('/api/seller/settlements/request', {}, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
@@ -117,7 +117,7 @@ export default function SellerSettlementsPage() {
 
   async function downloadSettlement(settlementId: number) {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       const response = await api.get(`/api/seller/settlements/${settlementId}/download`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` },
         responseType: 'blob'

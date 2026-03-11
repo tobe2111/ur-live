@@ -66,7 +66,7 @@ export default function SellerTaxInvoicesPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       if (!sessionToken) {
@@ -112,7 +112,7 @@ export default function SellerTaxInvoicesPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       const response = await api.post(`/api/seller/tax-invoices/retry/${orderNumber}`, {}, {
@@ -133,7 +133,7 @@ export default function SellerTaxInvoicesPage() {
 
   async function viewInvoiceDetail(invoiceId: number) {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       const response = await api.get(`/api/seller/tax-invoices/${invoiceId}`, {

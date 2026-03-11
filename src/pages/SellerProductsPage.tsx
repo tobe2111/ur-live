@@ -46,7 +46,7 @@ export default function SellerProductsPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       if (!sessionToken) {
@@ -75,7 +75,7 @@ export default function SellerProductsPage() {
     }
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       const response = await api.patch(
@@ -102,7 +102,7 @@ export default function SellerProductsPage() {
     setDeleting(productId)
 
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       
 
       const response = await api.delete(`/api/seller/products/${productId}`, {

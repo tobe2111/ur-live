@@ -62,7 +62,7 @@ export default function SellerAlimtalkDashboardPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'templates' | 'history'>('overview')
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('seller_session_token')
+    const sessionToken = localStorage.getItem('seller_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -76,7 +76,7 @@ export default function SellerAlimtalkDashboardPage() {
   async function loadAllData() {
     try {
       setLoading(true)
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       const [balanceRes, templatesRes, messagesRes] = await Promise.all([
         api.get('/api/seller/alimtalk/balance', {

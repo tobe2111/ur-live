@@ -65,7 +65,7 @@ export default function SellerDashboardPage() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('seller_session_token')
+    const sessionToken = localStorage.getItem('seller_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -79,7 +79,7 @@ export default function SellerDashboardPage() {
   async function loadDashboardData() {
     try {
       setLoading(true)
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
 
       const response = await api.get(`/api/seller/dashboard/stats?period=${period}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }

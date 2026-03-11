@@ -85,7 +85,7 @@ export default function SellerProfileEditPage() {
 
   useEffect(() => {
     // Check authentication
-    const sessionToken = localStorage.getItem('seller_session_token')
+    const sessionToken = localStorage.getItem('seller_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'seller') {
@@ -98,7 +98,7 @@ export default function SellerProfileEditPage() {
 
   async function loadProfile() {
     try {
-      const sessionToken = localStorage.getItem('seller_session_token')
+      const sessionToken = localStorage.getItem('seller_token')
       const response = await api.get('/api/seller/profile', {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
