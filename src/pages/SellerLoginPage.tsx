@@ -56,8 +56,9 @@ export default function SellerLoginPage() {
         // Store user info
         localStorage.setItem('user_type', 'seller')
         localStorage.setItem('seller_id', seller.id.toString())
-        localStorage.setItem('user_id', seller.id.toString())
-        localStorage.setItem('user_name', seller.name || seller.email)
+        // ❌ user_id, user_name 삭제: User 세션과 충돌 방지
+        // localStorage.setItem('user_id', seller.id.toString())
+        // localStorage.setItem('user_name', seller.name || seller.email)
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
         

@@ -53,7 +53,7 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
   const keysToRemove: string[] = []
   
   if (type === 'seller') {
-    // Seller 전용 키
+    // Seller 전용 키 (user_id, user_name은 User 전용이므로 제거 안 함)
     keysToRemove.push(
       'seller_token',
       'seller_refresh_token',
@@ -61,13 +61,11 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'seller_name',
       'seller_email',
       'user_type',
-      'user_id',
-      'user_name',
       'access_token',  // 레거시 호환
       'refresh_token'  // 레거시 호환
     )
   } else if (type === 'admin') {
-    // Admin 전용 키
+    // Admin 전용 키 (user_id, user_name은 User 전용이므로 제거 안 함)
     keysToRemove.push(
       'admin_token',
       'admin_refresh_token',
@@ -75,8 +73,6 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'admin_name',
       'admin_email',
       'user_type',
-      'user_id',
-      'user_name',
       'access_token',  // 레거시 호환
       'refresh_token'  // 레거시 호환
     )
@@ -104,9 +100,9 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
   console.log(`[Auth] Removed ${keysToRemove.length} keys:`, keysToRemove)
   
   // ✅ 보호된 키 (삭제하지 않음)
-  // User 세션: firebase_token, hasCartItems, tempCartItem (seller/admin 삭제 시)
-  // Seller 세션: seller_token, seller_id (user/admin 삭제 시)
-  // Admin 세션: admin_token, admin_id (user/seller 삭제 시)
+  // User 세션: firebase_token, user_id, user_name, hasCartItems (seller/admin 삭제 시)
+  // Seller 세션: seller_token, seller_id, seller_name (user/admin 삭제 시)
+  // Admin 세션: admin_token, admin_id, admin_name (user/seller 삭제 시)
 }
 
 /**

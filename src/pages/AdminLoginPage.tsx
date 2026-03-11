@@ -53,8 +53,9 @@ export default function AdminLoginPage() {
         // Store user info
         localStorage.setItem('user_type', 'admin')
         localStorage.setItem('admin_id', admin.id.toString())
-        localStorage.setItem('user_id', admin.id.toString())
-        localStorage.setItem('user_name', admin.name || admin.email)
+        // ❌ user_id, user_name 삭제: User 세션과 충돌 방지
+        // localStorage.setItem('user_id', admin.id.toString())
+        // localStorage.setItem('user_name', admin.name || admin.email)
         localStorage.setItem('admin_name', admin.name || '')
         localStorage.setItem('admin_email', admin.email || '')
         
