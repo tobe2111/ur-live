@@ -294,8 +294,9 @@ api.interceptors.response.use(
           url: url
         });
         
-        localStorage.clear();
-        sessionStorage.clear();
+        // ✅ 선택적 삭제: Seller/Admin 세션만 삭제 (User 보호)
+        const authUtils = await import('@/utils/auth');
+        authUtils.clearAuthData(isSeller ? 'seller' : 'admin');
         
         if (isSeller) {
           alert('셀러 인증이 필요합니다.\n\n로그인해주세요.');
@@ -342,8 +343,9 @@ api.interceptors.response.use(
       
       alert('인증이 만료되었습니다.\n\n다시 로그인해주세요.');
       
-      localStorage.clear();
-      sessionStorage.clear();
+      // ✅ 선택적 삭제: User 세션만 삭제
+      const authUtils = await import('@/utils/auth');
+      authUtils.clearAuthData('user');
       
       // 현재 페이지가 seller/admin 페이지인 경우 적절한 로그인 페이지로 리다이렉트
       const currentPath = window.location.pathname;

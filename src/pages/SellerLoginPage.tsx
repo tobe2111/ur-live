@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { ArrowLeft } from 'lucide-react'
+import { clearAuthData } from '@/utils/auth'
 
 export default function SellerLoginPage() {
   const navigate = useNavigate()
@@ -40,9 +41,8 @@ export default function SellerLoginPage() {
       if (response.data.success) {
         console.log('[SellerLogin] ✅ JWT Login successful')
         
-        // Clear ALL old sessions to avoid conflicts
-        localStorage.clear()
-        sessionStorage.clear()
+        // ✅ 선택적 삭제: Seller 관련 키만 삭제 (User 세션 보호)
+        clearAuthData('seller')
         
         const { seller, accessToken, refreshToken } = response.data.data
         

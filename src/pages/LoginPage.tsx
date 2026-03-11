@@ -240,6 +240,11 @@ export default function LoginPage() {
       
       const result = await signInWithGoogle()
       
+      // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
+      localStorage.setItem('user_type', 'user')
+      localStorage.setItem('user_name', result.user.displayName || result.user.email?.split('@')[0] || 'User')
+      console.log('[Google Login] ✅ localStorage에 user_type 설정: user')
+      
       // 백엔드에 사용자 정보 저장 (D1 DB)
       await api.post('/api/auth/google/register', {
         uid: result.user.uid,

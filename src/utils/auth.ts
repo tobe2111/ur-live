@@ -42,6 +42,74 @@ const LEGACY_KEYS = {
 }
 
 /**
+ * 선택적 localStorage 키 삭제
+ * localStorage.clear() 대신 사용하여 다른 세션 보호
+ * 
+ * @param type - 삭제할 세션 타입 ('seller' | 'admin' | 'user')
+ */
+export function clearAuthData(type: 'seller' | 'admin' | 'user') {
+  console.log(`[Auth] Clearing ${type} auth data (selective removal)`)
+  
+  const keysToRemove: string[] = []
+  
+  if (type === 'seller') {
+    // Seller 전용 키
+    keysToRemove.push(
+      'seller_token',
+      'seller_refresh_token',
+      'seller_id',
+      'seller_name',
+      'seller_email',
+      'user_type',
+      'user_id',
+      'user_name',
+      'access_token',  // 레거시 호환
+      'refresh_token'  // 레거시 호환
+    )
+  } else if (type === 'admin') {
+    // Admin 전용 키
+    keysToRemove.push(
+      'admin_token',
+      'admin_refresh_token',
+      'admin_id',
+      'admin_name',
+      'admin_email',
+      'user_type',
+      'user_id',
+      'user_name',
+      'access_token',  // 레거시 호환
+      'refresh_token'  // 레거시 호환
+    )
+  } else {
+    // User 전용 키
+    keysToRemove.push(
+      'firebase_token',
+      'user_type',
+      'user_id',
+      'user_name',
+      'user_email',
+      'user_profile_image',
+      'hasCartItems',
+      'tempCartItem',
+      'loginReturnUrl',
+      'lastLoginUid'
+    )
+  }
+  
+  // 선택적 삭제
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key)
+  })
+  
+  console.log(`[Auth] Removed ${keysToRemove.length} keys:`, keysToRemove)
+  
+  // ✅ 보호된 키 (삭제하지 않음)
+  // User 세션: firebase_token, hasCartItems, tempCartItem (seller/admin 삭제 시)
+  // Seller 세션: seller_token, seller_id (user/admin 삭제 시)
+  // Admin 세션: admin_token, admin_id (user/seller 삭제 시)
+}
+
+/**
  * Firebase ID Token 가져오기
  */
 export function getAccessToken(): string | null {
