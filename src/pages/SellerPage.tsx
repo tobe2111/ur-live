@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -12,29 +12,56 @@ import {
   DollarSign,
   Users,
   Play,
-  Pause,
   Settings,
-  BarChart3,
   ShoppingBag,
   Clock,
-  CheckCircle2,
-  AlertCircle,
   Eye,
   Calendar,
   ChevronRight,
   Building2,
   FileText,
-  Copy,
-  ExternalLink,
-  CheckCheck,
-  LogOut
+  LogOut,
+  XCircle,
+  Loader2
 } from 'lucide-react'
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts'
 
+// 통합된 통계 인터페이스
 interface DashboardStats {
   totalRevenue: number
   totalOrders: number
   activeStreams: number
   totalViewers: number
+  pendingOrders?: number
+  cancelledOrders?: number
+  completedOrders?: number
+  avgOrderValue?: number
+}
+
+interface DailyStats {
+  date: string
+  orders: number
+  sales: number
+  completed_orders: number
+}
+
+interface TopProduct {
+  product_id: number
+  product_name: string
+  order_count: number
+  total_quantity: number
+  total_revenue: number
 }
 
 interface LiveStream {
@@ -64,20 +91,25 @@ export default function SellerPage() {
     totalRevenue: 0,
     totalOrders: 0,
     activeStreams: 0,
-    totalViewers: 0
+    totalViewers: 0,
+    pendingOrders: 0,
+    cancelledOrders: 0,
+    completedOrders: 0,
+    avgOrderValue: 0
   })
+  const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [sellerId, setSellerId] = useState<number | null>(null)
-  const [copiedLink, setCopiedLink] = useState(false)
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
 
   // Mock seller info (in production, get from session)
   const sellerName = '리스터코퍼레이션 셀러'
-  const sellerEmail = 'seller@listercorp.com'
 
   useEffect(() => {
-    // ✅ JWT 기반 인증 확인 (Firebase auth는 체크하지 않음)
+    // ✅ JWT 기반 인증 확인
     if (!isSellerAuthenticated()) {
       console.log('[SellerPage] ❌ Not authenticated')
       redirectToLogin(navigate)
@@ -96,11 +128,11 @@ export default function SellerPage() {
     })
     
     loadDashboardData()
-  }, [navigate])
+  }, [navigate, period])
 
   async function loadDashboardData() {
     try {
-      // ✅ JWT 토큰 사용
+      setLoading(true)
       const token = getSellerToken()
       const userId = getSellerId()
       
@@ -108,25 +140,45 @@ export default function SellerPage() {
         setSellerId(parseInt(userId))
       }
 
-      // ⚡ 병렬 API 호출로 속도 향상 (3x faster!)
-      const [statsResponse, streamsResponse] = await Promise.allSettled([
-        token ? api.get('/api/seller/stats').catch(err => {
-          console.error('Failed to load stats:', err)
+      // ⚡ 병렬 API 호출로 속도 향상
+      const [dashboardResponse, streamsResponse] = await Promise.allSettled([
+        token ? api.get(`/api/seller/dashboard/stats?period=${period}`).catch(err => {
+          console.error('Failed to load dashboard stats:', err)
           return { data: { success: false } }
         }) : Promise.resolve({ data: { success: false } }),
         api.get('/api/seller/streams')
       ])
 
-      // Stats 처리
-      if (statsResponse.status === 'fulfilled' && statsResponse.value.data.success) {
-        setStats(statsResponse.value.data.data)
-      } else {
+      // Dashboard stats 처리 (통합 API)
+      if (dashboardResponse.status === 'fulfilled' && dashboardResponse.value.data.success) {
+        const data = dashboardResponse.value.data.data
+        
+        // 기존 stats + 추가 stats 통합
         setStats({
-          totalRevenue: 0,
-          totalOrders: 0,
-          activeStreams: 0,
-          totalViewers: 0
+          totalRevenue: data.summary?.total_sales || 0,
+          totalOrders: data.summary?.total_orders || 0,
+          activeStreams: 0, // 스트림에서 계산
+          totalViewers: 0, // 스트림에서 계산
+          pendingOrders: data.summary?.pending_orders || 0,
+          cancelledOrders: data.summary?.cancelled_orders || 0,
+          completedOrders: data.summary?.completed_orders || 0,
+          avgOrderValue: data.summary?.avg_order_value || 0
         })
+        
+        setDailyStats(data.daily || [])
+        setTopProducts(data.topProducts || [])
+      } else {
+        // Fallback to old API
+        const oldStatsResponse = await api.get('/api/seller/stats').catch(() => ({ data: { success: false } }))
+        if (oldStatsResponse.data.success) {
+          setStats({
+            ...oldStatsResponse.data.data,
+            pendingOrders: 0,
+            cancelledOrders: 0,
+            completedOrders: 0,
+            avgOrderValue: 0
+          })
+        }
       }
 
       // Streams 처리
@@ -134,6 +186,16 @@ export default function SellerPage() {
       if (streamsResponse.status === 'fulfilled' && streamsResponse.value.data.success) {
         loadedStreams = streamsResponse.value.data.data || []
         setStreams(loadedStreams)
+        
+        // 활성 라이브 및 시청자 수 계산
+        const activeCount = loadedStreams.filter(s => s.status === 'live').length
+        const totalViewers = loadedStreams.reduce((sum, s) => sum + (s.viewer_count || 0), 0)
+        
+        setStats(prev => ({
+          ...prev,
+          activeStreams: activeCount,
+          totalViewers: totalViewers
+        }))
       }
 
       // Products 처리 (첫 스트림에서만 로드)
@@ -160,6 +222,27 @@ export default function SellerPage() {
 
   function logout() {
     logoutSeller(navigate)
+  }
+
+  function formatPrice(price: number) {
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW',
+      maximumFractionDigits: 0
+    }).format(price || 0)
+  }
+
+  function formatNumber(num: number) {
+    return new Intl.NumberFormat('ko-KR').format(num || 0)
+  }
+
+  function formatShortPrice(price: number) {
+    if (price >= 1000000) {
+      return `${(price / 1000000).toFixed(1)}M`
+    } else if (price >= 1000) {
+      return `${(price / 1000).toFixed(1)}K`
+    }
+    return price.toString()
   }
 
   if (loading) {
@@ -221,73 +304,56 @@ export default function SellerPage() {
 
       {/* Main Content */}
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Welcome Section */}
+        {/* Welcome Section + Period Selector */}
         <div className="mb-8">
-          <h2 className="text-[28px] sm:text-[32px] font-bold text-[#1d1d1f] mb-2">
-            안녕하세요, {sellerName}님! 👋
-          </h2>
-          <p className="text-[15px] sm:text-[17px] text-[#6e6e73] mb-4">
-            오늘도 성공적인 라이브 쇼핑을 시작해보세요
-          </p>
-          
-          {/* 셀러 공개 페이지 링크 */}
-          {sellerId && (
-            <div className="apple-card p-4 sm:p-6 bg-gradient-to-r from-[#007aff]/5 to-[#5856d6]/5 border-2 border-[#007aff]/20">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ExternalLink className="h-5 w-5 text-[#007aff]" />
-                    <h3 className="text-[17px] font-semibold text-[#1d1d1f]">
-                      내 셀러 공개 페이지
-                    </h3>
-                  </div>
-                  <p className="text-[13px] text-[#6e6e73] mb-3">
-                    이 링크를 SNS에 공유해서 고객들을 내 페이지로 초대하세요!
-                  </p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <code className="flex-1 min-w-[200px] px-3 py-2 bg-white rounded-lg text-[13px] text-[#007aff] font-mono border border-[#e5e5ea]">
-                      https://live.ur-team.com/s/{sellerId}
-                    </code>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`https://live.ur-team.com/s/${sellerId}`)
-                          setCopiedLink(true)
-                          setTimeout(() => setCopiedLink(false), 2000)
-                        }}
-                        className="px-4 py-2 bg-[#007aff] text-white rounded-lg hover:bg-[#0051d5] transition-colors flex items-center gap-2 text-[13px] font-medium"
-                      >
-                        {copiedLink ? (
-                          <>
-                            <CheckCheck className="h-4 w-4" />
-                            복사완료!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4" />
-                            링크 복사
-                          </>
-                        )}
-                      </button>
-                      <a
-                        href={`/s/${sellerId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 bg-white text-[#007aff] border border-[#007aff] rounded-lg hover:bg-[#007aff]/5 transition-colors flex items-center gap-2 text-[13px] font-medium"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        미리보기
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-[28px] sm:text-[32px] font-bold text-[#1d1d1f] mb-2">
+                안녕하세요, {sellerName}님! 👋
+              </h2>
+              <p className="text-[15px] sm:text-[17px] text-[#6e6e73]">
+                오늘도 성공적인 라이브 쇼핑을 시작해보세요
+              </p>
             </div>
-          )}
+            
+            {/* Period Selector */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPeriod('7d')}
+                className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                  period === '7d'
+                    ? 'bg-[#007aff] text-white'
+                    : 'apple-card text-[#1d1d1f] hover:shadow-md'
+                }`}
+              >
+                최근 7일
+              </button>
+              <button
+                onClick={() => setPeriod('30d')}
+                className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                  period === '30d'
+                    ? 'bg-[#007aff] text-white'
+                    : 'apple-card text-[#1d1d1f] hover:shadow-md'
+                }`}
+              >
+                최근 30일
+              </button>
+              <button
+                onClick={() => setPeriod('90d')}
+                className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                  period === '90d'
+                    ? 'bg-[#007aff] text-white'
+                    : 'apple-card text-[#1d1d1f] hover:shadow-md'
+                }`}
+              >
+                최근 90일
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        {/* Stats Grid - 확장 (6개) */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <div className="apple-card p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center">
@@ -297,8 +363,13 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">총 매출</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {(stats.totalRevenue || 0).toLocaleString()}원
+              {formatPrice(stats.totalRevenue)}
             </p>
+            {stats.avgOrderValue > 0 && (
+              <p className="text-[11px] text-[#6e6e73] mt-1">
+                평균 {formatPrice(stats.avgOrderValue)}/건
+              </p>
+            )}
           </div>
 
           <div className="apple-card p-4 sm:p-6">
@@ -310,8 +381,13 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">총 주문</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {stats.totalOrders || 0}건
+              {formatNumber(stats.totalOrders)}건
             </p>
+            {stats.completedOrders > 0 && (
+              <p className="text-[11px] text-[#34c759] mt-1">
+                완료 {formatNumber(stats.completedOrders)}건
+              </p>
+            )}
           </div>
 
           <div className="apple-card p-4 sm:p-6">
@@ -338,10 +414,186 @@ export default function SellerPage() {
             </div>
             <p className="text-[13px] text-[#6e6e73] mb-1">총 시청자</p>
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
-              {(stats.totalViewers || 0).toLocaleString()}명
+              {formatNumber(stats.totalViewers)}명
             </p>
           </div>
+
+          <div className="apple-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-[#ffcc00]/10 rounded-full flex items-center justify-center">
+                <Clock className="h-5 w-5 text-[#ffcc00]" />
+              </div>
+            </div>
+            <p className="text-[13px] text-[#6e6e73] mb-1">대기 중</p>
+            <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
+              {formatNumber(stats.pendingOrders || 0)}건
+            </p>
+            <p className="text-[11px] text-[#6e6e73] mt-1">
+              처리 필요
+            </p>
+          </div>
+
+          <div className="apple-card p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 bg-[#ff3b30]/10 rounded-full flex items-center justify-center">
+                <XCircle className="h-5 w-5 text-[#ff3b30]" />
+              </div>
+            </div>
+            <p className="text-[13px] text-[#6e6e73] mb-1">취소</p>
+            <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
+              {formatNumber(stats.cancelledOrders || 0)}건
+            </p>
+            {stats.totalOrders > 0 && (
+              <p className="text-[11px] text-[#6e6e73] mt-1">
+                취소율 {((stats.cancelledOrders || 0) / stats.totalOrders * 100).toFixed(1)}%
+              </p>
+            )}
+          </div>
         </div>
+
+        {/* Charts Section */}
+        {dailyStats.length > 0 && (
+          <div className="mb-8">
+            {/* Sales Trend Chart */}
+            <div className="apple-card p-4 sm:p-6 mb-6">
+              <h2 className="text-[17px] sm:text-[19px] font-semibold text-[#1d1d1f] mb-4 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-[#007aff]" />
+                일별 매출 추이
+              </h2>
+              
+              <div className="w-full overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+                <div className="min-w-[300px]">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={dailyStats} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value)
+                          return `${date.getMonth() + 1}/${date.getDate()}`
+                        }}
+                      />
+                      <YAxis 
+                        yAxisId="left"
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(value) => formatShortPrice(value)}
+                      />
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right"
+                        tick={{ fontSize: 10 }}
+                      />
+                      <Tooltip 
+                        formatter={(value: any, name: string) => {
+                          if (name === '매출액') return formatPrice(value)
+                          return formatNumber(value)
+                        }}
+                        labelFormatter={(label) => {
+                          const date = new Date(label)
+                          return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Line 
+                        yAxisId="left"
+                        type="monotone" 
+                        dataKey="sales" 
+                        stroke="#3B82F6" 
+                        strokeWidth={2}
+                        name="매출액"
+                        dot={{ r: 2 }}
+                        activeDot={{ r: 4 }}
+                      />
+                      <Line 
+                        yAxisId="right"
+                        type="monotone" 
+                        dataKey="orders" 
+                        stroke="#10B981" 
+                        strokeWidth={2}
+                        name="주문 수"
+                        dot={{ r: 2 }}
+                        activeDot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Products Chart */}
+            {topProducts.length > 0 && (
+              <div className="apple-card p-4 sm:p-6">
+                <h2 className="text-[17px] sm:text-[19px] font-semibold text-[#1d1d1f] mb-4 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-[#5856d6]" />
+                  상품별 매출 Top 5
+                </h2>
+                
+                <div className="w-full overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 mb-6">
+                  <div className="min-w-[300px]">
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={topProducts.slice(0, 5)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="product_name" 
+                          tick={{ fontSize: 10 }}
+                          angle={-15}
+                          textAnchor="end"
+                          height={70}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 10 }}
+                          tickFormatter={(value) => formatShortPrice(value)}
+                        />
+                        <Tooltip 
+                          formatter={(value: any) => formatPrice(value)}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Bar dataKey="total_revenue" fill="#8B5CF6" name="매출액" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Product Table */}
+                <div className="overflow-x-auto -mx-4 sm:-mx-6">
+                  <table className="w-full min-w-[500px]">
+                    <thead className="bg-[#f5f5f7]">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium text-[#6e6e73] uppercase">순위</th>
+                        <th className="px-3 py-2 text-left text-[11px] font-medium text-[#6e6e73] uppercase">상품명</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium text-[#6e6e73] uppercase">주문</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium text-[#6e6e73] uppercase">판매량</th>
+                        <th className="px-3 py-2 text-right text-[11px] font-medium text-[#6e6e73] uppercase">매출액</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#e5e5ea]">
+                      {topProducts.map((product, index) => (
+                        <tr key={product.product_id} className="hover:bg-[#f5f5f7]/50">
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#1d1d1f]">
+                            {index + 1}
+                          </td>
+                          <td className="px-3 py-3 text-[13px] text-[#1d1d1f] max-w-[150px] truncate">
+                            {product.product_name}
+                          </td>
+                          <td className="px-3 py-3 text-[13px] text-[#1d1d1f] text-right whitespace-nowrap">
+                            {formatNumber(product.order_count)}건
+                          </td>
+                          <td className="px-3 py-3 text-[13px] text-[#1d1d1f] text-right whitespace-nowrap">
+                            {formatNumber(product.total_quantity)}개
+                          </td>
+                          <td className="px-3 py-3 text-[13px] font-medium text-[#1d1d1f] text-right whitespace-nowrap">
+                            {formatPrice(product.total_revenue)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Quick Access Section */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -368,17 +620,6 @@ export default function SellerPage() {
           </button>
 
           <button
-            onClick={() => navigate('/seller/dashboard')}
-            className="apple-card p-4 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-10 h-10 bg-blue-600/10 rounded-full flex items-center justify-center mb-3">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
-            </div>
-            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">📊 통계 대시보드</p>
-            <p className="text-[13px] text-[#6e6e73]">매출 및 상품 분석</p>
-          </button>
-
-          <button
             onClick={() => navigate('/seller/business-info')}
             className="apple-card p-4 hover:shadow-lg transition-all text-left"
           >
@@ -387,17 +628,6 @@ export default function SellerPage() {
             </div>
             <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">사업자 정보</p>
             <p className="text-[13px] text-[#6e6e73]">정보 등록 및 관리</p>
-          </button>
-
-          <button
-            onClick={() => navigate('/seller/tax-invoices')}
-            className="apple-card p-4 hover:shadow-lg transition-all text-left"
-          >
-            <div className="w-10 h-10 bg-[#32ade6]/10 rounded-full flex items-center justify-center mb-3">
-              <FileText className="h-5 w-5 text-[#32ade6]" />
-            </div>
-            <p className="text-[15px] font-semibold text-[#1d1d1f] mb-1">세금계산서</p>
-            <p className="text-[13px] text-[#6e6e73]">발행 내역 조회</p>
           </button>
 
           <button
@@ -485,16 +715,10 @@ export default function SellerPage() {
                           src={stream.thumbnail_url}
                           alt={stream.title}
                           className="w-24 h-24 rounded-xl object-cover flex-shrink-0"
+                          loading="lazy"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              const fallback = document.createElement('div');
-                              fallback.className = 'w-24 h-24 rounded-xl bg-gradient-to-br from-[#ff3b30] to-[#ff9500] flex items-center justify-center flex-shrink-0';
-                              fallback.innerHTML = '<svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>';
-                              parent.appendChild(fallback);
-                            }
                           }}
                         />
                       ) : (
@@ -506,13 +730,6 @@ export default function SellerPage() {
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              const fallback = document.createElement('div');
-                              fallback.className = 'w-24 h-24 rounded-xl bg-gradient-to-br from-[#ff3b30] to-[#ff9500] flex items-center justify-center flex-shrink-0';
-                              fallback.innerHTML = '<svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>';
-                              parent.appendChild(fallback);
-                            }
                           }}
                         />
                       )}
@@ -666,52 +883,6 @@ export default function SellerPage() {
             )}
           </section>
         </div>
-
-
-
-        {/* Recent Activity */}
-        <section className="mt-8">
-          <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-6">
-            최근 활동
-          </h3>
-          <div className="apple-card divide-y divide-[#e5e5ea]">
-            <div className="p-4 flex items-center gap-4">
-              <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="h-5 w-5 text-[#34c759]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] text-[#1d1d1f]">
-                  <span className="font-semibold">신규 주문</span> 3건이 접수되었습니다
-                </p>
-                <p className="text-[13px] text-[#6e6e73]">2시간 전</p>
-              </div>
-            </div>
-
-            <div className="p-4 flex items-center gap-4">
-              <div className="w-10 h-10 bg-[#007aff]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <Play className="h-5 w-5 text-[#007aff]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] text-[#1d1d1f]">
-                  <span className="font-semibold">라이브 스트림</span>이 시작되었습니다
-                </p>
-                <p className="text-[13px] text-[#6e6e73]">5시간 전</p>
-              </div>
-            </div>
-
-            <div className="p-4 flex items-center gap-4">
-              <div className="w-10 h-10 bg-[#ff9500]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="h-5 w-5 text-[#ff9500]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] text-[#1d1d1f]">
-                  <span className="font-semibold">재고 부족</span> 상품이 3개 있습니다
-                </p>
-                <p className="text-[13px] text-[#6e6e73]">어제</p>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
     </div>
   )
