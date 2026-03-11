@@ -37,9 +37,7 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 const SellerPage = lazy(() => import('./pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('./pages/SellerLoginPage'))
 const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
-const SellerDashboardPage = lazy(() => import('./pages/SellerDashboardPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
-const SellerTaxInvoicesPage = lazy(() => import('./pages/SellerTaxInvoicesPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
 const SellerProductsPage = lazy(() => import('./pages/SellerProductsPage'))
 const SellerProductNewPage = lazy(() => import('./pages/SellerProductNewPage'))
@@ -198,7 +196,6 @@ function AppContent() {
             {/* Redirect /seller/dashboard to /seller (통합됨) */}
             <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
             <Route path="/seller/business-info" element={<SellerBusinessInfoPage />} />
-            <Route path="/seller/tax-invoices" element={<SellerTaxInvoicesPage />} />
             <Route path="/seller/orders" element={<SellerOrdersPage />} />
             <Route path="/seller/products" element={<SellerProductsPage />} />
             <Route path="/seller/products/new" element={<SellerProductNewPage />} />
