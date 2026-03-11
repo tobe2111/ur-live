@@ -3,10 +3,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { signInWithCustomToken } from '@/lib/firebase-auth'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
+import { useAuthKR } from '@/shared/stores/useAuthKR'
+import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { isKorea } from '@/config/region'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  
+  // Zustand Store 선택 (KR/World)
+  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  const setUser = useAuth(state => state.setUser)
+  const setAuthReady = useAuth(state => state.setAuthReady)
 
   useEffect(() => {
     const handleKakaoCallback = async () => {
@@ -48,10 +56,27 @@ export default function KakaoCallbackPage() {
           const userCredential = await signInWithCustomToken(customToken)
           console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
           
-          // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)
-          userCredential.user.getIdToken(true)
-            .then(() => console.log('[KakaoCallback] 🔥 ID Token 강제 갱신 완료 (백그라운드)'))
-            .catch((err) => console.warn('[KakaoCallback] ⚠️ Token 갱신 실패 (무시):', err))
+          // 🔥 중요: ID Token 강제 갱신하여 Custom Claims 로드
+          console.log('[KakaoCallback] 🔄 ID Token 강제 갱신 중...')
+          const idToken = await userCredential.user.getIdToken(true)
+          console.log('[KakaoCallback] ✅ ID Token 갱신 완료:', idToken.substring(0, 30) + '...')
+          
+          // 🔥 Custom Claims 확인 (userName 포함)
+          const decodedToken = await userCredential.user.getIdTokenResult()
+          console.log('[KakaoCallback] 📊 Custom Claims:', {
+            role: decodedToken.claims.role,
+            userId: decodedToken.claims.userId,
+            userName: decodedToken.claims.userName,
+            email: decodedToken.claims.email
+          })
+          
+          // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // ✅ Zustand Store 업데이트 (사용자 정보 동기화)
+          setUser(userCredential.user)
+          setAuthReady(true)
+          console.log('[KakaoCallback] ✅ Zustand Store 업데이트 완료')
           
           // ✅ returnUrl 우선순위: state > localStorage > default
           let returnUrl = '/'
