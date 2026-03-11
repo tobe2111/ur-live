@@ -221,16 +221,6 @@ export default function ImageUpload({
         </div>
       )}
 
-      {/* R2 미활성화 경고 */}
-      {storageType === 'base64' && (
-        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-xs text-yellow-800">
-            ⚠️ R2가 활성화되지 않아 Base64 모드로 저장됩니다. 
-            R2 활성화 권장 (성능 향상, 용량 제한 없음)
-          </p>
-        </div>
-      )}
-
       {/* URL 입력 옵션 */}
       <details className="text-sm">
         <summary className="cursor-pointer text-gray-600 hover:text-gray-900">
