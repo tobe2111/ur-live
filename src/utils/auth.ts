@@ -347,9 +347,19 @@ export function clearTempCartItem(): void {
 }
 
 /**
- * 로그아웃 (Firebase + 레거시 JWT 키 모두 삭제)
+ * 로그아웃 (선택적으로 특정 세션만 삭제)
+ * 
+ * @param type - 삭제할 세션 타입 ('seller', 'admin', 'user', 또는 undefined/null = 모든 세션)
  */
-export async function logout(): Promise<void> {
+export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise<void> {
+  if (type) {
+    // ✅ Selective logout: Use clearAuthData
+    clearAuthData(type)
+    console.log(`[Auth] 🚪 ${type} 로그아웃 완료 (다른 세션 보호됨)`)
+    return
+  }
+  
+  // ❌ Full logout: Remove ALL keys (legacy behavior)
   // Firebase 키 제거
   Object.values(FIREBASE_STORAGE_KEYS).forEach(key => {
     localStorage.removeItem(key)
@@ -376,7 +386,7 @@ export async function logout(): Promise<void> {
     console.error('[Auth] Firebase signOut 실패:', e)
   }
   
-  console.log('[Auth] 🚪 로그아웃 완료 (Firebase + 레거시 키 모두 삭제)')
+  console.log('[Auth] 🚪 전체 로그아웃 완료 (모든 세션 삭제)')
 }
 
 /**

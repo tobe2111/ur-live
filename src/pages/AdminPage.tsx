@@ -6,7 +6,7 @@ import api from '@/lib/api'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
-import { logout as authLogout } from '@/utils/auth'
+import { logout as authLogout, clearAuthData } from '@/utils/auth'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Seller {
@@ -279,9 +279,9 @@ export default function AdminPage() {
   }
 
   function logout() {
-    // 🔧 표준 logout 함수 사용 (JWT + 레거시 키 모두 삭제)
-    authLogout()
-    console.log('[AdminPage] 🚪 관리자 로그아웃 완료')
+    // ✅ Clear only admin session (preserves User and Seller sessions)
+    clearAuthData('admin')
+    console.log('[AdminPage] 🚪 관리자 로그아웃 완료 (User/Seller sessions preserved)')
     navigate('/admin/login')
   }
 
