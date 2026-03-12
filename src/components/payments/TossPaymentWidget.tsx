@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { generateOrderId } from '@/utils/orderIdGenerator'
 
 // 🔥 Toss Payments V1 SDK (window.PaymentWidget 전역 함수 방식)
 declare global {
