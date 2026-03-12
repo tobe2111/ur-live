@@ -10,6 +10,7 @@ export default function SellerLoginPage() {
     email: '',
     password: ''
   })
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -21,6 +22,14 @@ export default function SellerLoginPage() {
     if (sellerToken && userType === 'seller') {
       console.log('[SellerLoginPage] 이미 판매자 로그인됨 - /seller로 리다이렉트')
       navigate('/seller', { replace: true })
+      return
+    }
+
+    // Load saved email if "Remember Me" was checked
+    const savedEmail = localStorage.getItem('seller_remember_email')
+    if (savedEmail) {
+      setFormData(prev => ({ ...prev, email: savedEmail }))
+      setRememberMe(true)
     }
   }, [navigate])
 
@@ -40,6 +49,13 @@ export default function SellerLoginPage() {
 
       if (response.data.success) {
         console.log('[SellerLogin] ✅ JWT Login successful')
+        
+        // ✅ Save email if "Remember Me" is checked
+        if (rememberMe) {
+          localStorage.setItem('seller_remember_email', formData.email)
+        } else {
+          localStorage.removeItem('seller_remember_email')
+        }
         
         // ✅ 선택적 삭제: Seller 관련 키만 삭제 (User 세션 보호)
         clearAuthData('seller')
@@ -163,6 +179,23 @@ export default function SellerLoginPage() {
                 placeholder="비밀번호를 입력하세요"
                 disabled={loading}
               />
+            </div>
+
+            {/* Remember Me */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 border-gray-300 text-gray-900 focus:ring-gray-900 focus:ring-offset-0 cursor-pointer"
+              />
+              <label 
+                htmlFor="rememberMe" 
+                className="ml-2 text-sm text-gray-700 font-light cursor-pointer select-none"
+              >
+                이메일 기억하기
+              </label>
             </div>
 
             {/* Submit Button */}
