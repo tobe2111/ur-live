@@ -1,26 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import type { CartItem, Cart } from '@/types/cart'
+import { getCartItemPrice } from '@/types/cart'
 
-export interface CartItem {
-  id: string
-  product_id: string
-  product_name: string
-  product_image: string
-  price: number
-  quantity: number
-  selected_options?: string[]
-  stock_quantity?: number
-  seller_id?: number
-  seller_name?: string
-  shipping_fee?: number
-  free_shipping_threshold?: number
-}
-
-export interface Cart {
-  items: CartItem[]
-  total_price: number
-  total_quantity: number
-}
+// ✅ 공통 타입 re-export (하위 호환성 유지)
+export type { CartItem, Cart } from '@/types/cart'
 
 // 🎯 장바구니 조회 Hook
 export function useCart() {
@@ -59,8 +43,8 @@ export function useCart() {
         items = []
       }
       
-      // 총 금액 계산
-      const total_price = items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+      // 총 금액 계산 (price_snapshot 우선, 없으면 price)
+      const total_price = items.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0)
       const total_quantity = items.reduce((sum, item) => sum + item.quantity, 0)
       
       const cartData: Cart = {

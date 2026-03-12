@@ -1,25 +1,39 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 
+/**
+ * 상품 타입 - useProduct hook 및 ProductDetailPage 공통 사용
+ * id는 string | number union (DB에 따라 다를 수 있음)
+ */
 export interface Product {
-  id: string
+  id: string | number
   name: string
+  description?: string
   price: number
+  current_price?: number
+  original_price?: number
+  discount_rate?: number
   image_url: string
-  description: string
-  detail_images: string | string[]
+  detail_images?: string | string[]
   seller_name?: string
-  seller_id?: string
+  seller_id?: string | number
   category?: string
+  stock?: number
   stock_quantity?: number
   sales_count?: number
+  sold_count?: number
+  kakao_chat_link?: string
 }
 
 export interface ProductOption {
-  id: string
-  name: string
+  id: string | number
+  product_id?: string | number
+  name?: string
+  option_type?: string
+  option_value?: string
   price_adjustment: number
-  stock_quantity: number
+  stock?: number
+  stock_quantity?: number
 }
 
 // 🎯 상품 상세 조회 Hook

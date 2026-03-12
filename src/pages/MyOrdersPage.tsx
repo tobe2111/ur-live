@@ -16,49 +16,8 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { getUserIdSync, getUserNameSync, getUserEmail, isLoggedInSync, requireLogin } from '@/utils/auth'
-
-interface CartItem {
-  id: number
-  product_id: number
-  product_name: string
-  image_url: string
-  quantity: number
-  price_snapshot: number
-  option_value?: string
-}
-
-interface OrderItem {
-  id: number
-  product_id: number
-  product_name: string
-  image_url: string
-  quantity: number
-  price_snapshot: number
-  option_value?: string
-}
-
-interface Order {
-  id: number
-  order_number: string
-  user_id: number
-  seller_id?: number
-  total_amount: number
-  status: string
-  payment_method?: string
-  shipping_address: string
-  shipping_address_detail?: string
-  shipping_postal_code: string
-  shipping_name: string
-  shipping_phone: string
-  courier?: string
-  tracking_number?: string
-  shipped_at?: string
-  delivered_at?: string
-  created_at: string
-  updated_at?: string
-  items?: OrderItem[]
-  [key: string]: unknown
-}
+import type { Order, OrderItem } from '@/types/order'
+import type { CartItem } from '@/types/cart'
 
 type TabType = 'cart' | 'orders' | 'profile'
 
@@ -73,7 +32,7 @@ export default function MyOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [cancelModal, setCancelModal] = useState<{
     isOpen: boolean
-    orderId: number | null
+    orderId: number | string | null
     orderNumber: string
   }>({
     isOpen: false,
@@ -160,7 +119,7 @@ export default function MyOrdersPage() {
     navigate('/checkout')
   }
 
-  async function handleCancelOrder(orderId: number, orderNumber: string) {
+  async function handleCancelOrder(orderId: number | string, orderNumber: string) {
     // 취소 모달 열기
     setCancelModal({
       isOpen: true,
@@ -304,9 +263,9 @@ export default function MyOrdersPage() {
             
             {activeTab === 'orders' && (
               <OrdersTab 
-                orders={orders as any}
+                orders={orders}
                 onCancelOrder={handleCancelOrder}
-                onSelectOrder={(order) => setSelectedOrder(order as Order)}
+                onSelectOrder={(order) => setSelectedOrder(order)}
               />
             )}
             
@@ -516,7 +475,7 @@ export default function MyOrdersPage() {
                 <button
                   onClick={() => {
                     setSelectedOrder(null)
-                    handleCancelOrder(selectedOrder.id, selectedOrder.order_number)
+                    handleCancelOrder(selectedOrder.id, selectedOrder.order_number ?? String(selectedOrder.id))
                   }}
                   className="w-full py-3 text-[15px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-xl hover:bg-[#ff3b30] hover:text-white transition-colors"
                 >

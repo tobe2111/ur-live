@@ -21,6 +21,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent'
 
 interface DailyStats {
   date: string
@@ -78,10 +79,11 @@ export default function DashboardCharts({
               tick={{ fontSize: 12 }}
             />
             <Tooltip 
-              // @ts-ignore - recharts formatter type
-              formatter={(value: any, name: string) => {
-                if (name === '매출액') return formatPrice(value)
-                return formatNumber(value)
+              formatter={(value: ValueType, name: NameType) => {
+                const numValue = typeof value === 'number' ? value : Number(value)
+                const strName = String(name)
+                if (strName === '매출액') return [formatPrice(numValue), strName]
+                return [formatNumber(numValue), strName]
               }}
               labelFormatter={(label) => {
                 const date = new Date(label)
@@ -130,10 +132,11 @@ export default function DashboardCharts({
               tickFormatter={(value) => formatShortPrice(value)}
             />
             <Tooltip 
-              // @ts-ignore - recharts formatter type
-              formatter={(value: any, name: string) => {
-                if (name === '매출액') return formatPrice(value)
-                return formatNumber(value)
+              formatter={(value: ValueType, name: NameType) => {
+                const numValue = typeof value === 'number' ? value : Number(value)
+                const strName = String(name)
+                if (strName === '매출액') return [formatPrice(numValue), strName]
+                return [formatNumber(numValue), strName]
               }}
             />
             <Legend />

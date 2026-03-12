@@ -6,8 +6,9 @@ import { getUserId } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
-// ✅ React Query Hook
+// ✅ React Query Hook (Product, ProductOption 타입도 여기서 가져옴)
 import { useProduct, useProductOptions } from '@/hooks/useProduct'
+import type { Product, ProductOption } from '@/hooks/useProduct'
 
 // Import KREAM-style components
 import { MobileHeader } from '@/components/product/mobile-header'
@@ -23,33 +24,6 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
-interface Product {
-  id: number
-  name: string
-  description: string
-  price: number
-  current_price?: number
-  original_price?: number
-  discount_rate: number
-  image_url: string
-  seller_name: string
-  seller_id?: number
-  stock: number
-  sold_count?: number
-  category?: string
-  detail_images?: string | string[]
-  kakao_chat_link?: string
-}
-
-interface ProductOption {
-  id: number
-  product_id: number
-  option_type: string
-  option_value: string
-  price_adjustment: number
-  stock: number
-}
-
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -63,8 +37,7 @@ export default function ProductDetailPage() {
   const isLoggedIn = !!user
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
-  const { data: productRaw, isLoading, error } = useProduct(id)
-  const product = productRaw as unknown as Product
+  const { data: product, isLoading, error } = useProduct(id)
   const { data: options = [] } = useProductOptions(id)
   
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
@@ -276,8 +249,8 @@ export default function ProductDetailPage() {
           <h2 className="text-sm font-bold text-foreground">상품 정보</h2>
           <div className="mt-3">
             <ProductInfoGrid items={[
-              { label: '판매자', value: product.seller_name },
-              { label: '재고', value: `${product.stock}개` },
+              { label: '판매자', value: product.seller_name ?? '-' },
+              { label: '재고', value: `${product.stock ?? product.stock_quantity ?? 0}개` },
               ...(product.sold_count !== undefined && product.sold_count > 0 ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
               ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
             ]} />
@@ -351,7 +324,7 @@ export default function ProductDetailPage() {
         <FloatingActionBar 
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
-          disabled={product.stock === 0}
+          disabled={product.stock === 0 && product.stock_quantity === 0}
         />
       </Suspense>
 

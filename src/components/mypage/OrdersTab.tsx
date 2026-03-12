@@ -3,36 +3,12 @@ import { Link } from 'react-router-dom'
 import { Package, MapPin, Truck, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import type { Order } from '@/types/order'
 
-interface OrderItem {
-  product_id: number
-  product_name: string
-  quantity: number
-  price_snapshot: number
-  option_value?: string
-}
-
-interface Order {
-  id: number
-  order_number: string
-  user_id: number
-  seller_id: number
-  status: 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'
-  total_amount: number
-  shipping_name: string
-  shipping_phone: string
-  shipping_postal_code: string
-  shipping_address: string
-  shipping_address_detail?: string
-  courier?: string
-  tracking_number?: string
-  created_at: string
-  items?: OrderItem[]
-}
-
+// OrdersTab 전용 Props 타입 (공통 Order 타입 사용)
 interface OrdersTabProps {
   orders: Order[]
-  onCancelOrder: (orderId: number, orderNumber: string) => void
+  onCancelOrder: (orderId: number | string, orderNumber: string) => void
   onSelectOrder: (order: Order) => void
 }
 
@@ -154,7 +130,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
                     })}
                   </p>
                   <p className="text-[15px] font-semibold text-[#1d1d1f]">
-                    주문번호: {order.order_number}
+                    주문번호: {order.order_number ?? String(order.id)}
                   </p>
                 </div>
                 <Badge className={`border-0 px-3 py-1 ${getStatusBadgeClass(order.status)}`}>
@@ -193,11 +169,11 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="h-4 w-4 text-[#6e6e73]" />
                   <span className="text-[14px] font-medium text-[#1d1d1f]">
-                    {order.shipping_name}
+                    {order.shipping_name ?? '-'}
                   </span>
                 </div>
                 <p className="text-[14px] text-[#6e6e73] ml-6">
-                  [{order.shipping_postal_code}] {order.shipping_address}
+                  [{order.shipping_postal_code ?? ''}] {order.shipping_address ?? ''}
                 </p>
                 {order.shipping_address_detail && (
                   <p className="text-[14px] text-[#6e6e73] ml-6">
@@ -235,12 +211,12 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
               {/* Actions */}
               <div className="flex items-center justify-between">
                 <span className="text-[19px] font-bold text-[#1d1d1f]">
-                  {order.total_amount.toLocaleString()}원
+                  {(order.total_amount ?? order.amount ?? 0).toLocaleString()}원
                 </span>
                 <div className="flex gap-2">
                   {order.status === 'pending' && (
                     <button
-                      onClick={() => onCancelOrder(order.id, order.order_number)}
+                      onClick={() => onCancelOrder(order.id, order.order_number ?? String(order.id))}
                       className="px-4 py-2 text-[13px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-full hover:bg-[#ff3b30] hover:text-white transition-colors"
                     >
                       주문취소

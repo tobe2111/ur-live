@@ -12,12 +12,15 @@ declare global {
 interface TossPaymentWidgetProps {
   userId: string
   cartItems: Array<{
-    id: number
-    product_id: number
+    id: string | number
+    product_id: string | number
     product_name: string
+    product_image?: string
     product_image_url?: string
+    image_url?: string
     quantity: number
-    price: number
+    price?: number
+    price_snapshot?: number
   }>
   totalAmount: number
   shippingFee: number
