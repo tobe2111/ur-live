@@ -8,6 +8,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import { QueryProvider } from './lib/react-query'
+import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 // initSentry() was causing "Multiple Sentry Session Replay instances" error
@@ -168,65 +169,204 @@ function AppContent() {
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* 소개 페이지 - 브랜딩 + 메인 페이지 iframe */}
+            {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
-            {/* KREAM 스타일 메인 페이지 */}
             <Route path="/" element={<MainHomePage />} />
-            {/* ShortForm 페이지 - 요고 스타일 */}
             <Route path="/shortform" element={<ShortFormPage />} />
-            {/* 기존 홈페이지는 /browse로 이동 */}
             <Route path="/browse" element={<BrowsePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
-            <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/s/:sellerId" element={<SellerPublicPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            
+            {/* Public Auth 페이지들 */}
+            <Route path="/login" element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            } />
+            <Route path="/register" element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            } />
+            <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
+            <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
+            
+            {/* Seller 로그인 페이지 (Public) */}
+            <Route path="/seller/login" element={
+              <PublicRoute forSeller>
+                <SellerLoginPage />
+              </PublicRoute>
+            } />
+            <Route path="/seller/register" element={<SellerRegisterPage />} />
+            
+            {/* Seller Protected 페이지들 */}
+            <Route path="/seller" element={
+              <ProtectedRoute requireSeller>
+                <SellerPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
+            <Route path="/seller/business-info" element={
+              <ProtectedRoute requireSeller>
+                <SellerBusinessInfoPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/orders" element={
+              <ProtectedRoute requireSeller>
+                <SellerOrdersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/products" element={
+              <ProtectedRoute requireSeller>
+                <SellerProductsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/products/new" element={
+              <ProtectedRoute requireSeller>
+                <SellerProductNewPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/products/:id/edit" element={
+              <ProtectedRoute requireSeller>
+                <SellerProductEditPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live-control" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveControlPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/streams/new" element={
+              <ProtectedRoute requireSeller>
+                <SellerStreamNewPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/streams/:id" element={
+              <ProtectedRoute requireSeller>
+                <SellerStreamEditPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/profile" element={
+              <ProtectedRoute requireSeller>
+                <SellerProfileEditPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/settlements" element={
+              <ProtectedRoute requireSeller>
+                <SellerSettlementsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live-broadcast" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveBroadcastPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/youtube/callback" element={
+              <ProtectedRoute requireSeller>
+                <YouTubeCallbackPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Admin 로그인 페이지 (Public) */}
+            <Route path="/admin/login" element={
+              <PublicRoute forAdmin>
+                <AdminLoginPage />
+              </PublicRoute>
+            } />
+            
+            {/* Admin Protected 페이지들 */}
+            <Route path="/admin" element={
+              <ProtectedRoute requireAdmin>
+                <AdminPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settlement" element={
+              <ProtectedRoute requireAdmin>
+                <AdminSettlementPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/banners" element={
+              <ProtectedRoute requireAdmin>
+                <AdminBannersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/orders" element={
+              <ProtectedRoute requireAdmin>
+                <AdminOrdersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/products" element={
+              <ProtectedRoute requireAdmin>
+                <AdminProductsPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* User Protected 페이지들 */}
+            <Route path="/cart" element={
+              <ProtectedRoute requireUser>
+                <CartPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/checkout" element={
+              <ProtectedRoute requireUser>
+                <CheckoutPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/mypage" element={
+              <ProtectedRoute requireUser>
+                <UserProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/user/profile" element={
+              <ProtectedRoute requireUser>
+                <UserProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/mypage/addresses" element={
+              <ProtectedRoute requireUser>
+                <AddressManagementPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/mypage/wishlist" element={
+              <ProtectedRoute requireUser>
+                <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/wishlist" element={
+              <ProtectedRoute requireUser>
+                <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-orders" element={
+              <ProtectedRoute requireUser>
+                <MyOrdersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/orders" element={
+              <ProtectedRoute requireUser>
+                <MyOrdersPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/account/settings" element={
+              <ProtectedRoute requireUser>
+                <AccountSettingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/account/delete-warning" element={
+              <ProtectedRoute requireUser>
+                <AccountDeleteWarningPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/account/deleted" element={<AccountDeletedPage />} />
+            
+            {/* Payment 페이지들 */}
             <Route path="/payment/demo" element={<PaymentDemoPage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
             <Route path="/fail" element={<PaymentFailPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/seller" element={<SellerPage />} />
-            <Route path="/seller/login" element={<SellerLoginPage />} />
-            <Route path="/seller/register" element={<SellerRegisterPage />} />
-            {/* Redirect /seller/dashboard to /seller (통합됨) */}
-            <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
-            <Route path="/seller/business-info" element={<SellerBusinessInfoPage />} />
-            <Route path="/seller/orders" element={<SellerOrdersPage />} />
-            <Route path="/seller/products" element={<SellerProductsPage />} />
-            <Route path="/seller/products/new" element={<SellerProductNewPage />} />
-            <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
-            <Route path="/seller/live-control" element={<SellerLiveControlPage />} />
-            <Route path="/seller/streams/new" element={<SellerStreamNewPage />} />
-            <Route path="/seller/streams/:id" element={<SellerStreamEditPage />} />
-            <Route path="/seller/profile" element={<SellerProfileEditPage />} />
-            <Route path="/seller/settlements" element={<SellerSettlementsPage />} />
-            <Route path="/seller/live-broadcast" element={<SellerLiveBroadcastPage />} />
-            <Route path="/seller/youtube/callback" element={<YouTubeCallbackPage />} />
-            {/* Redirect /mypage to /user/profile */}
-            <Route path="/mypage" element={<UserProfilePage />} />
-            <Route path="/user/profile" element={<UserProfilePage />} />
-            <Route path="/mypage/addresses" element={<AddressManagementPage />} />
-            <Route path="/mypage/wishlist" element={<WishlistPage />} />
-            <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/admin/settlement" element={<AdminSettlementPage />} />
-            <Route path="/admin/banners" element={<AdminBannersPage />} />
-            <Route path="/admin/orders" element={<AdminOrdersPage />} />
-            <Route path="/admin/products" element={<AdminProductsPage />} />
-            <Route path="/s/:sellerId" element={<SellerPublicPage />} />
-            <Route path="/my-orders" element={<MyOrdersPage />} />
-            <Route path="/orders" element={<MyOrdersPage />} />
-            
-            {/* Account Settings & Delete Pages */}
-            <Route path="/account/settings" element={<AccountSettingsPage />} />
-            <Route path="/account/delete-warning" element={<AccountDeleteWarningPage />} />
-            <Route path="/account/deleted" element={<AccountDeletedPage />} />
             
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
