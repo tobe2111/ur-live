@@ -82,6 +82,16 @@ export default function SellerProfileEditPage() {
   
   const [uploadingImage, setUploadingImage] = useState(false)
   const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'personal' | 'password'>('profile')
+  const [formData, setFormData] = useState({
+    profile_image: '',
+    bio: '',
+    sns_instagram: '',
+    sns_youtube: '',
+    sns_facebook: '',
+    sns_twitter: '',
+    website_url: '',
+    kakao_chat_link: '',
+  })
 
   useEffect(() => {
     // Check authentication
@@ -291,6 +301,13 @@ export default function SellerProfileEditPage() {
     } finally {
       setUploadingImage(false)
     }
+  }
+
+  async function handleSave() {
+    // Dispatch to the appropriate save handler based on active tab
+    if (activeTab === 'profile') await handleSaveProfile()
+    else if (activeTab === 'business') await handleSaveBusiness()
+    else if (activeTab === 'personal') await handleSavePersonal()
   }
 
   if (loading) {

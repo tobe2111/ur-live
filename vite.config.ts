@@ -6,6 +6,7 @@ import viteCompression from 'vite-plugin-compression'
 // ✅ Week 5 Day 2: 환경 변수 검증
 import { validateEnvForBuild } from './src/shared/config/env-validator'
 
+// @ts-ignore - vite defineConfig type
 export default defineConfig(({ mode }) => {
   // 🔥 환경 변수 로드 (Week 5 Day 2)
   const env = loadEnv(mode, process.cwd(), '')
@@ -44,7 +45,7 @@ export default defineConfig(({ mode }) => {
     // 🔥 외부 링크 제거 (단일 번들로 강제)
     esbuildOptions: {
       // React를 절대로 외부화하지 않음
-      external: [],
+      external: [] as string[],
     },
   },
   

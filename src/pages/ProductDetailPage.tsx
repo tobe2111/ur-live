@@ -55,14 +55,16 @@ export default function ProductDetailPage() {
   const navigate = useNavigate()
   
   // ✅ Region 기반 Store 선택
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  const krUser = useAuthKR(state => state.user)
+  const worldUser = useAuthWorld(state => state.user)
   
   // ✅ Selector로 필요한 상태만 구독
-  const user = useAuth(state => state.user)
+  const user = isKorea() ? krUser : worldUser
   const isLoggedIn = !!user
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
-  const { data: product, isLoading, error } = useProduct(id)
+  const { data: productRaw, isLoading, error } = useProduct(id)
+  const product = productRaw as unknown as Product
   const { data: options = [] } = useProductOptions(id)
   
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})

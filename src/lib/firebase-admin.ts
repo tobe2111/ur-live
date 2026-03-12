@@ -1,7 +1,7 @@
 // Firebase Admin SDK 초기화 및 유틸리티 (Cloudflare Workers 호환)
 // src/lib/firebase-admin.ts
 
-import type { Env } from '../types/env'
+import type { CloudflareBindings as Env } from '../types/env'
 
 /**
  * Firebase REST API를 사용한 Admin 기능 (Cloudflare Workers 호환)
@@ -18,10 +18,10 @@ export class FirebaseAdmin {
   private tokenExpiry: number = 0
 
   constructor(env: Env) {
-    this.databaseURL = env.FIREBASE_DATABASE_URL
-    this.projectId = env.FIREBASE_PROJECT_ID
-    this.privateKey = env.FIREBASE_PRIVATE_KEY
-    this.clientEmail = env.FIREBASE_CLIENT_EMAIL
+    this.databaseURL = env.FIREBASE_DATABASE_URL || ''
+    this.projectId = env.FIREBASE_PROJECT_ID || ''
+    this.privateKey = env.FIREBASE_PRIVATE_KEY || ''
+    this.clientEmail = env.FIREBASE_CLIENT_EMAIL || ''
 
     if (!this.databaseURL || !this.projectId || !this.privateKey || !this.clientEmail) {
       console.warn('⚠️ Firebase Admin credentials not configured, using unauthenticated mode')

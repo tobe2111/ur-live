@@ -121,7 +121,7 @@ export function edgeCache(options: CacheOptions) {
     }
 
     const cacheKey = generateCacheKey(c, options.cacheKey);
-    const cache = caches.default;
+    const cache = (caches as any).default;
 
     // 1. 캐시에서 조회
     let response = await cache.match(cacheKey);
@@ -179,7 +179,7 @@ export function edgeCache(options: CacheOptions) {
  * @param cacheKeys 무효화할 캐시 키 배열
  */
 export async function purgeCache(cacheKeys: string[]): Promise<void> {
-  const cache = caches.default;
+  const cache = (caches as any).default;
   
   await Promise.all(
     cacheKeys.map(key => cache.delete(key))

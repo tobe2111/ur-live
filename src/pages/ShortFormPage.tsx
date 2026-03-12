@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag, X, Package, LogOut } from 'lucide-react'
-import { getUserId, getUserName, isLoggedIn } from '@/utils/auth'
+import { getUserId, getUserIdSync, getUserNameSync, isLoggedInSync } from '@/utils/auth'
 import api from '@/lib/api'
 import MobileFooter from '@/components/MobileFooter'
 
@@ -41,8 +41,8 @@ export default function ShortFormPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(8)
   const navigate = useNavigate()
-  const userName = getUserName()
-  const loggedIn = isLoggedIn()
+  const userName = getUserNameSync()
+  const loggedIn = isLoggedInSync()
 
   useEffect(() => {
     loadData()

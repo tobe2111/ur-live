@@ -34,7 +34,7 @@ export function useVersionCheck() {
       
       // Fetch version with cache-busting
       const response = await fetch(`/version.json?t=${Date.now()}`);
-      const data = await response.json();
+      const data = await response.json() as any;
       const newVersion = data.version;
 
       // Get stored version
@@ -74,7 +74,7 @@ export function useVersionCheck() {
     // Update version and reload
     fetch(`/version.json?t=${Date.now()}`)
       .then(res => res.json())
-      .then(data => {
+      .then((data: any) => {
         localStorage.setItem(STORAGE_KEY, data.version);
         window.location.reload();
       });

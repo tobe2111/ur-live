@@ -12,9 +12,10 @@ import {
   Package, 
   ShoppingCart,
   User,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react'
-import { getUserId, getUserName, getUserEmail, isLoggedIn, requireLogin } from '@/utils/auth'
+import { getUserIdSync, getUserNameSync, getUserEmail, isLoggedInSync, requireLogin } from '@/utils/auth'
 
 interface CartItem {
   id: number
@@ -40,11 +41,12 @@ interface Order {
   id: number
   order_number: string
   user_id: number
+  seller_id?: number
   total_amount: number
   status: string
-  payment_method: string
+  payment_method?: string
   shipping_address: string
-  shipping_address_detail: string
+  shipping_address_detail?: string
   shipping_postal_code: string
   shipping_name: string
   shipping_phone: string
@@ -53,8 +55,9 @@ interface Order {
   shipped_at?: string
   delivered_at?: string
   created_at: string
-  updated_at: string
-  items: OrderItem[]
+  updated_at?: string
+  items?: OrderItem[]
+  [key: string]: unknown
 }
 
 type TabType = 'cart' | 'orders' | 'profile'
@@ -80,13 +83,13 @@ export default function MyOrdersPage() {
   const [cancelReason, setCancelReason] = useState('')
 
   // Check login status (통합 인증 사용)
-  const userId = getUserId()
-  const userName = getUserName() || '게스트'
+  const userId = getUserIdSync()
+  const userName = getUserNameSync() || '게스트'
   const userEmail = getUserEmail() || ''
 
   useEffect(() => {
     // Redirect to login if not logged in (통합 인증 체크)
-    if (!isLoggedIn() || !userId) {
+    if (!isLoggedInSync() || !userId) {
       requireLogin(navigate, '로그인이 필요합니다.')
       return
     }
@@ -98,7 +101,7 @@ export default function MyOrdersPage() {
     setLoading(true)
     try {
       // \uc0c1\ub2e8\uc5d0\uc11c \uc774\ubbf8 userId\ub97c \uac00\uc838\uc654\uc73c\ubbc0\ub85c \uc7ac\uc0ac\uc6a9
-      const uid = userId || getUserId()
+      const uid = userId || getUserIdSync()
       
       if (!uid) {
         console.error('No user ID available')
@@ -301,9 +304,9 @@ export default function MyOrdersPage() {
             
             {activeTab === 'orders' && (
               <OrdersTab 
-                orders={orders}
+                orders={orders as any}
                 onCancelOrder={handleCancelOrder}
-                onSelectOrder={setSelectedOrder}
+                onSelectOrder={(order) => setSelectedOrder(order as Order)}
               />
             )}
             

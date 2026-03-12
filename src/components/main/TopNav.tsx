@@ -8,8 +8,9 @@ import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function TopNav() {
   const navigate = useNavigate()
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  const user = useAuth(state => state.user)
+  const krUser = useAuthKR(state => state.user)
+  const worldUser = useAuthWorld(state => state.user)
+  const user = isKorea() ? krUser : worldUser
   const isLoggedIn = !!user
   const [menuOpen, setMenuOpen] = useState(false)
 

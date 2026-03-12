@@ -82,7 +82,7 @@ export async function handleLiveStreamSSE(
   env: Env
 ): Promise<Response> {
   const encoder = new TextEncoder()
-  let intervalId: number | undefined
+  let intervalId: ReturnType<typeof setInterval> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -178,7 +178,7 @@ export async function handleChatSSE(
 ): Promise<Response> {
   const encoder = new TextEncoder()
   let lastMessageId = 0
-  let intervalId: number | undefined
+  let intervalId: ReturnType<typeof setInterval> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -282,7 +282,7 @@ export async function handleOrderNotificationSSE(
 ): Promise<Response> {
   const encoder = new TextEncoder()
   let lastOrderId = 0
-  let intervalId: number | undefined
+  let intervalId: ReturnType<typeof setInterval> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -367,7 +367,7 @@ export async function handleStockAlertSSE(
   env: Env
 ): Promise<Response> {
   const encoder = new TextEncoder()
-  let intervalId: number | undefined
+  let intervalId: ReturnType<typeof setInterval> | undefined
 
   const stream = new ReadableStream({
     async start(controller) {

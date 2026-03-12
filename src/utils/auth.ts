@@ -180,6 +180,33 @@ export function getUserType(): string | null {
  * ⚠️ user_type이 'user'인 경우에만 localStorage user_id를 읽음
  * Seller는 seller_id, Admin은 admin_id를 사용해야 함
  */
+/**
+ * Synchronous version - reads from localStorage only (no Firebase fallback)
+ */
+export function getUserIdSync(): string | null {
+  return localStorage.getItem('user_id') || localStorage.getItem('userId') || null
+}
+
+/**
+ * Synchronous version of getUserName - reads from localStorage only
+ */
+export function getUserNameSync(): string | null {
+  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
+  if (userType === 'user' || !userType) {
+    return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || null
+  }
+  return null
+}
+
+/**
+ * Synchronous version of isLoggedIn - reads from localStorage only
+ */
+export function isLoggedInSync(): boolean {
+  return !!(localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN) ||
+    localStorage.getItem('seller_token') ||
+    localStorage.getItem('admin_token'))
+}
+
 export async function getUserId(): Promise<string | null> {
   const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
   

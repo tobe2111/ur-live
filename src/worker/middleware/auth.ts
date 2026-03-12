@@ -93,7 +93,7 @@ async function verifyFirebaseToken(
     const payload = decoded.payload;
     
     // Check required claims
-    if (!payload.sub || !payload.email) {
+    if (!payload.sub || !(payload as any).email) {
       return null;
     }
     
@@ -110,7 +110,7 @@ async function verifyFirebaseToken(
 export function requireAuth() {
   return async (c: Context, next: Next) => {
     const authHeader = c.req.header('Authorization');
-    const token = extractToken(authHeader);
+    const token = extractToken(authHeader || null);
     
     if (!token) {
       return c.json(unauthorizedResponse('Authentication required'), 401);
@@ -220,7 +220,7 @@ export function requireSellerOrAdmin() {
 export function optionalAuth() {
   return async (c: Context, next: Next) => {
     const authHeader = c.req.header('Authorization');
-    const token = extractToken(authHeader);
+    const token = extractToken(authHeader || null);
     
     if (!token) {
       return next();

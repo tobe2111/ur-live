@@ -22,7 +22,7 @@ export function useSmartStock(
   const [mode, setMode] = useState<'firebase' | 'polling'>('firebase')
   
   // Firebase 실시간 재고
-  const { productData } = useFirebaseStream(productId)
+  const { streamData: productData } = useFirebaseStream(productId as number | null)
   
   // 시청자 수 기반 모드 전환
   useEffect(() => {
@@ -38,7 +38,7 @@ export function useSmartStock(
   // Firebase 모드
   useEffect(() => {
     if (mode === 'firebase' && productData) {
-      setStock(productData.stock)
+      setStock((productData as any).stock)
     }
   }, [mode, productData])
   

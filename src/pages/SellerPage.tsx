@@ -364,9 +364,9 @@ export default function SellerPage() {
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
               {formatPrice(stats.totalRevenue)}
             </p>
-            {stats.avgOrderValue > 0 && (
+            {(stats.avgOrderValue ?? 0) > 0 && (
               <p className="text-[11px] text-[#6e6e73] mt-1">
-                평균 {formatPrice(stats.avgOrderValue)}/건
+                평균 {formatPrice(stats.avgOrderValue ?? 0)}/건
               </p>
             )}
           </div>
@@ -382,9 +382,9 @@ export default function SellerPage() {
             <p className="text-[21px] sm:text-[24px] font-bold text-[#1d1d1f]">
               {formatNumber(stats.totalOrders)}건
             </p>
-            {stats.completedOrders > 0 && (
+            {(stats.completedOrders ?? 0) > 0 && (
               <p className="text-[11px] text-[#34c759] mt-1">
-                완료 {formatNumber(stats.completedOrders)}건
+                완료 {formatNumber(stats.completedOrders ?? 0)}건
               </p>
             )}
           </div>
@@ -484,6 +484,7 @@ export default function SellerPage() {
                         tick={{ fontSize: 10 }}
                       />
                       <Tooltip 
+                        // @ts-ignore - recharts formatter type
                         formatter={(value: any, name: string) => {
                           if (name === '매출액') return formatPrice(value)
                           return formatNumber(value)

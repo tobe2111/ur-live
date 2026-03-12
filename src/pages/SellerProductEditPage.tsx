@@ -11,7 +11,8 @@ import {
   DollarSign,
   Box,
   FileText,
-  Play
+  Play,
+  Image as ImageIcon
 } from 'lucide-react'
 
 interface LiveStream {

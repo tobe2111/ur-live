@@ -12,6 +12,8 @@ export interface ChatMessage {
   timestamp: number
   isSeller?: boolean
   isAdmin?: boolean
+  role?: string
+  username?: string
 }
 
 /**
