@@ -73,11 +73,6 @@ export const useAuthKR = create<AuthKRState>()(
             // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
-            localStorage.setItem('user_type', 'user');
-            localStorage.setItem('user_name', user.email?.split('@')[0] || 'User');
-            console.log('[useAuthKR] ✅ localStorage에 user_type 설정: user');
-
             // 사용자 역할 조회 (API 호출)
             console.log('[useAuthKR] 📡 사용자 역할 조회 API 호출...');
             const roleResponse = await fetch('/api/users/role', {
@@ -92,6 +87,26 @@ export const useAuthKR = create<AuthKRState>()(
             const { role } = await roleResponse.json();
             console.log('[useAuthKR] ✅ 사용자 역할 확인:', role);
 
+            // ✅ role에 따라 localStorage 설정 (API Interceptor를 위해 필수)
+            // user: user_type='user' → /api/users/* 호출 시 Firebase ID Token
+            // seller: user_type='seller' → /api/seller/* 호출 시 seller_token
+            // admin: user_type='admin' → /api/admin/* 호출 시 admin_token
+            if (role === 'seller') {
+              localStorage.setItem('user_type', 'seller');
+              localStorage.setItem('seller_token', idToken);
+              console.log('[useAuthKR] ✅ localStorage에 user_type 설정: seller');
+            } else if (role === 'admin') {
+              localStorage.setItem('user_type', 'admin');
+              localStorage.setItem('admin_token', idToken);
+              console.log('[useAuthKR] ✅ localStorage에 user_type 설정: admin');
+            } else {
+              // 기본값: user
+              localStorage.setItem('user_type', 'user');
+              console.log('[useAuthKR] ✅ localStorage에 user_type 설정: user');
+            }
+            
+            localStorage.setItem('user_name', user.email?.split('@')[0] || 'User');
+
             set({
               user,
               userRole: role,
@@ -100,7 +115,7 @@ export const useAuthKR = create<AuthKRState>()(
               error: null,
             });
             
-            console.log('[useAuthKR] ✅ 로그인 완료 - Zustand 상태 업데이트됨');
+            console.log('[useAuthKR] ✅ 로그인 완료 - Zustand 상태 업데이트됨 - Role:', role);
           } catch (err: any) {
             console.error('[useAuthKR] ❌ loginWithEmail failed:', err);
             set({

@@ -197,8 +197,24 @@ export default function LoginPage() {
       // ✅ Zustand action 직접 호출
       await loginWithEmailAction(email, password)
       
+      // ✅ role에 따라 리다이렉트 경로 결정
+      const { userRole } = useAuth.getState()
+      console.log('[Email Login] ✅ 로그인 성공 - Role:', userRole)
+      
       sessionStorage.removeItem('returnUrl')
-      navigate(returnUrl, { replace: true })
+      
+      // role별 리다이렉트
+      if (userRole === 'seller') {
+        console.log('[Email Login] 📍 Seller 대시보드로 이동')
+        navigate('/seller/dashboard', { replace: true })
+      } else if (userRole === 'admin') {
+        console.log('[Email Login] 📍 Admin 대시보드로 이동')
+        navigate('/admin', { replace: true })
+      } else {
+        // 기본값: user → returnUrl 또는 홈
+        console.log('[Email Login] 📍 User 페이지로 이동:', returnUrl)
+        navigate(returnUrl, { replace: true })
+      }
     } catch (err: any) {
       console.error('[Email Login] Error:', err)
       setError(t('auth.invalidCredentials'))

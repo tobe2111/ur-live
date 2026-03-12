@@ -118,31 +118,52 @@ api.interceptors.request.use(
     // 🔐 SELLER API: /api/seller/* OR /api/youtube/* → seller_token ONLY
     // Firebase 절대 사용 안함!
     // YouTube API는 Seller가 사용하므로 seller_token 필요
+    // ⚠️ 주의: user_type이 'seller'일 때만 seller_token 사용!
     // ============================================================
     if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/')) {
       const apiType = url.startsWith('/api/youtube/') ? 'YouTube' : 'Seller';
-      console.log(`[API] 🏪 ${apiType} API detected - using seller_token ONLY (NO FIREBASE!)`);
+      const userType = localStorage.getItem('user_type');
       
-      const sellerToken = localStorage.getItem('seller_token');
+      console.log(`[API] 🏪 ${apiType} API detected`);
+      console.log(`[API] 📍 user_type: ${userType}`);
       
-      if (!sellerToken) {
-        console.error('[API] ❌ seller_token missing! This WILL cause 401!');
-        console.error('[API] 📦 localStorage keys:', Object.keys(localStorage));
-        throw new Error('Seller token missing - please login again');
+      // ✅ user_type이 'seller'가 아니면 Firebase ID Token 사용 (일반 user가 seller 정보 조회할 수 있음)
+      if (userType !== 'seller') {
+        console.log(`[API] ⚠️ user_type is not 'seller' - falling through to Firebase`);
+        // Fall through to Firebase token logic below
+      } else {
+        // ✅ Seller 계정만 seller_token 사용
+        const sellerToken = localStorage.getItem('seller_token');
+        
+        if (!sellerToken) {
+          console.error('[API] ❌ seller_token missing! This WILL cause 401!');
+          console.error('[API] 📦 localStorage keys:', Object.keys(localStorage));
+          throw new Error('Seller token missing - please login again');
+        }
+        
+        config.headers['Authorization'] = `Bearer ${sellerToken}`;
+        console.log('[API] ✅ seller_token attached');
+        console.log('[API] 🔑 Token preview:', sellerToken.substring(0, 20) + '...');
+        return config; // ⚠️ EARLY RETURN - Firebase 절대 안 씀!
       }
-      
-      config.headers['Authorization'] = `Bearer ${sellerToken}`;
-      console.log('[API] ✅ seller_token attached');
-      console.log('[API] 🔑 Token preview:', sellerToken.substring(0, 20) + '...');
-      return config; // ⚠️ EARLY RETURN - Firebase 절대 안 씀!
     }
     
     // ============================================================
     // 🔐 ADMIN API: /api/admin/* → admin_token ONLY
     // Firebase 절대 사용 안함!
+    // ⚠️ 주의: user_type이 'admin'일 때만 admin_token 사용!
     // ============================================================
     if (url.startsWith('/api/admin/')) {
-      console.log('[API] 👑 Admin API detected - using admin_token ONLY (NO FIREBASE!)');
+      const userType = localStorage.getItem('user_type');
+      
+      console.log('[API] 👑 Admin API detected');
+      console.log(`[API] 📍 user_type: ${userType}`);
+      
+      // ✅ user_type이 'admin'이 아니면 오류
+      if (userType !== 'admin') {
+        console.error('[API] ❌ user_type is not admin - access denied!');
+        throw new Error('Admin access required');
+      }
       
       const adminToken = localStorage.getItem('admin_token');
       

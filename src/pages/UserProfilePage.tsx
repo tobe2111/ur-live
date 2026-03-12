@@ -39,8 +39,14 @@ export default function UserProfilePage() {
       return  // Early return to prevent further processing
     }
     
-    // 조건: 토큰 있음 + 아직 안 처리 + 인증 준비됨 + 로그인 안 됨
-    if (firebaseToken && !hasProcessedToken.current && isAuthReady && !user) {
+    // 🔥 수정: 인증이 준비되기 전에는 처리하지 않음
+    if (!isAuthReady) {
+      console.log('[UserProfilePage] ⏳ Auth 초기화 대기 중...')
+      return
+    }
+    
+    // 조건: 토큰 있음 + 아직 안 처리 + 로그인 안 됨
+    if (firebaseToken && !hasProcessedToken.current && !user) {
       hasProcessedToken.current = true
       setIsProcessingToken(true)
       
@@ -95,11 +101,12 @@ export default function UserProfilePage() {
     )
   }
 
-  // 🚫 로그인 안 됨 - RouteGuard에서 처리되지만 안전장치
+  // 🚫 로그인 안 됨 - firebase_token 처리 중이거나 토큰이 있으면 대기
   if (!user) {
-    // firebase_token이 있으면 대기
     const firebaseToken = searchParams.get('firebase_token')
-    if (firebaseToken) {
+    
+    // firebase_token이 있거나 처리 중이면 대기 (리다이렉트 방지)
+    if (firebaseToken || isProcessingToken) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
@@ -110,7 +117,8 @@ export default function UserProfilePage() {
       )
     }
     
-    // 토큰 없으면 로그인 페이지로
+    // 토큰 없고 처리 중도 아니면 로그인 페이지로
+    console.log('[UserProfilePage] 🚫 로그인 필요 - /login으로 리다이렉트')
     return <Navigate to="/login" replace />
   }
 
