@@ -278,40 +278,56 @@ api.interceptors.response.use(
       console.error('[API] 📊 Server error:', errorData);
       
       // ============================================================
-      // 🔐 SELLER/ADMIN: JWT 401 처리
+      // 🔐 SELLER/ADMIN: JWT 401 처리 + Refresh Token 자동 갱신
       // YouTube API도 Seller JWT 사용
       // ============================================================
       if (url.includes('/api/seller/') || url.includes('/api/admin/') || url.includes('/api/youtube/')) {
         const isSeller = url.includes('/api/seller/') || url.includes('/api/youtube/');
         const tokenKey = isSeller ? 'seller_token' : 'admin_token';
-        const fallbackKey = 'access_token';
-        const existingToken = localStorage.getItem(tokenKey) || localStorage.getItem(fallbackKey);
+        const refreshTokenKey = isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
+        const existingToken = localStorage.getItem(tokenKey);
+        const refreshToken = localStorage.getItem(refreshTokenKey);
         
-        // 🚨 CRITICAL: 토큰이 실제로 있는데 401이 나면 → 서버 검증 문제 (clear 하지 않음!)
-        if (existingToken) {
-          console.error('[API] 🚨 Token exists but server rejected it!');
-          console.error('[API] 📍 This is likely a server-side verification issue');
-          console.error('[API] 🔑 Token preview:', existingToken.substring(0, 30) + '...');
-          console.error('[API] 📊 Server response:', errorData);
-          
-          // Sentry에 보고만 하고 clear 하지 않음
-          captureError(new Error(`${isSeller ? 'Seller' : 'Admin'} token rejected: ${errorData?.error || 'Unknown'}`), {
-            context: isSeller ? 'SELLER.TOKEN_REJECTED' : 'ADMIN.TOKEN_REJECTED',
-            url: url,
-            tokenPreview: existingToken.substring(0, 30)
-          });
-          
-          // 사용자에게 알림 (재로그인 요구하지 않음)
-          console.warn('[API] ⚠️ NOT clearing localStorage - keeping token for debugging');
-          
-          return Promise.reject(error);
+        console.log(`[API] ${isSeller ? 'Seller' : 'Admin'} 401 - attempting token refresh...`);
+        
+        // ✅ Refresh Token으로 자동 갱신 시도
+        if (refreshToken) {
+          try {
+            console.log(`[API] 🔄 Refreshing ${isSeller ? 'Seller' : 'Admin'} token...`);
+            
+            const refreshEndpoint = isSeller ? '/api/seller/refresh' : '/api/admin/refresh';
+            const refreshResponse = await axios.post(refreshEndpoint, {
+              refreshToken
+            });
+            
+            if (refreshResponse.data.success) {
+              const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+              
+              // 새 토큰 저장
+              localStorage.setItem(tokenKey, accessToken);
+              if (newRefreshToken) {
+                localStorage.setItem(refreshTokenKey, newRefreshToken);
+              }
+              
+              console.log(`[API] ✅ ${isSeller ? 'Seller' : 'Admin'} token refreshed successfully`);
+              
+              // 원래 요청 재시도
+              originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+              return api(originalRequest);
+            }
+          } catch (refreshError) {
+            console.error(`[API] ❌ ${isSeller ? 'Seller' : 'Admin'} token refresh failed:`, refreshError);
+            
+            // Refresh Token도 만료 → 로그아웃
+            console.log(`[API] 🚨 Refresh token expired - logging out`);
+          }
         }
         
-        // 토큰이 실제로 없는 경우에만 로그아웃 처리
-        console.error('[API] 🚨 No token found - redirecting to login');
+        // Refresh Token 없거나 갱신 실패 → 로그아웃
+        console.error(`[API] 🚨 No refresh token or refresh failed - redirecting to login`);
         
-        captureError(new Error(`${isSeller ? 'Seller' : 'Admin'} 401: No token`), {
-          context: isSeller ? 'SELLER.NO_TOKEN' : 'ADMIN.NO_TOKEN',
+        captureError(new Error(`${isSeller ? 'Seller' : 'Admin'} 401: Token expired`), {
+          context: isSeller ? 'SELLER.TOKEN_EXPIRED' : 'ADMIN.TOKEN_EXPIRED',
           url: url
         });
         
@@ -320,10 +336,10 @@ api.interceptors.response.use(
         authUtils.clearAuthData(isSeller ? 'seller' : 'admin');
         
         if (isSeller) {
-          alert('셀러 인증이 필요합니다.\n\n로그인해주세요.');
+          alert('셀러 인증이 만료되었습니다.\n\n다시 로그인해주세요.');
           window.location.href = '/seller/login';
         } else {
-          alert('관리자 인증이 필요합니다.\n\n로그인해주세요.');
+          alert('관리자 인증이 만료되었습니다.\n\n다시 로그인해주세요.');
           window.location.href = '/admin/login';
         }
         
