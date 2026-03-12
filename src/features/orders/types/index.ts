@@ -47,3 +47,11 @@ export interface OrderFilter {
   sellerId?: number;
   status?: Order['status'];
 }
+
+// Compatibility type aliases
+export type CreateOrderRequest = OrderCreateInput;
+export interface UpdateOrderStatusRequest {
+  status: Order['status'];
+  reason?: string;
+}
+export type OrderFilters = OrderFilter;

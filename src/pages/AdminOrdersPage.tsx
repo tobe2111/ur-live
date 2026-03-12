@@ -98,9 +98,10 @@ export default function AdminOrdersPage() {
     setError('')
 
     try {
-      const token = localStorage.getItem('access_token')
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const userType = localStorage.getItem('user_type')
       
-      if (!token) {
+      if (!token || userType !== 'admin') {
         navigate('/admin/login')
         return
       }
@@ -125,7 +126,7 @@ export default function AdminOrdersPage() {
 
   async function loadSellers() {
     try {
-      const token = localStorage.getItem('access_token')
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get('/api/admin/sellers', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -188,7 +189,7 @@ export default function AdminOrdersPage() {
 
   async function viewOrderDetail(orderNumber: string) {
     try {
-      const token = localStorage.getItem('access_token')
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get(`/api/admin/orders/${orderNumber}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -205,7 +206,7 @@ export default function AdminOrdersPage() {
 
   async function exportOrders() {
     try {
-      const token = localStorage.getItem('access_token')
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get('/api/admin/orders/export', {
         headers: { 'Authorization': `Bearer ${token}` },
         params: {

@@ -449,3 +449,43 @@ export class QueryBuilder {
     return helper.query<T>(sql, ...params);
   }
 }
+
+// ─── 호환성 헬퍼 ──────────────────────────────────────────────────────────────
+/**
+ * executeQuery - feature 모듈 호환 함수
+ * DatabaseHelper.query()의 간편 래퍼.
+ * SELECT → results 배열 반환
+ * INSERT/UPDATE/DELETE → D1Result 반환
+ */
+export async function executeQuery<T = any>(
+  db: D1Database,
+  sql: string,
+  params: any[] = []
+): Promise<T[]> {
+  const helper = new DatabaseHelper(db);
+  return helper.query<T>(sql, ...params);
+}
+
+/**
+ * executeRun - INSERT/UPDATE/DELETE 실행용 (D1Result 반환)
+ */
+export async function executeRun(
+  db: D1Database,
+  sql: string,
+  params: any[] = []
+): Promise<D1Result> {
+  const helper = new DatabaseHelper(db);
+  return helper.execute(sql, ...params);
+}
+
+/**
+ * queryFirst - 단일 행 조회
+ */
+export async function queryFirst<T = any>(
+  db: D1Database,
+  sql: string,
+  params: any[] = []
+): Promise<T | null> {
+  const helper = new DatabaseHelper(db);
+  return helper.queryFirst<T>(sql, ...params);
+}

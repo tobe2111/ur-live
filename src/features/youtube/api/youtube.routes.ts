@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { jwt } from '@tsndr/cloudflare-worker-jwt'
+import jwt from '@tsndr/cloudflare-worker-jwt'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import type { 
   YouTubeOAuthTokens, 

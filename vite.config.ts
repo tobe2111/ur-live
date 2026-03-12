@@ -93,8 +93,9 @@ export default defineConfig(({ mode }) => {
   build: {
     outDir: 'dist',  // 🌍 단일 빌드 출력
     emptyOutDir: true,
-    // 소스맵 활성화 (에러 디버깅용)
-    sourcemap: true,
+    // 소스맵: 프로덕션 빌드에서는 비활성화 (번들 크기 감소)
+    // 개발 시 디버깅이 필요하면 'inline' 또는 true로 변경
+    sourcemap: mode === 'development' ? 'inline' : false,
     // 🔧 esbuild 사용 (terser보다 안전하고 빠름)
     minify: 'esbuild',
     rollupOptions: {
@@ -121,23 +122,34 @@ export default defineConfig(({ mode }) => {
             return 'react-router'
           }
           
-          // 🎯 Firebase Auth (인증만 분리)
+          // 🎯 Firebase Auth (인증만 분리 - 가장 큰 청크)
           if (id.includes('node_modules/firebase/auth') ||
               id.includes('node_modules/@firebase/auth')) {
             return 'firebase-auth'
           }
-          
-          // 🎯 Firebase 기타 (app, database 등)
+
+          // 🎯 Firebase App (코어만 분리)
+          if (id.includes('node_modules/firebase/app') ||
+              id.includes('node_modules/@firebase/app') ||
+              id.includes('node_modules/@firebase/util') ||
+              id.includes('node_modules/@firebase/component') ||
+              id.includes('node_modules/@firebase/logger')) {
+            return 'firebase-app'
+          }
+
+          // 🎯 Firebase 기타 (database, storage, analytics 등)
           if (id.includes('node_modules/firebase/') ||
               id.includes('node_modules/@firebase/')) {
-            return 'firebase-core'
+            return 'firebase-misc'
           }
           
           // 🎯 UI 라이브러리 (아이콘, 유틸리티)
           if (id.includes('node_modules/lucide-react') ||
               id.includes('node_modules/react-icons') ||
               id.includes('node_modules/clsx') ||
-              id.includes('node_modules/class-variance-authority')) {
+              id.includes('node_modules/class-variance-authority') ||
+              id.includes('node_modules/tailwind-merge') ||
+              id.includes('node_modules/tailwindcss-animate')) {
             return 'ui-libs'
           }
           
@@ -154,7 +166,8 @@ export default defineConfig(({ mode }) => {
             return 'react-query'
           }
           
-          // 🎯 Sentry (에러 추적)
+          // 🎯 Sentry (에러 추적 - 비동기 로드, vendor 순환 참조 방지)
+          // sentry를 vendor보다 먼저 매칭해야 순환 참조 방지
           if (id.includes('node_modules/@sentry/')) {
             return 'sentry'
           }
@@ -175,6 +188,28 @@ export default defineConfig(({ mode }) => {
           // 🎯 HTTP 클라이언트 (Axios)
           if (id.includes('node_modules/axios')) {
             return 'http-client'
+          }
+
+          // 🎯 결제 SDK (Toss, Stripe - 필요 시만 로드)
+          if (id.includes('node_modules/@tosspayments') ||
+              id.includes('node_modules/@stripe') ||
+              id.includes('node_modules/stripe')) {
+            return 'payment-sdk'
+          }
+
+          // 🎯 Radix UI (헤드리스 UI 컴포넌트)
+          if (id.includes('node_modules/@radix-ui/')) {
+            return 'radix-ui'
+          }
+
+          // 🎯 bcrypt / crypto utilities
+          if (id.includes('node_modules/bcrypt')) {
+            return 'crypto-utils'
+          }
+
+          // 🎯 hono (서버 프레임워크 - 번들에서 분리)
+          if (id.includes('node_modules/hono')) {
+            return 'vendor-hono'
           }
           
           // 🎯 나머지 node_modules → vendor

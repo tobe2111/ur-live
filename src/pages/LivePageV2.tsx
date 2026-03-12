@@ -1521,7 +1521,7 @@ export default function LivePageV2() {
       // Check streamer permission for new stream
       const userType = localStorage.getItem('user_type')
       const userId = getUserId()
-      const accessToken = localStorage.getItem('access_token')
+      const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
       
       log.debug('[LivePageV2] Checking seller permission:', {
         userType,
@@ -1609,8 +1609,8 @@ export default function LivePageV2() {
     try {
       setChangingProduct(true)
       
-      // JWT 기반 인증 토큰 사용
-      const accessToken = localStorage.getItem('access_token')
+      // JWT 기반 인증 토큰 사용 - seller_token이 primary
+      const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
       
       if (!accessToken) {
         alert('로그인이 필요합니다.')

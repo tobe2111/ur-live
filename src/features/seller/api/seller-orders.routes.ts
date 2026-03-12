@@ -35,7 +35,7 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
 
   try {
     const token = authorization.substring(7);
-    const payload = await verify(token, jwtSecret) as JWTPayload & { seller_id?: number };
+    const payload = await verify(token, jwtSecret, 'HS256') as JWTPayload & { seller_id?: number };
     return payload.seller_id || null;
   } catch (error) {
     console.error('Token verification error:', error);
@@ -115,7 +115,7 @@ sellerOrdersRoutes.get('/orders', async (c) => {
       countQuery += ' AND o.status = ?';
       countParams.push(status);
     }
-    const countResult = await db.prepare(countQuery).bind(...countParams).first();
+    const countResult = await db.prepare(countQuery).bind(...countParams).first<{ total: number }>();
 
     return c.json({
       success: true,
@@ -172,7 +172,7 @@ sellerOrdersRoutes.put('/orders/:id/status', async (c) => {
       FROM orders o
       JOIN products p ON o.product_id = p.id
       WHERE o.id = ?
-    `).bind(orderId).first();
+    `).bind(orderId).first<Record<string, any>>();
 
     if (!order) {
       return c.json({
@@ -227,7 +227,7 @@ sellerOrdersRoutes.put('/orders/:id/status', async (c) => {
       FROM orders o
       JOIN products p ON o.product_id = p.id
       WHERE o.id = ?
-    `).bind(orderId).first();
+    `).bind(orderId).first<{ total: number }>();
 
     return c.json({
       success: true,
@@ -310,7 +310,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
       countQuery += ' AND (name LIKE ? OR description LIKE ?)';
       countParams.push(`%${search}%`, `%${search}%`);
     }
-    const countResult = await db.prepare(countQuery).bind(...countParams).first();
+    const countResult = await db.prepare(countQuery).bind(...countParams).first<{ total: number }>();
 
     return c.json({
       success: true,

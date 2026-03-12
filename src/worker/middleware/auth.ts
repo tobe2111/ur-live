@@ -335,3 +335,26 @@ export async function generateJWT(
   
   return token;
 }
+
+// ─── 호환성 래퍼 ─────────────────────────────────────────────────────────────
+/**
+ * verifyAdminToken - requireAdmin()의 미들웨어 형태 래퍼
+ * 기존 feature 파일 호환용
+ */
+export function verifyAdminToken() {
+  return requireAdmin();
+}
+
+/**
+ * verifySellerToken - requireSeller()의 미들웨어 형태 래퍼
+ */
+export function verifySellerToken() {
+  return requireSeller();
+}
+
+/**
+ * verifyAuthToken - requireAuth()의 별칭
+ */
+export function verifyAuthToken() {
+  return requireAuth();
+}

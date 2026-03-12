@@ -2,11 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/config/region'
-import { logout as authLogout, clearAuthData } from '@/utils/auth'
+import { clearAuthData } from '@/utils/auth'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Seller {
@@ -49,12 +45,6 @@ interface DashboardStats {
 
 export default function AdminPage() {
   const navigate = useNavigate()
-  
-  // ✅ Region 기반 Store 선택
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  
-  // ✅ Selector로 필요한 상태만 구독
-  const isAuthReady = useAuth(state => state.isAuthReady)
   const [sellers, setSellers] = useState<Seller[]>([])
   const [pendingSellers, setPendingSellers] = useState<Seller[]>([])
   const [streams, setStreams] = useState<Stream[]>([])
@@ -76,35 +66,12 @@ export default function AdminPage() {
   const [rejectionReason, setRejectionReason] = useState('')
 
   useEffect(() => {
-    // ⏳ URL 파라미터 처리가 완료될 때까지 대기
-    if (!isAuthReady) {
-      console.log('[AdminPage] ⏳ URL 파라미터 처리 대기 중...')
-      return
-    }
-    
-    // Check admin session
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+    // ✅ Admin JWT 즉시 체크 (Firebase isAuthReady 불필요 - Admin은 JWT 전용)
+    const token = localStorage.getItem('admin_token')
     const userType = localStorage.getItem('user_type')
     const adminId = localStorage.getItem('admin_id')
     
-    console.log('[AdminPage] 🔍 Authentication check:', {
-      hasToken: !!token,
-      tokenLength: token?.length,
-      tokenSource: localStorage.getItem('admin_token') ? 'admin_token' : 'access_token',
-      userType,
-      adminId,
-      allKeys: Object.keys(localStorage),
-      timestamp: new Date().toISOString()
-    })
-    
-    if (!token) {
-      console.log('[AdminPage] ❌ No admin token found')
-      navigate('/admin/login', { replace: true })
-      return
-    }
-    
-    if (userType !== 'admin') {
-      console.log('[AdminPage] ❌ Invalid user_type:', userType, '(expected: admin)')
+    if (!token || userType !== 'admin') {
       navigate('/admin/login', { replace: true })
       return
     }
@@ -117,7 +84,7 @@ export default function AdminPage() {
     const interval = setInterval(loadDashboardStats, 5000)
     
     return () => clearInterval(interval)
-  }, [navigate, isAuthReady])  // ✅ isProcessed 추가
+  }, [navigate])
 
   async function loadData() {
     try {
@@ -326,6 +293,18 @@ export default function AdminPage() {
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
             >
               💰 정산 대시보드
+            </button>
+            <button
+              onClick={() => navigate('/admin/alimtalk')}
+              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 font-medium"
+            >
+              💬 알림톡 관리
+            </button>
+            <button
+              onClick={() => navigate('/admin/kv-monitoring')}
+              className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 font-medium"
+            >
+              🔍 KV 모니터링
             </button>
             <button
               onClick={logout}

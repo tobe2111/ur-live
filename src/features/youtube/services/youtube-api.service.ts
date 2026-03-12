@@ -40,11 +40,11 @@ export class YouTubeAPIService {
     })
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Token exchange failed: ${error.error_description || error.error}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
@@ -69,11 +69,11 @@ export class YouTubeAPIService {
     })
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Token refresh failed: ${error.error_description || error.error}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     return {
       access_token: data.access_token,
       refresh_token: refreshToken, // Keep the same refresh token
@@ -94,11 +94,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to fetch channels: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     return data.items.map((item: any) => ({
       id: item.id,
       title: item.snippet.title,
@@ -151,11 +151,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to create broadcast: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     return {
       id: data.id,
       title: data.snippet.title,
@@ -197,11 +197,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to create stream: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     return {
       id: data.id,
       title: data.snippet.title,
@@ -235,7 +235,7 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to bind broadcast: ${error.error?.message || 'Unknown error'}`)
     }
   }
@@ -293,7 +293,7 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to go live: ${error.error?.message || 'Unknown error'}`)
     }
   }
@@ -311,7 +311,7 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to end broadcast: ${error.error?.message || 'Unknown error'}`)
     }
   }
@@ -328,11 +328,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`Failed to get broadcast: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     const item = data.items[0]
     
     return {

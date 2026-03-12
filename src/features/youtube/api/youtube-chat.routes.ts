@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { jwt } from '@tsndr/cloudflare-worker-jwt'
+import jwt from '@tsndr/cloudflare-worker-jwt'
 
 type Bindings = {
   DB: D1Database
@@ -106,11 +106,11 @@ app.get('/chat/:streamId', async (c) => {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`YouTube API error: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
 
     // Transform messages
     const messages = data.items.map((item: any) => ({
@@ -203,11 +203,11 @@ app.post('/chat/:streamId', async (c) => {
     )
 
     if (!response.ok) {
-      const error = await response.json()
+      const error = await response.json() as any
       throw new Error(`YouTube API error: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
 
     return c.json({
       success: true,

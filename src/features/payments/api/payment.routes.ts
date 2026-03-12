@@ -91,11 +91,11 @@ async function confirmTossPayment(
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json() as any;
       throw new Error(error.message || 'Toss payment confirmation failed');
     }
 
-    return await response.json();
+    return await response.json() as any;
   } catch (error: any) {
     console.error('[Payment] Toss confirmation error:', error);
     throw error;
@@ -130,11 +130,11 @@ async function cancelTossPayment(
     );
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json() as any;
       throw new Error(error.message || 'Toss payment cancellation failed');
     }
 
-    return await response.json();
+    return await response.json() as any;
   } catch (error: any) {
     console.error('[Payment] Toss cancellation error:', error);
     throw error;

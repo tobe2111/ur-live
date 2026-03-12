@@ -294,3 +294,37 @@ export function formatErrorResponse(error: Error | any): ErrorResponse {
     'UNKNOWN_ERROR'
   );
 }
+
+// ─── Hono Context 오버로드 래퍼 ─────────────────────────────────────────────
+// feature 파일들이 successResponse(c, data, msg) 패턴으로 호출하므로
+// Context를 첫 번째 인자로 받아 c.json()을 반환하는 래퍼 추가
+
+import { Context } from 'hono';
+
+export function jsonSuccess(c: Context, data: any, message?: string, status: number = 200) {
+  return c.json({ success: true, data, message, timestamp: new Date().toISOString() }, status as any);
+}
+export function jsonError(c: Context, message: string, status: number = 400) {
+  return c.json({ success: false, error: { message }, timestamp: new Date().toISOString() }, status as any);
+}
+export function jsonCreated(c: Context, data: any, message?: string) {
+  return jsonSuccess(c, data, message, 201);
+}
+export function jsonNotFound(c: Context, message: string = 'Not found') {
+  return jsonError(c, message, 404);
+}
+export function jsonUnauthorized(c: Context, message: string = 'Unauthorized') {
+  return jsonError(c, message, 401);
+}
+export function jsonForbidden(c: Context, message: string = 'Forbidden') {
+  return jsonError(c, message, 403);
+}
+export function jsonBadRequest(c: Context, message: string) {
+  return jsonError(c, message, 400);
+}
+export function jsonConflict(c: Context, message: string) {
+  return jsonError(c, message, 409);
+}
+export function jsonServerError(c: Context, message: string = 'Internal server error') {
+  return jsonError(c, message, 500);
+}
