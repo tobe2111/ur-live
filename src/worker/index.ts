@@ -18,6 +18,7 @@ import { serveStatic } from 'hono/cloudflare-workers';
 
 // Feature Routes
 import { kakaoRoutes, googleRoutes, sellerRoutes, adminRoutes } from '@/features/auth';
+import { adminManagementRoutes, adminBannersRoutes } from '@/features/admin';
 import { productsRoutes } from '@/features/products';
 import { ordersRoutes } from '@/features/orders';
 import { accountRoutes } from '@/features/account';
@@ -213,6 +214,10 @@ app.route('/api/auth/google', googleRoutes);
 app.route('/api/seller', sellerRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
+
+// Admin Management Feature (Complete Implementation)
+app.route('/api/admin', adminManagementRoutes);
+app.route('/api/admin/banners', adminBannersRoutes);
 
 // Seller Management Feature (Phase 1)
 app.route('/api/seller', sellerManagementRoutes);
