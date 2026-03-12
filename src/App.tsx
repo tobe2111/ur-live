@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
+import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -392,22 +393,23 @@ function App() {
   console.log('[App] 🚀 App 컴포넌트 렌더링 (v2.3 - Zustand + React Query + Sentry)')
   
   return (
-    <Sentry.ErrorBoundary 
-      fallback={({ error }) => (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">오류가 발생했습니다</h2>
-            <p className="text-gray-600 mb-4">{error.message}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              새로고침
-            </button>
+    <ChunkErrorBoundary>
+      <Sentry.ErrorBoundary 
+        fallback={({ error }) => (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+              <h2 className="text-2xl font-bold text-red-600 mb-4">오류가 발생했습니다</h2>
+              <p className="text-gray-600 mb-4">{error.message}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                새로고침
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-      showDialog={false}
+        )}
+        showDialog={false}
     >
       <ErrorBoundary>
         <QueryProvider>
@@ -423,6 +425,7 @@ function App() {
         </QueryProvider>
       </ErrorBoundary>
     </Sentry.ErrorBoundary>
+    </ChunkErrorBoundary>
   )
 }
 
