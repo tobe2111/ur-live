@@ -99,6 +99,66 @@ const PageLoader = () => (
 function AppContent() {
   console.log('[App] 📱 AppContent 마운트됨')
   
+  // ✅ firebase_token URL 파라미터 처리 (최우선)
+  useEffect(() => {
+    const processFirebaseToken = async () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const firebaseToken = urlParams.get('firebase_token')
+      
+      if (!firebaseToken) return
+      
+      try {
+        console.log('[App] 🔑 firebase_token 파라미터 감지, 로그인 처리 중...')
+        
+        // Firebase Custom Token으로 로그인
+        const { signInWithCustomToken, getAuth } = await import('@/lib/firebase-auth')
+        const auth = getAuth()
+        
+        const userCredential = await signInWithCustomToken(auth, firebaseToken)
+        const user = userCredential.user
+        console.log('[App] ✅ Firebase Custom Token 로그인 성공:', user.uid)
+        
+        // ID Token 갱신 및 대기
+        const idToken = await user.getIdToken(true)
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Zustand store 업데이트
+        if (isKorea()) {
+          useAuthKR.getState().setUser(user)
+          useAuthKR.getState().setAuthReady(true)
+        } else {
+          useAuthWorld.getState().setUser(user)
+          useAuthWorld.getState().setAuthReady(true)
+        }
+        
+        // localStorage에 토큰 저장
+        localStorage.setItem('firebase_token', idToken)
+        localStorage.setItem('user_id', user.uid)
+        localStorage.setItem('user_email', user.email || '')
+        localStorage.setItem('user_type', 'user')
+        
+        // URL에서 firebase_token 파라미터 제거
+        urlParams.delete('firebase_token')
+        const newUrl = urlParams.toString() 
+          ? `${window.location.pathname}?${urlParams.toString()}`
+          : window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+        
+        console.log('[App] 🧹 firebase_token 파라미터 제거 완료:', newUrl)
+      } catch (error) {
+        console.error('[App] ❌ Firebase Custom Token 로그인 실패:', error)
+        // 실패 시에도 파라미터는 제거
+        urlParams.delete('firebase_token')
+        const newUrl = urlParams.toString() 
+          ? `${window.location.pathname}?${urlParams.toString()}`
+          : window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
+    }
+    
+    processFirebaseToken()
+  }, [])
+  
   // ✅ 전역 onAuthStateChanged 리스너 등록 (최상단, 한 번만)
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;

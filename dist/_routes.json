@@ -5,6 +5,14 @@
     "/auth/*"
   ],
   "exclude": [
-    "/static/*"
+    "/assets/*",
+    "/static/*",
+    "/*.js",
+    "/*.css",
+    "/*.html",
+    "/*.ico",
+    "/*.png",
+    "/*.svg",
+    "/*.json"
   ]
 }
