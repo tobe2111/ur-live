@@ -82,9 +82,16 @@ export const useAuthWorld = create<AuthWorldState>()(
               const { role } = await roleResponse.json();
               console.log('[useAuthWorld] ✅ 사용자 역할 확인:', role);
 
+              // ✅ CRITICAL: useAuthWorld는 Firebase 기반 User 전용!
+              // Seller/Admin은 JWT 로그인을 사용하며 이 스토어를 사용하지 않음!
+              if (role === 'seller' || role === 'admin') {
+                console.error('[useAuthWorld] ❌ Seller/Admin은 JWT 로그인을 사용해야 합니다!');
+                throw new Error(`${role} 계정은 이메일/비밀번호 로그인을 사용해야 합니다.`);
+              }
+
               set({
                 user,
-                userRole: role,
+                userRole: 'user', // ✅ 항상 'user' (Seller/Admin은 여기 도달 불가)
                 isLoading: false,
                 isAuthReady: true,
               });
@@ -147,9 +154,23 @@ export const useAuthWorld = create<AuthWorldState>()(
                     });
                     const { role } = await roleResponse.json();
 
+                    // ✅ CRITICAL: Seller/Admin 체크
+                    if (role === 'seller' || role === 'admin') {
+                      console.error('[useAuthWorld] ❌ Seller/Admin은 JWT 로그인을 사용해야 합니다!');
+                      set({
+                        user: null,
+                        userRole: null,
+                        isLoading: false,
+                        isAuthReady: true,
+                      });
+                      unsubscribe();
+                      resolve();
+                      return;
+                    }
+
                     set({
                       user,
-                      userRole: role,
+                      userRole: 'user', // ✅ 항상 'user'
                       isLoading: false,
                       isAuthReady: true,
                     });

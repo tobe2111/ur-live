@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin, getUserId, isLoggedIn, saveUserInfo } from '@/utils/auth'
+import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -222,38 +222,17 @@ export default function CheckoutPage() {
     }
   }, [totalAmount, paymentMethodWidget, ready])
 
-  // 🔐 Step 0: URL 파라미터에서 로그인 정보 추출 (최우선)
+  // ✅ URL 파라미터 정리 (firebase_token 등 레거시 파라미터 제거)
   useEffect(() => {
-    const login = searchParams.get('login')
-    const session = searchParams.get('session')
-    const urlUserId = searchParams.get('userId')
-    const userName = searchParams.get('userName')
-
-    console.log('[CheckoutPage] 🔐 URL 파라미터 체크:', { login, session, urlUserId, userName })
-
-    if (login === 'success' && session && urlUserId) {
-      console.log('[CheckoutPage] ✅ 로그인 성공 파라미터 발견 - localStorage 저장 시작')
-      
-      // localStorage에 저장
-      saveUserInfo(
-        urlUserId,
-        userName ? decodeURIComponent(userName) : '사용자',
-        session
-      )
-
-      console.log('[CheckoutPage] ✅ 로그인 정보 저장 완료:', {
-        userId: urlUserId,
-        userName: userName ? decodeURIComponent(userName) : '사용자',
-        hasSession: !!session
-      })
-
-      // URL에서 파라미터 제거 (깔끔한 URL)
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      console.log('[CheckoutPage] ✅ URL 파라미터 제거 완료:', cleanUrl)
+    const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName', 'login', 'session']
+    
+    if (paramsToClean.some(param => searchParams.has(param))) {
+      console.log('[CheckoutPage] 🧹 URL 파라미터 정리 중...')
+      window.history.replaceState({}, '', window.location.pathname)
+      console.log('[CheckoutPage] ✅ URL 파라미터 정리 완료')
     }
     
-    // ✅ URL 파라미터 처리 완료 표시 (로그인 정보가 있든 없든)
+    // ✅ URL 파라미터 처리 완료 표시
     setUrlParamsProcessed(true)
   }, [searchParams])
 

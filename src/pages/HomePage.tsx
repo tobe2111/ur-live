@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package, Search } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
-import { getUserName, getUserId, saveUserInfo, logout } from '@/utils/auth'
+import { getUserName, getUserId, logout } from '@/utils/auth'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { useLiveStreams } from '@/hooks/useLiveStream'
 import { BannerSection } from '@/components/home/BannerSection'
@@ -92,32 +92,15 @@ export default function HomePage() {
     scheduled_start_time: s.scheduled_at,
   })) as Stream[]
 
-  // 카카오 로그인 콜백 처리
+  // ✅ URL 파라미터 정리 및 초기 데이터 로드
   useEffect(() => {
-    const loginSuccess = searchParams.get('login')
-    const session = searchParams.get('session')
-    const userId = searchParams.get('userId')
-    const userName = searchParams.get('userName')
-
-    if (loginSuccess === 'success' && session && userId && userName) {
-      // 통합 인증: saveUserInfo 사용
-      saveUserInfo(
-        userId,
-        decodeURIComponent(userName),
-        session
-      )
-      
-      // UI 업데이트
-      setUser({
-        name: decodeURIComponent(userName),
-        email: ''
-      })
-      
-      // URL에서 파라미터 제거 (깔끔한 URL 유지)
-      const cleanUrl = window.location.pathname
-      window.history.replaceState({}, '', cleanUrl)
-      
-      showAlert(`환영합니다, ${decodeURIComponent(userName)}님!`, 'success', '로그인 성공')
+    // 레거시 로그인 파라미터 정리
+    const legacyParams = ['login', 'session', 'userId', 'userName', 'access_token', 'refresh_token']
+    
+    if (legacyParams.some(param => searchParams.has(param))) {
+      console.log('[HomePage] 🧹 레거시 URL 파라미터 정리 중...')
+      window.history.replaceState({}, '', window.location.pathname)
+      console.log('[HomePage] ✅ URL 파라미터 정리 완료')
     }
     
     // React Query가 자동으로 스트림 로딩 & 30초마다 갱신

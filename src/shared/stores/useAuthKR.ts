@@ -87,35 +87,36 @@ export const useAuthKR = create<AuthKRState>()(
             const { role } = await roleResponse.json();
             console.log('[useAuthKR] ✅ 사용자 역할 확인:', role);
 
-            // ✅ role에 따라 localStorage 설정 (API Interceptor를 위해 필수)
-            // user: user_type='user' → /api/users/* 호출 시 Firebase ID Token
-            // seller: user_type='seller' → /api/seller/* 호출 시 seller_token
-            // admin: user_type='admin' → /api/admin/* 호출 시 admin_token
-            if (role === 'seller') {
-              localStorage.setItem('user_type', 'seller');
-              localStorage.setItem('seller_token', idToken);
-              console.log('[useAuthKR] ✅ localStorage에 user_type 설정: seller');
-            } else if (role === 'admin') {
-              localStorage.setItem('user_type', 'admin');
-              localStorage.setItem('admin_token', idToken);
-              console.log('[useAuthKR] ✅ localStorage에 user_type 설정: admin');
-            } else {
-              // 기본값: user
-              localStorage.setItem('user_type', 'user');
-              console.log('[useAuthKR] ✅ localStorage에 user_type 설정: user');
+            // ✅ CRITICAL: useAuthKR는 Firebase 기반 User 전용!
+            // Seller/Admin은 JWT 로그인을 사용하며 이 스토어를 사용하지 않음!
+            // 
+            // 아키텍처:
+            // - User: Firebase (Kakao/Google) → useAuthKR/useAuthWorld
+            // - Seller: JWT (이메일/비밀번호) → SellerLoginPage
+            // - Admin: JWT (이메일/비밀번호) → AdminLoginPage
+            // 
+            // ⚠️ role이 seller/admin이면 잘못된 로그인 플로우!
+            if (role === 'seller' || role === 'admin') {
+              console.error('[useAuthKR] ❌ Seller/Admin은 JWT 로그인을 사용해야 합니다!');
+              console.error('[useAuthKR] ❌ /seller/login 또는 /admin/login 페이지를 사용하세요.');
+              throw new Error(`${role} 계정은 이메일/비밀번호 로그인을 사용해야 합니다. /seller/login 또는 /admin/login으로 이동하세요.`);
             }
+            
+            // User 전용 로그인
+            localStorage.setItem('user_type', 'user');
+            console.log('[useAuthKR] ✅ localStorage에 user_type 설정: user');
             
             localStorage.setItem('user_name', user.email?.split('@')[0] || 'User');
 
             set({
               user,
-              userRole: role,
+              userRole: 'user', // ✅ 항상 'user' (Seller/Admin은 여기 도달 불가)
               isLoading: false,
               isAuthReady: true,
               error: null,
             });
             
-            console.log('[useAuthKR] ✅ 로그인 완료 - Zustand 상태 업데이트됨 - Role:', role);
+            console.log('[useAuthKR] ✅ 로그인 완료 - Zustand 상태 업데이트됨 - Role: user');
           } catch (err: any) {
             console.error('[useAuthKR] ❌ loginWithEmail failed:', err);
             set({
