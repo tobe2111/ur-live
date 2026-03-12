@@ -82,6 +82,10 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
     
     // ✅ lastLoginUid 저장 (다음 로드 시 즉시 인식)
     localStorage.setItem('lastLoginUid', credential.user.uid)
+    
+    // ✅ user_type을 'user'로 설정 (일반 사용자)
+    localStorage.setItem('user_type', 'user')
+    console.log('[LoginFlow] ✅ user_type을 "user"로 설정 완료')
 
     // 4. 백그라운드에서 Token 갱신 (속도 최적화)
     credential.user.getIdToken(true)
@@ -137,6 +141,10 @@ export async function loginWithFirebaseToken(firebaseToken: string): Promise<voi
     
     // ✅ lastLoginUid 저장 (다음 로드 시 즉시 인식)
     localStorage.setItem('lastLoginUid', credential.user.uid)
+    
+    // ✅ user_type을 'user'로 설정 (일반 사용자)
+    localStorage.setItem('user_type', 'user')
+    console.log('[LoginFlow] ✅ user_type을 "user"로 설정 완료')
 
     // 백그라운드 Token 갱신
     credential.user.getIdToken(true)
