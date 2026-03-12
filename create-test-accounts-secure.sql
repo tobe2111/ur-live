@@ -21,8 +21,8 @@
 -- =============================================
 
 -- 계정 정보:
--- - 이메일: admin@ur-team.com
--- - 비밀번호: admin123
+-- - 이메일: tobe2111@naver.com
+-- - 비밀번호: 358533aa!!
 -- - 역할: super_admin
 -- - 로그인: https://live.ur-team.com/admin/login
 
@@ -35,8 +35,8 @@ INSERT OR IGNORE INTO admins (
   created_at
 ) VALUES (
   'admin',
-  'admin@ur-team.com',
-  'IfqvDOc4FxiF7m9hwgbJwQ==$vSTw9LaDbGKEM/cHnAZ8VpkzmlwP9gfULizMG4tKQXU=',
+  'tobe2111@naver.com',
+  'kab8FgvYmXuY1XHG45TP6w==$mcP6dhIWmFbCRJ620KVEJwu34F+mKAbRVUWOdEHLIP4=',
   '관리자',
   'super_admin',
   datetime('now')
@@ -88,7 +88,7 @@ SELECT
   '관리자 계정' as account_type,
   id, username, email, name, role, created_at
 FROM admins 
-WHERE email = 'admin@ur-team.com';
+WHERE email = 'tobe2111@naver.com';
 
 -- 셀러 계정 확인
 SELECT 
@@ -150,7 +150,7 @@ INSERT OR IGNORE INTO sellers (
 -- =============================================
 -- 
 -- 생성된 계정:
--- 1. Admin (super_admin): admin@ur-team.com / admin123
+-- 1. Admin (super_admin): tobe2111@naver.com / 358533aa!!
 -- 2. Seller (approved): seller@ur-team.com / seller123
 -- 3. Moderator (admin): moderator@ur-team.com / admin123
 -- 4. Pending Seller: pending@ur-team.com / seller123

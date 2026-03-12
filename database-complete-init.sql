@@ -185,7 +185,7 @@ CREATE INDEX IF NOT EXISTS idx_wishlist_product_id ON wishlist(product_id);
 
 -- Super Admin Account
 INSERT OR IGNORE INTO admins (username, email, password_hash, name, role, created_at)
-VALUES ('admin', 'admin@ur-team.com', 'IfqvDOc4FxiF7m9hwgbJwQ==$vSTw9LaDbGKEM/cHnAZ8VpkzmlwP9gfULizMG4tKQXU=', '관리자', 'super_admin', datetime('now'));
+VALUES ('admin', 'tobe2111@naver.com',   'kab8FgvYmXuY1XHG45TP6w==$mcP6dhIWmFbCRJ620KVEJwu34F+mKAbRVUWOdEHLIP4=', '관리자', 'super_admin', datetime('now'));
 
 -- Approved Seller Account
 INSERT OR IGNORE INTO sellers (username, email, password_hash, name, business_name, business_number, phone, status, commission_rate, created_at, updated_at)
@@ -193,7 +193,7 @@ VALUES ('testseller', 'seller@ur-team.com', 'itUVt4fdTdIdveuBvEh7iQ==$fiOwHhE6D+
 
 -- Moderator Admin Account
 INSERT OR IGNORE INTO admins (username, email, password_hash, name, role, created_at)
-VALUES ('moderator', 'moderator@ur-team.com', 'IfqvDOc4FxiF7m9hwgbJwQ==$vSTw9LaDbGKEM/cHnAZ8VpkzmlwP9gfULizMG4tKQXU=', '모더레이터', 'admin', datetime('now'));
+VALUES ('moderator', 'moderator@ur-team.com',   'kab8FgvYmXuY1XHG45TP6w==$mcP6dhIWmFbCRJ620KVEJwu34F+mKAbRVUWOdEHLIP4=', '모더레이터', 'admin', datetime('now'));
 
 -- Pending Seller Account
 INSERT OR IGNORE INTO sellers (username, email, password_hash, name, business_name, business_number, phone, status, commission_rate, created_at, updated_at)
@@ -202,7 +202,7 @@ VALUES ('pendingseller', 'pending@ur-team.com', 'itUVt4fdTdIdveuBvEh7iQ==$fiOwHh
 -- ============================================
 -- Test Accounts Summary
 -- ============================================
--- 1. Super Admin: admin@ur-team.com / admin123
+-- 1. Super Admin: tobe2111@naver.com / 358533aa!!
 -- 2. Approved Seller: seller@ur-team.com / seller123
--- 3. Moderator: moderator@ur-team.com / admin123
+-- 3. Moderator: moderator@ur-team.com / 358533aa!!
 -- 4. Pending Seller: pending@ur-team.com / seller123

@@ -51,7 +51,7 @@ export default function AdminSettlementPage() {
 
   useEffect(() => {
     // Check admin session
-    const token = localStorage.getItem('session_token')
+    const token = localStorage.getItem('admin_token')
     const userType = localStorage.getItem('user_type')
     if (!token || userType !== 'admin') {
       navigate('/admin/login')
@@ -64,11 +64,10 @@ export default function AdminSettlementPage() {
   async function loadData() {
     try {
       setLoading(true)
-      const token = localStorage.getItem('session_token')
-      const headers = { 'X-Session-Token': token }
-
+      // API interceptor will automatically add Authorization header for /api/admin/*
+      
       // Load statistics
-      const statsRes = await api.get(`/api/admin/settlement/stats?period=${period}`, { headers })
+      const statsRes = await api.get(`/api/admin/settlement/stats?period=${period}`)
       
       if (statsRes.data.success) {
         setStats(statsRes.data.data.overview)
@@ -81,7 +80,7 @@ export default function AdminSettlementPage() {
       if (selectedSeller) params.append('seller_id', selectedSeller.toString())
       if (statusFilter !== 'all') params.append('status', statusFilter)
 
-      const recordsRes = await api.get(`/api/admin/settlement/records?${params.toString()}`, { headers })
+      const recordsRes = await api.get(`/api/admin/settlement/records?${params.toString()}`)
       
       if (recordsRes.data.success) {
         setRecords(recordsRes.data.data || [])
@@ -91,7 +90,7 @@ export default function AdminSettlementPage() {
     } catch (err: any) {
       console.error('Failed to load settlement data:', err)
       if (err.response?.status === 401) {
-        localStorage.removeItem('session_token')
+        localStorage.removeItem('admin_token')
         localStorage.removeItem('user_type')
         navigate('/admin/login')
       }
@@ -101,11 +100,9 @@ export default function AdminSettlementPage() {
 
   async function updateSettlementStatus(orderId: number, status: string) {
     try {
-      const token = localStorage.getItem('session_token')
       await api.patch(
         `/api/admin/settlement/${orderId}/status`,
-        { status },
-        { headers: { 'X-Session-Token': token } }
+        { status }
       )
       alert('정산 상태가 변경되었습니다')
       loadData()
@@ -118,11 +115,9 @@ export default function AdminSettlementPage() {
     if (!confirm(`${orderIds.length}건의 주문을 정산 완료 처리하시겠습니까?`)) return
 
     try {
-      const token = localStorage.getItem('session_token')
       await api.post(
         '/api/admin/settlement/batch-complete',
-        { order_ids: orderIds },
-        { headers: { 'X-Session-Token': token } }
+        { order_ids: orderIds }
       )
       alert('일괄 정산 완료!')
       loadData()
@@ -133,7 +128,6 @@ export default function AdminSettlementPage() {
 
   async function exportCSV() {
     try {
-      const token = localStorage.getItem('session_token')
       const params = new URLSearchParams()
       if (period !== 'all') params.append('period', period)
       if (selectedSeller) params.append('seller_id', selectedSeller.toString())
@@ -141,7 +135,6 @@ export default function AdminSettlementPage() {
       const response = await api.get(
         `/api/admin/settlement/export-csv?${params.toString()}`,
         {
-          headers: { 'X-Session-Token': token },
           responseType: 'blob'
         }
       )
