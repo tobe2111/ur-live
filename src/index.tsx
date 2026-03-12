@@ -3290,14 +3290,10 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
       return c.json({ success: false, error: 'Authorization code is required' }, 400);
     }
     
-    // KAKAO_REST_API_KEY가 없으면 에러 (하드코딩 제거)
+    // KAKAO_REST_API_KEY: 환경변수 우선, 없으면 기본값 사용
+    const KAKAO_REST_API_KEY = c.env.KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd';
     if (!c.env.KAKAO_REST_API_KEY) {
-      console.error('[Kakao Callback] KAKAO_REST_API_KEY not configured');
-      return c.json({ 
-        success: false, 
-        error: 'Server configuration error',
-        code: 'MISSING_API_KEY'
-      }, 500);
+      console.warn('[Kakao Callback] KAKAO_REST_API_KEY not in env, using default fallback');
     }
     
     const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
@@ -3305,7 +3301,7 @@ app.post('/api/auth/kakao/callback', cors(), async (c) => {
     console.log('[Kakao Callback] Starting OAuth flow with Firebase Custom Token');
     
     // 1. 코드를 액세스 토큰으로 교환
-    const accessToken = await exchangeKakaoCode(code, redirectUri, c.env.KAKAO_REST_API_KEY);
+    const accessToken = await exchangeKakaoCode(code, redirectUri, KAKAO_REST_API_KEY);
     
     // 2. 카카오 로그인 처리 (사용자 정보 가져오기 + DB UPSERT)
     const { user } = await processKakaoLogin(DB, accessToken);
@@ -17440,18 +17436,37 @@ async function sendDiscordNotification(
 // All non-API, non-static routes should serve index.html
 // This ensures React Router can handle client-side routing
 
-app.get('*', serveStatic({ root: './' }));
+// ⚠️  serveStatic must NOT intercept API/auth routes — it causes __STATIC_CONTENT_MANIFEST errors
+// Only apply serveStatic for actual static asset paths (not API routes)
+app.get('*', async (c, next) => {
+  const path = c.req.path;
+  // Skip API and auth routes — let them 404 naturally if unmatched
+  if (path.startsWith('/api/') || path.startsWith('/auth/')) {
+    return next();
+  }
+  // For static asset requests (has file extension), try serveStatic
+  if (/\.[a-zA-Z0-9]+$/.test(path)) {
+    return serveStatic({ root: './' })(c, next);
+  }
+  return next();
+});
 app.get('*', async (c) => {
   const path = c.req.path;
   
   // Skip API routes (already handled above)
-  if (path.startsWith('/api/') || path.startsWith('/auth/') || path.startsWith('/static/')) {
+  if (path.startsWith('/api/') || path.startsWith('/auth/')) {
     return c.notFound();
   }
   
   // For all other routes, serve index.html to enable SPA routing
   console.log(`[SPA Fallback] Serving index.html for: ${path}`);
-  return c.html(await c.env.ASSETS.fetch(new Request('https://dummy.com/index.html')).then(r => r.text()));
+  try {
+    const indexHtml = await c.env.ASSETS.fetch(new Request('https://dummy.com/index.html')).then(r => r.text());
+    return c.html(indexHtml);
+  } catch (err) {
+    console.error('[SPA Fallback] Failed to serve index.html:', err);
+    return c.text('Service unavailable', 503);
+  }
 });
 
 // 글로벌 에러 핸들러 (기존 onError 대체)

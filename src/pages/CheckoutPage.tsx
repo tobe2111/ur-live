@@ -36,19 +36,7 @@ declare global {
 // https://docs.tosspayments.com/reference/widget-sdk
 const clientKey = 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN' // ✅ 결제위젯 클라이언트 키
 
-interface CartItem {
-  id: number
-  product_id: number
-  product_name: string
-  image_url: string
-  quantity: number
-  price_snapshot: number
-  option_value?: string
-  seller_id?: number
-  seller_name?: string
-  shipping_fee?: number
-  free_shipping_threshold?: number
-}
+import { CartItem } from '@/types/cart'
 
 interface ShippingAddress {
   id: number
@@ -132,7 +120,7 @@ export default function CheckoutPage() {
 
   // 셀러별 장바구니 그룹화 및 배송비 계산
   const sellerGroups = cartItems.reduce((groups, item) => {
-    const sellerId = item.seller_id || 0
+    const sellerId = Number(item.seller_id) || 0
     if (!groups[sellerId]) {
       groups[sellerId] = {
         seller_id: sellerId,
@@ -144,7 +132,7 @@ export default function CheckoutPage() {
       }
     }
     groups[sellerId].items.push(item)
-    groups[sellerId].subtotal += item.price_snapshot * item.quantity
+    groups[sellerId].subtotal += (item.price_snapshot ?? item.price ?? 0) * item.quantity
     return groups
   }, {} as Record<number, {
     seller_id: number
@@ -156,7 +144,7 @@ export default function CheckoutPage() {
   }>)
 
   // 소계 및 배송비 계산
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0)
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
   
   const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
@@ -622,7 +610,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* @ts-ignore - void expression workaround */}
       <main className="mx-auto max-w-lg pb-52 lg:max-w-5xl lg:pb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
 
@@ -770,7 +757,7 @@ export default function CheckoutPage() {
                 }>
                   <TossPaymentWidget
                     userId={userId || ''}
-                    cartItems={cartItems as any}
+                    cartItems={cartItems}
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
@@ -793,7 +780,7 @@ export default function CheckoutPage() {
                 }>
                   <StripeCheckout
                     userId={userId || ''}
-                    cartItems={cartItems as any}
+                    cartItems={cartItems}
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {

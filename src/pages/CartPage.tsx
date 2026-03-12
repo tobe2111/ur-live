@@ -8,22 +8,8 @@ import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { AlertCircle, CheckCircle, X, Info } from 'lucide-react'
-
-interface CartItem {
-  id: string | number
-  product_id: string | number
-  product_name: string
-  image_url?: string
-  quantity: number
-  price_snapshot?: number
-  price?: number
-  option_id?: number
-  option_value?: string
-  seller_id?: number
-  seller_name?: string
-  shipping_fee?: number
-  free_shipping_threshold?: number
-}
+import type { CartItem } from '@/types/cart'
+import { getCartItemPrice } from '@/types/cart'
 
 interface ModalProps {
   isOpen: boolean
@@ -319,7 +305,7 @@ export default function CartPage() {
         }
       }
       groups[sellerId].items.push(item)
-      groups[sellerId].subtotal += (((item as any).price_snapshot || (item as any).price || 0) * item.quantity)
+      groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
       return groups
     }, {} as Record<number, {
       items: any[]
@@ -331,7 +317,7 @@ export default function CartPage() {
     // 전체 상품 개수 및 소계 계산
     for (const item of selectedItems) {
       count += item.quantity
-      sum += (((item as any).price_snapshot || (item as any).price || 0) * item.quantity)
+      sum += (getCartItemPrice(item) * item.quantity)
     }
     
     // 셀러별 배송비 계산
@@ -395,7 +381,7 @@ export default function CartPage() {
             {cartItems.map((item) => (
               <CartItemComponent
                 key={item.id}
-                item={item as any}
+                item={item}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={toggleSelect}
                 onUpdateQuantity={updateQuantity}

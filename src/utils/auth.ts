@@ -189,22 +189,49 @@ export function getUserIdSync(): string | null {
 
 /**
  * Synchronous version of getUserName - reads from localStorage only
+ *
+ * ⚠️ Firebase 전용 세션 대응:
+ * Firebase 로그인 후 user_name이 저장되어 있어야 함
+ * Seller/Admin의 경우 해당 role의 이름 반환
  */
 export function getUserNameSync(): string | null {
   const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
-  if (userType === 'user' || !userType) {
-    return localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || null
+  // Seller/Admin은 별도 이름 키를 사용할 수 있음
+  if (userType === 'seller') {
+    return localStorage.getItem('seller_name') || localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || null
   }
+  if (userType === 'admin') {
+    return localStorage.getItem('admin_name') || localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME) || null
+  }
+  // User (Firebase): user_name 또는 user_email의 앞부분 반환
+  const name = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_NAME)
+  if (name) return name
+  const email = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_EMAIL)
+  if (email) return email.split('@')[0]
   return null
 }
 
 /**
  * Synchronous version of isLoggedIn - reads from localStorage only
+ *
+ * ⚠️ Firebase 전용 세션 대응:
+ * Firebase는 자체적으로 IndexedDB/localStorage에 토큰을 관리하므로
+ * 'firebase_token' 키가 없어도 'user_id' + 'user_type=user' 조합으로 로그인 상태 판단
  */
 export function isLoggedInSync(): boolean {
-  return !!(localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN) ||
-    localStorage.getItem('seller_token') ||
-    localStorage.getItem('admin_token'))
+  // Seller/Admin은 JWT 토큰으로 명확히 판단
+  if (localStorage.getItem('seller_token')) return true
+  if (localStorage.getItem('admin_token')) return true
+
+  // Firebase User: user_id가 있고 user_type이 'user' (또는 미설정)이면 로그인 상태로 간주
+  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
+  const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID)
+  if (userId && (userType === 'user' || !userType)) return true
+
+  // 레거시: firebase_token이 localStorage에 있는 경우 (구버전 호환)
+  if (localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN)) return true
+
+  return false
 }
 
 export async function getUserId(): Promise<string | null> {

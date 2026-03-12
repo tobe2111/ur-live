@@ -6,6 +6,11 @@
  * 2. User (Firebase) → isAuthReady 플래그만 대기 (타임아웃 보장)
  * 3. isAuthReady가 true가 되면 절대 다시 loading 상태로 돌아가지 않음
  * 4. PublicRoute도 동일한 원칙 적용
+ *
+ * 🔧 무한루프 방지 핵심:
+ * - ProtectedRoute: /login 리다이렉트 시 ?returnUrl= 쿼리파라미터 사용 (state 불사용)
+ * - LoginPage: searchParams.get('returnUrl') 로 일관되게 읽음
+ * - PublicRoute: redirectTo prop 우선, 쿼리파라미터 returnUrl 차선
  */
 
 import React from 'react'
@@ -106,7 +111,10 @@ function UserProtectedRoute({
   // 인증 확인
   if (!currentUser) {
     if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />
+    // ✅ 무한루프 방지: state 대신 ?returnUrl= 쿼리파라미터 사용
+    // LoginPage는 searchParams.get('returnUrl')로 읽음 (location.state 미사용)
+    const returnUrl = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
   }
 
   if (DEBUG) console.log('[ProtectedRoute] ✅ User 인증 성공')
@@ -208,9 +216,12 @@ function UserPublicRoute({
 
   // 이미 로그인된 경우 리다이렉트
   if (currentUser) {
-    const from = (location.state as any)?.from || redirectTo
-    if (DEBUG) console.log('[PublicRoute] ✅ User 이미 로그인됨 →', from)
-    return <Navigate to={from} replace />
+    // ✅ returnUrl 쿼리파라미터 우선 (state.from 제거 → 무한루프 원인 제거)
+    const searchParams = new URLSearchParams(location.search)
+    const returnUrl = searchParams.get('returnUrl')
+    const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
+    if (DEBUG) console.log('[PublicRoute] ✅ User 이미 로그인됨 →', destination)
+    return <Navigate to={destination} replace />
   }
 
   if (DEBUG) console.log('[PublicRoute] ✅ 미로그인 → 렌더링')

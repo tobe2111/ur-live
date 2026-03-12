@@ -261,8 +261,17 @@ app.route('/', pushRoutes);
 // Static Assets & SPA Fallback
 // =================================
 
-// Static files (먼저 시도)
-app.get('*', serveStatic({ root: './' } as any));
+// ⚠️ serveStatic must NOT intercept API/auth routes
+app.get('*', async (c, next) => {
+  const path = c.req.path;
+  if (path.startsWith('/api/') || path.startsWith('/auth/')) {
+    return next();
+  }
+  if (/\.[a-zA-Z0-9]+$/.test(path)) {
+    return serveStatic({ root: './' } as any)(c, next);
+  }
+  return next();
+});
 
 // SPA Fallback (React Router 지원)
 app.get('*', async (c) => {

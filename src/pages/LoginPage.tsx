@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 // Firebase Auth will be lazy loaded when needed
 import { isKorea } from '@/config/region'
@@ -19,6 +19,7 @@ declare global {
 export default function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
   
@@ -53,7 +54,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   
-  const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
+  // ✅ 무한루프 방지: returnUrl은 쿼리파라미터 전용 (location.state?.from 제거)
+  // RouteGuards.tsx가 ?returnUrl= 쿼리파라미터로 전달하므로 여기서 일관되게 읽음
+  const returnUrl = searchParams.get('returnUrl') 
+    ? decodeURIComponent(searchParams.get('returnUrl')!)
+    : sessionStorage.getItem('returnUrl') || '/'
   const isLoggedIn = !!user
 
   // ✅ 로그인 상태 확인 및 리다이렉트
