@@ -1,20 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Multi-Tab Synchronization Hook
- * 
+ *
  * 여러 탭 간의 localStorage 변경사항을 동기화하여 일관된 사용자 경험을 제공합니다.
- * 
- * 기능:
- * - 다른 탭에서 로그아웃 시 현재 탭도 자동 로그아웃
- * - 다른 탭에서 로그인 시 현재 탭도 자동 새로고침
- * - Firebase Auth 상태 변경 감지 (auth-kr-storage, auth-world-storage)
- * - 세션 토큰 변경 감지 및 동기화
- * 
- * 작동 방식:
- * - window.addEventListener('storage') 이벤트 사용
- * - 주의: 같은 탭 내의 변경은 감지 안 됨 (다른 탭의 변경만 감지)
- * 
+ *
+ * ✅ 무한 루프 방지:
+ *   - window.storage 이벤트는 동일 탭에서는 발생하지 않음 (브라우저 사양)
+ *   - 로그인/로그아웃 페이지에서는 절대 reload/redirect 하지 않음
+ *   - 중복 이벤트 처리 방지를 위해 debounce(200ms) 적용
+ *   - seller_token / admin_token 키를 직접 감시 (session_token 키 대신)
+ *
  * 사용 예시:
  * ```typescript
  * function App() {
@@ -24,157 +20,129 @@ import { useEffect } from 'react'
  * ```
  */
 export function useMultiTabSync() {
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      // event.key: 변경된 localStorage 키
-      // event.oldValue: 이전 값
-      // event.newValue: 새 값
-      // event.url: 변경이 발생한 페이지 URL
+  const lastHandled = useRef<{ key: string; ts: number }>({ key: '', ts: 0 })
 
-      // 1. Firebase Auth 상태 변경 감지 (Zustand persist)
+  useEffect(() => {
+    const isLoginPage = () => {
+      const p = window.location.pathname
+      return (
+        p === '/login' ||
+        p === '/seller/login' ||
+        p === '/admin/login' ||
+        p === '/register' ||
+        p === '/seller/register'
+      )
+    }
+
+    const debounce = (key: string): boolean => {
+      const now = Date.now()
+      if (lastHandled.current.key === key && now - lastHandled.current.ts < 200) {
+        return false // 중복 이벤트, 무시
+      }
+      lastHandled.current = { key, ts: now }
+      return true
+    }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (!event.key) return
+
+      // ─── 1. Firebase Auth (User 전용) ───────────────────────────────────
       if (
         (event.key === 'auth-kr-storage' || event.key === 'auth-world-storage') &&
         event.oldValue !== event.newValue
       ) {
-        console.log('[MultiTabSync] 🔥 다른 탭에서 Firebase Auth 상태 변경 감지')
-        console.log('[MultiTabSync] Key:', event.key)
-        console.log('[MultiTabSync] Old:', event.oldValue?.substring(0, 50))
-        console.log('[MultiTabSync] New:', event.newValue?.substring(0, 50))
-        
-        // 로그아웃 감지: Zustand persist가 삭제됨
+        if (!debounce(event.key)) return
+        if (isLoginPage()) return // 로그인 페이지에서는 무시
+
+        console.log('[MultiTabSync] 🔥 Firebase Auth 변경:', event.key)
+
         if (event.oldValue && !event.newValue) {
-          console.log('[MultiTabSync] 🔴 로그아웃 감지 → 페이지 새로고침')
+          // 로그아웃 감지 → 홈으로
+          console.log('[MultiTabSync] 🔴 Firebase 로그아웃 → /')
           window.location.href = '/'
           return
         }
-        
-        // 로그인 감지: Zustand persist가 새로 생성됨
+
         if (!event.oldValue && event.newValue) {
-          console.log('[MultiTabSync] 🟢 로그인 감지 → 페이지 새로고침')
+          // 로그인 감지 → 현재 페이지가 보호 경로면 reload
+          console.log('[MultiTabSync] 🟢 Firebase 로그인 감지')
+          // 이미 로그인된 상태(같은 탭 로그인은 오지 않음) → 새로고침
           window.location.reload()
           return
         }
-        
-        // 사용자 변경 감지: 다른 계정으로 전환
+
+        // 사용자 전환 감지
         if (event.oldValue && event.newValue) {
-          console.log('[MultiTabSync] 🔄 사용자 변경 감지 → 페이지 새로고침')
+          console.log('[MultiTabSync] 🔄 Firebase 사용자 변경 감지')
           window.location.reload()
           return
         }
       }
 
-      // 2. 로그아웃 감지 (세션 토큰이 삭제됨) - Seller/Admin용
-      if (
-        (event.key === 'user_session_token' || 
-         event.key === 'seller_session_token' || 
-         event.key === 'admin_session_token') &&
-        event.oldValue && // 이전에 값이 있었고
-        !event.newValue   // 지금은 값이 없음 (삭제됨)
-      ) {
-        console.log('[MultiTabSync] 🔴 다른 탭에서 로그아웃 감지 (JWT)')
-        console.log('[MultiTabSync] 현재 탭도 로그아웃 처리 중...')
-        
-        // 모든 인증 관련 데이터 삭제
-        localStorage.removeItem('user_session_token')
-        localStorage.removeItem('seller_session_token')
-        localStorage.removeItem('admin_session_token')
-        localStorage.removeItem('user_id')
-        localStorage.removeItem('seller_id')
-        localStorage.removeItem('admin_id')
-        localStorage.removeItem('user_name')
-        localStorage.removeItem('seller_name')
-        localStorage.removeItem('admin_name')
-        localStorage.removeItem('user_type')
-        localStorage.removeItem('user_email')
-        localStorage.removeItem('user_profile_image')
-        
-        // 로그인 페이지로 리다이렉트
-        const currentPath = window.location.pathname
-        
-        if (currentPath.includes('/seller')) {
+      // ─── 2. Seller JWT 토큰 (seller_token) ───────────────────────────────
+      if (event.key === 'seller_token') {
+        if (!debounce(event.key)) return
+        if (isLoginPage()) return
+
+        if (event.oldValue && !event.newValue) {
+          console.log('[MultiTabSync] 🔴 Seller 로그아웃 감지 → /seller/login')
           window.location.href = '/seller/login'
-        } else if (currentPath.includes('/admin')) {
-          window.location.href = '/admin/login'
-        } else if (!currentPath.includes('/login')) {
-          // 이미 로그인 페이지가 아닌 경우만 리다이렉트
-          window.location.href = '/login'
+          return
         }
-        
-        return
+        if (!event.oldValue && event.newValue) {
+          console.log('[MultiTabSync] 🟢 Seller 로그인 감지 → reload')
+          window.location.reload()
+          return
+        }
       }
 
-      // 3. 로그인 감지 (세션 토큰이 새로 생성됨) - Seller/Admin용
-      if (
-        (event.key === 'user_session_token' || 
-         event.key === 'seller_session_token' || 
-         event.key === 'admin_session_token') &&
-        !event.oldValue && // 이전에 값이 없었고
-        event.newValue     // 지금은 값이 있음 (새로 생성됨)
-      ) {
-        console.log('[MultiTabSync] 🟢 다른 탭에서 로그인 감지 (JWT)')
-        console.log('[MultiTabSync] 현재 탭 새로고침 중...')
-        
-        // 페이지 새로고침하여 로그인 상태 반영
-        window.location.reload()
-        
-        return
+      // ─── 3. Admin JWT 토큰 (admin_token) ─────────────────────────────────
+      if (event.key === 'admin_token') {
+        if (!debounce(event.key)) return
+        if (isLoginPage()) return
+
+        if (event.oldValue && !event.newValue) {
+          console.log('[MultiTabSync] 🔴 Admin 로그아웃 감지 → /admin/login')
+          window.location.href = '/admin/login'
+          return
+        }
+        if (!event.oldValue && event.newValue) {
+          console.log('[MultiTabSync] 🟢 Admin 로그인 감지 → reload')
+          window.location.reload()
+          return
+        }
       }
 
-      // 4. 세션 토큰 변경 감지 (로그인 상태에서 다른 계정으로 전환)
+      // ─── 4. user_type 전환 감지 (user ↔ seller ↔ admin) ─────────────────
+      // ⚠️ 초기 로그인(null → value)은 무시, 기존 값이 있을 때의 전환만 처리
       if (
-        (event.key === 'user_session_token' || 
-         event.key === 'seller_session_token' || 
-         event.key === 'admin_session_token') &&
-        event.oldValue && // 이전 토큰 있음
-        event.newValue && // 새 토큰 있음
-        event.oldValue !== event.newValue // 토큰이 변경됨
-      ) {
-        console.log('[MultiTabSync] 🔄 다른 탭에서 세션 토큰 변경 감지')
-        console.log('[MultiTabSync] 현재 탭 새로고침 중...')
-        
-        // 페이지 새로고침하여 새 세션 반영
-        window.location.reload()
-        
-        return
-      }
-
-      // 5. user_type 변경 감지 (user ↔ seller ↔ admin 전환)
-      // ⚠️ 중요: 초기 로그인 시 (null → user) 새로고침 방지
-      if (
-        event.key === 'user_type' && 
-        event.oldValue && // 이전 값이 존재해야 함 (null이 아님)
-        event.newValue && 
+        event.key === 'user_type' &&
+        event.oldValue && // 이전 값 존재
+        event.newValue &&
         event.oldValue !== event.newValue
       ) {
-        console.log('[MultiTabSync] 🔄 다른 탭에서 사용자 타입 변경 감지')
-        console.log('[MultiTabSync] Old:', event.oldValue, '→ New:', event.newValue)
-        console.log('[MultiTabSync] 현재 탭 새로고침 중...')
-        
-        // 페이지 새로고침하여 새 사용자 타입 반영
+        if (!debounce(event.key)) return
+        if (isLoginPage()) return
+
+        console.log('[MultiTabSync] 🔄 user_type 변경:', event.oldValue, '→', event.newValue)
         window.location.reload()
-        
         return
       }
 
-      // 6. 버전 변경 감지 (다른 탭에서 앱 업데이트)
+      // ─── 5. 앱 버전 변경 ─────────────────────────────────────────────────
       if (event.key === 'app_version' && event.oldValue !== event.newValue) {
-        console.log('[MultiTabSync] 🆕 다른 탭에서 앱 버전 변경 감지')
-        console.log('[MultiTabSync] Old:', event.oldValue, '→ New:', event.newValue)
-        console.log('[MultiTabSync] 현재 탭 새로고침 중...')
-        
-        // 페이지 새로고침하여 새 버전 반영
+        if (!debounce(event.key)) return
+        if (isLoginPage()) return
+
+        console.log('[MultiTabSync] 🆕 앱 버전 변경:', event.oldValue, '→', event.newValue)
         window.location.reload()
-        
         return
       }
     }
 
-    // storage 이벤트 리스너 등록
     window.addEventListener('storage', handleStorageChange)
-
     console.log('[MultiTabSync] ✅ 다중 탭 동기화 활성화됨')
 
-    // Cleanup
     return () => {
       window.removeEventListener('storage', handleStorageChange)
       console.log('[MultiTabSync] 다중 탭 동기화 비활성화됨')

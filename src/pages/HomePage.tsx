@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Users, ChevronRight, Circle, Sparkles, Zap, Gift, ShoppingBag, Clock, TrendingUp, Award, Star, Filter, ArrowUpDown, Tag, Heart, Package, Search } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
-import { getUserName, getUserId, logout } from '@/utils/auth'
+import { getUserName, getUserId, getUserIdSync, logout } from '@/utils/auth'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { useLiveStreams } from '@/hooks/useLiveStream'
 import { BannerSection } from '@/components/home/BannerSection'
@@ -278,7 +278,7 @@ export default function HomePage() {
               {user ? (
                 <>
                   {/* Notification Bell */}
-                  <NotificationDropdown userId={getUserId() || ''} />
+                  <NotificationDropdown userId={getUserIdSync() || ''} />
                   {/* Desktop: User Profile */}
                   <Link 
                     to="/user/profile"

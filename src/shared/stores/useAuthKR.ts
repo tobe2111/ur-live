@@ -1,140 +1,109 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
-  onAuthStateChanged,
-  type User as FirebaseUser,
-} from '@/lib/firebase-auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 /**
  * ✅ Zustand Store - KR 전용 인증 (Kakao + Firebase Email)
- * - 순수 함수로 구성 → 테스트 가능
- * - Context API 불필요 → Hook 규칙 위반 방지
- * - Selector 지원 → 리렌더 최소화
+ *
+ * 핵심 설계 원칙:
+ * 1. onAuthStateChanged 를 앱 전체 생명주기 동안 지속 구독 (1회 실행 후 해제 X)
+ * 2. isAuthReady 는 최초 Firebase 상태 확인 완료 후 true 로 고정
+ * 3. user_type 은 Firebase User 로그인 시에만 'user' 로 설정
+ * 4. Seller/Admin 은 이 store 를 전혀 사용하지 않음
  */
+
 interface AuthKRState {
-  // 1️⃣ 상태
   user: FirebaseUser | null;
   isLoading: boolean;
   error: string | null;
-  isAuthReady: boolean;
+  isAuthReady: boolean;          // Firebase 첫 상태 확인 완료 여부 (한번 true 되면 영구)
   userRole: 'user' | 'seller' | 'admin' | null;
 
-  // 2️⃣ Actions - 순수 함수로 분리
   setUser: (user: FirebaseUser | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setAuthReady: (ready: boolean) => void;
 
-  // 3️⃣ 비즈니스 로직 - 비동기 함수
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   loginWithKakao: () => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
   logout: () => Promise<void>;
-  initializeAuth: () => Promise<void>;
+  initializeAuth: () => () => void;  // 반환값: unsubscribe 함수
 }
+
+// ─── 내부 유틸 ────────────────────────────────────────────────────────────────
+
+/** user_type 이 'user' 또는 없을 때만 'user' 로 설정 (seller/admin 보호) */
+function safeSetUserType() {
+  const current = localStorage.getItem('user_type');
+  if (!current || current === 'user') {
+    localStorage.setItem('user_type', 'user');
+  }
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthKR = create<AuthKRState>()(
   devtools(
     persist(
-      (set, get) => ({
-        // 초기 상태
+      (set) => ({
+        // ── 초기 상태 ──────────────────────────────────────────────────────────
         user: null,
-        isLoading: true,
+        isLoading: false,   // App 시작 시 Firebase 초기화 전까지 false 유지
         error: null,
-        isAuthReady: false,
+        isAuthReady: false, // initializeAuth() 완료 후 true
         userRole: null,
 
-        // ✅ Setter - 순수 함수
+        // ── 순수 setter ────────────────────────────────────────────────────────
         setUser: (user) => set({ user }, false, 'setUser'),
         setLoading: (isLoading) => set({ isLoading }, false, 'setLoading'),
         setError: (error) => set({ error }, false, 'setError'),
         setAuthReady: (isAuthReady) => set({ isAuthReady }, false, 'setAuthReady'),
 
-        // ✅ 이메일 로그인
+        // ── 이메일 로그인 ──────────────────────────────────────────────────────
         loginWithEmail: async (email, password) => {
+          set({ isLoading: true, error: null });
           try {
-            set({ isLoading: true, error: null });
-            console.log('[useAuthKR] 🔐 이메일 로그인 시작:', email);
-            
-            const userCredential = await signInWithEmailAndPassword(email, password);
-            const user = userCredential.user;
-            console.log('[useAuthKR] ✅ Firebase 로그인 성공:', user.uid);
+            const { signInWithEmailAndPassword } = await import('@/lib/firebase-auth');
+            const { user } = await signInWithEmailAndPassword(email, password);
 
-            // 🔥 중요: Firebase ID Token을 강제로 갱신하여 최신 상태 보장
-            console.log('[useAuthKR] 🔄 ID Token 강제 갱신 중...');
-            const idToken = await user.getIdToken(true); // force refresh
-            console.log('[useAuthKR] ✅ ID Token 갱신 완료:', idToken.substring(0, 30) + '...');
+            // ID Token 갱신 (claims 확인용)
+            const idToken = await user.getIdToken(true);
 
-            // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // 사용자 역할 조회 (API 호출)
-            console.log('[useAuthKR] 📡 사용자 역할 조회 API 호출...');
-            const roleResponse = await fetch('/api/users/role', {
+            // 역할 확인
+            const res = await fetch('/api/users/role', {
               headers: { Authorization: `Bearer ${idToken}` },
             });
-            
-            if (!roleResponse.ok) {
-              console.error('[useAuthKR] ❌ 역할 조회 실패:', roleResponse.status, roleResponse.statusText);
-              throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
-            }
-            
-            const { role } = await roleResponse.json();
-            console.log('[useAuthKR] ✅ 사용자 역할 확인:', role);
+            const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
+            const role: string = body.role || 'user';
 
-            // ✅ CRITICAL: useAuthKR는 Firebase 기반 User 전용!
-            // Seller/Admin은 JWT 로그인을 사용하며 이 스토어를 사용하지 않음!
-            // 
-            // 아키텍처:
-            // - User: Firebase (Kakao/Google) → useAuthKR/useAuthWorld
-            // - Seller: JWT (이메일/비밀번호) → SellerLoginPage
-            // - Admin: JWT (이메일/비밀번호) → AdminLoginPage
-            // 
-            // ⚠️ role이 seller/admin이면 잘못된 로그인 플로우!
             if (role === 'seller' || role === 'admin') {
-              console.error('[useAuthKR] ❌ Seller/Admin은 JWT 로그인을 사용해야 합니다!');
-              console.error('[useAuthKR] ❌ /seller/login 또는 /admin/login 페이지를 사용하세요.');
-              throw new Error(`${role} 계정은 이메일/비밀번호 로그인을 사용해야 합니다. /seller/login 또는 /admin/login으로 이동하세요.`);
+              // Firebase signout 후 에러
+              const { signOut } = await import('@/lib/firebase-auth');
+              await signOut().catch(() => {});
+              throw new Error(`${role} 계정은 /seller/login 또는 /admin/login을 이용하세요.`);
             }
-            
-            // User 전용 로그인
-            localStorage.setItem('user_type', 'user');
-            console.log('[useAuthKR] ✅ localStorage에 user_type 설정: user');
-            
-            localStorage.setItem('user_name', user.email?.split('@')[0] || 'User');
 
-            set({
-              user,
-              userRole: 'user', // ✅ 항상 'user' (Seller/Admin은 여기 도달 불가)
-              isLoading: false,
-              isAuthReady: true,
-              error: null,
-            });
-            
-            console.log('[useAuthKR] ✅ 로그인 완료 - Zustand 상태 업데이트됨 - Role: user');
+            safeSetUserType();
+            const displayName = user.displayName || user.email?.split('@')[0] || 'User';
+            localStorage.setItem('user_name', displayName);
+
+            // onAuthStateChanged 가 자동으로 store 업데이트하므로 set() 최소화
+            set({ isLoading: false, error: null });
           } catch (err: any) {
-            console.error('[useAuthKR] ❌ loginWithEmail failed:', err);
-            set({
-              error: err.message || '로그인 실패',
-              isLoading: false,
-            });
+            set({ error: err.message || '로그인 실패', isLoading: false });
             throw err;
           }
         },
 
-        // ✅ 이메일 회원가입
+        // ── 이메일 회원가입 ────────────────────────────────────────────────────
         signupWithEmail: async (email, password, displayName) => {
+          set({ isLoading: true, error: null });
           try {
-            set({ isLoading: true, error: null });
-            const userCredential = await createUserWithEmailAndPassword(email, password);
-            const user = userCredential.user;
+            const { createUserWithEmailAndPassword } = await import('@/lib/firebase-auth');
+            const { user } = await createUserWithEmailAndPassword(email, password);
 
-            // 사용자 프로필 초기화
             await fetch('/api/users/init', {
               method: 'POST',
               headers: {
@@ -142,228 +111,145 @@ export const useAuthKR = create<AuthKRState>()(
                 Authorization: `Bearer ${await user.getIdToken()}`,
               },
               body: JSON.stringify({ displayName }),
-            });
+            }).catch(() => {});
 
-            set({
-              user,
-              userRole: 'user',
-              isLoading: false,
-              isAuthReady: true,
-            });
+            safeSetUserType();
+            localStorage.setItem('user_name', displayName || email.split('@')[0]);
+            set({ isLoading: false, error: null });
           } catch (err: any) {
-            console.error('[useAuthKR] signupWithEmail failed:', err);
-            set({
-              error: err.message || '회원가입 실패',
-              isLoading: false,
-            });
+            set({ error: err.message || '회원가입 실패', isLoading: false });
             throw err;
           }
         },
 
-        // ✅ Kakao OAuth 로그인
+        // ── 카카오 로그인 (redirect) ──────────────────────────────────────────
         loginWithKakao: async () => {
-          try {
-            set({ isLoading: true, error: null });
-
-            // Kakao OAuth 시작 (Redirect 방식)
-            const KAKAO_AUTH_URL = import.meta.env.VITE_KAKAO_AUTH_URL || '/auth/kakao';
-            window.location.href = KAKAO_AUTH_URL;
-          } catch (err: any) {
-            console.error('[useAuthKR] loginWithKakao failed:', err);
-            set({
-              error: err.message || 'Kakao 로그인 실패',
-              isLoading: false,
-            });
-            throw err;
-          }
+          const KAKAO_AUTH_URL = (import.meta as any).env?.VITE_KAKAO_AUTH_URL || '/auth/kakao';
+          window.location.href = KAKAO_AUTH_URL;
         },
 
-        // ✅ 비밀번호 재설정
+        // ── 비밀번호 재설정 ────────────────────────────────────────────────────
         sendPasswordResetEmail: async (email) => {
+          set({ isLoading: true, error: null });
           try {
-            set({ isLoading: true, error: null });
-            await firebaseSendPasswordResetEmail(email);
-            set({
-              isLoading: false,
-              error: null,
-            });
+            const { sendPasswordResetEmail: fbReset } = await import('@/lib/firebase-auth');
+            await fbReset(email);
+            set({ isLoading: false });
           } catch (err: any) {
-            console.error('[useAuthKR] sendPasswordResetEmail failed:', err);
-            set({
-              error: err.message || '비밀번호 재설정 실패',
-              isLoading: false,
-            });
+            set({ error: err.message || '비밀번호 재설정 실패', isLoading: false });
             throw err;
           }
         },
 
-        // ✅ 로그아웃
+        // ── 로그아웃 ──────────────────────────────────────────────────────────
         logout: async () => {
           try {
-            set({ isLoading: true, error: null });
-            await firebaseSignOut();
+            const { signOut } = await import('@/lib/firebase-auth');
+            await signOut().catch(() => {});
+          } catch (_) {}
 
-            // 로컬 스토리지 클리어
-            localStorage.removeItem('user');
-            localStorage.removeItem('kakao_token');
+          // user 세션 selective clear
+          const { clearAuthData } = await import('@/utils/auth');
+          clearAuthData('user');
+          localStorage.removeItem('auth-kr-storage');
+          localStorage.removeItem('auth-world-storage');
+          localStorage.removeItem('lastLoginUid');
 
-            set({
-              user: null,
-              userRole: null,
-              isLoading: false,
-              isAuthReady: true,
-            });
-          } catch (err: any) {
-            console.error('[useAuthKR] logout failed:', err);
-            set({
-              error: err.message || '로그아웃 실패',
-              isLoading: false,
-            });
-            throw err;
-          }
+          set({ user: null, userRole: null, isLoading: false, isAuthReady: true });
+          setTimeout(() => { window.location.href = '/'; }, 50);
         },
 
-        // ✅ 인증 초기화 (앱 시작 시 호출)
-        initializeAuth: async () => {
-          try {
-            set({ isLoading: true, error: null });
-            console.log('[useAuthKR] 🚀 인증 초기화 시작');
+        // ── 인증 초기화 (앱 최초 1회) ─────────────────────────────────────────
+        /**
+         * ✅ 핵심 변경:
+         * - onAuthStateChanged 를 앱 생명주기 내내 구독 유지
+         * - isAuthReady = true 는 첫 콜백 완료 후 영구 설정
+         * - 반환값(unsubscribe) 을 App.tsx 에서 cleanup 으로 호출
+         */
+        initializeAuth: () => {
+          let firstCall = true;
 
-            // ✅ 1. localStorage에서 lastLoginUid 체크 (즉시 로딩 상태 해제)
-            const lastLoginUid = localStorage.getItem('lastLoginUid');
-            if (lastLoginUid) {
-              console.log('[useAuthKR] 📦 localStorage에 lastLoginUid 발견:', lastLoginUid);
-              // 빠른 UI 표시를 위해 일단 로딩 해제 (Firebase 확인 중)
-              set({ isLoading: false });
-            }
+          // 즉시 동기적으로 unsubscribe 함수를 만들기 위해 변수 사용
+          let unsubscribeFn: (() => void) | null = null;
 
-            // ✅ 2. Firebase Auth 상태 확인 (최대 1.5초 대기)
-            return new Promise<void>(async (resolve) => {
-              let resolved = false;
-              let unsubscribe: (() => void) | null = null;
-              
-              const timeout = setTimeout(() => {
-                if (!resolved) {
-                  console.warn('[useAuthKR] ⚠️ onAuthStateChanged 타임아웃 (1.5초)');
-                  resolved = true;
-                  
-                  // ✅ 타임아웃 시 unsubscribe 안전하게 호출
-                  if (unsubscribe) {
-                    try {
-                      unsubscribe();
-                    } catch (e) {
-                      console.error('[useAuthKR] ❌ unsubscribe 실패:', e);
-                    }
+          // Firebase lazy load 후 구독 시작 (비동기)
+          (async () => {
+            try {
+              const { onAuthStateChanged } = await import('@/lib/firebase-auth');
+
+              unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
+                if (firstCall) {
+                  firstCall = false;
+                }
+
+                if (firebaseUser) {
+                  // Firebase 유저 있음 → user_type 이 seller/admin 이면 간섭하지 않음
+                  const currentType = localStorage.getItem('user_type');
+                  if (currentType === 'seller' || currentType === 'admin') {
+                    // Seller/Admin 탭에서 Firebase 이벤트가 와도 무시
+                    set({ isAuthReady: true });
+                    return;
                   }
-                  
+
+                  try {
+                    const idToken = await firebaseUser.getIdToken(false); // 캐시된 토큰 사용
+                    const res = await fetch('/api/users/role', {
+                      headers: { Authorization: `Bearer ${idToken}` },
+                    });
+                    const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
+                    const role = (body.role || 'user') as 'user';
+
+                    safeSetUserType();
+                    localStorage.setItem('lastLoginUid', firebaseUser.uid);
+
+                    set({
+                      user: firebaseUser,
+                      userRole: role,
+                      isLoading: false,
+                      isAuthReady: true,
+                      error: null,
+                    });
+                  } catch (err) {
+                    // 역할 조회 실패해도 user 로 처리
+                    safeSetUserType();
+                    localStorage.setItem('lastLoginUid', firebaseUser.uid);
+                    set({
+                      user: firebaseUser,
+                      userRole: 'user',
+                      isLoading: false,
+                      isAuthReady: true,
+                    });
+                  }
+                } else {
+                  // Firebase 유저 없음
+                  localStorage.removeItem('lastLoginUid');
                   set({
                     user: null,
                     userRole: null,
                     isLoading: false,
                     isAuthReady: true,
                   });
-                  resolve();
                 }
-              }, 1500);
+              });
+            } catch (err) {
+              console.error('[useAuthKR] onAuthStateChanged 설정 실패:', err);
+              set({ isLoading: false, isAuthReady: true });
+            }
+          })();
 
-              try {
-                unsubscribe = await onAuthStateChanged(async (user) => {
-                  if (resolved) {
-                    // 이미 타임아웃으로 해결됨, unsubscribe만 호출
-                    if (unsubscribe) {
-                      try {
-                        unsubscribe();
-                      } catch (e) {
-                        console.error('[useAuthKR] ❌ unsubscribe 실패 (타임아웃 후):', e);
-                      }
-                    }
-                    return;
-                  }
-                  
-                  clearTimeout(timeout);
-                  resolved = true;
-
-                  if (user) {
-                    console.log('[useAuthKR] ✅ Firebase 로그인 상태 확인:', user.uid);
-                    
-                    // ✅ lastLoginUid 저장 (다음 로드 시 즉시 체크)
-                    localStorage.setItem('lastLoginUid', user.uid);
-                    
-                    // 사용자 역할 조회
-                    try {
-                      const roleResponse = await fetch('/api/users/role', {
-                        headers: { Authorization: `Bearer ${await user.getIdToken()}` },
-                      });
-                      const { role } = await roleResponse.json();
-
-                      set({
-                        user,
-                        userRole: role,
-                        isLoading: false,
-                        isAuthReady: true,
-                      });
-                      console.log('[useAuthKR] ✅ 사용자 역할:', role);
-                    } catch (err) {
-                      console.error('[useAuthKR] ❌ Failed to fetch user role:', err);
-                      set({
-                        user,
-                        userRole: 'user', // 기본값
-                        isLoading: false,
-                        isAuthReady: true,
-                      });
-                    }
-                  } else {
-                    console.log('[useAuthKR] ℹ️ 로그인 상태 아님');
-                    // ✅ lastLoginUid 제거
-                    localStorage.removeItem('lastLoginUid');
-                    set({
-                      user: null,
-                      userRole: null,
-                      isLoading: false,
-                      isAuthReady: true,
-                    });
-                  }
-                  
-                  // ✅ unsubscribe 안전하게 호출
-                  if (unsubscribe) {
-                    try {
-                      unsubscribe();
-                    } catch (e) {
-                      console.error('[useAuthKR] ❌ unsubscribe 실패:', e);
-                    }
-                  }
-                  resolve();
-                });
-              } catch (err) {
-                clearTimeout(timeout);
-                console.error('[useAuthKR] ❌ onAuthStateChanged 설정 실패:', err);
-                resolved = true;
-                set({
-                  user: null,
-                  userRole: null,
-                  isLoading: false,
-                  isAuthReady: true,
-                });
-                resolve();
-              }
-            });
-          } catch (err: any) {
-            console.error('[useAuthKR] ❌ initializeAuth failed:', err);
-            set({
-              error: err.message || '인증 초기화 실패',
-              isLoading: false,
-              isAuthReady: true,
-            });
-            throw err;
-          }
+          // 즉시 반환 (cleanup 함수)
+          return () => {
+            if (unsubscribeFn) {
+              unsubscribeFn();
+            }
+          };
         },
       }),
       {
-        name: 'auth-kr-storage', // localStorage 키
+        name: 'auth-kr-storage',
         partialize: (state) => ({
-          // ❌ user 객체는 persist 하지 않음 (Firebase가 관리)
-          // user: state.user,
           userRole: state.userRole,
+          // user 객체는 persist 하지 않음 (Firebase가 관리)
         }),
       }
     ),
@@ -371,9 +257,9 @@ export const useAuthKR = create<AuthKRState>()(
   )
 );
 
-// ✅ Selector 예시 (리렌더 최소화)
-export const useAuthKRUser = () => useAuthKR((state) => state.user);
-export const useAuthKRLoading = () => useAuthKR((state) => state.isLoading);
-export const useAuthKRError = () => useAuthKR((state) => state.error);
-export const useAuthKRRole = () => useAuthKR((state) => state.userRole);
-export const useAuthKRReady = () => useAuthKR((state) => state.isAuthReady);
+// ── Selector 훅 ───────────────────────────────────────────────────────────────
+export const useAuthKRUser = () => useAuthKR((s) => s.user);
+export const useAuthKRLoading = () => useAuthKR((s) => s.isLoading);
+export const useAuthKRError = () => useAuthKR((s) => s.error);
+export const useAuthKRRole = () => useAuthKR((s) => s.userRole);
+export const useAuthKRReady = () => useAuthKR((s) => s.isAuthReady);

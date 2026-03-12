@@ -16,9 +16,9 @@ import { krEnvSchema, worldEnvSchema, workerEnvSchema } from './env-schema';
 // ============================================
 function formatValidationError(error: z.ZodError, region?: string): string {
   // ✅ undefined/null 안전 처리
-  const errors = (error?.errors || [])
-    .filter(err => err != null)
-    .map((err) => {
+  const errors = ((error as any)?.errors || error?.issues || [])
+    .filter((err: any) => err != null)
+    .map((err: any) => {
       const path = Array.isArray(err.path) ? err.path.join('.') : 'unknown';
       return `  ❌ ${path}: ${err.message || 'Unknown error'}`;
     });
@@ -152,7 +152,8 @@ export function validateEnvForRuntime(region: 'KR' | 'GLOBAL'): void {
     if (import.meta.env.VITE_SENTRY_DSN && typeof window !== 'undefined') {
       try {
         // @ts-ignore - Sentry는 초기화 후 전역으로 사용 가능
-        if (window.Sentry) {
+        if ((window as any).Sentry) {
+          // @ts-ignore
           window.Sentry.captureException(error);
         }
       } catch (sentryError) {

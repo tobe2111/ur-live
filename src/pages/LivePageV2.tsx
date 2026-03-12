@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send } from 'lucide-react'
 import axios from 'axios'
-import { getUserId } from '@/utils/auth'
+import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
 // import { useLiveChat } from '@/hooks/useLiveChat' // ❌ SSE 폴링 방식 (5초 지연)
@@ -13,6 +13,16 @@ import { createLogger } from '@/utils/logger'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
+
+// Extend window for YouTube IFrame API
+declare global {
+  interface Window {
+    YT: any
+    youtubeCallbacks: (() => void)[]
+    onYouTubeIframeAPIReady: () => void
+  }
+}
+
 interface Stream {
   id: number
   title: string
@@ -20,6 +30,7 @@ interface Stream {
   streamerAvatar?: string
   videoUrl?: string
   youtube_video_id?: string
+  thumbnail_url?: string
   status: 'live' | 'ended' | 'scheduled'
   viewerCount: number
   products?: Product[]
@@ -48,6 +59,8 @@ interface ChatMessage {
   id: string
   username: string
   message: string
+  role?: string
+  userName?: string
 }
 
 interface ReelData {
@@ -218,12 +231,14 @@ function ProductListSheet({
   onClose,
   onSelectProduct,
   loading,
+  stream: sheetStream,
 }: {
   products: Product[]
   currentProductId: number | null
   onClose: () => void
   onSelectProduct: (product: Product) => void
   loading: boolean
+  stream?: Stream
 }) {
   const safeProducts = products || []
   
@@ -265,8 +280,9 @@ function ProductListSheet({
             <div className="flex flex-col gap-3">{safeProducts.map((product) => {
                 const isCurrentProduct = product.id === currentProductId
                 const isOutOfStock = product.stock !== undefined && product.stock === 0
-                const discount = product.original_price && product.original_price > product.price
-                  ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+                const productAny = product as any
+                const discount = productAny.original_price && productAny.original_price > product.price
+                  ? Math.round(((productAny.original_price - product.price) / productAny.original_price) * 100)
                   : 0
 
                 return (
@@ -299,13 +315,14 @@ function ProductListSheet({
 
                     <div className="relative h-20 w-20 shrink-0 rounded-xl bg-gray-100 overflow-hidden">
                       <img
-                        src={product.image_url || product.image || stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
+                        src={(product as any).image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')}
                         alt={product.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const img = e.target as HTMLImageElement
-                          if (img.src !== stream.thumbnail_url) {
-                            img.src = stream.thumbnail_url || `https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`
+                          const fallback = sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')
+                          if (fallback && img.src !== fallback) {
+                            img.src = fallback
                           }
                         }}
                       />
@@ -324,9 +341,9 @@ function ProductListSheet({
                         <span className="text-xl font-extrabold text-gray-900">
                           ₩{(product.price || 0).toLocaleString()}
                         </span>
-                        {product.original_price && product.original_price > product.price && (
+                        {(product as any).original_price && (product as any).original_price > product.price && (
                           <span className="text-sm text-gray-400 line-through">
-                            ₩{product.original_price.toLocaleString()}
+                            ₩{((product as any).original_price as number).toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -397,15 +414,13 @@ function ReelCard({
   const [productChangeToast, setProductChangeToast] = useState<string | null>(null)
   
   // Handle null product case
-  const safeProduct = product || {
+  const safeProduct = (product || {
     name: stream.title || '상품 정보 없음',
     // ✅ 이미지 없을 때: undefined로 두어 배경 이미지 비활성화
     image: undefined,
-    image_url: undefined,
     price: 0,
-    originalPrice: 0,
-    original_price: 0
-  }
+    originalPrice: 0
+  }) as Product & { image_url?: string; original_price?: number }
   
   // 🔥 SSE 기반 실시간 채팅 (메시지 전송용)
   const { sendMessage: sendChatMessage } = useFirebaseChat(stream.id, true)
@@ -1205,6 +1220,7 @@ function ReelCard({
           <ProductListSheet
             products={streamProducts}
             currentProductId={stream.current_product_id || null}
+            stream={stream}
             onClose={() => setProductListSheetOpen(false)}
             onSelectProduct={(selectedProduct) => {
               setProductListSheetOpen(false)
@@ -1282,6 +1298,7 @@ export default function LivePageV2() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [reels, setReels] = useState<ReelData[]>([])
   const [loading, setLoading] = useState(true)
+  const [isDirectLink, setIsDirectLink] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   
@@ -1521,7 +1538,7 @@ export default function LivePageV2() {
       // Check streamer permission for new stream
       const userType = localStorage.getItem('user_type')
       const userId = getUserId()
-      const accessToken = localStorage.getItem('access_token')
+      const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
       
       log.debug('[LivePageV2] Checking seller permission:', {
         userType,
@@ -1609,8 +1626,8 @@ export default function LivePageV2() {
     try {
       setChangingProduct(true)
       
-      // JWT 기반 인증 토큰 사용
-      const accessToken = localStorage.getItem('access_token')
+      // JWT 기반 인증 토큰 사용 - seller_token이 primary
+      const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
       
       if (!accessToken) {
         alert('로그인이 필요합니다.')
@@ -1622,7 +1639,7 @@ export default function LivePageV2() {
         { productId },
         {
           headers: {
-            'Authorization': `Bearer ${sessionToken}`
+            'Authorization': `Bearer ${accessToken}`
           }
         }
       )

@@ -248,7 +248,7 @@ export default function NotificationDropdown({ userId }: NotificationDropdownPro
       )}
 
       {/* Add animation styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes slide-down {
           from {
             opacity: 0;

@@ -88,7 +88,7 @@ export async function verifyFirebaseIdToken(
         now,
         expiredBy: now - payload.exp
       });
-      throw new errors.JWTExpired('Token has expired');
+      throw new errors.JWTExpired('Token has expired', payload);
     }
 
     if (payload.iat && payload.iat > now + 300) { // 5분 클락 스큐 허용

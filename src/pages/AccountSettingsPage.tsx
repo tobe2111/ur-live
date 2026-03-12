@@ -15,7 +15,7 @@ import {
   ChevronRight,
   Edit,
 } from 'lucide-react';
-import { getUserId, getUserName, getUserEmail } from '@/utils/auth';
+import { getUserId, getUserIdSync, getUserName, getUserNameSync, getUserEmail } from '@/utils/auth';
 
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     const loadUserData = async () => {
-      const userId = await getUserId();
+      const userId = getUserIdSync();
       if (!userId) {
         alert('로그인이 필요합니다.');
         navigate('/login');
@@ -37,7 +37,7 @@ export default function AccountSettingsPage() {
 
       setUser({
         id: userId,
-        name: getUserName() || '사용자',
+        name: getUserNameSync() || '사용자',
         email: getUserEmail() || '',
         phone: '010-1234-5678', // TODO: 실제 전화번호 가져오기
       });

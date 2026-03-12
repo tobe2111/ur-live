@@ -11,13 +11,6 @@ import { GoogleAuthService } from '../services/GoogleAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
 import { verifyFirebaseIdToken } from '@/lib/firebase-token-verify';
 import type { AuthResponse } from '../types';
-import {
-  successResponse,
-  badRequestResponse,
-  unauthorizedResponse,
-  internalServerErrorResponse
-} from '@/worker/utils/response';
-import { validateRequired } from '@/worker/utils/validation';
 
 type Bindings = {
   DB: D1Database;
@@ -32,33 +25,30 @@ export const googleRoutes = new Hono<{ Bindings: Bindings }>();
 /**
  * POST /api/auth/google/register
  * Google 로그인 처리 (Firebase ID Token 검증 후 DB 저장)
- * 
- * Request body:
- * - idToken: Firebase ID Token (Google Sign-In으로부터 받은 토큰)
- * 
- * Response:
- * - customToken: Firebase Custom Token
- * - user: User 정보
  */
 googleRoutes.post('/register', cors(), async (c) => {
   const { DB } = c.env;
   
   try {
-    const { idToken } = await c.req.json();
+    const body = await c.req.json() as Record<string, any>;
+    const idToken: string = body.idToken;
     
-    // Validation
-    const validationErrors = validateRequired({ idToken }, ['idToken']);
-    if (validationErrors.length > 0) {
-      return badRequestResponse(c, 'Firebase ID token is required');
+    if (!idToken) {
+      return c.json({ success: false, error: 'Firebase ID token is required' }, 400);
     }
     
     console.log('[Google Auth] Verifying Firebase ID token...');
     
-    // 1. Firebase ID Token 검증
-    const tokenPayload = await verifyFirebaseIdToken(idToken);
+    // 1. Firebase ID Token 검증 (projectId 필요)
+    const projectId = c.env.FIREBASE_PROJECT_ID;
+    if (!projectId) {
+      return c.json({ success: false, error: 'Firebase project not configured' }, 500);
+    }
     
-    if (!tokenPayload || !tokenPayload.email) {
-      return unauthorizedResponse(c, 'Invalid Firebase ID token');
+    const tokenPayload = await verifyFirebaseIdToken(idToken, projectId);
+    
+    if (!tokenPayload || !tokenPayload.sub) {
+      return c.json({ success: false, error: 'Invalid Firebase ID token' }, 401);
     }
     
     console.log('[Google Auth] Token verified for user:', tokenPayload.email);
@@ -66,25 +56,25 @@ googleRoutes.post('/register', cors(), async (c) => {
     // 2. Google 사용자 정보 추출
     const googleService = new GoogleAuthService(DB);
     const googleUser = googleService.extractUserFromToken({
-      sub: tokenPayload.uid,
-      email: tokenPayload.email!,
-      email_verified: tokenPayload.email_verified || false,
-      name: tokenPayload.name || tokenPayload.email!.split('@')[0],
-      picture: tokenPayload.picture
+      sub: tokenPayload.sub as string,
+      email: (tokenPayload.email as string) || '',
+      email_verified: (tokenPayload.email_verified as boolean) || false,
+      name: (tokenPayload.name as string) || (tokenPayload.email as string || '').split('@')[0],
+      picture: tokenPayload.picture as string | undefined
     });
     
     // 3. DB에 사용자 저장/업데이트
     const user = await googleService.upsertUser(googleUser);
     
-    // 4. Firebase Custom Token 생성 (추가 claims 포함)
+    // 4. Firebase Custom Token 생성
     const firebaseService = new FirebaseAuthService(c.env);
-    const firebaseUID = tokenPayload.uid; // 이미 Firebase에서 발급한 UID 사용
+    const firebaseUID = tokenPayload.sub as string;
     const customToken = await firebaseService.createCustomToken(firebaseUID, {
       role: 'user',
       userId: user.id,
       userName: user.name,
       email: user.email,
-      googleId: googleUser.googleId
+      kakaoId: googleUser.googleId // reuse kakaoId field for googleId (optional claim)
     });
     
     // 5. Firebase UID 저장
@@ -92,22 +82,25 @@ googleRoutes.post('/register', cors(), async (c) => {
     
     console.log('[Google Auth] ✅ Login successful for user:', user.id);
     
-    // 6. 응답 반환
-    return successResponse(c, {
-      customToken: customToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        profile_image: user.profile_image,
-        firebaseUID: firebaseUID
+    return c.json({
+      success: true,
+      data: {
+        customToken,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          profile_image: user.profile_image,
+          firebaseUID
+        }
       },
-    }, 'Login successful');
+      message: 'Login successful'
+    });
     
   } catch (error) {
     console.error('[Google Auth] Error:', error);
     const errorMsg = (error as Error).message || 'Unknown error';
-    return internalServerErrorResponse(c, errorMsg);
+    return c.json({ success: false, error: errorMsg }, 500);
   }
 });
 

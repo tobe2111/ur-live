@@ -206,7 +206,7 @@ export function addLoginHistory(ip: string, success: boolean): void {
   // 캐시 크기 제한 (1000개)
   if (loginHistoryCache.size > 1000) {
     const firstKey = loginHistoryCache.keys().next().value;
-    loginHistoryCache.delete(firstKey);
+    loginHistoryCache.delete(firstKey!);
   }
 }
 

@@ -42,7 +42,7 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
       throw new Error(`Backend error: ${response.status}`)
     }
 
-    const data = await response.json()
+    const data = await response.json() as any
     
     if (!data.firebaseToken && !data.customToken) {
       throw new Error('No Firebase token received from backend')

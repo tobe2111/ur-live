@@ -1,17 +1,17 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import {
-  signInWithGoogle,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  type User as FirebaseUser,
-} from '@/lib/firebase-auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 /**
  * ✅ Zustand Store - WORLD 전용 인증 (Google OAuth)
- * - KR과 동일한 인터페이스 유지 → 컴포넌트 재사용 가능
- * - 순수 함수로 구성 → 테스트 가능
+ *
+ * 핵심 설계 원칙 (useAuthKR과 동일):
+ * 1. onAuthStateChanged 를 앱 전체 생명주기 동안 지속 구독
+ * 2. isAuthReady 는 최초 Firebase 상태 확인 완료 후 true 로 고정
+ * 3. Seller/Admin 은 이 store 를 전혀 사용하지 않음
+ * 4. initializeAuth() 반환값: unsubscribe 함수 (App.tsx cleanup 용)
  */
+
 interface AuthWorldState {
   user: FirebaseUser | null;
   isLoading: boolean;
@@ -26,15 +26,22 @@ interface AuthWorldState {
 
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  initializeAuth: () => Promise<void>;
+  initializeAuth: () => () => void; // 반환값: unsubscribe
+}
+
+function safeSetUserType() {
+  const current = localStorage.getItem('user_type');
+  if (!current || current === 'user') {
+    localStorage.setItem('user_type', 'user');
+  }
 }
 
 export const useAuthWorld = create<AuthWorldState>()(
   devtools(
     persist(
-      (set, get) => ({
+      (set) => ({
         user: null,
-        isLoading: true,
+        isLoading: false,
         error: null,
         isAuthReady: false,
         userRole: null,
@@ -44,146 +51,99 @@ export const useAuthWorld = create<AuthWorldState>()(
         setError: (error) => set({ error }, false, 'setError'),
         setAuthReady: (isAuthReady) => set({ isAuthReady }, false, 'setAuthReady'),
 
-        // ✅ Google OAuth 로그인
+        // ── Google OAuth 로그인 ────────────────────────────────────────────
         loginWithGoogle: async () => {
+          set({ isLoading: true, error: null });
           try {
-            set({ isLoading: true, error: null });
-            console.log('[useAuthWorld] 🔐 Google 로그인 시작...');
+            const { signInWithGoogle } = await import('@/lib/firebase-auth');
+            const { user } = await signInWithGoogle();
 
-            const userCredential = await signInWithGoogle();
-            const user = userCredential.user;
-            console.log('[useAuthWorld] ✅ Google 로그인 성공:', user.uid);
+            const idToken = await user.getIdToken(true);
 
-            // 🔥 중요: Firebase ID Token을 강제로 갱신하여 최신 상태 보장
-            console.log('[useAuthWorld] 🔄 ID Token 강제 갱신 중...');
-            const idToken = await user.getIdToken(true); // force refresh
-            console.log('[useAuthWorld] ✅ ID Token 갱신 완료:', idToken.substring(0, 30) + '...');
-
-            // 🔥 추가 대기: Firebase Auth State가 완전히 업데이트되도록 100ms 대기
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
-            localStorage.setItem('user_type', 'user');
-            localStorage.setItem('user_name', user.displayName || user.email?.split('@')[0] || 'User');
-            console.log('[useAuthWorld] ✅ localStorage에 user_type 설정: user');
-
-            // 사용자 역할 조회
-            console.log('[useAuthWorld] 📡 사용자 역할 조회 API 호출...');
-            try {
-              const roleResponse = await fetch('/api/users/role', {
-                headers: { Authorization: `Bearer ${idToken}` },
-              });
-              
-              if (!roleResponse.ok) {
-                console.error('[useAuthWorld] ❌ 역할 조회 실패:', roleResponse.status, roleResponse.statusText);
-                throw new Error(`Failed to fetch user role: ${roleResponse.status}`);
-              }
-              
-              const { role } = await roleResponse.json();
-              console.log('[useAuthWorld] ✅ 사용자 역할 확인:', role);
-
-              // ✅ CRITICAL: useAuthWorld는 Firebase 기반 User 전용!
-              // Seller/Admin은 JWT 로그인을 사용하며 이 스토어를 사용하지 않음!
-              if (role === 'seller' || role === 'admin') {
-                console.error('[useAuthWorld] ❌ Seller/Admin은 JWT 로그인을 사용해야 합니다!');
-                throw new Error(`${role} 계정은 이메일/비밀번호 로그인을 사용해야 합니다.`);
-              }
-
-              set({
-                user,
-                userRole: 'user', // ✅ 항상 'user' (Seller/Admin은 여기 도달 불가)
-                isLoading: false,
-                isAuthReady: true,
-              });
-            } catch (err) {
-              console.error('[useAuthWorld] ❌ Failed to fetch user role:', err);
-              set({
-                user,
-                userRole: 'user', // 기본값
-                isLoading: false,
-                isAuthReady: true,
-              });
-            }
-            
-            console.log('[useAuthWorld] ✅ 로그인 완료 - Zustand 상태 업데이트됨');
-          } catch (err: any) {
-            console.error('[useAuthWorld] ❌ loginWithGoogle failed:', err);
-            set({
-              error: err.message || 'Google 로그인 실패',
-              isLoading: false,
+            const res = await fetch('/api/users/role', {
+              headers: { Authorization: `Bearer ${idToken}` },
             });
+            const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
+            const role: string = body.role || 'user';
+
+            if (role === 'seller' || role === 'admin') {
+              const { signOut } = await import('@/lib/firebase-auth');
+              await signOut().catch(() => {});
+              throw new Error(`${role} 계정은 /seller/login 또는 /admin/login을 이용하세요.`);
+            }
+
+            safeSetUserType();
+            localStorage.setItem('user_name', user.displayName || user.email?.split('@')[0] || 'User');
+            set({ isLoading: false, error: null });
+          } catch (err: any) {
+            set({ error: err.message || 'Google 로그인 실패', isLoading: false });
             throw err;
           }
         },
 
-        // ✅ 로그아웃
+        // ── 로그아웃 ────────────────────────────────────────────────────────
         logout: async () => {
           try {
-            set({ isLoading: true, error: null });
-            await firebaseSignOut();
+            const { signOut } = await import('@/lib/firebase-auth');
+            await signOut().catch(() => {});
+          } catch (_) {}
 
-            localStorage.removeItem('user');
+          const { clearAuthData } = await import('@/utils/auth');
+          clearAuthData('user');
+          localStorage.removeItem('auth-world-storage');
+          localStorage.removeItem('auth-kr-storage');
+          localStorage.removeItem('lastLoginUid');
 
-            set({
-              user: null,
-              userRole: null,
-              isLoading: false,
-              isAuthReady: true,
-            });
-          } catch (err: any) {
-            console.error('[useAuthWorld] logout failed:', err);
-            set({
-              error: err.message || '로그아웃 실패',
-              isLoading: false,
-            });
-            throw err;
-          }
+          set({ user: null, userRole: null, isLoading: false, isAuthReady: true });
+          setTimeout(() => { window.location.href = '/'; }, 50);
         },
 
-        // ✅ 인증 초기화
-        initializeAuth: async () => {
-          try {
-            set({ isLoading: true, error: null });
+        // ── 인증 초기화 (앱 최초 1회) ─────────────────────────────────────
+        initializeAuth: () => {
+          let unsubscribeFn: (() => void) | null = null;
 
-            return new Promise<void>(async (resolve) => {
-              const unsubscribe = await onAuthStateChanged(async (user) => {
-                if (user) {
+          (async () => {
+            try {
+              const { onAuthStateChanged } = await import('@/lib/firebase-auth');
+
+              unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
+                if (firebaseUser) {
+                  const currentType = localStorage.getItem('user_type');
+                  if (currentType === 'seller' || currentType === 'admin') {
+                    set({ isAuthReady: true });
+                    return;
+                  }
+
                   try {
-                    const roleResponse = await fetch('/api/users/role', {
-                      headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+                    const idToken = await firebaseUser.getIdToken(false);
+                    const res = await fetch('/api/users/role', {
+                      headers: { Authorization: `Bearer ${idToken}` },
                     });
-                    const { role } = await roleResponse.json();
+                    const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
+                    const role = (body.role || 'user') as 'user';
 
-                    // ✅ CRITICAL: Seller/Admin 체크
-                    if (role === 'seller' || role === 'admin') {
-                      console.error('[useAuthWorld] ❌ Seller/Admin은 JWT 로그인을 사용해야 합니다!');
-                      set({
-                        user: null,
-                        userRole: null,
-                        isLoading: false,
-                        isAuthReady: true,
-                      });
-                      unsubscribe();
-                      resolve();
-                      return;
-                    }
+                    safeSetUserType();
+                    localStorage.setItem('lastLoginUid', firebaseUser.uid);
 
                     set({
-                      user,
-                      userRole: 'user', // ✅ 항상 'user'
+                      user: firebaseUser,
+                      userRole: role,
                       isLoading: false,
                       isAuthReady: true,
+                      error: null,
                     });
-                  } catch (err) {
-                    console.error('[useAuthWorld] Failed to fetch user role:', err);
+                  } catch (_) {
+                    safeSetUserType();
+                    localStorage.setItem('lastLoginUid', firebaseUser.uid);
                     set({
-                      user,
-                      userRole: 'user', // 기본값
+                      user: firebaseUser,
+                      userRole: 'user',
                       isLoading: false,
                       isAuthReady: true,
                     });
                   }
                 } else {
+                  localStorage.removeItem('lastLoginUid');
                   set({
                     user: null,
                     userRole: null,
@@ -191,28 +151,21 @@ export const useAuthWorld = create<AuthWorldState>()(
                     isAuthReady: true,
                   });
                 }
-                unsubscribe();
-                resolve();
               });
-            });
-          } catch (err: any) {
-            console.error('[useAuthWorld] initializeAuth failed:', err);
-            set({
-              error: err.message || '인증 초기화 실패',
-              isLoading: false,
-              isAuthReady: true,
-            });
-            throw err;
-          }
+            } catch (err) {
+              console.error('[useAuthWorld] onAuthStateChanged 설정 실패:', err);
+              set({ isLoading: false, isAuthReady: true });
+            }
+          })();
+
+          return () => {
+            if (unsubscribeFn) unsubscribeFn();
+          };
         },
       }),
       {
         name: 'auth-world-storage',
-        partialize: (state) => ({
-          // ❌ user 객체는 persist 하지 않음 (Firebase가 관리)
-          // user: state.user,
-          userRole: state.userRole,
-        }),
+        partialize: (state) => ({ userRole: state.userRole }),
       }
     ),
     { name: 'AuthWorld Store' }
@@ -220,8 +173,8 @@ export const useAuthWorld = create<AuthWorldState>()(
 );
 
 // Selectors
-export const useAuthWorldUser = () => useAuthWorld((state) => state.user);
-export const useAuthWorldLoading = () => useAuthWorld((state) => state.isLoading);
-export const useAuthWorldError = () => useAuthWorld((state) => state.error);
-export const useAuthWorldRole = () => useAuthWorld((state) => state.userRole);
-export const useAuthWorldReady = () => useAuthWorld((state) => state.isAuthReady);
+export const useAuthWorldUser = () => useAuthWorld((s) => s.user);
+export const useAuthWorldLoading = () => useAuthWorld((s) => s.isLoading);
+export const useAuthWorldError = () => useAuthWorld((s) => s.error);
+export const useAuthWorldRole = () => useAuthWorld((s) => s.userRole);
+export const useAuthWorldReady = () => useAuthWorld((s) => s.isAuthReady);

@@ -190,7 +190,7 @@ shippingAddressRoutes.put('/:id', requireAuth(), async (c) => {
       return c.json(unauthorizedResponse(), 401);
     }
 
-    const addressId = parseInt(c.req.param('id'));
+    const addressId = parseInt(c.req.param('id') || '0');
     const body = await c.req.json<AddressUpdateRequest>();
 
     if (isNaN(addressId)) {
@@ -276,7 +276,7 @@ shippingAddressRoutes.delete('/:id', requireAuth(), async (c) => {
       return c.json(unauthorizedResponse(), 401);
     }
 
-    const addressId = parseInt(c.req.param('id'));
+    const addressId = parseInt(c.req.param('id') || '0');
 
     if (isNaN(addressId)) {
       return c.json(badRequestResponse('Invalid address ID'), 400);

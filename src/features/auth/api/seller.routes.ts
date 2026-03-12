@@ -94,7 +94,7 @@ sellerRoutes.post('/login', cors(), async (c) => {
         created_at, updated_at
       FROM sellers 
       WHERE email = ?
-    `).bind(email).first();
+    `).bind(email).first<Record<string, any>>();
     
     if (!seller) {
       console.warn('[Seller Login] Seller not found:', email);
@@ -160,12 +160,12 @@ sellerRoutes.post('/login', cors(), async (c) => {
     console.log('[Seller Login] ✅ Login successful for seller:', seller.id);
     
     // 5. 응답 반환 (frontend expects accessToken & refreshToken)
-    return c.json<AuthResponse<SellerLoginResponse>>({
+    return c.json({
       success: true,
       data: {
-        accessToken: token, // ✅ Changed from 'token' to 'accessToken'
-        refreshToken: refreshToken, // ✅ Added refreshToken
-        token, // ✅ Keep for backward compatibility
+        accessToken: token,
+        refreshToken: refreshToken,
+        token, // backward compatibility
         seller: {
           id: seller.id as number,
           username: seller.username as string,
@@ -233,7 +233,7 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
     // 1. Refresh Token 검증
     let payload: any;
     try {
-      payload = await verify(refreshToken, JWT_SECRET);
+      payload = await verify(refreshToken, JWT_SECRET, 'HS256');
     } catch (error) {
       console.warn('[Seller Refresh] Invalid refresh token:', error);
       return c.json<AuthResponse>({ 
@@ -259,7 +259,7 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
       SELECT id, email, name, username, status, business_name, commission_rate
       FROM sellers 
       WHERE id = ?
-    `).bind(sellerId).first();
+    `).bind(sellerId).first<Record<string, any>>();
     
     if (!seller) {
       console.warn('[Seller Refresh] Seller not found:', sellerId);

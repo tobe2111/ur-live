@@ -145,7 +145,7 @@ export function StripeCheckout(props: StripeCheckoutProps) {
           })
         })
 
-        const data = await response.json()
+        const data = await response.json() as any
         if (data.success && data.clientSecret) {
           setClientSecret(data.clientSecret)
         } else {

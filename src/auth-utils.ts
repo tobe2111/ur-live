@@ -155,7 +155,7 @@ export async function getKakaoUserInfo(accessToken: string): Promise<KakaoUserDa
       );
     }
     
-    const userData = await response.json();
+    const userData = await response.json() as any;
     
     if (!userData.id) {
       throw new AuthError(
@@ -204,7 +204,7 @@ export async function exchangeKakaoCode(
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as any;
       console.error('[Kakao OAuth] Token exchange failed:', errorData);
       
       throw new AuthError(
@@ -214,7 +214,7 @@ export async function exchangeKakaoCode(
       );
     }
     
-    const tokenData = await response.json();
+    const tokenData = await response.json() as any;
     return tokenData.access_token;
     
   } catch (error) {

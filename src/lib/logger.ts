@@ -146,5 +146,11 @@ export interface ApiLogContext {
 export function logApiRequest(context: ApiLogContext) {
   const level = context.status >= 500 ? 'error' : context.status >= 400 ? 'warn' : 'info';
   
-  logger.log(level, 'API Request', context, context.duration);
+  if (level === 'error') {
+    logger.error('API Request', new Error(String(context.status)), context);
+  } else if (level === 'warn') {
+    logger.warn('API Request', context);
+  } else {
+    logger.info('API Request', context);
+  }
 }

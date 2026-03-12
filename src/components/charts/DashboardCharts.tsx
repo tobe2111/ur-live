@@ -78,6 +78,7 @@ export default function DashboardCharts({
               tick={{ fontSize: 12 }}
             />
             <Tooltip 
+              // @ts-ignore - recharts formatter type
               formatter={(value: any, name: string) => {
                 if (name === '매출액') return formatPrice(value)
                 return formatNumber(value)
@@ -129,6 +130,7 @@ export default function DashboardCharts({
               tickFormatter={(value) => formatShortPrice(value)}
             />
             <Tooltip 
+              // @ts-ignore - recharts formatter type
               formatter={(value: any, name: string) => {
                 if (name === '매출액') return formatPrice(value)
                 return formatNumber(value)

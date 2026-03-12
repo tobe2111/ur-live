@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { ArrowLeft } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
+import { clearFirebaseTokenCache } from '@/lib/api'
 
 export default function SellerLoginPage() {
   const navigate = useNavigate()
@@ -14,24 +15,14 @@ export default function SellerLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // ✅ 이미 셀러 로그인되어 있으면 리다이렉트 (Firebase 절대 사용 안 함!)
+  // ✅ Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forSeller)에서 처리)
   useEffect(() => {
-    const sellerToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    
-    if (sellerToken && userType === 'seller') {
-      console.log('[SellerLoginPage] 이미 판매자 로그인됨 - /seller로 리다이렉트')
-      navigate('/seller', { replace: true })
-      return
-    }
-
-    // Load saved email if "Remember Me" was checked
     const savedEmail = localStorage.getItem('seller_remember_email')
     if (savedEmail) {
       setFormData(prev => ({ ...prev, email: savedEmail }))
       setRememberMe(true)
     }
-  }, [navigate])
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,18 +32,13 @@ export default function SellerLoginPage() {
     try {
       console.log('[SellerLogin] 🔐 Starting JWT-only login (NO Firebase!)')
       
-      // ✅ CRITICAL: User 세션 완전 정리 (Firebase 포함)
-      console.log('[SellerLogin] 🧹 User 세션 정리 중...')
+      // ✅ CRITICAL: User 세션 + Firebase 완전 정리 (토큰 캐시 포함)
       clearAuthData('user')
-      
-      // ✅ CRITICAL: Firebase 로그아웃
+      clearFirebaseTokenCache()
       try {
         const { signOut } = await import('@/lib/firebase-auth')
         await signOut()
-        console.log('[SellerLogin] ✅ Firebase 로그아웃 완료')
-      } catch (err) {
-        console.warn('[SellerLogin] ⚠️ Firebase 로그아웃 실패 (무시):', err)
-      }
+      } catch (_) {}
       
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/seller/login', {
@@ -91,13 +77,7 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
         
-        console.log('[SellerLogin] ✅ Tokens and user info saved')
-        console.log('  ✅ seller_token:', accessToken ? 'STORED' : 'MISSING')
-        console.log('  ✅ user_type:', 'seller')
-        console.log('  ✅ seller_id:', seller.id)
-        
-        // Navigate to seller dashboard
-        console.log('[SellerLogin] ✅ Navigating to /seller...')
+        console.log('[SellerLogin] ✅ Seller 로그인 완료, /seller 이동')
         navigate('/seller', { replace: true })
       }
     } catch (error: any) {

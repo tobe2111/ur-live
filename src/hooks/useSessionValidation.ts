@@ -21,8 +21,9 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 export function useSessionValidation() {
   const navigate = useNavigate()
   const location = useLocation()
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
-  const isAuthReady = useAuth(state => state.isAuthReady)
+  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
+  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
+  const isAuthReady = isKorea() ? krIsAuthReady : worldIsAuthReady
   // Note: isProcessingLogin is not in Zustand stores, removing this check
   const isProcessingLogin = false
 

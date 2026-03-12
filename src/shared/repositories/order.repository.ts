@@ -183,6 +183,7 @@ export class OrderRepository extends BaseRepository<Order> {
   /**
    * 주문 개수 조회
    */
+  // @ts-ignore - signature differs from base
   async count(userId?: number): Promise<number> {
     const result = await this.db
       .select({ count: sql<number>`count(*)` })

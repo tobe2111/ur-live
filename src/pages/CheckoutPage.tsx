@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
+import { requireLogin, getUserId, getUserIdSync, isLoggedIn } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -64,12 +64,18 @@ export default function CheckoutPage() {
   console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
   
   // ✅ Region 기반 Store 선택
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  const isKR = isKorea()
+  const krUser = useAuthKR(state => state.user)
+  const krAuthLoading = useAuthKR(state => state.isLoading)
+  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
+  const worldUser = useAuthWorld(state => state.user)
+  const worldAuthLoading = useAuthWorld(state => state.isLoading)
+  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
   
   // ✅ Selector로 필요한 상태만 구독
-  const user = useAuth(state => state.user)
-  const authLoading = useAuth(state => state.isLoading)
-  const isAuthReady = useAuth(state => state.isAuthReady)
+  const user = isKR ? krUser : worldUser
+  const authLoading = isKR ? krAuthLoading : worldAuthLoading
+  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -247,7 +253,7 @@ export default function CheckoutPage() {
     console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
     
     // 🔥 Fix: Use Firebase UID directly if getUserId() returns null
-    let uid = getUserId()
+    let uid = getUserIdSync()
     
     // Fallback to Firebase UID if userId is not in localStorage
     if (!uid && user) {
@@ -319,7 +325,7 @@ export default function CheckoutPage() {
       } catch (err) {
         console.error('[CheckoutPage] ❌ API 에러:', err)
         captureError(err as Error, { context: 'CheckoutPage.loadData', userId: uid })
-        handleApiError(err, '데이터 로드 실패')
+        handleApiError(err)
         setError('데이터를 불러올 수 없습니다.')
       } finally {
         console.log('[CheckoutPage] 로딩 완료')
@@ -421,7 +427,7 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       console.error('[CheckoutPage] ❌ 배송지 저장 실패:', err)
-      handleApiError(err, '배송지 저장 실패')
+      handleApiError(err)
     }
   }
 
@@ -616,6 +622,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
+      {/* @ts-ignore - void expression workaround */}
       <main className="mx-auto max-w-lg pb-52 lg:max-w-5xl lg:pb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:gap-5 lg:px-5 lg:py-6">
 
@@ -763,7 +770,7 @@ export default function CheckoutPage() {
                 }>
                   <TossPaymentWidget
                     userId={userId || ''}
-                    cartItems={cartItems}
+                    cartItems={cartItems as any}
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
@@ -786,7 +793,7 @@ export default function CheckoutPage() {
                 }>
                   <StripeCheckout
                     userId={userId || ''}
-                    cartItems={cartItems}
+                    cartItems={cartItems as any}
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {
@@ -899,7 +906,6 @@ export default function CheckoutPage() {
       {/* Terms section removed as it's now inside TossPaymentWidget's agreement component */}
 
       {/* 배송지 선택 모달 */}
-      {console.log('[CheckoutPage] 배송지 모달 렌더링 - showAddressModal:', showAddressModal, 'addresses:', addresses.length)}
       <CustomModal
         isOpen={showAddressModal}
         onClose={() => {

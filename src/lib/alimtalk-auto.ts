@@ -71,7 +71,7 @@ async function getOrderDetails(DB: D1Database, orderId: number) {
 
   return {
     order,
-    products: items.results as Product[]
+    products: items.results as unknown as Product[]
   }
 }
 

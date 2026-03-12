@@ -30,12 +30,16 @@ import { shippingAddressRoutes } from '@/features/shipping/api/shipping-address.
 import { paymentRoutes } from '@/features/payments/api/payment.routes';
 import youtubeRoutes from '@/features/youtube/api/youtube.routes';
 import youtubeChatRoutes from '@/features/youtube/api/youtube-chat.routes';
+import { notificationsRoutes } from '@/features/notifications/api/notifications.routes';
+import { wishlistRoutes } from '@/features/wishlists/api/wishlists.routes';
+import { bannerRoutes } from '@/features/banners/api/banners.routes';
+import { pushRoutes } from '@/features/push/api/push.routes';
 
 // Middleware & Utils
 import { rateLimitMiddleware } from './middleware/rate-limiter';
 import { handleError, attachErrorContext } from './middleware/error-handler';
 import { initSentry, captureException } from './utils/sentry';
-import { initDiscord, sendCriticalAlert } from './utils/discord';
+import { sendDiscordAlert, alertCriticalError } from './utils/discord';
 import { APICacheStrategy, CacheConfigs } from '@/lib/api-cache-strategy';
 
 type Bindings = {
@@ -76,27 +80,18 @@ app.use('*', compress());
 // Initialize monitoring tools
 app.use('*', async (c, next) => {
   // Initialize Sentry (once per worker instance)
-  if (c.env.SENTRY_DSN && !c.get('sentryInitialized')) {
+  if (c.env.SENTRY_DSN && !(c as any)._sentryInit) {
     initSentry({
       dsn: c.env.SENTRY_DSN,
       environment: c.env.ENVIRONMENT || 'production',
       region: c.env.REGION || 'KR',
       enabled: true,
     });
-    c.set('sentryInitialized', true);
+    (c as any)._sentryInit = true;
   }
 
-  // Initialize Discord alerter (once per worker instance)
-  if (c.env.DISCORD_WEBHOOK_URL && !c.get('discordInitialized')) {
-    initDiscord({
-      webhookUrl: c.env.DISCORD_WEBHOOK_URL,
-      environment: c.env.ENVIRONMENT || 'production',
-      region: c.env.REGION || 'KR',
-      enabled: true,
-      rateLimitMs: 60000, // 1 minute between duplicate alerts
-    });
-    c.set('discordInitialized', true);
-  }
+  // Discord alerter is stateless (webhook-based), no init needed
+  // sendDiscordAlert can be called directly when needed
 
   await next();
 });
@@ -123,7 +118,7 @@ app.use('/api/products*', async (c, next) => {
   if (c.res.ok && c.req.method === 'GET') {
     try {
       const responseData = await c.res.clone().json();
-      await cacheStrategy.set(cacheKey, responseData, CacheConfigs.products);
+      await cacheStrategy.set(cacheKey, responseData, { ...CacheConfigs.products, tags: ['products'] });
       c.header('X-Cache', 'MISS');
     } catch (e) {
       // Non-JSON response, skip caching
@@ -156,17 +151,13 @@ app.use('*', async (c, next) => {
     console.warn(`⚠️ Slow request detected: ${method} ${path} took ${duration}ms`);
     
     // Send Discord alert for very slow requests (>5s)
-    if (duration > 5000) {
+    if (duration > 5000 && c.env.DISCORD_WEBHOOK_URL) {
       try {
-        const { getDiscord } = await import('./utils/discord');
-        const discord = getDiscord();
-        if (discord) {
-          await discord.sendPerformanceWarning(
-            `${method} ${path}`,
-            duration,
-            5000
-          );
-        }
+        await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, {
+          title: '⚠️ Slow Request Detected',
+          description: `${method} ${path} took ${duration}ms`,
+          color: 0xffaa00
+        });
       } catch (err) {
         console.error('[Discord] Failed to send performance alert:', err);
       }
@@ -191,10 +182,14 @@ app.get('/health', (c) => {
       'auth-admin', 
       'products', 
       'orders', 
-      'account'
+      'account',
+      'notifications',
+      'wishlists',
+      'banners',
+      'push'
     ],
     middleware: ['rate-limiting', 'error-handling', 'retry-logic', 'monitoring'],
-    region: c.env.REGION || import.meta.env.VITE_REGION || 'KR',
+    region: c.env.REGION || 'KR',
     environment: c.env.ENVIRONMENT || 'production',
     monitoring: {
       sentry: !!c.env.SENTRY_DSN,
@@ -246,9 +241,20 @@ app.route('/api/account', accountRoutes);
 app.route('/api/youtube', youtubeRoutes);
 app.route('/api/youtube/chat', youtubeChatRoutes);
 
-// TODO: Phase 2 Feature 라우트 추가
+// Notifications Feature
+app.route('/api/notifications', notificationsRoutes);
+
+// Wishlists Feature
+app.route('/', wishlistRoutes);
+
+// Banners Feature
+app.route('/', bannerRoutes);
+
+// Push Notifications Feature
+app.route('/', pushRoutes);
+
+// TODO: Phase 3 Feature 라우트 추가
 // app.route('/api/streams', liveStreamRoutes);
-// app.route('/api/banners', bannersRoutes);
 // app.route('/api/admin/sellers', adminSellersRoutes);
 
 // =================================
@@ -256,7 +262,7 @@ app.route('/api/youtube/chat', youtubeChatRoutes);
 // =================================
 
 // Static files (먼저 시도)
-app.get('*', serveStatic({ root: './' }));
+app.get('*', serveStatic({ root: './' } as any));
 
 // SPA Fallback (React Router 지원)
 app.get('*', async (c) => {
@@ -294,7 +300,7 @@ app.onError(async (err, c) => {
   
   // Use unified error handler (Sentry + Discord + structured logging)
   try {
-    const errorContext = c.get('errorContext') || {};
+    const errorContext = (c as any).errorContext || {};
     const response = await handleError(err, c.req.raw, errorContext);
     return response;
   } catch (handlerError) {

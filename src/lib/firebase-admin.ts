@@ -1,7 +1,7 @@
 // Firebase Admin SDK 초기화 및 유틸리티 (Cloudflare Workers 호환)
 // src/lib/firebase-admin.ts
 
-import type { Env } from '../types/env'
+import type { CloudflareBindings as Env } from '../types/env'
 
 /**
  * Firebase REST API를 사용한 Admin 기능 (Cloudflare Workers 호환)
@@ -18,10 +18,10 @@ export class FirebaseAdmin {
   private tokenExpiry: number = 0
 
   constructor(env: Env) {
-    this.databaseURL = env.FIREBASE_DATABASE_URL
-    this.projectId = env.FIREBASE_PROJECT_ID
-    this.privateKey = env.FIREBASE_PRIVATE_KEY
-    this.clientEmail = env.FIREBASE_CLIENT_EMAIL
+    this.databaseURL = env.FIREBASE_DATABASE_URL || ''
+    this.projectId = env.FIREBASE_PROJECT_ID || ''
+    this.privateKey = env.FIREBASE_PRIVATE_KEY || ''
+    this.clientEmail = env.FIREBASE_CLIENT_EMAIL || ''
 
     if (!this.databaseURL || !this.projectId || !this.privateKey || !this.clientEmail) {
       console.warn('⚠️ Firebase Admin credentials not configured, using unauthenticated mode')
@@ -330,6 +330,126 @@ export class FirebaseAdmin {
       // Re-throw with more context
       throw new Error(`Failed to create Firebase custom token: ${(error as Error).message}`)
     }
+  }
+
+  /**
+   * Firebase Custom User Claims 영구 설정
+   * 토큰 갱신 후에도 Claims가 유지되도록 Firebase REST API로 설정
+   * - createCustomToken()만 호출하면 첫 번째 토큰에만 Claims 포함됨
+   * - 이 메서드를 함께 호출하면 모든 갱신된 토큰에도 Claims 유지됨
+   */
+  async setCustomUserClaims(uid: string, claims: Record<string, any>): Promise<void> {
+    try {
+      console.log(`[Firebase Claims] Setting custom claims for UID: ${uid}`)
+      console.log(`[Firebase Claims] Claims:`, JSON.stringify(claims))
+
+      // Firebase Identity Toolkit REST API로 custom attributes 설정
+      const accessToken = await this.getAccessToken()
+      const url = `https://identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:update`
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          localId: uid,
+          customAttributes: JSON.stringify(claims),
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error(`[Firebase Claims] ❌ Failed to set custom claims:`, errorData)
+        // 실패해도 로그인 흐름을 중단하지 않음 (비치명적)
+        console.warn(`[Firebase Claims] ⚠️ Custom claims 설정 실패 (비치명적, 계속 진행)`)
+        return
+      }
+
+      console.log(`[Firebase Claims] ✅ Custom claims set permanently for UID: ${uid}`)
+    } catch (error) {
+      console.error(`[Firebase Claims] ❌ Error setting custom claims:`, error)
+      // 실패해도 로그인 흐름을 중단하지 않음
+      console.warn(`[Firebase Claims] ⚠️ Custom claims 설정 중 오류 (비치명적, 계속 진행)`)
+    }
+  }
+
+  /**
+   * Google OAuth2 Access Token 획득 (Service Account)
+   */
+  private async getAccessToken(): Promise<string> {
+    // 캐시된 토큰이 유효하면 재사용 (만료 1분 전까지)
+    if (this.accessToken && Date.now() < this.tokenExpiry - 60000) {
+      return this.accessToken
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const jwtPayload = {
+      iss: this.clientEmail,
+      scope: 'https://www.googleapis.com/auth/firebase https://www.googleapis.com/auth/identitytoolkit',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now,
+      exp: now + 3600,
+    }
+
+    const header = { alg: 'RS256', typ: 'JWT' }
+
+    const base64url = (data: any) => {
+      const json = JSON.stringify(data)
+      const utf8Bytes = new TextEncoder().encode(json)
+      let binaryString = ''
+      for (let i = 0; i < utf8Bytes.length; i++) {
+        binaryString += String.fromCharCode(utf8Bytes[i])
+      }
+      return btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+    }
+
+    const headerEncoded = base64url(header)
+    const payloadEncoded = base64url(jwtPayload)
+    const signatureInput = `${headerEncoded}.${payloadEncoded}`
+
+    const privateKeyPem = this.privateKey.replace(/\\n/g, '\n')
+    const privateKeyDer = await this.pemToDer(privateKeyPem)
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      privateKeyDer,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+
+    const signature = await crypto.subtle.sign(
+      'RSASSA-PKCS1-v1_5',
+      cryptoKey,
+      new TextEncoder().encode(signatureInput)
+    )
+
+    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    const signatureEncoded = signatureBase64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+    const jwt = `${signatureInput}.${signatureEncoded}`
+
+    // Google OAuth2 토큰 교환
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt,
+      }),
+    })
+
+    if (!tokenResponse.ok) {
+      const err = await tokenResponse.text()
+      throw new Error(`Failed to get access token: ${err}`)
+    }
+
+    const tokenData: any = await tokenResponse.json()
+    this.accessToken = tokenData.access_token
+    this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000)
+
+    console.log(`[Firebase Admin] ✅ Access token obtained (expires in ${tokenData.expires_in}s)`)
+    return this.accessToken!
   }
 
   /**

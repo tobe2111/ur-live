@@ -23,16 +23,24 @@ export default function LoginPage() {
   const hasRedirected = useRef(false)
   
   // ✅ Zustand Store 선택 (KR/World)
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  // Region-based auth (see below)
   
-  // ✅ Selector로 필요한 상태만 구독 (리렌더 최소화)
-  const user = useAuth(state => state.user)
-  const isAuthReady = useAuth(state => state.isAuthReady)
-  const globalLoading = useAuth(state => state.isLoading)
+  // ✅ Region-based auth store 선택 (hooks 규칙 준수)
+  const isKR = isKorea()
+  const krUser = useAuthKR(state => state.user)
+  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
+  const krGlobalLoading = useAuthKR(state => state.isLoading)
+  const krLoginWithEmail = useAuthKR(state => state.loginWithEmail)
+  const krSendPasswordReset = useAuthKR(state => state.sendPasswordResetEmail)
+  const worldUser = useAuthWorld(state => state.user)
+  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
+  const worldGlobalLoading = useAuthWorld(state => state.isLoading)
   
-  // ✅ Actions는 함수 참조만 (리렌더 없음)
-  const loginWithEmailAction = useAuth(state => state.loginWithEmail)
-  const sendPasswordResetEmailAction = useAuth(state => state.sendPasswordResetEmail)
+  const user = isKR ? krUser : worldUser
+  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
+  const globalLoading = isKR ? krGlobalLoading : worldGlobalLoading
+  const loginWithEmailAction = krLoginWithEmail
+  const sendPasswordResetEmailAction = krSendPasswordReset
   
   // Local State
   const [loading, setLoading] = useState(false)
@@ -198,7 +206,7 @@ export default function LoginPage() {
       await loginWithEmailAction(email, password)
       
       // ✅ role에 따라 리다이렉트 경로 결정
-      const { userRole } = useAuth.getState()
+      const { userRole } = isKR ? useAuthKR.getState() : useAuthWorld.getState()
       console.log('[Email Login] ✅ 로그인 성공 - Role:', userRole)
       
       sessionStorage.removeItem('returnUrl')

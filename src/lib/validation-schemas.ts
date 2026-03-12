@@ -97,7 +97,7 @@ export function validateOrError<T>(
   const result = schema.safeParse(data);
   
   if (!result.success) {
-    const errors = result.error.errors.map(e => e.message).join(', ');
+    const errors = (result.error as any).errors.map((e: any) => e.message).join(', ');
     return { success: false, error: errors };
   }
   

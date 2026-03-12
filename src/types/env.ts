@@ -86,6 +86,19 @@ export interface CloudflareBindings {
    * @setup npx wrangler pages secret put DISCORD_WEBHOOK_URL --project-name ur-live
    */
   DISCORD_WEBHOOK_URL?: string;
+
+  // ========================================
+  // Firebase Admin SDK
+  // ========================================
+  FIREBASE_PROJECT_ID?: string;
+  FIREBASE_PRIVATE_KEY?: string;
+  FIREBASE_CLIENT_EMAIL?: string;
+  FIREBASE_DATABASE_URL?: string;
+
+  // ========================================
+  // 기타 선택적 환경 변수
+  // ========================================
+  [key: string]: unknown;
 }
 
 /**
@@ -122,7 +135,7 @@ export interface CloudflareBindings {
  * ```
  */
 export function validateEnv(env: CloudflareBindings): void {
-  const requiredVars: Array<keyof CloudflareBindings> = [
+  const requiredVars: string[] = [
     'DB',
     'SESSION_KV',
     'CACHE_KV',

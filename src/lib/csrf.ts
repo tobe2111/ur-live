@@ -167,7 +167,7 @@ export const csrfClient = {
         return null;
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       return data.data?.token || null;
     } catch (error) {
       console.error('Error fetching CSRF token:', error);

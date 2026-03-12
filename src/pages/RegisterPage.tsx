@@ -11,14 +11,19 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   
   // ✅ Region 기반 Store 선택
-  const useAuth = isKorea() ? useAuthKR : useAuthWorld
+  const isKR = isKorea()
+  const krUser = useAuthKR(state => state.user)
+  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
+  const krSignupWithEmail = useAuthKR(state => state.signupWithEmail)
+  const worldUser = useAuthWorld(state => state.user)
+  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
   
   // ✅ Selector로 필요한 상태만 구독
-  const user = useAuth(state => state.user)
-  const isAuthReady = useAuth(state => state.isAuthReady)
+  const user = isKR ? krUser : worldUser
+  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   
   // ✅ Action (함수 참조만)
-  const signupWithEmailAction = useAuth(state => state.signupWithEmail)
+  const signupWithEmailAction = krSignupWithEmail
   
   // ✅ 계산된 값
   const isLoggedIn = !!user

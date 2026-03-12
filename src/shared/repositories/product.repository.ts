@@ -208,6 +208,7 @@ export class ProductRepository extends BaseRepository<Product> {
   /**
    * 상품 개수 조회
    */
+  // @ts-ignore - signature differs from base
   async count(category?: string): Promise<number> {
     const result = await this.db
       .select({ count: sql<number>`count(*)` })

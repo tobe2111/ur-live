@@ -23,29 +23,31 @@ export {
   logRegionInfo
 } from '@/shared/config/region'
 
+import { isKorea as _isKorea } from '@/shared/config/region'
+
 // Legacy compatibility exports
 export const REGION = (() => {
-  if (typeof __REGION__ !== 'undefined') {
-    return __REGION__
+  if (typeof (globalThis as any).__REGION__ !== 'undefined') {
+    return (globalThis as any).__REGION__ as 'KR' | 'GLOBAL'
   }
   return (import.meta.env.VITE_REGION || 'KR') as 'KR' | 'GLOBAL'
 })()
 
 export const getLoginProvider = () => {
-  return isKorea() ? 'kakao' : 'google'
+  return _isKorea() ? 'kakao' : 'google'
 }
 
 export const getDefaultLanguage = () => {
-  return isKorea() ? 'ko' : 'en'
+  return _isKorea() ? 'ko' : 'en'
 }
 
 export const getApiBaseUrl = () => {
   return import.meta.env.VITE_API_BASE_URL || 
-    (isKorea() ? 'https://live.ur-team.com' : 'https://global.ur-team.com')
+    (_isKorea() ? 'https://live.ur-team.com' : 'https://global.ur-team.com')
 }
 
 export const getSupportedLanguages = () => {
-  return isKorea() 
+  return _isKorea() 
     ? ['ko', 'en']
     : ['en', 'ko', 'ja', 'zh']
 }

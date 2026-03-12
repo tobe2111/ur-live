@@ -93,7 +93,7 @@ export class TossPaymentsProvider implements PaymentProvider {
         })
       });
       
-      const data = await response.json();
+      const data = await response.json() as any;
       
       if (!response.ok) {
         return {
@@ -170,7 +170,7 @@ export class TossPaymentsProvider implements PaymentProvider {
       });
       
       if (!response.ok) {
-        const data = await response.json();
+        const data = await response.json() as any;
         return { success: false, error: data.message };
       }
       
@@ -189,7 +189,7 @@ export class TossPaymentsProvider implements PaymentProvider {
         }
       });
       
-      const data = await response.json();
+      const data = await response.json() as any;
       
       if (!response.ok) {
         throw new Error(data.message);

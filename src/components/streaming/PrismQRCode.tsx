@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import QRCode from 'qrcode.react'
+import { QRCodeSVG as QRCode } from 'qrcode.react'
 import { Copy, CheckCircle, Smartphone, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 

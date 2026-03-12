@@ -137,7 +137,7 @@ export class RTMPBridge extends DurableObject {
   broadcast(message: any, except?: WebSocket) {
     const json = JSON.stringify(message)
     for (const ws of this.connections) {
-      if (ws !== except && ws.readyState === WebSocket.READY_STATE_OPEN) {
+      if (ws !== except && ws.readyState === WebSocket.OPEN) {
         ws.send(json)
       }
     }

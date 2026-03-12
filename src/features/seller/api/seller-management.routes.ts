@@ -70,7 +70,7 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
 
   try {
     const token = authorization.substring(7);
-    const payload = await verify(token, jwtSecret) as JWTPayload & { seller_id?: number };
+    const payload = await verify(token, jwtSecret, 'HS256') as JWTPayload & { seller_id?: number };
     return payload.seller_id || null;
   } catch (error) {
     console.error('Token verification error:', error);

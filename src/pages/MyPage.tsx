@@ -11,7 +11,7 @@ import {
   Mail,
   Phone
 } from 'lucide-react'
-import { getUserId, getUserName, getUserEmail, logout as authLogout } from '@/utils/auth'
+import { getUserId, getUserIdSync, getUserNameSync, getUserEmail, logout as authLogout } from '@/utils/auth'
 
 export default function MyPage() {
   const navigate = useNavigate()
@@ -22,7 +22,7 @@ export default function MyPage() {
   })
 
   useEffect(() => {
-    const userId = getUserId()
+    const userId = getUserIdSync()
     if (!userId) {
       alert('로그인이 필요합니다.')
       navigate('/login')
@@ -31,7 +31,7 @@ export default function MyPage() {
 
     setUser({
       id: userId,
-      name: getUserName() || '사용자',
+      name: getUserNameSync() || '사용자',
       email: getUserEmail() || ''
     })
   }, [navigate])

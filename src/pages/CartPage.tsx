@@ -10,12 +10,13 @@ import { EmptyCart } from '@/components/cart/EmptyCart'
 import { AlertCircle, CheckCircle, X, Info } from 'lucide-react'
 
 interface CartItem {
-  id: number
-  product_id: number
+  id: string | number
+  product_id: string | number
   product_name: string
   image_url?: string
   quantity: number
-  price_snapshot: number
+  price_snapshot?: number
+  price?: number
   option_id?: number
   option_value?: string
   seller_id?: number
@@ -99,12 +100,12 @@ export default function CartPage() {
   
   const cartItems = cartData?.items || []
   const [updating, setUpdating] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set())
   
   const [optionModal, setOptionModal] = useState<{
     isOpen: boolean
-    cartItemId?: number
-    productId?: number
+    cartItemId?: string | number
+    productId?: string | number
     productName?: string
     currentOptionId?: number
     currentOptionValue?: string
@@ -163,7 +164,7 @@ export default function CartPage() {
   // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
   useEffect(() => {
     if (cartItems.length > 0) {
-      setSelectedIds(new Set(cartItems.map((item: CartItem) => item.id)))
+      setSelectedIds(new Set(cartItems.map((item: CartItem) => item.id as string | number)))
       localStorage.setItem('hasCartItems', 'true')
     } else {
       localStorage.setItem('hasCartItems', 'false')
@@ -178,7 +179,7 @@ export default function CartPage() {
     if (allSelected) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(cartItems.map((item) => item.id)))
+      setSelectedIds(new Set(cartItems.map((item) => item.id as string | number)))
     }
   }, [allSelected, cartItems])
 
@@ -195,8 +196,8 @@ export default function CartPage() {
   }, [])
 
   // 🎯 React Query mutation으로 수량 변경
-  const updateQuantity = useCallback(async (cartItemId: number, delta: number) => {
-    const item = cartItems.find(i => i.id === cartItemId)
+  const updateQuantity = useCallback(async (cartItemId: number | string, delta: number) => {
+    const item = cartItems.find(i => String(i.id) === String(cartItemId))
     if (!item) return
     
     const newQuantity = item.quantity + delta
@@ -318,7 +319,7 @@ export default function CartPage() {
         }
       }
       groups[sellerId].items.push(item)
-      groups[sellerId].subtotal += item.price_snapshot * item.quantity
+      groups[sellerId].subtotal += (((item as any).price_snapshot || (item as any).price || 0) * item.quantity)
       return groups
     }, {} as Record<number, {
       items: any[]
@@ -330,7 +331,7 @@ export default function CartPage() {
     // 전체 상품 개수 및 소계 계산
     for (const item of selectedItems) {
       count += item.quantity
-      sum += item.price_snapshot * item.quantity
+      sum += (((item as any).price_snapshot || (item as any).price || 0) * item.quantity)
     }
     
     // 셀러별 배송비 계산
@@ -394,7 +395,7 @@ export default function CartPage() {
             {cartItems.map((item) => (
               <CartItemComponent
                 key={item.id}
-                item={item}
+                item={item as any}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={toggleSelect}
                 onUpdateQuantity={updateQuantity}
@@ -438,11 +439,11 @@ export default function CartPage() {
       <OptionSelectModal
         isOpen={optionModal.isOpen}
         onClose={closeOptionModal}
-        productId={optionModal.productId}
-        productName={optionModal.productName}
+        productId={optionModal.productId as number}
+        productName={optionModal.productName as string}
         currentOptionId={optionModal.currentOptionId}
         currentOptionValue={optionModal.currentOptionValue}
-        onOptionSelect={handleOptionChange}
+        onOptionSelected={handleOptionChange}
       />
     </div>
   )

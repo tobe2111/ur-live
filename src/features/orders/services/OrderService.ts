@@ -25,7 +25,7 @@ export class OrderService {
    */
   async getOrders(filters?: OrderFilters): Promise<Order[]> {
     try {
-      return await this.repository.findAll(filters);
+      return await this.repository.findAll(filters || {});
     } catch (error) {
       console.error('[OrderService] getOrders failed:', error);
       throw new Error('주문 목록 조회 실패');
@@ -55,7 +55,7 @@ export class OrderService {
    */
   async getUserOrders(userId: number): Promise<Order[]> {
     try {
-      return await this.repository.findByUserId(userId);
+      return await this.repository.findAll({ userId });
     } catch (error) {
       console.error('[OrderService] getUserOrders failed:', error);
       throw new Error('사용자 주문 목록 조회 실패');
@@ -77,16 +77,13 @@ export class OrderService {
       }
       
       // 주문 생성
-      const orderId = await this.repository.create(data);
-      
-      // 생성된 주문 조회
-      const order = await this.repository.findById(orderId);
+      const order = await this.repository.create(data);
       if (!order) {
         throw new Error('주문 생성 후 조회 실패');
       }
       
       console.log('[OrderService] Order created:', {
-        orderId,
+        orderId: order.id,
         userId: data.user_id,
         total: data.total_amount,
         itemCount: data.items.length
@@ -117,7 +114,7 @@ export class OrderService {
       this.validateStatusTransition(existingOrder.status, data.status);
       
       // 상태 업데이트
-      await this.repository.updateStatus(orderId, data);
+      await this.repository.updateStatus(orderId, data.status);
       
       // 업데이트된 주문 조회
       const updatedOrder = await this.repository.findById(orderId);
@@ -156,8 +153,7 @@ export class OrderService {
       
       // 취소 처리
       return await this.updateOrderStatus(orderId, {
-        status: 'cancelled',
-        status_reason: reason || '사용자 요청'
+        status: 'cancelled'
       });
     } catch (error) {
       console.error('[OrderService] cancelOrder failed:', error);
@@ -205,7 +201,7 @@ export class OrderService {
   private calculateOrderTotal(
     items: CreateOrderRequest['items']
   ): number {
-    return items.reduce((sum, item) => {
+    return items.reduce((sum: number, item: any) => {
       return sum + (item.price * item.quantity);
     }, 0);
   }

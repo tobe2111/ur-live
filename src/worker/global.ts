@@ -50,7 +50,7 @@ app.get('/api/*', (c) => {
 });
 
 // Static files
-app.get('*', serveStatic({ root: './' }));
+app.get('*', serveStatic({ root: './' } as any));
 
 // SPA Fallback
 app.get('*', async (c) => {
