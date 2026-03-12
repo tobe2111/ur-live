@@ -7,6 +7,7 @@ export default function AdminLoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -18,6 +19,14 @@ export default function AdminLoginPage() {
     if (adminToken && userType === 'admin') {
       console.log('[AdminLoginPage] 이미 관리자 로그인됨 - /admin으로 리다이렉트')
       navigate('/admin', { replace: true })
+      return
+    }
+
+    // Load saved email if "Remember Me" was checked
+    const savedEmail = localStorage.getItem('admin_remember_email')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
     }
   }, [navigate])
 
@@ -37,6 +46,13 @@ export default function AdminLoginPage() {
 
       if (response.data.success) {
         console.log('[AdminLogin] ✅ JWT Login successful')
+        
+        // ✅ Save email if "Remember Me" is checked
+        if (rememberMe) {
+          localStorage.setItem('admin_remember_email', email)
+        } else {
+          localStorage.removeItem('admin_remember_email')
+        }
         
         // ✅ 선택적 삭제: Admin 관련 키만 삭제 (User 세션 보호)
         clearAuthData('admin')
@@ -127,6 +143,23 @@ export default function AdminLoginPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="••••••••"
               />
+            </div>
+
+            {/* Remember Me */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="adminRememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer rounded"
+              />
+              <label 
+                htmlFor="adminRememberMe" 
+                className="ml-2 text-sm text-gray-700 cursor-pointer select-none"
+              >
+                이메일 기억하기
+              </label>
             </div>
 
             <button
