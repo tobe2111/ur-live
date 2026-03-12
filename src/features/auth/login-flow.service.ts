@@ -25,6 +25,12 @@ export async function loginWithKakaoToken(accessToken: string): Promise<void> {
   console.log('[LoginFlow] 🔑 카카오 토큰으로 Firebase 로그인 시작')
   
   try {
+    // ✅ CRITICAL: 다른 세션 완전 정리 (Seller/Admin 세션)
+    console.log('[LoginFlow] 🧹 Seller/Admin 세션 정리 중...')
+    const { clearAuthData } = await import('@/utils/auth')
+    clearAuthData('seller')
+    clearAuthData('admin')
+    console.log('[LoginFlow] ✅ Seller/Admin 세션 정리 완료')
     // 1. 백엔드에서 Firebase Custom Token 받기
     const response = await fetch('/api/auth/kakao/firebase', {
       method: 'POST',
@@ -107,6 +113,12 @@ export async function loginWithFirebaseToken(firebaseToken: string): Promise<voi
   console.log('[LoginFlow] 🔑 Firebase Custom Token으로 직접 로그인')
   
   try {
+    // ✅ CRITICAL: 다른 세션 완전 정리 (Seller/Admin 세션)
+    console.log('[LoginFlow] 🧹 Seller/Admin 세션 정리 중...')
+    const { clearAuthData } = await import('@/utils/auth')
+    clearAuthData('seller')
+    clearAuthData('admin')
+    console.log('[LoginFlow] ✅ Seller/Admin 세션 정리 완료')
     // Lazy load Firebase Auth
     const { signInWithCustomToken, getFirebaseAuth } = await import('@/lib/firebase-auth')
     
@@ -256,69 +268,82 @@ export async function loginAdmin(email: string, password: string): Promise<Admin
 // ============================================
 
 /**
- * 통합 로그아웃 - 모든 인증 정보 제거
+ * 타입별 선택적 로그아웃 - 완벽한 계정 분리
+ * 
+ * @param userType - 로그아웃할 사용자 타입 (자동 감지 시 undefined)
  */
-export async function logout(): Promise<void> {
-  console.log('[LoginFlow] 🚪 로그아웃 시작')
+export async function logout(userType?: 'user' | 'seller' | 'admin'): Promise<void> {
+  // ✅ userType 자동 감지
+  if (!userType) {
+    const storedType = localStorage.getItem('user_type')
+    userType = (storedType as 'user' | 'seller' | 'admin') || 'user'
+  }
+  
+  console.log(`[LoginFlow] 🚪 ${userType} 로그아웃 시작`)
   
   try {
-    // 1. Firebase 로그아웃
-    try {
-      const { signOut } = await import('@/lib/firebase-auth')
-      await signOut()
-      console.log('[LoginFlow] ✅ Firebase 로그아웃 완료')
-    } catch (err) {
-      console.warn('[LoginFlow] ⚠️ Firebase 로그아웃 실패 (무시):', err)
-    }
-    
-    // 2. Zustand 스토어 초기화 (persist 포함)
-    try {
-      const { isKorea } = await import('@/shared/config/region')
-      const isKR = isKorea()
+    // ✅ userType에 따라 선택적 로그아웃
+    if (userType === 'user') {
+      // 1️⃣ User 로그아웃 (Firebase + User 세션만 정리)
       
-      if (isKR) {
-        const { useAuthKR } = await import('@/shared/stores/useAuthKR')
-        const store = useAuthKR.getState()
-        // 스토어 상태 초기화
-        store.setUser(null)
-        store.setLoading(false)
-        store.setAuthReady(true)
-      } else {
-        const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
-        const store = useAuthWorld.getState()
-        store.setUser(null)
-        store.setLoading(false)
-        store.setAuthReady(true)
+      // Firebase 로그아웃
+      try {
+        const { signOut } = await import('@/lib/firebase-auth')
+        await signOut()
+        console.log('[LoginFlow] ✅ Firebase 로그아웃 완료')
+      } catch (err) {
+        console.warn('[LoginFlow] ⚠️ Firebase 로그아웃 실패 (무시):', err)
       }
-      console.log('[LoginFlow] ✅ Zustand 스토어 초기화 완료')
-    } catch (err) {
-      console.warn('[LoginFlow] ⚠️ Zustand 스토어 초기화 실패 (무시):', err)
+      
+      // Zustand 스토어 초기화 (persist 포함)
+      try {
+        const { isKorea } = await import('@/shared/config/region')
+        const isKR = isKorea()
+        
+        if (isKR) {
+          const { useAuthKR } = await import('@/shared/stores/useAuthKR')
+          const store = useAuthKR.getState()
+          store.setUser(null)
+          store.setLoading(false)
+          store.setAuthReady(true)
+        } else {
+          const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+          const store = useAuthWorld.getState()
+          store.setUser(null)
+          store.setLoading(false)
+          store.setAuthReady(true)
+        }
+        console.log('[LoginFlow] ✅ Zustand 스토어 초기화 완료')
+      } catch (err) {
+        console.warn('[LoginFlow] ⚠️ Zustand 스토어 초기화 실패 (무시):', err)
+      }
+      
+      // User 세션만 정리 (Seller/Admin 보호)
+      const { clearAuthData } = await import('@/utils/auth')
+      clearAuthData('user')
+      
+      // Zustand persist 추가 정리
+      try {
+        localStorage.removeItem('auth-kr-storage')
+        localStorage.removeItem('auth-world-storage')
+      } catch (e) {
+        console.warn('[LoginFlow] Zustand persist 정리 실패:', e)
+      }
+      
+    } else if (userType === 'seller') {
+      // 2️⃣ Seller 로그아웃 (Seller 세션만 정리, Firebase 영향 없음)
+      const { clearAuthData } = await import('@/utils/auth')
+      clearAuthData('seller')
+      console.log('[LoginFlow] ✅ Seller 세션 정리 완료 (Firebase 보호됨)')
+      
+    } else if (userType === 'admin') {
+      // 3️⃣ Admin 로그아웃 (Admin 세션만 정리, Firebase 영향 없음)
+      const { clearAuthData } = await import('@/utils/auth')
+      clearAuthData('admin')
+      console.log('[LoginFlow] ✅ Admin 세션 정리 완료 (Firebase 보호됨)')
     }
     
-    // 3. localStorage 완전 정리 (Zustand persist 포함)
-    const keysToRemove = [
-      'user_name',
-      'loginReturnUrl',
-      'seller_token',
-      'admin_token',
-      'user_type',
-      'auth-kr-storage',  // Zustand persist key (KR)
-      'auth-world-storage',  // Zustand persist key (WORLD)
-      'kakao_token',
-      'hasCartItems',
-    ]
-    
-    keysToRemove.forEach(key => {
-      try {
-        localStorage.removeItem(key)
-      } catch (e) {
-        console.warn(`[LoginFlow] localStorage.removeItem("${key}") failed:`, e)
-      }
-    })
-    
-    console.log('[LoginFlow] ✅ localStorage 정리 완료')
-    
-    // 4. sessionStorage 정리
+    // sessionStorage 정리 (공통)
     try {
       sessionStorage.clear()
       console.log('[LoginFlow] ✅ sessionStorage 정리 완료')
@@ -326,15 +351,15 @@ export async function logout(): Promise<void> {
       console.warn('[LoginFlow] sessionStorage.clear() failed:', e)
     }
     
-    console.log('[LoginFlow] ✅ 로그아웃 완료 - 홈으로 이동')
+    console.log(`[LoginFlow] ✅ ${userType} 로그아웃 완료 - 홈으로 이동`)
     
-    // 5. 강제 페이지 새로고침으로 모든 상태 초기화
+    // 강제 페이지 새로고침으로 모든 상태 초기화
     setTimeout(() => {
       window.location.href = '/'
     }, 100)
     
   } catch (error) {
-    console.error('[LoginFlow] ❌ 로그아웃 실패:', error)
+    console.error(`[LoginFlow] ❌ ${userType} 로그아웃 실패:`, error)
     // 에러가 발생해도 강제 새로고침
     setTimeout(() => {
       window.location.href = '/'

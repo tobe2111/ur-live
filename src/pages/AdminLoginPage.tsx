@@ -38,6 +38,19 @@ export default function AdminLoginPage() {
     try {
       console.log('[AdminLogin] 🔐 Starting JWT-only login (NO Firebase!)')
       
+      // ✅ CRITICAL: User 세션 완전 정리 (Firebase 포함)
+      console.log('[AdminLogin] 🧹 User 세션 정리 중...')
+      clearAuthData('user')
+      
+      // ✅ CRITICAL: Firebase 로그아웃
+      try {
+        const { signOut } = await import('@/lib/firebase-auth')
+        await signOut()
+        console.log('[AdminLogin] ✅ Firebase 로그아웃 완료')
+      } catch (err) {
+        console.warn('[AdminLogin] ⚠️ Firebase 로그아웃 실패 (무시):', err)
+      }
+      
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/admin/login', {
         email,
