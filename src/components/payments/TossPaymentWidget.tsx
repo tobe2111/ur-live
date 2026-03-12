@@ -186,7 +186,10 @@ export function TossPaymentWidget({
       setIsProcessing(true)
       console.log('[TossPayments] 결제 요청 시작')
 
-      const orderId = `order_${Date.now()}_${userId}`
+      // ✅ Generate Toss Payments compliant orderId
+      const orderId = generateOrderId(userId)
+      console.log('[TossPayments] ✅ Generated orderId:', orderId, 'Length:', orderId.length)
+      
       const orderName = cartItems.length === 1
         ? cartItems[0].product_name
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
