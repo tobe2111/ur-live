@@ -14,7 +14,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { compress } from 'hono/compress';
-import { serveStatic } from 'hono/cloudflare-workers';
 
 // Feature Routes
 import { kakaoRoutes, googleRoutes, sellerRoutes, adminRoutes } from '@/features/auth';
@@ -260,18 +259,10 @@ app.route('/', pushRoutes);
 // =================================
 // Static Assets & SPA Fallback
 // =================================
-
-// ⚠️ serveStatic must NOT intercept API/auth routes
-app.get('*', async (c, next) => {
-  const path = c.req.path;
-  if (path.startsWith('/api/') || path.startsWith('/auth/')) {
-    return next();
-  }
-  if (/\.[a-zA-Z0-9]+$/.test(path)) {
-    return serveStatic({ root: './' } as any)(c, next);
-  }
-  return next();
-});
+// ⚠️  serveStatic is REMOVED — it requires __STATIC_CONTENT_MANIFEST which is
+// not available in Cloudflare Pages workers, causing 500 errors.
+// Static assets (JS/CSS) are excluded from Worker via _routes.json and
+// served directly by Cloudflare Pages CDN.
 
 // SPA Fallback (React Router 지원)
 app.get('*', async (c) => {
@@ -284,9 +275,20 @@ app.get('*', async (c) => {
   
   // 그 외 모든 경로는 index.html 제공
   try {
-    const indexHtml = await c.env.ASSETS.fetch(
-      new Request('https://dummy.com/index.html')
-    ).then(r => r.text());
+    // ✅ Use actual request URL base for ASSETS fetch (Cloudflare Pages requirement)
+    const requestUrl = new URL(c.req.url);
+    const indexUrl = new URL('/index.html', requestUrl.origin);
+    const assetResponse = await c.env.ASSETS.fetch(new Request(indexUrl.toString()));
+    
+    if (!assetResponse.ok) {
+      throw new Error(`ASSETS fetch failed: ${assetResponse.status}`);
+    }
+    
+    const indexHtml = await assetResponse.text();
+    
+    if (!indexHtml || indexHtml.length < 100) {
+      throw new Error(`Empty or invalid index.html (length: ${indexHtml?.length ?? 0})`);
+    }
     
     return c.html(indexHtml);
   } catch (error) {

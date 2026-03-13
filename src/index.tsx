@@ -17435,21 +17435,12 @@ async function sendDiscordNotification(
 // =====================================
 // All non-API, non-static routes should serve index.html
 // This ensures React Router can handle client-side routing
+//
+// ⚠️  serveStatic is REMOVED — it requires __STATIC_CONTENT_MANIFEST which is
+// not available in Cloudflare Pages workers, causing 500 errors.
+// Static assets (JS/CSS) are excluded from Worker via _routes.json and
+// served directly by Cloudflare Pages CDN.
 
-// ⚠️  serveStatic must NOT intercept API/auth routes — it causes __STATIC_CONTENT_MANIFEST errors
-// Only apply serveStatic for actual static asset paths (not API routes)
-app.get('*', async (c, next) => {
-  const path = c.req.path;
-  // Skip API and auth routes — let them 404 naturally if unmatched
-  if (path.startsWith('/api/') || path.startsWith('/auth/')) {
-    return next();
-  }
-  // For static asset requests (has file extension), try serveStatic
-  if (/\.[a-zA-Z0-9]+$/.test(path)) {
-    return serveStatic({ root: './' })(c, next);
-  }
-  return next();
-});
 app.get('*', async (c) => {
   const path = c.req.path;
   
@@ -17458,14 +17449,40 @@ app.get('*', async (c) => {
     return c.notFound();
   }
   
-  // For all other routes, serve index.html to enable SPA routing
+  // For all SPA routes, serve index.html via ASSETS binding
   console.log(`[SPA Fallback] Serving index.html for: ${path}`);
   try {
-    const indexHtml = await c.env.ASSETS.fetch(new Request('https://dummy.com/index.html')).then(r => r.text());
+    // ✅ Use actual request URL base for ASSETS fetch (Cloudflare Pages requirement)
+    const requestUrl = new URL(c.req.url);
+    const indexUrl = new URL('/index.html', requestUrl.origin);
+    const assetResponse = await c.env.ASSETS.fetch(new Request(indexUrl.toString()));
+    
+    if (!assetResponse.ok) {
+      throw new Error(`ASSETS fetch failed: ${assetResponse.status}`);
+    }
+    
+    const indexHtml = await assetResponse.text();
+    
+    if (!indexHtml || indexHtml.length < 100) {
+      throw new Error(`Empty or invalid index.html received (length: ${indexHtml?.length ?? 0})`);
+    }
+    
     return c.html(indexHtml);
   } catch (err) {
     console.error('[SPA Fallback] Failed to serve index.html:', err);
-    return c.text('Service unavailable', 503);
+    // Last resort: return a minimal redirect page
+    return c.html(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0;url=/">
+  <title>Loading...</title>
+</head>
+<body>
+  <p>Loading application...</p>
+  <script>window.location.href = '/';</script>
+</body>
+</html>`, 200);
   }
 });
 
