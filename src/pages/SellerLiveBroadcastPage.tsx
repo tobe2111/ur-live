@@ -577,7 +577,7 @@ export default function SellerLiveBroadcastPage() {
                             `}
                           >
                             <div className="flex gap-3">
-                              {product.image_url ? (
+                              {product.image_url && product.image_url.trim() !== '' ? (
                                 <img
                                   src={product.image_url}
                                   alt={product.name}
@@ -591,9 +591,8 @@ export default function SellerLiveBroadcastPage() {
                               ) : null}
                               <div
                                 className="w-16 h-16 rounded-lg bg-[#f5f5f7] flex-shrink-0 items-center justify-center"
-                                style={{ display: product.image_url ? 'none' : 'flex' }}
+                                style={{ display: (product.image_url && product.image_url.trim() !== '') ? 'none' : 'flex' }}
                               >
-                                <VideoIcon className="h-6 w-6 text-[#aeaeb2]" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h4 className="text-[13px] font-semibold text-[#1d1d1f] truncate">
