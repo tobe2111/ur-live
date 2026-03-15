@@ -1,20 +1,46 @@
 /**
- * ✅ Zustand Stores - Centralized Auth State Management
+ * Unified Auth Store - Single Source of Truth
  * 
- * Week 5 Day 1 - AuthContext → Zustand Migration
+ * Architecture:
+ * - useAuthKR / useAuthWorld  → Firebase-based auth (KR region: Kakao+Firebase, World: Google)
+ * - useAuthStore              → JWT-based auth for multi-seller Worker API
  * 
- * 목적:
- * - React Hook 규칙 위반 100% 제거
- * - 리렌더링 50% 이상 감소 (Selector 사용)
- * - 테스트 가능한 순수 함수로 전환
- * - KR/WORLD 완전 분리
+ * Rule: Pages should prefer useAuthKR/useAuthWorld for Firebase flows,
+ *       and useAuthStore for the new Worker API flows (registration/login via /api/auth).
+ * 
+ * This module re-exports everything from a single location.
  */
 
-// KR Store (Kakao + Firebase Email)
-export { useAuthKR, useAuthKRUser, useAuthKRLoading, useAuthKRError, useAuthKRRole, useAuthKRReady } from './useAuthKR';
+// ---- Firebase-based stores (KR + World regions) ----
+export {
+  useAuthKR,
+  useAuthKRUser,
+  useAuthKRLoading,
+  useAuthKRError,
+  useAuthKRRole,
+  useAuthKRReady,
+} from './useAuthKR';
 
-// WORLD Store (Google OAuth)
-export { useAuthWorld, useAuthWorldUser, useAuthWorldLoading, useAuthWorldError, useAuthWorldRole, useAuthWorldReady } from './useAuthWorld';
+export {
+  useAuthWorld,
+  useAuthWorldUser,
+  useAuthWorldLoading,
+  useAuthWorldError,
+  useAuthWorldRole,
+  useAuthWorldReady,
+} from './useAuthWorld';
 
-// UI Store (Modals, Loading, Errors)
-export { useAuthUI, useLoginModalOpen, useSignupModalOpen, useResetPasswordModalOpen, useGlobalLoading, useErrorMessage } from './useAuthUI';
+export {
+  useAuthUI,
+  useLoginModalOpen,
+  useSignupModalOpen,
+  useResetPasswordModalOpen,
+  useGlobalLoading,
+  useErrorMessage,
+} from './useAuthUI';
+
+// ---- JWT Worker API auth store ----
+export { useAuthStore } from '../../client/stores/auth.store';
+
+// ---- Multi-seller cart store ----
+export { useCartStore } from '../../client/stores/cart.store';

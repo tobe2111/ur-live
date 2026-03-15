@@ -56,7 +56,13 @@ export const RATE_LIMIT_TIERS = {
  */
 export function rateLimiter(config: RateLimitConfig) {
   return async (c: Context, next: Next) => {
-    const kv = c.env.SESSION_KV as KVNamespace;
+    // ✅ BUG #17 FIX: The worker Bindings type exposes `RATE_LIMIT_KV` for rate
+    // limiting and `SESSION_KV` for session storage.  The old code read
+    // `c.env.SESSION_KV`, which is the wrong namespace.  When `SESSION_KV` is
+    // undefined (or the wrong namespace), the guard `if (!kv)` fires, the
+    // rate-limiter is silently skipped, and DDoS protection is permanently off.
+    // Fix: prefer `RATE_LIMIT_KV`; fall back to `SESSION_KV` for backward-compat.
+    const kv = (c.env.RATE_LIMIT_KV || c.env.SESSION_KV) as KVNamespace | undefined;
     
     if (!kv) {
       console.warn('[Rate Limiter] KV not available, skipping rate limit');

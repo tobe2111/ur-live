@@ -221,6 +221,7 @@ function AppContent() {
               </PublicRoute>
             } />
             <Route path="/seller/register" element={<SellerRegisterPage />} />
+            <Route path="/seller/signup" element={<SellerRegisterPage />} />
             
             {/* Seller Protected 페이지들 */}
             <Route path="/seller" element={
@@ -424,7 +425,7 @@ function App() {
       <ErrorBoundary>
         <ChunkErrorBoundary>
           <QueryProvider>
-            <BrowserRouter>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <AppContent />
             </BrowserRouter>
           </QueryProvider>

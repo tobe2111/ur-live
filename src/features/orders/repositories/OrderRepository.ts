@@ -60,15 +60,32 @@ export class OrderRepository {
   
   /**
    * 주문 생성
+   * ✅ BUG #20 FIX: The live DB schema (initial migration 0001) uses `total_price`
+   * as the column name, NOT `total_amount`.  The old INSERT used `total_amount`
+   * which caused a "table orders has no column named total_amount" SQL error,
+   * silently rolling back every order creation in production.
+   *
+   * ✅ BUG #26 FIX: No idempotency check on order creation meant that a network
+   * retry (e.g. slow 3G, page reload on PaymentSuccessPage) would insert a
+   * duplicate order row with the same order_number, charging the customer twice
+   * or creating phantom orders.  We now check for an existing order_number
+   * before inserting; if found we return the existing order instead of failing.
    */
   async create(data: OrderCreateInput): Promise<Order> {
     // 주문 번호 생성
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    
-    // 주문 생성
+    const orderNumber = data.order_number || `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+    // ✅ BUG #26 FIX: Idempotency check — return existing order if order_number already exists
+    const existing = await this.findByOrderNumber(orderNumber);
+    if (existing) {
+      console.warn('[OrderRepository] Duplicate order_number detected, returning existing order:', orderNumber);
+      return existing;
+    }
+
+    // ✅ BUG #20 FIX: Use `total_price` to match the actual DB schema column
     const orderResult = await this.db.prepare(`
       INSERT INTO orders (
-        order_number, user_id, seller_id, total_amount, status,
+        order_number, user_id, seller_id, total_price, status,
         payment_method, shipping_address, shipping_name, shipping_phone,
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, datetime('now'), datetime('now'))
@@ -76,7 +93,7 @@ export class OrderRepository {
       orderNumber,
       data.user_id,
       data.seller_id,
-      data.total_amount,
+      data.total_amount,   // OrderCreateInput field stays as total_amount for API compat
       data.payment_method || null,
       data.shipping_address || null,
       data.shipping_name || null,

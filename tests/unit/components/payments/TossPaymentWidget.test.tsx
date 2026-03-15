@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { TossPaymentWidget } from '../../../src/components/payments/TossPaymentWidget'
+import { TossPaymentWidget } from '@/components/payments/TossPaymentWidget'
 
 // Mock window.PaymentWidget
 const mockPaymentWidget = vi.fn()

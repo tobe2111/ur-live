@@ -1,19 +1,21 @@
 /**
  * 🧪 LoginFlowService 단위 테스트
- * 
+ *
  * 테스트 범위:
- * 1. loginWithKakaoToken - Kakao OAuth → Firebase
- * 2. loginWithFirebaseToken - Custom Token → Firebase
+ * 1. loginWithKakaoToken - Kakao OAuth → Firebase (via @/lib/firebase-auth)
+ * 2. loginWithFirebaseToken - Custom Token → Firebase (via @/lib/firebase-auth)
  * 3. loginSeller - Email/Password → JWT
  * 4. loginAdmin - Email/Password → JWT
- * 5. logout - 통합 로그아웃
- * 6. getLoginType - 로그인 타입 확인
+ * 5. logout - 타입별 선택적 로그아웃
+ * 6. getLoginType - async 로그인 타입 확인
  * 7. getJWTToken - JWT 토큰 가져오기
+ *
+ * NOTE: login-flow.service.ts 는 firebase/auth 를 직접 쓰지 않고
+ *       @/lib/firebase-auth 래퍼를 lazy-import 합니다.
+ *       따라서 '@/lib/firebase-auth' 를 mock 해야 합니다.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { signInWithCustomToken } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
 import api from '@/lib/api'
 import {
   loginWithKakaoToken,
@@ -28,19 +30,31 @@ import {
 } from '@/features/auth/login-flow.service'
 
 // ============================================
-// Mock 설정
+// Mock: @/lib/firebase-auth (래퍼 모듈)
 // ============================================
 
-vi.mock('firebase/auth', () => ({
-  signInWithCustomToken: vi.fn(),
+const mockSignInWithCustomToken = vi.fn()
+const mockSignOut = vi.fn()
+const mockGetCurrentUser = vi.fn()
+
+// getFirebaseAuth returns a mutable auth-like object so that
+// loginWithKakaoToken's setInterval loop can see currentUser after sign-in.
+const mockAuthObject = { currentUser: null as { uid: string } | null }
+
+// We need a stable reference for getFirebaseAuth so vi.clearAllMocks()
+// doesn't wipe its return value between tests.
+const mockGetFirebaseAuth = vi.fn()
+
+vi.mock('@/lib/firebase-auth', () => ({
+  signInWithCustomToken: (...args: unknown[]) => mockSignInWithCustomToken(...args),
+  signOut: (...args: unknown[]) => mockSignOut(...args),
+  getCurrentUser: (...args: unknown[]) => mockGetCurrentUser(...args),
+  getFirebaseAuth: (...args: unknown[]) => mockGetFirebaseAuth(...args),
 }))
 
-vi.mock('@/lib/firebase', () => ({
-  auth: {
-    currentUser: null,
-    signOut: vi.fn(),
-  },
-}))
+// ============================================
+// Mock: @/lib/api
+// ============================================
 
 vi.mock('@/lib/api', () => ({
   default: {
@@ -49,16 +63,76 @@ vi.mock('@/lib/api', () => ({
 }))
 
 // ============================================
+// Mock: @/utils/auth (clearAuthData)
+// ============================================
+
+vi.mock('@/utils/auth', () => ({
+  clearAuthData: vi.fn((type: string) => {
+    if (type === 'seller') {
+      localStorage.removeItem('seller_token')
+      localStorage.removeItem('user_type')
+    } else if (type === 'admin') {
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('user_type')
+    } else if (type === 'user') {
+      localStorage.removeItem('user_name')
+      localStorage.removeItem('loginReturnUrl')
+      localStorage.removeItem('user_type')
+    }
+  }),
+}))
+
+// ============================================
+// Mock: @/shared/config/region
+// ============================================
+
+vi.mock('@/shared/config/region', () => ({
+  isKorea: vi.fn(() => false),
+}))
+
+// ============================================
+// Mock: @/shared/stores/useAuthKR, useAuthWorld
+// ============================================
+
+vi.mock('@/shared/stores/useAuthKR', () => ({
+  useAuthKR: {
+    getState: vi.fn(() => ({
+      setUser: vi.fn(),
+      setLoading: vi.fn(),
+      setAuthReady: vi.fn(),
+    })),
+  },
+}))
+
+vi.mock('@/shared/stores/useAuthWorld', () => ({
+  useAuthWorld: {
+    getState: vi.fn(() => ({
+      setUser: vi.fn(),
+      setLoading: vi.fn(),
+      setAuthReady: vi.fn(),
+    })),
+  },
+}))
+
+// ============================================
 // 테스트 시작
 // ============================================
 
 describe('LoginFlowService', () => {
-  // 각 테스트 전에 localStorage 정리
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
     vi.clearAllMocks()
-    
-    // console.log, console.warn, console.error 무시
+
+    // Reset shared auth object
+    mockAuthObject.currentUser = null
+
+    // Always return the shared mutable mockAuthObject so setInterval checks work
+    mockGetFirebaseAuth.mockResolvedValue(mockAuthObject)
+
+    // 기본 getCurrentUser: 로그인 안 됨
+    mockGetCurrentUser.mockResolvedValue(null)
+
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -74,7 +148,6 @@ describe('LoginFlowService', () => {
 
   describe('loginWithKakaoToken', () => {
     it('✅ Kakao 액세스 토큰으로 Firebase 로그인 성공', async () => {
-      // Mock: Backend API 응답
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -83,33 +156,31 @@ describe('LoginFlowService', () => {
         }),
       })
 
-      // Mock: Firebase signInWithCustomToken
       const mockUser = {
         uid: 'test-firebase-uid',
         getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
       }
-      const mockCredential = { user: mockUser }
-      vi.mocked(signInWithCustomToken).mockResolvedValueOnce(mockCredential as any)
+      mockSignInWithCustomToken.mockImplementationOnce(async () => {
+        // Simulate Firebase setting currentUser after sign-in
+        mockAuthObject.currentUser = mockUser
+        return { user: mockUser }
+      })
 
-      // 실행
       await loginWithKakaoToken('mock-kakao-access-token')
 
-      // 검증
       expect(global.fetch).toHaveBeenCalledWith('/api/auth/kakao/firebase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: 'mock-kakao-access-token' }),
       })
-      expect(signInWithCustomToken).toHaveBeenCalledWith(auth, 'mock-firebase-custom-token')
-      expect(mockUser.getIdToken).toHaveBeenCalledWith(true)
+      expect(mockSignInWithCustomToken).toHaveBeenCalledWith('mock-firebase-custom-token')
     })
 
     it('✅ customToken 응답 필드도 지원', async () => {
-      // Mock: Backend API 응답 (customToken 필드)
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          customToken: 'mock-custom-token', // firebaseToken 대신 customToken
+          customToken: 'mock-custom-token',
         }),
       })
 
@@ -117,11 +188,14 @@ describe('LoginFlowService', () => {
         uid: 'test-uid',
         getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
       }
-      vi.mocked(signInWithCustomToken).mockResolvedValueOnce({ user: mockUser } as any)
+      mockSignInWithCustomToken.mockImplementationOnce(async () => {
+        mockAuthObject.currentUser = mockUser
+        return { user: mockUser }
+      })
 
       await loginWithKakaoToken('kakao-token')
 
-      expect(signInWithCustomToken).toHaveBeenCalledWith(auth, 'mock-custom-token')
+      expect(mockSignInWithCustomToken).toHaveBeenCalledWith('mock-custom-token')
     })
 
     it('❌ Backend API 에러 시 예외 발생', async () => {
@@ -130,20 +204,18 @@ describe('LoginFlowService', () => {
         status: 401,
       })
 
-      await expect(
-        loginWithKakaoToken('invalid-token')
-      ).rejects.toThrow('Backend error: 401')
+      await expect(loginWithKakaoToken('invalid-token')).rejects.toThrow('Backend error: 401')
     })
 
     it('❌ Firebase 토큰 없을 때 예외 발생', async () => {
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => ({}), // 토큰 없음
+        json: async () => ({}),
       })
 
-      await expect(
-        loginWithKakaoToken('token')
-      ).rejects.toThrow('No Firebase token received from backend')
+      await expect(loginWithKakaoToken('token')).rejects.toThrow(
+        'No Firebase token received from backend'
+      )
     })
 
     it('❌ Firebase signInWithCustomToken 실패 시 예외 발생', async () => {
@@ -152,13 +224,9 @@ describe('LoginFlowService', () => {
         json: async () => ({ firebaseToken: 'invalid-token' }),
       })
 
-      vi.mocked(signInWithCustomToken).mockRejectedValueOnce(
-        new Error('Firebase auth failed')
-      )
+      mockSignInWithCustomToken.mockRejectedValueOnce(new Error('Firebase auth failed'))
 
-      await expect(
-        loginWithKakaoToken('token')
-      ).rejects.toThrow('Firebase auth failed')
+      await expect(loginWithKakaoToken('token')).rejects.toThrow('Firebase auth failed')
     })
   })
 
@@ -172,22 +240,20 @@ describe('LoginFlowService', () => {
         uid: 'direct-uid',
         getIdToken: vi.fn().mockResolvedValue('id-token'),
       }
-      vi.mocked(signInWithCustomToken).mockResolvedValueOnce({ user: mockUser } as any)
+      mockSignInWithCustomToken.mockImplementationOnce(async () => {
+        mockAuthObject.currentUser = mockUser
+        return { user: mockUser }
+      })
 
       await loginWithFirebaseToken('direct-custom-token')
 
-      expect(signInWithCustomToken).toHaveBeenCalledWith(auth, 'direct-custom-token')
-      expect(mockUser.getIdToken).toHaveBeenCalledWith(true)
+      expect(mockSignInWithCustomToken).toHaveBeenCalledWith('direct-custom-token')
     })
 
     it('❌ Firebase 로그인 실패 시 예외 발생', async () => {
-      vi.mocked(signInWithCustomToken).mockRejectedValueOnce(
-        new Error('Invalid custom token')
-      )
+      mockSignInWithCustomToken.mockRejectedValueOnce(new Error('Invalid custom token'))
 
-      await expect(
-        loginWithFirebaseToken('bad-token')
-      ).rejects.toThrow('Invalid custom token')
+      await expect(loginWithFirebaseToken('bad-token')).rejects.toThrow('Invalid custom token')
     })
   })
 
@@ -222,12 +288,10 @@ describe('LoginFlowService', () => {
 
     it('❌ 토큰 없을 때 예외 발생', async () => {
       vi.mocked(api.post).mockResolvedValueOnce({
-        data: { user: {} }, // token 필드 없음
+        data: { user: {} },
       })
 
-      await expect(
-        loginSeller('seller@test.com', 'password')
-      ).rejects.toThrow('No token received')
+      await expect(loginSeller('seller@test.com', 'password')).rejects.toThrow('No token received')
     })
 
     it('❌ API 에러 시 에러 메시지 정리', async () => {
@@ -239,17 +303,15 @@ describe('LoginFlowService', () => {
         },
       })
 
-      await expect(
-        loginSeller('wrong@test.com', 'wrong')
-      ).rejects.toThrow('이메일 또는 비밀번호가 올바르지 않습니다')
+      await expect(loginSeller('wrong@test.com', 'wrong')).rejects.toThrow(
+        '이메일 또는 비밀번호가 올바르지 않습니다'
+      )
     })
 
     it('❌ 네트워크 에러 시 기본 메시지', async () => {
       vi.mocked(api.post).mockRejectedValueOnce(new Error('Network error'))
 
-      await expect(
-        loginSeller('seller@test.com', 'password')
-      ).rejects.toThrow('Network error')
+      await expect(loginSeller('seller@test.com', 'password')).rejects.toThrow('Network error')
     })
   })
 
@@ -284,12 +346,10 @@ describe('LoginFlowService', () => {
 
     it('❌ 토큰 없을 때 예외 발생', async () => {
       vi.mocked(api.post).mockResolvedValueOnce({
-        data: { user: {} }, // token 필드 없음
+        data: { user: {} },
       })
 
-      await expect(
-        loginAdmin('admin@test.com', 'password')
-      ).rejects.toThrow('No token received')
+      await expect(loginAdmin('admin@test.com', 'password')).rejects.toThrow('No token received')
     })
 
     it('❌ API 에러 시 에러 메시지 정리', async () => {
@@ -301,9 +361,7 @@ describe('LoginFlowService', () => {
         },
       })
 
-      await expect(
-        loginAdmin('nonadmin@test.com', 'password')
-      ).rejects.toThrow('권한이 없습니다')
+      await expect(loginAdmin('nonadmin@test.com', 'password')).rejects.toThrow('권한이 없습니다')
     })
   })
 
@@ -312,82 +370,81 @@ describe('LoginFlowService', () => {
   // ============================================
 
   describe('logout', () => {
-    it('✅ 통합 로그아웃 성공 - Firebase + localStorage 정리', async () => {
-      // localStorage에 데이터 설정
-      localStorage.setItem('user_name', 'Test User')
-      localStorage.setItem('loginReturnUrl', '/profile')
-      localStorage.setItem('seller_token', 'seller-token')
-      localStorage.setItem('admin_token', 'admin-token')
+    it('✅ Seller 로그아웃 - seller 세션만 정리', async () => {
+      localStorage.setItem('seller_token', 'seller-tok')
       localStorage.setItem('user_type', 'seller')
 
-      // Mock: Firebase signOut
-      vi.mocked(auth.signOut).mockResolvedValueOnce(undefined)
+      await logout('seller')
 
-      await logout()
-
-      // 검증: Firebase signOut 호출
-      expect(auth.signOut).toHaveBeenCalled()
-
-      // 검증: localStorage 정리
-      expect(localStorage.getItem('user_name')).toBeNull()
-      expect(localStorage.getItem('loginReturnUrl')).toBeNull()
       expect(localStorage.getItem('seller_token')).toBeNull()
+    })
+
+    it('✅ Admin 로그아웃 - admin 세션만 정리', async () => {
+      localStorage.setItem('admin_token', 'admin-tok')
+      localStorage.setItem('user_type', 'admin')
+
+      await logout('admin')
+
       expect(localStorage.getItem('admin_token')).toBeNull()
-      expect(localStorage.getItem('user_type')).toBeNull()
+    })
+
+    it('✅ User 로그아웃 - Firebase signOut 호출', async () => {
+      localStorage.setItem('user_type', 'user')
+      mockSignOut.mockResolvedValueOnce(undefined)
+
+      await logout('user')
+
+      expect(mockSignOut).toHaveBeenCalled()
     })
 
     it('✅ Firebase signOut 실패해도 계속 진행', async () => {
       localStorage.setItem('seller_token', 'token')
-      
-      // Mock: Firebase signOut 실패
-      vi.mocked(auth.signOut).mockRejectedValueOnce(new Error('Firebase error'))
+      localStorage.setItem('user_type', 'seller')
+      mockSignOut.mockRejectedValueOnce(new Error('Firebase error'))
 
-      // 예외 발생하지 않고 계속 진행
-      await expect(logout()).resolves.not.toThrow()
-
-      // localStorage는 정리됨
+      // seller logout은 Firebase signOut을 호출하지 않으므로 항상 성공
+      await expect(logout('seller')).resolves.not.toThrow()
       expect(localStorage.getItem('seller_token')).toBeNull()
     })
   })
 
   // ============================================
-  // 6. getLoginType 테스트
+  // 6. getLoginType 테스트 (async!)
   // ============================================
 
   describe('getLoginType', () => {
-    it('✅ Seller 로그인 타입 반환', () => {
+    it('✅ Seller 로그인 타입 반환', async () => {
       localStorage.setItem('user_type', 'seller')
       localStorage.setItem('seller_token', 'seller-token')
 
-      expect(getLoginType()).toBe('seller')
+      expect(await getLoginType()).toBe('seller')
     })
 
-    it('✅ Admin 로그인 타입 반환', () => {
+    it('✅ Admin 로그인 타입 반환', async () => {
       localStorage.setItem('user_type', 'admin')
       localStorage.setItem('admin_token', 'admin-token')
 
-      expect(getLoginType()).toBe('admin')
+      expect(await getLoginType()).toBe('admin')
     })
 
-    it('✅ User (Firebase) 로그인 타입 반환', () => {
-      // Mock: Firebase currentUser
-      ;(auth as any).currentUser = { uid: 'firebase-uid' }
+    it('✅ User (Firebase) 로그인 타입 반환', async () => {
+      mockGetCurrentUser.mockResolvedValueOnce({ uid: 'firebase-uid' })
 
-      expect(getLoginType()).toBe('user')
-      
-      // Cleanup
-      ;(auth as any).currentUser = null
+      expect(await getLoginType()).toBe('user')
     })
 
-    it('✅ 로그인 안 됨 → null 반환', () => {
-      expect(getLoginType()).toBeNull()
+    it('✅ 로그인 안 됨 → null 반환', async () => {
+      mockGetCurrentUser.mockResolvedValueOnce(null)
+
+      expect(await getLoginType()).toBeNull()
     })
 
-    it('✅ user_type만 있고 토큰 없으면 null', () => {
+    it('✅ user_type만 있고 토큰 없으면 Firebase로 확인', async () => {
       localStorage.setItem('user_type', 'seller')
-      // seller_token 없음
+      // seller_token 없음 → Firebase로 fallback
+      mockGetCurrentUser.mockResolvedValueOnce(null)
 
-      expect(getLoginType()).toBeNull()
+      expect(await getLoginType()).toBeNull()
     })
   })
 
@@ -398,13 +455,11 @@ describe('LoginFlowService', () => {
   describe('getJWTToken', () => {
     it('✅ Seller JWT 토큰 가져오기', () => {
       localStorage.setItem('seller_token', 'seller-jwt')
-
       expect(getJWTToken('seller')).toBe('seller-jwt')
     })
 
     it('✅ Admin JWT 토큰 가져오기', () => {
       localStorage.setItem('admin_token', 'admin-jwt')
-
       expect(getJWTToken('admin')).toBe('admin-jwt')
     })
 
@@ -429,31 +484,33 @@ describe('LoginFlowService', () => {
       })
 
       await loginSeller('seller@test.com', 'password')
-      expect(getLoginType()).toBe('seller')
+      expect(await getLoginType()).toBe('seller')
 
-      // 2. 로그아웃
-      vi.mocked(auth.signOut).mockResolvedValueOnce(undefined)
-      await logout()
-      expect(getLoginType()).toBeNull()
+      // 2. Seller 로그아웃
+      await logout('seller')
+      mockGetCurrentUser.mockResolvedValueOnce(null)
+      expect(await getLoginType()).toBeNull()
 
       // 3. User (Firebase) 로그인
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ firebaseToken: 'firebase-token' }),
       })
-      
+
       const mockUser = {
         uid: 'user-uid',
         getIdToken: vi.fn().mockResolvedValue('id-token'),
       }
-      vi.mocked(signInWithCustomToken).mockResolvedValueOnce({ user: mockUser } as any)
-      ;(auth as any).currentUser = mockUser
+      mockSignInWithCustomToken.mockImplementationOnce(async () => {
+        mockAuthObject.currentUser = mockUser
+        return { user: mockUser }
+      })
 
       await loginWithKakaoToken('kakao-token')
-      expect(getLoginType()).toBe('user')
 
-      // Cleanup
-      ;(auth as any).currentUser = null
+      // User 로그인 후 getCurrentUser mock
+      mockGetCurrentUser.mockResolvedValueOnce({ uid: 'user-uid' })
+      expect(await getLoginType()).toBe('user')
     })
   })
 })

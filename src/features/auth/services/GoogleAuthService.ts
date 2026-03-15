@@ -1,3 +1,4 @@
+import type { D1Database } from '@cloudflare/workers-types';
 /**
  * Google OAuth 2.0 인증 서비스
  * 
@@ -40,8 +41,8 @@ export class GoogleAuthService {
     
     return {
       googleId: tokenPayload.sub,
-      email: tokenPayload.email,
-      name: tokenPayload.name || tokenPayload.email.split('@')[0],
+      email: tokenPayload.email ?? "",
+      name: tokenPayload.name || (tokenPayload.email ?? "").split('@')[0],
       profileImage: tokenPayload.picture
     };
   }

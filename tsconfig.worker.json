@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "types": [
+      "@cloudflare/workers-types"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
+  },
+  "include": [
+    "src/worker/**/*",
+    "src/shared/types/**/*",
+    "src/shared/utils/**/*",
+    "src/shared/constants/**/*",
+    "src/shared/config/**/*",
+    "src/durable-object.ts",
+    "src/types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/shared/stores/**/*",
+    "src/shared/db/**/*",
+    "src/shared/repositories/**/*",
+    "src/shared/config/region.PROPOSED.ts",
+    "src/shared/config/**/*"
+  ]
+}

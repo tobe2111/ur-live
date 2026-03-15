@@ -5,13 +5,14 @@ import api from '@/lib/api'
 export default function SellerRegisterPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
+    username: '',
     email: '',
     password: '',
     passwordConfirm: '',
     name: '',
     phone: '',
     businessNumber: '',
-    companyName: ''
+    businessName: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -43,16 +44,29 @@ export default function SellerRegisterPage() {
       return
     }
 
+    if (formData.username.length < 3) {
+      setError('아이디는 3자 이상이어야 합니다')
+      return
+    }
+
+    // 사업자번호 형식 검증 (XXX-XX-XXXXX)
+    const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/
+    if (!businessNumberRegex.test(formData.businessNumber)) {
+      setError('사업자등록번호 형식이 올바르지 않습니다 (예: 123-45-67890)')
+      return
+    }
+
     setLoading(true)
 
     try {
       const response = await api.post('/api/seller/register', {
+        username: formData.username,
         email: formData.email,
         password: formData.password,
         name: formData.name,
         phone: formData.phone,
         business_number: formData.businessNumber,
-        company_name: formData.companyName
+        business_name: formData.businessName
       })
 
       if (response.data.success) {
@@ -90,7 +104,24 @@ export default function SellerRegisterPage() {
             {/* 기본 정보 */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">기본 정보</h3>
-              
+
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  아이디 * (3자 이상 영문·숫자)
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  minLength={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="seller123"
+                />
+              </div>
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   이메일 *
@@ -143,7 +174,7 @@ export default function SellerRegisterPage() {
 
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  이름 *
+                  담당자 이름 *
                 </label>
                 <input
                   id="name"
@@ -179,14 +210,14 @@ export default function SellerRegisterPage() {
               <h3 className="text-lg font-semibold text-gray-900">사업자 정보</h3>
               
               <div>
-                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-2">
-                  회사명 *
+                <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
+                  상호명 (회사명) *
                 </label>
                 <input
-                  id="companyName"
-                  name="companyName"
+                  id="businessName"
+                  name="businessName"
                   type="text"
-                  value={formData.companyName}
+                  value={formData.businessName}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -196,7 +227,7 @@ export default function SellerRegisterPage() {
 
               <div>
                 <label htmlFor="businessNumber" className="block text-sm font-medium text-gray-700 mb-2">
-                  사업자등록번호 *
+                  사업자등록번호 * (XXX-XX-XXXXX)
                 </label>
                 <input
                   id="businessNumber"
@@ -216,7 +247,7 @@ export default function SellerRegisterPage() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '가입 중...' : '회원가입'}
+              {loading ? '가입 중...' : '판매자 가입하기'}
             </button>
           </form>
 

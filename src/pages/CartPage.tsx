@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { requireLogin, getUserId, isLoggedIn } from '@/utils/auth'
+import { requireLogin, getUserId, isLoggedInSync } from '@/utils/auth'
 import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
 import { CartHeader } from '@/components/cart/CartHeader'
@@ -93,7 +93,7 @@ export default function CartPage() {
     cartItemId?: string | number
     productId?: string | number
     productName?: string
-    currentOptionId?: number
+    currentOptionId?: number | string
     currentOptionValue?: string
   }>({
     isOpen: false,
@@ -138,7 +138,7 @@ export default function CartPage() {
     }
     
     // ✅ React Query가 자동으로 데이터 로딩
-    if (!isLoggedIn()) {
+    if (!isLoggedInSync()) {
       requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
     } else {
       // ✅ 페이지 마운트 시 항상 최신 장바구니 데이터 새로고침
@@ -205,7 +205,7 @@ export default function CartPage() {
   }, [cartItems, updating, updateQuantityMutation])
 
   // 🎯 React Query mutation으로 아이템 삭제
-  const removeItem = useCallback(async (cartItemId: number) => {
+  const removeItem = useCallback(async (cartItemId: number | string) => {
     if (updating) return
 
     showConfirm(
@@ -307,7 +307,7 @@ export default function CartPage() {
       groups[sellerId].items.push(item)
       groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
       return groups
-    }, {} as Record<number, {
+    }, {} as Record<string | number, {
       items: any[]
       subtotal: number
       shipping_fee: number
@@ -381,7 +381,7 @@ export default function CartPage() {
             {cartItems.map((item) => (
               <CartItemComponent
                 key={item.id}
-                item={item}
+                item={item as any}
                 isSelected={selectedIds.has(item.id)}
                 onToggleSelect={toggleSelect}
                 onUpdateQuantity={updateQuantity}
@@ -427,7 +427,7 @@ export default function CartPage() {
         onClose={closeOptionModal}
         productId={optionModal.productId as number}
         productName={optionModal.productName as string}
-        currentOptionId={optionModal.currentOptionId}
+        currentOptionId={optionModal.currentOptionId as number | undefined}
         currentOptionValue={optionModal.currentOptionValue}
         onOptionSelected={handleOptionChange}
       />

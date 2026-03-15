@@ -133,7 +133,9 @@ export function useUpdateCartQuantity() {
 
   return useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
-      const response = await api.patch(`/api/cart/${itemId}`, { quantity })
+      // ✅ BUG #6 FIX: Server exposes PUT /api/cart/:id, not PATCH.
+      // Using api.patch() here resulted in 404/405 errors on every quantity change.
+      const response = await api.put(`/api/cart/${itemId}`, { quantity })
       return response.data
     },
 
@@ -206,12 +208,14 @@ export function useRemoveFromCart() {
 }
 
 // 🎯 장바구니 전체 비우기
+// ✅ BUG #13 FIX: The server exposes POST /api/cart/clear, not DELETE /api/cart.
+// api.delete('/api/cart') returned 404 because no such route exists.
 export function useClearCart() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async () => {
-      const response = await api.delete('/api/cart')
+      const response = await api.post('/api/cart/clear')
       return response.data
     },
 

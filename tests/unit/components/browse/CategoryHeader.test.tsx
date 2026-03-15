@@ -58,10 +58,11 @@ describe('CategoryHeader', () => {
     expect(screen.getByText('스포츠 상품')).toBeDefined()
   })
 
-  it('falls back to "전체" for unknown category', () => {
+  it('falls back to "기타" for unknown category', () => {
     render(<CategoryHeader category="unknown" productCount={5} />)
 
-    expect(screen.getByText('전체 상품')).toBeDefined()
+    // getCategoryLabel returns '기타' for unmapped categories (not '전체')
+    expect(screen.getByText('기타 상품')).toBeDefined()
   })
 
   it('handles zero product count', () => {

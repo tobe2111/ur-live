@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { logout as authLogout } from '@/utils/auth'
@@ -46,6 +46,13 @@ export default function MyOrdersPage() {
   const userName = getUserNameSync() || '게스트'
   const userEmail = getUserEmail() || ''
 
+  // ✅ BUG #25 FIX: A ref-based flag prevents concurrent loadData() calls.
+  // Previously, switching tabs AND triggering handleUpdateQuantity/handleRemoveItem
+  // at roughly the same time fired two simultaneous loadData() calls.  The second
+  // call would overwrite the state of the first with stale server data because
+  // both read `activeTab` from the closure at the same point in time.
+  const isLoadingRef = useRef(false)
+
   useEffect(() => {
     // Redirect to login if not logged in (통합 인증 체크)
     if (!isLoggedInSync() || !userId) {
@@ -57,9 +64,14 @@ export default function MyOrdersPage() {
   }, [activeTab, userId, navigate])
 
   async function loadData() {
+    // ✅ BUG #25 FIX: Guard against concurrent calls
+    if (isLoadingRef.current) {
+      console.log('[MyOrdersPage] loadData skipped — already in progress')
+      return
+    }
+    isLoadingRef.current = true
     setLoading(true)
     try {
-      // \uc0c1\ub2e8\uc5d0\uc11c \uc774\ubbf8 userId\ub97c \uac00\uc838\uc654\uc73c\ubbc0\ub85c \uc7ac\uc0ac\uc6a9
       const uid = userId || getUserIdSync()
       
       if (!uid) {
@@ -82,6 +94,7 @@ export default function MyOrdersPage() {
       console.error('Failed to load data:', error)
     } finally {
       setLoading(false)
+      isLoadingRef.current = false
     }
   }
 
@@ -254,7 +267,7 @@ export default function MyOrdersPage() {
           <>
             {activeTab === 'cart' && (
               <CartTab 
-                cartItems={cartItems}
+                cartItems={cartItems as any}
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemoveItem={handleRemoveItem}
                 onCheckout={handleCheckout}
@@ -280,50 +293,6 @@ export default function MyOrdersPage() {
           </>
         )}
       </main>
-
-      {/* Cancel Order Modal */}
-      {cancelModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-[#1d1d1f] mb-4">
-                주문 취소
-              </h3>
-              <p className="text-[14px] text-[#6e6e73] mb-4">
-                주문번호: {cancelModal.orderNumber}
-              </p>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="취소 사유를 입력해주세요"
-                className="w-full p-3 border border-[#e5e5ea] rounded-xl text-[14px] resize-none"
-                rows={4}
-              />
-              <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => {
-                    setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
-                    setCancelReason('')
-                  }}
-                  className="flex-1 px-4 py-2 text-[14px] font-medium text-[#6e6e73] border border-[#e5e5ea] rounded-full hover:bg-[#f5f5f7] transition-colors"
-                  disabled={processing}
-                >
-                  취소
-                </button>
-                <button
-                  onClick={confirmCancelOrder}
-                  className="flex-1 px-4 py-2 text-[14px] font-medium text-white bg-[#ff3b30] rounded-full hover:opacity-80 transition-opacity"
-                  disabled={processing || !cancelReason.trim()}
-                >
-                  {processing ? '처리 중...' : '확인'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
 
       {/* Order Detail Modal */}
       {selectedOrder && (
@@ -406,7 +375,8 @@ export default function MyOrdersPage() {
                             {item.quantity}개
                           </p>
                           <p className="text-[14px] font-semibold text-[#1d1d1f]">
-                            {(item.price_snapshot * item.quantity).toLocaleString()}원
+                            {/* ✅ BUG #7 FIX: price_snapshot is optional; guard against undefined→NaN */}
+                            {((item.price_snapshot ?? 0) * item.quantity).toLocaleString()}원
                           </p>
                         </div>
                       </div>
@@ -450,7 +420,8 @@ export default function MyOrdersPage() {
                   <div className="flex justify-between">
                     <span className="text-[#6e6e73]">상품 금액</span>
                     <span className="font-medium text-[#1d1d1f]">
-                      {selectedOrder.items?.reduce((sum, item) => sum + item.price_snapshot * item.quantity, 0).toLocaleString()}원
+                      {/* ✅ BUG #7 FIX: guard undefined price_snapshot and undefined total_amount */}
+                    {selectedOrder.items?.reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0).toLocaleString()}원
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -460,7 +431,8 @@ export default function MyOrdersPage() {
                   <div className="flex justify-between pt-2 border-t border-[#d2d2d7]">
                     <span className="text-[#1d1d1f] font-semibold">총 결제금액</span>
                     <span className="text-[19px] font-bold text-[#007aff]">
-                      {selectedOrder.total_amount.toLocaleString()}원
+                      {/* ✅ BUG #7 FIX: total_amount is optional in Order type; nullish fallback prevents TypeError */}
+                      {(selectedOrder.total_amount ?? selectedOrder.amount ?? 0).toLocaleString()}원
                     </span>
                   </div>
                   <div className="flex justify-between">

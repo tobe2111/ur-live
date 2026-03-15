@@ -81,6 +81,8 @@ export default function SellerLiveBroadcastPage() {
   const [copiedRTMP, setCopiedRTMP] = useState(false)
   const [streamingMethod, setStreamingMethod] = useState<'web' | 'prism' | 'obs'>('web')
   const [showControlPanel, setShowControlPanel] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [connectingYouTube, setConnectingYouTube] = useState(false)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -97,26 +99,29 @@ export default function SellerLiveBroadcastPage() {
   async function loadData() {
     try {
       setLoading(true)
+      setLoadError(null)
 
-      // Load YouTube channels
-      const channelsRes = await api.get('/api/youtube/channels')
-      if (channelsRes.data.success) {
-        setChannels(channelsRes.data.data || [])
+      // Load all data in parallel for faster loading
+      const [channelsRes, productsRes, streamsRes] = await Promise.allSettled([
+        api.get('/api/seller/youtube/channels'),
+        api.get('/api/seller/products'),
+        api.get('/api/seller/streams'),
+      ])
+
+      if (channelsRes.status === 'fulfilled' && channelsRes.value.data.success) {
+        setChannels(channelsRes.value.data.data || [])
       }
 
-      // Load products
-      const productsRes = await api.get('/api/seller/products')
-      if (productsRes.data.success) {
-        setProducts(productsRes.data.data || [])
+      if (productsRes.status === 'fulfilled' && productsRes.value.data.success) {
+        setProducts(productsRes.value.data.data || [])
       }
 
-      // Load streams
-      const streamsRes = await api.get('/api/seller/streams')
-      if (streamsRes.data.success) {
-        setStreams(streamsRes.data.data || [])
+      if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
+        setStreams(streamsRes.value.data.data || [])
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load data:', error)
+      setLoadError('데이터를 불러오는데 실패했습니다. 페이지를 새로고침해주세요.')
     } finally {
       setLoading(false)
     }
@@ -124,14 +129,21 @@ export default function SellerLiveBroadcastPage() {
 
   async function connectYouTube() {
     try {
-      const response = await api.get('/api/youtube/auth-url')
-      if (response.data.success) {
-        // Open OAuth window
+      setConnectingYouTube(true)
+      const response = await api.get('/api/seller/youtube/auth-url')
+      if (response.data.success && response.data.data?.authUrl) {
+        // Redirect to YouTube OAuth
         window.location.href = response.data.data.authUrl
+      } else {
+        const errMsg = response.data.error || 'YouTube 연동 URL을 가져오지 못했습니다.'
+        alert(`YouTube 연동 실패: ${errMsg}\n\n관리자에게 문의해주세요 (YouTube API 설정 필요).`)
       }
     } catch (error: any) {
       console.error('Failed to get auth URL:', error)
-      alert('YouTube 연동에 실패했습니다.')
+      const errMsg = error.response?.data?.error || error.message || '알 수 없는 오류'
+      alert(`YouTube 연동에 실패했습니다: ${errMsg}`)
+    } finally {
+      setConnectingYouTube(false)
     }
   }
 
@@ -149,7 +161,7 @@ export default function SellerLiveBroadcastPage() {
     try {
       setCreating(true)
 
-      const response = await api.post('/api/youtube/live/create', {
+      const response = await api.post('/api/seller/youtube/live/create', {
         title: title.trim(),
         description: description.trim(),
         product_ids: selectedProducts,
@@ -163,6 +175,13 @@ export default function SellerLiveBroadcastPage() {
         setDescription('')
         setSelectedProducts([])
         await loadData()
+      } else {
+        const errMsg = response.data.error || '라이브 생성에 실패했습니다.'
+        if (response.data.error_code === 'YOUTUBE_AUTH_REQUIRED') {
+          alert('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
+        } else {
+          alert(`라이브 생성 실패: ${errMsg}`)
+        }
       }
     } catch (error: any) {
       console.error('Failed to create stream:', error)
@@ -178,12 +197,16 @@ export default function SellerLiveBroadcastPage() {
 
   async function startStream(streamId: number) {
     try {
-      await api.post(`/api/youtube/live/${streamId}/start`)
+      const res = await api.post(`/api/seller/youtube/live/${streamId}/start`)
       await loadData()
-      alert('방송이 시작되었습니다!')
+      if (res.data.success) {
+        alert('방송이 시작되었습니다!')
+      } else {
+        alert('방송 시작 실패: ' + (res.data.error || '알 수 없는 오류'))
+      }
     } catch (error: any) {
       console.error('Failed to start stream:', error)
-      alert('방송 시작에 실패했습니다.')
+      alert('방송 시작에 실패했습니다: ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -191,13 +214,17 @@ export default function SellerLiveBroadcastPage() {
     if (!confirm('방송을 종료하시겠습니까?')) return
 
     try {
-      await api.post(`/api/youtube/live/${streamId}/end`)
+      const res = await api.post(`/api/seller/youtube/live/${streamId}/end`)
       await loadData()
       setNewStream(null)
-      alert('방송이 종료되었습니다.')
+      if (res.data.success) {
+        alert('방송이 종료되었습니다.')
+      } else {
+        alert('방송 종료 처리: ' + (res.data.error || '상태를 확인해주세요.'))
+      }
     } catch (error: any) {
       console.error('Failed to end stream:', error)
-      alert('방송 종료에 실패했습니다.')
+      alert('방송 종료에 실패했습니다: ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -205,7 +232,7 @@ export default function SellerLiveBroadcastPage() {
     if (!confirm('YouTube 연동을 해제하시겠습니까?')) return
 
     try {
-      await api.delete(`/api/youtube/oauth/${channelId}`)
+      await api.delete(`/api/seller/youtube/oauth/${channelId}`)
       await loadData()
     } catch (error) {
       console.error('Failed to disconnect:', error)
@@ -235,6 +262,20 @@ export default function SellerLiveBroadcastPage() {
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-[#007aff] mx-auto mb-4" />
           <p className="text-[17px] text-[#6e6e73]">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-[17px] text-[#1d1d1f] mb-4">{loadError}</p>
+          <Button onClick={loadData} className="bg-[#007aff] hover:bg-[#0051d5] text-white">
+            다시 시도
+          </Button>
         </div>
       </div>
     )
@@ -277,10 +318,20 @@ export default function SellerLiveBroadcastPage() {
             </p>
             <Button
               onClick={connectYouTube}
+              disabled={connectingYouTube}
               className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-[17px] font-semibold h-auto"
             >
-              <Youtube className="h-5 w-5 mr-2" />
-              YouTube 계정 연동하기
+              {connectingYouTube ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  연결 중...
+                </>
+              ) : (
+                <>
+                  <Youtube className="h-5 w-5 mr-2" />
+                  YouTube 계정 연동하기
+                </>
+              )}
             </Button>
           </div>
         ) : (
@@ -503,11 +554,24 @@ export default function SellerLiveBroadcastPage() {
                             `}
                           >
                             <div className="flex gap-3">
-                              <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                              />
+                              {product.image_url ? (
+                                <img
+                                  src={product.image_url}
+                                  alt={product.name}
+                                  className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                    const placeholder = e.currentTarget.nextElementSibling as HTMLElement
+                                    if (placeholder) placeholder.style.display = 'flex'
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className="w-16 h-16 rounded-lg bg-[#f5f5f7] flex-shrink-0 items-center justify-center"
+                                style={{ display: product.image_url ? 'none' : 'flex' }}
+                              >
+                                <VideoIcon className="h-6 w-6 text-[#aeaeb2]" />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <h4 className="text-[13px] font-semibold text-[#1d1d1f] truncate">
                                   {product.name}

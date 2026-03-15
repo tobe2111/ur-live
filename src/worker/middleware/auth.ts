@@ -47,7 +47,7 @@ function extractToken(authHeader: string | null): string | null {
     return null;
   }
   
-  return parts[1];
+  return parts[1] ?? null;
 }
 
 /**
@@ -73,30 +73,174 @@ async function verifyJWT(
 }
 
 /**
- * Verify Firebase ID token
- * Note: This is a simplified version. In production, use Firebase Admin SDK
+ * Firebase 공개키 캐시 (Cloudflare Worker 인스턴스 수명 동안 유지)
+ * Google의 공개키는 최대 1시간마다 갱신되므로 캐시 사용
+ */
+const firebasePublicKeyCache: { keys: Record<string, string>; expiresAt: number } = {
+  keys: {},
+  expiresAt: 0,
+};
+
+/**
+ * Firebase 공개키 조회 (캐시 포함)
+ */
+async function getFirebasePublicKeys(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (now < firebasePublicKeyCache.expiresAt && Object.keys(firebasePublicKeyCache.keys).length > 0) {
+    return firebasePublicKeyCache.keys;
+  }
+
+  const res = await fetch(
+    'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com',
+    { cf: { cacheTtl: 3600, cacheEverything: true } } as RequestInit
+  );
+
+  if (!res.ok) {
+    throw new Error(`Firebase public key fetch failed: ${res.status}`);
+  }
+
+  const keys = await res.json() as Record<string, string>;
+
+  // Cache-Control 헤더에서 max-age 파싱
+  const cacheControl = res.headers.get('cache-control') || '';
+  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+  const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1] ?? '3600', 10) * 1000 : 3600 * 1000;
+
+  firebasePublicKeyCache.keys = keys;
+  firebasePublicKeyCache.expiresAt = now + maxAge;
+
+  return keys;
+}
+
+/**
+ * Base64URL → Uint8Array 변환 (Web Crypto API용)
+ */
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+  const binary = atob(padded);
+  return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
+}
+
+/**
+ * PEM 인증서에서 공개키 추출 및 Web Crypto 키 임포트
+ */
+async function importCertPublicKey(pem: string): Promise<CryptoKey> {
+  // PEM → DER 바이너리
+  const pemBody = pem
+    .replace(/-----BEGIN CERTIFICATE-----/, '')
+    .replace(/-----END CERTIFICATE-----/, '')
+    .replace(/\s+/g, '');
+
+  const derBuffer = base64UrlToUint8Array(pemBody).buffer as ArrayBuffer;
+
+  return crypto.subtle.importKey(
+    'spki',
+    derBuffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+}
+
+/**
+ * Verify Firebase ID token using Google's public keys (RS256 signature validation)
+ *
+ * 검증 항목:
+ * 1. RS256 서명 검증 (Google 공개키)
+ * 2. exp(만료시간) 확인
+ * 3. iat(발급시간) 확인 (미래 발급 방지)
+ * 4. iss(발급자) 확인
+ * 5. aud(수신자) = Firebase Project ID 확인
+ * 6. sub(사용자 UID) 존재 확인
  */
 async function verifyFirebaseToken(
   token: string,
   projectId: string
 ): Promise<any> {
   try {
-    // In production, verify with Firebase Admin SDK
-    // For now, just decode (NOT SECURE - for development only)
-    const decoded = jwt.decode(token);
-    
-    // Basic validation
-    if (!decoded || !decoded.payload) {
+    if (!projectId) {
+      console.error('[Auth] FIREBASE_PROJECT_ID is not set');
       return null;
     }
-    
-    const payload = decoded.payload;
-    
-    // Check required claims
-    if (!payload.sub || !(payload as any).email) {
+
+    // JWT 구조 파싱
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+    if (!headerB64 || !payloadB64 || !signatureB64) return null;
+
+    // 헤더 파싱
+    const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
+    if (header.alg !== 'RS256') {
+      console.error('[Auth] Firebase token must use RS256, got:', header.alg);
       return null;
     }
-    
+
+    const kid: string = header.kid;
+    if (!kid) return null;
+
+    // 공개키 조회
+    const publicKeys = await getFirebasePublicKeys();
+    const certPem = publicKeys[kid];
+    if (!certPem) {
+      console.error('[Auth] Firebase public key not found for kid:', kid);
+      return null;
+    }
+
+    // 서명 검증 (Web Crypto API)
+    const publicKey = await importCertPublicKey(certPem);
+    const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    const signature = base64UrlToUint8Array(signatureB64);
+
+    const isValid = await crypto.subtle.verify(
+      'RSASSA-PKCS1-v1_5',
+      publicKey,
+      signature.buffer as ArrayBuffer,
+      signedData
+    );
+
+    if (!isValid) {
+      console.error('[Auth] Firebase token signature verification failed');
+      return null;
+    }
+
+    // 페이로드 파싱
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    const now = Math.floor(Date.now() / 1000);
+
+    // exp 검증
+    if (!payload.exp || payload.exp < now) {
+      console.error('[Auth] Firebase token expired');
+      return null;
+    }
+
+    // iat 검증 (미래 발급 방지, 10분 허용)
+    if (!payload.iat || payload.iat > now + 600) {
+      console.error('[Auth] Firebase token iat is in the future');
+      return null;
+    }
+
+    // iss 검증
+    const expectedIss = `https://securetoken.google.com/${projectId}`;
+    if (payload.iss !== expectedIss) {
+      console.error('[Auth] Firebase token iss mismatch:', payload.iss);
+      return null;
+    }
+
+    // aud 검증
+    if (payload.aud !== projectId) {
+      console.error('[Auth] Firebase token aud mismatch:', payload.aud);
+      return null;
+    }
+
+    // sub 검증 (UID)
+    if (!payload.sub) {
+      console.error('[Auth] Firebase token missing sub');
+      return null;
+    }
+
     return payload;
   } catch (error) {
     console.error('[Auth] Firebase token verification failed:', error);

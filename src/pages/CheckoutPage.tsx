@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin, getUserId, getUserIdSync, isLoggedIn } from '@/utils/auth'
+import { requireLogin, getUserId, getUserIdSync, isLoggedIn, isLoggedInSync } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -98,25 +98,9 @@ export default function CheckoutPage() {
     is_default: 0
   })
   
-  // ✅ 인증 초기화 대기
-  if (!isAuthReady || authLoading) {
-    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...', { authLoading, isAuthReady })
-    return (
-      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // ✅ 인증 완료 후 user가 없으면 로그인 페이지로 리다이렉트
-  if (!user) {
-    console.log('[CheckoutPage] ❌ 사용자 없음 - 로그인 필요')
-    requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
-    return null
-  }
+  // ✅ BUG #3 FIX: All hooks must be called unconditionally before any early return.
+  // Guard conditions (isAuthReady, user) are now evaluated AFTER all hooks.
+  // The loading/redirect state is rendered at the JSX level below.
 
   // 셀러별 장바구니 그룹화 및 배송비 계산
   const sellerGroups = cartItems.reduce((groups, item) => {
@@ -155,32 +139,41 @@ export default function CheckoutPage() {
 
   const totalAmount = subtotal + totalShippingFee
 
-  // 🧹 URL 파라미터 청소 (JWT 토큰 제거 및 무한 루프 방지)
+  // ✅ BUG #18 FIX: There were TWO separate useEffect blocks both cleaning URL
+  // params on `searchParams` change.  The first (lines 143-162) fired replaceState
+  // but never called setUrlParamsProcessed(true), meaning the data-load effect
+  // gated on `urlParamsProcessed` was still delayed by a render cycle even though
+  // the URL was already clean.  Additionally, both effects called replaceState
+  // in the same render cycle, causing a double history push.
+  // Fix: merge into one authoritative effect that handles legacy localStorage
+  // cleanup AND sets the processed flag atomically.
   useEffect(() => {
-    // 🚨 CRITICAL: JWT 토큰이나 불필요한 파라미터가 URL에 있으면 즉시 제거
-    const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName']
-    const hasParamsToClean = paramsToClean.some(param => searchParams.has(param))
+    const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName', 'login', 'session']
     
-    if (hasParamsToClean) {
+    if (paramsToClean.some(param => searchParams.has(param))) {
       console.warn('[CheckoutPage] 🧹 URL 파라미터 정리 중...', {
         params: Array.from(searchParams.keys())
       })
-      
-      // URL을 깔끔하게 정리 (파라미터 모두 제거)
       window.history.replaceState({}, '', window.location.pathname)
-      
       // 레거시 JWT 키도 정리
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
-      
       console.log('[CheckoutPage] ✅ URL 파라미터 정리 완료')
     }
-  }, [searchParams]) // searchParams 의존성 추가
+    
+    // ✅ URL 파라미터 처리 완료 표시 (data-load effect gate)
+    setUrlParamsProcessed(true)
+  }, [searchParams])
 
   // 🔐 Step 0: Firebase 인증 상태 체크 (로그인되지 않으면 리다이렉트)
   useEffect(() => {
     async function checkFirebaseAuth() {
-      if (!isLoggedIn()) {
+      // ✅ BUG #21 FIX: isLoggedIn() is an async function returning Promise<boolean>.
+      // Calling it without `await` evaluated the Promise object itself (always
+      // truthy), so the auth guard NEVER redirected unauthenticated users —
+      // they could reach the checkout page without any valid session.
+      const loggedIn = await isLoggedIn()
+      if (!loggedIn) {
         console.log('[Firebase Auth] 로그인되지 않음, 로그인 페이지로 이동')
         requireLogin(navigate)
         return
@@ -216,20 +209,6 @@ export default function CheckoutPage() {
     }
   }, [totalAmount, paymentMethodWidget, ready])
 
-  // ✅ URL 파라미터 정리 (firebase_token 등 레거시 파라미터 제거)
-  useEffect(() => {
-    const paramsToClean = ['access_token', 'refresh_token', 'userId', 'userEmail', 'firebase_token', 'userName', 'login', 'session']
-    
-    if (paramsToClean.some(param => searchParams.has(param))) {
-      console.log('[CheckoutPage] 🧹 URL 파라미터 정리 중...')
-      window.history.replaceState({}, '', window.location.pathname)
-      console.log('[CheckoutPage] ✅ URL 파라미터 정리 완료')
-    }
-    
-    // ✅ URL 파라미터 처리 완료 표시
-    setUrlParamsProcessed(true)
-  }, [searchParams])
-
   // 초기 데이터 로드 (URL 파라미터 처리 완료 후에만 실행)
   useEffect(() => {
     // ⏳ URL 파라미터 처리가 완료될 때까지 대기
@@ -260,9 +239,9 @@ export default function CheckoutPage() {
       user_type: localStorage.getItem('user_type'),
       firebase_uid: user?.uid
     })
-    console.log('[CheckoutPage] isLoggedIn:', isLoggedIn())
+    console.log('[CheckoutPage] isLoggedIn:', isLoggedInSync())
     
-    if (!isLoggedIn()) {
+    if (!isLoggedInSync()) {
       console.log('[CheckoutPage] ❌ 로그인 필요 - requireLogin() 호출')
       requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
       return
@@ -324,11 +303,26 @@ export default function CheckoutPage() {
     console.log('[CheckoutPage] loadData() 호출')
     loadData()
 
-    // Daum 우편번호 스크립트 로드
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.async = true
-    document.head.appendChild(script)
+    // ✅ BUG #14 FIX: Daum postcode script was appended to <head> unconditionally
+    // on every mount without a cleanup function or duplicate-tag guard.
+    // Each React navigation to CheckoutPage added another <script> tag → memory
+    // leak and duplicate SDK initializations.
+    // Fix: check for an existing tag first; return a cleanup that removes the tag
+    // on unmount so it's only present while the page is mounted.
+    const DAUM_SRC = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    const existingScript = document.querySelector(`script[src="${DAUM_SRC}"]`)
+    let script: HTMLScriptElement | null = null
+    if (!existingScript) {
+      script = document.createElement('script')
+      script.src = DAUM_SRC
+      script.async = true
+      document.head.appendChild(script)
+    }
+    return () => {
+      if (script && document.head.contains(script)) {
+        document.head.removeChild(script)
+      }
+    }
   }, [navigate, urlParamsProcessed])  // ✅ urlParamsProcessed 추가
 
   // Daum 우편번호 팝업
@@ -481,7 +475,13 @@ export default function CheckoutPage() {
 
     try {
       // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
+      // ✅ BUG #23 FIX: CheckoutPage was storing `checkoutShippingAddress` (street)
+      // and `checkoutRecipientName/Phone`, but PaymentSuccessPage also tried to read
+      // `checkoutShippingAddressDetail` (apartment/floor/unit) which was NEVER
+      // written here.  The detail field was silently discarded, causing the full
+      // shipping address to be incomplete in the order record.
       localStorage.setItem('checkoutShippingAddress', selectedAddress.address)
+      localStorage.setItem('checkoutShippingAddressDetail', selectedAddress.address_detail || '')
       localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
       localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
 
@@ -559,6 +559,25 @@ export default function CheckoutPage() {
         setIsProcessing(false)
       }, 2000)
     }
+  }
+
+  // ✅ BUG #3 FIX: Auth-guard and loading checks rendered here (after all hooks)
+  if (!isAuthReady || authLoading) {
+    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...', { authLoading, isAuthReady })
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    console.log('[CheckoutPage] ❌ 사용자 없음 - 로그인 필요')
+    requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
+    return null
   }
 
   if (loading || tokenRefreshing) {
@@ -713,7 +732,7 @@ export default function CheckoutPage() {
                           )}
                           <div className="flex items-center gap-1.5">
                             <span className="text-[15px] font-bold text-gray-900">
-                              {(item.price_snapshot * item.quantity).toLocaleString()}원
+                              {((item.price_snapshot ?? 0) * item.quantity).toLocaleString()}원
                             </span>
                           </div>
                         </div>

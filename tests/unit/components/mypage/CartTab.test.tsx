@@ -211,7 +211,8 @@ describe('CartTab', () => {
       </BrowserRouter>
     )
 
-    const trashIcons = container.querySelectorAll('.lucide-trash-2')
+    // Lucide's Trash2 icon generates class 'lucide-trash2' (toKebabCase('Trash2') = 'trash2')
+    const trashIcons = container.querySelectorAll('.lucide-trash2')
     expect(trashIcons.length).toBe(mockCartItems.length)
   })
 

@@ -1,347 +1,364 @@
-# 🌍 UR-Live Multi-Region E-Commerce
+# Global Marketplace — Cloudflare Worker + React + D1
 
-한국과 글로벌 시장을 위한 통합 E-Commerce 플랫폼
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Cloudflare Pages](https://img.shields.io/badge/deploy-Cloudflare%20Pages-orange.svg)](https://pages.cloudflare.com/)
-[![Test Coverage](https://img.shields.io/badge/coverage-27%25-yellow.svg)](./docs/TESTING_COVERAGE.md)
-[![Tests](https://img.shields.io/badge/tests-254%20passing-brightgreen.svg)](./docs/TESTING_COVERAGE.md)
+> **Multi-seller marketplace** built on Cloudflare Worker (Hono), React 18, Cloudflare D1 (SQLite), Toss Payments, and Zustand.  
+> Fully TypeScript, edge-native, globally deployable.
 
 ---
 
-## 🎯 Overview
+## Architecture Overview
 
-하나의 코드베이스로 한국과 글로벌 버전을 동시에 지원하는 Multi-Region E-Commerce 플랫폼입니다.
+```
+┌─────────────────────────────────────────────────────┐
+│                 Cloudflare Edge                      │
+│  ┌──────────────────────────────────────────────┐   │
+│  │        Cloudflare Worker (Hono)              │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐   │   │
+│  │  │  /auth   │  │/products │  │ /orders  │   │   │
+│  │  └──────────┘  └──────────┘  └──────────┘   │   │
+│  │  ┌────────────────────────────────────────┐  │   │
+│  │  │  /payments/webhook  (HMAC-SHA256)      │  │   │
+│  │  └────────────────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────┘   │
+│           │                      │                   │
+│     ┌─────▼──────┐        ┌─────▼──────┐            │
+│     │ D1 SQLite  │        │  React SPA │            │
+│     │(orders/    │        │(Vite/TSX)  │            │
+│     │ products)  │        └────────────┘            │
+│     └────────────┘                                   │
+└─────────────────────────────────────────────────────┘
+                           │
+                  ┌────────▼────────┐
+                  │  Toss Payments  │
+                  │  (Webhook POST) │
+                  └─────────────────┘
+```
 
-### 🌏 Supported Regions
+## Features
 
-| Region | Domain | Login | Payment | Language | Status |
-|--------|--------|-------|---------|----------|--------|
-| **🇰🇷 Korea** | [live.ur-team.com](https://live.ur-team.com) | Kakao | Toss Payments | 한국어 (기본) | ✅ **Production** |
-| **🌐 Global** | world.ur-team.com (Coming soon) | Google | Stripe | English | ⏳ **Planned** |
+### ✅ Toss Payments Webhook (`POST /api/payments/webhook`)
+- **HMAC-SHA256** signature verification via `TOSS_WEBHOOK_SECRET`
+- Event handling:
+  - `payment.confirmed` → order status `DONE`, stock reduced
+  - `payment.cancelled` → order status `CANCELLED`, stock restored
+  - `payment.failed` → order status `FAILED`
+  - `payment.virtual_account_issued` → status `AWAITING_PAYMENT`
+  - `payment.virtual_account_deposited` → same as `payment.confirmed`
+- **Idempotency** via `webhook_events` table (unique index on `source + event_type + toss_order_id`)
+- **Always returns HTTP 200** to prevent Toss retry storms
+- Constant-time signature comparison (timing-attack resistant)
 
-> **Note**: 현재는 한국(KR) 버전만 운영 중입니다. 글로벌 버전은 6-12개월 내 출시 예정입니다.
+### ✅ Multi-Seller Cart (Zustand)
+- Cart items grouped by `seller_id` → `Map<string, CartItem[]>`
+- Per-seller shipping fee calculation (`free_shipping_threshold`)
+- Seller info cached in Zustand persist storage
+- Cart sections rendered per seller in `CartPage`
+
+### ✅ Multi-Seller Checkout
+- Single `order_number` shared across all seller orders
+- One `POST /api/orders` per seller (idempotency key: `orderNumber:sellerId`)
+- Single Toss payment for combined total
+- Separate `orders` rows per seller in DB (idempotent via `idempotency_key` unique index)
+- Race condition safety: `idempotency_key` unique constraint prevents duplicates
+
+### ✅ Global i18n Support
+- Languages: 🇰🇷 Korean, 🇺🇸 English, 🇯🇵 Japanese, 🇨🇳 Chinese, 🇪🇸 Spanish, 🇫🇷 French, 🇸🇦 Arabic (RTL)
+- Currencies: KRW, USD, JPY, CNY, EUR, GBP, AUD, CAD, SGD, SAR, AED
+- `Accept-Language` header detection in Worker
+- `Intl.NumberFormat` for locale-aware currency formatting
+
+### ✅ Database Schema (Cloudflare D1 / SQLite)
+- `sellers` — multi-seller support, shipping settings
+- `users` — auth, i18n preferences
+- `products` — with stock, i18n content fields
+- `orders` — one per seller per checkout, shared `order_number`
+- `order_items` — snapshot prices, seller_id
+- `webhook_events` — idempotency audit trail
+- `carts` — server-side cart sync
+- `refresh_tokens` — JWT refresh
+- Auto `updated_at` triggers on all tables
 
 ---
 
-## ✨ Features
-
-### 🔐 Multi-Authentication
-- **한국**: 카카오 로그인 + 이메일 로그인
-- **글로벌**: Google 로그인 + 이메일 로그인
-- **공통**: Seller/Admin JWT 인증
-
-### 💳 Multi-Payment
-- **한국**: Toss Payments (TossPayments Widget SDK)
-- **글로벌**: Stripe (Stripe Elements + Payment Intents API)
-- **지연 로딩**: 결제 SDK는 체크아웃 페이지에서만 로드 (3KB 미만)
-
-### 🌐 Internationalization (i18n)
-- **react-i18next** 기반
-- 30+ 번역 키 지원
-- 실시간 언어 전환 (한국어 ↔ English)
-- Region별 기본 언어 자동 설정
-
-### ⚡ Performance Optimizations
-- **Lazy Loading**: 결제 컴포넌트 동적 로딩
-- **Tree Shaking**: 미사용 코드 자동 제거
-- **Code Splitting**: Route별 청크 분리
-- **Region Branching**: `isKorea()` / `isGlobal()` 기반 조건부 로딩
-
----
-
-## 📦 Tech Stack
-
-### Frontend
-- **Framework**: React 18.3.1 + TypeScript
-- **Build Tool**: Vite 6.4.1
-- **Routing**: React Router DOM 7.x
-- **Styling**: Tailwind CSS 3.x
-- **i18n**: react-i18next 15.x
-- **State Management**: React Context API
-
-### Backend
-- **Runtime**: Cloudflare Workers (Hono)
-- **Database**: Cloudflare D1 (SQLite)
-- **Authentication**: Firebase Auth (Buyer) + JWT (Seller/Admin)
-- **Payment**: Stripe API, TossPayments API
-
-### Payment SDKs
-- **Stripe**: `@stripe/stripe-js`, `@stripe/react-stripe-js`
-- **Toss Payments**: Widget SDK (CDN)
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-```bash
-# Node.js 18+ required
-node -v
+- Node.js 18+
+- Wrangler CLI (`npm install -g wrangler`)
 
-# Install dependencies
+### Install
+```bash
 npm install
+```
+
+### Environment Variables (`.dev.vars`)
+```env
+TOSS_CLIENT_KEY=test_ck_...
+TOSS_SECRET_KEY=test_sk_...
+TOSS_WEBHOOK_SECRET=your_webhook_secret   # or "dev_skip" to bypass in dev
+JWT_SECRET=your_jwt_secret_at_least_32_chars
+ENVIRONMENT=development
+FRONTEND_URL=http://localhost:5173
+```
+
+### Database Setup
+```bash
+# Create local D1 DB and run migrations
+npm run db:migrate
+npm run db:seed
+
+# Or apply seed directly with sqlite3/sqlite-utils
+python3 -m sqlite_utils insert --import migrations/002_seed.sql
 ```
 
 ### Development
 ```bash
-# Korean version (default)
-npm run dev
-
-# Note: GLOBAL version is not yet implemented
+npm run dev          # starts Worker (port 8787) + React Vite (port 5173)
+npm run dev:worker   # Worker only
+npm run dev:client   # React only
 ```
 
 ### Build
 ```bash
-# Production build (KR only)
-npm run build
-
-# Preview locally
-npm run preview
-# → http://localhost:4173
+npm run build        # builds client + worker
 ```
 
-> **Important**: `npm run build`는 항상 한국(KR) 버전으로 빌드됩니다. 글로벌 버전은 향후 추가 예정입니다.
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [MULTI_REGION_SETUP.md](./MULTI_REGION_SETUP.md) | 전체 설정 가이드 (Step 1-4) |
-| [TESTING_GUIDE.md](./TESTING_GUIDE.md) | 로컬 & 결제 테스트 가이드 |
-| [TESTING_COVERAGE.md](./docs/TESTING_COVERAGE.md) | 테스트 커버리지 리포트 |
-| [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | Cloudflare Pages 배포 가이드 |
-| [MULTI_REGION_QUICKSTART.md](./MULTI_REGION_QUICKSTART.md) | 빠른 시작 가이드 |
-
----
-
-## 🏗️ Project Structure
-
-```
-webapp/
-├── src/
-│   ├── components/
-│   │   ├── payments/
-│   │   │   ├── TossPaymentWidget.tsx    # 한국 전용 (3.12 KB lazy)
-│   │   │   └── StripeCheckout.tsx       # 글로벌 전용 (2.51 KB lazy)
-│   │   └── LanguageSwitcher.tsx         # 언어 전환 UI
-│   ├── config/
-│   │   └── region.ts                    # Region utilities
-│   ├── i18n.ts                          # i18next 설정
-│   ├── pages/
-│   │   ├── LoginPage.tsx                # Region별 로그인
-│   │   └── CheckoutPage.tsx             # Region별 결제
-│   └── index.tsx                        # Cloudflare Workers entry
-├── public/
-│   └── locales/
-│       ├── ko/translation.json          # 한국어 번역
-│       └── en/translation.json          # 영어 번역
-├── .env.kr                              # 한국 환경 변수
-├── .env.global                          # 글로벌 환경 변수
-└── package.json                         # build:kr, build:global
-```
-
----
-
-## 🔧 Environment Variables
-
-### Korean Version (`.env.kr`)
+### Deploy to Cloudflare
 ```bash
-VITE_REGION=KR
-VITE_KAKAO_APP_KEY=975a2e7f97254b08f15dba4d177a2865
-VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
-VITE_DEFAULT_LANGUAGE=ko
-VITE_API_BASE_URL=https://live.ur-team.com
-```
+# 1. Create D1 database
+wrangler d1 create marketplace-db
 
-### Global Version (`.env.global`)
-```bash
-VITE_REGION=GLOBAL
-VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_OAUTH_CLIENT_ID
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_STRIPE_KEY
-STRIPE_SECRET_KEY=sk_test_YOUR_STRIPE_SECRET_KEY
-VITE_DEFAULT_LANGUAGE=en
-VITE_API_BASE_URL=https://world.ur-team.com
+# 2. Update database_id in wrangler.toml
+
+# 3. Run production migration
+npm run db:migrate:prod
+
+# 4. Set production secrets
+wrangler secret put TOSS_SECRET_KEY
+wrangler secret put TOSS_WEBHOOK_SECRET
+wrangler secret put JWT_SECRET
+
+# 5. Deploy
+npm run deploy
 ```
 
 ---
 
-## 🚀 Deployment
+## API Reference
 
-### Cloudflare Pages
+### Authentication
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Register (email, password, name) |
+| POST | `/api/auth/login` | Login → JWT access + refresh tokens |
+| GET | `/api/auth/me` | Get current user (requires Bearer) |
 
-#### Korean Version
-```bash
-npm run build:kr
-wrangler pages deploy dist --project-name=ur-live
-```
+### Products
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/products` | List products (page, limit, seller_id, search) |
+| GET | `/api/products/:id` | Product detail |
 
-#### Global Version
-```bash
-npm run build:global
-wrangler pages deploy dist --project-name=ur-live-global
-```
+### Orders
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/orders` | Create order (requires auth, idempotency_key) |
+| GET | `/api/orders` | List user orders |
+| GET | `/api/orders/:id` | Order detail |
+| POST | `/api/orders/:id/cancel` | Cancel order |
 
-### Custom Domains
-
-#### DNS Setup (Cloudflare Dashboard)
-```
-# Korean
-Name: live
-Target: ur-live.pages.dev
-Proxy: ✅ Proxied
-
-# Global
-Name: world
-Target: ur-live-global.pages.dev
-Proxy: ✅ Proxied
-```
-
-**Full Deployment Guide**: [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+### Payments
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/payments/confirm` | Confirm Toss payment (after widget redirect) |
+| POST | `/api/payments/webhook` | **Toss webhook** (HMAC-protected, always 200) |
+| POST | `/api/payments/checkout-session` | Get checkout session info |
 
 ---
 
-## 🧪 Testing
+## Toss Webhook Registration
 
-### Unit Tests
+### Steps in Toss Developer Center
+1. Go to **개발자 센터** → **Webhook** 설정
+2. Add endpoint: `https://your-worker.your-domain.workers.dev/api/payments/webhook`
+3. Select events: `payment.confirmed`, `payment.cancelled`, `payment.failed`, `payment.virtual_account_issued`, `payment.virtual_account_deposited`
+4. Copy the generated **Webhook Secret**
+5. Set it: `wrangler secret put TOSS_WEBHOOK_SECRET`
+
+### cURL Test
 ```bash
-# Run all tests
-npm test
+# Generate signature
+SECRET="your_webhook_secret"
+PAYLOAD='{"eventType":"payment.confirmed","createdAt":"2026-01-01T00:00:00Z","data":{"paymentKey":"test_pk_123","orderId":"ORD-20260101-ABCDEF","orderName":"Test","status":"DONE","totalAmount":32900,"currency":"KRW","method":"CARD","approvedAt":"2026-01-01T00:00:00Z"}}'
+SIG=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
 
-# Run tests in watch mode
-npm run test:watch
+# Send webhook
+curl -X POST https://your-worker.workers.dev/api/payments/webhook \
+  -H "Content-Type: application/json" \
+  -H "Toss-Signature: v1=$SIG" \
+  -d "$PAYLOAD"
+# Expected: {"received":true,"status":"processed"}
 
-# Generate coverage report
-npm run test:unit:coverage
-
-# View coverage in browser
-open coverage/index.html
+# Test duplicate (idempotency)
+curl -X POST https://your-worker.workers.dev/api/payments/webhook \
+  -H "Content-Type: application/json" \
+  -H "Toss-Signature: v1=$SIG" \
+  -d "$PAYLOAD"
+# Expected: {"received":true,"status":"duplicate_skipped"}
 ```
-
-### Test Coverage
-- **Total Tests**: 254 tests (100% pass rate)
-- **Component Coverage**: 17/63 components tested (27%)
-- **Average Test Duration**: ~10.43s
-
-#### Coverage by Component Group
-| Group | Tests | Components | Coverage |
-|-------|-------|------------|----------|
-| Home | 39 | 4 | 100% |
-| Search | 52 | 4 | 90% |
-| Browse | 48 | 3 | 100% |
-| Product | 59 | 3 | 100% |
-| MyPage | 56 | 3 | 77% |
-
-**Full Coverage Report**: [TESTING_COVERAGE.md](./docs/TESTING_COVERAGE.md)
-
-### Payment Testing
-
-#### Stripe Test Cards
-```
-Success:        4242 4242 4242 4242
-3D Secure:      4000 0025 0000 3155
-Declined:       4000 0000 0000 9995
-Expired:        4000 0000 0000 0069
-
-Expiry: 12/34
-CVC: 123
-ZIP: 12345
-```
-
-#### Toss Test Cards
-```
-카드번호: 5570****0001****
-만료일: 01/25
-CVC: 123
-```
-
-**Full Testing Guide**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
 
 ---
 
-## 📊 Bundle Size
+## Monitoring Log Keywords
 
-| Component | Size (gzip) | Load Strategy |
-|-----------|-------------|---------------|
-| Main Bundle | ~250 KB | Initial |
-| TossPaymentWidget | 3.12 KB (1.56 KB) | Lazy (KR only) |
-| StripeCheckout | 2.51 KB (1.42 KB) | Lazy (GLOBAL only) |
-| i18n Translations | ~5 KB | Async |
-
-**Optimization**: Region별 미사용 SDK는 완전히 제거됨 (Tree Shaking)
+| Keyword | Meaning |
+|---------|---------|
+| `[WEBHOOK] RECEIVED` | New webhook event received |
+| `[WEBHOOK] PAYMENT_CONFIRMED` | Confirmed → orders set DONE |
+| `[WEBHOOK] PAYMENT_CANCELLED` | Cancelled → stock restored |
+| `[WEBHOOK] PAYMENT_FAILED` | Failed payment |
+| `[WEBHOOK] DUPLICATE_SKIPPED` | Idempotent duplicate ignored |
+| `[WEBHOOK] INVALID_SIGNATURE` | Possible spoofed request |
+| `[WEBHOOK] PROCESSING_ERROR` | Unexpected error (DB etc.) |
+| `[WEBHOOK] STOCK_REDUCED` | Stock decremented on confirm |
+| `[WEBHOOK] STOCK_RESTORED` | Stock restored on cancel |
+| `[ORDERS] Created` | New order created |
+| `[PAYMENTS] CONFIRMED` | Payment confirm API call succeeded |
 
 ---
 
-## 🛠️ Development
+## Multi-Seller Cart Flow
 
-### Available Scripts
+```
+User adds Product A (seller-001) + Product B (seller-002) to cart
+                    │
+                    ▼
+         CartPage: SellerGroup [seller-001]
+                     ├── Product A × 1  ₩29,900
+                     └── Shipping: ₩3,000 (or Free if ≥₩50,000)
+                   SellerGroup [seller-002]
+                     ├── Product B × 1  ₩89,000
+                     └── Shipping: Free (≥₩50,000)
+                    │
+                    ▼
+           CheckoutPage (shipping form)
+                    │
+                    ▼
+         POST /api/orders (seller-001 items)  ──► Order A  (ORD-20260313-XXXXX)
+         POST /api/orders (seller-002 items)  ──► Order B  (ORD-20260313-XXXXX)
+                    │
+                    ▼
+         POST /api/payments/checkout-session
+                    │
+                    ▼
+         Toss Payments Widget (total = ₩121,900)
+                    │
+         User pays  │
+                    ▼
+         POST /api/payments/webhook (payment.confirmed)
+                    │
+         ┌──────────▼──────────┐
+         │ Order A → DONE      │  stock reduced
+         │ Order B → DONE      │  stock reduced
+         └─────────────────────┘
+```
+
+---
+
+## Playwright E2E Tests
 
 ```bash
-# Development
-npm run dev                    # 개발 서버 (Vite)
-
-# Build
-npm run build                  # 기본 빌드
-npm run build:kr              # 한국 버전 빌드
-npm run build:global          # 글로벌 버전 빌드
-
-# Preview
-npm run preview               # 빌드 미리보기
-
-# Deploy
-npm run deploy                # Cloudflare Pages 배포
-
-# Database
-npm run db:migrate            # D1 마이그레이션
-npm run db:seed               # 초기 데이터 입력
+npm run test:e2e
+# or headed mode:
+npm run test:e2e:headed
 ```
 
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Test Cases (20 total)
+| Suite | Tests |
+|-------|-------|
+| Cart - Multi-Seller | TC01–TC05: grouping, seller names, qty update, remove, shipping total |
+| Checkout Flow | TC06–TC10: auth redirect, form display, validation, seller grouping, API |
+| Toss Webhook | TC11–TC15: valid sig, invalid sig (200), idempotency, cancelled, failed |
+| Order Management | TC16–TC18: list, success page, fail page |
+| API Multi-Seller | TC19–TC20: same order_number for 2 sellers, idempotent creation |
 
 ---
 
-## 📞 Support
+## Regression Test Points
 
-- **GitHub Issues**: [https://github.com/tobe2111/ur-live/issues](https://github.com/tobe2111/ur-live/issues)
-- **Documentation**: [MULTI_REGION_SETUP.md](./MULTI_REGION_SETUP.md)
-- **Email**: tobe2111@naver.com
-
----
-
-## 🎉 Acknowledgments
-
-- [TossPayments](https://www.tosspayments.com/) - Korean payment solution
-- [Stripe](https://stripe.com/) - Global payment platform
-- [Firebase](https://firebase.google.com/) - Authentication
-- [Cloudflare Pages](https://pages.cloudflare.com/) - Hosting & Edge computing
-- [Vite](https://vitejs.dev/) - Frontend build tool
-- [React](https://react.dev/) - UI framework
+When modifying webhook or order logic:
+1. `TOSS_WEBHOOK_SECRET=dev_skip` → signature verification bypassed (dev only)
+2. Sending same payload twice → must get `duplicate_skipped` on 2nd request
+3. `payment.cancelled` on already-PENDING order → no stock restore (guard in handler)
+4. Multi-seller order: both orders share `order_number`, get updated together on webhook
+5. Idempotency key collision → returns 200 with existing order (no duplicate DB write)
+6. Stock cannot go below 0 (guarded by `WHERE stock_quantity >= ?` in reduceStock)
 
 ---
 
-**Built with ❤️ by tobe2111**
+## Future Global Expansion Considerations
 
-🌐 **Live**: [live.ur-team.com](https://live.ur-team.com)  
-🌍 **World**: [world.ur-team.com](https://world.ur-team.com)
+### Phase 2 — Notifications
+- Email notifications via Cloudflare Email Workers or SendGrid
+- Push notifications via Web Push API
+- Add `notification_preferences` to users table
 
-## YouTube OAuth 설정
+### Phase 3 — Multi-Currency
+- Real-time exchange rates via Workers KV (cache daily)
+- Display prices in user's preferred currency
+- Settlement in seller's base currency
 
-YouTube 계정 연동 기능을 사용하려면 환경 변수 설정이 필요합니다.
-자세한 내용은 [YOUTUBE_OAUTH_SETUP.md](./YOUTUBE_OAUTH_SETUP.md) 참고.
+### Phase 4 — Regional Compliance
+- GDPR data deletion endpoints (EU)
+- PCI DSS: never store raw card data (Toss handles tokenization)
+- Korea: 통신판매업 신고 integration
+- Japan: 特定商取引法 disclosure pages
+
+### Phase 5 — Performance
+- R2 for product images (CDN, global edge)
+- KV for product catalog caching (reduce D1 reads)
+- Durable Objects for real-time inventory locking
+- Analytics Engine for purchase funnel metrics
+
+### Phase 6 — Seller Onboarding
+- Seller dashboard (product CRUD, order fulfillment)
+- Seller KYC (business verification)
+- Automated payouts via bank transfer API
+
+### Known Remaining Items (Non-blocking)
+- [ ] Toss cancel API call on order cancel (Phase 2)
+- [ ] User push notification for `payment.failed` (Phase 2)
+- [ ] bcrypt/argon2 for passwords (currently SHA-256 + salt)
+- [ ] Rate limiting on auth endpoints (use Cloudflare WAF rules)
+- [ ] Optimistic UI for cart updates
+
+---
+
+## Branch Strategy
+
+```
+main (production)
+  └── genspark_ai_developer (this PR — multi-seller MVP)
+        ├── feature/toss-webhook
+        ├── feature/multi-seller-cart
+        └── feature/global-i18n
+```
+
+### Suggested PR: `multi-seller-mvp`
+
+**Title**: `feat: Multi-seller cart, Toss webhook HMAC, global i18n`
+
+**Description**:
+- ✅ Toss Payments server webhook with HMAC-SHA256 verification
+- ✅ Multi-seller cart grouping in Zustand + CartPage UI
+- ✅ Multi-seller checkout: one order per seller, shared Toss payment
+- ✅ Idempotency: webhook events + order creation  
+- ✅ Stock reduce/restore on payment.confirmed/cancelled
+- ✅ Global i18n: 7 languages, 12 currencies
+- ✅ 20 Playwright E2E tests
+- ✅ Zero TypeScript errors
+
+---
+
+## License
+
+MIT

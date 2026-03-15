@@ -78,13 +78,14 @@ export default function DashboardCharts({
               orientation="right"
               tick={{ fontSize: 12 }}
             />
-            <Tooltip 
-              formatter={(value: ValueType, name: NameType) => {
+            <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={((value: ValueType, name: NameType) => {
                 const numValue = typeof value === 'number' ? value : Number(value)
                 const strName = String(name)
                 if (strName === '매출액') return [formatPrice(numValue), strName]
                 return [formatNumber(numValue), strName]
-              }}
+              }) as any}
               labelFormatter={(label) => {
                 const date = new Date(label)
                 return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
@@ -131,13 +132,14 @@ export default function DashboardCharts({
               tick={{ fontSize: 12 }}
               tickFormatter={(value) => formatShortPrice(value)}
             />
-            <Tooltip 
-              formatter={(value: ValueType, name: NameType) => {
+            <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={((value: ValueType, name: NameType) => {
                 const numValue = typeof value === 'number' ? value : Number(value)
                 const strName = String(name)
                 if (strName === '매출액') return [formatPrice(numValue), strName]
                 return [formatNumber(numValue), strName]
-              }}
+              }) as any}
             />
             <Legend />
             <Bar dataKey="total_revenue" fill="#8B5CF6" name="매출액" />

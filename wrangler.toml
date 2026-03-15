@@ -1,69 +1,83 @@
-name = "ur-live"
-# Note: When deploying, use --project-name ur-live
-# This project is connected to live.ur-team.com
-compatibility_date = "2026-02-01"
-pages_build_output_dir = "./dist"
+name = "global-marketplace"
+main = "src/worker/index.ts"
+compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
 
-# Environment Variables (Set via Cloudflare Pages Dashboard or wrangler secret)
-# Required secrets:
-# - RESEND_API_KEY: Resend API key for email notifications
-# - JWT_SECRET: Secret key for JWT token generation
-# - TOSS_SECRET_KEY: Toss Payments secret key (production)
-# - EMAIL_FROM: Email sender address (e.g., "UR Live <noreply@ur-team.com>")
-# - FIREBASE_PROJECT_ID: Firebase project ID (for token verification)
-# - FIREBASE_DATABASE_URL: Firebase Realtime Database URL
-# - FIREBASE_PRIVATE_KEY: Firebase Admin SDK private key (optional, for server-side operations)
-# - FIREBASE_CLIENT_EMAIL: Firebase Admin SDK client email (optional)
-#
-# Set production secrets:
-# npx wrangler pages secret put RESEND_API_KEY
-# npx wrangler pages secret put JWT_SECRET
-# npx wrangler pages secret put TOSS_SECRET_KEY
-# npx wrangler pages secret put EMAIL_FROM
-# 
-# Note: FIREBASE_PROJECT_ID and FIREBASE_DATABASE_URL are hardcoded in src/index.tsx
-# to avoid binding conflicts with Cloudflare Pages environment.
+[build]
+command = "npm run build:client"
 
+[assets]
+directory = "dist/client"
+
+# ============================================================
 # D1 Database
+# ============================================================
 [[d1_databases]]
 binding = "DB"
-database_name = "toss-live-commerce-db"
-database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+database_name = "marketplace-db"
+database_id = "local-marketplace-db"
 
-# KV Namespaces (최적화됨 - RATE_LIMIT_KV 제거)
-[[kv_namespaces]]
-binding = "SESSION_KV"
-id = "3b522e69651f4d4f84a0cdf9430eeb72"
+# ============================================================
+# KV Namespaces (create via: wrangler kv:namespace create NAME)
+# ============================================================
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT_KV"
+# id = "YOUR_KV_NAMESPACE_ID"
 
-[[kv_namespaces]]
-binding = "CACHE_KV"
-id = "25ecc9ce2c464dd59edf5eb7d5fd1a10"
+# [[kv_namespaces]]
+# binding = "SESSION_KV"
+# id = "YOUR_SESSION_KV_ID"
 
-[[kv_namespaces]]
-binding = "LIVE_CACHE"
-id = "e6667599e01d4af8b4687560eb39394c"
-preview_id = "750e3b6ed7714a8999abe19d8771be00"
+# ============================================================
+# Durable Objects (for live streaming)
+# ============================================================
+[durable_objects]
+bindings = [
+  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" }
+]
 
-# ❌ RATE_LIMIT_KV 제거됨 (Task 4: Code Cleanup)
-# 사용하지 않는 KV 네임스페이스로 리소스 낭비 제거
+[[migrations]]
+tag = "v1"
+new_classes = ["LiveStreamDurableObject"]
 
-# R2 Object Storage for images (Optional)
-# ⚠️ R2 바인딩은 선택사항입니다. R2를 사용하려면:
-# 1. Cloudflare Dashboard에서 R2 구독 활성화
-# 2. 버킷 생성: npx wrangler r2 bucket create ur-live-images
-# 3. 아래 주석 제거 후 배포
-# 4. Cloudflare Pages → Settings → Functions → R2 bucket bindings 설정
-#
-# R2가 없어도 시스템은 정상 작동합니다 (Base64 이미지 사용)
-# 자세한 설정 방법: R2_SETUP_GUIDE.md 참조
-#
-# [[r2_buckets]]
-# binding = "IMAGES"
-# bucket_name = "ur-live-images"
-# preview_bucket_name = "ur-live-images-preview"
+# ============================================================
+# Development Variables
+# ============================================================
+[vars]
+ENVIRONMENT = "development"
+TOSS_CLIENT_KEY = "test_ck_placeholder"
+FRONTEND_URL = "http://localhost:5173"
+REGION = "KR"
 
-# Cron Triggers (Scheduled Events) - Workers only, not supported in Pages
-# For Pages, use Cloudflare Workers cron triggers or external schedulers
-# [triggers]
-# crons = ["0 0 1 * *"]
+# ============================================================
+# Production Secrets — set via Cloudflare dashboard or:
+#   wrangler secret put TOSS_SECRET_KEY
+#   wrangler secret put TOSS_WEBHOOK_SECRET
+#   wrangler secret put JWT_SECRET
+#   wrangler secret put FIREBASE_PROJECT_ID
+#   wrangler secret put FIREBASE_PRIVATE_KEY
+#   wrangler secret put FIREBASE_CLIENT_EMAIL
+#   wrangler secret put FIREBASE_DATABASE_URL
+#   wrangler secret put KAKAO_REST_API_KEY
+#   wrangler secret put YOUTUBE_CLIENT_ID
+#   wrangler secret put YOUTUBE_CLIENT_SECRET
+#   wrangler secret put VAPID_PUBLIC_KEY
+#   wrangler secret put VAPID_PRIVATE_KEY
+#   wrangler secret put DISCORD_WEBHOOK_URL
+#   wrangler secret put SENTRY_DSN
+# ============================================================
+
+# ============================================================
+# [env.production] — override vars for production
+# ============================================================
+[env.production]
+name = "global-marketplace"
+vars = { ENVIRONMENT = "production", FRONTEND_URL = "https://ur-live.pages.dev", REGION = "GLOBAL" }
+
+# ============================================================
+# Local dev server
+# ============================================================
+[dev]
+port = 8787
+local_protocol = "http"
+persist_to = ".wrangler/state"

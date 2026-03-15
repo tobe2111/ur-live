@@ -168,12 +168,15 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
     }
 
     // orderId로 주문 조회
-    const orderIdNum = parseInt(orderId.split('-')[0] || orderId);
+    // ✅ BUG #10 FIX: Query by order_number string column instead of parsing a numeric id.
+    // ✅ BUG #11 FIX: The `orders` table schema does NOT have a `product_id` column —
+    // that column lives in `order_items`.  Joining `products` on `o.product_id`
+    // causes a runtime SQL error and always returns 0 rows (→ 404).
+    // Fix: remove the broken JOIN; the amount field in the schema is `total_price`.
     const order = await new QueryBuilder()
-      .select(['o.*', 'p.seller_id'])
+      .select(['o.*'])
       .from('orders o')
-      .join('products p', 'o.product_id = p.id')
-      .where('o.id = ?', orderIdNum)
+      .where('o.order_number = ?', orderId)
       .where('o.user_id = ?', userId)
       .execute<any>(db);
 
@@ -184,6 +187,7 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
     const orderData = order[0];
 
     // 금액 검증
+    // ✅ BUG #11 FIX: schema column is `total_price`, not `total_amount`
     if (orderData.total_price !== amount) {
       return c.json(badRequestResponse('Amount mismatch'), 400);
     }
@@ -211,23 +215,20 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
     );
 
     // 업데이트된 주문 조회
+    // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
     const updatedOrder = await new QueryBuilder()
       .select([
         'o.id',
         'o.user_id',
-        'o.product_id',
-        'o.quantity',
         'o.total_price',
         'o.status',
         'o.payment_key',
         'o.payment_method',
         'o.shipping_address',
         'o.created_at',
-        'o.updated_at',
-        'p.name as product_name'
+        'o.updated_at'
       ])
       .from('orders o')
-      .join('products p', 'o.product_id = p.id')
       .where('o.id = ?', orderData.id)
       .execute(db);
 
@@ -278,10 +279,10 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     }
 
     // paymentKey로 주문 조회
+    // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
     const order = await new QueryBuilder()
-      .select(['o.*', 'p.seller_id'])
+      .select(['o.*'])
       .from('orders o')
-      .join('products p', 'o.product_id = p.id')
       .where('o.payment_key = ?', paymentKey)
       .where('o.user_id = ?', userId)
       .execute<any>(db);
@@ -323,12 +324,11 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     );
 
     // 업데이트된 주문 조회
+    // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
     const updatedOrder = await new QueryBuilder()
       .select([
         'o.id',
         'o.user_id',
-        'o.product_id',
-        'o.quantity',
         'o.total_price',
         'o.status',
         'o.payment_key',
@@ -336,11 +336,9 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
         'o.cancel_reason',
         'o.shipping_address',
         'o.created_at',
-        'o.updated_at',
-        'p.name as product_name'
+        'o.updated_at'
       ])
       .from('orders o')
-      .join('products p', 'o.product_id = p.id')
       .where('o.id = ?', orderData.id)
       .execute(db);
 

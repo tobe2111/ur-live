@@ -169,7 +169,7 @@ export class OrderService {
    * 주문 생성 요청 검증
    */
   private validateCreateOrderRequest(data: CreateOrderRequest): void {
-    if (!data.user_id || data.user_id <= 0) {
+    if (!data.user_id || Number(data.user_id) <= 0) {
       throw new Error('유효하지 않은 사용자 ID');
     }
     

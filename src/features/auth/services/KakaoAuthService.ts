@@ -1,3 +1,4 @@
+import type { D1Database } from '@cloudflare/workers-types';
 /**
  * Kakao OAuth 2.0 인증 서비스
  * 

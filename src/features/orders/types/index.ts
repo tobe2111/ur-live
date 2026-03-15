@@ -7,8 +7,11 @@ export interface Order {
   order_number: string;
   user_id: number;
   seller_id: number;
+  // ✅ BUG #20 NOTE: The actual DB column is `total_price` (see schema).
+  // The application layer uses `total_amount` in TypeScript interfaces for API
+  // consistency; the repository maps it to `total_price` on INSERT/SELECT.
   total_amount: number;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   payment_method?: string;
   shipping_address?: string;
   shipping_name?: string;
@@ -28,8 +31,12 @@ export interface OrderItem {
 }
 
 export interface OrderCreateInput {
-  user_id: number;
+  user_id: number | string;  // Firebase UID (string) or DB integer id
   seller_id: number;
+  // ✅ BUG #26 FIX: Accept an optional order_number for idempotent retries.
+  // If the caller provides the same order_number on retry, the repository
+  // returns the existing order instead of creating a duplicate.
+  order_number?: string;
   items: Array<{
     product_id: number;
     quantity: number;
@@ -38,8 +45,10 @@ export interface OrderCreateInput {
   total_amount: number;
   payment_method?: string;
   shipping_address?: string;
+  shipping_address_detail?: string;
   shipping_name?: string;
   shipping_phone?: string;
+  status?: string;
 }
 
 export interface OrderFilter {

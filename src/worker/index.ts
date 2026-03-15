@@ -1,348 +1,215 @@
-/**
- * Cloudflare Worker Entry Point
- * 
- * 모든 Feature 라우트를 통합하는 메인 Worker 파일
- * 기존 src/index.tsx의 16,031줄을 대체
- * 
- * Week 5 Day 4 업데이트:
- * - Rate limiting (IP-based, KV-backed)
- * - Global error handling with Sentry
- * - Retry logic for external APIs
- * - Discord alerts for critical errors
- */
+// ============================================================
+// Cloudflare Worker - Main Entry Point (Unified)
+// Global Marketplace API — ALL routes consolidated here
+// Legacy src/index.tsx has been retired.
+// ============================================================
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { compress } from 'hono/compress';
+import { logger } from 'hono/logger';
+import { timing } from 'hono/timing';
 
-// Feature Routes
-import { kakaoRoutes, googleRoutes, sellerRoutes, adminRoutes } from '@/features/auth';
-import { adminManagementRoutes, adminBannersRoutes } from '@/features/admin';
-import { productsRoutes } from '@/features/products';
-import { ordersRoutes } from '@/features/orders';
-import { accountRoutes } from '@/features/account';
-import { sellerManagementRoutes } from '@/features/seller/api/seller-management.routes';
-import { sellerOrdersRoutes } from '@/features/seller/api/seller-orders.routes';
-import { sellerStreamsRoutes } from '@/features/seller/api/seller-streams.routes';
-import { cartRoutes } from '@/features/cart/api/cart.routes';
-import { shippingAddressRoutes } from '@/features/shipping/api/shipping-address.routes';
-import { paymentRoutes } from '@/features/payments/api/payment.routes';
-import youtubeRoutes from '@/features/youtube/api/youtube.routes';
-import youtubeChatRoutes from '@/features/youtube/api/youtube-chat.routes';
-import { notificationsRoutes } from '@/features/notifications/api/notifications.routes';
-import { wishlistRoutes } from '@/features/wishlists/api/wishlists.routes';
-import { bannerRoutes } from '@/features/banners/api/banners.routes';
-import { pushRoutes } from '@/features/push/api/push.routes';
+// ---- Worker-local routes (multi-seller MVP) ----
+import type { Env } from './types/env';
+import { authRouter } from './routes/auth.routes';
+import { productsRouter } from './routes/product.routes';
+import { ordersRouter } from './routes/order.routes';
+import { paymentsRouter } from './routes/payment.routes';
+import { sellersRouter } from './routes/seller.routes';
+import { i18nMiddleware } from './middleware/i18n.middleware';
+import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
+import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 
-// Middleware & Utils
-import { rateLimitMiddleware } from './middleware/rate-limiter';
-import { handleError, attachErrorContext } from './middleware/error-handler';
-import { initSentry, captureException } from './utils/sentry';
-import { sendDiscordAlert, alertCriticalError } from './utils/discord';
-import { APICacheStrategy, CacheConfigs } from '@/lib/api-cache-strategy';
+// ---- Feature module routes ----
+import { accountRoutes } from '../features/account/api/account.routes';
+import { adminManagementRoutes, adminBannersRoutes } from '../features/admin/api/index';
+import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
+import { kakaoRoutes } from '../features/auth/api/kakao.routes';
+import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
+import { googleRoutes } from '../features/auth/api/google.routes';
+import { bannerRoutes } from '../features/banners/api/banners.routes';
+import { cartRoutes } from '../features/cart/api/cart.routes';
+import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
+import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
+import { paymentRoutes as featurePaymentRoutes } from '../features/payments/api/payment.routes';
+import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
+import { pushRoutes } from '../features/push/api/push.routes';
+import { sellerManagementRoutes } from '../features/seller/api/seller-management.routes';
+import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
+import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
+import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
+import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
+import youtubeRoutes from '../features/youtube/api/youtube.routes';
+import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 
-type Bindings = {
-  DB: D1Database;
-  SESSION_KV: KVNamespace;
-  CACHE_KV: KVNamespace;
-  RATE_LIMIT_KV: KVNamespace;
-  ASSETS: Fetcher;
-  KAKAO_REST_API_KEY: string;
-  FIREBASE_PROJECT_ID: string;
-  FIREBASE_PRIVATE_KEY: string;
-  FIREBASE_CLIENT_EMAIL: string;
-  FIREBASE_DATABASE_URL: string;
-  SENTRY_DSN?: string;
-  DISCORD_WEBHOOK_URL?: string;
-  ENVIRONMENT: string;
-  REGION: 'KR' | 'WORLD';
-  [key: string]: any;
-};
+// ---- Durable Objects (re-exported for wrangler binding) ----
+export { LiveStreamDurableObject } from '../durable-object';
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Env }>();
 
-// =================================
+// ============================================================
 // Global Middleware
-// =================================
+// ============================================================
 
-// CORS
+app.use('*', timing());
+app.use('*', logger());
+app.use('/api/*', i18nMiddleware);
+app.use('/api/*', rateLimiterMiddleware as any);
+
+// CORS — multi-region support
 app.use('*', cors({
-  origin: '*',
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  origin: (origin, c) => {
+    const env = (c as any).env as Env;
+    const allowed = [
+      env?.FRONTEND_URL ?? 'http://localhost:5173',
+      'https://ur-live.pages.dev',
+      'https://www.ur-live.com',
+      'http://localhost:5173',
+      'http://localhost:3000',
+    ];
+    if (!origin || allowed.includes(origin)) return origin ?? '';
+    return '';
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Idempotency-Key',
+    'X-Request-ID',
+    'Accept-Language',
+  ],
+  exposeHeaders: ['X-Request-ID', 'Server-Timing'],
+  credentials: true,
+  maxAge: 86400,
 }));
 
-// Compression
-app.use('*', compress());
-
-// Initialize monitoring tools
-app.use('*', async (c, next) => {
-  // Initialize Sentry (once per worker instance)
-  if (c.env.SENTRY_DSN && !(c as any)._sentryInit) {
-    initSentry({
-      dsn: c.env.SENTRY_DSN,
-      environment: c.env.ENVIRONMENT || 'production',
-      region: c.env.REGION || 'KR',
-      enabled: true,
-    });
-    (c as any)._sentryInit = true;
-  }
-
-  // Discord alerter is stateless (webhook-based), no init needed
-  // sendDiscordAlert can be called directly when needed
-
-  await next();
-});
-
-// API Response Caching (KV-backed)
-app.use('/api/products*', async (c, next) => {
-  if (!c.env.CACHE_KV) return next();
-  
-  const cacheStrategy = new APICacheStrategy(c.env.CACHE_KV);
-  const cacheKey = cacheStrategy.generateCacheKey(c.req.path, c.req.query());
-  
-  // Try to get from cache
-  const cached = await cacheStrategy.get(cacheKey);
-  if (cached && c.req.method === 'GET') {
-    c.header('X-Cache', 'HIT');
-    c.header('X-Cache-Age', Math.floor((Date.now() - cached.timestamp) / 1000).toString());
-    return c.json(cached.data);
-  }
-  
-  // Continue with request
-  await next();
-  
-  // Cache successful GET responses
-  if (c.res.ok && c.req.method === 'GET') {
-    try {
-      const responseData = await c.res.clone().json();
-      await cacheStrategy.set(cacheKey, responseData, { ...CacheConfigs.products, tags: ['products'] });
-      c.header('X-Cache', 'MISS');
-    } catch (e) {
-      // Non-JSON response, skip caching
-    }
-  }
-});
-
-// Rate Limiting (IP-based, KV-backed)
-app.use('/api/*', rateLimitMiddleware);
-app.use('/auth/*', rateLimitMiddleware);
-
-// Attach error context for better debugging
-app.use('*', attachErrorContext);
-
-// Request Logging with Performance Monitoring
-app.use('*', async (c, next) => {
-  const start = Date.now();
-  const method = c.req.method;
-  const path = c.req.path;
-  
-  await next();
-  
-  const duration = Date.now() - start;
-  const status = c.res.status;
-  
-  console.log(`[${method}] ${path} - ${status} (${duration}ms)`);
-  
-  // Performance warning for slow requests (>2s)
-  if (duration > 2000) {
-    console.warn(`⚠️ Slow request detected: ${method} ${path} took ${duration}ms`);
-    
-    // Send Discord alert for very slow requests (>5s)
-    if (duration > 5000 && c.env.DISCORD_WEBHOOK_URL) {
-      try {
-        await sendDiscordAlert(c.env.DISCORD_WEBHOOK_URL, {
-          title: '⚠️ Slow Request Detected',
-          description: `${method} ${path} took ${duration}ms`,
-          color: 0xffaa00
-        });
-      } catch (err) {
-        console.error('[Discord] Failed to send performance alert:', err);
-      }
-    }
-  }
-});
-
-// =================================
+// ============================================================
 // Health Check
-// =================================
+// ============================================================
 
-app.get('/health', (c) => {
-  return c.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    worker: 'ur-live-worker-v2.3',
-    version: '2.3.0',
-    features: [
-      'auth-kakao', 
-      'auth-google', 
-      'auth-seller', 
-      'auth-admin', 
-      'products', 
-      'orders', 
-      'account',
-      'notifications',
-      'wishlists',
-      'banners',
-      'push'
-    ],
-    middleware: ['rate-limiting', 'error-handling', 'retry-logic', 'monitoring'],
-    region: c.env.REGION || 'KR',
-    environment: c.env.ENVIRONMENT || 'production',
-    monitoring: {
-      sentry: !!c.env.SENTRY_DSN,
-      discord: !!c.env.DISCORD_WEBHOOK_URL,
-    },
-  });
-});
+app.get('/health', (c) => c.json({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  version: '2.0.0',
+  environment: (c.env as Env).ENVIRONMENT ?? 'development',
+}));
 
-// =================================
-// Feature Routes
-// =================================
+app.get('/api/health', (c) => c.json({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  version: '2.0.0',
+  environment: (c.env as Env).ENVIRONMENT ?? 'development',
+}));
 
-// Auth Feature (KR: Kakao, WORLD: Google, JWT: Seller/Admin)
+// ============================================================
+// Auth Routes
+// ============================================================
+
+// Worker-native user auth (register / login / logout / refresh / me)
+app.route('/api/auth', authRouter);
+
+// Feature: Kakao OAuth  →  /auth/kakao/sync/callback + /api/auth/kakao/*
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
+
+// Feature: Admin auth   →  /api/admin/login, /api/admin/refresh
+app.route('/api/admin', adminAuthRoutes);
+
+// Feature: Seller auth  →  /api/seller/login, /api/seller/refresh
+app.route('/api/seller', sellerAuthRoutes);
+
+// Feature: Google/Firebase auth
 app.route('/api/auth/google', googleRoutes);
-app.route('/api/seller', sellerRoutes);
-app.route('/api/admin', adminRoutes);
-app.route('/api', kakaoRoutes); // Add this to handle /api/users/role
 
-// Admin Management Feature (Complete Implementation)
-app.route('/api/admin', adminManagementRoutes);
-app.route('/api/admin/banners', adminBannersRoutes);
+// ============================================================
+// Product & Seller Routes
+// ============================================================
 
-// Seller Management Feature (Phase 1)
+// Worker-native products (multi-seller MVP)
+app.route('/api/products', productsRouter);
+
+// Feature products (extended CRUD)
+app.route('/api/products', featureProductsRoutes);
+
+// Worker-native sellers list
+app.route('/api/sellers', sellersRouter);
+
+// Feature seller management
 app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller', sellerStreamsRoutes);
 
-// Cart Feature (Phase 1)
+// ============================================================
+// Order & Payment Routes
+// ============================================================
+
+// Worker-native orders (multi-seller, idempotency, webhook)
+app.route('/api/orders', ordersRouter);
+
+// Feature orders (extended query/types)
+app.route('/api/orders', featureOrdersRoutes);
+
+// Worker-native payments + webhook
+app.route('/api/payments', paymentsRouter);
+
+// Feature payments (confirm/rollback)
+app.route('/api/payments', featurePaymentRoutes);
+
+// ============================================================
+// Feature Module Routes
+// ============================================================
+
+// Cart
 app.route('/api/cart', cartRoutes);
 
-// Shipping Address Feature (Phase 1)
-app.route('/api/shipping-addresses', shippingAddressRoutes);
-
-// Payment Feature (Phase 1)
-app.route('/api/payments', paymentRoutes);
-
-// Products Feature
-app.route('/api/products', productsRoutes);
-
-// Orders Feature
-app.route('/api/orders', ordersRoutes);
-
-// Account Management Feature
-app.route('/api/account', accountRoutes);
-
-// YouTube Integration Feature
-app.route('/api/youtube', youtubeRoutes);
-app.route('/api/youtube/chat', youtubeChatRoutes);
-
-// Notifications Feature
+// Notifications
 app.route('/api/notifications', notificationsRoutes);
 
-// Wishlists Feature
-app.route('/', wishlistRoutes);
+// Shipping addresses
+app.route('/api/shipping-addresses', shippingAddressRoutes);
 
-// Banners Feature
-app.route('/', bannerRoutes);
+// Wishlists
+app.route('/api/wishlists', wishlistRoutes);
 
-// Push Notifications Feature
-app.route('/', pushRoutes);
+// Banners
+app.route('/api/banners', bannerRoutes);
+app.route('/api/admin/banners', adminBannersRoutes);
 
-// TODO: Phase 3 Feature 라우트 추가
-// app.route('/api/streams', liveStreamRoutes);
-// app.route('/api/admin/sellers', adminSellersRoutes);
+// Admin management
+app.route('/api/admin', adminManagementRoutes);
 
-// =================================
-// Static Assets & SPA Fallback
-// =================================
-// ⚠️  serveStatic is REMOVED — it requires __STATIC_CONTENT_MANIFEST which is
-// not available in Cloudflare Pages workers, causing 500 errors.
-// Static assets (JS/CSS) are excluded from Worker via _routes.json and
-// served directly by Cloudflare Pages CDN.
+// Push notifications
+app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
 
-// SPA Fallback (React Router 지원)
-app.get('*', async (c) => {
-  const path = c.req.path;
-  
-  // API/Auth 경로는 404 반환
-  if (path.startsWith('/api/') || path.startsWith('/auth/')) {
-    return c.notFound();
-  }
-  
-  // 그 외 모든 경로는 index.html 제공
-  try {
-    // ✅ Use actual request URL base for ASSETS fetch (Cloudflare Pages requirement)
-    const requestUrl = new URL(c.req.url);
-    const indexUrl = new URL('/index.html', requestUrl.origin);
-    const assetResponse = await c.env.ASSETS.fetch(new Request(indexUrl.toString()));
-    
-    if (!assetResponse.ok) {
-      throw new Error(`ASSETS fetch failed: ${assetResponse.status}`);
-    }
-    
-    const indexHtml = await assetResponse.text();
-    
-    if (!indexHtml || indexHtml.length < 100) {
-      throw new Error(`Empty or invalid index.html (length: ${indexHtml?.length ?? 0})`);
-    }
-    
-    return c.html(indexHtml);
-  } catch (error) {
-    console.error('[SPA Fallback] Failed to serve index.html:', error);
-    return c.notFound();
-  }
+// Account
+app.route('/api/account', accountRoutes);
+
+// YouTube / Live streaming
+app.route('/api/seller/youtube', youtubeRoutes);
+app.route('/api/youtube/chat', youtubeChatRoutes);
+
+// ============================================================
+// 404 for API routes not matched above
+// ============================================================
+
+app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
+
+// ============================================================
+// SPA Fallback
+// Cloudflare Pages serves static assets automatically.
+// For pure Worker mode, return 404 for non-API routes.
+// ============================================================
+
+app.get('*', async () => {
+  return new Response('Not found', { status: 404 });
 });
 
-// =================================
-// Error Handler (Unified with Sentry + Discord)
-// =================================
+// ============================================================
+// Error Handler
+// ============================================================
 
-app.onError(async (err, c) => {
-  console.error('[Worker Error]', {
-    message: err.message,
-    stack: err.stack,
-    path: c.req.path,
-    method: c.req.method
-  });
-  
-  // Use unified error handler (Sentry + Discord + structured logging)
-  try {
-    const errorContext = (c as any).errorContext || {};
-    const response = await handleError(err, c.req.raw, errorContext);
-    return response;
-  } catch (handlerError) {
-    console.error('[Error Handler] Failed:', handlerError);
-    
-    // Fallback error response
-    return c.json({
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: '서버 오류가 발생했습니다.'
-      }
-    }, 500);
-  }
-});
+app.onError(errorHandler);
 
-// =================================
-// Not Found Handler
-// =================================
-
-app.notFound((c) => {
-  console.warn('[404]', c.req.path);
-  
-  return c.json({
-    success: false,
-    error: {
-      code: 'NOT_FOUND',
-      message: 'The requested resource was not found.',
-      path: c.req.path
-    }
-  }, 404);
-});
-
-export default app;
+export default {
+  fetch: app.fetch,
+};

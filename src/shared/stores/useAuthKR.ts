@@ -114,7 +114,7 @@ export const useAuthKR = create<AuthKRState>()(
             }).catch(() => {});
 
             safeSetUserType();
-            localStorage.setItem('user_name', displayName || email.split('@')[0]);
+            localStorage.setItem('user_name', displayName ?? email.split('@')[0]);
             set({ isLoading: false, error: null });
           } catch (err: any) {
             set({ error: err.message || '회원가입 실패', isLoading: false });
@@ -165,11 +165,17 @@ export const useAuthKR = create<AuthKRState>()(
          * - onAuthStateChanged 를 앱 생명주기 내내 구독 유지
          * - isAuthReady = true 는 첫 콜백 완료 후 영구 설정
          * - 반환값(unsubscribe) 을 App.tsx 에서 cleanup 으로 호출
+         *
+         * ✅ BUG #9 FIX: Two race conditions patched:
+         * 1. `unsubscribeFn` could still be null when cleanup fires if the async
+         *    IIFE hasn't resolved yet.  Use an `isMounted` flag so the stale
+         *    cleanup is a no-op instead of silently skipping.
+         * 2. `isAuthReady` was never set to `true` when the async IIFE itself
+         *    threw (e.g. Firebase SDK failed to load), leaving the app in a
+         *    permanent loading state.  The catch block now sets isAuthReady.
          */
         initializeAuth: () => {
-          let firstCall = true;
-
-          // 즉시 동기적으로 unsubscribe 함수를 만들기 위해 변수 사용
+          let isMounted = true;           // ✅ tracks whether cleanup was already called
           let unsubscribeFn: (() => void) | null = null;
 
           // Firebase lazy load 후 구독 시작 (비동기)
@@ -177,11 +183,10 @@ export const useAuthKR = create<AuthKRState>()(
             try {
               const { onAuthStateChanged } = await import('@/lib/firebase-auth');
 
-              unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
-                if (firstCall) {
-                  firstCall = false;
-                }
+              // ✅ If cleanup ran before we even reached here, bail out immediately
+              if (!isMounted) return;
 
+              unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
                 if (firebaseUser) {
                   // Firebase 유저 있음 → user_type 이 seller/admin 이면 간섭하지 않음
                   const currentType = localStorage.getItem('user_type');
@@ -233,12 +238,14 @@ export const useAuthKR = create<AuthKRState>()(
               });
             } catch (err) {
               console.error('[useAuthKR] onAuthStateChanged 설정 실패:', err);
+              // ✅ BUG #9 FIX: Always mark auth as ready so the app doesn't hang
               set({ isLoading: false, isAuthReady: true });
             }
           })();
 
           // 즉시 반환 (cleanup 함수)
           return () => {
+            isMounted = false;   // ✅ prevent stale async IIFE from subscribing after unmount
             if (unsubscribeFn) {
               unsubscribeFn();
             }

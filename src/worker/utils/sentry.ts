@@ -220,6 +220,7 @@ class SentryClient {
         const match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
         if (match) {
           const [, func, filename, lineno, colno] = match;
+          if (!func || !filename || !lineno || !colno) return null;
           return {
             function: func.trim(),
             filename: filename.trim(),

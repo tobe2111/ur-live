@@ -1,45 +1,29 @@
-# v0 runtime files (should only exist in preview, not in git)
-__v0_runtime_loader.js
-__v0_devtools.tsx
-__v0_jsx-dev-runtime.ts
-
-# Common ignores
+# Dependencies
 node_modules/
-.next/
-.env*.local
-.DS_Store
 
-# Test coverage reports
-coverage/
-*.lcov
-
-# 🔒 CRITICAL: DO NOT ignore these React version protection files
-# These files prevent React 19 upgrades that cause forwardRef errors
-# - REACT_VERSION_POLICY.md
-# - scripts/check-react-version.js
-# - scripts/verify-react-version.js
-# - .npmrc
-# Local development environment variables
-.dev.vars
-core
-core
-src/index-api-only.tsx.backup
-dist-global/
-
-# Build artifacts (auto-generated, don't track)
+# Build outputs
 dist/
-dist/version.json
-public/version.json
 
-# Log files (PM2, etc.)
-logs/
-*.log
+# Wrangler local state
+.wrangler/
 
-# Wrangler temporary files
-.wrangler/tmp/
-
-# ⚠️ 보안 파일 (절대 Git에 커밋하지 않음)
-scripts/*-generated.sql
-scripts/migrate-accounts-generated.sql
-*.secret
+# Environment files (never commit secrets)
+.dev.vars
+.env
+.env.local
 .env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# Test results
+playwright-report/
+test-results/
+
+# Logs
+*.log

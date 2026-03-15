@@ -1,109 +1,178 @@
-/**
- * Password Hashing using Web Crypto API
- * 
- * Cloudflare Workers compatible password hashing
- * Uses PBKDF2 algorithm (industry standard)
- */
+// ============================================================
+// Password Hashing using Web Crypto API
+// Cloudflare Workers compatible password hashing
+//
+// 지원 해시 형식:
+//   - PBKDF2 (현재):   "salt$hash"  (base64$base64)
+//   - SHA-256 레거시: 64자 hex 문자열 ($ 없음, 고정 salt 방식)
+//
+// 점진적 마이그레이션:
+//   로그인 시 verifyPassword()가 레거시 해시를 감지하면
+//   isLegacyHash() === true를 반환합니다.
+//   auth.routes.ts에서 이를 확인해 PBKDF2로 자동 재해싱합니다.
+// ============================================================
+
+// PBKDF2 파라미터
+const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_HASH = 'SHA-256';
+const PBKDF2_BITS = 256;
 
 /**
- * Hash a password using PBKDF2
- * @param password - Plain text password
- * @returns Hashed password string (format: salt$hash)
+ * PBKDF2로 비밀번호 해싱
+ * @returns "base64(salt)$base64(hash)" 형식
  */
 export async function hashPassword(password: string): Promise<string> {
-  // Generate random salt (16 bytes = 128 bits)
-  const salt = crypto.getRandomValues(new Uint8Array(16))
-  
-  // Convert password to buffer
-  const passwordBuffer = new TextEncoder().encode(password)
-  
-  // Import password as key
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passwordBuffer = new TextEncoder().encode(password);
+
   const key = await crypto.subtle.importKey(
-    'raw',
-    passwordBuffer,
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits']
-  )
-  
-  // Derive hash using PBKDF2
+    'raw', passwordBuffer,
+    { name: 'PBKDF2' }, false, ['deriveBits']
+  );
+
   const hashBuffer = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000, // OWASP recommendation: 100,000+ iterations
-      hash: 'SHA-256'
-    },
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: PBKDF2_HASH },
     key,
-    256 // 256 bits = 32 bytes
-  )
-  
-  // Convert to base64 for storage
-  const saltBase64 = btoa(String.fromCharCode(...salt))
-  const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
-  
-  // Format: salt$hash
-  return `${saltBase64}$${hashBase64}`
+    PBKDF2_BITS
+  );
+
+  const saltB64 = btoa(String.fromCharCode(...salt));
+  const hashB64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+
+  return `${saltB64}$${hashB64}`;
 }
 
 /**
- * Verify a password against a hash
- * @param password - Plain text password to verify
- * @param storedHash - Stored hash (format: salt$hash)
- * @returns True if password matches
+ * 저장된 해시가 레거시 SHA-256 방식인지 판별
+ *
+ * 레거시 SHA-256 해시 특징:
+ *  - '$' 구분자 없음 (또는 hex 64자 고정)
+ *  - 형식: <hex64> 또는 <hex64>:<staticSalt>
  */
-export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  // Parse stored hash
-  const [saltBase64, hashBase64] = storedHash.split('$')
-  
-  if (!saltBase64 || !hashBase64) {
-    return false
+export function isLegacyHash(storedHash: string): boolean {
+  if (!storedHash) return false;
+  // PBKDF2 형식: base64$base64 (반드시 $ 포함, 양쪽 모두 base64)
+  const parts = storedHash.split('$');
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    // base64 여부 확인 (PBKDF2 salt는 16바이트 → base64 24자)
+    // salt는 24자, hash는 44자 정도여야 함
+    const [salt, hash] = parts;
+    if (salt.length >= 20 && hash.length >= 40) {
+      return false; // PBKDF2
+    }
   }
-  
-  // Decode salt
-  const salt = Uint8Array.from(atob(saltBase64), c => c.charCodeAt(0))
-  
-  // Convert password to buffer
-  const passwordBuffer = new TextEncoder().encode(password)
-  
-  // Import password as key
-  const key = await crypto.subtle.importKey(
-    'raw',
-    passwordBuffer,
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits']
-  )
-  
-  // Derive hash using same parameters
-  const hashBuffer = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    key,
-    256
-  )
-  
-  // Convert to base64 for comparison
-  const hashBase64Computed = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)))
-  
-  // Constant-time comparison (prevents timing attacks)
-  return hashBase64 === hashBase64Computed
+  // 그 외 형식 → 레거시
+  return true;
 }
 
 /**
- * Example usage:
- * 
- * // Hash password before storing
- * const hashedPassword = await hashPassword('mySecretPassword123')
- * // Store hashedPassword in database
- * 
- * // Verify password on login
- * const isValid = await verifyPassword('mySecretPassword123', storedHashedPassword)
- * if (isValid) {
- *   // Login successful
- * }
+ * 레거시 SHA-256 해시 검증
+ *
+ * 기존 구현 방식을 지원합니다:
+ *  1. hex(SHA-256(staticSalt + password))  — auth.routes.ts 구 버전
+ *  2. hex(SHA-256(password + staticSalt))  — 일부 변형
+ *
+ * 두 가지 모두 시도합니다.
  */
+async function verifyLegacyHash(password: string, storedHash: string): Promise<boolean> {
+  // 기존 코드에서 사용된 static salt
+  const LEGACY_STATIC_SALT = 'marketplace-salt-2024';
+
+  const encoder = new TextEncoder();
+
+  // 시도 1: salt + password (기존 구현 기본)
+  const attempt1 = encoder.encode(LEGACY_STATIC_SALT + password);
+  const hash1 = await crypto.subtle.digest('SHA-256', attempt1);
+  const hex1 = Array.from(new Uint8Array(hash1))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (hex1 === storedHash) return true;
+
+  // 시도 2: password + salt (일부 변형)
+  const attempt2 = encoder.encode(password + LEGACY_STATIC_SALT);
+  const hash2 = await crypto.subtle.digest('SHA-256', attempt2);
+  const hex2 = Array.from(new Uint8Array(hash2))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (hex2 === storedHash) return true;
+
+  // 시도 3: password만 (salt 없이)
+  const attempt3 = encoder.encode(password);
+  const hash3 = await crypto.subtle.digest('SHA-256', attempt3);
+  const hex3 = Array.from(new Uint8Array(hash3))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return hex3 === storedHash;
+}
+
+/**
+ * 비밀번호 검증
+ *
+ * PBKDF2 해시와 레거시 SHA-256 해시 모두 지원합니다.
+ * 레거시 해시 감지 시 isLegacy: true를 반환하므로,
+ * 호출 측에서 PBKDF2로 자동 재해싱을 수행할 수 있습니다.
+ */
+export async function verifyPassword(
+  password: string,
+  storedHash: string
+): Promise<{ valid: boolean; isLegacy: boolean }> {
+
+  // ── PBKDF2 검증 ────────────────────────────────────────────
+  if (!isLegacyHash(storedHash)) {
+    const parts = storedHash.split('$');
+    const saltB64 = parts[0];
+    const hashB64 = parts[1];
+
+    if (!saltB64 || !hashB64) {
+      return { valid: false, isLegacy: false };
+    }
+
+    const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+    const passwordBuffer = new TextEncoder().encode(password);
+
+    const key = await crypto.subtle.importKey(
+      'raw', passwordBuffer,
+      { name: 'PBKDF2' }, false, ['deriveBits']
+    );
+
+    const hashBuffer = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: PBKDF2_HASH },
+      key,
+      PBKDF2_BITS
+    );
+
+    const computed = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+
+    // 상수 시간 비교 (timing attack 방지)
+    const valid = timingSafeEqual(computed, hashB64);
+    return { valid, isLegacy: false };
+  }
+
+  // ── 레거시 SHA-256 검증 ────────────────────────────────────
+  const valid = await verifyLegacyHash(password, storedHash);
+  return { valid, isLegacy: true };
+}
+
+/**
+ * 상수 시간 문자열 비교 (timing attack 방지)
+ * 두 문자열이 같으면 true, 다르면 false
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    // 길이가 다르더라도 항상 같은 시간을 소비 (아래 루프 실행)
+    let result = 1;
+    const minLen = Math.min(a.length, b.length);
+    for (let i = 0; i < minLen; i++) {
+      result |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+    }
+    return false; // 길이 다르면 무조건 false
+  }
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+  }
+  return diff === 0;
+}

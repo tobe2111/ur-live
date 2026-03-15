@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -7,21 +7,23 @@ import { getUserId } from '@/utils/auth'
 
 export default function PaymentSuccessPage() {
   
-  // 🔥 디버그: 페이지 타이틀로 로드 확인
-  document.title = '🚀 PaymentSuccess LOADED - ' + new Date().toISOString()
-  
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [orderInfo, setOrderInfo] = useState<any>(null)
-  const [isProcessing, setIsProcessing] = useState(false) // 중복 호출 방지
+  
+  // ✅ BUG #4 FIX: Use a ref for the processing flag instead of state.
+  // Using state inside a useEffect closure causes a stale-closure bug:
+  // the effect captures `isProcessing = false` at mount time, so the guard
+  // `if (isProcessing) return` NEVER fires on re-renders — allowing duplicate calls.
+  // A ref is mutable and always reflects the current value without re-closure issues.
+  const isProcessingRef = useRef(false)
 
   // URL 파라미터에서 결제 정보 추출
   const paymentKey = searchParams.get('paymentKey')
   const orderId = searchParams.get('orderId')
   const amount = searchParams.get('amount')
-  
 
   useEffect(() => {
     if (!paymentKey || !orderId || !amount) {
@@ -30,23 +32,29 @@ export default function PaymentSuccessPage() {
       return
     }
 
-    // 🔒 중복 호출 방지: 이미 처리 중이면 무시
-    if (isProcessing) {
+    // 🔒 중복 호출 방지: ref는 클로저에 영향 받지 않으므로 항상 현재 값을 읽음
+    if (isProcessingRef.current) {
       return
     }
 
     // 백엔드에 결제 승인 요청
     confirmPayment()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentKey, orderId, amount])
 
   async function confirmPayment() {
-    // 🔒 중복 호출 방지
-    setIsProcessing(true)
+    // 🔒 중복 호출 방지 (ref 사용)
+    isProcessingRef.current = true
     
     try {
       
       // 1️⃣ 사용자 정보 확인
-      const userId = getUserId()
+      // ✅ BUG #22 FIX: getUserId() is declared `async` (returns Promise<string|null>).
+      // The old code called it without `await`, so `userId` was always a resolved
+      // Promise object — which is truthy — and the demo-mode guard below never fired.
+      // More critically, `userId` was then stored as "[object Promise]" in the
+      // order payload, causing every order creation to fail with a DB type error.
+      const userId = await getUserId()
       
       // 🎯 데모 모드 감지: userId가 없으면 데모 결제로 간주
       if (!userId) {
@@ -94,22 +102,30 @@ export default function PaymentSuccessPage() {
       
 
       // 주문 아이템 매핑
+      // ✅ BUG #12 FIX: POST /api/orders expects snake_case field names matching
+      // OrderCreateInput: { user_id, seller_id, items[{product_id,quantity,price}], total_amount }
+      // The previous camelCase payload (userId, orderNumber, totalAmount) caused
+      // `!data.user_id` to be true → 400 "Missing required fields" every single time.
+      // seller_id defaults to the first item's seller_id (or 0 as fallback); the
+      // backend should be extended to support multi-seller orders properly.
+      const sellerIdForOrder = cartItems[0]?.seller_id || 0
+
       const orderItems = cartItems.map((item: any) => ({
-        productId: item.product_id,
+        product_id: item.product_id,
         quantity: item.quantity,
-        price: item.price_snapshot,
-        optionValue: item.option_value || null
+        price: item.price_snapshot ?? item.price ?? 0,
       }))
 
       const orderData = {
-        userId: userId,  // Firebase UID (백엔드에서 DB ID로 매핑됨)
-        orderNumber: orderId,
+        user_id: userId,           // Firebase UID — backend maps to DB integer id
+        seller_id: sellerIdForOrder,
+        order_number: orderId,
         items: orderItems,
-        totalAmount: parseInt(amount || '0'),
-        shippingAddress: shippingAddress,
-        shippingAddressDetail: shippingAddressDetail,  // ← 추가
-        recipientName: recipientName,
-        recipientPhone: recipientPhone,
+        total_amount: parseInt(amount || '0'),
+        shipping_address: `${shippingAddress}`,
+        shipping_address_detail: shippingAddressDetail,
+        shipping_name: recipientName,
+        shipping_phone: recipientPhone,
         status: 'pending'
       }
 
@@ -145,7 +161,9 @@ export default function PaymentSuccessPage() {
       // 5️⃣ 장바구니 비우기 및 백업 삭제
       try {
         if (cartItems.length > 0) {
-          await api.delete('/api/cart/clear')
+          // ✅ BUG #5 FIX: Server defines POST /api/cart/clear, not DELETE.
+          // Using api.delete('/api/cart/clear') returns 404/405.
+          await api.post('/api/cart/clear')
         }
         localStorage.removeItem('hasCartItems')
         localStorage.removeItem('checkoutCartBackup')  // 백업 삭제
@@ -161,7 +179,7 @@ export default function PaymentSuccessPage() {
       setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
-      setIsProcessing(false) // 처리 완료
+      isProcessingRef.current = false // 처리 완료
     }
   }
 

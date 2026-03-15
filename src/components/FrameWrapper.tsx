@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import GripFrameLayout from './GripFrameLayout'
 import MobileAppLayout from './MobileAppLayout'
+import { logger } from '@/utils/logger'
 
 interface FrameWrapperProps {
   children: ReactNode
@@ -32,9 +33,8 @@ export default function FrameWrapper({ children }: FrameWrapperProps) {
   
   // 프레임 페이지면 GripFrameLayout으로 감싸기 (최우선)
   if (isFramePage) {
-    console.log('🖼️ FrameWrapper: Wrapping with GripFrameLayout', {
-      pathname: location.pathname,
-      children: children ? 'exists' : 'null'
+    logger.debug('🖼️ FrameWrapper: Wrapping with GripFrameLayout', {
+      pathname: location.pathname
     })
     return <GripFrameLayout>{children}</GripFrameLayout>
   }
@@ -45,14 +45,14 @@ export default function FrameWrapper({ children }: FrameWrapperProps) {
   })
   
   if (shouldExcludeMobileLayout) {
-    console.log('↩️ FrameWrapper: Returning children directly (excluded page)', {
+    logger.debug('↩️ FrameWrapper: Returning children directly (excluded page)', {
       pathname: location.pathname
     })
     return <>{children}</>
   }
   
   // 나머지 모든 페이지는 모바일 레이아웃으로 감싸기
-  console.log('📱 FrameWrapper: Wrapping with MobileAppLayout', {
+  logger.debug('📱 FrameWrapper: Wrapping with MobileAppLayout', {
     pathname: location.pathname
   })
   return <MobileAppLayout>{children}</MobileAppLayout>

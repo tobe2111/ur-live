@@ -34,13 +34,21 @@ const mockUser = {
   displayName: 'Test User',
 };
 
+// ✅ STRENGTHENED: mockOrders now uses optional total_amount to verify BUG #7 guard
 const mockOrders = [
   {
     id: 1,
     order_number: 'ORD-001',
     status: 'delivered',
     total_amount: 30000,
+    amount: 30000,
     created_at: new Date().toISOString(),
+    shipping_name: 'Test User',
+    shipping_phone: '010-1234-5678',
+    shipping_postal_code: '12345',
+    shipping_address: '서울시 강남구 테헤란로 123',
+    shipping_address_detail: '101호',
+    payment_method: '카드',
     items: [
       {
         id: 1,
@@ -49,6 +57,46 @@ const mockOrders = [
         price_snapshot: 10000,
       },
     ],
+  },
+  // ✅ STRENGTHENED: order with undefined/null price_snapshot — tests BUG #7 guard
+  {
+    id: 2,
+    order_number: 'ORD-002',
+    status: 'pending',
+    // total_amount intentionally omitted to test nullish-coalescing guard
+    amount: 15000,
+    created_at: new Date().toISOString(),
+    shipping_name: 'Test User 2',
+    shipping_phone: '010-0000-0000',
+    shipping_postal_code: '67890',
+    shipping_address: '서울시 서초구',
+    shipping_address_detail: '',
+    items: [
+      {
+        id: 2,
+        product_name: 'Test Product 2',
+        quantity: 2,
+        // price_snapshot intentionally undefined — tests BUG #7 guard
+      },
+    ],
+  },
+];
+
+// ✅ STRENGTHENED: cart returns standard { success, data } shape used by useCart
+const mockCartItems = [
+  {
+    id: 1,
+    product_id: 1,
+    product_name: 'Test Product 1',
+    quantity: 2,
+    price_snapshot: 10000,
+    price: 10000,
+    seller_id: 1,
+    seller_name: 'Test Seller',
+    shipping_fee: 3000,
+    free_shipping_threshold: 50000,
+    image_url: '/images/product1.jpg',
+    stock_quantity: 100,
   },
 ];
 
@@ -82,11 +130,16 @@ export const handlers = [
     return HttpResponse.json({ ...mockUser, ...body });
   }),
 
-  // Orders API
+  // ✅ STRENGTHENED: /api/users/role needed by useAuthKR.loginWithEmail & initializeAuth
+  http.get('/api/users/role', () => {
+    return HttpResponse.json({ role: 'user' });
+  }),
+
+  // Orders API — ✅ STRENGTHENED: return { success, data } shape
   http.get('/api/orders', () => {
     return HttpResponse.json({
-      orders: mockOrders,
-      total: mockOrders.length,
+      success: true,
+      data: mockOrders,
     });
   }),
 
@@ -98,39 +151,101 @@ export const handlers = [
       return new HttpResponse(null, { status: 404 });
     }
     
-    return HttpResponse.json(order);
+    return HttpResponse.json({ success: true, data: order });
   }),
 
-  // Cart API
-  http.get('/api/cart', () => {
-    return HttpResponse.json({
-      items: [
-        {
-          id: 1,
-          product_id: 1,
-          product_name: 'Test Product 1',
-          quantity: 2,
-          price_snapshot: 10000,
-        },
-      ],
-    });
-  }),
-
-  http.post('/api/cart', async ({ request }) => {
-    const body = await request.json();
+  // ✅ STRENGTHENED: POST /api/orders — used by PaymentSuccessPage
+  http.post('/api/orders', async ({ request }) => {
+    const body = await request.json() as any;
     return HttpResponse.json(
-      { success: true, item: body },
+      {
+        success: true,
+        data: {
+          id: 99,
+          order_number: body.orderNumber || 'ORD-TEST',
+          status: 'pending',
+          total_amount: body.totalAmount,
+        },
+      },
       { status: 201 }
     );
   }),
 
+  // ✅ STRENGTHENED: POST /api/orders/:id/cancel
+  http.post('/api/orders/:id/cancel', async ({ request }) => {
+    const body = await request.json() as any;
+    if (!body.reason) {
+      return HttpResponse.json({ success: false, error: '취소 사유 필요' }, { status: 400 });
+    }
+    return HttpResponse.json({ success: true, data: { status: 'cancelled' } });
+  }),
+
+  // Cart API — ✅ STRENGTHENED: return { success, data } shape used by useCart
+  http.get('/api/cart', () => {
+    return HttpResponse.json({
+      success: true,
+      data: mockCartItems,
+    });
+  }),
+
+  http.post('/api/cart', async ({ request }) => {
+    const body = await request.json() as any;
+    return HttpResponse.json(
+      { success: true, data: { ...body, id: Date.now() } },
+      { status: 201 }
+    );
+  }),
+
+  // ✅ STRENGTHENED: PUT (not PATCH) — aligns with BUG #6 fix
   http.put('/api/cart/:id', async ({ params, request }) => {
-    const body = await request.json();
-    return HttpResponse.json({ success: true, ...body });
+    const body = await request.json() as any;
+    return HttpResponse.json({ success: true, data: { id: params.id, ...body } });
   }),
 
   http.delete('/api/cart/:id', () => {
     return HttpResponse.json({ success: true });
+  }),
+
+  // ✅ STRENGTHENED: POST /api/cart/clear (not DELETE) — aligns with BUG #5 fix
+  http.post('/api/cart/clear', () => {
+    return HttpResponse.json({ success: true });
+  }),
+
+  // ✅ STRENGTHENED: POST /api/payments/confirm
+  http.post('/api/payments/confirm', async ({ request }) => {
+    const body = await request.json() as any;
+    if (!body.paymentKey || !body.orderId || body.amount === undefined) {
+      return HttpResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 422 }
+      );
+    }
+    return HttpResponse.json({
+      success: true,
+      data: {
+        orderId: body.orderId,
+        method: '카드',
+        totalAmount: body.amount,
+      },
+    });
+  }),
+
+  // Shipping addresses
+  http.get('/api/shipping-addresses', () => {
+    return HttpResponse.json({
+      success: true,
+      data: [
+        {
+          id: 1,
+          recipient_name: 'Test User',
+          phone: '010-1234-5678',
+          postal_code: '12345',
+          address: '서울시 강남구',
+          address_detail: '101호',
+          is_default: 1,
+        },
+      ],
+    });
   }),
 
   // Wishlist API

@@ -15,9 +15,16 @@ if (typeof window !== 'undefined') {
     /passive event listener/i,
     /Added non-passive event listener/i,
     /\[Violation\].*passive/i,
+    // React Router v6 → v7 migration warnings (resolved via future flags, but fallback suppression)
+    /React Router Future Flag Warning/i,
+    /v7_startTransition/i,
+    /v7_relativeSplatPath/i,
+    // i18next initialization info (not an error)
+    /i18next is maintained with support from Locize/i,
+    /i18next.*initialized/i,
   ]
   
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     const message = args[0]?.toString() || ''
     if (SUPPRESSED_ERROR_PATTERNS.some(pattern => pattern.test(message))) {
       return
@@ -25,7 +32,7 @@ if (typeof window !== 'undefined') {
     originalError.apply(console, args)
   }
   
-  console.warn = (...args: any[]) => {
+  console.warn = (...args: unknown[]) => {
     const message = args[0]?.toString() || ''
     if (SUPPRESSED_WARN_PATTERNS.some(pattern => pattern.test(message))) {
       return

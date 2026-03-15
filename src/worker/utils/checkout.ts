@@ -6,6 +6,9 @@ export interface CheckoutPayload {
   products: Array<{
     productId: string
     quantity: number
+    // ✅ BUG #7 FIX: price_snapshot must be passed from the caller (checked-out cart item)
+    // so the DB record captures the real price at purchase time.
+    price_snapshot: number
   }>
   paymentKey: string
   userId: string
@@ -185,7 +188,9 @@ export async function processCheckout(
           .prepare(
             'INSERT INTO order_items (order_id, product_id, quantity, price_snapshot) VALUES (?, ?, ?, ?)'
           )
-          .bind(orderId, item.productId, item.quantity, 0) // price는 별도 조회 필요
+          // ✅ BUG #7 FIX: Use the price_snapshot from the payload instead of
+          // hardcoding 0, which caused all order history to show ₩0 per item.
+          .bind(orderId, item.productId, item.quantity, item.price_snapshot ?? 0)
       ),
     ])
 

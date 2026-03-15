@@ -19,6 +19,23 @@ vi.mock('firebase/app', () => ({
   getApp: vi.fn(),
 }));
 
+vi.mock('@/lib/firebase-config', () => ({
+  initializeAll: vi.fn().mockResolvedValue({ name: '[DEFAULT]' }),
+  initializeFirebase: vi.fn().mockResolvedValue({ name: '[DEFAULT]' }),
+  initializeDatabase: vi.fn().mockResolvedValue({}),
+  initializeAuth: vi.fn().mockResolvedValue({ currentUser: null }),
+}));
+
+vi.mock('@/lib/firebase', () => ({
+  app: { name: '[DEFAULT]' },
+  auth: {
+    currentUser: null,
+    onAuthStateChanged: vi.fn((cb: (user: null) => void) => { cb(null); return vi.fn(); }),
+    signOut: vi.fn().mockResolvedValue(undefined),
+  },
+  db: {},
+}));
+
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => ({
     currentUser: null,
@@ -34,6 +51,10 @@ vi.mock('firebase/auth', () => ({
   }),
   sendPasswordResetEmail: vi.fn(),
   GoogleAuthProvider: vi.fn(),
+  setPersistence: vi.fn().mockResolvedValue(undefined),
+  browserLocalPersistence: 'LOCAL',
+  browserSessionPersistence: 'SESSION',
+  inMemoryPersistence: 'NONE',
 }));
 
 vi.mock('firebase/database', () => ({
@@ -43,6 +64,29 @@ vi.mock('firebase/database', () => ({
   set: vi.fn(),
   push: vi.fn(),
   get: vi.fn(),
+}));
+
+// Global mock for @/lib/firebase-auth lazy loader
+// Individual tests can override with their own vi.mock('@/lib/firebase-auth', ...)
+vi.mock('@/lib/firebase-auth', () => ({
+  getFirebaseAuth: vi.fn().mockResolvedValue({ currentUser: null }),
+  signInWithCustomToken: vi.fn().mockResolvedValue({
+    user: { uid: 'mock-uid', getIdToken: vi.fn().mockResolvedValue('mock-token') },
+  }),
+  signInWithEmailAndPassword: vi.fn().mockResolvedValue({
+    user: { uid: 'mock-uid', email: 'test@test.com', getIdToken: vi.fn().mockResolvedValue('mock-token') },
+  }),
+  createUserWithEmailAndPassword: vi.fn().mockResolvedValue({
+    user: { uid: 'new-uid', email: 'new@test.com', getIdToken: vi.fn().mockResolvedValue('new-token') },
+  }),
+  signInWithPopup: vi.fn().mockResolvedValue({ user: { uid: 'popup-uid' } }),
+  signOut: vi.fn().mockResolvedValue(undefined),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  getCurrentUser: vi.fn().mockResolvedValue(null),
+  onAuthStateChanged: vi.fn((_auth: unknown, cb: (user: null) => void) => {
+    cb(null);
+    return vi.fn();
+  }),
 }));
 
 // Mock window.Kakao
