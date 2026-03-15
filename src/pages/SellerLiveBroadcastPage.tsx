@@ -102,25 +102,29 @@ export default function SellerLiveBroadcastPage() {
       setLoadError(null)
 
       // Load all data in parallel for faster loading
+      console.log('[LiveBroadcast] Loading data...')
       const [channelsRes, productsRes, streamsRes] = await Promise.allSettled([
         api.get('/api/seller/youtube/channels'),
         api.get('/api/seller/products'),
         api.get('/api/seller/streams'),
       ])
 
-      if (channelsRes.status === 'fulfilled' && channelsRes.value.data.success) {
+      console.log('[LiveBroadcast] Channels result:', channelsRes.status,
+        channelsRes.status === 'fulfilled' ? channelsRes.value.data : (channelsRes as any).reason?.response?.data)
+
+      if (channelsRes.status === 'fulfilled' && channelsRes.value.data?.success) {
         setChannels(channelsRes.value.data.data || [])
       }
 
-      if (productsRes.status === 'fulfilled' && productsRes.value.data.success) {
+      if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
         setProducts(productsRes.value.data.data || [])
       }
 
-      if (streamsRes.status === 'fulfilled' && streamsRes.value.data.success) {
+      if (streamsRes.status === 'fulfilled' && streamsRes.value.data?.success) {
         setStreams(streamsRes.value.data.data || [])
       }
     } catch (error: any) {
-      console.error('Failed to load data:', error)
+      console.error('[LiveBroadcast] Failed to load data:', error)
       setLoadError('데이터를 불러오는데 실패했습니다. 페이지를 새로고침해주세요.')
     } finally {
       setLoading(false)
@@ -158,37 +162,49 @@ export default function SellerLiveBroadcastPage() {
       return
     }
 
+    console.log('[LiveBroadcast] Creating stream:', { title: title.trim(), products: selectedProducts })
+
     try {
       setCreating(true)
 
-      const response = await api.post('/api/seller/youtube/live/create', {
+      const payload = {
         title: title.trim(),
         description: description.trim(),
         product_ids: selectedProducts,
         scheduled_start_time: new Date().toISOString()
-      })
+      }
 
-      if (response.data.success) {
+      const response = await api.post('/api/seller/youtube/live/create', payload)
+      console.log('[LiveBroadcast] Create response:', response.data)
+
+      if (response.data?.success) {
         setNewStream(response.data.data)
         setShowSetup(false)
         setTitle('')
         setDescription('')
         setSelectedProducts([])
         await loadData()
-      } else {
+      } else if (response.data) {
         const errMsg = response.data.error || '라이브 생성에 실패했습니다.'
         if (response.data.error_code === 'YOUTUBE_AUTH_REQUIRED') {
           alert('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
+        } else if (response.data.error === 'YouTube API not configured') {
+          alert('YouTube API가 설정되지 않았습니다.\n관리자에게 문의하여 YOUTUBE_CLIENT_ID 및 YOUTUBE_CLIENT_SECRET 설정을 요청하세요.')
         } else {
           alert(`라이브 생성 실패: ${errMsg}`)
         }
+      } else {
+        // Empty response - API not configured or route mismatch
+        console.warn('[LiveBroadcast] Empty response - checking YouTube API configuration')
+        alert('방송 생성에 실패했습니다. YouTube API 설정을 확인해주세요.\n\n관리자에게 문의하세요.')
       }
     } catch (error: any) {
-      console.error('Failed to create stream:', error)
+      console.error('[LiveBroadcast] Failed to create stream:', error)
       if (error.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
         alert('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
       } else {
-        alert('라이브 생성에 실패했습니다: ' + (error.response?.data?.error || error.message))
+        const errMsg = error.response?.data?.error || error.message || '알 수 없는 오류'
+        alert('라이브 생성에 실패했습니다: ' + errMsg)
       }
     } finally {
       setCreating(false)
@@ -344,11 +360,18 @@ export default function SellerLiveBroadcastPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 {channels.map(channel => (
                   <div key={channel.id} className="apple-card p-4 flex items-center gap-4">
-                    <img
-                      src={channel.channel_thumbnail}
-                      alt={channel.channel_title}
-                      className="w-16 h-16 rounded-full flex-shrink-0"
-                    />
+                    {channel.channel_thumbnail ? (
+                      <img
+                        src={channel.channel_thumbnail}
+                        alt=""
+                        className="w-16 h-16 rounded-full flex-shrink-0 object-cover bg-[#f5f5f7]"
+                        onError={(e) => { e.currentTarget.style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full flex-shrink-0 bg-red-100 flex items-center justify-center">
+                        <Youtube className="h-8 w-8 text-red-500" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <h4 className="text-[15px] font-semibold text-[#1d1d1f] truncate">
                         {channel.channel_title}

@@ -185,7 +185,9 @@ app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
 app.route('/api/account', accountRoutes);
 
 // YouTube / Live streaming
+// Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
+app.route('/api/youtube', youtubeRoutes); // legacy path alias
 app.route('/api/youtube/chat', youtubeChatRoutes);
 
 // ============================================================
