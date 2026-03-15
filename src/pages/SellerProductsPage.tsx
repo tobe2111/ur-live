@@ -214,18 +214,16 @@ export default function SellerProductsPage() {
                         <tr key={product.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                              {product.image_url ? (
+                              {product.image_url && product.image_url.trim() !== '' ? (
                                 <img
                                   src={product.image_url}
                                   alt={product.name}
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64'
+                                    (e.target as HTMLImageElement).style.display = 'none'
                                   }}
                                 />
-                              ) : (
-                                <ImageIcon className="w-10 h-10 text-gray-400" />
-                              )}
+                              ) : null}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -299,18 +297,16 @@ export default function SellerProductsPage() {
                       <div className="flex gap-3 sm:gap-4">
                         {/* Product Image */}
                         <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
-                          {product.image_url ? (
+                          {product.image_url && product.image_url.trim() !== '' ? (
                             <img
                               src={product.image_url}
                               alt={product.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/96'
+                                (e.target as HTMLImageElement).style.display = 'none'
                               }}
                             />
-                          ) : (
-                            <ImageIcon className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
-                          )}
+                          ) : null}
                         </div>
 
                         {/* Product Info */}

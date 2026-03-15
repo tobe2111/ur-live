@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import jwt from '@tsndr/cloudflare-worker-jwt'
+import { verify as honoVerify } from 'hono/jwt'
 import { YouTubeAPIService } from '../services/youtube-api.service'
 import type { 
   YouTubeOAuthTokens, 
@@ -38,18 +38,44 @@ app.use('/*', cors({
 
 /**
  * Helper: Extract seller ID from JWT
+ * Uses hono/jwt verify to be compatible with seller login tokens
  */
 async function getSellerIdFromToken(authHeader: string | undefined, secret: string): Promise<number | null> {
   if (!authHeader?.startsWith('Bearer ')) return null
   
   try {
     const token = authHeader.substring(7)
-    const isValid = await jwt.verify(token, secret)
     
-    if (!isValid) return null
+    // Use hono/jwt verify (same library used during login)
+    let payload: any
+    try {
+      payload = await honoVerify(token, secret, 'HS256')
+    } catch (verifyError) {
+      // Try without algorithm specification as fallback
+      try {
+        payload = await honoVerify(token, secret)
+      } catch {
+        console.error('[YouTube Auth] JWT verification failed:', verifyError)
+        return null
+      }
+    }
     
-    const payload = jwt.decode(token).payload as any
-    return payload.seller_id || payload.sub || null
+    if (!payload) return null
+    
+    // Support both seller_id and sub fields
+    const sellerId = payload.seller_id || payload.sub
+    if (!sellerId) {
+      console.error('[YouTube Auth] No seller_id in token payload:', Object.keys(payload))
+      return null
+    }
+    
+    // Verify this is a seller token
+    if (payload.type !== 'seller' && payload.userType !== 'seller') {
+      console.error('[YouTube Auth] Token type is not seller:', payload.type || payload.userType)
+      return null
+    }
+    
+    return Number(sellerId)
   } catch (error) {
     console.error('[YouTube Auth] JWT verification error:', error)
     return null

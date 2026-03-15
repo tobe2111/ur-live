@@ -84,6 +84,56 @@ app.use('*', cors({
 }));
 
 // ============================================================
+// Security Headers (CSP etc.)
+// ============================================================
+
+app.use('*', async (c, next) => {
+  await next();
+  // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
+  c.header('Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+      "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
+      "https://*.tosspayments.com https://js.tosspayments.com " +
+      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
+      "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
+      "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
+      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
+      "https://googletagmanager.com https://*.firebaseapp.com; " +
+    "script-src-elem 'self' 'unsafe-inline' " +
+      "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
+      "https://*.tosspayments.com https://js.tosspayments.com " +
+      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
+      "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
+      "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
+      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
+      "https://googletagmanager.com https://*.firebaseapp.com; " +
+    "worker-src 'self' blob:; " +
+    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; " +
+    "img-src 'self' 'unsafe-inline' data: https: blob:; " +
+    "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
+    "connect-src 'self' https: wss:; " +
+    "frame-src 'self' https://*.tosspayments.com https://js.tosspayments.com https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com https://*.firebase.google.com https://*.firebaseio.com https://kauth.kakao.com https://*.kakao.com https://www.youtube.com https://youtube.com https://player.vimeo.com; " +
+    "media-src 'self' https: blob:; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'; " +
+    "frame-ancestors 'none';"
+  );
+  const url = new URL(c.req.url);
+  if (url.hostname !== 'localhost' && url.protocol === 'https:') {
+    c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+  c.header('X-Frame-Options', 'SAMEORIGIN');
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('X-XSS-Protection', '1; mode=block');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(self), usb=()');
+});
+
+// ============================================================
 // Health Check
 // ============================================================
 
