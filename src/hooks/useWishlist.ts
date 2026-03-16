@@ -14,7 +14,9 @@ export function useWishlist() {
   return useQuery({
     queryKey: ['wishlist'],
     queryFn: async () => {
-      const response = await api.get('/api/wishlist')
+      const userId = localStorage.getItem('userId')
+      if (!userId) return [] as WishlistItem[]
+      const response = await api.get(`/api/wishlists?user_id=${userId}`)
       return response.data.data.items as WishlistItem[]
     },
     staleTime: 5 * 60 * 1000, // 5분간 캐시
@@ -28,7 +30,8 @@ export function useToggleWishlist() {
 
   return useMutation({
     mutationFn: async (productId: string) => {
-      const response = await api.post('/api/wishlist/toggle', { product_id: productId })
+      const userId = localStorage.getItem('userId')
+      const response = await api.post('/api/wishlists/toggle', { product_id: productId, user_id: userId })
       return response.data
     },
 
@@ -79,7 +82,7 @@ export function useRemoveFromWishlist() {
 
   return useMutation({
     mutationFn: async (productId: string) => {
-      const response = await api.delete(`/api/wishlist/${productId}`)
+      const response = await api.delete(`/api/wishlists/product/${productId}`)
       return response.data
     },
 
@@ -113,7 +116,8 @@ export function useClearWishlist() {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await api.delete('/api/wishlist')
+      const userId = localStorage.getItem('userId')
+      const response = await api.delete(`/api/wishlists?user_id=${userId}`)
       return response.data
     },
 

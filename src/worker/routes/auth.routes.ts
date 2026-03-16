@@ -189,4 +189,11 @@ authRouter.get('/me', authMiddleware, async (c) => {
   return c.json({ success: true, data: user });
 });
 
+// GET /api/auth/validate — 세션 유효성 검증 (useSessionValidation.ts에서 호출)
+// Authorization: Bearer <token> 헤더가 유효하면 200, 없거나 만료되면 401 반환
+authRouter.get('/validate', authMiddleware, async (c) => {
+  const user = c.get('user');
+  return c.json({ success: true, data: { valid: true, user } });
+});
+
 export { authRouter };

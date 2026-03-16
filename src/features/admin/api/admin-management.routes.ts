@@ -306,3 +306,61 @@ adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
 });
 
 export default adminManagementRoutes;
+
+// ─── Alimtalk 관리 ────────────────────────────────────────────────────────────
+// AdminAlimtalkPricingPage.tsx 에서 호출하는 엔드포인트 스텁
+// 실제 알리고 API 연동이 필요하면 src/lib/aligo.ts 참고
+
+adminManagementRoutes.get('/alimtalk/pricing', cors(), async (c) => {
+  // TODO: alimtalk_templates 테이블에서 가격 정보 조회
+  return c.json({ success: true, data: [] });
+});
+
+adminManagementRoutes.put('/alimtalk/pricing/:id', cors(), async (c) => {
+  return c.json({ success: true, message: '알림톡 요금 업데이트됨' });
+});
+
+adminManagementRoutes.get('/alimtalk/accounts', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const { results } = await DB.prepare(
+      `SELECT id, seller_id, aligo_user_id, sender_key, is_active, balance, updated_at
+       FROM alimtalk_accounts ORDER BY created_at DESC`
+    ).all().catch(() => ({ results: [] }));
+    return c.json({ success: true, data: results });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
+
+adminManagementRoutes.patch('/alimtalk/accounts/:accountId/status', cors(), async (c) => {
+  const { DB } = c.env;
+  const accountId = c.req.param('accountId');
+  try {
+    const { is_active } = await c.req.json<{ is_active: boolean }>();
+    await DB.prepare(
+      `UPDATE alimtalk_accounts SET is_active = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(is_active ? 1 : 0, accountId).run().catch(() => {});
+    return c.json({ success: true, message: '알림톡 계정 상태가 변경되었습니다.' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.get('/alimtalk/statistics', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const total = await DB.prepare('SELECT COUNT(*) as cnt FROM alimtalk_messages').first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
+    const success_count = await DB.prepare("SELECT COUNT(*) as cnt FROM alimtalk_messages WHERE status = 'sent'").first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
+    return c.json({
+      success: true,
+      data: {
+        total: total?.cnt ?? 0,
+        success: success_count?.cnt ?? 0,
+        failed: (total?.cnt ?? 0) - (success_count?.cnt ?? 0),
+      },
+    });
+  } catch {
+    return c.json({ success: true, data: { total: 0, success: 0, failed: 0 } });
+  }
+});

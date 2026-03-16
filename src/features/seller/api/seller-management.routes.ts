@@ -586,3 +586,389 @@ sellerManagementRoutes.get('/stats', async (c) => {
     }, 500);
   }
 });
+
+// ============================================================
+// ✅ 누락 API 추가 (프론트에서 호출하는 경로 보완)
+// ============================================================
+
+/**
+ * GET /api/seller/personal-info
+ * 셀러 개인 정보 조회 (profile 의 alias)
+ */
+sellerManagementRoutes.get('/personal-info', async (c) => {
+  return c.redirect('/api/seller/profile', 301);
+});
+
+/**
+ * PUT /api/seller/personal-info
+ * 셀러 개인 정보 수정 (profile 의 alias)
+ */
+sellerManagementRoutes.put('/personal-info', async (c) => {
+  // profile PUT 과 동일 로직
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  }
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+    const body = await c.req.json();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
+    if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone); }
+    if (body.email !== undefined) { fields.push('email = ?'); values.push(body.email); }
+    if (fields.length === 0) return c.json({ success: false, error: '수정할 항목이 없습니다' }, 400);
+    fields.push("updated_at = datetime('now')");
+    values.push(sellerId);
+    await db.prepare(`UPDATE sellers SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+    return c.json({ success: true, message: '개인 정보가 수정되었습니다' });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/change-password
+ * 셀러 비밀번호 변경
+ */
+sellerManagementRoutes.post('/change-password', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) {
+    return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  }
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+    const { currentPassword, newPassword } = await c.req.json<{ currentPassword: string; newPassword: string }>();
+    if (!currentPassword || !newPassword) {
+      return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호가 필요합니다' }, 400);
+    }
+    if (newPassword.length < 8) {
+      return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다' }, 400);
+    }
+    const seller = await db.prepare('SELECT password_hash FROM sellers WHERE id = ?').bind(sellerId).first<{ password_hash: string }>();
+    if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    // 현재 비밀번호 검증
+    const { hashPassword: hp, verifyPassword } = await import('@/lib/password');
+    const isValid = await verifyPassword(currentPassword, seller.password_hash);
+    if (!isValid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
+    const newHash = await hp(newPassword);
+    await db.prepare("UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, sellerId).run();
+    return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+/**
+ * POST /api/seller/upload-image
+ * 셀러 이미지 업로드 (imgbb 사용)
+ */
+sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('image') as File | null;
+    if (!file) {
+      return c.json({ success: false, error: '이미지 파일이 필요합니다' }, 400);
+    }
+    const imgbbKey = (c.env as any).IMGBB_API_KEY;
+    if (!imgbbKey) {
+      return c.json({ success: false, error: 'IMGBB_API_KEY 환경변수가 설정되지 않았습니다' }, 500);
+    }
+    const base64 = await file.arrayBuffer().then(buf =>
+      btoa(String.fromCharCode(...new Uint8Array(buf)))
+    );
+    const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `image=${encodeURIComponent(base64)}&name=${encodeURIComponent(file.name)}`,
+    });
+    const json = await resp.json() as any;
+    if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
+    return c.json({ success: true, url: json.data.url, delete_url: json.data.delete_url });
+  } catch (err: any) {
+    console.error('[Seller] Upload image error:', err);
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+/**
+ * GET  /api/seller/settlements
+ * POST /api/seller/settlements/request
+ * GET  /api/seller/settlements/stats
+ * 셀러 정산 관련 API
+ */
+sellerManagementRoutes.get('/settlements', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+    const limit = parseInt(c.req.query('limit') || '20');
+    const offset = parseInt(c.req.query('offset') || '0');
+    const rows = await db.prepare(
+      'SELECT * FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
+    const count = await db.prepare('SELECT COUNT(*) as total FROM settlements WHERE seller_id = ?')
+      .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
+    return c.json({ success: true, data: rows.results, total: count?.total ?? 0 });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+sellerManagementRoutes.post('/settlements/request', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+    const { amount, bank_name, account_number, account_holder } = await c.req.json();
+    if (!amount || amount <= 0) return c.json({ success: false, error: '정산 금액이 올바르지 않습니다' }, 400);
+    const result = await db.prepare(`
+      INSERT INTO settlements (seller_id, amount, bank_name, account_number, account_holder, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
+    `).bind(sellerId, amount, bank_name || null, account_number || null, account_holder || null).run()
+      .catch(() => null);
+    if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
+    return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+sellerManagementRoutes.get('/settlements/stats', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
+    const stats = await db.prepare(`
+      SELECT
+        SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_settled,
+        SUM(CASE WHEN status = 'pending'   THEN amount ELSE 0 END) as pending_amount,
+        COUNT(*) as total_requests
+      FROM settlements WHERE seller_id = ?
+    `).bind(sellerId).first<any>().catch(() => null);
+    return c.json({ success: true, data: stats || { total_settled: 0, pending_amount: 0, total_requests: 0 } });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── GET /api/seller/dashboard/stats ─────────────────────────────────────────
+// 셀러 대시보드 요약 통계 (SellerDashboardPage에서 호출)
+sellerManagementRoutes.get('/dashboard/stats', async (c) => {
+  const { DB } = c.env;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [orderStats, productStats, streamStats] = await Promise.all([
+      DB.prepare(`
+        SELECT COUNT(*) as total_orders,
+               COALESCE(SUM(total_amount), 0) as total_revenue
+        FROM orders WHERE seller_id = ? AND DATE(created_at) = ?
+      `).bind(sellerId, today).first<{ total_orders: number; total_revenue: number }>(),
+      DB.prepare(`
+        SELECT COUNT(*) as total_products,
+               SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_products
+        FROM products WHERE seller_id = ?
+      `).bind(sellerId).first<{ total_products: number; active_products: number }>(),
+      DB.prepare(`
+        SELECT COUNT(*) as total_streams,
+               SUM(CASE WHEN status = 'live' THEN 1 ELSE 0 END) as live_streams
+        FROM live_streams WHERE seller_id = ?
+      `).bind(sellerId).first<{ total_streams: number; live_streams: number }>(),
+    ]);
+
+    return c.json({
+      success: true,
+      data: {
+        today_orders: orderStats?.total_orders ?? 0,
+        today_revenue: orderStats?.total_revenue ?? 0,
+        total_products: productStats?.total_products ?? 0,
+        active_products: productStats?.active_products ?? 0,
+        total_streams: streamStats?.total_streams ?? 0,
+        live_streams: streamStats?.live_streams ?? 0,
+      },
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── GET /api/seller/settlements/:id/download ─────────────────────────────────
+// 정산 내역서 다운로드 (CSV/JSON)
+sellerManagementRoutes.get('/settlements/:id/download', async (c) => {
+  const { DB } = c.env;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const settlementId = c.req.param('id');
+  try {
+    const settlement = await DB.prepare(
+      `SELECT * FROM settlements WHERE id = ? AND seller_id = ?`
+    ).bind(settlementId, sellerId).first<any>();
+
+    if (!settlement) return c.json({ success: false, error: '정산 내역을 찾을 수 없습니다' }, 404);
+
+    // CSV 형태로 반환
+    const csv = [
+      '정산ID,판매자ID,금액,상태,은행,계좌번호,신청일',
+      `${settlement.id},${settlement.seller_id},${settlement.amount},${settlement.status},${settlement.bank_name},${settlement.account_number},${settlement.created_at}`,
+    ].join('\n');
+
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="settlement-${settlementId}.csv"`,
+      },
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── GET /api/seller/public/:sellerId ─────────────────────────────────────────
+// 공개 셀러 프로필 조회 (SellerPublicPage.tsx에서 호출, 인증 불필요)
+sellerManagementRoutes.get('/public/:sellerId', async (c) => {
+  const { DB } = c.env;
+  const sellerId = c.req.param('sellerId');
+
+  try {
+    const seller = await DB.prepare(
+      `SELECT id, name, slug, description, logo_url, email,
+              base_shipping_fee, free_shipping_threshold,
+              country, currency, status, is_verified, created_at
+       FROM sellers WHERE id = ? AND status = 'ACTIVE'`
+    ).bind(sellerId).first<any>();
+
+    if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    return c.json({ success: true, data: seller });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── GET /api/seller/:sellerId/products-public ─────────────────────────────────
+// 공개 셀러 상품 목록 (SellerPublicPage.tsx에서 /api/seller/:sellerId/products-public 호출)
+sellerManagementRoutes.get('/:sellerId/products-public', async (c) => {
+  const { DB } = c.env;
+  const sellerId = c.req.param('sellerId');
+  const { page = '1', limit = '20' } = c.req.query();
+  const pageNum = parseInt(page, 10);
+  const limitNum = Math.min(parseInt(limit, 10), 100);
+  const offset = (pageNum - 1) * limitNum;
+
+  try {
+    const [products, countRow] = await Promise.all([
+      DB.prepare(
+        `SELECT id, name, description, price, original_price, discount_rate,
+                image_url, stock_quantity, category, seller_id, is_active, created_at
+         FROM products WHERE seller_id = ? AND is_active = 1
+         ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      ).bind(sellerId, limitNum, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND is_active = 1`
+      ).bind(sellerId).first<{ total: number }>(),
+    ]);
+
+    return c.json({
+      success: true,
+      data: products.results || [],
+      pagination: { page: pageNum, limit: limitNum, total: countRow?.total ?? 0 },
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── GET /api/seller/products/:id/options ─────────────────────────────────────
+// 셀러 상품 옵션 목록 조회 (SellerProductEditPage.tsx에서 호출)
+sellerManagementRoutes.get('/products/:id/options', async (c) => {
+  const { DB } = c.env;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const productId = Number(c.req.param('id'));
+  if (isNaN(productId)) return c.json({ success: false, error: 'Invalid product ID' }, 400);
+
+  try {
+    // 판매자 소유 상품인지 확인
+    const product = await DB.prepare(
+      `SELECT id FROM products WHERE id = ? AND seller_id = ?`
+    ).bind(productId, sellerId).first<any>();
+    if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
+
+    const result = await DB.prepare(
+      `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity
+       FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
+    ).bind(productId).all();
+
+    return c.json({ success: true, data: result.results || [] });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── POST /api/seller/products/:id/options ────────────────────────────────────
+// 셀러 상품 옵션 추가/교체 (SellerProductEditPage.tsx, SellerProductNewPage.tsx에서 호출)
+sellerManagementRoutes.post('/products/:id/options', async (c) => {
+  const { DB } = c.env;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const productId = Number(c.req.param('id'));
+  if (isNaN(productId)) return c.json({ success: false, error: 'Invalid product ID' }, 400);
+
+  try {
+    // 판매자 소유 상품인지 확인
+    const product = await DB.prepare(
+      `SELECT id FROM products WHERE id = ? AND seller_id = ?`
+    ).bind(productId, sellerId).first<any>();
+    if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
+
+    const body = await c.req.json<{ options: Array<{ option_type: string; option_value: string; price_adjustment?: number; stock_quantity?: number }> }>();
+    const options = body.options || [];
+
+    // 기존 옵션 삭제 후 새 옵션 삽입 (upsert 방식)
+    await DB.prepare(`DELETE FROM product_options WHERE product_id = ?`).bind(productId).run();
+
+    for (const opt of options) {
+      await DB.prepare(
+        `INSERT INTO product_options (product_id, option_type, option_value, price_adjustment, stock_quantity, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(productId, opt.option_type, opt.option_value, opt.price_adjustment ?? 0, opt.stock_quantity ?? 0).run();
+    }
+
+    const updated = await DB.prepare(
+      `SELECT * FROM product_options WHERE product_id = ? ORDER BY option_type, option_value`
+    ).bind(productId).all();
+
+    return c.json({ success: true, data: updated.results || [] }, 201);
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});

@@ -3,6 +3,12 @@ node_modules/
 
 # Build outputs
 dist/
+*.js
+!*.config.js
+!vite.config.js
+!tailwind.config.js
+!playwright.config.js
+!postcss.config.js
 
 # Wrangler local state
 .wrangler/
