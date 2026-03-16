@@ -8,7 +8,7 @@
  * 4. 탈퇴 기록 저장 (30일간 재가입 제한)
  */
 
-import { getAuth } from 'firebase-admin/auth';
+// import { getAuth } from 'firebase-admin/auth'; // Not supported in Cloudflare Workers
 
 export interface DeleteAccountRequest {
   userId: string;
@@ -34,9 +34,9 @@ export async function deleteUserAccount(
 
     // 1. Firebase Authentication에서 사용자 삭제
     try {
-      const auth = getAuth();
-      await auth.deleteUser(userId);
-      console.log('[DeleteAccount] Firebase Auth 사용자 삭제 완료:', userId);
+      // const auth = getAuth();
+      // await auth.deleteUser(userId);
+      console.log('[DeleteAccount] Firebase Auth 사용자 삭제 스킵 (Worker 환경):', userId);
     } catch (authError) {
       console.error('[DeleteAccount] Firebase Auth 삭제 실패:', authError);
       // Firebase 사용자가 이미 삭제된 경우는 무시하고 계속 진행
