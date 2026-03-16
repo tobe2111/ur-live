@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "description": "Route static assets directly, API routes to Worker",
+  "include": [
+    "/api/*",
+    "/auth/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/*.js",
+    "/*.css",
+    "/*.png",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.gif",
+    "/*.svg",
+    "/*.ico",
+    "/*.woff",
+    "/*.woff2",
+    "/*.ttf",
+    "/*.eot",
+    "/*.webmanifest",
+    "/*.txt",
+    "/*.json"
+  ]
+}
