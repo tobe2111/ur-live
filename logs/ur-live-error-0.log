@@ -416,3 +416,338 @@
 2026-03-12 10:05:24 +00:00:   
 2026-03-12 10:05:24 +00:00: 
 2026-03-12 10:05:24 +00:00: 
+2026-03-16 05:32:13 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 05:32:13 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 05:32:13 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-16 05:32:13 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-16 05:32:13 +00:00:   
+2026-03-16 05:32:13 +00:00:   
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:13 +00:00: 
+2026-03-16 05:32:37 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such column: ls.stream_url at offset 153: SQLITE_ERROR[0m
+2026-03-16 05:32:37 +00:00: 
+2026-03-16 05:32:37 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:32:37 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:32:37 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:32:37 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:10655:3) {
+2026-03-16 05:32:37 +00:00:     [cause]: Error: no such column: ls.stream_url at offset 153: SQLITE_ERROR
+2026-03-16 05:32:37 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:32:37 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:32:37 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:10347:18)
+2026-03-16 05:32:37 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:32:37 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:19088:3)
+2026-03-16 05:32:37 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:32:37 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:32:37 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:32:37 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:32:37 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:10655:3)
+2026-03-16 05:32:37 +00:00:   }
+2026-03-16 05:32:37 +00:00: 
+2026-03-16 05:32:37 +00:00: 
+2026-03-16 05:32:41 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Products API] Get list error: Error: D1_ERROR: no such column: status at offset 29: SQLITE_ERROR[0m
+2026-03-16 05:32:41 +00:00: 
+2026-03-16 05:32:41 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:32:41 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:32:41 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:32:41 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:19088:3) {
+2026-03-16 05:32:41 +00:00:     [cause]: Error: no such column: status at offset 29: SQLITE_ERROR
+2026-03-16 05:32:41 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:32:41 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:32:41 +00:00:         at async Object.findAll (file:///home/user/webapp/dist/_worker.js:13861:20)
+2026-03-16 05:32:41 +00:00:         at async Promise.all (index 0)
+2026-03-16 05:32:41 +00:00:         at async Object.getProducts (file:///home/user/webapp/dist/_worker.js:14072:31)
+2026-03-16 05:32:41 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:16163:20)
+2026-03-16 05:32:41 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:32:41 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:32:41 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:32:41 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-LCM0wm/9k6kbrnffik.js:19088:3)
+2026-03-16 05:32:41 +00:00:   }
+2026-03-16 05:32:41 +00:00: 
+2026-03-16 05:32:41 +00:00: 
+2026-03-16 05:34:19 +00:00: 🪵  Logs were written to "/home/user/.config/.wrangler/logs/wrangler-2026-03-16_05-32-12_678.log"
+2026-03-16 05:35:02 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 05:35:02 +00:00: 
+2026-03-16 05:35:02 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 05:35:02 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 05:35:02 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 05:35:02 +00:00: 
+2026-03-16 05:35:02 +00:00: 
+2026-03-16 05:35:02 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:35:02 +00:00: 
+2026-03-16 05:35:02 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:35:02 +00:00: 
+2026-03-16 05:35:02 +00:00: 
+2026-03-16 05:35:03 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-16 05:35:03 +00:00: 
+2026-03-16 05:35:03 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-16 05:35:03 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-16 05:35:03 +00:00:   
+2026-03-16 05:35:03 +00:00:   
+2026-03-16 05:35:03 +00:00: 
+2026-03-16 05:35:03 +00:00: 
+2026-03-16 05:35:03 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:35:03 +00:00: 
+2026-03-16 05:35:03 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:35:03 +00:00: 
+2026-03-16 05:35:03 +00:00: 
+2026-03-16 05:36:00 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such table: live_streams: SQLITE_ERROR[0m
+2026-03-16 05:36:00 +00:00: 
+2026-03-16 05:36:00 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:36:00 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:36:00 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:36:00 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10655:3) {
+2026-03-16 05:36:00 +00:00:     [cause]: Error: no such table: live_streams: SQLITE_ERROR
+2026-03-16 05:36:00 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:36:00 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:36:00 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10347:18)
+2026-03-16 05:36:00 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:00 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:19088:3)
+2026-03-16 05:36:00 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:00 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:36:00 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:00 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:00 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10655:3)
+2026-03-16 05:36:00 +00:00:   }
+2026-03-16 05:36:00 +00:00: 
+2026-03-16 05:36:00 +00:00: 
+2026-03-16 05:36:05 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such table: live_streams: SQLITE_ERROR[0m
+2026-03-16 05:36:05 +00:00: 
+2026-03-16 05:36:05 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:36:05 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:36:05 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:36:05 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10655:3) {
+2026-03-16 05:36:05 +00:00:     [cause]: Error: no such table: live_streams: SQLITE_ERROR
+2026-03-16 05:36:05 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:36:05 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:36:05 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10347:18)
+2026-03-16 05:36:05 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:05 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:19088:3)
+2026-03-16 05:36:05 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:05 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:36:05 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:05 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:36:05 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10655:3)
+2026-03-16 05:36:05 +00:00:   }
+2026-03-16 05:36:05 +00:00: 
+2026-03-16 05:36:05 +00:00: 
+2026-03-16 05:37:07 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such column: s.shop_name at offset 338: SQLITE_ERROR[0m
+2026-03-16 05:37:07 +00:00: 
+2026-03-16 05:37:07 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:37:07 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:37:07 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:37:07 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10655:3) {
+2026-03-16 05:37:07 +00:00:     [cause]: Error: no such column: s.shop_name at offset 338: SQLITE_ERROR
+2026-03-16 05:37:07 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:37:07 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:37:07 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10347:18)
+2026-03-16 05:37:07 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:07 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:19088:3)
+2026-03-16 05:37:07 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:07 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:37:07 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:07 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:07 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-AaruVl/pd1xdyeyei.js:10655:3)
+2026-03-16 05:37:07 +00:00:   }
+2026-03-16 05:37:07 +00:00: 
+2026-03-16 05:37:07 +00:00: 
+2026-03-16 05:37:33 +00:00: 🪵  Logs were written to "/home/user/.config/.wrangler/logs/wrangler-2026-03-16_05-35-02_179.log"
+2026-03-16 05:37:35 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 05:37:35 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 05:37:35 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-16 05:37:35 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-16 05:37:35 +00:00:   
+2026-03-16 05:37:35 +00:00:   
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:35 +00:00: 
+2026-03-16 05:37:40 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such column: s.shop_name at offset 338: SQLITE_ERROR[0m
+2026-03-16 05:37:40 +00:00: 
+2026-03-16 05:37:40 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:37:40 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:37:40 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:37:40 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:10655:3) {
+2026-03-16 05:37:40 +00:00:     [cause]: Error: no such column: s.shop_name at offset 338: SQLITE_ERROR
+2026-03-16 05:37:40 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:37:40 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:37:40 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:10347:18)
+2026-03-16 05:37:40 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:40 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:19088:3)
+2026-03-16 05:37:40 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:40 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:37:40 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:40 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:40 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:10655:3)
+2026-03-16 05:37:40 +00:00:   }
+2026-03-16 05:37:40 +00:00: 
+2026-03-16 05:37:40 +00:00: 
+2026-03-16 05:37:44 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such column: s.shop_name at offset 338: SQLITE_ERROR[0m
+2026-03-16 05:37:44 +00:00: 
+2026-03-16 05:37:44 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:37:44 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:37:44 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:37:44 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:10655:3) {
+2026-03-16 05:37:44 +00:00:     [cause]: Error: no such column: s.shop_name at offset 338: SQLITE_ERROR
+2026-03-16 05:37:44 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:37:44 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:37:44 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:10347:18)
+2026-03-16 05:37:44 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:44 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:19088:3)
+2026-03-16 05:37:44 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:44 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:37:44 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:44 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:37:44 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-y7OpnC/8o0v0yhvvq.js:10655:3)
+2026-03-16 05:37:44 +00:00:   }
+2026-03-16 05:37:44 +00:00: 
+2026-03-16 05:37:44 +00:00: 
+2026-03-16 05:37:55 +00:00: 🪵  Logs were written to "/home/user/.config/.wrangler/logs/wrangler-2026-03-16_05-37-34_680.log"
+2026-03-16 05:37:58 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 05:37:58 +00:00: 
+2026-03-16 05:37:58 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 05:37:58 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 05:37:58 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 05:37:58 +00:00: 
+2026-03-16 05:37:58 +00:00: 
+2026-03-16 05:37:58 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:37:58 +00:00: 
+2026-03-16 05:37:58 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:37:58 +00:00: 
+2026-03-16 05:37:58 +00:00: 
+2026-03-16 05:37:59 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-16 05:37:59 +00:00: 
+2026-03-16 05:37:59 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-16 05:37:59 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-16 05:37:59 +00:00:   
+2026-03-16 05:37:59 +00:00:   
+2026-03-16 05:37:59 +00:00: 
+2026-03-16 05:37:59 +00:00: 
+2026-03-16 05:37:59 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:37:59 +00:00: 
+2026-03-16 05:37:59 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:37:59 +00:00: 
+2026-03-16 05:37:59 +00:00: 
+2026-03-16 05:38:06 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such column: s.shop_name at offset 338: SQLITE_ERROR[0m
+2026-03-16 05:38:06 +00:00: 
+2026-03-16 05:38:06 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:38:06 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:38:06 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:38:06 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-EEAB2m/b9jejckftxe.js:10655:3) {
+2026-03-16 05:38:06 +00:00:     [cause]: Error: no such column: s.shop_name at offset 338: SQLITE_ERROR
+2026-03-16 05:38:06 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:38:06 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:38:06 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-EEAB2m/b9jejckftxe.js:10347:18)
+2026-03-16 05:38:06 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:06 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-EEAB2m/b9jejckftxe.js:19088:3)
+2026-03-16 05:38:06 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:06 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:38:06 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:06 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:06 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-EEAB2m/b9jejckftxe.js:10655:3)
+2026-03-16 05:38:06 +00:00:   }
+2026-03-16 05:38:06 +00:00: 
+2026-03-16 05:38:06 +00:00: 
+2026-03-16 05:38:32 +00:00: 🪵  Logs were written to "/home/user/.config/.wrangler/logs/wrangler-2026-03-16_05-37-58_349.log"
+2026-03-16 05:38:36 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 05:38:36 +00:00: 
+2026-03-16 05:38:36 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 05:38:36 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 05:38:36 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 05:38:36 +00:00: 
+2026-03-16 05:38:36 +00:00: 
+2026-03-16 05:38:36 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:38:36 +00:00: 
+2026-03-16 05:38:36 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:38:36 +00:00: 
+2026-03-16 05:38:36 +00:00: 
+2026-03-16 05:38:37 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-16 05:38:37 +00:00: 
+2026-03-16 05:38:37 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-16 05:38:37 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-16 05:38:37 +00:00:   
+2026-03-16 05:38:37 +00:00:   
+2026-03-16 05:38:37 +00:00: 
+2026-03-16 05:38:37 +00:00: 
+2026-03-16 05:38:37 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:38:37 +00:00: 
+2026-03-16 05:38:37 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:38:37 +00:00: 
+2026-03-16 05:38:37 +00:00: 
+2026-03-16 05:38:48 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1m[Streams] List error: Error: D1_ERROR: no such column: s.shop_name at offset 338: SQLITE_ERROR[0m
+2026-03-16 05:38:48 +00:00: 
+2026-03-16 05:38:48 +00:00:       at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:125:19)
+2026-03-16 05:38:48 +00:00:       at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:38:48 +00:00:       ... 7 lines matching cause stack trace ...
+2026-03-16 05:38:48 +00:00:       at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-T9EZh7/4qomwlduens.js:10655:3) {
+2026-03-16 05:38:48 +00:00:     [cause]: Error: no such column: s.shop_name at offset 338: SQLITE_ERROR
+2026-03-16 05:38:48 +00:00:         at D1DatabaseSessionAlwaysPrimary._sendOrThrow (cloudflare-internal:d1-api:126:24)
+2026-03-16 05:38:48 +00:00:         at async D1PreparedStatement.all (cloudflare-internal:d1-api:310:46)
+2026-03-16 05:38:48 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-T9EZh7/4qomwlduens.js:10347:18)
+2026-03-16 05:38:48 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:48 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-T9EZh7/4qomwlduens.js:19088:3)
+2026-03-16 05:38:48 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:48 +00:00:         at async cors2 (file:///home/user/webapp/dist/_worker.js:2563:5)
+2026-03-16 05:38:48 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:48 +00:00:         at async dispatch (file:///home/user/webapp/dist/_worker.js:1600:17)
+2026-03-16 05:38:48 +00:00:         at null.<anonymous> (async file:///home/user/webapp/.wrangler/tmp/dev-T9EZh7/4qomwlduens.js:10655:3)
+2026-03-16 05:38:48 +00:00:   }
+2026-03-16 05:38:48 +00:00: 
+2026-03-16 05:38:48 +00:00: 
+2026-03-16 05:39:12 +00:00: 🪵  Logs were written to "/home/user/.config/.wrangler/logs/wrangler-2026-03-16_05-38-36_170.log"
+2026-03-16 05:39:38 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 05:39:38 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 05:39:38 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFound 1 invalid redirect rule:[0m
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00:   ▶︎ Infinite loop detected in this rule and has been ignored. This will cause a redirect to strip `.html` or `/index` and end up triggering this rule again. Please fix or remove this rule to silence this warning.
+2026-03-16 05:39:38 +00:00:       at dist/_redirects:2 | /*    /index.html   200
+2026-03-16 05:39:38 +00:00:   
+2026-03-16 05:39:38 +00:00:   
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 05:39:38 +00:00: 
+2026-03-16 05:39:38 +00:00: 
