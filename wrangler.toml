@@ -74,6 +74,12 @@ REGION = "KR"
 name = "global-marketplace"
 vars = { ENVIRONMENT = "production", FRONTEND_URL = "https://live.ur-team.com", REGION = "KR" }
 
+# D1 Database binding for production
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+
 # ============================================================
 # Local dev server
 # ============================================================

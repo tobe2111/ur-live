@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "description": "API routes to Worker, static assets served directly",
-  "include": ["/api/*", "/auth/*"],
-  "exclude": ["/assets/*", "/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico", "/*.woff", "/*.woff2"]
+  "include": ["/api/*"],
+  "exclude": []
 }

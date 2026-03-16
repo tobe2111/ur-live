@@ -156,6 +156,19 @@ app.get('/api/health', (c) => c.json({
   environment: (c.env as Env).ENVIRONMENT ?? 'development',
 }));
 
+// Debug endpoint to check bindings
+app.get('/api/debug/bindings', (c) => {
+  const env = c.env as Env;
+  return c.json({
+    hasDB: !!env.DB,
+    hasSessionKV: !!env.SESSION_KV,
+    environment: env.ENVIRONMENT,
+    frontendUrl: env.FRONTEND_URL,
+    region: env.REGION,
+    envKeys: Object.keys(env || {}),
+  });
+});
+
 // ============================================================
 // Auth Routes
 // ============================================================

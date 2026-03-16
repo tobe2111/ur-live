@@ -618,3 +618,43 @@
 2026-03-16 05:39:52 +00:00: [wrangler:inf] GET /api/products 200 OK (25ms)
 2026-03-16 06:00:05 +00:00: ✨ Compiled Worker successfully
 2026-03-16 06:00:05 +00:00: ⎔ Reloading local server...
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:52 +00:00:  ⛅️ wrangler 3.114.15 (update available 4.74.0)
+2026-03-16 23:44:52 +00:00: -----------------------------------------------
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:53 +00:00: ✨ Compiled Worker successfully
+2026-03-16 23:44:53 +00:00: Using vars defined in .dev.vars
+2026-03-16 23:44:53 +00:00: Your Worker and resources are simulated locally via Miniflare. For more information, see: https://developers.cloudflare.com/workers/testing/local-development.
+2026-03-16 23:44:53 +00:00: 
+2026-03-16 23:44:53 +00:00: Your worker has access to the following bindings:
+2026-03-16 23:44:53 +00:00: - KV Namespaces:
+2026-03-16 23:44:53 +00:00:   - SESSION_KV: SESSION_KV [simulated locally]
+2026-03-16 23:44:53 +00:00:   - CACHE_KV: CACHE_KV [simulated locally]
+2026-03-16 23:44:53 +00:00:   - LIVE_CACHE: LIVE_CACHE [simulated locally]
+2026-03-16 23:44:53 +00:00: - D1 Databases:
+2026-03-16 23:44:53 +00:00:   - DB: toss-live-commerce-db (d9530ba6-7a26-4c02-9295-3ce5aef112a3) [simulated locally]
+2026-03-16 23:44:53 +00:00:   - toss-live-commerce-db: local-toss-live-commerce-db (toss-live-commerce-db) [simulated locally]
+2026-03-16 23:44:53 +00:00: - Vars:
+2026-03-16 23:44:53 +00:00:   - ENVIRONMENT: "development"
+2026-03-16 23:44:53 +00:00:   - TOSS_CLIENT_KEY: "test_ck_placeholder"
+2026-03-16 23:44:53 +00:00:   - FRONTEND_URL: "http://localhost:5173"
+2026-03-16 23:44:53 +00:00:   - REGION: "KR"
+2026-03-16 23:44:53 +00:00:   - KAKAO_REST_API_KEY: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_DATABASE_URL: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_API_KEY: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_PROJECT_ID: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_AUTH_DOMAIN: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_STORAGE_BUCKET: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_MESSAGING_SENDER_ID: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_APP_ID: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_PRIVATE_KEY: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - FIREBASE_CLIENT_EMAIL: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - JWT_SECRET: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - REFRESH_TOKEN_SECRET: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - TOSS_SECRET_KEY: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - RESEND_API_KEY: "(hidden)"
+2026-03-16 23:44:53 +00:00:   - EMAIL_FROM: "(hidden)"
+2026-03-16 23:44:53 +00:00: [wrangler:inf] Ready on http://0.0.0.0:3000
+2026-03-16 23:44:53 +00:00: [wrangler:inf] - http://127.0.0.1:3000
+2026-03-16 23:44:53 +00:00: [wrangler:inf] - http://169.254.0.21:3000
+2026-03-16 23:44:53 +00:00: ⎔ Starting local server...

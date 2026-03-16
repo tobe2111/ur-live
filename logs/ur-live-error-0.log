@@ -751,3 +751,20 @@
 2026-03-16 05:39:38 +00:00:     - Unexpected fields found in dev field: "persist_to"
 2026-03-16 05:39:38 +00:00: 
 2026-03-16 05:39:38 +00:00: 
+2026-03-16 23:44:52 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mThe version of Wrangler you are using is now out-of-date.[0m
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:52 +00:00:   Please update to the latest version to prevent critical errors.
+2026-03-16 23:44:52 +00:00:   Run `npm install --save-dev wrangler@4` to update to the latest version.
+2026-03-16 23:44:52 +00:00:   After installation, run Wrangler with `npx wrangler`.
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:52 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:52 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:52 +00:00: 
+2026-03-16 23:44:53 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-16 23:44:53 +00:00: 
+2026-03-16 23:44:53 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-16 23:44:53 +00:00: 
+2026-03-16 23:44:53 +00:00: 
