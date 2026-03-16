@@ -1,22 +1,30 @@
 {
   "version": 1,
+  "description": "Route static assets directly, everything else to Worker for SPA routing",
   "include": [
     "/*"
   ],
   "exclude": [
+    "/client/assets/*",
     "/assets/*",
     "/static/*",
     "/locales/*",
     "/*.js",
     "/*.css",
-    "/*.ico",
+    "/*.map",
     "/*.png",
+    "/*.jpg",
+    "/*.jpeg",
+    "/*.gif",
     "/*.svg",
-    "/*.json",
-    "/*.txt",
-    "/*.xml",
+    "/*.ico",
     "/*.woff",
     "/*.woff2",
-    "/*.ttf"
+    "/*.ttf",
+    "/*.eot",
+    "/*.webmanifest",
+    "/*.txt",
+    "/*.br",
+    "/*.gz"
   ]
 }

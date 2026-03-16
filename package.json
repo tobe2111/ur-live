@@ -11,7 +11,7 @@
     "build:client": "vite build",
     "build:worker": "tsc -p tsconfig.worker.json",
     "build:pages": "node scripts/prepare-pages.js",
-    "deploy": "npm run build:client && wrangler deploy",
+    "deploy": "npm run build && wrangler pages deploy dist/client --project-name=ur-live",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",

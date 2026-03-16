@@ -6,6 +6,7 @@
 name = "ur-live"
 compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
 
 # ============================================================
 # D1 Database
@@ -28,15 +29,16 @@ database_id = "local-marketplace-db"
 
 # ============================================================
 # Durable Objects (for live streaming)
+# NOTE: Temporarily commented out for Pages deployment
 # ============================================================
-[durable_objects]
-bindings = [
-  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" }
-]
+# [durable_objects]
+# bindings = [
+#   { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject", script_name = "ur-live" }
+# ]
 
-[[migrations]]
-tag = "v1"
-new_classes = ["LiveStreamDurableObject"]
+# [[migrations]]
+# tag = "v1"
+# new_classes = ["LiveStreamDurableObject"]
 
 # ============================================================
 # Development Variables
