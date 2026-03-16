@@ -1,0 +1,13 @@
+name = "ur-live"
+compatibility_date = "2024-09-25"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
+
+[vars]
+ENVIRONMENT = "production"
+FRONTEND_URL = "https://live.ur-team.com"
+REGION = "KR"
