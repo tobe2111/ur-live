@@ -1,14 +1,17 @@
 {
   "version": 1,
-  "description": "Route static assets directly, API routes to Worker",
+  "description": "Route static assets directly, everything else to Worker for SPA routing",
   "include": [
-    "/api/*",
-    "/auth/*"
+    "/*"
   ],
   "exclude": [
+    "/client/assets/*",
     "/assets/*",
+    "/static/*",
+    "/locales/*",
     "/*.js",
     "/*.css",
+    "/*.map",
     "/*.png",
     "/*.jpg",
     "/*.jpeg",
@@ -21,6 +24,7 @@
     "/*.eot",
     "/*.webmanifest",
     "/*.txt",
-    "/*.json"
+    "/*.br",
+    "/*.gz"
   ]
 }
