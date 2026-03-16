@@ -1,15 +1,11 @@
-name = "global-marketplace"
-main = "src/worker/index.ts"
+# ============================================================
+# Cloudflare Pages Configuration
+# This project uses Pages with _worker.js for advanced routing
+# ============================================================
+
+name = "ur-live"
 compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
-
-# Cloudflare Pages configuration
-# Static files served directly by Pages
-# Worker only handles routes defined in public/_routes.json
-pages_build_output_dir = "dist/client"
-
-[build]
-command = "npm run build"
 
 # ============================================================
 # D1 Database
