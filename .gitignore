@@ -9,6 +9,7 @@ dist/
 !tailwind.config.js
 !playwright.config.js
 !postcss.config.js
+!scripts/**/*.js
 
 # Wrangler local state
 .wrangler/
