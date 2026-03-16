@@ -3,11 +3,16 @@ main = "src/worker/index.ts"
 compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
 
+# Cloudflare Pages configuration
+pages_build_output_dir = "dist/client"
+
 [build]
 command = "npm run build:client"
 
+# Assets configuration - serve static files from dist/client
 [assets]
 directory = "dist/client"
+binding = "ASSETS"
 
 # ============================================================
 # D1 Database
