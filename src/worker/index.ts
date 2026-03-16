@@ -288,76 +288,13 @@ app.route('/api/youtube/chat', youtubeChatRoutes);
 app.all('/api/*', (c) => c.json({ success: false, error: 'Not found' }, 404));
 
 // ============================================================
-// SPA Fallback
-// Cloudflare Worker with Assets serves static files first.
-// Only non-existent paths fall through to this handler.
-// ============================================================
-
-app.get('*', async (c) => {
-  // This handler should only be reached for non-existent routes
-  // since static assets are served by Cloudflare Assets
-  // Return 404 for truly missing resources
-  const path = new URL(c.req.url).pathname;
-  
-  // If it looks like a static asset request, return 404
-  if (path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json|webmanifest)$/)) {
-    return new Response('Not found', { status: 404 });
-  }
-  
-  // For all other routes (SPA navigation), let Cloudflare Assets serve index.html
-  // This is handled by the [assets] configuration in wrangler.toml
-  return new Response('Not found', { status: 404 });
-});
-
-// ============================================================
 // Error Handler
 // ============================================================
 
 app.onError(errorHandler);
 
 // ============================================================
-// Export Worker with Assets Support
+// Export Worker - API routes only (_routes.json handles static files)
 // ============================================================
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Try to serve static assets first
-    if (env.ASSETS) {
-      try {
-        const url = new URL(request.url);
-        const path = url.pathname;
-        
-        // Always serve static assets directly
-        if (path.startsWith('/assets/') || 
-            path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webmanifest|txt)$/)) {
-          const assetResponse = await env.ASSETS.fetch(request);
-          if (assetResponse.status !== 404) {
-            return assetResponse;
-          }
-        }
-        
-        // For API routes, use the worker
-        if (path.startsWith('/api/') || path.startsWith('/auth/')) {
-          return app.fetch(request, env, ctx);
-        }
-        
-        // For all other routes, try to serve from assets
-        // If asset exists, serve it; otherwise serve index.html for SPA routing
-        const assetResponse = await env.ASSETS.fetch(request);
-        if (assetResponse.status !== 404) {
-          return assetResponse;
-        }
-        
-        // Fallback to index.html for SPA routing
-        const indexRequest = new Request(new URL('/', request.url).href, request);
-        return await env.ASSETS.fetch(indexRequest);
-      } catch (error) {
-        console.error('Asset serving error:', error);
-        return app.fetch(request, env, ctx);
-      }
-    }
-    
-    // If ASSETS is not available, use worker only
-    return app.fetch(request, env, ctx);
-  },
-};
+export default app;
