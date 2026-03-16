@@ -13,8 +13,8 @@ pages_build_output_dir = "dist"
 # ============================================================
 [[d1_databases]]
 binding = "DB"
-database_name = "marketplace-db"
-database_id = "local-marketplace-db"
+database_name = "toss-live-commerce-db"
+database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
 # ============================================================
 # KV Namespaces (create via: wrangler kv:namespace create NAME)

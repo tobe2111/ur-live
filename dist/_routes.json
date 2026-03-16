@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Static-only mode (no Worker): serve all files directly, no API routes",
-  "include": [],
+  "description": "API routes to Worker, static assets served directly",
+  "include": ["/api/*", "/auth/*"],
   "exclude": ["/*"]
 }

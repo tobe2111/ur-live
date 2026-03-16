@@ -9,7 +9,9 @@ esbuild.build({
   outfile: 'dist/_worker.js',
   external: [
     'cloudflare:*',
-    '__STATIC_CONTENT_MANIFEST'
+    '__STATIC_CONTENT_MANIFEST',
+    'firebase-admin',
+    'firebase-admin/*'
   ],
   define: {
     'process.env.NODE_ENV': '"production"'
