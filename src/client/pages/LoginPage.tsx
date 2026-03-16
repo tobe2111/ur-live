@@ -1,6 +1,6 @@
 // Login Page
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../stores/auth.store';
@@ -8,11 +8,21 @@ import type { ApiResponse } from '../../shared/types';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const setAuth = useAuthStore(s => s.setAuth);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // 환경 변수에서 Kakao REST API Key 가져오기
+  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '';
+  const REDIRECT_URI = `${window.location.origin}/auth/kakao/callback`;
+
+  const handleKakaoLogin = () => {
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
+    window.location.href = kakaoAuthUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +104,30 @@ export function LoginPage() {
               {isLoading ? '로그인 중...' : '로그인'}
             </button>
           </form>
+
+          {/* 소셜 로그인 구분선 */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">또는</span>
+            </div>
+          </div>
+
+          {/* 카카오 로그인 버튼 */}
+          <button
+            type="button"
+            onClick={handleKakaoLogin}
+            disabled={!KAKAO_REST_API_KEY}
+            className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!KAKAO_REST_API_KEY ? '카카오 로그인이 비활성화되어 있습니다' : ''}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
+            </svg>
+            카카오 로그인
+          </button>
 
           <p className="text-center text-sm text-gray-500 mt-4">
             계정이 없으신가요?{' '}
