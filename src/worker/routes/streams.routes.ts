@@ -49,12 +49,12 @@ streamsRouter.get('/', async (c) => {
         ls.seller_id,
         ls.created_at,
         ls.updated_at,
-        s.shop_name  AS seller_name,
-        s.image_url  AS seller_image,
+        s.name       AS seller_name,
+        s.logo_url   AS seller_image,
         cp.id        AS current_product_id,
         cp.name      AS current_product_name,
         cp.price     AS current_product_price,
-        cp.image_url AS current_product_image
+        cp.thumbnail_url AS current_product_image
       FROM live_streams ls
       LEFT JOIN sellers s ON s.id = ls.seller_id
       LEFT JOIN products cp ON cp.id = ls.current_product_id
@@ -136,12 +136,12 @@ streamsRouter.get('/:id', async (c) => {
       .prepare(
         `SELECT
           ls.*,
-          s.shop_name  AS seller_name,
-          s.image_url  AS seller_image,
+          s.name       AS seller_name,
+          s.logo_url   AS seller_image,
           cp.id        AS current_product_id,
           cp.name      AS current_product_name,
           cp.price     AS current_product_price,
-          cp.image_url AS current_product_image
+          cp.thumbnail_url AS current_product_image
         FROM live_streams ls
         LEFT JOIN sellers s ON s.id = ls.seller_id
         LEFT JOIN products cp ON cp.id = ls.current_product_id
