@@ -49,5 +49,7 @@ export interface Env {
   REGION?: string;
 
   // ---- Cloudflare Specific ----
+  // Note: env.ASSETS is automatically available when [assets] is configured
+  // No explicit binding needed in wrangler.toml
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
 }
