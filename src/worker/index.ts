@@ -16,6 +16,8 @@ import { productsRouter } from './routes/product.routes';
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
 import { sellersRouter } from './routes/seller.routes';
+import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
+import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { i18nMiddleware } from './middleware/i18n.middleware';
 import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
 import { globalErrorHandler as errorHandler } from './middleware/error-handler';
@@ -64,6 +66,9 @@ app.use('*', cors({
       env?.FRONTEND_URL ?? 'http://localhost:5173',
       'https://ur-live.pages.dev',
       'https://www.ur-live.com',
+      'https://live.ur-team.com',   // ✅ 실제 프로덕션 도메인 추가
+      'https://ur-team.com',
+      'https://www.ur-team.com',
       'http://localhost:5173',
       'http://localhost:3000',
     ];
@@ -172,16 +177,35 @@ app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/auth/google', googleRoutes);
 
 // ============================================================
+// Users Routes  ← /api/users/role, /api/users/init
+// 프론트엔드에서 /api/users/* 로 직접 호출
+// ============================================================
+app.route('/api/users', usersRouter);
+
+// ============================================================
+// Streams Routes  ← /api/streams (공개 조회용)
+// 프론트엔드의 LiveNow, useLiveStream, AdminPage 등이 /api/streams 호출
+// 판매자 전용 CRUD는 /api/seller/streams 유지
+// ============================================================
+app.route('/api/streams', streamsRouter);
+
+// ============================================================
 // Product & Seller Routes
 // ============================================================
 
-// Worker-native products (multi-seller MVP)
-app.route('/api/products', productsRouter);
+// ✅ Feature products 가 먼저 처리 (응답 포맷: { success, data: [...], pagination })
+// Worker-native productsRouter는 Hono 라우트 겹침 방지를 위해 주석 처리
+// (featureProductsRoutes가 GET / 와 GET /:id 를 모두 처리함)
+// app.route('/api/products', productsRouter); // 제거: featureProductsRoutes와 충돌
 
-// Feature products (extended CRUD)
+// Feature products (extended CRUD) — 유일한 /api/products 핸들러
 app.route('/api/products', featureProductsRoutes);
 
-// Worker-native sellers list
+// /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
+// (프론트엔드가 /api/search/popular 로 호출)
+app.route('/api/search', featureProductsRoutes);
+
+// Worker-native sellers list + public routes
 app.route('/api/sellers', sellersRouter);
 
 // Feature seller management
@@ -193,16 +217,22 @@ app.route('/api/seller', sellerStreamsRoutes);
 // Order & Payment Routes
 // ============================================================
 
-// Worker-native orders (multi-seller, idempotency, webhook)
+// ✅ ordersRouter (worker-native) 가 먼저 처리:
+//    POST /, GET /, GET /:id, POST /:id/cancel
+//    (authMiddleware 사용, 멀티셀러 지원, 아이덤포턴시)
 app.route('/api/orders', ordersRouter);
 
-// Feature orders (extended query/types)
+// ✅ featureOrdersRoutes가 ordersRouter에 없는 추가 엔드포인트 처리
+//    GET / 와 GET /:id 는 ordersRouter가 먼저 처리하므로 featureOrdersRoutes의 동일 엔드포인트는 도달하지 않음
+//    → 실제로는 ordersRouter가 모든 주요 경로 처리. feature는 fallback용으로만 유지.
 app.route('/api/orders', featureOrdersRoutes);
 
-// Worker-native payments + webhook
+// ✅ paymentsRouter: POST /confirm, POST /checkout-session (worker-native)
 app.route('/api/payments', paymentsRouter);
 
-// Feature payments (confirm/rollback)
+// ✅ featurePaymentRoutes: POST /rollback (paymentsRouter에 없는 경로만)
+//    POST /confirm 은 paymentsRouter가 먼저 처리 → featurePaymentRoutes의 /confirm 미도달
+//    → /rollback 만 실질적으로 featurePaymentRoutes에서 처리됨
 app.route('/api/payments', featurePaymentRoutes);
 
 // ============================================================
@@ -239,6 +269,17 @@ app.route('/api/account', accountRoutes);
 app.route('/api/seller/youtube', youtubeRoutes);
 app.route('/api/youtube', youtubeRoutes); // legacy path alias
 app.route('/api/youtube/chat', youtubeChatRoutes);
+
+// ============================================================
+// [참고] 라우트 등록 원칙 (이 주석을 절대 삭제하지 말 것)
+// ============================================================
+// 1. 동일 경로에 두 라우터를 app.route()하면 Hono는 먼저 등록된 것이 매칭됨.
+//    → 같은 경로에 worker 라우터 + feature 라우터를 동시에 등록하지 말 것.
+// 2. /api/streams  → streamsRouter   (이 파일에서만 관리)
+// 3. /api/users/*  → usersRouter     (이 파일에서만 관리)
+// 4. 프론트 호출 경로와 백엔드 app.route() 등록 경로가 반드시 일치해야 함.
+//    프론트가 /api/streams 를 호출하는데 백엔드에 /api/seller/streams 만 있으면 404.
+// 5. CORS allowed 목록에 실제 도메인이 반드시 포함되어야 함.
 
 // ============================================================
 // 404 for API routes not matched above

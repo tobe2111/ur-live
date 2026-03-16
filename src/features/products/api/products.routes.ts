@@ -2,11 +2,17 @@
  * Products API Routes
  * 
  * Endpoints:
- * - GET    /api/products         - 상품 목록 조회
- * - GET    /api/products/:id     - 상품 상세 조회
- * - POST   /api/products         - 상품 생성 (판매자 전용)
- * - PUT    /api/products/:id     - 상품 수정 (판매자 전용)
- * - DELETE /api/products/:id     - 상품 삭제 (판매자 전용)
+ * - GET    /api/products                   - 상품 목록 조회
+ * - GET    /api/products/search/popular    - 인기 검색어 조회
+ * - GET    /api/products/search/suggestions - 검색 자동완성
+ * - GET    /api/products/:id              - 상품 상세 조회
+ * - GET    /api/products/:id/options      - 상품 옵션 목록 조회
+ * - POST   /api/products                  - 상품 생성 (판매자 전용)
+ * - PUT    /api/products/:id              - 상품 수정 (판매자 전용)
+ * - DELETE /api/products/:id              - 상품 삭제 (판매자 전용)
+ *
+ * NOTE: app.route('/api/products', productsRoutes) 에 등록됨.
+ * 내부 경로에 /api/products 를 절대 포함하지 말 것 (더블 prefix 방지).
  */
 
 import { Hono } from 'hono';
@@ -19,6 +25,51 @@ type Bindings = {
 };
 
 export const productsRoutes = new Hono<{ Bindings: Bindings }>();
+
+/**
+ * GET /api/products/search/popular
+ * 인기 검색어 목록 (/api/search/popular 는 worker/index.ts에서 이 경로로 alias 등록됨)
+ */
+productsRoutes.get('/search/popular', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const result = await DB.prepare(`
+      SELECT keyword, search_count
+      FROM popular_searches
+      ORDER BY search_count DESC
+      LIMIT 10
+    `).all().catch(() => ({ results: [] }));
+
+    return c.json({
+      success: true,
+      data: result.results || [],
+    });
+  } catch (error) {
+    return c.json({ success: true, data: [] });
+  }
+});
+
+/**
+ * GET /api/products/search/suggestions?q=...
+ * 검색 자동완성 제안 (/api/search/suggestions 로 프론트에서 호출)
+ */
+productsRoutes.get('/search/suggestions', cors(), async (c) => {
+  const { DB } = c.env;
+  const q = c.req.query('q') || '';
+  if (!q || q.length < 2) return c.json({ success: true, data: [] });
+
+  try {
+    const result = await DB.prepare(
+      `SELECT DISTINCT name as suggestion FROM products
+       WHERE name LIKE ? AND is_active = 1
+       ORDER BY name ASC LIMIT 10`
+    ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
+
+    return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
 
 /**
  * GET /api/products
@@ -58,6 +109,30 @@ productsRoutes.get('/', cors(), async (c) => {
       success: false,
       error: (error as Error).message
     }, 500);
+  }
+});
+
+/**
+ * GET /api/products/:id/options
+ * 상품 옵션 목록 조회 (useProduct.ts, OptionSelectModal.tsx에서 호출)
+ */
+productsRoutes.get('/:id/options', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = Number(c.req.param('id'));
+  if (isNaN(id)) return c.json({ success: false, error: 'Invalid product ID' }, 400);
+
+  try {
+    const result = await DB.prepare(
+      `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
+       FROM product_options
+       WHERE product_id = ?
+       ORDER BY option_type, option_value`
+    ).bind(id).all().catch(() => ({ results: [] }));
+
+    return c.json({ success: true, data: result.results || [] });
+  } catch (err: any) {
+    console.error('[Products API] Get options error:', err);
+    return c.json({ success: false, error: 'Failed to fetch product options' }, 500);
   }
 });
 

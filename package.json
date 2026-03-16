@@ -17,7 +17,10 @@
     "db:migrate": "wrangler d1 execute marketplace-db --local --file=migrations/001_initial.sql",
     "db:migrate:prod": "wrangler d1 execute marketplace-db --file=migrations/001_initial.sql",
     "db:seed": "wrangler d1 execute marketplace-db --local --file=migrations/002_seed.sql",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "type-check:worker": "tsc --noEmit --project tsconfig.worker.json",
+    "validate:routes": "bash scripts/validate-routes.sh",
+    "precommit": "npm run validate:routes && npm run type-check:worker"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "1.3.3",

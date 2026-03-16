@@ -72,7 +72,7 @@ REGION = "KR"
 # ============================================================
 [env.production]
 name = "global-marketplace"
-vars = { ENVIRONMENT = "production", FRONTEND_URL = "https://ur-live.pages.dev", REGION = "GLOBAL" }
+vars = { ENVIRONMENT = "production", FRONTEND_URL = "https://live.ur-team.com", REGION = "KR" }
 
 # ============================================================
 # Local dev server

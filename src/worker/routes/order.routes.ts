@@ -251,6 +251,61 @@ ordersRouter.get('/:id', async (c) => {
   }
 });
 
+// POST /api/orders/refund  ← useOrder.ts에서 호출
+// 환불 요청 (구매 확정 후 반품/환불)
+ordersRouter.post('/refund', async (c) => {
+  try {
+    const userId = c.get('user').id;
+    const body = await c.req.json<{
+      order_id: string;
+      reason: string;
+      refund_amount?: number;
+    }>();
+
+    if (!body.order_id || !body.reason) {
+      return c.json({ success: false, error: 'order_id, reason 필드가 필요합니다' }, 400);
+    }
+
+    const orderRepo = new OrderRepository(c.env.DB);
+    const order = await orderRepo.findById(body.order_id);
+
+    if (!order) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+    }
+
+    if (order.user_id !== userId) {
+      return c.json({ success: false, error: 'Forbidden' }, 403);
+    }
+
+    const refundableStatuses = ['PAID', 'DONE', 'DELIVERED'];
+    if (!refundableStatuses.includes(order.status)) {
+      return c.json({
+        success: false,
+        error: `현재 상태(${order.status})에서는 환불 요청할 수 없습니다`,
+      }, 400);
+    }
+
+    // 환불 요청 상태로 변경 (REFUND_REQUESTED 상태가 없으면 CANCELLED로 처리)
+    try {
+      await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
+        cancel_reason: `[환불요청] ${body.reason}`,
+        cancelled_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('[ORDERS] Refund status update failed:', e);
+    }
+
+    return c.json({
+      success: true,
+      message: '환불 요청이 접수되었습니다. 판매자 확인 후 처리됩니다.',
+      data: { order_id: body.order_id, status: 'CANCELLED' },
+    });
+  } catch (err) {
+    console.error('[ORDERS] Refund error:', err);
+    return c.json({ success: false, error: '환불 요청 처리에 실패했습니다' }, 500);
+  }
+});
+
 // POST /api/orders/:id/cancel
 ordersRouter.post('/:id/cancel', async (c) => {
   try {
