@@ -1,208 +1,347 @@
-# 🚀 Cloudflare Pages 환경변수 설정 가이드 (즉시 실행)
+# Cloudflare Pages 환경변수 설정 가이드
 
-**상태**: 🔴 **CRITICAL** - 카카오 로그인을 위해 필수  
-**소요 시간**: 5분  
-**난이도**: ⭐⭐ (복사-붙여넣기)
+## 📅 작성일: 2026-03-17
 
 ---
 
-## ✅ 준비 완료!
+## 🎯 **목적**
 
-`.dev.vars` 파일에 이미 Firebase 인증 정보가 있습니다:
-- ✅ `FIREBASE_PRIVATE_KEY` (RSA Private Key)
-- ✅ `FIREBASE_CLIENT_EMAIL` (Service Account Email)
-
-이제 이 정보를 **Cloudflare Pages Production 환경**에 복사하기만 하면 됩니다!
+프로덕션 환경(https://live.ur-team.com)에서 Firebase Realtime Database가 정상 작동하도록 Cloudflare Pages 환경변수를 설정합니다.
 
 ---
 
-## 📋 **단계별 실행 가이드**
+## ⚠️ **현재 상태**
 
-### Step 1: Cloudflare Dashboard 접속
-
-1. 브라우저에서 https://dash.cloudflare.com 열기
-2. 로그인 (Cloudflare 계정)
-
-### Step 2: ur-live 프로젝트 찾기
-
-1. 왼쪽 메뉴에서 **"Workers & Pages"** 클릭
-2. 프로젝트 목록에서 **"ur-live"** 찾아서 클릭
-
-### Step 3: Settings → Environment Variables
-
-1. 상단 탭에서 **"Settings"** 클릭
-2. 스크롤 내려서 **"Environment variables"** 섹션 찾기
-3. **"Add variables"** 또는 **"Edit variables"** 버튼 클릭
-
-### Step 4: FIREBASE_PRIVATE_KEY 추가
-
-**Variable name**: 
+### **문제:**
 ```
-FIREBASE_PRIVATE_KEY
+❌ Missing Firebase environment variables: VITE_FIREBASE__D_A_T_A_B_A_S_E_U_R_L
+⚠️ Firebase will not work properly without these variables
 ```
 
-**Value** (아래 전체를 복사해서 붙여넣기):
-```
------BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDNApqNEslAbGWU
-lYOzI0txgwNfcJq11jBotxHWr2duF1GfPcHieAtIOHUTnVUCIlH2bfK5x7Q9ter+
-cwW9sdv6Bjvp5+Y45xd6VsUrtQWr/JW5rf3KaawABR37TCkw4gFWeF7LL2hYTqKX
-joYatvDPecBkQg9KXHfA9dRlwz8eX1W976CPNcvjfU9/fcFaWMxRb+H+mpz+XXsH
-79gM7Fu+CUfUGLJr9Nnu99S9HHKrXb7zOwl7q1ZTvOSQqu8ZLOpfnV7dmHqPyKHQ
-m+3uWm5VL6xZe1E083auNEA1dhLx8hYEu1H4a9Eya80zXAqbKSJSfOi2BQB0tnjI
-iTXQDJBrAgMBAAECggEAYV0sM3XJmMwiTjfYDXrkuKtFLc2X3GY2JXVUhoZVc+al
-QCCfdUQX75vIlqExH0tXa9b54RukUW6VhXTxNA9FbvAJAmS9ZSbzconFKKXXZMAY
-B9BHaRtYscW8YH3iTjH3+q4+Lvd78fyeoaXxsLxTj+W95p+tDV7vDPhzgEUDNBOu
-lHaKbll3kByuVAa12yhXIEGw4SQI1Y42865tVLHrpJFreU7zbje090xgdZyAsj5X
-qTPt2Cns9Z/hUCJoRkYswuq70GYt4DQycgnC/hO1SI6+qNdrdHZpevrs9jNtySHb
-HyjIUxHurDubQJ37eNSqDniViAMTf0Xyoyh/V8o6iQKBgQD49uWl3QRcvP947Rm9
-Nc0E0K3appMyvQIX/S0hdjkBjuORxxRnrxXDFPUXQEFXsng8M0t3crVXTFqKPIuy
-0K6jXQlkgxptGMb6jC4Pg+tw833+DMsmxQK4Xc5cDMWz19/Ay+zUnWIkAMB7/0PY
-MyyekDNU0Y71gDTPwp5abNxiPQKBgQDSzbmOnRKIsS+fvSS1yQSI8pvGCASRx4Ez
-Z35D+UQGhlKPqMSodYknbLtbt+tQaVjXUE15RvydwbRD39+jHyjSBLIse7AqJnFm
-VofNOh96CTf1csbp1ObysfmR3ibVt3uRgqJTgi+rYhhZx7zd6+u+uvhfjW/JpYLJ
-rNL+D68vxwKBgHdjzxUPPDxM1iZjbWhzGHIqsHSeVRCL2ykt3CqjywqYP0F1Oq/O
-Ip1+u1n/Ela/2zDjWFlbxOKsVu7bwhJqSJVG1G5DALU4oJMeDiialpl/6vedov5g
-k8FeGsvBxD1OVJrcMCJ1ps6lHalY7GwNfmQ7uqH+LJRGewz2w4GRms3xAoGAQWpH
-p6LEapiZT7eRGbwsZRbsEfLRAC/pvvrhqtRCMMgj/KKBjEkU66AJL/gN1KEsSXyI
-3haSM541g06IhoUX1LxSUg176EiPrhMyBxR/Sg5sSAV7Bnrjw/JIoORQJsfOV6Qz
-HTjr9AH3znx19mPMfx5kDrrEMs3inRS9UMurMGcCgYEA7rh14Jf6YTLxMPOZtaM3
-VxQAmiwWMeXZR58Ay0zguA7FvCgajJvVGK7ev3T0BlUEhUrMHbB98bJy+OJA5IEK
-NZ5USZL9t+oYWMmcTi2O3gqgk7KevlZnREr2BeL+DUL3bro9DfmbhCMXvyBjGEGo
-+44vEawC/8f0mt/wlMASMOs=
------END PRIVATE KEY-----
-```
+### **원인:**
+- `.env` 파일은 Git에 커밋되지 않음 (보안상 올바름) ✅
+- Cloudflare Pages는 `.env` 파일을 읽을 수 없음
+- 환경변수가 빌드 시 포함되지 않음
 
-**Environment**: `Production` 선택  
-**Encrypted**: ✅ 체크 (자동으로 암호화됨)
-
-**"Save"** 클릭
+### **영향:**
+- Firebase Realtime Database 연결 실패
+- 라이브 채팅 기능 동작 안 함
+- 실시간 알림 기능 동작 안 함
 
 ---
 
-### Step 5: FIREBASE_CLIENT_EMAIL 추가
+## 🔧 **해결 방법: Cloudflare Pages 환경변수 추가**
 
-같은 페이지에서 **"Add variable"** 다시 클릭
+### **Step 1: Cloudflare Dashboard 접속**
 
-**Variable name**: 
+1. 브라우저에서 [https://dash.cloudflare.com/](https://dash.cloudflare.com/) 접속
+2. 로그인
+
+### **Step 2: 프로젝트 선택**
+
+1. 왼쪽 메뉴에서 **Workers & Pages** 클릭
+2. **ur-live** 프로젝트 클릭
+
+### **Step 3: Environment Variables 메뉴 진입**
+
+1. 상단 탭에서 **Settings** 클릭
+2. 왼쪽 사이드바에서 **Environment Variables** 클릭
+
+### **Step 4: Production 환경변수 추가**
+
+1. **Production** 탭 선택
+2. **Add variable** 버튼 클릭
+3. 다음 정보 입력:
+
+**Variable Name:**
 ```
-FIREBASE_CLIENT_EMAIL
+VITE_FIREBASE_DATABASE_URL
 ```
 
-**Value**:
+**Variable Value:**
 ```
-firebase-adminsdk-fbsvc@urteam-live-commerce-5b284.iam.gserviceaccount.com
+https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
 ```
 
-**Environment**: `Production` 선택  
-**"Save"** 클릭
+4. **Save** 버튼 클릭
 
----
+### **Step 5: 재배포**
 
-### Step 6: 재배포 트리거
+환경변수 추가 후 **자동으로 재배포**되지 않으므로, 수동으로 재배포해야 합니다:
 
-환경변수 추가 후 자동으로 재배포되지만, 확실하게 하려면:
-
-**Option A - Cloudflare Dashboard**:
-1. **"Deployments"** 탭 클릭
-2. 최신 deployment 찾기
-3. **"Retry deployment"** 버튼 클릭
-
-**Option B - Git Push** (권장):
+**방법 1: Git Push (권장)**
 ```bash
-# Empty commit으로 재배포 트리거
-git commit --allow-empty -m "chore: Trigger redeploy after Firebase env vars"
+# 아무 변경이나 커밋하고 푸시
+git commit --allow-empty -m "chore: Trigger deployment after env var setup"
 git push origin main
 ```
 
+**방법 2: Cloudflare Dashboard**
+1. **Deployments** 탭 클릭
+2. 최신 배포 찾기
+3. **Retry deployment** 버튼 클릭
+
 ---
 
-## ✅ 검증 방법
+## 🧪 **테스트 방법**
 
-### 1. 환경변수 설정 확인
+### **1. 배포 완료 대기**
 
-Cloudflare Dashboard → ur-live → Settings → Environment variables:
-- ✅ `FIREBASE_PRIVATE_KEY` (Production) - Value는 `•••••` 로 숨겨짐
-- ✅ `FIREBASE_CLIENT_EMAIL` (Production) - 이메일 주소 보임
+Cloudflare Dashboard → Deployments 탭에서:
+- **Status: Success** 확인
+- 약 1~2분 소요
 
-### 2. 재배포 완료 확인
+### **2. 브라우저 테스트**
 
-**GitHub Actions** (2-3분 대기):
-- https://github.com/tobe2111/ur-live/actions
-- 최신 workflow가 ✅ 초록색이면 성공
+#### **홈페이지 테스트:**
+1. https://live.ur-team.com/ 접속
+2. **F12** (개발자 도구) 열기
+3. **Console** 탭 확인
 
-### 3. 카카오 로그인 테스트
-
-1. https://live.ur-team.com/login 접속
-2. **카카오 로그인** 버튼 클릭
-3. 카카오 계정 로그인
-4. **성공 시**: 홈페이지(/) 또는 이전 페이지로 리다이렉트
-5. **실패 시**: URL에 `error=...` 파라미터 확인
-
-### 4. Console 로그 확인 (F12)
-
-**Before (현재)**:
+**Before (환경변수 없음):**
 ```
-[Kakao Sync] 🔴 Firebase Custom Token 생성 실패
-error=database_error&detail=Failed to create Firebase custom token
+❌ Missing Firebase environment variables: VITE_FIREBASE__D_A_T_A_B_A_S_E_U_R_L
+⚠️ Firebase will not work properly without these variables
 ```
 
-**After (수정 후)**:
+**After (환경변수 설정됨):**
 ```
-[Kakao Sync] ✅ Firebase Custom Token 발급 완료 for user: 123
-[AuthContext] 🔥 Firebase Custom Token 로그인 시작
-[AuthContext] ✅ Firebase 로그인 성공: kakao_4735311250
+✅ Firebase App initialized
+✅ Firebase Database connected
+```
+
+#### **라이브 페이지 테스트:**
+1. https://live.ur-team.com/live/20 접속
+2. **콘솔 확인** (F12 → Console)
+3. **채팅 입력 테스트**
+
+**Expected Result:**
+- ✅ Firebase Database 연결 성공
+- ✅ 채팅 입력창 활성화
+- ✅ 채팅 메시지 전송 가능
+
+---
+
+## 📊 **추가 환경변수 (선택사항)**
+
+필요한 경우 다음 환경변수도 Cloudflare Pages에 추가할 수 있습니다:
+
+### **Firebase 관련:**
+```bash
+VITE_FIREBASE_API_KEY=AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
+VITE_FIREBASE_AUTH_DOMAIN=toss-live-commerce.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=toss-live-commerce
+VITE_FIREBASE_STORAGE_BUCKET=toss-live-commerce.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=408717649003
+VITE_FIREBASE_APP_ID=1:408717649003:web:29aa3cb5f92056dd1ec4f4
+VITE_FIREBASE_MEASUREMENT_ID=G-78M73BGT77
+```
+
+### **Kakao 관련:**
+```bash
+VITE_KAKAO_APP_KEY=975a2e7f97254b08f15dba4d177a2865
+VITE_KAKAO_JAVASCRIPT_KEY=975a2e7f97254b08f15dba4d177a2865
+VITE_KAKAO_REST_API_KEY=5dd74bccb797640b0efd070467f3bafd
+```
+
+### **Toss Payments:**
+```bash
+VITE_TOSS_CLIENT_KEY=test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+```
+
+### **Sentry:**
+```bash
+VITE_SENTRY_DSN=https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+VITE_SENTRY_ENVIRONMENT=production
+```
+
+**참고:**
+- 이미 `.env` 파일에 정의되어 있어 Vite 빌드 시 자동으로 포함됨
+- Cloudflare Pages에 추가하면 `.env` 파일 없이도 빌드 가능 (더 안전함)
+
+---
+
+## 🔒 **보안 권장사항**
+
+### **1. API Key Rotation Schedule**
+
+| API | 현재 키 | 주기 | 다음 갱신일 |
+|-----|---------|------|------------|
+| Firebase | `AIzaSy...` | 180일 | 2026-09-13 |
+| Kakao REST API | `5dd74bc...` | 90일 | 2026-06-15 |
+| Toss (LIVE) | `sk_live_Rk5x...` | 즉시 | **⚠️ 지금** |
+
+### **2. Firebase API Key 제한 설정**
+
+**Google Cloud Console 설정:**
+1. [https://console.cloud.google.com/](https://console.cloud.google.com/) 접속
+2. **toss-live-commerce** 프로젝트 선택
+3. **APIs & Services** → **Credentials**
+4. Firebase API Key 클릭
+5. **Application restrictions:**
+   - **HTTP referrers** 선택
+   - 허용 도메인:
+     ```
+     https://live.ur-team.com/*
+     http://localhost:5174/*
+     ```
+6. **API restrictions:**
+   - **Restrict key** 선택
+   - 허용 API:
+     - Firebase Realtime Database API
+     - Firebase Authentication API
+     - Identity Toolkit API
+7. **Save** 클릭
+
+### **3. Kakao API Key Domain 제한**
+
+**Kakao Developers 설정:**
+1. [https://developers.kakao.com/](https://developers.kakao.com/) 접속
+2. 내 애플리케이션 선택
+3. **플랫폼** 탭:
+   - **Web 플랫폼** 추가
+   - 사이트 도메인: `https://live.ur-team.com`
+4. **Redirect URI**:
+   ```
+   https://live.ur-team.com/login
+   https://live.ur-team.com/auth/kakao/callback
+   ```
+5. **저장**
+
+### **4. Toss Payments LIVE Secret Key 즉시 갱신 필요 🚨**
+
+**현재 상태:**
+```
+sk_live_Rk5xZE4K8zRk5nJ5aG2z
+```
+⚠️ **GitHub에 노출됨** - 즉시 갱신 필요!
+
+**갱신 절차:**
+1. [Toss Payments 개발자센터](https://developers.tosspayments.com/) 접속
+2. **현재 키 폐기 (Revoke)**
+3. **새 LIVE Secret Key 발급**
+4. **Cloudflare Pages에 저장:**
+   ```bash
+   # Wrangler CLI 사용
+   cd /home/user/webapp
+   npx wrangler secret put TOSS_SECRET_KEY
+   # → 새 키 입력 후 Enter
+   ```
+5. **재배포**
+
+---
+
+## 🎯 **체크리스트**
+
+### **필수 작업 (Immediate):**
+- [ ] Cloudflare Pages에 `VITE_FIREBASE_DATABASE_URL` 추가
+- [ ] 재배포 후 https://live.ur-team.com/ 테스트
+- [ ] Firebase Database 연결 확인
+- [ ] 🚨 Toss Payments LIVE Secret Key 갱신
+
+### **권장 작업 (1주일 이내):**
+- [ ] Firebase API Key HTTP referrer 제한 설정
+- [ ] Kakao API Key Domain 제한 설정
+- [ ] 라이브 채팅 기능 테스트 (https://live.ur-team.com/live/20)
+- [ ] 전체 결제 플로우 테스트:
+  - [ ] 상품 상세페이지 (https://live.ur-team.com/products/1)
+  - [ ] 장바구니 추가
+  - [ ] 결제 페이지 (https://live.ur-team.com/checkout)
+  - [ ] Toss 결제 완료
+
+### **장기 작업 (Optional):**
+- [ ] Git history에서 `.env*` 파일 완전 제거 (`git filter-branch`)
+- [ ] API Key Rotation 일정 캘린더 등록
+- [ ] Google Cloud Billing Alerts 설정
+
+---
+
+## 📋 **문제 해결 (Troubleshooting)**
+
+### **문제 1: 환경변수 추가 후에도 에러 발생**
+
+**원인:** 캐시된 빌드가 사용됨
+
+**해결:**
+1. Cloudflare Dashboard → Deployments
+2. **Retry deployment** 클릭 (완전 재빌드)
+3. 브라우저 캐시 지우기 (Ctrl + Shift + R)
+
+### **문제 2: Firebase Database 연결 안 됨**
+
+**확인사항:**
+1. 환경변수 이름 정확히 확인:
+   ```
+   VITE_FIREBASE_DATABASE_URL (올바름)
+   VITE_FIREBASE__D_A_T_A_B_A_S_E_U_R_L (틀림)
+   ```
+2. Firebase Database URL 형식 확인:
+   ```
+   https://PROJECT_ID-default-rtdb.REGION.firebasedatabase.app
+   ```
+3. Firebase Console에서 Realtime Database 활성화 확인
+
+### **문제 3: Cloudflare Pages 환경변수가 보이지 않음**
+
+**원인:** 권한 부족
+
+**해결:**
+- Cloudflare 계정 Owner 또는 Admin 권한 필요
+- 팀원에게 권한 요청
+
+---
+
+## 🔗 **참고 링크**
+
+- **Cloudflare Dashboard:** https://dash.cloudflare.com/
+- **Firebase Console:** https://console.firebase.google.com/
+- **Google Cloud Console:** https://console.cloud.google.com/
+- **Kakao Developers:** https://developers.kakao.com/
+- **Toss Payments:** https://developers.tosspayments.com/
+- **GitHub Repository:** https://github.com/tobe2111/ur-live
+
+---
+
+## 📝 **작업 이력**
+
+| 날짜 | 작업 | 상태 |
+|------|------|------|
+| 2026-03-17 | Firebase Database URL 환경변수 누락 발견 | ✅ |
+| 2026-03-17 | `.env` 파일에 `VITE_FIREBASE_DATABASE_URL` 추가 (로컬) | ✅ |
+| 2026-03-17 | `public/_headers` CSP에 YouTube 도메인 추가 | ✅ |
+| 2026-03-17 | Cloudflare Pages 환경변수 설정 가이드 작성 | ✅ |
+| 2026-03-17 | Cloudflare Pages에 환경변수 추가 (수동 필요) | ⏳ |
+
+---
+
+## 🎉 **예상 결과**
+
+환경변수 설정 후:
+
+**홈페이지 (https://live.ur-team.com/):**
+```
+✅ Firebase App initialized
+✅ Firebase Database connected
+✅ Firebase Auth 초기화 완료
+```
+
+**라이브 페이지 (https://live.ur-team.com/live/20):**
+```
+✅ Firebase Database 연결 성공
+✅ 라이브 채팅 활성화
+✅ 실시간 메시지 동기화
+```
+
+**상품 상세페이지 (https://live.ur-team.com/products/1):**
+```
+✅ 상품 정보 정상 표시
+✅ 장바구니 추가 가능
+✅ 결제 플로우 정상 동작
 ```
 
 ---
 
-## 🔐 보안 체크리스트
-
-- ✅ Private Key는 Cloudflare에만 저장 (Git에 커밋 안 됨)
-- ✅ Dashboard에서 값이 `•••••`로 숨겨짐
-- ✅ HTTPS 통신만 사용
-- ✅ Service Account 권한 최소화
-
----
-
-## 🚨 문제 발생 시
-
-### "Firebase credentials not configured" 에러
-
-**원인**: 환경변수가 제대로 설정되지 않음
-
-**해결**:
-1. Cloudflare Dashboard에서 변수명 확인 (대소문자 구분)
-2. Value에 공백/줄바꿈이 잘못 들어갔는지 확인
-3. 재배포 완료 여부 확인 (Deployments 탭)
-
-### "Invalid private key" 에러
-
-**원인**: Private Key 형식 오류
-
-**해결**:
-1. `-----BEGIN PRIVATE KEY-----`와 `-----END PRIVATE KEY-----` 포함 확인
-2. 줄바꿈이 제대로 포함되었는지 확인
-3. 복사할 때 공백이나 특수문자가 추가되지 않았는지 확인
-
-### 여전히 로그인 실패
-
-**임시 해결책**: 이메일 로그인 사용
-1. https://live.ur-team.com/login
-2. "이메일로 로그인" 탭
-3. 이메일/비밀번호 입력
-
----
-
-## 📞 완료 후 알려주세요!
-
-환경변수 설정을 완료하시면:
-1. "환경변수 추가 완료!" 메시지 주세요
-2. 재배포 완료 여부 확인
-3. 카카오 로그인 테스트 결과 공유
-
----
-
-**우선순위**: 🔴 **CRITICAL**  
-**예상 소요 시간**: 5분  
-**다음 단계**: D1 마이그레이션 (firebase_uid 컬럼 추가)
+**작성자:** AI Assistant  
+**작성일:** 2026-03-17  
+**소요 시간:** 약 30분  
+**Commit:** `6df3adf7` (fix: Add Firebase Database URL and YouTube to CSP)
