@@ -40,4 +40,10 @@
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
+
+  /* 🔥 CRITICAL FIX: Force enable pointer events on Kakao button */
+  .kakao-login-btn-force-clickable {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
 }

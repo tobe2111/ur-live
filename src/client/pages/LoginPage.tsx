@@ -122,9 +122,9 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row" style={{ isolation: 'isolate' }}>
       {/* Left Side - Brand & Image */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden shrink-0">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden shrink-0" style={{ pointerEvents: 'none' }}>
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
@@ -154,8 +154,8 @@ export function LoginPage() {
       </div>
 
       {/* Right Side - Login/Register Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
-        <div className="w-full max-w-md relative z-20">
+      <div className="flex-1 flex items-center justify-center px-6 py-12 relative" style={{ pointerEvents: 'auto' }}>
+        <div className="w-full max-w-md relative z-20" style={{ pointerEvents: 'auto' }}>
           {/* Logo for mobile */}
           <div className="lg:hidden text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900">글로벌 마켓플레이스</h1>
@@ -203,12 +203,12 @@ export function LoginPage() {
           </div>
 
           {/* Kakao Login Button */}
-          <div className="relative z-30 mb-4">
+          <div className="relative z-30 mb-4 kakao-login-btn-force-clickable" style={{ pointerEvents: 'auto' }}>
             <button
               type="button"
               onClick={handleKakaoLogin}
-              style={{ pointerEvents: 'auto' }}
-              className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow cursor-pointer relative z-10"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              className="kakao-login-btn-force-clickable w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow relative z-10"
             >
               <svg 
                 width="20" 
