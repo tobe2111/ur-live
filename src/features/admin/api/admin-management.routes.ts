@@ -35,8 +35,7 @@ adminManagementRoutes.get('/sellers', cors(), async (c) => {
     const { DB } = c.env;
     const sellers = await executeQuery<any>(DB, `
       SELECT id, email, name, phone, business_name, business_number,
-             slug, description, logo_url, status, is_verified, 
-             bank_name, bank_account, bank_holder, created_at
+             status, created_at
       FROM sellers ORDER BY created_at DESC
     `);
     return c.json({ success: true, data: sellers });
@@ -51,7 +50,7 @@ adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
     const { DB } = c.env;
     const sellers = await executeQuery<any>(DB, `
       SELECT id, email, name, phone, business_name, business_number,
-             slug, status, created_at
+             status, created_at
       FROM sellers WHERE status = 'pending' ORDER BY created_at ASC
     `);
     return c.json({ success: true, data: sellers });
