@@ -41,16 +41,14 @@ streamsRouter.get('/', async (c) => {
         ls.youtube_video_id,
         ls.status,
         ls.thumbnail_url,
-        ls.stream_url,
         ls.viewer_count,
         ls.scheduled_at,
-        ls.started_at,
         ls.ended_at,
         ls.seller_id,
         ls.created_at,
         ls.updated_at,
         s.name       AS seller_name,
-        s.logo_url   AS seller_image,
+        s.profile_image   AS seller_image,
         cp.id        AS current_product_id,
         cp.name      AS current_product_name,
         cp.price     AS current_product_price,
@@ -90,10 +88,8 @@ streamsRouter.get('/', async (c) => {
       youtube_video_id: r.youtube_video_id,
       status: r.status,
       thumbnail_url: r.thumbnail_url,
-      stream_url: r.stream_url,
       viewer_count: r.viewer_count ?? 0,
       scheduled_at: r.scheduled_at,
-      started_at: r.started_at,
       ended_at: r.ended_at,
       seller_id: r.seller_id,
       seller_name: r.seller_name,
@@ -122,7 +118,12 @@ streamsRouter.get('/', async (c) => {
     });
   } catch (err: any) {
     console.error('[Streams] List error:', err);
-    return c.json({ success: false, error: 'Failed to fetch streams' }, 500);
+    return c.json({ 
+      success: false, 
+      error: 'Failed to fetch streams',
+      details: err?.message || String(err),
+      stack: err?.stack
+    }, 500);
   }
 });
 
@@ -137,7 +138,7 @@ streamsRouter.get('/:id', async (c) => {
         `SELECT
           ls.*,
           s.name       AS seller_name,
-          s.logo_url   AS seller_image,
+          s.profile_image   AS seller_image,
           cp.id        AS current_product_id,
           cp.name      AS current_product_name,
           cp.price     AS current_product_price,
