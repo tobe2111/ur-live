@@ -17,8 +17,14 @@ dist/
 # Environment files (never commit secrets)
 .dev.vars
 .env
+.env.*
+!.env.example
+!.env.*.example
+!.env.*.template
 .env.local
 .env.production
+.env.kr
+.env.global
 
 # OS
 .DS_Store

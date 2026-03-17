@@ -18,16 +18,27 @@
  */
 
 // Firebase SDK 초기화
+// ⚠️ Security: API keys moved to HTML data attributes
 const firebaseConfig = {
-  apiKey: "AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s",
-  authDomain: "urteam-live-commerce.firebaseapp.com",
-  databaseURL: "https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "urteam-live-commerce",
-  storageBucket: "urteam-live-commerce.firebasestorage.app",
-  messagingSenderId: "1098157020294",
-  appId: "1:1098157020294:web:5f527d8e3e9f941cedad07",
-  measurementId: "G-B1ST2L37CM"
+  apiKey: document.getElementById('firebase-root')?.dataset.apiKey || '',
+  authDomain: document.getElementById('firebase-root')?.dataset.authDomain || '',
+  databaseURL: document.getElementById('firebase-root')?.dataset.databaseUrl || '',
+  projectId: document.getElementById('firebase-root')?.dataset.projectId || '',
+  storageBucket: document.getElementById('firebase-root')?.dataset.storageBucket || '',
+  messagingSenderId: document.getElementById('firebase-root')?.dataset.messagingSenderId || '',
+  appId: document.getElementById('firebase-root')?.dataset.appId || '',
+  measurementId: document.getElementById('firebase-root')?.dataset.measurementId || ''
 };
+
+// Fallback to environment variables (if available via server-side rendering)
+if (!firebaseConfig.apiKey && window.FIREBASE_CONFIG) {
+  Object.assign(firebaseConfig, window.FIREBASE_CONFIG);
+}
+
+console.log('🔥 Firebase config loaded from data attributes');
+if (!firebaseConfig.apiKey) {
+  console.error('❌ Firebase API key not found! Add data-api-key to #firebase-root element');
+}
 
 // Firebase App 초기화
 let firebaseApp = null;
