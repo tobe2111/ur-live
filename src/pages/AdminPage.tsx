@@ -134,12 +134,21 @@ export default function AdminPage() {
       // Note: Authorization header will be added automatically by the API interceptor
       const response = await api.get('/api/admin/dashboard/stats')
       
-      if (response.data.success) {
+      if (response.data?.success && response.data?.stats) {
         setDashboardStats(response.data.stats)
+      } else if (response.data) {
+        // API 응답이 다른 형식일 경우를 대비한 처리
+        setDashboardStats({
+          todaySales: response.data.todaySales || 0,
+          todayOrders: response.data.todayOrders || 0,
+          currentVisitors: response.data.currentVisitors || 0,
+          liveStreams: response.data.liveStreams || 0
+        })
       }
     } catch (err: any) {
       console.error('Failed to load dashboard stats:', err)
       // 에러는 조용히 무시 (통계는 필수가 아님)
+      // 기본값 유지 (이미 state 초기값으로 설정됨)
     }
   }
 
@@ -324,7 +333,7 @@ export default function AdminPage() {
               <div className="text-sm font-medium opacity-90">오늘 매출</div>
               <div className="text-2xl">💰</div>
             </div>
-            <p className="text-3xl font-bold">₩{dashboardStats.todaySales.toLocaleString()}</p>
+            <p className="text-3xl font-bold">₩{(dashboardStats?.todaySales || 0).toLocaleString()}</p>
             <p className="text-sm opacity-75 mt-1">실시간 업데이트</p>
           </div>
           
@@ -333,7 +342,7 @@ export default function AdminPage() {
               <div className="text-sm font-medium opacity-90">오늘 주문</div>
               <div className="text-2xl">📦</div>
             </div>
-            <p className="text-3xl font-bold">{dashboardStats.todayOrders.toLocaleString()}</p>
+            <p className="text-3xl font-bold">{(dashboardStats?.todayOrders || 0).toLocaleString()}</p>
             <p className="text-sm opacity-75 mt-1">건</p>
           </div>
           
@@ -342,7 +351,7 @@ export default function AdminPage() {
               <div className="text-sm font-medium opacity-90">현재 방문자</div>
               <div className="text-2xl">👥</div>
             </div>
-            <p className="text-3xl font-bold">{dashboardStats.currentVisitors.toLocaleString()}</p>
+            <p className="text-3xl font-bold">{(dashboardStats?.currentVisitors || 0).toLocaleString()}</p>
             <p className="text-sm opacity-75 mt-1">최근 5분</p>
           </div>
           
@@ -351,7 +360,7 @@ export default function AdminPage() {
               <div className="text-sm font-medium opacity-90">라이브 방송</div>
               <div className="text-2xl">📺</div>
             </div>
-            <p className="text-3xl font-bold">{dashboardStats.liveStreams.toLocaleString()}</p>
+            <p className="text-3xl font-bold">{(dashboardStats?.liveStreams || 0).toLocaleString()}</p>
             <p className="text-sm opacity-75 mt-1">진행 중</p>
           </div>
         </div>
