@@ -38,6 +38,10 @@ notificationsRoutes.get('/', async (c) => {
     const result = await DB.prepare(query).bind(userId, userType, limit).all();
     return c.json({ success: true, data: result.results });
   } catch (err) {
+    // If notifications table doesn't exist, return empty array
+    if ((err as Error).message.includes('no such table')) {
+      return c.json({ success: true, data: [] });
+    }
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -53,6 +57,10 @@ notificationsRoutes.get('/unread-count', async (c) => {
     ).bind(userId, userType).first<{ count: number }>();
     return c.json({ success: true, count: result?.count ?? 0 });
   } catch (err) {
+    // If notifications table doesn't exist, return 0
+    if ((err as Error).message.includes('no such table')) {
+      return c.json({ success: true, count: 0 });
+    }
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
