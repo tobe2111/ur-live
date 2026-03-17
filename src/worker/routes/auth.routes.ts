@@ -53,8 +53,8 @@ authRouter.post('/register', async (c) => {
     const userId = generateId();
 
     await qb.execute(
-      `INSERT INTO users (id, email, password_hash, password_hash_version, name, phone, role, is_email_verified)
-       VALUES (?, ?, ?, 'pbkdf2', ?, ?, 'BUYER', 1)`,
+      `INSERT INTO users (id, email, password_hash, name, phone, role, is_email_verified)
+       VALUES (?, ?, ?, ?, ?, 'BUYER', 1)`,
       [userId, email, passwordHash, name, phone ?? null]
     );
 
@@ -131,7 +131,6 @@ authRouter.post('/login', async (c) => {
         await qb.execute(
           `UPDATE users
            SET password_hash = ?,
-               password_hash_version = 'pbkdf2',
                updated_at = datetime('now')
            WHERE id = ?`,
           [newHash, user.id]
