@@ -45,8 +45,10 @@ export function LoginPage() {
   const handleKakaoLogin = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!');
+    console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨! Event:', e.type);
     console.log('[LoginPage] 🔑 API Key:', KAKAO_REST_API_KEY ? '✅ 있음' : '❌ 없음');
+    console.log('[LoginPage] 🎯 Target:', e.currentTarget);
+    alert('카카오 로그인 버튼이 정상적으로 클릭되었습니다!');
     
     if (!KAKAO_REST_API_KEY) {
       console.error('[LoginPage] ❌ 카카오 REST API Key 없음');
@@ -191,7 +193,7 @@ export function LoginPage() {
           </div>
 
           {/* Error Message - Fixed Height to prevent layout shift */}
-          <div className="min-h-[20px] mb-6">
+          <div className="min-h-[20px] mb-6 relative z-0">
             {error && (
               <div className="p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -201,11 +203,12 @@ export function LoginPage() {
           </div>
 
           {/* Kakao Login Button */}
-          <div className="relative z-20 mb-4">
+          <div className="relative z-30 mb-4">
             <button
               type="button"
               onClick={handleKakaoLogin}
-              className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow cursor-pointer"
+              style={{ pointerEvents: 'auto' }}
+              className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow cursor-pointer relative z-10"
             >
               <svg 
                 width="20" 
