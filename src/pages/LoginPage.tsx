@@ -336,9 +336,15 @@ export default function LoginPage() {
             {/* Kakao Login Button (KR only) - 29CM Style: Minimal, clean lines */}
             {isKorea() && (
               <button
-                onClick={handleKakaoLogin}
+                onClick={() => {
+                  console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
+                  console.log('[LoginPage] Kakao Ready:', kakaoReady)
+                  console.log('[LoginPage] Kakao SDK Initialized:', window.Kakao?.isInitialized())
+                  console.log('[LoginPage] Loading:', loading)
+                  handleKakaoLogin()
+                }}
                 disabled={loading || !kakaoReady}
-                className="w-full h-[48px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-[#F9D900]"
+                className="w-full h-[48px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#F9D900]"
               >
                 {loading ? (
                   <>
