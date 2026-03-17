@@ -97,7 +97,7 @@ app.use('*', async (c, next) => {
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
   c.header('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: " +
       "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
       "https://*.googletagmanager.com https://*.google-analytics.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
@@ -106,10 +106,10 @@ app.use('*', async (c, next) => {
       "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app " +
       "https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
-      "https://www.youtube.com https://youtube.com https://s.ytimg.com " +
+      "https://www.youtube.com https://youtube.com https://s.ytimg.com https://*.youtube.com " +
       "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
-      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com blob:; " +
-    "script-src-elem 'self' 'unsafe-inline' " +
+      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com; " +
+    "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: " +
       "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
       "https://*.googletagmanager.com https://*.google-analytics.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
@@ -118,15 +118,16 @@ app.use('*', async (c, next) => {
       "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app " +
       "https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
-      "https://www.youtube.com https://youtube.com https://s.ytimg.com " +
+      "https://www.youtube.com https://youtube.com https://s.ytimg.com https://*.youtube.com " +
       "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
-      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com blob:; " +
+      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com; " +
     "worker-src 'self' blob:; " +
     "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; " +
     "img-src 'self' 'unsafe-inline' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     "connect-src 'self' https: wss: " +
-      "wss://*.firebasedatabase.app " +
+      "https://*.firebaseio.com https://*.firebasedatabase.app " +
+      "wss://*.firebaseio.com wss://*.firebasedatabase.app " +
       "wss://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app; " +
     "frame-src 'self' " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
@@ -134,8 +135,9 @@ app.use('*', async (c, next) => {
       "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
       "https://*.firebase.google.com https://*.firebaseio.com " +
       "https://kauth.kakao.com https://*.kakao.com " +
-      "https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com " +
+      "https://www.youtube.com https://youtube.com https://*.youtube.com https://www.youtube-nocookie.com " +
       "https://player.vimeo.com; " +
+    "child-src 'self' blob:; " +
     "media-src 'self' https: blob:; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +
