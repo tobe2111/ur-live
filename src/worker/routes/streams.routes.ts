@@ -182,23 +182,14 @@ streamsRouter.get('/:id/products', async (c) => {
     const db = c.env.DB;
     const streamId = c.req.param('id');
 
-    // live_stream_products 조인 테이블 우선 조회, 없으면 live_stream_id 컬럼 폴백
-    const rows = await db
-      .prepare(
-        `SELECT p.*
-         FROM products p
-         WHERE p.live_stream_id = ?
-            OR p.id IN (
-              SELECT product_id FROM live_stream_products WHERE stream_id = ?
-            )
-         ORDER BY p.created_at DESC`
-      )
-      .bind(streamId, streamId)
-      .all();
-
+    // TODO: 추후 live_stream_products 테이블 생성 후 조인 쿼리 활성화
+    // 현재는 임시로 빈 결과 반환 (라이브 상품 연동 기능 미구현 상태)
+    console.log(`[Streams] Products requested for stream ${streamId} (feature not yet implemented)`);
+    
     return c.json({
       success: true,
-      data: rows.results || [],
+      data: [],
+      message: 'Stream products feature coming soon'
     });
   } catch (err: any) {
     console.error('[Streams] Products error:', err);

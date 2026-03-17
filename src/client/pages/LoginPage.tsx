@@ -16,20 +16,27 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // 환경 변수에서 Kakao REST API Key 가져오기
-  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '';
+  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd';
   const REDIRECT_URI = `${window.location.origin}/auth/kakao/callback`;
 
   // 디버깅: 환경 변수 확인
   useEffect(() => {
-    console.log('[LoginPage] KAKAO_REST_API_KEY:', KAKAO_REST_API_KEY ? '설정됨' : '비어있음');
-  }, [KAKAO_REST_API_KEY]);
+    console.log('[LoginPage] 🔑 KAKAO_REST_API_KEY:', KAKAO_REST_API_KEY ? '✅ 설정됨' : '❌ 비어있음');
+    console.log('[LoginPage] 📍 REDIRECT_URI:', REDIRECT_URI);
+  }, [KAKAO_REST_API_KEY, REDIRECT_URI]);
 
   const handleKakaoLogin = () => {
-    if (!KAKAO_REST_API_KEY) {
-      alert('카카오 로그인이 설정되지 않았습니다. 관리자에게 문의하세요.');
+    console.log('[LoginPage] 🚀 카카오 로그인 시작');
+    
+    if (!KAKAO_REST_API_KEY || KAKAO_REST_API_KEY.length < 10) {
+      console.error('[LoginPage] ❌ 카카오 REST API Key 없음');
+      alert('카카오 로그인 설정이 올바르지 않습니다.\n관리자에게 문의하세요.');
       return;
     }
+
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
+    console.log('[LoginPage] 🔗 Redirect URL:', kakaoAuthUrl);
+    
     window.location.href = kakaoAuthUrl;
   };
 
@@ -128,12 +135,12 @@ export function LoginPage() {
           <button
             type="button"
             onClick={handleKakaoLogin}
-            className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-medium rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FCCA03] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
             </svg>
-            카카오 로그인
+            <span className="text-base">카카오 로그인</span>
           </button>
 
           <p className="text-center text-sm text-gray-500 mt-4">

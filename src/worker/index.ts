@@ -99,28 +99,39 @@ app.use('*', async (c, next) => {
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
       "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
+      "https://*.googletagmanager.com https://*.google-analytics.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
-      "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com https://*.firebasedatabase.app " +
+      "https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
+      "https://www.youtube.com https://youtube.com https://s.ytimg.com " +
       "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
-      "https://googletagmanager.com https://*.firebaseapp.com; " +
+      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com blob:; " +
     "script-src-elem 'self' 'unsafe-inline' " +
       "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
+      "https://*.googletagmanager.com https://*.google-analytics.com " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
-      "https://*.firebase.google.com https://*.firebaseio.com https://apis.google.com https://*.googleapis.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com https://*.firebasedatabase.app " +
+      "https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
+      "https://www.youtube.com https://youtube.com https://s.ytimg.com " +
       "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
-      "https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com " +
-      "https://googletagmanager.com https://*.firebaseapp.com; " +
+      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com blob:; " +
     "worker-src 'self' blob:; " +
     "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; " +
     "img-src 'self' 'unsafe-inline' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
     "connect-src 'self' https: wss:; " +
-    "frame-src 'self' https://*.tosspayments.com https://js.tosspayments.com https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com https://*.firebase.google.com https://*.firebaseio.com https://kauth.kakao.com https://*.kakao.com https://www.youtube.com https://youtube.com https://player.vimeo.com; " +
+    "frame-src 'self' " +
+      "https://*.tosspayments.com https://js.tosspayments.com " +
+      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
+      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
+      "https://*.firebase.google.com https://*.firebaseio.com " +
+      "https://kauth.kakao.com https://*.kakao.com " +
+      "https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com " +
+      "https://player.vimeo.com; " +
     "media-src 'self' https: blob:; " +
     "object-src 'none'; " +
     "base-uri 'self'; " +

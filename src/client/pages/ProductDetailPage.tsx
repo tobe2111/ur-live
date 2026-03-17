@@ -2,7 +2,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ShoppingCart, Store, Truck, Minus, Plus, ArrowLeft, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useCartStore } from '../stores/cart.store';
 import { formatCurrency } from '../../shared/utils';
@@ -18,11 +18,27 @@ export function ProductDetailPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['product', id],
-    queryFn: () => api.get<ApiResponse<Product>>(`/products/${id}`),
+    queryFn: async () => {
+      console.log('[ProductDetail] 📡 Fetching product:', id);
+      const result = await api.get<ApiResponse<Product>>(`/products/${id}`);
+      console.log('[ProductDetail] 📦 API Response:', result);
+      return result;
+    },
     enabled: !!id,
   });
 
   const product = data?.success ? data.data : null;
+
+  useEffect(() => {
+    console.log('[ProductDetail] 🔍 Current state:', {
+      id,
+      isLoading,
+      hasError: !!error,
+      hasData: !!data,
+      dataSuccess: data?.success,
+      hasProduct: !!product,
+    });
+  }, [id, isLoading, error, data, product]);
 
   const handleAddToCart = () => {
     if (!product) return;
