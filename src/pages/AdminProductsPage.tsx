@@ -23,9 +23,12 @@ interface Product {
   id: number
   name: string
   description: string
+  long_description?: string
   price: number
+  compare_at_price?: number
   stock: number
   image_url: string
+  detail_images?: string | string[]
   is_active: boolean
   product_type: 'live' | 'featured'
   category: string
@@ -47,9 +50,12 @@ export default function AdminProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    long_description: '',
     price: '',
+    compare_at_price: '',
     stock: '',
     image_url: '',
+    detail_images: ['', '', '', ''], // 상세 이미지 4장
     category: 'lifestyle',
     product_type: 'featured' as 'live' | 'featured'
   })
@@ -99,9 +105,12 @@ export default function AdminProductsPage() {
       const payload = {
         name: formData.name,
         description: formData.description,
+        long_description: formData.long_description || undefined,
         price: Number(formData.price),
+        compare_at_price: formData.compare_at_price ? Number(formData.compare_at_price) : undefined,
         stock: Number(formData.stock),
         image_url: formData.image_url,
+        detail_images: JSON.stringify(formData.detail_images.filter(url => url.trim() !== '')),
         category: formData.category,
         product_type: formData.product_type,
         is_active: 1
@@ -175,12 +184,29 @@ export default function AdminProductsPage() {
 
   function handleEdit(product: Product) {
     setEditingProduct(product)
+    
+    // Parse detail_images if it's a JSON string
+    let detailImagesArray = ['', '', '', '']
+    if (product.detail_images) {
+      try {
+        const parsed = typeof product.detail_images === 'string' 
+          ? JSON.parse(product.detail_images) 
+          : product.detail_images
+        detailImagesArray = [...parsed, '', '', '', ''].slice(0, 4)
+      } catch (e) {
+        console.error('Failed to parse detail_images:', e)
+      }
+    }
+    
     setFormData({
       name: product.name,
       description: product.description,
+      long_description: product.long_description || '',
       price: product.price.toString(),
+      compare_at_price: product.compare_at_price?.toString() || '',
       stock: product.stock.toString(),
       image_url: product.image_url,
+      detail_images: detailImagesArray,
       category: product.category,
       product_type: product.product_type
     })
@@ -191,9 +217,12 @@ export default function AdminProductsPage() {
     setFormData({
       name: '',
       description: '',
+      long_description: '',
       price: '',
+      compare_at_price: '',
       stock: '',
       image_url: '',
+      detail_images: ['', '', '', ''],
       category: 'lifestyle',
       product_type: 'featured'
     })
@@ -416,19 +445,47 @@ export default function AdminProductsPage() {
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상품 설명
+                    짧은 설명 <span className="text-gray-400">(상품 카드에 표시)</span>
                   </label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
                     rows={3}
+                    placeholder="예: Premium noise-cancelling headphones with 30-hour battery life."
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
 
-                {/* Price & Stock */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Long Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    상세 설명 <span className="text-gray-400">(상품 상세 페이지 하단에 표시)</span>
+                  </label>
+                  <textarea
+                    name="long_description"
+                    value={formData.long_description}
+                    onChange={handleChange}
+                    rows={10}
+                    placeholder="상품의 자세한 특징, 사양, 패키지 구성, 사용 방법 등을 작성하세요.
+
+예시:
+최고급 노이즈 캔슬링 헤드폰으로 완벽한 몰입감을 선사합니다.
+
+【주요 특징】
+✓ 액티브 노이즈 캔슬링 (ANC) 기술
+✓ 30시간 초장시간 배터리
+✓ 고해상도 40mm 드라이버
+..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    💡 Tip: 줄바꿈은 그대로 표시됩니다. 특수문자(✓, 【】, ■ 등)를 활용하면 더 보기 좋습니다.
+                  </p>
+                </div>
+
+                {/* Price & Compare Price & Stock */}
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       판매가격 <span className="text-red-500">*</span>
@@ -440,6 +497,22 @@ export default function AdminProductsPage() {
                       onChange={handleChange}
                       required
                       min="0"
+                      placeholder="89000"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      정가 <span className="text-gray-400">(할인 전)</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="compare_at_price"
+                      value={formData.compare_at_price}
+                      onChange={handleChange}
+                      min="0"
+                      placeholder="149000"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -455,6 +528,7 @@ export default function AdminProductsPage() {
                       onChange={handleChange}
                       required
                       min="0"
+                      placeholder="50"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -463,7 +537,7 @@ export default function AdminProductsPage() {
                 {/* Image Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상품 이미지 <span className="text-gray-400">(선택사항)</span>
+                    대표 이미지 <span className="text-gray-400">(썸네일)</span>
                   </label>
                   <ImageUpload
                     value={formData.image_url}
@@ -471,6 +545,47 @@ export default function AdminProductsPage() {
                     label=""
                     maxSizeKB={800}
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    또는 이미지 URL을 직접 입력:
+                  </p>
+                  <input
+                    type="url"
+                    name="image_url"
+                    value={formData.image_url}
+                    onChange={handleChange}
+                    placeholder="https://images.unsplash.com/photo-..."
+                    className="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+
+                {/* Detail Images */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    상세 이미지 (4장) <span className="text-gray-400">(상품 상세 페이지에 표시)</span>
+                  </label>
+                  <div className="space-y-3">
+                    {formData.detail_images.map((url, index) => (
+                      <div key={index}>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          상세 이미지 {index + 1}
+                        </label>
+                        <input
+                          type="url"
+                          value={url}
+                          onChange={(e) => {
+                            const newDetailImages = [...formData.detail_images]
+                            newDetailImages[index] = e.target.value
+                            setFormData({ ...formData, detail_images: newDetailImages })
+                          }}
+                          placeholder={`https://images.unsplash.com/photo-...?w=1200 (${index === 0 ? '제품 전체샷' : index === 1 ? '제품 상세샷' : index === 2 ? '제품 특징' : '패키지 구성'})`}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    💡 Tip: Unsplash에서 `?w=1200` 파라미터를 추가하면 최적 크기로 로드됩니다.
+                  </p>
                 </div>
 
                 {/* Category */}
