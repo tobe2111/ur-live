@@ -103,6 +103,7 @@ app.use('*', async (c, next) => {
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebase.google.com https://*.firebaseio.com https://*.firebasedatabase.app " +
+      "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app " +
       "https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://www.youtube.com https://youtube.com https://s.ytimg.com " +
@@ -114,6 +115,7 @@ app.use('*', async (c, next) => {
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebase.google.com https://*.firebaseio.com https://*.firebasedatabase.app " +
+      "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app " +
       "https://apis.google.com https://*.googleapis.com " +
       "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
       "https://www.youtube.com https://youtube.com https://s.ytimg.com " +
@@ -123,7 +125,9 @@ app.use('*', async (c, next) => {
     "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; " +
     "img-src 'self' 'unsafe-inline' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-    "connect-src 'self' https: wss:; " +
+    "connect-src 'self' https: wss: " +
+      "wss://*.firebasedatabase.app " +
+      "wss://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app; " +
     "frame-src 'self' " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
