@@ -213,12 +213,12 @@ adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
       executeQuery<any>(DB, 'SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
       executeQuery<any>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
     ]);
-    return c.json({ success: true, data: { stats: {
+    return c.json({ success: true, data: {
       todaySales: sales[0]?.total || 0,
       todayOrders: orders[0]?.count || 0,
       currentVisitors: Math.floor(Math.random() * 100) + 50,
       liveStreams: live[0]?.count || 0,
-    }}});
+    }});
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }

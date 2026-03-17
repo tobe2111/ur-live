@@ -134,16 +134,8 @@ export default function AdminPage() {
       // Note: Authorization header will be added automatically by the API interceptor
       const response = await api.get('/api/admin/dashboard/stats')
       
-      if (response.data?.success && response.data?.stats) {
-        setDashboardStats(response.data.stats)
-      } else if (response.data) {
-        // API 응답이 다른 형식일 경우를 대비한 처리
-        setDashboardStats({
-          todaySales: response.data.todaySales || 0,
-          todayOrders: response.data.todayOrders || 0,
-          currentVisitors: response.data.currentVisitors || 0,
-          liveStreams: response.data.liveStreams || 0
-        })
+      if (response.data?.success && response.data?.data) {
+        setDashboardStats(response.data.data)
       }
     } catch (err: any) {
       console.error('Failed to load dashboard stats:', err)
