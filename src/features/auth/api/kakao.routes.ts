@@ -167,6 +167,60 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
 });
 
 /**
+ * POST /api/auth/kakao/firebase
+ * 카카오 Access Token으로 Firebase Custom Token 발급
+ * (프론트엔드가 이미 Kakao SDK로 로그인한 경우)
+ */
+kakaoRoutes.post('/firebase', cors(), async (c) => {
+  const { DB } = c.env;
+  
+  try {
+    const { accessToken } = await c.req.json();
+    
+    if (!accessToken) {
+      return c.json({ success: false, error: 'Access token is required' }, 400);
+    }
+    
+    console.log('[Kakao Firebase] Starting token exchange...');
+    
+    const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
+    const firebaseService = new FirebaseAuthService(c.env);
+    
+    const kakaoUser = await kakaoService.getUserInfo(accessToken);
+    const user = await kakaoService.upsertUser(kakaoUser);
+    
+    const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
+    const customToken = await firebaseService.createCustomToken(firebaseUID, {
+      role: 'user',
+      userId: user.id,
+      userName: user.name,
+      email: user.email,
+      kakaoId: kakaoUser.kakaoId
+    });
+    
+    await kakaoService.updateFirebaseUID(user.id, firebaseUID);
+    
+    console.log('[Kakao Firebase] ✅ Token exchange successful for user:', user.id);
+    
+    return c.json({
+      success: true,
+      customToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profile_image: user.profile_image
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Kakao Firebase] Error:', error);
+    const errorMsg = (error as Error).message || 'Unknown error';
+    return c.json({ success: false, error: errorMsg }, 500);
+  }
+});
+
+/**
  * GET /api/users/role
  * Get user role from Firebase Auth token
  */

@@ -18,32 +18,26 @@ const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 sellersRouter.get('/', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
-    const { page = '1', limit = '20', country } = c.req.query();
+    const { page = '1', limit = '20' } = c.req.query();
     const pageNum = parseInt(page, 10);
     const limitNum = Math.min(parseInt(limit, 10), 100);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions: string[] = ["status = 'ACTIVE'", "is_verified = 1"];
-    const params: unknown[] = [];
-    if (country) {
-      conditions.push('country = ?');
-      params.push(country);
-    }
-
-    const where = `WHERE ${conditions.join(' AND ')}`;
+    // ✅ 실제 sellers 테이블 스키마에 맞게 수정
+    const where = "WHERE status = 'approved' AND is_active = 1";
     const countRow = await qb.queryOne<{ count: number }>(
       `SELECT COUNT(*) as count FROM sellers ${where}`,
-      params
+      []
     );
 
     const rows = await qb.queryMany<Record<string, unknown>>(
-      `SELECT id, name, slug, description, logo_url, email,
-              base_shipping_fee, free_shipping_threshold,
-              country, currency, status, is_verified, created_at
+      `SELECT id, username, name, email, phone, 
+              business_name, business_number, 
+              status, is_active, created_at, updated_at
        FROM sellers ${where}
        ORDER BY name
        LIMIT ? OFFSET ?`,
-      [...params, limitNum, offset]
+      [limitNum, offset]
     );
 
     return c.json({
@@ -68,12 +62,13 @@ sellersRouter.get('/:id', async (c) => {
     const qb = new QueryBuilder(c.env.DB);
     const sellerId = c.req.param('id');
 
+    // ✅ 실제 sellers 테이블 스키마에 맞게 수정
     const seller = await qb.queryOne<Seller>(
-      `SELECT id, name, slug, description, logo_url, email, phone,
-              base_shipping_fee, free_shipping_threshold,
-              country, currency, timezone, status, is_verified,
-              created_at, updated_at
-       FROM sellers WHERE id = ? AND status = 'ACTIVE'`,
+      `SELECT id, username, name, email, phone,
+              business_name, business_number, bank_account,
+              status, is_active,
+              created_at, updated_at, approved_at
+       FROM sellers WHERE id = ? AND status = 'approved' AND is_active = 1`,
       [sellerId]
     );
 
