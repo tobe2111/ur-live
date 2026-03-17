@@ -19,7 +19,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { executeQuery } from '@/worker/utils/database';
+import { executeQuery, executeRun } from '@/worker/utils/database';
 
 type Bindings = {
   DB: D1Database;
@@ -180,6 +180,110 @@ adminManagementRoutes.get('/products', cors(), async (c) => {
     `);
     return c.json({ success: true, data: products });
   } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── DELETE /api/admin/products/:id ─────────────────────────────────────────
+adminManagementRoutes.delete('/products/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const productId = c.req.param('id');
+    
+    // Check if product exists
+    const product = await executeQuery<any>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
+    if (product.length === 0) {
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    }
+    
+    // Delete related order_items first (if any)
+    await executeRun(DB, 'DELETE FROM order_items WHERE product_id = ?', [productId]);
+    
+    // Delete the product
+    await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
+    
+    return c.json({ success: true, data: { id: productId } });
+  } catch (err) {
+    console.error('[Admin] delete product error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── POST /api/admin/products ───────────────────────────────────────────────
+adminManagementRoutes.post('/products', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json();
+    const { name, description, price, stock, image_url, category, product_type } = body;
+    
+    // Validation
+    if (!name || !price) {
+      return c.json({ success: false, error: '상품명과 가격은 필수입니다' }, 400);
+    }
+    
+    // Insert product (no seller_id for admin-created products)
+    const result = await executeRun(DB, `
+      INSERT INTO products (name, description, price, stock, image_url, category, product_type, is_active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+    `, [name, description || '', price, stock || 0, image_url || '', category || 'lifestyle', product_type || 'featured']);
+    
+    return c.json({ success: true, data: { id: result.meta.last_row_id, name, price } });
+  } catch (err) {
+    console.error('[Admin] create product error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── PUT /api/admin/products/:id ────────────────────────────────────────────
+adminManagementRoutes.put('/products/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const productId = c.req.param('id');
+    const body = await c.req.json();
+    const { name, description, price, stock, image_url, category, product_type } = body;
+    
+    // Check if product exists
+    const product = await executeQuery<any>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
+    if (product.length === 0) {
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    }
+    
+    // Update product
+    await executeRun(DB, `
+      UPDATE products 
+      SET name = ?, description = ?, price = ?, stock = ?, image_url = ?, 
+          category = ?, product_type = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `, [name, description || '', price, stock || 0, image_url || '', category || 'lifestyle', product_type || 'featured', productId]);
+    
+    return c.json({ success: true, data: { id: productId, name } });
+  } catch (err) {
+    console.error('[Admin] update product error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── PATCH /api/admin/products/:id ──────────────────────────────────────────
+adminManagementRoutes.patch('/products/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const productId = c.req.param('id');
+    const body = await c.req.json();
+    const { is_active } = body;
+    
+    // Check if product exists
+    const product = await executeQuery<any>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
+    if (product.length === 0) {
+      return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+    }
+    
+    // Update is_active status
+    const activeValue = is_active ? 1 : 0;
+    await executeRun(DB, `UPDATE products SET is_active = ?, updated_at = datetime('now') WHERE id = ?`, [activeValue, productId]);
+    
+    return c.json({ success: true, data: { id: productId, is_active: activeValue } });
+  } catch (err) {
+    console.error('[Admin] patch product error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
