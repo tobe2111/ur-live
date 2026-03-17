@@ -22,7 +22,7 @@ export function ProductDetailPage() {
     enabled: !!id,
   });
 
-  const product = data?.data;
+  const product = data?.success ? data.data : null;
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -67,10 +67,15 @@ export function ProductDetailPage() {
   }
 
   if (error || !product) {
+    console.error('[ProductDetailPage] Error:', error);
+    console.error('[ProductDetailPage] Data:', data);
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
-        <p className="text-gray-500">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate(-1)} className="btn-secondary mt-4">뒤로 가기</button>
+        <p className="text-red-600 font-semibold mb-2">상품을 찾을 수 없습니다</p>
+        {data && !data.success && (
+          <p className="text-sm text-gray-500 mb-4">오류: {data.error || '알 수 없는 오류'}</p>
+        )}
+        <button onClick={() => navigate('/')} className="btn-primary">홈으로 돌아가기</button>
       </div>
     );
   }

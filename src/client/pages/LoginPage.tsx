@@ -19,7 +19,16 @@ export function LoginPage() {
   const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '';
   const REDIRECT_URI = `${window.location.origin}/auth/kakao/callback`;
 
+  // 디버깅: 환경 변수 확인
+  useEffect(() => {
+    console.log('[LoginPage] KAKAO_REST_API_KEY:', KAKAO_REST_API_KEY ? '설정됨' : '비어있음');
+  }, [KAKAO_REST_API_KEY]);
+
   const handleKakaoLogin = () => {
+    if (!KAKAO_REST_API_KEY) {
+      alert('카카오 로그인이 설정되지 않았습니다. 관리자에게 문의하세요.');
+      return;
+    }
     const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
     window.location.href = kakaoAuthUrl;
   };
@@ -119,9 +128,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={handleKakaoLogin}
-            disabled={!KAKAO_REST_API_KEY}
-            className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!KAKAO_REST_API_KEY ? '카카오 로그인이 비활성화되어 있습니다' : ''}
+            className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-medium rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
