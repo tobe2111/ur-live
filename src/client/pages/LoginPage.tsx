@@ -44,7 +44,9 @@ export function LoginPage() {
 
   const handleKakaoLogin = (e: React.MouseEvent) => {
     e.preventDefault();
-    console.log('[LoginPage] 🚀 카카오 로그인 시작');
+    e.stopPropagation();
+    console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!');
+    console.log('[LoginPage] 🔑 API Key:', KAKAO_REST_API_KEY ? '✅ 있음' : '❌ 없음');
     
     if (!KAKAO_REST_API_KEY) {
       console.error('[LoginPage] ❌ 카카오 REST API Key 없음');
@@ -199,7 +201,13 @@ export function LoginPage() {
           <button
             type="button"
             onClick={handleKakaoLogin}
-            className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow mb-4"
+            className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow mb-4 cursor-pointer"
+            style={{ 
+              WebkitTapHighlightColor: 'transparent',
+              pointerEvents: 'auto',
+              position: 'relative',
+              zIndex: 10
+            }}
           >
             <svg 
               width="20" 
@@ -207,10 +215,11 @@ export function LoginPage() {
               viewBox="0 0 24 24" 
               fill="currentColor"
               className="flex-shrink-0"
+              style={{ pointerEvents: 'none' }}
             >
               <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
             </svg>
-            <span className="text-base">카카오 로그인</span>
+            <span className="text-base" style={{ pointerEvents: 'none' }}>카카오 로그인</span>
           </button>
 
           {/* Divider */}
