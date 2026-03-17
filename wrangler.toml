@@ -50,21 +50,51 @@ FRONTEND_URL = "http://localhost:5173"
 REGION = "KR"
 
 # ============================================================
-# Production Secrets — set via Cloudflare dashboard or:
-#   wrangler secret put TOSS_SECRET_KEY
-#   wrangler secret put TOSS_WEBHOOK_SECRET
-#   wrangler secret put JWT_SECRET
-#   wrangler secret put FIREBASE_PROJECT_ID
-#   wrangler secret put FIREBASE_PRIVATE_KEY
-#   wrangler secret put FIREBASE_CLIENT_EMAIL
-#   wrangler secret put FIREBASE_DATABASE_URL
-#   wrangler secret put KAKAO_REST_API_KEY
-#   wrangler secret put YOUTUBE_CLIENT_ID
-#   wrangler secret put YOUTUBE_CLIENT_SECRET
-#   wrangler secret put VAPID_PUBLIC_KEY
-#   wrangler secret put VAPID_PRIVATE_KEY
-#   wrangler secret put DISCORD_WEBHOOK_URL
-#   wrangler secret put SENTRY_DSN
+# Production Secrets — NEVER add actual secrets here!
+# ============================================================
+# ⚠️ SECURITY WARNING:
+# - wrangler.toml is committed to Git
+# - NEVER put real secrets in [vars] section
+# - Use wrangler CLI to add secrets securely:
+#
+# HOW TO ADD SECRETS:
+# 1. Use wrangler CLI (encrypts and stores in Cloudflare):
+#    wrangler secret put SECRET_NAME
+#    (Then enter the secret value when prompted)
+#
+# 2. Or use Cloudflare Dashboard:
+#    Workers & Pages → Your Worker → Settings → Variables → Encrypt
+#
+# REQUIRED SECRETS (must be added via wrangler secret put):
+#   wrangler secret put TOSS_SECRET_KEY             # Toss Payments secret key (sk_test_... or sk_live_...)
+#   wrangler secret put JWT_SECRET                  # JWT signing secret (min 32 chars, generate with: openssl rand -hex 32)
+#   wrangler secret put FIREBASE_PROJECT_ID         # Firebase project ID
+#   wrangler secret put FIREBASE_PRIVATE_KEY        # Firebase Admin SDK private key (PEM format)
+#   wrangler secret put FIREBASE_CLIENT_EMAIL       # Firebase Admin SDK service account email
+#   wrangler secret put FIREBASE_DATABASE_URL       # Firebase Realtime Database URL
+#   wrangler secret put KAKAO_REST_API_KEY          # Kakao OAuth REST API key
+#   wrangler secret put ADMIN_EMAIL                 # Admin login email
+#   wrangler secret put ADMIN_PASSWORD              # Admin login password
+#   wrangler secret put SELLER_EMAIL                # Seller login email
+#   wrangler secret put SELLER_PASSWORD             # Seller login password
+#
+# OPTIONAL SECRETS (add if using these features):
+#   wrangler secret put TOSS_WEBHOOK_SECRET         # Toss webhook validation secret
+#   wrangler secret put YOUTUBE_CLIENT_ID           # YouTube OAuth client ID
+#   wrangler secret put YOUTUBE_CLIENT_SECRET       # YouTube OAuth client secret
+#   wrangler secret put YOUTUBE_API_KEY             # YouTube Data API key
+#   wrangler secret put ALIMTALK_API_KEY            # Alimtalk API key
+#   wrangler secret put ALIMTALK_SENDER_KEY         # Alimtalk sender key
+#   wrangler secret put VAPID_PUBLIC_KEY            # Web Push VAPID public key
+#   wrangler secret put VAPID_PRIVATE_KEY           # Web Push VAPID private key
+#   wrangler secret put DISCORD_WEBHOOK_URL         # Discord notification webhook
+#   wrangler secret put SENTRY_DSN                  # Sentry error tracking DSN
+#
+# VERIFY SECRETS:
+#   wrangler secret list                            # List all configured secrets
+#   wrangler secret delete SECRET_NAME              # Delete a secret
+#
+# See SECRET_MANAGEMENT.md for detailed security guidelines
 # ============================================================
 
 # ============================================================

@@ -19,7 +19,10 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // 환경 변수에서 Kakao REST API Key 가져오기
-  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd';
+  const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY;
+  if (!KAKAO_REST_API_KEY) {
+    console.error('[LoginPage] ⚠️ VITE_KAKAO_REST_API_KEY is not set in environment variables');
+  }
   const REDIRECT_URI = `${window.location.origin}/auth/kakao/sync/callback`;
 
   // 카카오 로그인 콜백 처리

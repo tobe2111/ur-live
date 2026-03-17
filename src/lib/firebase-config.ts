@@ -1,19 +1,29 @@
 // Firebase Configuration for Frontend - Lazy Loading Optimized
-// Updated: 2026-03-09
+// Updated: 2026-03-17 - Moved to environment variables for security
 
 import type { FirebaseApp } from 'firebase/app'
 import type { Database } from 'firebase/database'
 import type { Auth } from 'firebase/auth'
 
-// Firebase configuration from environment
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCxmgG3NEXsWtHKbE425dvq5EWs3WHXOh8",
-  authDomain: "urteam-live-commerce-5b284.firebaseapp.com",
-  databaseURL: "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "urteam-live-commerce-5b284",
-  storageBucket: "urteam-live-commerce-5b284.firebasestorage.app",
-  messagingSenderId: "352937066044",
-  appId: "1:352937066044:web:e5bfd5e1d8f61688e30d39"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+}
+
+// Validate Firebase configuration
+const missingVars = Object.entries(firebaseConfig)
+  .filter(([_, value]) => !value)
+  .map(([key]) => `VITE_FIREBASE_${key.toUpperCase().replace(/([A-Z])/g, '_$1')}`);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing Firebase environment variables:', missingVars.join(', '));
+  console.error('⚠️ Firebase will not work properly without these variables');
 }
 
 // Lazy-initialized instances (null until first use)
