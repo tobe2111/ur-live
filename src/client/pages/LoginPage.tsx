@@ -46,18 +46,29 @@ export function LoginPage() {
     console.log('[LoginPage] 📍 REDIRECT_URI:', REDIRECT_URI);
   }, [KAKAO_REST_API_KEY, REDIRECT_URI]);
 
-  const handleKakaoLogin = () => {
+  const handleKakaoLogin = (e: React.MouseEvent) => {
+    e.preventDefault();
     console.log('[LoginPage] 🚀 카카오 로그인 시작');
+    console.log('[LoginPage] 🔑 API Key:', KAKAO_REST_API_KEY);
+    console.log('[LoginPage] 📍 Redirect URI:', REDIRECT_URI);
     
-    if (!KAKAO_REST_API_KEY || KAKAO_REST_API_KEY.length < 10) {
+    if (!KAKAO_REST_API_KEY) {
       console.error('[LoginPage] ❌ 카카오 REST API Key 없음');
-      alert('카카오 로그인 설정이 올바르지 않습니다.\n관리자에게 문의하세요.');
+      setError('카카오 로그인 설정이 올바르지 않습니다.');
       return;
     }
 
-    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
-    console.log('[LoginPage] 🔗 Redirect URL:', kakaoAuthUrl);
+    // State 파라미터로 returnUrl 전달
+    const returnUrl = searchParams.get('returnUrl') || '/';
+    const state = encodeURIComponent(returnUrl);
     
+    const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?` +
+      `client_id=${KAKAO_REST_API_KEY}` +
+      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+      `&response_type=code` +
+      `&state=${state}`;
+    
+    console.log('[LoginPage] 🔗 Redirecting to:', kakaoAuthUrl);
     window.location.href = kakaoAuthUrl;
   };
 
@@ -152,16 +163,24 @@ export function LoginPage() {
             </div>
           </div>
 
-          {/* 카카오 로그인 버튼 */}
+          {/* 카카오 로그인 버튼 - 재구현 */}
           <button
             type="button"
             onClick={handleKakaoLogin}
-            className="w-full py-3 px-4 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FCCA03] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow-md border border-[#F7E600]"
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
-            <svg className="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            {/* Kakao 아이콘 */}
+            <svg 
+              width="20" 
+              height="20" 
+              viewBox="0 0 24 24" 
+              fill="currentColor"
+              className="flex-shrink-0"
+            >
               <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
             </svg>
-            <span className="text-base">카카오 로그인</span>
+            <span className="text-base font-medium">카카오 로그인</span>
           </button>
 
           <p className="text-center text-sm text-gray-500 mt-4">
