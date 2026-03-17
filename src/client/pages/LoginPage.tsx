@@ -206,6 +206,7 @@ export function LoginPage() {
           <div className="relative z-30 mb-4 kakao-login-btn-force-clickable" style={{ pointerEvents: 'auto' }}>
             <button
               type="button"
+              disabled={false}
               onClick={handleKakaoLogin}
               style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               className="kakao-login-btn-force-clickable w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow relative z-10"

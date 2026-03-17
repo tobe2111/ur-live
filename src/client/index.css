@@ -42,7 +42,11 @@
   }
 
   /* 🔥 CRITICAL FIX: Force enable pointer events on Kakao button */
-  .kakao-login-btn-force-clickable {
+  .kakao-login-btn-force-clickable,
+  .kakao-login-btn-force-clickable:disabled,
+  .kakao-login-btn-force-clickable:hover,
+  .kakao-login-btn-force-clickable:focus,
+  .kakao-login-btn-force-clickable:active {
     pointer-events: auto !important;
     cursor: pointer !important;
   }
