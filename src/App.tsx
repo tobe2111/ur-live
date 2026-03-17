@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
@@ -8,6 +8,12 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
+
+// Redirect component for old product URL
+function ProductRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/products/${id}`} replace />;
+}
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
 
@@ -196,7 +202,9 @@ function AppContent() {
             <Route path="/shortform" element={<ShortFormPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
-            <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
+            {/* Redirect old single product URL to plural */}
+            <Route path="/product/:id" element={<ProductRedirect />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/search" element={<SearchPage />} />
             
