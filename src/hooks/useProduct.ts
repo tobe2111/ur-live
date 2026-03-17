@@ -43,7 +43,8 @@ export function useProduct(productId: string | undefined) {
     queryFn: async () => {
       if (!productId) throw new Error('Product ID is required')
       const response = await api.get(`/api/products/${productId}`)
-      return response.data.data.product as Product
+      // ✅ API 응답: {success: true, data: {...product}}
+      return response.data.data as Product
     },
     enabled: !!productId, // productId가 있을 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 캐시
