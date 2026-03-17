@@ -16,7 +16,8 @@ export function HomePage() {
     queryFn: () => api.get<ApiResponse<PaginatedResponse<Product>>>('/products?limit=8&status=ACTIVE'),
   });
 
-  const products = data?.data?.items ?? [];
+  // API returns { success: true, data: [...], pagination: {...} }
+  const products = data?.data ?? [];
   const addItem = useCartStore(s => s.addItem);
   const setSellerInfo = useCartStore(s => s.setSellerInfo);
 

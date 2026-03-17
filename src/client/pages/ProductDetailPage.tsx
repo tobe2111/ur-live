@@ -37,7 +37,16 @@ export function ProductDetailPage() {
       hasData: !!data,
       dataSuccess: data?.success,
       hasProduct: !!product,
+      rawData: data,
     });
+    
+    if (data && !data.success) {
+      console.error('[ProductDetail] ❌ API returned success=false:', data);
+    }
+    
+    if (error) {
+      console.error('[ProductDetail] ❌ Query error:', error);
+    }
   }, [id, isLoading, error, data, product]);
 
   const handleAddToCart = () => {
