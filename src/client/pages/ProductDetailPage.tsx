@@ -105,6 +105,13 @@ export function ProductDetailPage() {
     );
   }
 
+  // Parse detail images
+  const detailImages = product.detail_images 
+    ? (typeof product.detail_images === 'string' 
+        ? JSON.parse(product.detail_images) 
+        : product.detail_images)
+    : [];
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <button
@@ -189,6 +196,35 @@ export function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Detail Images Section */}
+      {detailImages.length > 0 && (
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">상품 상세 정보</h2>
+          <div className="space-y-4">
+            {detailImages.map((imageUrl: string, index: number) => (
+              <div key={index} className="w-full bg-gray-50 rounded-xl overflow-hidden">
+                <img 
+                  src={imageUrl} 
+                  alt={`${product.name} 상세 이미지 ${index + 1}`}
+                  className="w-full h-auto object-contain"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Additional Product Info */}
+      {product.long_description && (
+        <div className="mt-12 border-t pt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">상품 설명</h2>
+          <div className="prose prose-sm max-w-none text-gray-700">
+            <p className="whitespace-pre-line">{product.long_description}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

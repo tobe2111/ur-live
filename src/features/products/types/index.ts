@@ -5,12 +5,18 @@
 export interface Product {
   id: number;
   seller_id: number;
+  seller_name?: string;
+  seller_slug?: string;
   name: string;
   description?: string;
+  long_description?: string; // Detailed product description
   price: number;
+  compare_at_price?: number; // Original price before discount
   stock_quantity: number;
   category?: string;
+  thumbnail_url?: string; // Main product image
   images?: string; // JSON string
+  detail_images?: string | string[]; // JSON array or parsed array of detail image URLs
   status: 'active' | 'inactive' | 'deleted';
   created_at: string;
   updated_at: string;
