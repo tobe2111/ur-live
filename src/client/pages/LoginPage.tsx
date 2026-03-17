@@ -17,7 +17,28 @@ export function LoginPage() {
 
   // 환경 변수에서 Kakao REST API Key 가져오기
   const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY || '5dd74bccb797640b0efd070467f3bafd';
-  const REDIRECT_URI = `${window.location.origin}/auth/kakao/callback`;
+  const REDIRECT_URI = `${window.location.origin}/auth/kakao/sync/callback`;
+
+  // 카카오 로그인 콜백 처리
+  useEffect(() => {
+    const firebaseToken = searchParams.get('firebase_token');
+    const userName = searchParams.get('userName');
+    const errorParam = searchParams.get('error');
+    
+    if (errorParam) {
+      const detail = searchParams.get('detail');
+      setError(`카카오 로그인 실패: ${detail || errorParam}`);
+      console.error('[LoginPage] ❌ Kakao OAuth error:', errorParam, detail);
+      return;
+    }
+    
+    if (firebaseToken && userName) {
+      console.log('[LoginPage] ✅ Received Firebase token from Kakao OAuth');
+      // TODO: Sign in with Firebase custom token and save user info
+      // For now, just navigate to home
+      navigate('/', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // 디버깅: 환경 변수 확인
   useEffect(() => {
