@@ -120,14 +120,14 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
       {/* Left Side - Brand & Image */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden shrink-0">
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
         </div>
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+        <div className="relative z-10 flex flex-col justify-center px-16 text-white pointer-events-none">
           <h1 className="text-5xl font-bold mb-6">
             글로벌 마켓플레이스
           </h1>
@@ -152,8 +152,8 @@ export function LoginPage() {
       </div>
 
       {/* Right Side - Login/Register Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
+        <div className="w-full max-w-md relative z-20">
           {/* Logo for mobile */}
           <div className="lg:hidden text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900">글로벌 마켓플레이스</h1>
@@ -161,7 +161,7 @@ export function LoginPage() {
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-lg">
+          <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-lg relative z-10">
             <button
               onClick={() => {
                 setMode('login');
@@ -190,37 +190,35 @@ export function LoginPage() {
             </button>
           </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
+          {/* Error Message - Fixed Height to prevent layout shift */}
+          <div className="min-h-[20px] mb-6">
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+          </div>
 
           {/* Kakao Login Button */}
-          <button
-            type="button"
-            onClick={handleKakaoLogin}
-            className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow mb-4 cursor-pointer"
-            style={{ 
-              WebkitTapHighlightColor: 'transparent',
-              pointerEvents: 'auto',
-              position: 'relative',
-              zIndex: 10
-            }}
-          >
-            <svg 
-              width="20" 
-              height="20" 
-              viewBox="0 0 24 24" 
-              fill="currentColor"
-              className="flex-shrink-0"
-              style={{ pointerEvents: 'none' }}
+          <div className="relative z-20 mb-4">
+            <button
+              type="button"
+              onClick={handleKakaoLogin}
+              className="w-full py-4 px-6 bg-[#FEE500] hover:bg-[#FDD835] active:bg-[#FDD700] text-[#191919] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-3 shadow-sm hover:shadow cursor-pointer"
             >
-              <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
-            </svg>
-            <span className="text-base" style={{ pointerEvents: 'none' }}>카카오 로그인</span>
-          </button>
+              <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="currentColor"
+                className="flex-shrink-0 pointer-events-none"
+              >
+                <path d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.82 4.92 4.513 6.237-.196.712-.642 2.359-.735 2.738-.11.448.164.442.345.321.145-.097 2.32-1.549 3.214-2.146.553.076 1.121.116 1.697.116 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"/>
+              </svg>
+              <span className="text-base pointer-events-none">카카오 로그인</span>
+            </button>
+          </div>
 
           {/* Divider */}
           <div className="relative my-8">
