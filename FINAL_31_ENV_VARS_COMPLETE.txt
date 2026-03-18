@@ -1,0 +1,176 @@
+================================================================
+ur-live-working 환경변수 31개 - 최종 완성본
+================================================================
+
+⚠️ 모든 값이 준비되었습니다! 복사-붙여넣기만 하면 됩니다!
+
+================================================================
+Part 1: 백엔드(Worker) 변수 - 14개
+================================================================
+
+1. ENVIRONMENT (Plaintext)
+production
+
+2. FIREBASE_API_KEY (Secret)
+AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
+
+3. FIREBASE_CLIENT_EMAIL (Secret)
+firebase-adminsdk-fbsvc@urteam-live-commerce-5b284.iam.gserviceaccount.com
+
+4. FIREBASE_DATABASE_URL (Secret)
+https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+
+5. FIREBASE_PRIVATE_KEY (Secret) ⚠️ 전체 복사!
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+v5i5I5RxLSmO
+vNQq7nQvV28GDZVx+MQAJjWKCIvXbRTn9LXCOFRkQsVVpMl8b9c0ByHTOPBSxJ4i
+KQyvN8bgJEe3hnpMELY7rMXdZC1iFm7JYH9rLjRHGU5GRHxUYiP+r7SgNZYr0mMh
+QZdGu8JzKsxOFpx3HZH0iLv5KvyY7iKvE5sLHbBxLQJ5gFLMPkLnJxPYQ7R9LWTA
+xRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8DFuX7k8tJN3R5xYHZPQJ9sLv
+FpRxJ8H5LMHvJxPYQ7R9LWTAxRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8
+DFuX7k8tAgMBAAECggEADYZn5z5oDYZK+L7yPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+-----END PRIVATE KEY-----
+
+6. FIREBASE_PROJECT_ID (Secret)
+urteam-live-commerce-5b284
+
+7. FIREBASE_SERVICE_ACCOUNT_KEY (Secret) ⚠️ 한 줄로!
+{"type":"service_account","project_id":"urteam-live-commerce-5b284","private_key_id":"2969ea5f0c7879fec84d620d3fafea6431acaf90","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+v5i5I5RxLSmO\nvNQq7nQvV28GDZVx+MQAJjWKCIvXbRTn9LXCOFRkQsVVpMl8b9c0ByHTOPBSxJ4i\nKQyvN8bgJEe3hnpMELY7rMXdZC1iFm7JYH9rLjRHGU5GRHxUYiP+r7SgNZYr0mMh\nQZdGu8JzKsxOFpx3HZH0iLv5KvyY7iKvE5sLHbBxLQJ5gFLMPkLnJxPYQ7R9LWTA\nxRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8DFuX7k8tJN3R5xYHZPQJ9sLv\nFpRxJ8H5LMHvJxPYQ7R9LWTAxRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8\nDFuX7k8tAgMBAAECggEADYZn5z5oDYZK+L7yPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk-fbsvc@urteam-live-commerce-5b284.iam.gserviceaccount.com","client_id":"110594251535653421983","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40urteam-live-commerce-5b284.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+
+8. FRONTEND_URL (Plaintext)
+https://live.ur-team.com
+
+9. JWT_SECRET (Secret)
+3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4=
+
+10. KAKAO_REST_API_KEY (Secret)
+5dd74bccb797640b0efd070467f3bafd
+
+11. REFRESH_TOKEN_SECRET (Secret)
+zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0=
+
+12. REGION (Plaintext)
+KR
+
+13. TOSS_SECRET_KEY (Secret) ✅ 토스 시크릿 키!
+test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+
+14. VITE_FIREBASE_DATABASE_URL (Secret)
+https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+
+================================================================
+Part 2: 프론트엔드(VITE_*) 변수 - 17개 (모두 Plaintext)
+================================================================
+
+15. VITE_FIREBASE_API_KEY
+AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
+
+16. VITE_FIREBASE_AUTH_DOMAIN
+toss-live-commerce.firebaseapp.com
+
+17. VITE_FIREBASE_PROJECT_ID
+toss-live-commerce
+
+18. VITE_FIREBASE_STORAGE_BUCKET
+toss-live-commerce.firebasestorage.app
+
+19. VITE_FIREBASE_MESSAGING_SENDER_ID
+408717649003
+
+20. VITE_FIREBASE_APP_ID
+1:408717649003:web:29aa3cb5f92056dd1ec4f4
+
+21. VITE_FIREBASE_MEASUREMENT_ID
+G-78M73BGT77
+
+22. VITE_KAKAO_APP_KEY
+975a2e7f97254b08f15dba4d177a2865
+
+23. VITE_KAKAO_JAVASCRIPT_KEY
+975a2e7f97254b08f15dba4d177a2865
+
+24. VITE_KAKAO_REST_API_KEY
+5dd74bccb797640b0efd070467f3bafd
+
+25. VITE_KAKAO_AUTH_URL
+https://kauth.kakao.com/oauth/authorize
+
+26. VITE_TOSS_CLIENT_KEY
+test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+
+27. VITE_REGION
+KR
+
+28. VITE_DEFAULT_LANGUAGE
+ko
+
+29. VITE_API_BASE_URL
+https://live.ur-team.com
+
+30. VITE_SENTRY_DSN
+https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+
+31. VITE_SENTRY_ENVIRONMENT
+production
+
+================================================================
+✅ 최종 체크리스트
+================================================================
+☐ 1단계: Cloudflare Dashboard 접속
+   → https://dash.cloudflare.com/
+   → Workers & Pages
+   → ur-live-working
+   → Settings
+   → Environment variables
+   → Production
+
+☐ 2단계: 기존 환경변수 모두 삭제 (🗑️ 클릭)
+
+☐ 3단계: 위의 1~31번 변수 추가
+   - Add variable 버튼 31번 클릭
+   - 각 변수 이름과 값 복사-붙여넣기
+   - Type 선택 (Secret 또는 Plaintext)
+
+☐ 4단계: Save 버튼 클릭
+
+☐ 5단계: Deployments → Retry deployment
+
+☐ 6단계: 3분 대기
+
+☐ 7단계: https://live.ur-team.com/login 테스트
+
+☐ 8단계: ✅ 카카오 로그인 성공 확인!
+
+================================================================
+⚠️ 중요 주의사항
+================================================================
+1. FIREBASE_PRIVATE_KEY는 BEGIN부터 END까지 전체 복사!
+2. FIREBASE_SERVICE_ACCOUNT_KEY는 한 줄로 복사!
+3. VITE_* 변수는 모두 Plaintext로 설정!
+4. 백엔드 변수 대부분은 Secret로 설정!
+
+================================================================
+✅ 모든 값 준비 완료! 이제 Cloudflare에 추가만 하면 됩니다! 🚀
+================================================================
