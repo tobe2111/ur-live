@@ -1,0 +1,166 @@
+# ==========================================
+# Cloudflare 환경변수 - ur-live 프로젝트용
+# 완전 자동화 설정 스크립트
+# ==========================================
+
+# 이 파일을 사용하는 방법:
+# 1. Cloudflare Dashboard 접속
+# 2. Workers & Pages → ur-live (tobe2111/ur-live)
+# 3. Settings → Environment variables → Production (Current)
+# 4. 아래 변수들을 하나씩 추가
+
+# ==========================================
+# FRONTEND 변수 (17개) - Type: Plaintext
+# ==========================================
+
+# --- Firebase (8개) ---
+Variable Name: VITE_FIREBASE_API_KEY
+Type: Plaintext
+Value: AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+
+Variable Name: VITE_FIREBASE_AUTH_DOMAIN
+Type: Plaintext
+Value: urteam-live-commerce.firebaseapp.com
+
+Variable Name: VITE_FIREBASE_DATABASE_URL
+Type: Plaintext
+Value: https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+
+Variable Name: VITE_FIREBASE_PROJECT_ID
+Type: Plaintext
+Value: urteam-live-commerce
+
+Variable Name: VITE_FIREBASE_STORAGE_BUCKET
+Type: Plaintext
+Value: urteam-live-commerce.firebasestorage.app
+
+Variable Name: VITE_FIREBASE_MESSAGING_SENDER_ID
+Type: Plaintext
+Value: 1098157020294
+
+Variable Name: VITE_FIREBASE_APP_ID
+Type: Plaintext
+Value: 1:1098157020294:web:5f527d8e3e9f941cedad07
+
+Variable Name: VITE_FIREBASE_MEASUREMENT_ID
+Type: Plaintext
+Value: G-B1ST2L37CM
+
+# --- Kakao (4개) ---
+Variable Name: VITE_KAKAO_APP_KEY
+Type: Plaintext
+Value: 975a2e7f97254b08f15dba4d177a2865
+
+Variable Name: VITE_KAKAO_JAVASCRIPT_KEY
+Type: Plaintext
+Value: 975a2e7f97254b08f15dba4d177a2865
+
+Variable Name: VITE_KAKAO_REST_API_KEY
+Type: Plaintext
+Value: 5dd74bccb797640b0efd070467f3bafd
+
+Variable Name: VITE_KAKAO_AUTH_URL
+Type: Plaintext
+Value: https://kauth.kakao.com/oauth/authorize
+
+# --- Toss (1개) ---
+Variable Name: VITE_TOSS_CLIENT_KEY
+Type: Plaintext
+Value: test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+
+# --- 기타 (4개) ---
+Variable Name: VITE_REGION
+Type: Plaintext
+Value: KR
+
+Variable Name: VITE_DEFAULT_LANGUAGE
+Type: Plaintext
+Value: ko
+
+Variable Name: VITE_API_BASE_URL
+Type: Plaintext
+Value: https://live.ur-team.com
+
+Variable Name: VITE_SENTRY_DSN
+Type: Plaintext
+Value: https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+
+Variable Name: VITE_SENTRY_ENVIRONMENT
+Type: Plaintext
+Value: production
+
+# ==========================================
+# BACKEND 변수 (14개) - Type: Secret
+# ==========================================
+
+# --- Firebase Admin (3개) ---
+Variable Name: FIREBASE_API_KEY
+Type: Secret
+Value: AIzaSyA8Lsr6o9gRjMARI-mWaFGrciRs9z2CH7s
+
+Variable Name: FIREBASE_PROJECT_ID
+Type: Secret
+Value: urteam-live-commerce
+
+Variable Name: FIREBASE_DATABASE_URL
+Type: Secret
+Value: https://urteam-live-commerce-default-rtdb.asia-southeast1.firebasedatabase.app
+
+# --- Service Account (3개) - Firebase Console에서 생성 필요 ---
+# Firebase Console → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성
+
+Variable Name: FIREBASE_PRIVATE_KEY
+Type: Secret
+Value: (다운로드한 JSON의 private_key 값 - 여러 줄 포함)
+# 예: -----BEGIN PRIVATE KEY-----
+# MIIEvAIBADANBgkqhkiG9w0BAQ...
+# ...
+# -----END PRIVATE KEY-----
+
+Variable Name: FIREBASE_CLIENT_EMAIL
+Type: Secret
+Value: (다운로드한 JSON의 client_email 값)
+# 예: firebase-adminsdk-xxxxx@urteam-live-commerce.iam.gserviceaccount.com
+
+Variable Name: FIREBASE_SERVICE_ACCOUNT_KEY
+Type: Secret
+Value: (다운로드한 JSON 전체를 한 줄로)
+# 예: {"type":"service_account","project_id":"urteam-live-commerce",...}
+
+# --- JWT (2개) ---
+Variable Name: JWT_SECRET
+Type: Secret
+Value: 3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4=
+
+Variable Name: REFRESH_TOKEN_SECRET
+Type: Secret
+Value: zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0=
+
+# --- 기타 Backend (6개) ---
+Variable Name: ENVIRONMENT
+Type: Secret
+Value: production
+
+Variable Name: FRONTEND_URL
+Type: Secret
+Value: https://live.ur-team.com
+
+Variable Name: REGION
+Type: Secret
+Value: KR
+
+Variable Name: KAKAO_REST_API_KEY
+Type: Secret
+Value: 5dd74bccb797640b0efd070467f3bafd
+
+Variable Name: TOSS_SECRET_KEY
+Type: Secret
+Value: test_gsk_yL0qZ4G1VOlbD7DDxWDnroWb2MQY
+
+# ==========================================
+# 설정 완료 후
+# ==========================================
+# 1. Save 버튼 클릭
+# 2. Deployments 탭 → Retry deployment
+# 3. 3-5분 대기
+# 4. https://live.ur-team.com/login 테스트
