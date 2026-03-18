@@ -17,9 +17,19 @@ const firebaseConfig = {
 }
 
 // Validate Firebase configuration
+const envVarNames: Record<string, string> = {
+  apiKey: 'VITE_FIREBASE_API_KEY',
+  authDomain: 'VITE_FIREBASE_AUTH_DOMAIN',
+  databaseURL: 'VITE_FIREBASE_DATABASE_URL',
+  projectId: 'VITE_FIREBASE_PROJECT_ID',
+  storageBucket: 'VITE_FIREBASE_STORAGE_BUCKET',
+  messagingSenderId: 'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  appId: 'VITE_FIREBASE_APP_ID'
+};
+
 const missingVars = Object.entries(firebaseConfig)
   .filter(([_, value]) => !value)
-  .map(([key]) => `VITE_FIREBASE_${key.toUpperCase().replace(/([A-Z])/g, '_$1')}`);
+  .map(([key]) => envVarNames[key] || key);
 
 if (missingVars.length > 0) {
   console.error('❌ Missing Firebase environment variables:', missingVars.join(', '));
