@@ -173,9 +173,41 @@ curl -X POST https://live.ur-team.com/api/auth/kakao/firebase \
 
 ---
 
-## ⏳ 아직 남은 Critical 이슈 (1개)
+## ⏳ 아직 남은 Critical 이슈 (2개)
 
-### **Firebase Realtime Database URL 환경변수 누락**
+### 1. **🔴 Worker 환경변수 누락** (로그인 차단)
+
+**문제**:
+```
+❌ 로그인 실패: Firebase custom token creation failed
+❌ Missing FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, FIREBASE_PROJECT_ID
+```
+
+**원인**:
+- Worker에서 Firebase Admin SDK 사용 시 필요한 환경변수 미설정
+- `.env` 파일은 **프론트엔드 빌드에만** 사용됨
+- Worker 런타임 환경변수는 **Cloudflare Dashboard**에서 별도 설정 필요
+
+**필수 환경변수** (5개):
+```
+FIREBASE_PROJECT_ID       = toss-live-commerce
+FIREBASE_PRIVATE_KEY      = -----BEGIN PRIVATE KEY-----\n...
+FIREBASE_CLIENT_EMAIL     = firebase-adminsdk-xxxxx@toss-live-commerce.iam.gserviceaccount.com
+FIREBASE_DATABASE_URL     = https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+KAKAO_REST_API_KEY        = 5dd74bccb797640b0efd070467f3bafd
+```
+
+**해결 방법** (10분):
+1. Firebase Console → Project settings → Service accounts → Generate private key (JSON 다운로드)
+2. Cloudflare Dashboard → ur-live → Settings → Environment variables
+3. 위 5개 환경변수 추가 (Private key는 Encrypt 권장)
+4. Save → Retry deployment
+
+**참고 문서**: `CLOUDFLARE_WORKER_ENV_SETUP.md`
+
+---
+
+### 2. **⏳ 프론트엔드 Firebase Database URL 누락** (채팅 차단)
 
 **영향 범위**: 라이브 페이지 채팅 및 실시간 데이터
 
@@ -186,18 +218,16 @@ curl -X POST https://live.ur-team.com/api/auth/kakao/firebase \
 ```
 
 **원인**:
-1. `.env` 파일은 **로컬에서만** 작동
-2. Cloudflare Pages는 `.env` 파일을 **읽지 않음**
-3. 환경변수는 Cloudflare Dashboard에서 수동 설정 필요
+- Cloudflare Pages **Build settings**에 `VITE_FIREBASE_DATABASE_URL` 미설정
 
 **해결 방법** (5분):
 ```
 1. https://dash.cloudflare.com/ 로그인
 2. Workers & Pages → ur-live → Settings
-3. Environment variables → Add variable
+3. Environment variables → Production → Add variable
 4. Name: VITE_FIREBASE_DATABASE_URL
    Value: https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
-5. Save → Deployments → Retry deployment
+5. Save → Retry deployment
 ```
 
 **참고 문서**: `CLOUDFLARE_ENV_FIX.md`
@@ -209,14 +239,14 @@ curl -X POST https://live.ur-team.com/api/auth/kakao/firebase \
 | 기능 | 완성도 | 상태 | 비고 |
 |-----|--------|------|------|
 | **백엔드 API** | 95% | ✅ 거의 완료 | 9/11 엔드포인트 OK, Popular Search 미완 |
-| **인증 시스템** | 80% | ⚠️ 테스트 필요 | Kakao SDK ✅, OAuth flow 미검증 |
+| **인증 시스템** | 50% | ❌ 차단됨 | Kakao SDK ✅, **Worker 환경변수 누락** |
 | **상품 시스템** | 90% | ✅ 작동 | API ✅, UI 테스트 필요 |
 | **라이브 스트리밍** | 60% | ⏳ 부분 작동 | 상품 연결 ✅, **채팅 미작동** |
 | **장바구니** | 70% | ⚠️ 테스트 필요 | API 작동, UI 연동 미검증 |
 | **결제** | 70% | ⚠️ 테스트 필요 | 백엔드 완료, E2E 테스트 필요 |
 | **관리자** | 80% | ⚠️ 테스트 필요 | Sellers API ✅, UI 미검증 |
 
-**전체 완성도**: **82%** (가중 평균)
+**전체 완성도**: **78%** (가중 평균, 재평가)
 
 ---
 
@@ -245,16 +275,14 @@ curl -X POST https://live.ur-team.com/api/auth/kakao/firebase \
 
 ### 브라우저 콘솔 테스트
 
-#### ✅ 로그인 페이지 (https://live.ur-team.com/login)
+#### ❌ 로그인 페이지 (https://live.ur-team.com/login)
 ```
-✅ i18next initialized
-✅ Sentry initialized
+✅ Kakao SDK loaded (integrity fixed)
 ✅ React rendered
-✅ Firebase Auth initialized
-✅ Multi-tab sync enabled
-❌ Missing Firebase DB URL (인증에는 영향 없음)
+❌ Kakao login: 500 error (Worker env vars missing)
+❌ Missing FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, FIREBASE_PROJECT_ID
 ```
-**결과**: Kakao 로그인 버튼 클릭 가능 (Kakao SDK 에러 사라짐)
+**결과**: Kakao 로그인 버튼은 클릭 가능하지만 **인증 실패** (Worker 환경변수 누락)
 
 #### ✅ 상품 상세 페이지 (https://live.ur-team.com/products/1)
 ```
@@ -278,8 +306,13 @@ curl -X POST https://live.ur-team.com/api/auth/kakao/firebase \
 
 ## 🎯 다음 단계 (우선순위)
 
-### 🔴 High Priority (5분 소요)
-1. **Cloudflare Pages 환경변수 추가**
+### 🔴 High Priority (15분 소요)
+1. **Worker 환경변수 추가** (10분)
+   - Firebase Console에서 Service Account JSON 다운로드
+   - Cloudflare Dashboard에 5개 환경변수 추가
+   - 재배포 후 Kakao 로그인 테스트
+
+2. **프론트엔드 환경변수 추가** (5분)
    - `VITE_FIREBASE_DATABASE_URL` 설정
    - 재배포 대기 (3분)
    - 라이브 채팅 테스트
