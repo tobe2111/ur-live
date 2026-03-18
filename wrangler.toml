@@ -44,10 +44,10 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 # Development Variables
 # ============================================================
 [vars]
-ENVIRONMENT = "development"
+# ENVIRONMENT is set via Cloudflare Dashboard
 TOSS_CLIENT_KEY = "test_ck_placeholder"
 FRONTEND_URL = "http://localhost:5173"
-REGION = "KR"
+# REGION is set via Cloudflare Dashboard
 
 # ============================================================
 # Production Secrets — NEVER add actual secrets here!
@@ -102,7 +102,8 @@ REGION = "KR"
 # ============================================================
 [env.production]
 name = "global-marketplace"
-vars = { ENVIRONMENT = "production", FRONTEND_URL = "https://live.ur-team.com", REGION = "KR" }
+# All variables are set via Cloudflare Dashboard
+# vars = { FRONTEND_URL = "https://live.ur-team.com" }
 
 # D1 Database binding for production
 [[env.production.d1_databases]]
