@@ -773,3 +773,13 @@
 2026-03-17 05:35:33 +00:00:     - Unexpected fields found in dev field: "persist_to"
 2026-03-17 05:35:33 +00:00: 
 2026-03-17 05:35:33 +00:00: 
+2026-03-18 07:56:31 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-18 07:56:31 +00:00: 
+2026-03-18 07:56:31 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-18 07:56:31 +00:00: 
+2026-03-18 07:56:31 +00:00: 
+2026-03-18 07:56:40 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-18 07:56:40 +00:00: 
+2026-03-18 07:56:40 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-18 07:56:40 +00:00: 
+2026-03-18 07:56:40 +00:00: 
