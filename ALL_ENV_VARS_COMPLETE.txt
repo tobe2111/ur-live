@@ -1,0 +1,159 @@
+=================================================================
+ur-live-working 전체 환경변수 (31개)
+=================================================================
+
+⚠️ 중요: 백엔드 14개 + 프론트엔드 17개 = 총 31개
+
+📍 위치: https://dash.cloudflare.com/ → Workers & Pages → ur-live-working 
+        → Settings → Environment variables → Production
+
+=================================================================
+Part 1: 백엔드(Worker) 환경변수 - 14개
+=================================================================
+
+1. ENVIRONMENT
+production
+
+2. FIREBASE_API_KEY
+AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
+
+3. FIREBASE_CLIENT_EMAIL
+firebase-adminsdk-fbsvc@urteam-live-commerce-5b284.iam.gserviceaccount.com
+
+4. FIREBASE_DATABASE_URL
+https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+
+5. FIREBASE_PRIVATE_KEY (⚠️ 전체 복사 - BEGIN부터 END까지)
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+v5i5I5RxLSmO
+vNQq7nQvV28GDZVx+MQAJjWKCIvXbRTn9LXCOFRkQsVVpMl8b9c0ByHTOPBSxJ4i
+KQyvN8bgJEe3hnpMELY7rMXdZC1iFm7JYH9rLjRHGU5GRHxUYiP+r7SgNZYr0mMh
+QZdGu8JzKsxOFpx3HZH0iLv5KvyY7iKvE5sLHbBxLQJ5gFLMPkLnJxPYQ7R9LWTA
+xRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8DFuX7k8tJN3R5xYHZPQJ9sLv
+FpRxJ8H5LMHvJxPYQ7R9LWTAxRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8
+DFuX7k8tAgMBAAECggEADYZn5z5oDYZK+L7yPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+PKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy
+-----END PRIVATE KEY-----
+
+6. FIREBASE_PROJECT_ID
+urteam-live-commerce-5b284
+
+7. FIREBASE_SERVICE_ACCOUNT_KEY (⚠️ 한 줄로 복사)
+{"type":"service_account","project_id":"urteam-live-commerce-5b284","private_key_id":"2969ea5f0c7879fec84d620d3fafea6431acaf90","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+v5i5I5RxLSmO\nvNQq7nQvV28GDZVx+MQAJjWKCIvXbRTn9LXCOFRkQsVVpMl8b9c0ByHTOPBSxJ4i\nKQyvN8bgJEe3hnpMELY7rMXdZC1iFm7JYH9rLjRHGU5GRHxUYiP+r7SgNZYr0mMh\nQZdGu8JzKsxOFpx3HZH0iLv5KvyY7iKvE5sLHbBxLQJ5gFLMPkLnJxPYQ7R9LWTA\nxRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8DFuX7k8tJN3R5xYHZPQJ9sLv\nFpRxJ8H5LMHvJxPYQ7R9LWTAxRZvN5k8sP3RMn8gFoqH0pOYdM+Lc4RvLZHGxPx8\nDFuX7k8tAgMBAAECggEADYZn5z5oDYZK+L7yPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\nPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLyPKLy\n-----END PRIVATE KEY-----\n","client_email":"firebase-adminsdk-fbsvc@urteam-live-commerce-5b284.iam.gserviceaccount.com","client_id":"110594251535653421983","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40urteam-live-commerce-5b284.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+
+8. FRONTEND_URL
+https://live.ur-team.com
+
+9. JWT_SECRET
+3Y4MyekQ4D+GFVY6p6bJEScOMSyFFkbtSX76YyT9uk4=
+
+10. KAKAO_REST_API_KEY
+5dd74bccb797640b0efd070467f3bafd
+
+11. REFRESH_TOKEN_SECRET
+zetvg/v05J+O6M99ndq4UFliUwvw2Gvvi8dPXXZ3+z0=
+
+12. REGION
+KR
+
+13. TOSS_SECRET_KEY (⚠️ Toss Dashboard에서 가져오기)
+<https://dashboard.tosspayments.com/ → 개발 → API 키 → Secret Key 복사>
+
+14. VITE_FIREBASE_DATABASE_URL
+https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+
+=================================================================
+Part 2: 프론트엔드(VITE_*) 환경변수 - 17개
+=================================================================
+
+15. VITE_FIREBASE_API_KEY
+AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
+
+16. VITE_FIREBASE_AUTH_DOMAIN
+toss-live-commerce.firebaseapp.com
+
+17. VITE_FIREBASE_PROJECT_ID
+toss-live-commerce
+
+18. VITE_FIREBASE_STORAGE_BUCKET
+toss-live-commerce.firebasestorage.app
+
+19. VITE_FIREBASE_MESSAGING_SENDER_ID
+408717649003
+
+20. VITE_FIREBASE_APP_ID
+1:408717649003:web:29aa3cb5f92056dd1ec4f4
+
+21. VITE_FIREBASE_MEASUREMENT_ID
+G-78M73BGT77
+
+22. VITE_KAKAO_APP_KEY
+975a2e7f97254b08f15dba4d177a2865
+
+23. VITE_KAKAO_JAVASCRIPT_KEY
+975a2e7f97254b08f15dba4d177a2865
+
+24. VITE_KAKAO_REST_API_KEY
+5dd74bccb797640b0efd070467f3bafd
+
+25. VITE_KAKAO_AUTH_URL
+https://kauth.kakao.com/oauth/authorize
+
+26. VITE_TOSS_CLIENT_KEY
+test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN
+
+27. VITE_REGION
+KR
+
+28. VITE_DEFAULT_LANGUAGE
+ko
+
+29. VITE_API_BASE_URL
+https://live.ur-team.com
+
+30. VITE_SENTRY_DSN
+https://08caf64e8e7955f09acc2b0551fdb049@o4510992097935360.ingest.us.sentry.io/4510992127295488
+
+31. VITE_SENTRY_ENVIRONMENT
+production
+
+=================================================================
+체크리스트
+=================================================================
+☐ Toss Dashboard에서 TOSS_SECRET_KEY 가져오기
+☐ 1~31번 변수를 Cloudflare ur-live-working에 추가
+☐ Save 버튼 클릭
+☐ Deployments → Retry deployment
+☐ 3분 대기
+☐ https://live.ur-team.com/login 테스트
+
+=================================================================
+해결되는 에러들
+=================================================================
+✅ Firebase: Error (auth/api-key-not-valid)
+✅ Firebase custom token creation failed
+✅ missing FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, FIREBASE_PROJECT_ID
+✅ 카카오 로그인 500 에러
+
+=================================================================
