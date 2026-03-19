@@ -14,6 +14,7 @@ import { openApiSpec } from './openapi';
 // ---- Worker-local routes (multi-seller MVP) ----
 import type { Env } from './types/env';
 import { authRouter } from './routes/auth.routes';
+import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { productsRouter } from './routes/product.routes';
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
@@ -213,6 +214,9 @@ app.get('/api/debug/bindings', (c) => {
 
 // Worker-native user auth (register / login / logout / refresh / me)
 app.route('/api/auth', authRouter);
+
+// Phase 2.3: Backend ID Token endpoint
+app.route('/api/auth', authTokenRoutes);
 
 // Feature: Kakao OAuth  →  /auth/kakao/sync/callback + /api/auth/kakao/*
 app.route('/auth/kakao', kakaoRoutes);
