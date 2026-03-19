@@ -248,16 +248,25 @@ async function verifyFirebaseToken(
       return null;
     }
 
-    // iss 검증
+    // iss 검증 (일반 Firebase 토큰 OR Admin SDK Custom Token)
     const expectedIss = `https://securetoken.google.com/${projectId}`;
-    if (payload.iss !== expectedIss) {
+    const isAdminSDK = payload.iss && payload.iss.includes('firebase-adminsdk');
+    
+    if (!isAdminSDK && payload.iss !== expectedIss) {
       console.error('[Firebase] ❌ Token iss mismatch. Expected:', expectedIss, 'Got:', payload.iss);
       return null;
     }
+    
+    if (isAdminSDK) {
+      console.log('[Firebase] ℹ️ Admin SDK Custom Token detected');
+    }
 
-    // aud 검증
-    if (payload.aud !== projectId) {
-      console.error('[Firebase] ❌ Token aud mismatch. Expected:', projectId, 'Got:', payload.aud);
+    // aud 검증 (일반 Firebase 토큰 OR Admin SDK Custom Token)
+    const expectedAud = projectId;
+    const isAdminSDKAud = payload.aud && payload.aud.includes('identitytoolkit.googleapis.com');
+    
+    if (!isAdminSDKAud && payload.aud !== expectedAud) {
+      console.error('[Firebase] ❌ Token aud mismatch. Expected:', expectedAud, 'Got:', payload.aud);
       return null;
     }
 

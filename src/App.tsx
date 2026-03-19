@@ -126,6 +126,11 @@ function AppContent() {
         const idToken = await user.getIdToken(true)
         console.log('[App] ✅ ID Token 갱신 완료')
         
+        // ✅ Custom Token claims에서 numeric userId 추출
+        const tokenResult = await user.getIdTokenResult(true);
+        const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0;
+        console.log('[App] 🔢 Numeric user ID from claims:', numericUserId);
+        
         // ✅ useAuthStore에 토큰 저장
         const { useAuthStore } = await import('@/client/stores/auth.store')
         useAuthStore.getState().setAuth(
@@ -143,6 +148,7 @@ function AppContent() {
         localStorage.setItem('user_type', 'user')
         localStorage.setItem('user_id', user.uid)
         localStorage.setItem('user_email', user.email || '')
+        localStorage.setItem('numeric_user_id', String(numericUserId)); // ✅ 숫자 ID 저장
         
         // URL 파라미터 제거
         urlParams.delete('firebase_token')

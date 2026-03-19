@@ -845,13 +845,14 @@ function ReelCard({
         message: error.message
       })
       const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
+      const errorString = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
       
-      if (errorMessage.includes('Insufficient stock') || errorMessage.includes('재고가 부족')) {
+      if (errorString.includes('Insufficient stock') || errorString.includes('재고가 부족')) {
         setNotificationText('재고가 부족합니다')
         setShowNotification(true)
         setTimeout(() => setShowNotification(false), 2500)
       } else {
-        showAlert(errorMessage, 'error', '장바구니 추가 실패')
+        showAlert(errorString, 'error', '장바구니 추가 실패')
       }
     } finally {
       setAddingToCart(false)
@@ -1016,11 +1017,14 @@ function ReelCard({
       }
 
       const userName = localStorage.getItem('user_name') || '익명'
+      
+      // 호환성: claims.userId (숫자 ID) 사용, 없으면 0 (Anonymous)
+      const numericUserId = parseInt(localStorage.getItem('numeric_user_id') || '0', 10) || 0;
 
       // 🔥 SSE 기반 메시지 전송
       await sendChatMessage(
         chatMessage.trim(),
-        Number(userId),
+        numericUserId, // 숫자 ID 사용
         userName,
         'viewer'
       )
