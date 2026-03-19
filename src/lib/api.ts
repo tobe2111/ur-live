@@ -147,9 +147,29 @@ api.interceptors.request.use(
     }
 
     // ── Firebase User API ─────────────────────────────────────────────────
+    // ✅ 우선순위 1: useAuthStore의 accessToken 사용 (KakaoCallback/useAuthKR에서 저장됨)
+    try {
+      const { useAuthStore } = await import('@/client/stores/auth.store');
+      const { accessToken } = useAuthStore.getState();
+      
+      if (accessToken) {
+        console.log('[API] ✅ useAuthStore accessToken 사용:', accessToken.substring(0, 20) + '...');
+        config.headers['Authorization'] = `Bearer ${accessToken}`;
+        return config;
+      }
+      
+      console.log('[API] ⚠️ useAuthStore accessToken 없음, Firebase에서 조회 시도');
+    } catch (e) {
+      console.warn('[API] useAuthStore 조회 실패:', e);
+    }
+    
+    // ✅ 우선순위 2: Firebase에서 직접 조회 (fallback)
     const token = await getCachedFirebaseToken();
     if (token) {
+      console.log('[API] ✅ Firebase token 사용 (fallback):', token.substring(0, 20) + '...');
       config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.error('[API] ❌ 토큰 없음! 401 에러 예상');
     }
 
     return config;
