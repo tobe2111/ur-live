@@ -12,17 +12,25 @@ import type { User as FirebaseUser } from 'firebase/auth';
  * 4. Seller/Admin 은 이 store 를 전혀 사용하지 않음
  */
 
+interface TokenCache {
+  token: string;
+  expiresAt: number;  // Unix timestamp (ms)
+}
+
 interface AuthKRState {
   user: FirebaseUser | null;
   isLoading: boolean;
   error: string | null;
   isAuthReady: boolean;          // Firebase 첫 상태 확인 완료 여부 (한번 true 되면 영구)
   userRole: 'user' | 'seller' | 'admin' | null;
+  tokenCache: TokenCache | null; // ID Token 캐시
 
   setUser: (user: FirebaseUser | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setAuthReady: (ready: boolean) => void;
+  setTokenCache: (cache: TokenCache | null) => void;
+  getIdToken: (forceRefresh?: boolean) => Promise<string | null>;
 
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
@@ -42,24 +50,99 @@ function safeSetUserType() {
   }
 }
 
+/** ID Token 캐시 키 (localStorage) */
+const TOKEN_CACHE_KEY = 'firebase_token_cache';
+
+/** ID Token 유효 기간 (55분 = Firebase ID Token 기본 유효 기간 60분 - 5분 버퍼) */
+const TOKEN_EXPIRY_MS = 55 * 60 * 1000;
+
+/** localStorage에서 캐시 읽기 */
+function loadTokenCacheFromStorage(): TokenCache | null {
+  try {
+    const cached = localStorage.getItem(TOKEN_CACHE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached) as TokenCache;
+    // 만료 확인
+    if (Date.now() >= parsed.expiresAt) {
+      localStorage.removeItem(TOKEN_CACHE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** localStorage에 캐시 저장 */
+function saveTokenCacheToStorage(cache: TokenCache) {
+  try {
+    localStorage.setItem(TOKEN_CACHE_KEY, JSON.stringify(cache));
+  } catch (err) {
+    console.warn('[AuthKR] Failed to save token cache:', err);
+  }
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthKR = create<AuthKRState>()(
   devtools(
     persist(
-      (set) => ({
+      (set, get) => ({
         // ── 초기 상태 ──────────────────────────────────────────────────────────
         user: null,
         isLoading: false,   // App 시작 시 Firebase 초기화 전까지 false 유지
         error: null,
         isAuthReady: false, // initializeAuth() 완료 후 true
         userRole: null,
+        tokenCache: loadTokenCacheFromStorage(), // localStorage에서 캐시 로드
 
         // ── 순수 setter ────────────────────────────────────────────────────────
         setUser: (user) => set({ user }, false, 'setUser'),
         setLoading: (isLoading) => set({ isLoading }, false, 'setLoading'),
         setError: (error) => set({ error }, false, 'setError'),
         setAuthReady: (isAuthReady) => set({ isAuthReady }, false, 'setAuthReady'),
+        setTokenCache: (tokenCache) => {
+          set({ tokenCache }, false, 'setTokenCache');
+          if (tokenCache) {
+            saveTokenCacheToStorage(tokenCache);
+          } else {
+            localStorage.removeItem(TOKEN_CACHE_KEY);
+          }
+        },
+
+        // ── ID Token 가져오기 (캐싱 적용) ──────────────────────────────────────
+        getIdToken: async (forceRefresh = false) => {
+          const { user, tokenCache } = get();
+          
+          if (!user) {
+            console.warn('[AuthKR] getIdToken: No user logged in');
+            return null;
+          }
+
+          // 캐시된 토큰 사용 (강제 갱신 아님 + 캐시 유효)
+          if (!forceRefresh && tokenCache && Date.now() < tokenCache.expiresAt) {
+            console.log('[AuthKR] Using cached ID token (expires in', Math.round((tokenCache.expiresAt - Date.now()) / 1000), 'seconds)');
+            return tokenCache.token;
+          }
+
+          // 새 토큰 가져오기
+          try {
+            console.log('[AuthKR] Fetching new ID token', forceRefresh ? '(forced)' : '(cache expired/missing)');
+            const token = await user.getIdToken(forceRefresh);
+            
+            // 캐시 저장
+            const newCache: TokenCache = {
+              token,
+              expiresAt: Date.now() + TOKEN_EXPIRY_MS
+            };
+            get().setTokenCache(newCache);
+            
+            return token;
+          } catch (err) {
+            console.error('[AuthKR] Failed to get ID token:', err);
+            return null;
+          }
+        },
 
         // ── 이메일 로그인 ──────────────────────────────────────────────────────
         loginWithEmail: async (email, password) => {
@@ -154,8 +237,9 @@ export const useAuthKR = create<AuthKRState>()(
           localStorage.removeItem('auth-kr-storage');
           localStorage.removeItem('auth-world-storage');
           localStorage.removeItem('lastLoginUid');
+          localStorage.removeItem(TOKEN_CACHE_KEY); // Token cache clear
 
-          set({ user: null, userRole: null, isLoading: false, isAuthReady: true });
+          set({ user: null, userRole: null, tokenCache: null, isLoading: false, isAuthReady: true });
           setTimeout(() => { window.location.href = '/'; }, 50);
         },
 
