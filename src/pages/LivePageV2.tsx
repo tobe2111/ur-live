@@ -10,6 +10,7 @@ import { useFirebaseChat } from '@/hooks/useFirebaseChat'
 import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
 import { createLogger } from '@/utils/logger'
+import { useAuthStore } from '@/shared/stores'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
@@ -792,6 +793,16 @@ function ReelCard({
       }
       
       // POST to server (JWT에서 userId 자동 추출)
+      const accessToken = useAuthStore.getState().accessToken;
+      log.debug('[handleAddToCart] 🔑 Token before API:', accessToken?.substring(0, 20));
+      
+      if (!accessToken) {
+        log.warn('[handleAddToCart] ❌ No token, redirecting to login');
+        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요');
+        setTimeout(() => navigate('/login'), 1500);
+        return;
+      }
+      
       log.debug('[handleAddToCart] 📡 Calling API /api/cart')
       
       const response = await api.post('/api/cart', {
@@ -887,6 +898,17 @@ function ReelCard({
         quantity: 1,
         priceSnapshot: currentProduct.price,
         liveStreamId: reel.stream.id  // ✅ Fixed: currentStream → reel.stream
+      }
+      
+      const accessToken = useAuthStore.getState().accessToken;
+      log.debug('[Checkout] 🔑 Token before checkout:', accessToken?.substring(0, 20));
+      
+      if (!accessToken) {
+        log.warn('[Checkout] ❌ No token');
+        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요');
+        setCheckingOut(false);
+        setTimeout(() => navigate('/login'), 1500);
+        return;
       }
       
       log.debug('[Checkout] Adding current product to cart:', cartData)

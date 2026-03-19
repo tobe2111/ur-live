@@ -17,6 +17,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { requireAuth } from '@/worker/middleware/auth';
 
 type Bindings = {
   DB: D1Database;
@@ -41,7 +42,8 @@ async function getUserIdFromToken(authHeader: string | undefined): Promise<numbe
 }
 
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────
-wishlistRoutes.get('/', cors(), async (c) => {
+wishlistRoutes.get('/', cors(), requireAuth(), async (c) => {
+  console.log('[Wishlist] GET / - User:', c.get('user')?.id);
   const { DB } = c.env;
   try {
     const userId = c.req.query('user_id') || c.req.query('userId');

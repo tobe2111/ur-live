@@ -5,6 +5,7 @@ import { ShoppingCart, Store, Truck, Minus, Plus, ArrowLeft, Loader2 } from 'luc
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useCartStore } from '../stores/cart.store';
+import { useAuthStore } from '../stores/auth.store';
 import { formatCurrency } from '../../shared/utils';
 import type { ApiResponse, Product } from '../../shared/types';
 
@@ -15,11 +16,13 @@ export function ProductDetailPage() {
   const [added, setAdded] = useState(false);
   const addItem = useCartStore(s => s.addItem);
   const setSellerInfo = useCartStore(s => s.setSellerInfo);
+  const accessToken = useAuthStore(s => s.accessToken);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
       console.log('[ProductDetail] 📡 Fetching product:', id);
+      console.log('[ProductDetail] 🔑 Token:', accessToken?.substring(0, 20));
       const result = await api.get<ApiResponse<Product>>(`/products/${id}`);
       console.log('[ProductDetail] 📦 API Response:', result);
       return result;
@@ -50,6 +53,16 @@ export function ProductDetailPage() {
   }, [id, isLoading, error, data, product]);
 
   const handleAddToCart = () => {
+    console.log('[ProductDetail] 🛒 Add to cart clicked');
+    console.log('[ProductDetail] 🔑 Token before add:', accessToken?.substring(0, 20));
+    
+    if (!accessToken) {
+      console.warn('[ProductDetail] ❌ No token, redirecting to login');
+      alert('로그인이 필요합니다.');
+      navigate('/login');
+      return;
+    }
+    
     if (!product) return;
     
     setSellerInfo(product.seller_id, {

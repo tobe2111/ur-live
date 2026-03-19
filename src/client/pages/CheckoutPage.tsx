@@ -35,6 +35,7 @@ interface CheckoutSessionData {
 export function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const accessToken = useAuthStore(s => s.accessToken);
   const { items, getSellerGroups, sellerInfoCache, clearCart } = useCart();
   const sellerGroups = getSellerGroups(sellerInfoCache);
 
@@ -62,10 +63,18 @@ export function CheckoutPage() {
   // Redirect if cart is empty
   // ✅ BUG #6 FIX: Use replace: true to prevent infinite loop
   useEffect(() => {
+    console.log('[Checkout] 🔑 Token on mount:', accessToken?.substring(0, 20));
+    
+    if (!accessToken) {
+      console.warn('[Checkout] ❌ No token, redirecting to login');
+      navigate('/login', { replace: true });
+      return;
+    }
+    
     if (items.length === 0) {
       navigate('/cart', { replace: true });
     }
-  }, [items, navigate]);
+  }, [items, navigate, accessToken]);
 
   const grandTotal = sellerGroups.reduce((sum, g) => sum + g.total, 0);
 
@@ -74,6 +83,15 @@ export function CheckoutPage() {
    * Step 2: Initialize Toss Payments widget
    */
   const onSubmit = async (formData: ShippingFormData) => {
+    console.log('[Checkout] 💳 Payment submission started');
+    console.log('[Checkout] 🔑 Token before order creation:', accessToken?.substring(0, 20));
+    
+    if (!accessToken) {
+      setError('로그인이 필요합니다.');
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    
     if (sellerGroups.length === 0) return;
     setIsSubmitting(true);
     setError(null);
