@@ -31,13 +31,14 @@ jobs:
           VITE_REGION: KR
           VITE_DEFAULT_LANGUAGE: ko
           VITE_API_BASE_URL: https://live.ur-team.com
-          VITE_FIREBASE_API_KEY: AIzaSyDGy6Wh2FbRQFYGKzP5Y31V3jO6YHzKzgM
-          VITE_FIREBASE_AUTH_DOMAIN: toss-live-commerce.firebaseapp.com
-          VITE_FIREBASE_PROJECT_ID: toss-live-commerce
-          VITE_FIREBASE_STORAGE_BUCKET: toss-live-commerce.firebasestorage.app
-          VITE_FIREBASE_MESSAGING_SENDER_ID: 408717649003
-          VITE_FIREBASE_APP_ID: 1:408717649003:web:29aa3cb5f92056dd1ec4f4
-          VITE_FIREBASE_MEASUREMENT_ID: G-78M73BGT77
+          VITE_FIREBASE_API_KEY: AIzaSyCxmgG3NEXsWtHKbE425dvq5EWs3WHXOh8
+          VITE_FIREBASE_AUTH_DOMAIN: urteam-live-commerce-5b284.firebaseapp.com
+          VITE_FIREBASE_DATABASE_URL: https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app
+          VITE_FIREBASE_PROJECT_ID: urteam-live-commerce-5b284
+          VITE_FIREBASE_STORAGE_BUCKET: urteam-live-commerce-5b284.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: 352937066044
+          VITE_FIREBASE_APP_ID: 1:352937066044:web:e5bfd5e1d8f61688e30d39
+          VITE_FIREBASE_MEASUREMENT_ID: G-B1ST2L37CM
           VITE_KAKAO_APP_KEY: 975a2e7f97254b08f15dba4d177a2865
           VITE_KAKAO_JAVASCRIPT_KEY: 975a2e7f97254b08f15dba4d177a2865
           VITE_KAKAO_REST_API_KEY: 5dd74bccb797640b0efd070467f3bafd
