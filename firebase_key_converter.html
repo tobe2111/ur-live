@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Private Key 변환 도구</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .alert {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: start;
+        }
+        
+        .alert-icon {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+        
+        .alert-content {
+            flex: 1;
+        }
+        
+        .alert-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+        
+        .alert-text {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .instructions {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            color: #555;
+            line-height: 1.8;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        .instructions code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .format-example {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .format-example h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .format-example pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .error {
+            color: #dc3545;
+        }
+        
+        .success {
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Firebase Private Key 변환 도구</h1>
+        <p class="subtitle">Cloudflare Pages 환경 변수용 줄바꿈 변환</p>
+        
+        <div class="alert">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+                <div class="alert-title">중요 안내</div>
+                <div class="alert-text">
+                    Firebase Console에서 다운로드한 JSON 파일의 <code>private_key</code> 값을 복사하여 
+                    아래 입력란에 붙여넣으세요. 이 도구는 <code>\n</code> 문자열을 실제 줄바꿈으로 변환합니다.
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <label for="input">
+                입력: JSON에서 복사한 Private Key (escaped \n 포함)
+            </label>
+            <textarea 
+                id="input" 
+                placeholder='예시: "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASC...\n-----END PRIVATE KEY-----\n"'
+            ></textarea>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="convertKey()">
+                    🔄 변환하기
+                </button>
+                <button class="btn-secondary" onclick="clearAll()">
+                    🗑️ 초기화
+                </button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <label for="output">
+                출력: Cloudflare에 붙여넣을 Private Key (실제 줄바꿈)
+            </label>
+            <textarea 
+                id="output" 
+                placeholder="변환된 결과가 여기에 표시됩니다..."
+                readonly
+            ></textarea>
+            
+            <div class="button-group">
+                <button class="btn-success" onclick="copyToClipboard()" id="copyBtn" disabled>
+                    📋 클립보드에 복사
+                </button>
+            </div>
+            
+            <div class="success-message" id="successMsg">
+                ✅ 클립보드에 복사되었습니다! 이제 Cloudflare Dashboard에 붙여넣으세요.
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📖 사용 방법</h3>
+            <ol>
+                <li>
+                    <strong>Firebase Console 접속:</strong><br>
+                    <a href="https://console.firebase.google.com/project/urteam-live-commerce-5b284/settings/serviceaccounts/adminsdk" target="_blank">
+                        https://console.firebase.google.com/.../serviceaccounts/adminsdk
+                    </a>
+                </li>
+                <li>
+                    <strong>"Generate new private key"</strong> 버튼 클릭 → JSON 파일 다운로드
+                </li>
+                <li>
+                    JSON 파일을 텍스트 에디터로 열기 → <code>"private_key"</code> 값 복사<br>
+                    (따옴표와 <code>\n</code> 문자열이 포함된 상태로 복사)
+                </li>
+                <li>
+                    위의 <strong>"입력"</strong> 텍스트 영역에 붙여넣기
+                </li>
+                <li>
+                    <strong>"🔄 변환하기"</strong> 버튼 클릭
+                </li>
+                <li>
+                    <strong>"📋 클립보드에 복사"</strong> 버튼 클릭
+                </li>
+                <li>
+                    <strong>Cloudflare Dashboard</strong> 접속:<br>
+                    <a href="https://dash.cloudflare.com/" target="_blank">https://dash.cloudflare.com/</a> 
+                    → Workers & Pages → ur-live → Settings → Environment variables → Production
+                </li>
+                <li>
+                    <code>FIREBASE_PRIVATE_KEY</code> 변수 편집 → 클립보드에서 붙여넣기 → Save
+                </li>
+                <li>
+                    Deployments 탭 → "Retry deployment" 클릭 → 5-10분 대기
+                </li>
+                <li>
+                    테스트: <a href="https://live.ur-team.com" target="_blank">https://live.ur-team.com</a> 
+                    에서 카카오 로그인 시도
+                </li>
+            </ol>
+            
+            <div class="format-example">
+                <h4 class="error">❌ 잘못된 형식 (변환 전):</h4>
+                <pre>"-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQ...\n-----END PRIVATE KEY-----\n"</pre>
+            </div>
+            
+            <div class="format-example">
+                <h4 class="success">✅ 올바른 형식 (변환 후):</h4>
+                <pre>-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDE/s3PltvNta+W
+...
+-----END PRIVATE KEY-----</pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function convertKey() {
+            const input = document.getElementById('input').value.trim();
+            const output = document.getElementById('output');
+            const copyBtn = document.getElementById('copyBtn');
+            const successMsg = document.getElementById('successMsg');
+            
+            if (!input) {
+                alert('⚠️ 입력란에 Private Key를 붙여넣으세요.');
+                return;
+            }
+            
+            try {
+                // Remove surrounding quotes if present
+                let cleaned = input;
+                if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+                    (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+                    cleaned = cleaned.slice(1, -1);
+                }
+                
+                // Replace \n with actual newlines
+                const converted = cleaned.replace(/\\n/g, '\n');
+                
+                // Validate it looks like a private key
+                if (!converted.includes('-----BEGIN PRIVATE KEY-----') || 
+                    !converted.includes('-----END PRIVATE KEY-----')) {
+                    alert('⚠️ 올바른 Private Key 형식이 아닙니다.\n\n' +
+                          '다음을 포함해야 합니다:\n' +
+                          '- "-----BEGIN PRIVATE KEY-----"\n' +
+                          '- "-----END PRIVATE KEY-----"');
+                    return;
+                }
+                
+                output.value = converted;
+                copyBtn.disabled = false;
+                successMsg.classList.remove('show');
+                
+                // Scroll to output
+                output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+            } catch (error) {
+                alert('❌ 변환 중 오류가 발생했습니다:\n\n' + error.message);
+            }
+        }
+        
+        function copyToClipboard() {
+            const output = document.getElementById('output');
+            const successMsg = document.getElementById('successMsg');
+            
+            if (!output.value) {
+                alert('⚠️ 먼저 "변환하기" 버튼을 클릭하세요.');
+                return;
+            }
+            
+            output.select();
+            document.execCommand('copy');
+            
+            // Modern browsers
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(output.value).then(() => {
+                    successMsg.classList.add('show');
+                    setTimeout(() => {
+                        successMsg.classList.remove('show');
+                    }, 5000);
+                });
+            } else {
+                // Fallback
+                successMsg.classList.add('show');
+                setTimeout(() => {
+                    successMsg.classList.remove('show');
+                }, 5000);
+            }
+        }
+        
+        function clearAll() {
+            if (confirm('모든 내용을 초기화하시겠습니까?')) {
+                document.getElementById('input').value = '';
+                document.getElementById('output').value = '';
+                document.getElementById('copyBtn').disabled = true;
+                document.getElementById('successMsg').classList.remove('show');
+            }
+        }
+        
+        // Enable conversion on Enter key
+        document.getElementById('input').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                convertKey();
+            }
+        });
+    </script>
+</body>
+</html>
