@@ -123,7 +123,22 @@ function AppContent() {
         console.log('[App] ✅ Firebase Custom Token 로그인 성공:', user.uid)
         
         // ID Token 갱신
-        await user.getIdToken(true)
+        const idToken = await user.getIdToken(true)
+        console.log('[App] ✅ ID Token 갱신 완료')
+        
+        // ✅ useAuthStore에 토큰 저장
+        const { useAuthStore } = await import('@/client/stores/auth.store')
+        useAuthStore.getState().setAuth(
+          {
+            id: user.uid,
+            email: user.email || '',
+            name: user.displayName || '',
+            role: 'user',
+          },
+          idToken,
+          ''
+        )
+        console.log('[App] ✅ useAuthStore에 accessToken 저장 완료')
         
         localStorage.setItem('user_type', 'user')
         localStorage.setItem('user_id', user.uid)
