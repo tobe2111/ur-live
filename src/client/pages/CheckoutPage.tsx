@@ -60,9 +60,10 @@ export function CheckoutPage() {
   });
 
   // Redirect if cart is empty
+  // ✅ BUG #6 FIX: Use replace: true to prevent infinite loop
   useEffect(() => {
     if (items.length === 0) {
-      navigate('/cart');
+      navigate('/cart', { replace: true });
     }
   }, [items, navigate]);
 
@@ -89,6 +90,7 @@ export function CheckoutPage() {
       };
 
       // Create one order per seller (multi-seller checkout)
+      // ✅ BUG #2 FIX: user_id is now automatically set by backend from auth context
       const orderPromises = sellerGroups.map(async (group: SellerCartGroup) => {
         const idempotencyKey = `${orderNumber}:${group.seller_id}`;
         
@@ -146,14 +148,18 @@ export function CheckoutPage() {
     amount: number,
     formData: ShippingFormData
   ) => {
-    // Load Toss Payments SDK
-    await loadTossScript();
+    // ✅ BUG #5 FIX: Improved error handling for Toss SDK loading
+    try {
+      await loadTossScript();
+    } catch (err) {
+      throw new Error('Toss 결제 모듈을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
+    }
     
     // @ts-ignore - Toss SDK global
     const tossPayments = window.TossPayments?.(session.toss_client_key);
     
     if (!tossPayments) {
-      throw new Error('Toss Payments SDK를 불러오지 못했습니다');
+      throw new Error('Toss 결제가 초기화되지 않았습니다. 브라우저를 최신 버전으로 업데이트해주세요.');
     }
 
     // Get order name from first item

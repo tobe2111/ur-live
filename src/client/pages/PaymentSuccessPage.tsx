@@ -12,7 +12,7 @@ import { formatCurrency } from '../../shared/utils';
 import type { ApiResponse, Order } from '../../shared/types';
 
 interface ConfirmResponse {
-  orders: Order[];
+  order: Order;  // ✅ Changed from orders[] to single order
   payment: { method: string; approvedAt: string };
 }
 
@@ -34,25 +34,29 @@ export function PaymentSuccessPage() {
       return;
     }
 
-    // Confirm payment with backend
+    // ✅ BUG #3 FIX: Confirm payment with backend
+    // orderId is string (ORD-xxx), amount must be integer
     api.post<ApiResponse<ConfirmResponse>>('/payments/confirm', {
       paymentKey,
-      orderId,
-      amount: parseInt(amount, 10),
+      orderId,  // ✅ Keep as string (order_number)
+      amount: parseInt(amount, 10),  // ✅ Parse to integer
     })
       .then(response => {
         if (response.success && response.data) {
-          setOrders(response.data.orders);
+          // ✅ Backend returns single order, not array
+          setOrders([response.data.order]);
+          // ✅ Clear cart after successful payment
           clearCart();
         } else {
           setError(response.error ?? '결제 확인에 실패했습니다');
         }
       })
       .catch(err => {
+        console.error('[PaymentSuccess] Confirmation error:', err);
         setError(err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다');
       })
       .finally(() => setIsProcessing(false));
-  }, []);
+  }, [searchParams, clearCart]);
 
   if (isProcessing) {
     return (
