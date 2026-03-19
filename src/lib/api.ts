@@ -229,13 +229,31 @@ api.interceptors.response.use(
 
       // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
       try {
+        console.log('[API] 🔄 Firebase User 401 - 토큰 강제 갱신 시도...');
         const newToken = await getCachedFirebaseToken(true); // force refresh
         if (newToken) {
+          console.log('[API] ✅ 새 토큰 획득 성공:', newToken.substring(0, 20) + '...');
+          
+          // ✅ useAuthStore도 업데이트 (중요!)
+          try {
+            const { useAuthStore } = await import('@/client/stores/auth.store');
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser) {
+              useAuthStore.getState().setAuth(currentUser, newToken, '');
+              console.log('[API] ✅ useAuthStore 토큰 업데이트 완료');
+            }
+          } catch (e) {
+            console.warn('[API] useAuthStore 업데이트 실패:', e);
+          }
+          
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          console.log('[API] 🔁 요청 재시도 with new token');
           return api(originalRequest);
+        } else {
+          console.error('[API] ❌ 토큰 갱신 실패 - 새 토큰 없음');
         }
-      } catch (_) {
-        // Token 갱신 실패
+      } catch (err) {
+        console.error('[API] ❌ 토큰 갱신 중 예외 발생:', err);
       }
 
       // Firebase 갱신도 실패 → 로그아웃
