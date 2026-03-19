@@ -8,6 +8,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
+import { swaggerUI } from '@hono/swagger-ui';
+import { openApiSpec } from './openapi';
 
 // ---- Worker-local routes (multi-seller MVP) ----
 import type { Env } from './types/env';
@@ -172,6 +174,25 @@ app.get('/api/health', (c) => c.json({
   version: '2.0.0',
   environment: (c.env as Env).ENVIRONMENT ?? 'development',
 }));
+
+// ============================================================
+// API Documentation (OpenAPI / Swagger UI)
+// ============================================================
+
+// OpenAPI Spec JSON endpoint
+app.get('/api/openapi.json', (c) => {
+  return c.json(openApiSpec);
+});
+
+// Swagger UI at /docs
+app.get('/docs', swaggerUI({ url: '/api/openapi.json' }));
+
+// Alternative: /api/docs
+app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
+
+// ============================================================
+// Debug & Utilities
+// ============================================================
 
 // Debug endpoint to check bindings
 app.get('/api/debug/bindings', (c) => {
