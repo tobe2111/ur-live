@@ -12,6 +12,16 @@ export function useCart() {
     queryKey: ['cart'],
     queryFn: async () => {
       console.log('[useCart] 🛒 장바구니 데이터 조회 중...')
+      
+      // ✅ 토큰 확인 (디버깅용)
+      try {
+        const { useAuthStore } = await import('@/client/stores/auth.store')
+        const { accessToken } = useAuthStore.getState()
+        console.log('[useCart] 🎫 Token before API call:', accessToken ? accessToken.substring(0, 30) + '...' : 'NULL')
+      } catch (e) {
+        console.error('[useCart] ❌ Failed to check token:', e)
+      }
+      
       const response = await api.get('/api/cart')
       console.log('[useCart] 📡 API 전체 응답:', JSON.stringify(response.data, null, 2))
       
@@ -66,6 +76,15 @@ export function useCart() {
     gcTime: 5 * 60 * 1000,   // 5분 후 메모리 해제
     refetchOnMount: 'always', // ✅ 컴포넌트 마운트 시 항상 새로고침
     refetchOnWindowFocus: true, // ✅ 윈도우 포커스 시 새로고침
+    retry: (failureCount, error: any) => {
+      // ✅ 401 에러 시 재시도 중단 (무한 로딩 방지)
+      if (error?.response?.status === 401) {
+        console.error('[useCart] ❌ 401 Unauthorized - stopping retry')
+        return false
+      }
+      // 다른 에러는 최대 2회 재시도
+      return failureCount < 2
+    },
   })
 }
 
