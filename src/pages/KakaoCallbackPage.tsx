@@ -70,7 +70,7 @@ export default function KakaoCallbackPage() {
         console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
 
         // 3. ID Token 갱신 (Custom Claims 로드)
-        const idToken = await userCredential.user.getIdToken(true)
+        const idToken = await userCredential.user.getIdToken(false)  // ✅ 캐시 사용 (이미 최신)
         console.log('[KakaoCallback] ✅ ID Token 갱신 완료')
 
         // 4. localStorage 설정
@@ -97,6 +97,9 @@ export default function KakaoCallbackPage() {
           '' // refreshToken은 Firebase에서 자동 관리
         )
         console.log('[KakaoCallback] ✅ Store 업데이트 완료 (accessToken 설정됨)')
+
+        // ✅ 중복 처리 방지: onAuthStateChanged가 이 UID를 다시 처리하지 않도록
+        sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
 
         // 6. returnUrl 결정 (state > localStorage > '/')
         let returnUrl = '/'

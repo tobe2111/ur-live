@@ -188,6 +188,14 @@ export const useAuthKR = create<AuthKRState>()(
 
               unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
                 if (firebaseUser) {
+                  // ✅ 중복 처리 방지: KakaoCallback에서 이미 처리했으면 스킵
+                  const lastProcessed = sessionStorage.getItem('auth_processed_uid');
+                  if (lastProcessed === firebaseUser.uid) {
+                    console.log('[AuthKR] ⏩ Already processed, skip:', firebaseUser.uid);
+                    set({ isAuthReady: true });
+                    return;
+                  }
+                  
                   // Firebase 유저 있음 → user_type 이 seller/admin 이면 간섭하지 않음
                   const currentType = localStorage.getItem('user_type');
                   if (currentType === 'seller' || currentType === 'admin') {
@@ -225,6 +233,9 @@ export const useAuthKR = create<AuthKRState>()(
                       console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
                     }
 
+                    // ✅ 처리 완료 플래그 설정
+                    sessionStorage.setItem('auth_processed_uid', firebaseUser.uid);
+
                     set({
                       user: firebaseUser,
                       userRole: role,
@@ -244,6 +255,9 @@ export const useAuthKR = create<AuthKRState>()(
                     });
                   }
                 } else {
+                  // ✅ 로그아웃 시 플래그 제거
+                  sessionStorage.removeItem('auth_processed_uid');
+                  
                   // Firebase 유저 없음
                   localStorage.removeItem('lastLoginUid');
                   set({
