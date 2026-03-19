@@ -207,6 +207,24 @@ export const useAuthKR = create<AuthKRState>()(
                     safeSetUserType();
                     localStorage.setItem('lastLoginUid', firebaseUser.uid);
 
+                    // ✅ API 요청용 accessToken 저장 (Firebase ID Token)
+                    try {
+                      const { useAuthStore } = await import('@/client/stores/auth.store');
+                      useAuthStore.getState().setAuth(
+                        {
+                          id: firebaseUser.uid,
+                          email: firebaseUser.email || '',
+                          name: firebaseUser.displayName || '',
+                          role: 'user',
+                        },
+                        idToken,
+                        '' // refreshToken은 Firebase에서 자동 관리
+                      );
+                      console.log('[AuthKR] ✅ accessToken 저장 완료 (API 요청 가능)');
+                    } catch (e) {
+                      console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
+                    }
+
                     set({
                       user: firebaseUser,
                       userRole: role,

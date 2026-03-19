@@ -137,12 +137,18 @@ function AppContent() {
         window.history.replaceState({}, '', newUrl)
       } catch (error) {
         console.error('[App] ❌ Firebase Custom Token 로그인 실패:', error)
+        
+        // ✅ URL 파라미터 제거 (firebase_token, userName 포함)
         const urlParams2 = new URLSearchParams(window.location.search)
         urlParams2.delete('firebase_token')
+        urlParams2.delete('userName')
         const newUrl = urlParams2.toString()
           ? `${window.location.pathname}?${urlParams2.toString()}`
           : window.location.pathname
         window.history.replaceState({}, '', newUrl)
+        
+        // ✅ 로그인 페이지로 리다이렉트 (무한 루프 방지)
+        window.location.href = '/login'
       }
     }
     

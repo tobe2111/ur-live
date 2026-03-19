@@ -76,9 +76,15 @@ ordersRoutes.get('/', cors(), requireAuth(), async (c) => {
     const repository = new OrderRepository(DB);
     const orders = await repository.findAll(filter);
 
+    // ✅ BUG #4 FIX: Map DB column (total_price) to API field (total_amount)
+    const mappedOrders = orders.map((order: any) => ({
+      ...order,
+      total_amount: order.total_price,
+    }));
+
     return c.json({
       success: true,
-      data: orders
+      data: mappedOrders
     });
 
   } catch (error) {
@@ -99,6 +105,12 @@ ordersRoutes.get('/:id', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {
+    // ✅ BUG #9 FIX: Add permission check
+    const authUser = getCurrentUser(c);
+    if (!authUser) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+    
     const id = Number(c.req.param('id'));
     
     if (isNaN(id)) {
@@ -118,15 +130,28 @@ ordersRoutes.get('/:id', cors(), requireAuth(), async (c) => {
       }, 404);
     }
     
+    // ✅ Permission check: Users can only view their own orders
+    if (authUser.type === 'user') {
+      const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
+      if (order.user_id !== dbUserId) {
+        return c.json({ success: false, error: 'Forbidden' }, 403);
+      }
+    }
+    // Sellers and admins can view all orders (existing behavior)
+    
     // 주문 아이템도 함께 조회
     const items = await repository.findItems(id);
     
+    // ✅ BUG #4 FIX: Map DB column (total_price) to API field (total_amount)
+    const mappedOrder = {
+      ...order,
+      total_amount: (order as any).total_price,
+      items
+    };
+    
     return c.json({
       success: true,
-      data: {
-        ...order,
-        items
-      }
+      data: mappedOrder
     });
     
   } catch (error) {
@@ -148,10 +173,25 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {
+    // ✅ BUG #2 FIX: Get authenticated user's DB ID automatically
+    const authUser = getCurrentUser(c);
+    if (!authUser) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+    
+    // ✅ Firebase UID → DB ID conversion
+    const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
+    if (!dbUserId) {
+      return c.json({ success: false, error: 'User not found' }, 404);
+    }
+    
     const data: OrderCreateInput = await c.req.json();
     
-    // 필수 필드 검증
-    if (!data.user_id || !data.seller_id || !data.items || data.items.length === 0) {
+    // ✅ Automatically set user_id from auth context (security)
+    data.user_id = dbUserId;
+    
+    // 필수 필드 검증 (user_id는 자동 설정되므로 제외)
+    if (!data.seller_id || !data.items || data.items.length === 0) {
       return c.json({
         success: false,
         error: 'Missing required fields'
@@ -161,9 +201,15 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
     const repository = new OrderRepository(DB);
     const order = await repository.create(data);
     
+    // ✅ BUG #2 FIX: Map DB column (total_price) to API field (total_amount)
+    const mappedOrder = {
+      ...order,
+      total_amount: (order as any).total_price,
+    };
+    
     return c.json({
       success: true,
-      data: order
+      data: mappedOrder
     }, 201);
     
   } catch (error) {

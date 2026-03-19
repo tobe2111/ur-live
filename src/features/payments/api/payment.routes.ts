@@ -216,7 +216,8 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
 
     // 업데이트된 주문 조회
     // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
-    const updatedOrder = await new QueryBuilder()
+    // ✅ BUG #3 FIX: Map total_price (DB column) to total_amount (API field)
+    const updatedOrderRows = await new QueryBuilder()
       .select([
         'o.id',
         'o.user_id',
@@ -232,9 +233,16 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
       .where('o.id = ?', orderData.id)
       .execute(db);
 
+    const updatedOrder = updatedOrderRows[0];
+    // ✅ Map DB column (total_price) to API field (total_amount)
+    const mappedOrder = {
+      ...updatedOrder,
+      total_amount: updatedOrder.total_price,
+    };
+
     return c.json(successResponse({
       payment: tossPayment,
-      order: updatedOrder[0]
+      order: mappedOrder
     }, 'Payment confirmed successfully'));
 
   } catch (error: any) {
