@@ -1,12 +1,30 @@
 // Payment Fail Page
 import { useSearchParams, Link } from 'react-router-dom';
 import { XCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import { api } from '../../lib/api';
 
 export function PaymentFailPage() {
   const [searchParams] = useSearchParams();
   const code = searchParams.get('code');
   const message = searchParams.get('message');
   const orderId = searchParams.get('orderId');
+
+  // 결제 실패 시 관련 주문들 취소
+  useEffect(() => {
+    if (orderId) {
+      // orderId는 쉼표로 구분된 여러 주문 ID일 수 있음
+      const orderIds = orderId.split(',').map(id => parseInt(id.trim()));
+      
+      // 각 주문을 취소 상태로 변경
+      Promise.all(
+        orderIds.map(id =>
+          api.patch(`/orders/${id}`, { status: 'cancelled' })
+            .catch(err => console.error(`Failed to cancel order ${id}:`, err))
+        )
+      );
+    }
+  }, [orderId]);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-16 text-center" data-testid="payment-fail">
