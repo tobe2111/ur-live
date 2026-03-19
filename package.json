@@ -10,7 +10,7 @@
     "build": "npm run build:client && npm run build:worker && npm run build:prepare",
     "build:client": "vite build",
     "build:worker": "node scripts/build-worker.js",
-    "build:prepare": "cp dist/_worker.js dist/client/_worker.js && cp dist/_routes.json dist/client/_routes.json",
+    "build:prepare": "cp dist/_worker.js dist/client/_worker.js && (cp dist/_routes.json dist/client/_routes.json 2>/dev/null || cp public/_routes.json dist/client/_routes.json)",
     "deploy": "npm run build && wrangler pages deploy dist/client --project-name=ur-live-working",
     "test": "vitest run",
     "test:e2e": "playwright test",
