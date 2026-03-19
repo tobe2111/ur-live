@@ -15,6 +15,7 @@ import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { hashPassword } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
+import { ApiError } from '@/shared/types/common';
 
 type Bindings = {
   DB: D1Database;
@@ -178,11 +179,12 @@ sellerManagementRoutes.post('/register', async (c) => {
       }
     }, 201);
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Seller registration error:', error);
+    const message = error instanceof Error ? error.message : 'Seller registration failed';
     return c.json({
       success: false,
-      error: error.message || 'Seller registration failed'
+      error: message
     }, 500);
   }
 });
