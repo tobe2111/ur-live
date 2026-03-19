@@ -70,7 +70,7 @@ export default function KakaoCallbackPage() {
         console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
 
         // 3. ID Token 갱신 (Custom Claims 로드)
-        await userCredential.user.getIdToken(true)
+        const idToken = await userCredential.user.getIdToken(true)
         console.log('[KakaoCallback] ✅ ID Token 갱신 완료')
 
         // 4. localStorage 설정
@@ -79,11 +79,24 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('user_id', String(user.id))
         if (user.email) localStorage.setItem('user_email', user.email)
 
-        // 5. Zustand Store 업데이트
+        // 5. Zustand Store 업데이트 (ID Token 포함)
         const authStore = getAuthStore()
         authStore.setUser(userCredential.user)
         authStore.setAuthReady(true)
-        console.log('[KakaoCallback] ✅ Store 업데이트 완료')
+        
+        // ✅ API 요청용 accessToken 저장 (Firebase ID Token)
+        const { useAuthStore } = await import('@/client/stores/auth.store')
+        useAuthStore.getState().setAuth(
+          {
+            id: userCredential.user.uid,
+            email: user.email || '',
+            name: user.name,
+            role: 'user',
+          },
+          idToken,
+          '' // refreshToken은 Firebase에서 자동 관리
+        )
+        console.log('[KakaoCallback] ✅ Store 업데이트 완료 (accessToken 설정됨)')
 
         // 6. returnUrl 결정 (state > localStorage > '/')
         let returnUrl = '/'
