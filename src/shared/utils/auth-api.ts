@@ -133,7 +133,14 @@ export async function getIdTokenFromBackend(
       return null;
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      success: boolean;
+      data?: {
+        token: string;
+        expiresAt: number;
+      };
+      error?: string;
+    };
     
     if (!data.success || !data.data?.token) {
       console.error('[AuthAPI] Invalid response from backend:', data);
