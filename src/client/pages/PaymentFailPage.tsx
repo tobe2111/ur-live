@@ -2,7 +2,7 @@
 import { useSearchParams, Link } from 'react-router-dom';
 import { XCircle } from 'lucide-react';
 import { useEffect } from 'react';
-import { api } from '../../lib/api';
+import api from '../../lib/api';  // ✅ 수정: named export → default export
 
 export function PaymentFailPage() {
   const [searchParams] = useSearchParams();
@@ -20,7 +20,7 @@ export function PaymentFailPage() {
       Promise.all(
         orderIds.map(id =>
           api.patch(`/orders/${id}`, { status: 'cancelled' })
-            .catch(err => console.error(`Failed to cancel order ${id}:`, err))
+            .catch((err: any) => console.error(`Failed to cancel order ${id}:`, err))  // ✅ 타입 추가
         )
       );
     }

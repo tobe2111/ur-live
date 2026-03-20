@@ -9,12 +9,13 @@ export interface Product {
   id: string | number
   name: string
   description?: string
+  long_description?: string  // ✅ 추가: ProductDetailPage에서 사용
   price: number
   current_price?: number
   original_price?: number
   discount_rate?: number
   image_url: string
-  detail_images?: string | string[]
+  detail_images?: string | string[]  // ✅ 이미 있음
   seller_name?: string
   seller_id?: string | number
   category?: string
