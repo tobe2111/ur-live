@@ -70,7 +70,15 @@ export default function PaymentSuccessPage() {
 
       // 2️⃣ 장바구니 조회 (주문 데이터 생성을 위해 필수)
       const cartResponse = await api.get('/api/cart')
-      let cartItems = cartResponse.data?.data || []
+      // ✅ FIX: API response shape is { success, data: { items: [...], summary: {...} } }
+      // NOT { data: [] } — must extract .items array
+      const cartResData = cartResponse.data?.data
+      let cartItems: any[] = []
+      if (cartResData?.items && Array.isArray(cartResData.items)) {
+        cartItems = cartResData.items
+      } else if (Array.isArray(cartResData)) {
+        cartItems = cartResData
+      }
       
       // 💾 장바구니가 비어있으면 localStorage 백업에서 복원
       if (cartItems.length === 0) {
@@ -80,8 +88,8 @@ export default function PaymentSuccessPage() {
           try {
             cartItems = JSON.parse(cartBackup)
           } catch (e) {
+            console.warn('[PaymentSuccess] Cart backup parse failed:', e)
           }
-        } else {
         }
         
         // 여전히 비어있으면 에러
@@ -89,44 +97,50 @@ export default function PaymentSuccessPage() {
           setError('주문 정보를 찾을 수 없습니다. 다시 시도해주세요.')
           return
         }
-      } else {
       }
 
       // 3️⃣ 주문 데이터 생성 (결제 승인 전에 필수!)
       
       // localStorage에서 배송지 정보 가져오기
-      const shippingAddress = localStorage.getItem('checkoutShippingAddress') || ''
+      const shippingAddressRaw = localStorage.getItem('checkoutShippingAddress') || ''
       const shippingAddressDetail = localStorage.getItem('checkoutShippingAddressDetail') || ''
       const recipientName = localStorage.getItem('checkoutRecipientName') || ''
       const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
       
+      // ✅ Full address JSON saved by CheckoutPage (includes postal_code)
+      let shippingAddressObj: any = {
+        postal_code: '',
+        address1: shippingAddressRaw,
+        address2: shippingAddressDetail,
+        country: 'KR',
+        recipient_name: recipientName,
+      }
+      try {
+        const savedFull = localStorage.getItem('checkoutShippingAddressFull')
+        if (savedFull) {
+          shippingAddressObj = JSON.parse(savedFull)
+        }
+      } catch (e) {
+        console.warn('[PaymentSuccess] Full address parse failed:', e)
+      }
 
-      // 주문 아이템 매핑
-      // ✅ BUG #12 FIX: POST /api/orders expects snake_case field names matching
-      // OrderCreateInput: { user_id, seller_id, items[{product_id,quantity,price}], total_amount }
-      // The previous camelCase payload (userId, orderNumber, totalAmount) caused
-      // `!data.user_id` to be true → 400 "Missing required fields" every single time.
-      // seller_id defaults to the first item's seller_id (or 0 as fallback); the
-      // backend should be extended to support multi-seller orders properly.
-      const sellerIdForOrder = cartItems[0]?.seller_id || 0
+      // 주문 아이템 매핑 (order.routes.ts createOrderSchema 에 맞게)
+      const sellerIdForOrder = String(cartItems[0]?.seller_id || cartItems[0]?.sellerId || '')
 
       const orderItems = cartItems.map((item: any) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: item.price_snapshot ?? item.price ?? 0,
+        product_id: String(item.product_id || item.productId || ''),
+        quantity: Number(item.quantity) || 1,
+        options: item.option_value ? { value: item.option_value } : undefined,
       }))
 
       const orderData = {
-        user_id: userId,           // Firebase UID — backend maps to DB integer id
         seller_id: sellerIdForOrder,
-        order_number: orderId,
+        order_number: orderId!,
         items: orderItems,
-        total_amount: parseInt(amount || '0'),
-        shipping_address: `${shippingAddress}`,
-        shipping_address_detail: shippingAddressDetail,
+        shipping_address: shippingAddressObj,
         shipping_name: recipientName,
         shipping_phone: recipientPhone,
-        status: 'pending'
+        idempotency_key: `payment-${orderId}`,  // idempotency: 재시도 안전
       }
 
 
@@ -172,6 +186,8 @@ export default function PaymentSuccessPage() {
 
       // 6️⃣ 배송지 정보 localStorage 정리
       localStorage.removeItem('checkoutShippingAddress')
+      localStorage.removeItem('checkoutShippingAddressDetail')
+      localStorage.removeItem('checkoutShippingAddressFull')
       localStorage.removeItem('checkoutRecipientName')
       localStorage.removeItem('checkoutRecipientPhone')
 

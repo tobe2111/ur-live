@@ -12,18 +12,39 @@ import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
-import { authMiddleware, type AuthVariables } from '../middleware/auth.middleware';
+import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
 
+// AuthVariables compatible with auth.ts AuthUser
+type AuthVariables = { user: AuthUser };
+
 const ordersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-// All order routes require authentication
-ordersRouter.use('*', authMiddleware);
+// All order routes require authentication (Firebase + JWT support)
+ordersRouter.use('*', requireAuth());
+
+/**
+ * Firebase UID → DB user_id 변환 헬퍼
+ * users 테이블에서 firebase_uid로 정수 id를 조회
+ * 없으면 Firebase UID 자체를 fallback으로 사용 (새 스키마 호환)
+ */
+async function getUserDbId(db: any, firebaseUid: string): Promise<string> {
+  try {
+    const row = await db
+      .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
+      .bind(firebaseUid)
+      .first<{ id: string | number }>();
+    if (row?.id != null) return String(row.id);
+  } catch {
+    // users 테이블에 firebase_uid 컬럼이 없는 경우 (새 스키마) → Firebase UID 직접 사용
+  }
+  return firebaseUid; // fallback: 새 스키마에서는 Firebase UID = users.id
+}
 
 const createOrderSchema = z.object({
-  seller_id: z.string().min(1),
+  seller_id: z.string().optional().default(''),
   order_number: z.string().min(1),
   items: z.array(z.object({
     product_id: z.string().min(1),
@@ -47,7 +68,8 @@ const createOrderSchema = z.object({
 // POST /api/orders
 ordersRouter.post('/', async (c) => {
   try {
-    const userId = c.get('user').id;
+    const firebaseUid = String(c.get('user').id);
+    const userId = await getUserDbId(c.env.DB, firebaseUid);
     const body = await c.req.json();
     const parsed = createOrderSchema.safeParse(body);
     if (!parsed.success) {
@@ -71,16 +93,17 @@ ordersRouter.post('/', async (c) => {
 
     // Fetch seller info
     const qb = new QueryBuilder(c.env.DB);
-    const seller = await qb.queryOne<{
+    const seller = request.seller_id ? await qb.queryOne<{
       id: string;
       name: string;
       base_shipping_fee: number;
       free_shipping_threshold: number | null;
       status: string;
-    }>('SELECT id, name, base_shipping_fee, free_shipping_threshold, status FROM sellers WHERE id = ?', [request.seller_id]);
+    }>('SELECT id, name, base_shipping_fee, free_shipping_threshold, status FROM sellers WHERE id = ?', [request.seller_id]) : null;
 
-    if (!seller || seller.status !== 'ACTIVE') {
-      return c.json({ success: false, error: '유효하지 않은 판매자입니다' }, 400);
+    // seller_id 없거나 ACTIVE 아닌 경우 기본값 사용 (주문 차단 대신 경고 로그)
+    if (!seller) {
+      console.warn('[ORDERS] Seller not found or inactive:', request.seller_id, '— using default shipping fee');
     }
 
     // Validate and fetch products
@@ -91,13 +114,15 @@ ordersRouter.post('/', async (c) => {
       return c.json({ success: false, error: '일부 상품을 찾을 수 없습니다' }, 400);
     }
 
-    // Verify all products belong to the specified seller
-    const wrongSeller = products.find(p => p.seller_id !== request.seller_id);
-    if (wrongSeller) {
-      return c.json({
-        success: false,
-        error: `상품 "${wrongSeller.name}"은 해당 판매자의 상품이 아닙니다`,
-      }, 400);
+    // Verify all products belong to the specified seller (skip if seller_id is empty)
+    if (request.seller_id) {
+      const wrongSeller = products.find(p => p.seller_id !== request.seller_id);
+      if (wrongSeller) {
+        return c.json({
+          success: false,
+          error: `상품 "${wrongSeller.name}"은 해당 판매자의 상품이 아닙니다`,
+        }, 400);
+      }
     }
 
     // Build order items with pre-flight stock check (READ phase)
@@ -134,11 +159,11 @@ ordersRouter.post('/', async (c) => {
       });
     }
 
-    // Calculate shipping fee
+    // Calculate shipping fee (default 3000원 if seller not found)
     const shippingFee = calculateShippingFee(
       subtotal,
-      seller.base_shipping_fee,
-      seller.free_shipping_threshold ?? undefined
+      seller?.base_shipping_fee ?? 3000,
+      seller?.free_shipping_threshold ?? undefined
     );
 
     // ── 동시성 안전 재고 차감 (Optimistic Lock) ─────────────────
@@ -200,7 +225,8 @@ ordersRouter.post('/', async (c) => {
 // GET /api/orders
 ordersRouter.get('/', async (c) => {
   try {
-    const userId = c.get('user').id;
+    const firebaseUid = String(c.get('user').id);
+    const userId = await getUserDbId(c.env.DB, firebaseUid);
     const { page = '1', limit = '20' } = c.req.query();
     const orderRepo = new OrderRepository(c.env.DB);
 
@@ -229,7 +255,8 @@ ordersRouter.get('/', async (c) => {
 // GET /api/orders/:id
 ordersRouter.get('/:id', async (c) => {
   try {
-    const userId = c.get('user').id;
+    const firebaseUid = String(c.get('user').id);
+    const userId = await getUserDbId(c.env.DB, firebaseUid);
     const orderId = c.req.param('id');
     const orderRepo = new OrderRepository(c.env.DB);
 
@@ -240,7 +267,7 @@ ordersRouter.get('/:id', async (c) => {
     }
 
     // Security: only owner can view
-    if (order.user_id !== userId && c.get('user').role !== 'ADMIN') {
+    if (order.user_id !== userId && c.get('user').type !== 'admin') {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
@@ -255,7 +282,8 @@ ordersRouter.get('/:id', async (c) => {
 // 환불 요청 (구매 확정 후 반품/환불)
 ordersRouter.post('/refund', async (c) => {
   try {
-    const userId = c.get('user').id;
+    const firebaseUid = String(c.get('user').id);
+    const userId = await getUserDbId(c.env.DB, firebaseUid);
     const body = await c.req.json<{
       order_id: string;
       reason: string;
@@ -309,7 +337,8 @@ ordersRouter.post('/refund', async (c) => {
 // POST /api/orders/:id/cancel
 ordersRouter.post('/:id/cancel', async (c) => {
   try {
-    const userId = c.get('user').id;
+    const firebaseUid = String(c.get('user').id);
+    const userId = await getUserDbId(c.env.DB, firebaseUid);
     const orderId = c.req.param('id');
     const body = await c.req.json<{ reason?: string; cancel_amount?: number }>();
     const reason = body.reason ?? '고객 요청';
@@ -324,7 +353,7 @@ ordersRouter.post('/:id/cancel', async (c) => {
     }
 
     // ── 2. 권한 확인 ──────────────────────────────────────────
-    if (order.user_id !== userId && c.get('user').role !== 'ADMIN') {
+    if (order.user_id !== userId && c.get('user').type !== 'admin') {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 

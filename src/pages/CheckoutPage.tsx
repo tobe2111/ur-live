@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin, getUserId, getUserIdSync, isLoggedInSync } from '@/utils/auth'
+import { getUserId, getUserIdSync, isLoggedInSync } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -165,19 +165,13 @@ export default function CheckoutPage() {
     setUrlParamsProcessed(true)
   }, [searchParams])
 
-  // 🔐 Step 0: isAuthReady 후 사용자 없으면 리다이렉트
-  // ✅ isAuthReady=true + user=null 이면 확실한 비로그인 상태
-  // useAuthKR가 Firebase onAuthStateChanged 완료 후 isAuthReady=true로 설정하므로
-  // 이 effect는 Zustand 렌더 가드(아래 !user 체크)와 함께 이중 보호 역할
+  // 🔐 Step 0: 인증 확인 로그만 (리다이렉트는 ProtectedRoute + 렌더 가드에서 처리)
   useEffect(() => {
-    if (!isAuthReady) return // 아직 Firebase 초기화 중 → 대기
-    if (!user) {
-      console.log('[CheckoutPage] 🔐 인증 완료 후 user 없음 → 로그인 이동')
-      requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
-    } else {
+    if (!isAuthReady) return
+    if (user) {
       console.log('[CheckoutPage] ✅ 인증 확인 완료, user:', user.uid)
     }
-  }, [isAuthReady, user, navigate])
+  }, [isAuthReady, user])
 
   /* ====================================================================
    * 🔥 LEGACY: Toss Payment 관련 로직 제거됨
@@ -233,12 +227,6 @@ export default function CheckoutPage() {
       firebase_uid: user?.uid
     })
     console.log('[CheckoutPage] isLoggedIn:', isLoggedInSync())
-    
-    if (!isLoggedInSync()) {
-      console.log('[CheckoutPage] ❌ 로그인 필요 - requireLogin() 호출')
-      requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
-      return
-    }
 
     if (!uid) {
       console.log('[CheckoutPage] ❌ userId 없음')
@@ -493,6 +481,14 @@ export default function CheckoutPage() {
       localStorage.setItem('checkoutShippingAddressDetail', selectedAddress.address_detail || '')
       localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
       localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
+      // ✅ Store full shipping address as JSON for order creation in PaymentSuccessPage
+      localStorage.setItem('checkoutShippingAddressFull', JSON.stringify({
+        postal_code: selectedAddress.postal_code || '',
+        address1: selectedAddress.address || '',
+        address2: selectedAddress.address_detail || '',
+        country: 'KR',
+        recipient_name: selectedAddress.recipient_name || '',
+      }))
 
       // 💾 장바구니 데이터를 localStorage에 백업 (결제 승인 시 사용)
       const cartBackup = cartItems.map(item => ({
@@ -500,6 +496,7 @@ export default function CheckoutPage() {
         product_name: item.product_name,
         quantity: item.quantity,
         price_snapshot: item.price_snapshot,
+        seller_id: item.seller_id || null,
         option_value: item.option_value || null
       }))
       localStorage.setItem('checkoutCartBackup', JSON.stringify(cartBackup))
@@ -584,8 +581,8 @@ export default function CheckoutPage() {
   }
 
   if (!user) {
-    console.log('[CheckoutPage] ❌ 사용자 없음 - 로그인 필요')
-    requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
+    console.log('[CheckoutPage] ❌ 사용자 없음 - ProtectedRoute로 처리됨')
+    // ProtectedRoute가 /login 으로 리다이렉트하므로 여기서는 null만 반환
     return null
   }
 

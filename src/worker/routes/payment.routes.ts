@@ -9,18 +9,21 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
-import { authMiddleware, type AuthVariables } from '../middleware/auth.middleware';
+import { requireAuth, type AuthUser } from '../middleware/auth';
 import { webhookRouter } from './webhook.routes';
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
+
+// AuthVariables compatible with auth.ts AuthUser
+type AuthVariables = { user: AuthUser };
 
 const paymentsRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
 // ---- Webhook (PUBLIC - no auth needed, signature-protected) ----
 paymentsRouter.route('/webhook', webhookRouter);
 
-// ---- Confirm (requires auth) ----
-paymentsRouter.use('/confirm', authMiddleware);
-paymentsRouter.use('/checkout-session', authMiddleware);
+// Apply Firebase+JWT auth to protected endpoints
+paymentsRouter.use('/confirm', requireAuth());
+paymentsRouter.use('/checkout-session', requireAuth());
 
 const confirmSchema = z.object({
   paymentKey: z.string(),
