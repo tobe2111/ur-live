@@ -11,7 +11,7 @@
 /**
  * Query result type
  */
-export interface QueryResult<T = any> {
+export interface QueryResult<T = unknown> {
   results: T[];
   success: boolean;
   meta?: {
@@ -24,7 +24,7 @@ export interface QueryResult<T = any> {
 /**
  * Single row result type
  */
-export interface SingleRowResult<T = any> {
+export interface SingleRowResult<T = unknown> {
   result: T | null;
   success: boolean;
 }
@@ -38,9 +38,9 @@ export class DatabaseHelper {
   /**
    * Execute a SELECT query and return all results
    */
-  async query<T = any>(
+  async query<T = unknown>(
     sql: string,
-    ...params: any[]
+    ...params: unknown[]
   ): Promise<T[]> {
     try {
       const stmt = this.db.prepare(sql);
@@ -55,9 +55,9 @@ export class DatabaseHelper {
   /**
    * Execute a SELECT query and return first result
    */
-  async queryFirst<T = any>(
+  async queryFirst<T = unknown>(
     sql: string,
-    ...params: any[]
+    ...params: unknown[]
   ): Promise<T | null> {
     try {
       const stmt = this.db.prepare(sql);
@@ -72,9 +72,9 @@ export class DatabaseHelper {
   /**
    * Execute a SELECT query and return one result (throws if not found)
    */
-  async queryOne<T = any>(
+  async queryOne<T = unknown>(
     sql: string,
-    ...params: any[]
+    ...params: unknown[]
   ): Promise<T> {
     const result = await this.queryFirst<T>(sql, ...params);
     
@@ -90,7 +90,7 @@ export class DatabaseHelper {
    */
   async execute(
     sql: string,
-    ...params: any[]
+    ...params: unknown[]
   ): Promise<D1Result> {
     try {
       const stmt = this.db.prepare(sql);
@@ -106,7 +106,7 @@ export class DatabaseHelper {
    * Execute multiple queries in a batch
    */
   async batch(
-    queries: Array<{ sql: string; params?: any[] }>
+    queries: Array<{ sql: string; params?: unknown[] }>
   ): Promise<D1Result[]> {
     try {
       const statements = queries.map(q => {
@@ -127,7 +127,7 @@ export class DatabaseHelper {
    */
   async exists(
     table: string,
-    where: Record<string, any>
+    where: Record<string, unknown>
   ): Promise<boolean> {
     const conditions = Object.keys(where).map(key => `${key} = ?`).join(' AND ');
     const values = Object.values(where);
@@ -143,10 +143,10 @@ export class DatabaseHelper {
    */
   async count(
     table: string,
-    where?: Record<string, any>
+    where?: Record<string, unknown>
   ): Promise<number> {
     let sql = `SELECT COUNT(*) as count FROM ${table}`;
-    const values: any[] = [];
+    const values: unknown[] = [];
     
     if (where && Object.keys(where).length > 0) {
       const conditions = Object.keys(where).map(key => `${key} = ?`).join(' AND ');
@@ -161,7 +161,7 @@ export class DatabaseHelper {
   /**
    * Find one record by ID
    */
-  async findById<T = any>(
+  async findById<T = unknown>(
     table: string,
     id: number | string,
     idColumn: string = 'id'
@@ -173,9 +173,9 @@ export class DatabaseHelper {
   /**
    * Find one record by conditions
    */
-  async findOne<T = any>(
+  async findOne<T = unknown>(
     table: string,
-    where: Record<string, any>
+    where: Record<string, unknown>
   ): Promise<T | null> {
     const conditions = Object.keys(where).map(key => `${key} = ?`).join(' AND ');
     const values = Object.values(where);
@@ -187,9 +187,9 @@ export class DatabaseHelper {
   /**
    * Find all records with optional conditions
    */
-  async findAll<T = any>(
+  async findAll<T = unknown>(
     table: string,
-    where?: Record<string, any>,
+    where?: Record<string, unknown>,
     options?: {
       orderBy?: string;
       order?: 'ASC' | 'DESC';
@@ -198,7 +198,7 @@ export class DatabaseHelper {
     }
   ): Promise<T[]> {
     let sql = `SELECT * FROM ${table}`;
-    const values: any[] = [];
+    const values: unknown[] = [];
     
     if (where && Object.keys(where).length > 0) {
       const conditions = Object.keys(where).map(key => `${key} = ?`).join(' AND ');
@@ -226,7 +226,7 @@ export class DatabaseHelper {
    */
   async insert(
     table: string,
-    data: Record<string, any>
+    data: Record<string, unknown>
   ): Promise<D1Result> {
     const columns = Object.keys(data);
     const placeholders = columns.map(() => '?').join(', ');
@@ -241,8 +241,8 @@ export class DatabaseHelper {
    */
   async update(
     table: string,
-    data: Record<string, any>,
-    where: Record<string, any>
+    data: Record<string, unknown>,
+    where: Record<string, unknown>
   ): Promise<D1Result> {
     const setClause = Object.keys(data).map(key => `${key} = ?`).join(', ');
     const whereClause = Object.keys(where).map(key => `${key} = ?`).join(' AND ');
@@ -257,7 +257,7 @@ export class DatabaseHelper {
    */
   async delete(
     table: string,
-    where: Record<string, any>
+    where: Record<string, unknown>
   ): Promise<D1Result> {
     const whereClause = Object.keys(where).map(key => `${key} = ?`).join(' AND ');
     const values = Object.values(where);
@@ -269,11 +269,11 @@ export class DatabaseHelper {
   /**
    * Paginated query
    */
-  async paginate<T = any>(
+  async paginate<T = unknown>(
     table: string,
     page: number = 1,
     pageSize: number = 10,
-    where?: Record<string, any>,
+    where?: Record<string, unknown>,
     orderBy?: string,
     order: 'ASC' | 'DESC' = 'DESC'
   ): Promise<{
@@ -324,7 +324,7 @@ export class DatabaseHelper {
    */
   async softDelete(
     table: string,
-    where: Record<string, any>,
+    where: Record<string, unknown>,
     deletedAtColumn: string = 'deleted_at'
   ): Promise<D1Result> {
     return this.update(table, {
@@ -338,7 +338,7 @@ export class DatabaseHelper {
    */
   async upsert(
     table: string,
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     conflictColumns: string[]
   ): Promise<D1Result> {
     const columns = Object.keys(data);
@@ -370,7 +370,7 @@ export class QueryBuilder {
   private selectClause: string = '*';
   private fromClause: string = '';
   private whereConditions: string[] = [];
-  private whereParams: any[] = [];
+  private whereParams: unknown[] = [];
   private orderByClause: string = '';
   private limitValue?: number;
   private offsetValue?: number;
@@ -386,7 +386,7 @@ export class QueryBuilder {
     return this;
   }
 
-  where(condition: string, ...params: any[]): this {
+  where(condition: string, ...params: unknown[]): this {
     this.whereConditions.push(condition);
     this.whereParams.push(...params);
     return this;
@@ -417,7 +417,7 @@ export class QueryBuilder {
     return this;
   }
 
-  build(): { sql: string; params: any[] } {
+  build(): { sql: string; params: unknown[] } {
     let sql = `SELECT ${this.selectClause} FROM ${this.fromClause}`;
     
     if (this.joinClauses.length > 0) {
@@ -457,10 +457,10 @@ export class QueryBuilder {
  * SELECT → results 배열 반환
  * INSERT/UPDATE/DELETE → D1Result 반환
  */
-export async function executeQuery<T = any>(
+export async function executeQuery<T = unknown>(
   db: D1Database,
   sql: string,
-  params: any[] = []
+  params: unknown[] = []
 ): Promise<T[]> {
   const helper = new DatabaseHelper(db);
   return helper.query<T>(sql, ...params);
@@ -472,7 +472,7 @@ export async function executeQuery<T = any>(
 export async function executeRun(
   db: D1Database,
   sql: string,
-  params: any[] = []
+  params: unknown[] = []
 ): Promise<D1Result> {
   const helper = new DatabaseHelper(db);
   return helper.execute(sql, ...params);
@@ -481,10 +481,10 @@ export async function executeRun(
 /**
  * queryFirst - 단일 행 조회
  */
-export async function queryFirst<T = any>(
+export async function queryFirst<T = unknown>(
   db: D1Database,
   sql: string,
-  params: any[] = []
+  params: unknown[] = []
 ): Promise<T | null> {
   const helper = new DatabaseHelper(db);
   return helper.queryFirst<T>(sql, ...params);

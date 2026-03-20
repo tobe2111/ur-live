@@ -11,7 +11,7 @@
 /**
  * Standard success response format
  */
-export interface SuccessResponse<T = any> {
+export interface SuccessResponse<T = unknown> {
   success: true;
   data: T;
   message?: string;
@@ -27,7 +27,7 @@ export interface ErrorResponse {
     message: string;
     code?: string;
     field?: string;
-    details?: any;
+    details?: Record<string, unknown>;
   };
   timestamp: string;
 }
@@ -35,7 +35,7 @@ export interface ErrorResponse {
 /**
  * Paginated response format
  */
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   success: true;
   data: T[];
   pagination: {
@@ -71,7 +71,7 @@ export function errorResponse(
   message: string,
   code?: string,
   field?: string,
-  details?: any
+  details?: Record<string, unknown>
 ): ErrorResponse {
   return {
     success: false,
@@ -171,7 +171,7 @@ export function forbiddenResponse(
 export function badRequestResponse(
   message: string,
   field?: string,
-  details?: any
+  details?: Record<string, unknown>
 ): ErrorResponse {
   return errorResponse(message, 'BAD_REQUEST', field, details);
 }
@@ -182,7 +182,7 @@ export function badRequestResponse(
 export function validationErrorResponse(
   message: string,
   field?: string,
-  details?: any
+  details?: Record<string, unknown>
 ): ErrorResponse {
   return errorResponse(message, 'VALIDATION_ERROR', field, details);
 }
@@ -192,7 +192,7 @@ export function validationErrorResponse(
  */
 export function conflictResponse(
   message: string,
-  details?: any
+  details?: Record<string, unknown>
 ): ErrorResponse {
   return errorResponse(message, 'CONFLICT', undefined, details);
 }
@@ -202,7 +202,7 @@ export function conflictResponse(
  */
 export function internalServerErrorResponse(
   message: string = 'Internal server error',
-  details?: any
+  details?: Record<string, unknown>
 ): ErrorResponse {
   return errorResponse(message, 'INTERNAL_SERVER_ERROR', undefined, details);
 }
@@ -268,7 +268,7 @@ export function getStatusFromErrorCode(errorCode?: string): number {
 /**
  * Helper to format error from Error object
  */
-export function formatErrorResponse(error: Error | any): ErrorResponse {
+export function formatErrorResponse(error: Error | unknown): ErrorResponse {
   // ValidationError from validation.ts
   if (error.name === 'ValidationError') {
     return validationErrorResponse(
@@ -301,13 +301,13 @@ export function formatErrorResponse(error: Error | any): ErrorResponse {
 
 import { Context } from 'hono';
 
-export function jsonSuccess(c: Context, data: any, message?: string, status: number = 200) {
-  return c.json({ success: true, data, message, timestamp: new Date().toISOString() }, status as any);
+export function jsonSuccess<T = unknown>(c: Context, data: T, message?: string, status: number = 200) {
+  return c.json({ success: true, data, message, timestamp: new Date().toISOString() }, status);
 }
 export function jsonError(c: Context, message: string, status: number = 400) {
-  return c.json({ success: false, error: { message }, timestamp: new Date().toISOString() }, status as any);
+  return c.json({ success: false, error: { message }, timestamp: new Date().toISOString() }, status);
 }
-export function jsonCreated(c: Context, data: any, message?: string) {
+export function jsonCreated<T = unknown>(c: Context, data: T, message?: string) {
   return jsonSuccess(c, data, message, 201);
 }
 export function jsonNotFound(c: Context, message: string = 'Not found') {
