@@ -72,6 +72,17 @@ export default function KakaoCallbackPage() {
         // 3. ID Token 갱신 (Custom Claims 로드)
         const idToken = await userCredential.user.getIdToken(false)  // ✅ 캐시 사용 (이미 최신)
         console.log('[KakaoCallback] ✅ ID Token 갱신 완료')
+        
+        // 3.5 ✅ Firebase User의 displayName 업데이트 (사용자 이름 표시용)
+        try {
+          const { updateProfile } = await import('firebase/auth');
+          await updateProfile(userCredential.user, {
+            displayName: user.name
+          });
+          console.log('[KakaoCallback] ✅ Firebase User displayName 업데이트:', user.name);
+        } catch (e) {
+          console.warn('[KakaoCallback] ⚠️ displayName 업데이트 실패 (무시):', e);
+        }
 
         // 4. localStorage 설정
         localStorage.setItem('user_type', 'user')

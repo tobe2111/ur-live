@@ -783,3 +783,1764 @@
 2026-03-18 07:56:40 +00:00:     - Unexpected fields found in dev field: "persist_to"
 2026-03-18 07:56:40 +00:00: 
 2026-03-18 07:56:40 +00:00: 
+2026-03-20 01:12:59 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 3 errors:[0m
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:12:59 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:12:59 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:12:59 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:12:59 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mFailed to build _worker.js. Continuing to serve the last successfully built version of the Worker.[0m
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:12:59 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:12:59 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:12:59 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:12:59 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:12:59 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:12:59 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:12:59 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:12:59 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:12:59 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:12:59 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:12:59 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:12:59 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00:   
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:12:59 +00:00: 
+2026-03-20 01:13:00 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:13:00 +00:00: 
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:13:00 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:13:00 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:13:00 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:13:00 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:13:00 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:13:00 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:13:00 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:13:00 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:13:00 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:13:00 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:13:00 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:13:00 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00:   
+2026-03-20 01:13:00 +00:00: 
+2026-03-20 01:13:00 +00:00: 
+2026-03-20 01:14:03 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:03 +00:00: 
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:03 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:03 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:03 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:03 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:03 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:03 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:03 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:03 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:03 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:03 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:03 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:03 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00:   
+2026-03-20 01:14:03 +00:00: 
+2026-03-20 01:14:03 +00:00: 
+2026-03-20 01:14:04 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:04 +00:00: 
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:04 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:04 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:04 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:04 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:04 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:04 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:04 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:04 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:04 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:04 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:04 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:04 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00:   
+2026-03-20 01:14:04 +00:00: 
+2026-03-20 01:14:04 +00:00: 
+2026-03-20 01:14:09 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:09 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:09 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:09 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:09 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:09 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:09 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:09 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:09 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:09 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:09 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:09 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:09 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:09 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:09 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:09 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:09 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:09 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:09 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:09 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:09 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:09 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:09 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:09 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:09 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:09 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:09 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:09 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:09 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00:   
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:09 +00:00: 
+2026-03-20 01:14:10 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:10 +00:00: 
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:10 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:10 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:10 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:10 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:10 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:10 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:10 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:10 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:10 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:10 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:10 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:10 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00: 
+2026-03-20 01:14:10 +00:00: 
+2026-03-20 01:14:10 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:10 +00:00: 
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:10 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:10 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:10 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:10 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:10 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:10 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:10 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:10 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mUnexpected end of file in JSON[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/package.json:1:0:
+2026-03-20 01:14:10 +00:00:   [37m      1 │ [32m[37m
+2026-03-20 01:14:10 +00:00:           ╵ [32m^[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:10 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:10 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:10 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:10 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00:   
+2026-03-20 01:14:10 +00:00: 
+2026-03-20 01:14:10 +00:00: 
+2026-03-20 01:14:11 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:11 +00:00: 
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:11 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:11 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:11 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:11 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:11 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:11 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:11 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:11 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mUnexpected end of file in JSON[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:1:0:
+2026-03-20 01:14:11 +00:00:   [37m      1 │ [32m[37m
+2026-03-20 01:14:11 +00:00:           ╵ [32m^[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:11 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:11 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:11 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:11 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00: 
+2026-03-20 01:14:11 +00:00: 
+2026-03-20 01:14:11 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:11 +00:00: 
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:11 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:11 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:11 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:11 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:11 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:11 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:11 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:11 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:11 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:11 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:11 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:11 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:11 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:11 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:     The module "./dist/runtime/node/process.mjs" was not found on the file system:
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:11 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:11 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00:   
+2026-03-20 01:14:11 +00:00: 
+2026-03-20 01:14:11 +00:00: 
+2026-03-20 01:14:12 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:12 +00:00: 
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:12 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:12 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:12 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:12 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:12 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:12 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:12 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:12 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/console"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console:1:41:
+2026-03-20 01:14:12 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/console"[37m;
+2026-03-20 01:14:12 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:12 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:12 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:12 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:12 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:     The module "./dist/runtime/node/process.mjs" was not found on the file system:
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:12 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:12 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00:   
+2026-03-20 01:14:12 +00:00: 
+2026-03-20 01:14:12 +00:00: 
+2026-03-20 01:14:13 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 7 errors:[0m
+2026-03-20 01:14:13 +00:00: 
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:13 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:13 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:13 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:13 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:13 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:13 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:13 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:13 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:13 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:13 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:     The module "./dist/runtime/node/process.mjs" was not found on the file system:
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:13 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:13 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00: 
+2026-03-20 01:14:13 +00:00: 
+2026-03-20 01:14:13 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:13 +00:00: 
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:13 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:13 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:13 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:13 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:13 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:13 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:13 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:13 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/console"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs:9:7:
+2026-03-20 01:14:13 +00:00:   [37m      9 │ } from [32m"unenv/node/console"[37m;
+2026-03-20 01:14:13 +00:00:           ╵        [32m~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:13 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:13 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:     You can mark the path "unenv/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:13 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:13 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:     The module "./dist/runtime/node/process.mjs" was not found on the file system:
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:13 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:13 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00:   
+2026-03-20 01:14:13 +00:00: 
+2026-03-20 01:14:13 +00:00: 
+2026-03-20 01:14:14 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 7 errors:[0m
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:14 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:14 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:14 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/console"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs:9:7:
+2026-03-20 01:14:14 +00:00:   [37m      9 │ } from [32m"unenv/node/console"[37m;
+2026-03-20 01:14:14 +00:00:           ╵        [32m~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "@cloudflare/unenv-preset/node/process"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process:1:41:
+2026-03-20 01:14:14 +00:00:   [37m      1 │ ...lt as defaultExport } from [32m"@cloudflare/unenv-preset/node/process"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/process.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/package.json:32:17:
+2026-03-20 01:14:14 +00:00:   [37m      32 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "@cloudflare/unenv-preset/node/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:14 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:14 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:14 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/console"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs:9:7:
+2026-03-20 01:14:14 +00:00:   [37m      9 │ } from [32m"unenv/node/console"[37m;
+2026-03-20 01:14:14 +00:00:           ╵        [32m~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/hrtime"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:1:38:
+2026-03-20 01:14:14 +00:00:   [37m      1 │ ... hrtime as UnenvHrTime } from [32m"unenv/node/internal/process/hrtime"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/internal/process/hrtime.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/internal/process/hrtime" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:14 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:14 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:14 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:14 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/console"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs:9:7:
+2026-03-20 01:14:14 +00:00:   [37m      9 │ } from [32m"unenv/node/console"[37m;
+2026-03-20 01:14:14 +00:00:           ╵        [32m~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/hrtime"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:1:38:
+2026-03-20 01:14:14 +00:00:   [37m      1 │ ... hrtime as UnenvHrTime } from [32m"unenv/node/internal/process/hrtime"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/internal/process/hrtime.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/internal/process/hrtime" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:14 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:14 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:14 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:14 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:14 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/console"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs:9:7:
+2026-03-20 01:14:14 +00:00:   [37m      9 │ } from [32m"unenv/node/console"[37m;
+2026-03-20 01:14:14 +00:00:           ╵        [32m~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/console.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/console" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/hrtime"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:1:38:
+2026-03-20 01:14:14 +00:00:   [37m      1 │ ... hrtime as UnenvHrTime } from [32m"unenv/node/internal/process/hrtime"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/internal/process/hrtime.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/internal/process/hrtime" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:14 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:14 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:14 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:14 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:14 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:14 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00:   
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:14 +00:00: 
+2026-03-20 01:14:19 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 10 errors:[0m
+2026-03-20 01:14:19 +00:00: 
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:19 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:19 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:19 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:19 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:19 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:19 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:19 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:19 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/hrtime"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:1:38:
+2026-03-20 01:14:19 +00:00:   [37m      1 │ ... hrtime as UnenvHrTime } from [32m"unenv/node/internal/process/hrtime"[37m;
+2026-03-20 01:14:19 +00:00:           ╵                                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:     The module "./dist/runtime/node/internal/process/hrtime.mjs" was not found on the file system:
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:19 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:19 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:     You can mark the path "unenv/node/internal/process/hrtime" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:19 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:19 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:19 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:19 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:19 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:19 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../mock/noop.mjs"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:2:17:
+2026-03-20 01:14:19 +00:00:   [37m      2 │ import noop from [32m"../mock/noop.mjs"[37m;
+2026-03-20 01:14:19 +00:00:           ╵                  [32m~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:19 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:19 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00:   
+2026-03-20 01:14:19 +00:00: 
+2026-03-20 01:14:19 +00:00: 
+2026-03-20 01:14:22 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 10 errors:[0m
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:22 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:22 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/hrtime"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:1:38:
+2026-03-20 01:14:22 +00:00:   [37m      1 │ ... hrtime as UnenvHrTime } from [32m"unenv/node/internal/process/hrtime"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     The module "./dist/runtime/node/internal/process/hrtime.mjs" was not found on the file system:
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:22 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:22 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     You can mark the path "unenv/node/internal/process/hrtime" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:22 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:22 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:22 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../mock/noop.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:2:17:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ import noop from [32m"../mock/noop.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                  [32m~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 10 errors:[0m
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:22 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:22 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/hrtime"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:1:38:
+2026-03-20 01:14:22 +00:00:   [37m      1 │ ... hrtime as UnenvHrTime } from [32m"unenv/node/internal/process/hrtime"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     The module "./dist/runtime/node/internal/process/hrtime.mjs" was not found on the file system:
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:22 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:22 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     You can mark the path "unenv/node/internal/process/hrtime" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:22 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:22 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:22 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../mock/noop.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:2:17:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ import noop from [32m"../mock/noop.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                  [32m~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:22 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:22 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:22 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:22 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/perf_hooks.mjs[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs:10:7:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ } from [32m"node:perf_hooks"[37m;
+2026-03-20 01:14:22 +00:00:            ╵        [32m~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../mock/noop.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:2:17:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ import noop from [32m"../mock/noop.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                  [32m~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 8 errors:[0m
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:22 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:22 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "unenv/node/internal/process/process"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs:2:40:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...ocess as UnenvProcess } from [32m"unenv/node/internal/process/process"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     The module "./dist/runtime/node/internal/process/process.mjs" was not found on the file system:
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/package.json:25:17:
+2026-03-20 01:14:22 +00:00:   [37m      25 │       "default": [32m"./dist/runtime/*.mjs"[37m
+2026-03-20 01:14:22 +00:00:            ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:     You can mark the path "unenv/node/internal/process/process" as external to exclude it from the bundle, which will remove this error.
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/internal/perf_hooks/histogram.mjs:1:42:
+2026-03-20 01:14:22 +00:00:   [37m      1 │ ... { createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 10 errors:[0m
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/modules-watch-stub.js"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:22 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:22 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:22 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:22 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/internal/perf_hooks/histogram.mjs:1:42:
+2026-03-20 01:14:22 +00:00:   [37m      1 │ ... { createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/internal/perf_hooks/performance.mjs:1:42:
+2026-03-20 01:14:22 +00:00:   [37m      1 │ ... { createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not read from file: /home/user/webapp/node_modules/unenv/dist/runtime/node/tty.mjs[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/internal/process/process.mjs:2:40:
+2026-03-20 01:14:22 +00:00:   [37m      2 │ import { ReadStream, WriteStream } from [32m"node:tty"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                         [32m~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:       node_modules/unenv/dist/runtime/node/internal/process/process.mjs:3:58:
+2026-03-20 01:14:22 +00:00:   [37m      3 │ ...d, createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:22 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00:   
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:22 +00:00: 
+2026-03-20 01:14:23 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 9 errors:[0m
+2026-03-20 01:14:23 +00:00: 
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:23 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:23 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:23 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:23 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:23 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:23 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:23 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:23 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../_internal/utils.mjs"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       node_modules/unenv/dist/runtime/node/console.mjs:3:52:
+2026-03-20 01:14:23 +00:00:   [37m      3 │ ...otImplemented, notImplementedClass } from [32m"../_internal/utils.mjs"[37m;
+2026-03-20 01:14:23 +00:00:           ╵                                              [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       node_modules/unenv/dist/runtime/node/internal/perf_hooks/histogram.mjs:1:42:
+2026-03-20 01:14:23 +00:00:   [37m      1 │ ... { createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:23 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       node_modules/unenv/dist/runtime/node/internal/perf_hooks/performance.mjs:1:42:
+2026-03-20 01:14:23 +00:00:   [37m      1 │ ... { createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:23 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../_internal/utils.mjs"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       node_modules/unenv/dist/runtime/node/internal/process/process.mjs:3:58:
+2026-03-20 01:14:23 +00:00:   [37m      3 │ ...d, createNotImplementedError } from [32m"../../../_internal/utils.mjs"[37m;
+2026-03-20 01:14:23 +00:00:           ╵                                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "./internal/tty/write-stream.mjs"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       node_modules/unenv/dist/runtime/node/tty.mjs:2:28:
+2026-03-20 01:14:23 +00:00:   [37m      2 │ import { WriteStream } from [32m"./internal/tty/write-stream.mjs"[37m;
+2026-03-20 01:14:23 +00:00:           ╵                             [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00: 
+2026-03-20 01:14:23 +00:00: 
+2026-03-20 01:14:23 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mBuild failed with 4 errors:[0m
+2026-03-20 01:14:23 +00:00: 
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:2:38:
+2026-03-20 01:14:23 +00:00:   [37m      2 │ ...E_0__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:23 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-insertion-facade.js:3:34:
+2026-03-20 01:14:23 +00:00:   [37m      3 │ ...E_1__ from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:23 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/middleware/common.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/bundle-clpQM1/middleware-loader.entry.ts:7:67:
+2026-03-20 01:14:23 +00:00:   [37m      7 │ ...her } from [32m"/home/user/webapp/node_modules/wrangler/templates/mi[37m...
+2026-03-20 01:14:23 +00:00:           ╵               [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "/home/user/webapp/node_modules/wrangler/templates/pages-dev-util.ts"[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:       .wrangler/tmp/pages-O1YOQv/os5q8j6ve5.js:10:35:
+2026-03-20 01:14:23 +00:00:   [37m      10 │ ...ch } from [32m"/home/user/webapp/node_modules/wrangler/templates/pa[37m...
+2026-03-20 01:14:23 +00:00:            ╵              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00:   
+2026-03-20 01:14:23 +00:00: 
+2026-03-20 01:14:23 +00:00: 
+2026-03-20 01:14:24 +00:00: [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mspawn ETXTBSY[0m
+2026-03-20 01:14:24 +00:00: 
+2026-03-20 01:14:24 +00:00: 
+2026-03-20 01:14:24 +00:00: 🪵  Logs were written to "/home/user/.config/.wrangler/logs/wrangler-2026-03-16_23-44-52_400.log"
+2026-03-20 01:14:26 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:26 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:26 +00:00: [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.toml configuration:[0m
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:26 +00:00:     - Unexpected fields found in dev field: "persist_to"
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:26 +00:00: 

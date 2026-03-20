@@ -672,3 +672,67 @@
 2026-03-17 00:32:36 +00:00: ⎔ Reloading local server...
 2026-03-17 00:39:32 +00:00: ✨ Compiled Worker successfully
 2026-03-17 00:39:33 +00:00: ⎔ Reloading local server...
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:26 +00:00:  ⛅️ wrangler 4.52.1 (update available 4.75.0)
+2026-03-20 01:14:26 +00:00: ─────────────────────────────────────────────
+2026-03-20 01:14:26 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:14:26 +00:00: Using vars defined in .dev.vars
+2026-03-20 01:14:26 +00:00: Your Worker has access to the following bindings:
+2026-03-20 01:14:26 +00:00: Binding                                                             Resource                  Mode
+2026-03-20 01:14:26 +00:00: env.SESSION_KV (SESSION_KV)                                         KV Namespace              local
+2026-03-20 01:14:26 +00:00: env.CACHE_KV (CACHE_KV)                                             KV Namespace              local
+2026-03-20 01:14:26 +00:00: env.LIVE_CACHE (LIVE_CACHE)                                         KV Namespace              local
+2026-03-20 01:14:26 +00:00: env.DB (toss-live-commerce-db)                                      D1 Database               local
+2026-03-20 01:14:26 +00:00: env.toss-live-commerce-db (local-toss-live-commerce-db)             D1 Database               local
+2026-03-20 01:14:26 +00:00: env.TOSS_CLIENT_KEY ("test_ck_placeholder")                         Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FRONTEND_URL ("http://localhost:5173")                          Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.KAKAO_REST_API_KEY ("(hidden)")                                 Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_DATABASE_URL ("(hidden)")                              Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_API_KEY ("(hidden)")                                   Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_PROJECT_ID ("(hidden)")                                Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_AUTH_DOMAIN ("(hidden)")                               Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_STORAGE_BUCKET ("(hidden)")                            Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_MESSAGING_SENDER_ID ("(hidden)")                       Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_APP_ID ("(hidden)")                                    Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_PRIVATE_KEY ("(hidden)")                               Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.FIREBASE_CLIENT_EMAIL ("(hidden)")                              Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.JWT_SECRET ("(hidden)")                                         Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.REFRESH_TOKEN_SECRET ("(hidden)")                               Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.TOSS_SECRET_KEY ("(hidden)")                                    Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.RESEND_API_KEY ("(hidden)")                                     Environment Variable      local
+2026-03-20 01:14:26 +00:00: env.EMAIL_FROM ("(hidden)")                                         Environment Variable      local
+2026-03-20 01:14:26 +00:00: 
+2026-03-20 01:14:27 +00:00: ⎔ Starting local server...
+2026-03-20 01:14:27 +00:00: [wrangler:info] Ready on http://0.0.0.0:3000
+2026-03-20 01:14:27 +00:00: [wrangler:info] - http://127.0.0.1:3000
+2026-03-20 01:14:27 +00:00: [wrangler:info] - http://169.254.0.21:3000
+2026-03-20 01:15:05 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:15:05 +00:00: ⎔ Reloading local server...
+2026-03-20 01:16:12 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:16:12 +00:00: ⎔ Reloading local server...
+2026-03-20 01:16:47 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:16:47 +00:00: ⎔ Reloading local server...
+2026-03-20 01:17:23 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:17:23 +00:00: ⎔ Reloading local server...
+2026-03-20 01:17:56 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:17:56 +00:00: ⎔ Reloading local server...
+2026-03-20 01:30:20 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:30:20 +00:00: ⎔ Reloading local server...
+2026-03-20 01:37:39 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:37:40 +00:00: ⎔ Reloading local server...
+2026-03-20 01:45:57 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:45:58 +00:00: ⎔ Reloading local server...
+2026-03-20 01:46:22 +00:00: ✨ Compiled Worker successfully
+2026-03-20 01:46:22 +00:00: ⎔ Reloading local server...
+2026-03-20 02:07:24 +00:00: ✨ Compiled Worker successfully
+2026-03-20 02:07:24 +00:00: ⎔ Reloading local server...
+2026-03-20 02:25:09 +00:00: <-- GET /api/search/suggestions?q=%ED%85%8C%EC%8A%A4
+2026-03-20 02:25:09 +00:00: --> GET /api/search/suggestions?q=%ED%85%8C%EC%8A%A4 [33m400[0m 28ms
+2026-03-20 02:25:09 +00:00: [wrangler:info] GET /api/search/suggestions 400 Bad Request (48ms)
+2026-03-20 02:25:09 +00:00: <-- GET /api/search/suggestions?q=%ED%85%8C%EC%8A%A4%ED%8A%B8
+2026-03-20 02:25:09 +00:00: --> GET /api/search/suggestions?q=%ED%85%8C%EC%8A%A4%ED%8A%B8 [33m400[0m 5ms
+2026-03-20 02:25:09 +00:00: [wrangler:info] GET /api/search/suggestions 400 Bad Request (48ms)
+2026-03-20 02:27:22 +00:00: ✨ Compiled Worker successfully
+2026-03-20 02:27:22 +00:00: ⎔ Reloading local server...
+2026-03-20 02:28:58 +00:00: ✨ Compiled Worker successfully
+2026-03-20 02:28:58 +00:00: ⎔ Reloading local server...
