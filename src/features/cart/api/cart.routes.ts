@@ -163,45 +163,72 @@ cartRoutes.get('/', requireAuth(), async (c) => {
  */
 cartRoutes.post('/', requireAuth(), async (c) => {
   try {
+    console.log('[Cart] POST /api/cart - Start');
+    
     const user = getCurrentUser(c);
     if (!user) {
+      console.error('[Cart] No user found in context');
       return c.json(unauthorizedResponse(), 401);
     }
+    console.log('[Cart] User authenticated:', { id: user.id, email: user.email });
 
     const body = await c.req.json<CartAddRequest>();
+    console.log('[Cart] Request body:', JSON.stringify(body));
 
     // Validation
     const product_id = validateNumber(body.product_id, 'product_id', { min: 1, integer: true });
     const quantity = validateNumber(body.quantity, 'quantity', { min: 1, integer: true });
     const options = validateOptionalString(body.options, 'options', { maxLength: 500 });
+    console.log('[Cart] Validation passed:', { product_id, quantity, options });
 
     const db = c.env.DB;
+    console.log('[Cart] DB connected:', !!db);
+    
+    if (!db) {
+      console.error('[Cart] ❌ DB binding not found in c.env');
+      return c.json({
+        success: false,
+        error: 'Database not configured',
+        debug: {
+          envKeys: Object.keys(c.env),
+          dbBinding: !!c.env.DB
+        }
+      }, 500);
+    }
+    
     const dbHelper = createDbHelper(db);
     const userId = await getUserDbId(db, String(user.id));
+    console.log('[Cart] User DB ID:', userId);
     
     if (!userId) {
       return c.json(notFoundResponse('User'), 404);
     }
 
     // 상품 존재 여부 및 재고 확인
+    console.log('[Cart] Fetching product:', product_id);
     const product = await dbHelper.findById<{ id: number; name: string; price: number; stock: number }>(
       'products',
       product_id
     );
+    console.log('[Cart] Product found:', !!product, product ? { id: product.id, stock: product.stock } : null);
 
     if (!product) {
+      console.error('[Cart] Product not found:', product_id);
       return c.json(notFoundResponse('Product'), 404);
     }
 
     if (product.stock < quantity) {
+      console.error('[Cart] Insufficient stock:', { available: product.stock, requested: quantity });
       return c.json(badRequestResponse('Insufficient stock'), 400);
     }
 
     // 이미 장바구니에 있는지 확인
+    console.log('[Cart] Checking existing cart item:', { userId, product_id });
     const existingItem = await dbHelper.findOne<{ id: number; quantity: number }>(
       'cart',
       { user_id: userId, product_id }
     );
+    console.log('[Cart] Existing item:', !!existingItem);
 
     if (existingItem) {
       // 기존 아이템 수량 업데이트
@@ -230,6 +257,7 @@ cartRoutes.post('/', requireAuth(), async (c) => {
     }
 
     // 새 아이템 추가
+    console.log('[Cart] Inserting new cart item:', { userId, product_id, quantity, options });
     const result = await dbHelper.insert('cart', {
       user_id: userId,
       product_id,
@@ -238,6 +266,7 @@ cartRoutes.post('/', requireAuth(), async (c) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
+    console.log('[Cart] Insert result:', result);
 
     return c.json(createdResponse({
       id: result.meta.last_row_id,
@@ -247,13 +276,25 @@ cartRoutes.post('/', requireAuth(), async (c) => {
     }, 'Item added to cart'), 201);
 
   } catch (error: any) {
-    console.error('[Cart] Add to cart error:', error);
+    console.error('[Cart] ❌ Add to cart error:', error);
+    console.error('[Cart] Error stack:', error.stack);
+    console.error('[Cart] Error name:', error.name);
+    console.error('[Cart] Error message:', error.message);
     
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
     }
     
-    return c.json(internalServerErrorResponse('Failed to add item to cart'), 500);
+    // 500 에러 시 상세 정보 반환 (디버깅용)
+    return c.json({
+      success: false,
+      error: 'Failed to add item to cart',
+      debug: {
+        message: error.message,
+        name: error.name,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n')
+      }
+    }, 500);
   }
 });
 

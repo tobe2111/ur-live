@@ -173,33 +173,55 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {
+    console.log('[Orders] POST /api/orders - Start');
+    
     // ✅ BUG #2 FIX: Get authenticated user's DB ID automatically
     const authUser = getCurrentUser(c);
     if (!authUser) {
+      console.error('[Orders] No user found in context');
       return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+    console.log('[Orders] User authenticated:', { id: authUser.id, email: authUser.email });
+    
+    console.log('[Orders] DB connected:', !!DB);
+    if (!DB) {
+      console.error('[Orders] ❌ DB binding not found');
+      return c.json({
+        success: false,
+        error: 'Database not configured',
+        debug: { envKeys: Object.keys(c.env), dbBinding: !!c.env.DB }
+      }, 500);
     }
     
     // ✅ Firebase UID → DB ID conversion
+    console.log('[Orders] Converting Firebase UID to DB ID:', authUser.id);
     const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
+    console.log('[Orders] User DB ID:', dbUserId);
+    
     if (!dbUserId) {
+      console.error('[Orders] User not found in DB');
       return c.json({ success: false, error: 'User not found' }, 404);
     }
     
     const data: OrderCreateInput = await c.req.json();
+    console.log('[Orders] Request body:', JSON.stringify(data));
     
     // ✅ Automatically set user_id from auth context (security)
     data.user_id = dbUserId;
     
     // 필수 필드 검증 (user_id는 자동 설정되므로 제외)
     if (!data.seller_id || !data.items || data.items.length === 0) {
+      console.error('[Orders] Missing required fields:', { seller_id: data.seller_id, items_count: data.items?.length });
       return c.json({
         success: false,
         error: 'Missing required fields'
       }, 400);
     }
     
+    console.log('[Orders] Creating order with repository');
     const repository = new OrderRepository(DB);
     const order = await repository.create(data);
+    console.log('[Orders] Order created:', { id: (order as any).id });
     
     // ✅ BUG #2 FIX: Map DB column (total_price) to API field (total_amount)
     const mappedOrder = {
@@ -212,11 +234,20 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
       data: mappedOrder
     }, 201);
     
-  } catch (error) {
-    console.error('[Orders API] Create error:', error);
+  } catch (error: any) {
+    console.error('[Orders] ❌ Create error:', error);
+    console.error('[Orders] Error stack:', error.stack);
+    console.error('[Orders] Error name:', error.name);
+    console.error('[Orders] Error message:', error.message);
+    
     return c.json({
       success: false,
-      error: (error as Error).message
+      error: error.message || 'Failed to create order',
+      debug: {
+        message: error.message,
+        name: error.name,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n')
+      }
     }, 500);
   }
 });
