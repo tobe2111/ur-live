@@ -129,11 +129,10 @@ export default function KakaoCallbackPage() {
           setTimeout(async () => {
             try {
               await api.post('/api/cart', {
-                userId: String(user.id),
-                productId: tempCartItem.productId,
+                product_id: tempCartItem.productId,
                 quantity: tempCartItem.quantity,
-                priceSnapshot: tempCartItem.priceSnapshot,
-                liveStreamId: tempCartItem.liveStreamId,
+                price_snapshot: tempCartItem.priceSnapshot,
+                live_stream_id: tempCartItem.liveStreamId,
               })
               localStorage.setItem('hasCartItems', 'true')
             } catch (_) {

@@ -147,26 +147,50 @@ api.interceptors.request.use(
     }
 
     // ── Firebase User API ─────────────────────────────────────────────────
-    // ✅ 우선순위 1: useAuthStore의 accessToken 사용 (KakaoCallback/useAuthKR에서 저장됨)
+    // ✅ 우선순위 1: useAuthKR/useAuthWorld.getIdToken() → 항상 유효한 토큰 보장
+    try {
+      const { isKorea } = await import('@/config/region');
+      const isKR = isKorea();
+      const { useAuthKR } = await import('@/shared/stores/useAuthKR');
+      const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
+      const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+
+      if (authStore.user) {
+        // getIdToken()은 내부적으로 캐시+만료 체크 후 필요시 Firebase에서 갱신
+        const freshToken = await authStore.getIdToken(false);
+        if (freshToken) {
+          config.headers['Authorization'] = `Bearer ${freshToken}`;
+          // useAuthStore도 최신 토큰으로 동기화
+          try {
+            const { useAuthStore } = await import('@/client/stores/auth.store');
+            const current = useAuthStore.getState();
+            if (current.user && current.accessToken !== freshToken) {
+              useAuthStore.getState().setAuth(current.user, freshToken, '');
+            }
+          } catch (_) {}
+          return config;
+        }
+      }
+    } catch (e) {
+      console.warn('[API] useAuthKR/getIdToken 조회 실패:', e);
+    }
+
+    // ✅ 우선순위 2: useAuthStore의 accessToken (fallback)
     try {
       const { useAuthStore } = await import('@/client/stores/auth.store');
       const { accessToken } = useAuthStore.getState();
       
       if (accessToken) {
-        console.log('[API] ✅ useAuthStore accessToken 사용:', accessToken.substring(0, 20) + '...');
         config.headers['Authorization'] = `Bearer ${accessToken}`;
         return config;
       }
-      
-      console.log('[API] ⚠️ useAuthStore accessToken 없음, Firebase에서 조회 시도');
     } catch (e) {
       console.warn('[API] useAuthStore 조회 실패:', e);
     }
     
-    // ✅ 우선순위 2: Firebase에서 직접 조회 (fallback)
+    // ✅ 우선순위 3: Firebase에서 직접 조회 (최후 fallback)
     const token = await getCachedFirebaseToken();
     if (token) {
-      console.log('[API] ✅ Firebase token 사용 (fallback):', token.substring(0, 20) + '...');
       config.headers['Authorization'] = `Bearer ${token}`;
     } else {
       console.error('[API] ❌ 토큰 없음! 401 에러 예상');
@@ -230,49 +254,69 @@ api.interceptors.response.use(
       // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
       try {
         console.log('[API] 🔄 Firebase User 401 - 토큰 강제 갱신 시도...');
-        console.log('[API] 🎫 Current token (first 50):', originalRequest.headers['Authorization']?.toString().substring(7, 57) + '...');
         
-        const newToken = await getCachedFirebaseToken(true); // force refresh
+        let newToken: string | null = null;
+
+        // ✅ 1차: useAuthKR/useAuthWorld.getIdToken(true) — Firebase User 객체 직접 사용
+        try {
+          const { isKorea } = await import('@/config/region');
+          const isKR = isKorea();
+          const { useAuthKR } = await import('@/shared/stores/useAuthKR');
+          const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
+          const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+          if (authStore.user) {
+            newToken = await authStore.getIdToken(true); // force refresh
+            console.log('[API] ✅ useAuthKR.getIdToken(true) 성공');
+          }
+        } catch (e) {
+          console.warn('[API] useAuthKR.getIdToken 실패:', e);
+        }
+
+        // ✅ 2차: getCachedFirebaseToken(true) — Firebase auth.currentUser 직접 조회
+        if (!newToken) {
+          newToken = await getCachedFirebaseToken(true);
+        }
+
         if (newToken) {
-          console.log('[API] ✅ 새 토큰 획득 성공:', newToken.substring(0, 50) + '...');
-          
-          // Check if token actually changed
           const oldToken = originalRequest.headers['Authorization']?.toString().substring(7);
-          if (oldToken === newToken) {
-            console.error('[API] ⚠️ 토큰이 변경되지 않음 - 갱신 실패로 간주');
-            throw new Error('Token refresh returned same token');
-          }
-          
-          // ✅ useAuthStore도 업데이트 (중요!)
-          try {
-            const { useAuthStore } = await import('@/client/stores/auth.store');
-            const currentUser = useAuthStore.getState().user;
-            if (currentUser) {
-              useAuthStore.getState().setAuth(currentUser, newToken, '');
-              console.log('[API] ✅ useAuthStore 토큰 업데이트 완료');
+          if (oldToken !== newToken) {
+            // ✅ useAuthStore 및 useAuthKR 캐시 업데이트
+            try {
+              const { useAuthStore } = await import('@/client/stores/auth.store');
+              const currentUser = useAuthStore.getState().user;
+              if (currentUser) {
+                useAuthStore.getState().setAuth(currentUser, newToken, '');
+              }
+            } catch (e) {
+              console.warn('[API] useAuthStore 업데이트 실패:', e);
             }
-          } catch (e) {
-            console.warn('[API] useAuthStore 업데이트 실패:', e);
+            
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            console.log('[API] 🔁 새 토큰으로 요청 재시도');
+            return api(originalRequest);
+          } else {
+            console.error('[API] ⚠️ 토큰이 변경되지 않음 - 세션 만료로 간주');
           }
-          
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-          console.log('[API] 🔁 요청 재시도 with new token (first 50):', newToken.substring(0, 50) + '...');
-          return api(originalRequest);
         } else {
           console.error('[API] ❌ 토큰 갱신 실패 - 새 토큰 없음');
         }
       } catch (err) {
         console.error('[API] ❌ 토큰 갱신 중 예외 발생:', err);
-        console.error('[API] 🐛 Exception details:', err instanceof Error ? err.message : String(err));
       }
 
       // Firebase 갱신도 실패 → 로그아웃
       clearFirebaseTokenCache();
       const { clearAuthData } = await import('@/utils/auth');
       clearAuthData('user');
+      // ✅ useAuthStore 도 정리
+      try {
+        const { useAuthStore } = await import('@/client/stores/auth.store');
+        useAuthStore.getState().clearAuth();
+      } catch (_) {}
       captureError(new Error('Buyer 401: Unauthorized'), { url });
 
       alert('인증이 만료되었습니다.\n다시 로그인해주세요.');
+      localStorage.setItem('loginReturnUrl', window.location.pathname);
       const path = window.location.pathname;
       window.location.href = path.startsWith('/seller')
         ? '/seller/login'

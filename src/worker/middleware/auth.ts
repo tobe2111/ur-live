@@ -332,8 +332,8 @@ export function requireAuth() {
     console.log('[Auth] 📧 FIREBASE_CLIENT_EMAIL available:', !!c.env.FIREBASE_CLIENT_EMAIL);
     
     if (!firebaseProjectId) {
-      console.error('[Auth] ❌ FIREBASE_PROJECT_ID not configured');
-      return c.json({ success: false, error: 'Firebase not configured' }, 500);
+      console.error('[Auth] ❌ FIREBASE_PROJECT_ID not configured — treating as 401');
+      return c.json(unauthorizedResponse('Authentication service not available'), 401);
     }
     
     const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
@@ -357,18 +357,8 @@ export function requireAuth() {
     console.error('[Auth]   - Firebase Project ID:', firebaseProjectId);
     console.error('[Auth]   - Token format valid:', token.split('.').length === 3);
     
-    // Return 500 with details for debugging (change to 401 after fix)
-    return c.json({
-      success: false,
-      error: 'Token verification failed',
-      debug: {
-        tokenFormat: token.split('.').length === 3 ? 'valid JWT format' : 'invalid format',
-        jwtTried: true,
-        firebaseTried: true,
-        projectIdConfigured: !!firebaseProjectId,
-        hint: 'Check Cloudflare environment variables: FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL'
-      }
-    }, 500);
+    // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
+    return c.json(unauthorizedResponse('Token verification failed'), 401);
   };
 }
 

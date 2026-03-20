@@ -806,10 +806,10 @@ function ReelCard({
       log.debug('[handleAddToCart] 📡 Calling API /api/cart')
       
       const response = await api.post('/api/cart', {
-        productId: currentProduct.id,
+        product_id: currentProduct.id,
         quantity: 1,
-        priceSnapshot: currentProduct.price,
-        liveStreamId: stream.id
+        price_snapshot: currentProduct.price,
+        live_stream_id: stream.id,
       })
       
       log.debug('[handleAddToCart] ✅ API response:', response.data)
@@ -893,14 +893,6 @@ function ReelCard({
       }
       
       // ✅ 먼저 현재 상품을 장바구니에 추가
-      const cartData = {
-        userId: parseInt(userId),
-        productId: currentProduct.id,
-        quantity: 1,
-        priceSnapshot: currentProduct.price,
-        liveStreamId: reel.stream.id  // ✅ Fixed: currentStream → reel.stream
-      }
-      
       const accessToken = useAuthStore.getState().accessToken;
       log.debug('[Checkout] 🔑 Token before checkout:', accessToken?.substring(0, 20));
       
@@ -911,6 +903,13 @@ function ReelCard({
         setTimeout(() => navigate('/login'), 1500);
         return;
       }
+
+      const cartData = {
+        product_id: currentProduct.id,
+        quantity: 1,
+        price_snapshot: currentProduct.price,
+        live_stream_id: stream.id,
+      }
       
       log.debug('[Checkout] Adding current product to cart:', cartData)
       
@@ -920,9 +919,9 @@ function ReelCard({
       // 🎯 장바구니 아이템 추가 이벤트 발생
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
       
-      // ✅ 장바구니 페이지로 이동
-      log.debug('[Checkout] Navigating to cart')
-      navigate('/cart')
+      // ✅ 결제 페이지로 바로 이동
+      log.debug('[Checkout] Navigating to checkout')
+      navigate('/checkout')
       
     } catch (error: any) {
       console.error('Failed to add product to cart:', error)

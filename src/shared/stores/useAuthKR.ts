@@ -271,6 +271,19 @@ export const useAuthKR = create<AuthKRState>()(
           localStorage.removeItem('auth-world-storage');
           localStorage.removeItem('lastLoginUid');
           localStorage.removeItem(TOKEN_CACHE_KEY); // Token cache clear
+          sessionStorage.removeItem('auth_processed_uid');
+
+          // ✅ useAuthStore (API 토큰) 도 함께 정리
+          try {
+            const { useAuthStore } = await import('@/client/stores/auth.store');
+            useAuthStore.getState().clearAuth();
+          } catch (_) {}
+
+          // ✅ api.ts 의 Firebase 토큰 캐시도 정리
+          try {
+            const { clearFirebaseTokenCache } = await import('@/lib/api');
+            clearFirebaseTokenCache();
+          } catch (_) {}
 
           set({ user: null, userRole: null, tokenCache: null, isLoading: false, isAuthReady: true });
           setTimeout(() => { window.location.href = '/'; }, 50);
@@ -361,9 +374,17 @@ export const useAuthKR = create<AuthKRState>()(
                       error: null,
                     });
                   } catch (err) {
-                    // 역할 조회 실패해도 user 로 처리
+                    // 역할 조회 실패해도 user 로 처리 — 그래도 accessToken은 저장
                     safeSetUserType();
                     localStorage.setItem('lastLoginUid', firebaseUser.uid);
+                    try {
+                      const idTokenFallback = await firebaseUser.getIdToken(false);
+                      const { useAuthStore } = await import('@/client/stores/auth.store');
+                      useAuthStore.getState().setAuth(
+                        { id: firebaseUser.uid, email: firebaseUser.email || '', name: firebaseUser.displayName || '', role: 'user' },
+                        idTokenFallback, ''
+                      );
+                    } catch (_) {}
                     set({
                       user: firebaseUser,
                       userRole: 'user',

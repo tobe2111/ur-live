@@ -93,6 +93,19 @@ export const useAuthWorld = create<AuthWorldState>()(
           localStorage.removeItem('auth-world-storage');
           localStorage.removeItem('auth-kr-storage');
           localStorage.removeItem('lastLoginUid');
+          sessionStorage.removeItem('auth_processed_uid');
+
+          // ✅ useAuthStore (API 토큰) 도 함께 정리
+          try {
+            const { useAuthStore } = await import('@/client/stores/auth.store');
+            useAuthStore.getState().clearAuth();
+          } catch (_) {}
+
+          // ✅ api.ts 의 Firebase 토큰 캐시도 정리
+          try {
+            const { clearFirebaseTokenCache } = await import('@/lib/api');
+            clearFirebaseTokenCache();
+          } catch (_) {}
 
           set({ user: null, userRole: null, isLoading: false, isAuthReady: true });
           setTimeout(() => { window.location.href = '/'; }, 50);

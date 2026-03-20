@@ -84,6 +84,7 @@ export default function ProductDetailPage() {
       await api.post('/api/cart', {
         product_id: product!.id,
         quantity,
+        price_snapshot: product!.price,
         options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
       })
       if (import.meta.env.DEV) {
@@ -118,6 +119,7 @@ export default function ProductDetailPage() {
       await api.post('/api/cart', {
         product_id: product!.id,
         quantity,
+        price_snapshot: product!.price,
         options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
       })
       console.log('[ProductDetail] ✅ 장바구니 추가 완료')
