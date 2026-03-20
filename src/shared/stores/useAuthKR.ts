@@ -119,15 +119,44 @@ export const useAuthKR = create<AuthKRState>()(
             return null;
           }
 
+          // Phase 2.3: Try backend token first (if feature flag enabled)
+          try {
+            const { featureFlags } = await import('@/shared/config/feature-flags');
+            const { getIdTokenFromBackend } = await import('@/shared/utils/auth-api');
+            
+            if (featureFlags.backendToken) {
+              console.log('[AuthKR] 🚀 Using backend token endpoint (Phase 2.3)');
+              const backendToken = await getIdTokenFromBackend(user.uid, forceRefresh);
+              
+              if (backendToken) {
+                // Cache the backend token
+                const newCache: TokenCache = {
+                  token: backendToken,
+                  expiresAt: Date.now() + TOKEN_EXPIRY_MS
+                };
+                get().setTokenCache(newCache);
+                console.log('[AuthKR] ✅ Backend token cached');
+                return backendToken;
+              }
+              
+              // Fallback to client-side if backend fails
+              console.warn('[AuthKR] Backend token failed, falling back to client-side');
+            }
+          } catch (err) {
+            console.warn('[AuthKR] Backend token error:', err);
+            // Continue to client-side token
+          }
+
+          // Original client-side token logic (fallback)
           // 캐시된 토큰 사용 (강제 갱신 아님 + 캐시 유효)
           if (!forceRefresh && tokenCache && Date.now() < tokenCache.expiresAt) {
             console.log('[AuthKR] Using cached ID token (expires in', Math.round((tokenCache.expiresAt - Date.now()) / 1000), 'seconds)');
             return tokenCache.token;
           }
 
-          // 새 토큰 가져오기
+          // 새 토큰 가져오기 (client-side Firebase)
           try {
-            console.log('[AuthKR] Fetching new ID token', forceRefresh ? '(forced)' : '(cache expired/missing)');
+            console.log('[AuthKR] Fetching new ID token from Firebase', forceRefresh ? '(forced)' : '(cache expired/missing)');
             const token = await user.getIdToken(forceRefresh);
             
             // 캐시 저장
@@ -171,6 +200,10 @@ export const useAuthKR = create<AuthKRState>()(
             safeSetUserType();
             const displayName = user.displayName || user.email?.split('@')[0] || 'User';
             localStorage.setItem('user_name', displayName);
+
+            // ✅ Phase 2.3: Clear redirect flag on successful login (무한루프 방지)
+            sessionStorage.removeItem('auth_redirect_attempted');
+            console.log('[AuthKR] ✅ Login successful, redirect flag cleared');
 
             // onAuthStateChanged 가 자동으로 store 업데이트하므로 set() 최소화
             set({ isLoading: false, error: null });
