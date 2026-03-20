@@ -160,6 +160,7 @@ async function verifyFirebaseToken(
 ): Promise<any> {
   try {
     console.log('[Firebase] 🔍 Starting Firebase token verification...');
+    console.log('[Firebase] 🎫 Token (first 50 chars):', token.substring(0, 50) + '...');
     
     if (!projectId) {
       console.error('[Firebase] ❌ FIREBASE_PROJECT_ID is not set');
@@ -327,6 +328,13 @@ export function requireAuth() {
     // Try Firebase token (users)
     const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
     console.log('[Auth] 🔥 Firebase Project ID:', firebaseProjectId);
+    console.log('[Auth] 🔑 FIREBASE_PRIVATE_KEY available:', !!c.env.FIREBASE_PRIVATE_KEY);
+    console.log('[Auth] 📧 FIREBASE_CLIENT_EMAIL available:', !!c.env.FIREBASE_CLIENT_EMAIL);
+    
+    if (!firebaseProjectId) {
+      console.error('[Auth] ❌ FIREBASE_PROJECT_ID not configured');
+      return c.json({ success: false, error: 'Firebase not configured' }, 500);
+    }
     
     const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
     
@@ -343,8 +351,24 @@ export function requireAuth() {
       return next();
     }
     
-    console.log('[Auth] ❌ Both JWT and Firebase verification FAILED');
-    return c.json(unauthorizedResponse('Invalid or expired token'), 401);
+    console.error('[Auth] ❌ Both JWT and Firebase verification FAILED');
+    console.error('[Auth] 🐛 DEBUG INFO:');
+    console.error('[Auth]   - Token (first 50 chars):', token.substring(0, 50));
+    console.error('[Auth]   - Firebase Project ID:', firebaseProjectId);
+    console.error('[Auth]   - Token format valid:', token.split('.').length === 3);
+    
+    // Return 500 with details for debugging (change to 401 after fix)
+    return c.json({
+      success: false,
+      error: 'Token verification failed',
+      debug: {
+        tokenFormat: token.split('.').length === 3 ? 'valid JWT format' : 'invalid format',
+        jwtTried: true,
+        firebaseTried: true,
+        projectIdConfigured: !!firebaseProjectId,
+        hint: 'Check Cloudflare environment variables: FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL'
+      }
+    }, 500);
   };
 }
 
