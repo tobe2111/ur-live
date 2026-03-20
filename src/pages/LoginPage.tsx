@@ -56,9 +56,13 @@ export default function LoginPage() {
   
   // ✅ 무한루프 방지: returnUrl은 쿼리파라미터 전용 (location.state?.from 제거)
   // RouteGuards.tsx가 ?returnUrl= 쿼리파라미터로 전달하므로 여기서 일관되게 읽음
-  const returnUrl = searchParams.get('returnUrl') 
+  // ✅ /login 자체나 auth 경로를 returnUrl로 쓰면 무한루프 → '/'로 안전 변환
+  const _rawReturnUrl = searchParams.get('returnUrl')
     ? decodeURIComponent(searchParams.get('returnUrl')!)
     : sessionStorage.getItem('returnUrl') || '/'
+  const returnUrl = (_rawReturnUrl.startsWith('/login') || _rawReturnUrl.startsWith('/auth/'))
+    ? '/'
+    : _rawReturnUrl
   const isLoggedIn = !!user
 
   // ✅ 로그인 상태 확인 및 리다이렉트
@@ -170,20 +174,45 @@ export default function LoginPage() {
         // ✅ Lazy load Firebase Auth
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
         
-        // Firebase signInWithCustomToken (Zustand가 자동으로 상태 업데이트)
+        // Firebase signInWithCustomToken
         const credential = await signInWithCustomToken(customToken)
-        
-        // 🔥 백그라운드에서 토큰 갱신 (await 없이 비동기 실행)
-        credential.user.getIdToken(true)
-          .then(() => console.log('[Kakao Login] 🔥 ID Token 강제 갱신 완료 (백그라운드)'))
-          .catch((err) => console.warn('[Kakao Login] ⚠️ Token 갱신 실패 (무시):', err))
+
+        // ✅ ID Token 가져오기 (캐시 우선)
+        const idToken = await credential.user.getIdToken(false)
+
+        // ✅ 중복 처리 방지 플래그 먼저 설정 (onAuthStateChanged race condition 방지)
+        sessionStorage.setItem('auth_processed_uid', credential.user.uid)
+
+        // ✅ localStorage 설정
+        localStorage.setItem('user_type', 'user')
+        localStorage.setItem('user_name', kakaoUser.name)
+        localStorage.setItem('user_id', String(kakaoUser.id))
+        if (kakaoUser.email) localStorage.setItem('user_email', kakaoUser.email)
+
+        // ✅ Zustand store 직접 업데이트 (onAuthStateChanged 대기 없이 즉시 인증)
+        const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState()
+        authStore.setUser(credential.user)
+        authStore.setAuthReady(true)
+
+        // ✅ API 요청용 accessToken 저장
+        try {
+          const { useAuthStore } = await import('@/client/stores/auth.store')
+          useAuthStore.getState().setAuth(
+            {
+              id: credential.user.uid,
+              email: kakaoUser.email || '',
+              name: kakaoUser.name,
+              role: 'user',
+            },
+            idToken,
+            ''
+          )
+        } catch (_) {}
         
         const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
         sessionStorage.removeItem('returnUrl')
         
-        console.log('[Kakao Login] ✅ Firebase 로그인 성공:', kakaoUser.name)
-        
-        // Zustand의 onAuthStateChanged가 자동으로 처리하므로 navigate만 호출
+        console.log('[Kakao Login] ✅ Firebase 로그인 성공:', kakaoUser.name, '→', savedReturnUrl)
         navigate(savedReturnUrl, { replace: true })
       } else {
         throw new Error(response.data.error || t('auth.loginError'))

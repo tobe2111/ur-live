@@ -318,11 +318,18 @@ export const useAuthKR = create<AuthKRState>()(
 
               unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
                 if (firebaseUser) {
-                  // ✅ 중복 처리 방지: KakaoCallback에서 이미 처리했으면 스킵
+                  // ✅ 중복 처리 방지: KakaoCallback/LoginPage에서 이미 처리했으면
+                  //    user와 isAuthReady만 보장하고 스킵 (API 중복 호출 방지)
                   const lastProcessed = sessionStorage.getItem('auth_processed_uid');
                   if (lastProcessed === firebaseUser.uid) {
-                    console.log('[AuthKR] ⏩ Already processed, skip:', firebaseUser.uid);
-                    set({ isAuthReady: true });
+                    console.log('[AuthKR] ⏩ Already processed, ensuring user+ready:', firebaseUser.uid);
+                    // user가 이미 설정되어 있으면 그대로, 없으면(가능성 낮음) 다시 설정
+                    const currentUser = get().user;
+                    if (!currentUser) {
+                      set({ user: firebaseUser, isAuthReady: true });
+                    } else {
+                      set({ isAuthReady: true });
+                    }
                     return;
                   }
                   

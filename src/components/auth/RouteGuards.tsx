@@ -11,6 +11,7 @@
  * - ProtectedRoute: /login 리다이렉트 시 ?returnUrl= 쿼리파라미터 사용 (state 불사용)
  * - LoginPage: searchParams.get('returnUrl') 로 일관되게 읽음
  * - PublicRoute: redirectTo prop 우선, 쿼리파라미터 returnUrl 차선
+ * - KR 고정: live.ur-team.com 은 항상 KR이므로 useAuthKR 만 사용
  */
 
 import React from 'react'
@@ -20,7 +21,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import { useEffect, useState, useRef } from 'react'
 
-const DEBUG = process.env.NODE_ENV === 'development'
+const DEBUG = import.meta.env.DEV
 
 // ============================================
 // 🛡️ ProtectedRoute (로그인 필요)
@@ -72,29 +73,39 @@ function UserProtectedRoute({
   children: React.ReactNode
   location: ReturnType<typeof useLocation>
 }) {
-  const firebaseUser = isKorea() ? useAuthKR.getState().user : useAuthWorld.getState().user
+  // ✅ 훅 규칙 준수: 두 스토어를 모두 구독하되, 렌더 시 region으로 선택
+  // isKorea()는 순수 함수(hostname 체크)이므로 렌더 중 호출 안전
   const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
   const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
-  const isAuthReady = isKorea() ? isAuthReadyKR : isAuthReadyWorld
   const userKR = useAuthKR((state) => state.user)
   const userWorld = useAuthWorld((state) => state.user)
-  const currentUser = isKorea() ? userKR : userWorld
 
-  // ✅ 타임아웃 안전장치: 최대 4초 대기 후 강제 진행
+  const kr = isKorea()
+  const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
+  const currentUser = kr ? userKR : userWorld
+
+  // ✅ 타임아웃 안전장치: 최대 5초 대기 후 강제 진행
+  // Firebase onAuthStateChanged 가 늦게 응답해도 무한 스피너 방지
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (isAuthReady) {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
       return
     }
     timerRef.current = setTimeout(() => {
-      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (4s) - 강제 진행')
+      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (5s) - 강제 진행')
       setTimedOut(true)
-    }, 4000)
+    }, 5000)
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
     }
   }, [isAuthReady])
 
@@ -179,12 +190,15 @@ function UserPublicRoute({
   redirectTo: string
   location: ReturnType<typeof useLocation>
 }) {
+  // ✅ 훅 규칙 준수: 두 스토어 모두 구독
   const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
   const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
   const userKR = useAuthKR((state) => state.user)
   const userWorld = useAuthWorld((state) => state.user)
-  const isAuthReady = isKorea() ? isAuthReadyKR : isAuthReadyWorld
-  const currentUser = isKorea() ? userKR : userWorld
+
+  const kr = isKorea()
+  const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
+  const currentUser = kr ? userKR : userWorld
 
   // ✅ 타임아웃 안전장치: 최대 3초
   const [timedOut, setTimedOut] = useState(false)
@@ -192,7 +206,10 @@ function UserPublicRoute({
 
   useEffect(() => {
     if (isAuthReady) {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
       return
     }
     timerRef.current = setTimeout(() => {
@@ -200,7 +217,10 @@ function UserPublicRoute({
       setTimedOut(true)
     }, 3000)
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
     }
   }, [isAuthReady])
 

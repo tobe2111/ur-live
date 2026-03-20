@@ -84,6 +84,10 @@ export default function KakaoCallbackPage() {
           console.warn('[KakaoCallback] ⚠️ displayName 업데이트 실패 (무시):', e);
         }
 
+        // ✅ 중복 처리 방지: onAuthStateChanged가 이 UID를 다시 처리하지 않도록
+        // setUser() 호출 전에 설정해야 race condition 방지
+        sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
+
         // 4. localStorage 설정
         localStorage.setItem('user_type', 'user')
         localStorage.setItem('user_name', user.name)
@@ -108,9 +112,6 @@ export default function KakaoCallbackPage() {
           '' // refreshToken은 Firebase에서 자동 관리
         )
         console.log('[KakaoCallback] ✅ Store 업데이트 완료 (accessToken 설정됨)')
-
-        // ✅ 중복 처리 방지: onAuthStateChanged가 이 UID를 다시 처리하지 않도록
-        sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
 
         // 6. returnUrl 결정 (state > localStorage > '/')
         let returnUrl = '/'
