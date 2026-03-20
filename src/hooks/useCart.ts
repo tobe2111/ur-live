@@ -28,25 +28,25 @@ export function useCart() {
       // ✅ API 응답 구조 파싱
       let items: CartItem[] = []
       
-      // Case 1: {success: true, data: Array} → 표준 응답 구조
-      if (response.data?.success && response.data?.data && Array.isArray(response.data.data)) {
-        console.log('[useCart] 📦 Case 1: Standard API response {success:true, data:Array}')
+      // Case 1: {success: true, data: {items: Array, summary: {...}}} → 현재 cart.routes.ts 구조
+      if (response.data?.success && response.data?.data?.items && Array.isArray(response.data.data.items)) {
+        console.log('[useCart] 📦 Case 1: Standard API response {success:true, data:{items:Array}}')
+        items = response.data.data.items
+      }
+      // Case 2: {success: true, data: Array} → 이전 응답 구조 호환
+      else if (response.data?.success && response.data?.data && Array.isArray(response.data.data)) {
+        console.log('[useCart] 📦 Case 2: Standard API response {success:true, data:Array}')
         items = response.data.data
       } 
-      // Case 2: {items: Array, ...} → 직접 items 필드
+      // Case 3: {items: Array, ...} → 직접 items 필드
       else if (response.data?.items && Array.isArray(response.data.items)) {
-        console.log('[useCart] 📦 Case 2: Direct items field')
+        console.log('[useCart] 📦 Case 3: Direct items field')
         items = response.data.items
       } 
-      // Case 3: response.data 자체가 Array
+      // Case 4: response.data 자체가 Array
       else if (Array.isArray(response.data)) {
-        console.log('[useCart] 📦 Case 3: response.data is Array')
+        console.log('[useCart] 📦 Case 4: response.data is Array')
         items = response.data
-      }
-      // Case 4: response.data.data만 존재
-      else if (response.data?.data && Array.isArray(response.data.data)) {
-        console.log('[useCart] 📦 Case 4: Nested data field')
-        items = response.data.data
       }
       else {
         console.warn('[useCart] ⚠️ Unknown cart structure, using empty array')
