@@ -32,20 +32,24 @@ export class ChunkErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // CRITICAL: Ensure error is an Error instance to prevent React Error #31
+    const actualError = error instanceof Error ? error : new Error(String(error));
+    
     // 청크 로딩 실패 감지
     const isChunkError =
-      error.message.includes('Failed to fetch dynamically imported module') ||
-      error.message.includes('Importing a module script failed') ||
-      error.message.includes('error loading dynamically imported module');
+      actualError.message.includes('Failed to fetch dynamically imported module') ||
+      actualError.message.includes('Importing a module script failed') ||
+      actualError.message.includes('error loading dynamically imported module');
 
     console.error('[ChunkErrorBoundary] Error caught:', {
-      message: error.message,
+      message: actualError.message,
       isChunkError,
+      errorType: actualError.constructor.name,
     });
 
     return {
       hasError: true,
-      error,
+      error: actualError,
       isChunkError,
     };
   }

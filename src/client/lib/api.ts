@@ -45,11 +45,15 @@ async function request<T>(
       useAuthStore.getState().clearAuth();
     }
     
-    throw new ApiError(
+    const apiError = new ApiError(
       errorData.error ?? `HTTP ${response.status}`,
       response.status,
       errorData.code
     );
+    
+    // IMPORTANT: Throw Error instance, not plain object
+    // This prevents React Error #31 (cannot throw non-Error objects)
+    throw apiError;
   }
 
   return response.json() as Promise<T>;
