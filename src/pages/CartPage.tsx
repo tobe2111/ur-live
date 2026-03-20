@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { requireLogin, getUserId, isLoggedInSync } from '@/utils/auth'
 import OptionSelectModal from '@/components/OptionSelectModal'
 import { useCart, useUpdateCartQuantity, useRemoveFromCart, useUpdateCartOption } from '@/hooks/useCart'
 import { CartHeader } from '@/components/cart/CartHeader'
@@ -137,14 +136,10 @@ export default function CartPage() {
       console.log('[CartPage] ✅ JWT 파라미터 정리 완료')
     }
     
-    // ✅ React Query가 자동으로 데이터 로딩
-    if (!isLoggedInSync()) {
-      requireLogin(navigate, '장바구니를 보려면 로그인이 필요합니다.')
-    } else {
-      // ✅ 페이지 마운트 시 항상 최신 장바구니 데이터 새로고침
-      console.log('[CartPage] 🔄 장바구니 데이터 새로고침')
-      refetch()
-    }
+    // ✅ ProtectedRoute가 /cart를 이미 보호함 → 여기서 requireLogin 불필요 (중복 리다이렉트 방지)
+    // React Query가 자동으로 데이터 로딩
+    console.log('[CartPage] 🔄 장바구니 데이터 새로고침')
+    refetch()
   }, [])
   
   // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
