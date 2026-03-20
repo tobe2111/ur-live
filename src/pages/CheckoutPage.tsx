@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { requireLogin, getUserId, getUserIdSync, isLoggedIn, isLoggedInSync } from '@/utils/auth'
+import { requireLogin, getUserId, getUserIdSync, isLoggedInSync } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -165,26 +165,19 @@ export default function CheckoutPage() {
     setUrlParamsProcessed(true)
   }, [searchParams])
 
-  // 🔐 Step 0: Firebase 인증 상태 체크 (로그인되지 않으면 리다이렉트)
+  // 🔐 Step 0: isAuthReady 후 사용자 없으면 리다이렉트
+  // ✅ isAuthReady=true + user=null 이면 확실한 비로그인 상태
+  // useAuthKR가 Firebase onAuthStateChanged 완료 후 isAuthReady=true로 설정하므로
+  // 이 effect는 Zustand 렌더 가드(아래 !user 체크)와 함께 이중 보호 역할
   useEffect(() => {
-    async function checkFirebaseAuth() {
-      // ✅ BUG #21 FIX: isLoggedIn() is an async function returning Promise<boolean>.
-      // Calling it without `await` evaluated the Promise object itself (always
-      // truthy), so the auth guard NEVER redirected unauthenticated users —
-      // they could reach the checkout page without any valid session.
-      const loggedIn = await isLoggedIn()
-      if (!loggedIn) {
-        console.log('[Firebase Auth] 로그인되지 않음, 로그인 페이지로 이동')
-        requireLogin(navigate)
-        return
-      }
-      
-      // Firebase는 자동으로 ID Token을 갱신하므로 별도의 갱신 로직 불필요
-      console.log('[Firebase Auth] ✅ 인증 상태 확인 완료 - Firebase 자동 토큰 갱신')
+    if (!isAuthReady) return // 아직 Firebase 초기화 중 → 대기
+    if (!user) {
+      console.log('[CheckoutPage] 🔐 인증 완료 후 user 없음 → 로그인 이동')
+      requireLogin(navigate, '결제를 진행하려면 로그인이 필요합니다.')
+    } else {
+      console.log('[CheckoutPage] ✅ 인증 확인 완료, user:', user.uid)
     }
-
-    checkFirebaseAuth()
-  }, [navigate]) // 컴포넌트 마운트 시 한 번만 실행
+  }, [isAuthReady, user, navigate])
 
   /* ====================================================================
    * 🔥 LEGACY: Toss Payment 관련 로직 제거됨

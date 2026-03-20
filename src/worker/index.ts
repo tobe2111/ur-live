@@ -137,6 +137,8 @@ app.use('*', async (c, next) => {
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
       "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
       "https://*.firebase.google.com https://*.firebaseio.com " +
+      "https://accounts.google.com https://*.google.com " +
+      "https://apis.google.com " +
       "https://kauth.kakao.com https://*.kakao.com " +
       "https://www.youtube.com https://youtube.com https://*.youtube.com https://www.youtube-nocookie.com " +
       "https://player.vimeo.com; " +

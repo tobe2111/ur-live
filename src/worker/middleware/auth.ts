@@ -332,8 +332,8 @@ export function requireAuth() {
     console.log('[Auth] 📧 FIREBASE_CLIENT_EMAIL available:', !!c.env.FIREBASE_CLIENT_EMAIL);
     
     if (!firebaseProjectId) {
-      console.error('[Auth] ❌ FIREBASE_PROJECT_ID not configured');
-      return c.json({ success: false, error: 'Firebase not configured' }, 500);
+      console.error('[Auth] ❌ FIREBASE_PROJECT_ID not configured — treating as 401');
+      return c.json(unauthorizedResponse('Authentication service not available'), 401);
     }
     
     const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
