@@ -1,16 +1,12 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Search, Bell, User } from 'lucide-react'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
+import { useAuth } from '@/shared/stores/useAuth'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function TopNav() {
   const navigate = useNavigate()
-  const krUser = useAuthKR(state => state.user)
-  const worldUser = useAuthWorld(state => state.user)
-  const user = isKorea() ? krUser : worldUser
+  const user = useAuth((s) => s.user)
   const isLoggedIn = !!user
   const [menuOpen, setMenuOpen] = useState(false)
 

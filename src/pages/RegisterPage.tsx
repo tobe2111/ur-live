@@ -1,31 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/config/region'
+import { useAuth } from '@/shared/stores/useAuth'
 import { Button } from '@/components/ui/button'
 import { Play, Mail, Lock, User, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   
-  // ✅ Region 기반 Store 선택
-  const isKR = isKorea()
-  const krUser = useAuthKR(state => state.user)
-  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
-  const krSignupWithEmail = useAuthKR(state => state.signupWithEmail)
-  const worldUser = useAuthWorld(state => state.user)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
+  // ✅ 단일 스토어
+  const user = useAuth((s) => s.user)
+  const isReady = useAuth((s) => s.isReady)
+  const signupWithEmail = useAuth((s) => s.signupWithEmail)
   
-  // ✅ Selector로 필요한 상태만 구독
-  const user = isKR ? krUser : worldUser
-  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
-  
-  // ✅ Action (함수 참조만)
-  const signupWithEmailAction = krSignupWithEmail
-  
-  // ✅ 계산된 값
   const isLoggedIn = !!user
   
   // Local State
@@ -43,11 +29,11 @@ export default function RegisterPage() {
 
   // ✅ 이미 로그인되어 있으면 리다이렉트
   useEffect(() => {
-    if (isAuthReady && isLoggedIn) {
+    if (isReady && isLoggedIn) {
       console.log('[RegisterPage] 이미 로그인됨 - 홈으로 리다이렉트')
       navigate('/', { replace: true })
     }
-  }, [isAuthReady, isLoggedIn, navigate])
+  }, [isReady, isLoggedIn, navigate])
 
   /**
    * 이메일/비밀번호 회원가입 - Firebase Auth
@@ -82,8 +68,7 @@ export default function RegisterPage() {
     try {
       console.log('[Register] 🔥 Firebase 회원가입 시도:', formData.email)
       
-      // ✅ Zustand action 직접 호출
-      await signupWithEmailAction(formData.email, formData.password, formData.name)
+      await signupWithEmail(formData.email, formData.password, formData.name)
       
       console.log('[Register] ✅ Firebase 회원가입 성공')
       
@@ -113,7 +98,7 @@ export default function RegisterPage() {
   }
 
   // ⏳ Auth 초기화 중이면 로딩 표시
-  if (!isAuthReady) {
+  if (!isReady) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">

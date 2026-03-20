@@ -1,23 +1,19 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
+import { QueryProvider } from './lib/react-query'
+import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
+import AuthProvider from './components/auth/AuthProvider'
 
 // Redirect component for old product URL
 function ProductRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/products/${id}`} replace />;
 }
-import { QueryProvider } from './lib/react-query'
-import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
-
-// ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
 // ✅ 모든 페이지를 lazy loading (초기 번들 크기 최소화)
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -103,121 +99,9 @@ const PageLoader = () => (
 
 // ✅ Router 내부에서 실행될 컴포넌트
 function AppContent() {
-  // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
-  const authInitialized = useRef(false)
-
-  // ✅ firebase_token URL 파라미터 처리 (최우선, 한 번만)
-  useEffect(() => {
-    const processFirebaseToken = async () => {
-      const urlParams = new URLSearchParams(window.location.search)
-      const firebaseToken = urlParams.get('firebase_token')
-      
-      if (!firebaseToken) return
-      
-      try {
-        console.log('[App] 🔑 firebase_token 파라미터 감지')
-        
-        const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-        const userCredential = await signInWithCustomToken(firebaseToken)
-        const user = userCredential.user
-        console.log('[App] ✅ Firebase Custom Token 로그인 성공:', user.uid)
-        
-        // ID Token 갱신
-        const idToken = await user.getIdToken(true)
-        console.log('[App] ✅ ID Token 갱신 완료')
-        
-        // ✅ Custom Token claims에서 numeric userId 추출
-        const tokenResult = await user.getIdTokenResult(true);
-        const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0;
-        console.log('[App] 🔢 Numeric user ID from claims:', numericUserId);
-        
-        // ✅ useAuthStore에 토큰 저장
-        const { useAuthStore } = await import('@/client/stores/auth.store')
-        useAuthStore.getState().setAuth(
-          {
-            id: user.uid,
-            email: user.email || '',
-            name: user.displayName || '',
-            role: 'user',
-          },
-          idToken,
-          ''
-        )
-        console.log('[App] ✅ useAuthStore에 accessToken 저장 완료')
-        
-        localStorage.setItem('user_type', 'user')
-        localStorage.setItem('user_id', user.uid)
-        localStorage.setItem('user_email', user.email || '')
-        localStorage.setItem('numeric_user_id', String(numericUserId)); // ✅ 숫자 ID 저장
-        
-        // URL 파라미터 제거
-        urlParams.delete('firebase_token')
-        const newUrl = urlParams.toString() 
-          ? `${window.location.pathname}?${urlParams.toString()}`
-          : window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-      } catch (error) {
-        console.error('[App] ❌ Firebase Custom Token 로그인 실패:', error)
-        
-        // ✅ URL 파라미터 제거 (firebase_token, userName 포함)
-        const urlParams2 = new URLSearchParams(window.location.search)
-        urlParams2.delete('firebase_token')
-        urlParams2.delete('userName')
-        const newUrl = urlParams2.toString()
-          ? `${window.location.pathname}?${urlParams2.toString()}`
-          : window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-        
-        // ✅ 로그인 페이지로 리다이렉트 (무한 루프 방지)
-        window.location.href = '/login'
-      }
-    }
-    
-    processFirebaseToken()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ✅ 핵심 수정: 단일 Auth 초기화 (중복 구독 완전 제거)
-  // - initializeAuth() 하나만 호출 (내부에서 onAuthStateChanged 구독)
-  // - Seller/Admin은 Firebase 로딩을 기다리지 않음 (localStorage JWT 즉시 체크)
-  useEffect(() => {
-    if (authInitialized.current) return
-    authInitialized.current = true
-
-    const userType = localStorage.getItem('user_type')
-    
-    // ✅ Seller/Admin은 Firebase 초기화 불필요 → isAuthReady를 즉시 true로
-    if (userType === 'seller' || userType === 'admin') {
-      console.log(`[App] 🏪 ${userType} 세션 감지 - Firebase 초기화 스킵, isAuthReady=true`)
-      useAuthKR.getState().setAuthReady(true)
-      useAuthWorld.getState().setAuthReady(true)
-      return
-    }
-
-    // ✅ User (Firebase) 초기화
-    const initAuth = async () => {
-      try {
-        const isKR = isKorea()
-        console.log(`[App] 🔐 Firebase Auth 초기화 (${isKR ? 'KR' : 'WORLD'})`)
-        
-        if (isKR) {
-          useAuthKR.getState().initializeAuth()
-        } else {
-          useAuthWorld.getState().initializeAuth()
-        }
-      } catch (err) {
-        console.error('[App] ❌ 인증 초기화 실패:', err)
-        // 실패해도 authReady를 true로 설정해 무한 스피너 방지
-        useAuthKR.getState().setAuthReady(true)
-        useAuthWorld.getState().setAuthReady(true)
-      }
-    }
-    
-    initAuth()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   // 🔄 다중 탭 동기화
   useMultiTabSync()
-  
+
   return (
     <>
       <FrameWrapper>
@@ -234,7 +118,7 @@ function AppContent() {
             <Route path="/product/:id" element={<ProductRedirect />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
             <Route path="/search" element={<SearchPage />} />
-            
+
             {/* Public Auth 페이지들 */}
             <Route path="/login" element={
               <PublicRoute>
@@ -248,7 +132,7 @@ function AppContent() {
             } />
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
             <Route path="/auth/kakao/sync/callback" element={<KakaoCallbackPage />} />
-            
+
             {/* Seller 로그인 페이지 (Public) */}
             <Route path="/seller/login" element={
               <PublicRoute forSeller>
@@ -257,7 +141,7 @@ function AppContent() {
             } />
             <Route path="/seller/register" element={<SellerRegisterPage />} />
             <Route path="/seller/signup" element={<SellerRegisterPage />} />
-            
+
             {/* Seller Protected 페이지들 */}
             <Route path="/seller" element={
               <ProtectedRoute requireSeller>
@@ -325,14 +209,14 @@ function AppContent() {
                 <YouTubeCallbackPage />
               </ProtectedRoute>
             } />
-            
+
             {/* Admin 로그인 페이지 (Public) */}
             <Route path="/admin/login" element={
               <PublicRoute forAdmin>
                 <AdminLoginPage />
               </PublicRoute>
             } />
-            
+
             {/* Admin Protected 페이지들 */}
             <Route path="/admin" element={
               <ProtectedRoute requireAdmin>
@@ -369,7 +253,7 @@ function AppContent() {
                 <KVMonitoringPage />
               </ProtectedRoute>
             } />
-            
+
             {/* User Protected 페이지들 */}
             <Route path="/cart" element={
               <ProtectedRoute requireUser>
@@ -427,23 +311,23 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/account/deleted" element={<AccountDeletedPage />} />
-            
+
             {/* Payment 페이지들 */}
             <Route path="/payment/demo" element={<PaymentDemoPage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
             <Route path="/fail" element={<PaymentFailPage />} />
-            
+
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
-            
+
             {/* Debug 페이지 (개발 환경만) */}
             <Route path="/kakao-debug" element={<KakaoDebugPage />} />
-            
+
             {/* Error 페이지들 */}
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
@@ -461,7 +345,10 @@ function App() {
         <ChunkErrorBoundary>
           <QueryProvider>
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <AppContent />
+              {/* ✅ AuthProvider: 앱 루트에서 Firebase onAuthStateChanged 단 1회 구독 */}
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
             </BrowserRouter>
           </QueryProvider>
         </ChunkErrorBoundary>

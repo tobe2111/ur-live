@@ -1,249 +1,187 @@
 /**
- * 🛡️ RouteGuards - 완전한 계정 분리 + 무한 루프 영구 해결 버전
+ * RouteGuards — 단순하고 예측 가능한 라우트 보호
  *
- * 핵심 설계 원칙:
- * 1. Seller/Admin → localStorage JWT 즉시 동기 체크 (Firebase 대기 없음)
- * 2. User (Firebase) → isAuthReady 플래그만 대기 (타임아웃 보장)
- * 3. isAuthReady가 true가 되면 절대 다시 loading 상태로 돌아가지 않음
- * 4. PublicRoute도 동일한 원칙 적용
+ * 설계 원칙:
+ * - User:   useAuth().isReady 대기 → user 확인 → 없으면 /login?returnUrl=...
+ * - Seller: localStorage.seller_token 동기 확인 → 없으면 /seller/login
+ * - Admin:  localStorage.admin_token 동기 확인 → 없으면 /admin/login
+ * - PublicRoute(로그인 페이지): user 있으면 returnUrl 또는 / 로 리다이렉트
  *
- * 🔧 무한루프 방지 핵심:
- * - ProtectedRoute: /login 리다이렉트 시 ?returnUrl= 쿼리파라미터 사용 (state 불사용)
- * - LoginPage: searchParams.get('returnUrl') 로 일관되게 읽음
- * - PublicRoute: redirectTo prop 우선, 쿼리파라미터 returnUrl 차선
- * - KR 고정: live.ur-team.com 은 항상 KR이므로 useAuthKR 만 사용
+ * 무한루프 방지:
+ * - returnUrl 이 /login 이나 /auth/ 로 시작하면 / 로 강제 변환
+ * - ProtectedRoute 는 state 를 쓰지 않고 ?returnUrl= 쿼리만 사용
  */
 
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
-import { useEffect, useState, useRef } from 'react'
+import { useAuth } from '@/shared/stores/useAuth'
 
-const DEBUG = import.meta.env.DEV
+// ─── Spinner ────────────────────────────────────────────────────────────────
 
-// ============================================
-// 🛡️ ProtectedRoute (로그인 필요)
-// ============================================
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+    </div>
+  )
+}
+
+// ─── 안전한 returnUrl 생성 ────────────────────────────────────────────────
+
+function safeReturnUrl(pathname: string, search: string): string {
+  const raw = pathname + search
+  // /login, /auth/ 로 시작하는 경로는 순환이 되므로 홈으로
+  if (raw.startsWith('/login') || raw.startsWith('/auth/')) return '/'
+  return raw
+}
+
+// ─── ProtectedRoute (User) ───────────────────────────────────────────────────
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requireAdmin?: boolean
   requireSeller?: boolean
+  requireAdmin?: boolean
+  /** 일반 사용자(Firebase) 보호 라우트. 기본값 동작과 동일하나 명시적 선언 가능 */
   requireUser?: boolean
 }
 
 export function ProtectedRoute({
   children,
-  requireAdmin = false,
   requireSeller = false,
+  requireAdmin = false,
 }: ProtectedRouteProps) {
   const location = useLocation()
 
-  // ─── Seller: 동기 체크 (Firebase 완전 무관) ─────────────────────────
+  // Seller: localStorage 동기 체크
   if (requireSeller) {
-    const sellerToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    const ok = !!(sellerToken && userType === 'seller')
-    if (DEBUG) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
-    if (!ok) return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
-    return <>{children}</>
+    const ok = !!(
+      localStorage.getItem('seller_token') &&
+      localStorage.getItem('user_type') === 'seller'
+    )
+    return ok
+      ? <>{children}</>
+      : <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
   }
 
-  // ─── Admin: 동기 체크 (Firebase 완전 무관) ──────────────────────────
+  // Admin: localStorage 동기 체크
   if (requireAdmin) {
-    const adminToken = localStorage.getItem('admin_token')
-    const userType = localStorage.getItem('user_type')
-    const ok = !!(adminToken && userType === 'admin')
-    if (DEBUG) console.log('[ProtectedRoute] Admin 체크:', { ok, path: location.pathname })
-    if (!ok) return <Navigate to="/admin/login" state={{ from: location.pathname }} replace />
-    return <>{children}</>
+    const ok = !!(
+      localStorage.getItem('admin_token') &&
+      localStorage.getItem('user_type') === 'admin'
+    )
+    return ok
+      ? <>{children}</>
+      : <Navigate to="/admin/login" state={{ from: location.pathname }} replace />
   }
 
-  // ─── User (Firebase): isAuthReady 대기 후 체크 ────────────────────────
-  return <UserProtectedRoute location={location}>{children}</UserProtectedRoute>
+  // User: Firebase isReady 대기
+  return <UserRoute location={location}>{children}</UserRoute>
 }
 
-/** Firebase User 전용 보호 라우트 */
-function UserProtectedRoute({
+function UserRoute({
   children,
   location,
 }: {
   children: React.ReactNode
   location: ReturnType<typeof useLocation>
 }) {
-  // ✅ 훅 규칙 준수: 두 스토어를 모두 구독하되, 렌더 시 region으로 선택
-  // isKorea()는 순수 함수(hostname 체크)이므로 렌더 중 호출 안전
-  const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
-  const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
-  const userKR = useAuthKR((state) => state.user)
-  const userWorld = useAuthWorld((state) => state.user)
+  const isReady = useAuth((s) => s.isReady)
+  const user = useAuth((s) => s.user)
 
-  const kr = isKorea()
-  const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
-  const currentUser = kr ? userKR : userWorld
-
-  // ✅ 타임아웃 안전장치: 최대 5초 대기 후 강제 진행
-  // Firebase onAuthStateChanged 가 늦게 응답해도 무한 스피너 방지
+  // 최대 5초 타임아웃 — Firebase 응답이 느린 경우 무한 스피너 방지
   const [timedOut, setTimedOut] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (isAuthReady) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
+    if (isReady) {
+      if (timer.current) clearTimeout(timer.current)
       return
     }
-    timerRef.current = setTimeout(() => {
-      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (5s) - 강제 진행')
+    timer.current = setTimeout(() => {
+      console.warn('[ProtectedRoute] Firebase 타임아웃 (5s)')
       setTimedOut(true)
     }, 5000)
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-    }
-  }, [isAuthReady])
+    return () => { if (timer.current) clearTimeout(timer.current) }
+  }, [isReady])
 
-  // 아직 초기화 중 (타임아웃 전)
-  if (!isAuthReady && !timedOut) {
-    if (DEBUG) console.log('[ProtectedRoute] ⏳ Firebase Auth 초기화 대기 중...')
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
+  if (!isReady && !timedOut) return <Spinner />
 
-  // 인증 확인
-  if (!currentUser) {
-    if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
-    // ✅ 무한루프 방지: state 대신 ?returnUrl= 쿼리파라미터 사용
-    // LoginPage는 searchParams.get('returnUrl')로 읽음 (location.state 미사용)
-    const returnUrl = encodeURIComponent(location.pathname + location.search)
+  if (!user) {
+    const returnUrl = encodeURIComponent(safeReturnUrl(location.pathname, location.search))
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
   }
 
-  if (DEBUG) console.log('[ProtectedRoute] ✅ User 인증 성공')
   return <>{children}</>
 }
 
-// ============================================
-// 🌐 PublicRoute (로그인 페이지용)
-// ============================================
+// ─── PublicRoute (로그인 · 회원가입 페이지) ──────────────────────────────────
 
 interface PublicRouteProps {
   children: React.ReactNode
-  redirectTo?: string
   forSeller?: boolean
   forAdmin?: boolean
 }
 
 export function PublicRoute({
   children,
-  redirectTo = '/',
   forSeller = false,
   forAdmin = false,
 }: PublicRouteProps) {
   const location = useLocation()
 
-  // ─── Seller 로그인 페이지: 동기 체크 ────────────────────────────────
   if (forSeller) {
-    const sellerToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    if (sellerToken && userType === 'seller') {
-      if (DEBUG) console.log('[PublicRoute] Seller 이미 로그인됨 → /seller')
-      return <Navigate to="/seller" replace />
-    }
-    return <>{children}</>
+    const ok = !!(
+      localStorage.getItem('seller_token') &&
+      localStorage.getItem('user_type') === 'seller'
+    )
+    return ok ? <Navigate to="/seller" replace /> : <>{children}</>
   }
 
-  // ─── Admin 로그인 페이지: 동기 체크 ─────────────────────────────────
   if (forAdmin) {
-    const adminToken = localStorage.getItem('admin_token')
-    const userType = localStorage.getItem('user_type')
-    if (adminToken && userType === 'admin') {
-      if (DEBUG) console.log('[PublicRoute] Admin 이미 로그인됨 → /admin')
-      return <Navigate to="/admin" replace />
-    }
-    return <>{children}</>
+    const ok = !!(
+      localStorage.getItem('admin_token') &&
+      localStorage.getItem('user_type') === 'admin'
+    )
+    return ok ? <Navigate to="/admin" replace /> : <>{children}</>
   }
 
-  // ─── User 로그인 페이지: Firebase isAuthReady 대기 ───────────────────
-  return (
-    <UserPublicRoute redirectTo={redirectTo} location={location}>
-      {children}
-    </UserPublicRoute>
-  )
+  return <UserPublicRoute location={location}>{children}</UserPublicRoute>
 }
 
 function UserPublicRoute({
   children,
-  redirectTo,
   location,
 }: {
   children: React.ReactNode
-  redirectTo: string
   location: ReturnType<typeof useLocation>
 }) {
-  // ✅ 훅 규칙 준수: 두 스토어 모두 구독
-  const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
-  const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
-  const userKR = useAuthKR((state) => state.user)
-  const userWorld = useAuthWorld((state) => state.user)
+  const isReady = useAuth((s) => s.isReady)
+  const user = useAuth((s) => s.user)
 
-  const kr = isKorea()
-  const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
-  const currentUser = kr ? userKR : userWorld
-
-  // ✅ 타임아웃 안전장치: 최대 3초
   const [timedOut, setTimedOut] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (isAuthReady) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
+    if (isReady) {
+      if (timer.current) clearTimeout(timer.current)
       return
     }
-    timerRef.current = setTimeout(() => {
-      console.warn('[PublicRoute] ⏰ Firebase Auth 타임아웃 (3s) - 강제 진행')
+    timer.current = setTimeout(() => {
+      console.warn('[PublicRoute] Firebase 타임아웃 (3s)')
       setTimedOut(true)
     }, 3000)
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-    }
-  }, [isAuthReady])
+    return () => { if (timer.current) clearTimeout(timer.current) }
+  }, [isReady])
 
-  // 초기화 중 (타임아웃 전)
-  if (!isAuthReady && !timedOut) {
-    if (DEBUG) console.log('[PublicRoute] ⏳ Firebase Auth 초기화 대기 중...')
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
+  if (!isReady && !timedOut) return <Spinner />
 
-  // 이미 로그인된 경우 리다이렉트
-  if (currentUser) {
-    // ✅ returnUrl 쿼리파라미터 우선 (state.from 제거 → 무한루프 원인 제거)
-    const searchParams = new URLSearchParams(location.search)
-    const returnUrl = searchParams.get('returnUrl')
-    const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
-    if (DEBUG) console.log('[PublicRoute] ✅ User 이미 로그인됨 →', destination)
+  if (user) {
+    const params = new URLSearchParams(location.search)
+    const raw = params.get('returnUrl') ? decodeURIComponent(params.get('returnUrl')!) : '/'
+    // 안전한 경로만 허용
+    const destination = (raw.startsWith('/login') || raw.startsWith('/auth/')) ? '/' : raw
     return <Navigate to={destination} replace />
   }
 
-  if (DEBUG) console.log('[PublicRoute] ✅ 미로그인 → 렌더링')
   return <>{children}</>
 }

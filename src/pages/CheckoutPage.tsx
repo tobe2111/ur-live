@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
 import { getUserId, getUserIdSync, isLoggedInSync } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { useAuth } from '@/shared/stores/useAuth'
 import { CustomModal, useModal } from '@/components/CustomModal'
-import { isKorea } from '@/config/region'
 import { captureError, captureMessage } from '@/lib/sentry'
+import { isKorea } from '@/config/region'
 
 // 🔥 Region-based lazy loading for payment components
 const TossPaymentWidget = lazy(() => 
@@ -51,19 +49,10 @@ interface ShippingAddress {
 export default function CheckoutPage() {
   console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
   
-  // ✅ Region 기반 Store 선택
-  const isKR = isKorea()
-  const krUser = useAuthKR(state => state.user)
-  const krAuthLoading = useAuthKR(state => state.isLoading)
-  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
-  const worldUser = useAuthWorld(state => state.user)
-  const worldAuthLoading = useAuthWorld(state => state.isLoading)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
-  
-  // ✅ Selector로 필요한 상태만 구독
-  const user = isKR ? krUser : worldUser
-  const authLoading = isKR ? krAuthLoading : worldAuthLoading
-  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
+  // ✅ 단일 스토어
+  const user = useAuth((s) => s.user)
+  const authLoading = useAuth((s) => s.isLoading)
+  const isAuthReady = useAuth((s) => s.isReady)
   
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()

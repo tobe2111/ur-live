@@ -15,9 +15,9 @@ export function useCart() {
       
       // ✅ 토큰 확인 (디버깅용)
       try {
-        const { useAuthStore } = await import('@/client/stores/auth.store')
-        const { accessToken } = useAuthStore.getState()
-        console.log('[useCart] 🎫 Token before API call:', accessToken ? accessToken.substring(0, 30) + '...' : 'NULL')
+        const { useAuth } = await import('@/shared/stores/useAuth')
+        const token = await useAuth.getState().getIdToken()
+        console.log('[useCart] 🎫 Token before API call:', token ? token.substring(0, 30) + '...' : 'NULL')
       } catch (e) {
         console.error('[useCart] ❌ Failed to check token:', e)
       }

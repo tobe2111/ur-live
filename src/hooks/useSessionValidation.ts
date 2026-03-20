@@ -2,9 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { getAccessToken, getUserType, logout } from '@/utils/auth'
-import { isKorea } from '@/config/region'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { useAuth } from '@/shared/stores/useAuth'
 
 /**
  * JWT 세션 검증 훅
@@ -21,9 +19,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 export function useSessionValidation() {
   const navigate = useNavigate()
   const location = useLocation()
-  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
-  const isAuthReady = isKorea() ? krIsAuthReady : worldIsAuthReady
+  const isAuthReady = useAuth((s) => s.isReady)
   // Note: isProcessingLogin is not in Zustand stores, removing this check
   const isProcessingLogin = false
 

@@ -10,7 +10,7 @@ import { useFirebaseChat } from '@/hooks/useFirebaseChat'
 import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
 import { createLogger } from '@/utils/logger'
-import { useAuthStore } from '@/shared/stores'
+import { useAuth } from '@/shared/stores/useAuth'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
@@ -793,7 +793,7 @@ function ReelCard({
       }
       
       // POST to server (JWT에서 userId 자동 추출)
-      const accessToken = useAuthStore.getState().accessToken;
+      const accessToken = await useAuth.getState().getIdToken();
       log.debug('[handleAddToCart] 🔑 Token before API:', accessToken?.substring(0, 20));
       
       if (!accessToken) {
@@ -893,7 +893,7 @@ function ReelCard({
       }
       
       // ✅ 먼저 현재 상품을 장바구니에 추가
-      const accessToken = useAuthStore.getState().accessToken;
+      const accessToken = await useAuth.getState().getIdToken();
       log.debug('[Checkout] 🔑 Token before checkout:', accessToken?.substring(0, 20));
       
       if (!accessToken) {

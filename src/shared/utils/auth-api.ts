@@ -196,8 +196,9 @@ export async function authFetch<T = any>(
   const requestKey = `${options.method || 'GET'}:${url}`;
 
   // Get token from store
-  const { useAuthStore } = await import('@/client/stores/auth.store');
-  const token = useAuthStore.getState().accessToken;
+  // ✅ useAuth 단일 스토어에서 Firebase ID Token 조회
+  const { useAuth } = await import('@/shared/stores/useAuth');
+  const token = await useAuth.getState().getIdToken();
 
   if (!token) {
     console.error('[AuthAPI] No access token available');
@@ -232,16 +233,15 @@ export async function authFetch<T = any>(
       retryTracker.set(requestKey, retryCount + 1);
 
       // Try to refresh token
-      const { useAuthKR } = await import('@/shared/stores/useAuthKR');
-      const newToken = await useAuthKR.getState().getIdToken(true); // Force refresh
+      const { useAuth } = await import('@/shared/stores/useAuth');
+      const authState = useAuth.getState();
+      let newToken: string | null = null;
+      if (authState.user) {
+        newToken = await authState.user.getIdToken(true).catch(() => null); // Force refresh
+      }
 
       if (newToken) {
         console.log('[AuthAPI] Token refreshed, retrying request...');
-        useAuthStore.getState().setAuth(
-          useAuthStore.getState().user!,
-          newToken,
-          ''
-        );
 
         // Wait 2s before retry
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -294,9 +294,11 @@ export function redirectToLogin() {
   sessionStorage.setItem('auth_redirect_attempted', 'true');
   
   // Clear auth state
-  localStorage.removeItem('auth-kr-storage');
-  localStorage.removeItem('auth-world-storage');
   localStorage.removeItem('firebase_token_cache');
+  localStorage.removeItem('user_type');
+  localStorage.removeItem('user_name');
+  localStorage.removeItem('user_id');
+  localStorage.removeItem('user_email');
   
   // Redirect
   window.location.href = '/login';

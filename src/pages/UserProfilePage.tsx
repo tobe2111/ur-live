@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
+import { useAuth } from '@/shared/stores/useAuth'
 import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
@@ -19,9 +17,9 @@ export default function UserProfilePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   
-  // ✅ Zustand 스토어 사용 (지역별)
-  const authStore = isKorea() ? useAuthKR : useAuthWorld
-  const { user, isAuthReady } = authStore()
+  // ✅ 단일 스토어
+  const user = useAuth((s) => s.user)
+  const isReady = useAuth((s) => s.isReady)
   
   const [userName, setUserName] = useState('')
   const [isProcessingToken, setIsProcessingToken] = useState(false)
@@ -40,7 +38,7 @@ export default function UserProfilePage() {
     }
     
     // 🔥 수정: 인증이 준비되기 전에는 처리하지 않음
-    if (!isAuthReady) {
+    if (!isReady) {
       console.log('[UserProfilePage] ⏳ Auth 초기화 대기 중...')
       return
     }
@@ -71,7 +69,7 @@ export default function UserProfilePage() {
           navigate('/login', { replace: true })
         })
     }
-  }, [searchParams, isAuthReady, user, navigate])
+  }, [searchParams, isReady, user, navigate])
 
   // ✅ 사용자 이름 설정
   useEffect(() => {
@@ -88,7 +86,7 @@ export default function UserProfilePage() {
   }, [user])
 
   // 🔄 로딩 중
-  if (!isAuthReady || isProcessingToken) {
+  if (!isReady || isProcessingToken) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">

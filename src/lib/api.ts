@@ -147,48 +147,23 @@ api.interceptors.request.use(
     }
 
     // ── Firebase User API ─────────────────────────────────────────────────
-    // ✅ 우선순위 1: useAuthKR/useAuthWorld.getIdToken() → 항상 유효한 토큰 보장
+    // ✅ 단일 useAuth 스토어에서 ID Token 획득
     try {
-      const { isKorea } = await import('@/config/region');
-      const isKR = isKorea();
-      const { useAuthKR } = await import('@/shared/stores/useAuthKR');
-      const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
-      const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+      const { useAuth } = await import('@/shared/stores/useAuth');
+      const authState = useAuth.getState();
 
-      if (authStore.user) {
-        // getIdToken()은 내부적으로 캐시+만료 체크 후 필요시 Firebase에서 갱신
-        const freshToken = await authStore.getIdToken(false);
+      if (authState.user) {
+        const freshToken = await authState.getIdToken();
         if (freshToken) {
           config.headers['Authorization'] = `Bearer ${freshToken}`;
-          // useAuthStore도 최신 토큰으로 동기화
-          try {
-            const { useAuthStore } = await import('@/client/stores/auth.store');
-            const current = useAuthStore.getState();
-            if (current.user && current.accessToken !== freshToken) {
-              useAuthStore.getState().setAuth(current.user, freshToken, '');
-            }
-          } catch (_) {}
           return config;
         }
       }
     } catch (e) {
-      console.warn('[API] useAuthKR/getIdToken 조회 실패:', e);
+      console.warn('[API] useAuth.getIdToken 조회 실패:', e);
     }
 
-    // ✅ 우선순위 2: useAuthStore의 accessToken (fallback)
-    try {
-      const { useAuthStore } = await import('@/client/stores/auth.store');
-      const { accessToken } = useAuthStore.getState();
-      
-      if (accessToken) {
-        config.headers['Authorization'] = `Bearer ${accessToken}`;
-        return config;
-      }
-    } catch (e) {
-      console.warn('[API] useAuthStore 조회 실패:', e);
-    }
-    
-    // ✅ 우선순위 3: Firebase에서 직접 조회 (최후 fallback)
+    // ✅ fallback: Firebase에서 직접 조회
     const token = await getCachedFirebaseToken();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -257,19 +232,16 @@ api.interceptors.response.use(
         
         let newToken: string | null = null;
 
-        // ✅ 1차: useAuthKR/useAuthWorld.getIdToken(true) — Firebase User 객체 직접 사용
+        // ✅ useAuth.getIdToken() — 단일 스토어
         try {
-          const { isKorea } = await import('@/config/region');
-          const isKR = isKorea();
-          const { useAuthKR } = await import('@/shared/stores/useAuthKR');
-          const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
-          const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
-          if (authStore.user) {
-            newToken = await authStore.getIdToken(true); // force refresh
-            console.log('[API] ✅ useAuthKR.getIdToken(true) 성공');
+          const { useAuth } = await import('@/shared/stores/useAuth');
+          const authState = useAuth.getState();
+          if (authState.user) {
+            newToken = await authState.user.getIdToken(true); // force refresh
+            console.log('[API] ✅ useAuth.getIdToken(true) 성공');
           }
         } catch (e) {
-          console.warn('[API] useAuthKR.getIdToken 실패:', e);
+          console.warn('[API] useAuth.getIdToken 실패:', e);
         }
 
         // ✅ 2차: getCachedFirebaseToken(true) — Firebase auth.currentUser 직접 조회
@@ -280,17 +252,6 @@ api.interceptors.response.use(
         if (newToken) {
           const oldToken = originalRequest.headers['Authorization']?.toString().substring(7);
           if (oldToken !== newToken) {
-            // ✅ useAuthStore 및 useAuthKR 캐시 업데이트
-            try {
-              const { useAuthStore } = await import('@/client/stores/auth.store');
-              const currentUser = useAuthStore.getState().user;
-              if (currentUser) {
-                useAuthStore.getState().setAuth(currentUser, newToken, '');
-              }
-            } catch (e) {
-              console.warn('[API] useAuthStore 업데이트 실패:', e);
-            }
-            
             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
             console.log('[API] 🔁 새 토큰으로 요청 재시도');
             return api(originalRequest);
@@ -308,11 +269,6 @@ api.interceptors.response.use(
       clearFirebaseTokenCache();
       const { clearAuthData } = await import('@/utils/auth');
       clearAuthData('user');
-      // ✅ useAuthStore 도 정리
-      try {
-        const { useAuthStore } = await import('@/client/stores/auth.store');
-        useAuthStore.getState().clearAuth();
-      } catch (_) {}
       captureError(new Error('Buyer 401: Unauthorized'), { url });
 
       alert('인증이 만료되었습니다.\n다시 로그인해주세요.');

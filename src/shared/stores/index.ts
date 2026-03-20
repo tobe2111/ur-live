@@ -1,35 +1,21 @@
 /**
- * Unified Auth Store - Single Source of Truth
- * 
- * Architecture:
- * - useAuthKR / useAuthWorld  → Firebase-based auth (KR region: Kakao+Firebase, World: Google)
- * - useAuthStore              → JWT-based auth for multi-seller Worker API
- * 
- * Rule: Pages should prefer useAuthKR/useAuthWorld for Firebase flows,
- *       and useAuthStore for the new Worker API flows (registration/login via /api/auth).
- * 
- * This module re-exports everything from a single location.
+ * 인증 스토어 단일 진입점
+ *
+ * ✅ 리팩토링 완료: useAuth 단일 스토어만 사용.
+ *    useAuthKR / useAuthWorld / useAuthStore 는 삭제 대상이며
+ *    더 이상 이 파일에서 re-export 하지 않는다.
+ *
+ * 사용법:
+ *   import { useAuth } from '@/shared/stores'
+ *   // 또는
+ *   import { useAuth } from '@/shared/stores/useAuth'
  */
 
-// ---- Firebase-based stores (KR + World regions) ----
-export {
-  useAuthKR,
-  useAuthKRUser,
-  useAuthKRLoading,
-  useAuthKRError,
-  useAuthKRRole,
-  useAuthKRReady,
-} from './useAuthKR';
+// ── 단일 통합 인증 스토어 ─────────────────────────────────────────────────
+export { useAuth, useAuthUser, useAuthReady, useIsLoggedIn } from './useAuth'
+export type { AuthState, UserRole } from './useAuth'
 
-export {
-  useAuthWorld,
-  useAuthWorldUser,
-  useAuthWorldLoading,
-  useAuthWorldError,
-  useAuthWorldRole,
-  useAuthWorldReady,
-} from './useAuthWorld';
-
+// ── UI 상태 스토어 (모달 등) ──────────────────────────────────────────────
 export {
   useAuthUI,
   useLoginModalOpen,
@@ -37,10 +23,7 @@ export {
   useResetPasswordModalOpen,
   useGlobalLoading,
   useErrorMessage,
-} from './useAuthUI';
+} from './useAuthUI'
 
-// ---- JWT Worker API auth store ----
-export { useAuthStore } from '../../client/stores/auth.store';
-
-// ---- Multi-seller cart store ----
-export { useCartStore } from '../../client/stores/cart.store';
+// ── 장바구니 스토어 ────────────────────────────────────────────────────────
+export { useCartStore } from '../../client/stores/cart.store'

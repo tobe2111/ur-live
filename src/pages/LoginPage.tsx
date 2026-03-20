@@ -1,12 +1,18 @@
+/**
+ * LoginPage — 완전 리팩토링 버전
+ *
+ * 설계 원칙:
+ * - useAuth 단일 스토어만 사용 (useAuthKR / useAuthWorld 제거)
+ * - 카카오 로그인: OAuth redirect → KakaoCallbackPage → Firebase signIn → onAuthStateChanged
+ * - 이메일 로그인: loginWithEmail() → Firebase signIn → onAuthStateChanged
+ * - 무한루프 방지: returnUrl 이 /login 이나 /auth/ 이면 '/' 로 강제 변환
+ */
+
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-// Firebase Auth will be lazy loaded when needed
 import { isKorea } from '@/config/region'
-import api from '@/lib/api'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
+import { useAuth } from '@/shared/stores/useAuth'
 import { Eye, EyeOff } from 'lucide-react'
 
 // Kakao SDK 타입 선언
@@ -19,30 +25,27 @@ declare global {
 export default function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const location = useLocation()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
-  
-  // ✅ Zustand Store 선택 (KR/World)
-  // Region-based auth (see below)
-  
-  // ✅ Region-based auth store 선택 (hooks 규칙 준수)
-  const isKR = isKorea()
-  const krUser = useAuthKR(state => state.user)
-  const krIsAuthReady = useAuthKR(state => state.isAuthReady)
-  const krGlobalLoading = useAuthKR(state => state.isLoading)
-  const krLoginWithEmail = useAuthKR(state => state.loginWithEmail)
-  const krSendPasswordReset = useAuthKR(state => state.sendPasswordResetEmail)
-  const worldUser = useAuthWorld(state => state.user)
-  const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
-  const worldGlobalLoading = useAuthWorld(state => state.isLoading)
-  
-  const user = isKR ? krUser : worldUser
-  const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
-  const globalLoading = isKR ? krGlobalLoading : worldGlobalLoading
-  const loginWithEmailAction = krLoginWithEmail
-  const sendPasswordResetEmailAction = krSendPasswordReset
-  
+
+  // ✅ 단일 스토어
+  const user = useAuth((s) => s.user)
+  const isReady = useAuth((s) => s.isReady)
+  const isLoading = useAuth((s) => s.isLoading)
+  const authError = useAuth((s) => s.error)
+  const loginWithEmail = useAuth((s) => s.loginWithEmail)
+  const sendPasswordReset = useAuth((s) => s.sendPasswordReset)
+  const clearError = useAuth((s) => s.clearError)
+
+  // ✅ returnUrl 안전 처리 — /login 이나 /auth/ 로 시작하면 '/'
+  const _rawReturnUrl = searchParams.get('returnUrl')
+    ? decodeURIComponent(searchParams.get('returnUrl')!)
+    : sessionStorage.getItem('returnUrl') || '/'
+  const returnUrl =
+    _rawReturnUrl.startsWith('/login') || _rawReturnUrl.startsWith('/auth/')
+      ? '/'
+      : _rawReturnUrl
+
   // Local State
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -53,181 +56,88 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  
-  // ✅ 무한루프 방지: returnUrl은 쿼리파라미터 전용 (location.state?.from 제거)
-  // RouteGuards.tsx가 ?returnUrl= 쿼리파라미터로 전달하므로 여기서 일관되게 읽음
-  // ✅ /login 자체나 auth 경로를 returnUrl로 쓰면 무한루프 → '/'로 안전 변환
-  const _rawReturnUrl = searchParams.get('returnUrl')
-    ? decodeURIComponent(searchParams.get('returnUrl')!)
-    : sessionStorage.getItem('returnUrl') || '/'
-  const returnUrl = (_rawReturnUrl.startsWith('/login') || _rawReturnUrl.startsWith('/auth/'))
-    ? '/'
-    : _rawReturnUrl
-  const isLoggedIn = !!user
 
-  // ✅ 로그인 상태 확인 및 리다이렉트
+  // ✅ auth 에러 반영
   useEffect(() => {
-    if (!isAuthReady) {
-      console.log('[LoginPage] ⏳ Auth 초기화 대기 중...')
-      return
-    }
-    
-    if (isLoggedIn && !hasRedirected.current) {
-      console.log('[LoginPage] ✅ 이미 로그인됨 - returnUrl로 리다이렉트:', returnUrl)
+    if (authError) setError(authError)
+  }, [authError])
+
+  // ✅ 이미 로그인되어 있으면 returnUrl 로 이동
+  useEffect(() => {
+    if (!isReady) return
+    if (user && !hasRedirected.current) {
       hasRedirected.current = true
+      console.log('[LoginPage] 이미 로그인됨 → ', returnUrl)
       navigate(returnUrl, { replace: true })
     }
-  }, [isAuthReady, isLoggedIn, navigate, returnUrl])
+  }, [isReady, user, navigate, returnUrl])
 
-  // ✅ Kakao SDK 초기화 및 returnUrl 저장
+  // ✅ Kakao SDK 초기화 + returnUrl 저장
   useEffect(() => {
+    // sessionStorage 에 returnUrl 저장 (카카오 redirect 후 복원용)
     const urlParam = searchParams.get('returnUrl')
-    if (urlParam) {
-      sessionStorage.setItem('returnUrl', urlParam)
-      console.log('[LoginPage] 🎯 returnUrl 저장:', urlParam)
+    const safeParam = urlParam
+      ? decodeURIComponent(urlParam).startsWith('/login') || decodeURIComponent(urlParam).startsWith('/auth/')
+        ? '/'
+        : urlParam
+      : null
+    if (safeParam) {
+      sessionStorage.setItem('returnUrl', safeParam)
+      sessionStorage.setItem('loginReturnUrl', decodeURIComponent(safeParam))
     }
-    
+
     const checkKakaoSDK = () => {
       if (window.Kakao && !window.Kakao.isInitialized()) {
         window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
       }
-      
       if (window.Kakao && window.Kakao.isInitialized()) {
         setKakaoReady(true)
       } else {
         setTimeout(checkKakaoSDK, 100)
       }
     }
-
     checkKakaoSDK()
   }, [searchParams])
 
-  // ✅ Kakao 로그인 핸들러
-  async function handleKakaoLogin() {
+  // ✅ 카카오 로그인 — OAuth redirect 방식
+  function handleKakaoLogin() {
     if (!kakaoReady) {
       alert(t('auth.kakaoSdkNotReady'))
       return
     }
 
+    const KAKAO_REST_API_KEY = (import.meta as any).env?.VITE_KAKAO_REST_API_KEY
+    if (!KAKAO_REST_API_KEY) {
+      setError('카카오 로그인 설정 오류입니다. 관리자에게 문의하세요. (KOE101)')
+      return
+    }
+
     setLoading(true)
+    clearError()
     setError('')
 
-    try {
-      const accessToken = window.Kakao.Auth.getAccessToken()
-      
-      // 기존 토큰이 있으면 재사용
-      if (accessToken) {
-        await processKakaoLogin(accessToken)
-        return
-      }
+    // returnUrl 을 state 파라미터로 전달 (KakaoCallbackPage 에서 복원)
+    const currentReturnUrl =
+      searchParams.get('returnUrl')
+        ? decodeURIComponent(searchParams.get('returnUrl')!)
+        : sessionStorage.getItem('loginReturnUrl') || '/'
 
-      // ✅ 환경 변수 검증
-      const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
-      
-      if (!KAKAO_REST_API_KEY) {
-        console.error('[Kakao Login] ❌ VITE_KAKAO_REST_API_KEY 환경 변수가 설정되지 않았습니다')
-        console.error('[Kakao Login] 📖 해결 방법: KAKAO_LOGIN_KOE101_FIX.md 파일을 참고하세요')
-        setError('카카오 로그인 설정 오류입니다. 관리자에게 문의하세요. (KOE101)')
-        setLoading(false)
-        return
-      }
-      
-      const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
-      
-      console.log('[Kakao Login] 🔑 REST API Key:', KAKAO_REST_API_KEY.substring(0, 10) + '...')
-      console.log('[Kakao Login] 🔗 Redirect URI:', REDIRECT_URI)
-      
-      // returnUrl을 state로 전달
-      const currentReturnUrl = searchParams.get('returnUrl') 
-        || sessionStorage.getItem('returnUrl') 
-        || '/'
-      
-      const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(currentReturnUrl)}`
-      
-      window.location.href = kakaoAuthUrl
-      
-    } catch (err: any) {
-      console.error('[Kakao Login] ❌ 오류 발생:', err)
-      setError(t('auth.kakaoLoginError'))
-      setLoading(false)
-    }
+    const REDIRECT_URI = `${window.location.origin}/auth/kakao/sync/callback`
+    const kakaoAuthUrl =
+      `https://kauth.kakao.com/oauth/authorize` +
+      `?client_id=${KAKAO_REST_API_KEY}` +
+      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+      `&response_type=code` +
+      `&state=${encodeURIComponent(currentReturnUrl)}`
+
+    window.location.href = kakaoAuthUrl
   }
 
-  // ✅ Kakao accessToken → Firebase customToken 처리
-  async function processKakaoLogin(accessToken: string) {
-    try {
-      console.log('[Kakao Login] 🔥 Firebase Custom Token 요청 시작')
-      
-      const response = await api.post('/api/auth/kakao/firebase', {
-        accessToken: accessToken
-      })
-
-      if (response.data.success) {
-        const { customToken, user: kakaoUser } = response.data
-
-        console.log('[Kakao Login] ✅ Firebase Custom Token 받기 완료:', {
-          userId: kakaoUser.id,
-          userName: kakaoUser.name,
-          hasCustomToken: !!customToken
-        })
-
-        // ✅ Lazy load Firebase Auth
-        const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-        
-        // Firebase signInWithCustomToken
-        const credential = await signInWithCustomToken(customToken)
-
-        // ✅ ID Token 가져오기 (캐시 우선)
-        const idToken = await credential.user.getIdToken(false)
-
-        // ✅ 중복 처리 방지 플래그 먼저 설정 (onAuthStateChanged race condition 방지)
-        sessionStorage.setItem('auth_processed_uid', credential.user.uid)
-
-        // ✅ localStorage 설정
-        localStorage.setItem('user_type', 'user')
-        localStorage.setItem('user_name', kakaoUser.name)
-        localStorage.setItem('user_id', String(kakaoUser.id))
-        if (kakaoUser.email) localStorage.setItem('user_email', kakaoUser.email)
-
-        // ✅ Zustand store 직접 업데이트 (onAuthStateChanged 대기 없이 즉시 인증)
-        const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState()
-        authStore.setUser(credential.user)
-        authStore.setAuthReady(true)
-
-        // ✅ API 요청용 accessToken 저장
-        try {
-          const { useAuthStore } = await import('@/client/stores/auth.store')
-          useAuthStore.getState().setAuth(
-            {
-              id: credential.user.uid,
-              email: kakaoUser.email || '',
-              name: kakaoUser.name,
-              role: 'user',
-            },
-            idToken,
-            ''
-          )
-        } catch (_) {}
-        
-        const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
-        sessionStorage.removeItem('returnUrl')
-        
-        console.log('[Kakao Login] ✅ Firebase 로그인 성공:', kakaoUser.name, '→', savedReturnUrl)
-        navigate(savedReturnUrl, { replace: true })
-      } else {
-        throw new Error(response.data.error || t('auth.loginError'))
-      }
-    } catch (err: any) {
-      console.error('[Kakao Login] ❌ 실패:', err)
-      setError(t('auth.kakaoLoginError'))
-      setLoading(false)
-    }
-  }
-
-  // ✅ 이메일 로그인 핸들러
+  // ✅ 이메일 로그인 — onAuthStateChanged 가 user/isReady 자동 업데이트
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    clearError()
     setLoading(true)
 
     try {
@@ -236,48 +146,31 @@ export default function LoginPage() {
         return
       }
 
-      // ✅ Zustand action 직접 호출
-      await loginWithEmailAction(email, password)
-      
-      // ✅ role에 따라 리다이렉트 경로 결정
-      const { userRole } = isKR ? useAuthKR.getState() : useAuthWorld.getState()
-      console.log('[Email Login] ✅ 로그인 성공 - Role:', userRole)
-      
+      await loginWithEmail(email, password)
+
+      // loginWithEmail 성공 후 onAuthStateChanged 가 user 를 세팅
+      // PublicRoute 가 user 를 감지해 returnUrl 로 자동 리다이렉트
+      // (아래 navigate 는 더 빠른 UX 를 위한 명시적 이동)
       sessionStorage.removeItem('returnUrl')
-      
-      // role별 리다이렉트
-      if (userRole === 'seller') {
-        console.log('[Email Login] 📍 Seller 대시보드로 이동')
-        navigate('/seller/dashboard', { replace: true })
-      } else if (userRole === 'admin') {
-        console.log('[Email Login] 📍 Admin 대시보드로 이동')
-        navigate('/admin', { replace: true })
-      } else {
-        // 기본값: user → returnUrl 또는 홈
-        console.log('[Email Login] 📍 User 페이지로 이동:', returnUrl)
-        navigate(returnUrl, { replace: true })
-      }
+      sessionStorage.removeItem('loginReturnUrl')
+      navigate(returnUrl, { replace: true })
     } catch (err: any) {
-      console.error('[Email Login] Error:', err)
-      setError(t('auth.invalidCredentials'))
+      setError(err.message || t('auth.invalidCredentials'))
     } finally {
       setLoading(false)
     }
   }
 
-  // ✅ 비밀번호 재설정 핸들러
+  // ✅ 비밀번호 재설정
   async function handleResetPassword() {
     if (!email) {
       setError(t('auth.emailRequired'))
       return
     }
-
     setLoading(true)
     setError('')
-    
     try {
-      // ✅ Zustand action 직접 호출
-      await sendPasswordResetEmailAction(email)
+      await sendPasswordReset(email)
       setSuccessMessage(t('auth.resetPasswordSuccess'))
       setShowForgotPassword(false)
     } catch (err: any) {
@@ -287,45 +180,40 @@ export default function LoginPage() {
     }
   }
 
-  // ✅ Google 로그인 핸들러 (글로벌 전용)
+  // ✅ Google 로그인 (글로벌 전용)
   async function handleGoogleLogin() {
     setLoading(true)
     setError('')
-    
     try {
-      // Lazy load Firebase Auth
       const { signInWithGoogle } = await import('@/lib/firebase-auth')
-      
       const result = await signInWithGoogle()
-      
-      // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
+
       localStorage.setItem('user_type', 'user')
       localStorage.setItem('user_name', result.user.displayName || result.user.email?.split('@')[0] || 'User')
-      console.log('[Google Login] ✅ localStorage에 user_type 설정: user')
-      
-      // 백엔드에 사용자 정보 저장 (D1 DB)
-      await api.post('/api/auth/google/register', {
-        uid: result.user.uid,
-        email: result.user.email,
-        name: result.user.displayName,
-        photoURL: result.user.photoURL
-      })
-      
-      console.log('[Google Login] ✅ 성공:', result.user.email)
-      
+
+      // 백엔드에 사용자 정보 저장
+      try {
+        const api = (await import('@/lib/api')).default
+        await api.post('/api/auth/google/register', {
+          uid: result.user.uid,
+          email: result.user.email,
+          name: result.user.displayName,
+          photoURL: result.user.photoURL,
+        })
+      } catch (_) {}
+
       sessionStorage.removeItem('returnUrl')
+      sessionStorage.removeItem('loginReturnUrl')
       navigate(returnUrl, { replace: true })
-      
     } catch (error: any) {
-      console.error('[Google Login] ❌ 실패:', error)
       setError(t('auth.googleLoginError'))
     } finally {
       setLoading(false)
     }
   }
 
-  // 🔥 Early return: Prevent rendering while redirecting
-  if (isAuthReady && isLoggedIn && hasRedirected.current) {
+  // Auth 대기 중 혹은 이미 리다이렉트 중이면 빈 화면
+  if (isReady && user && hasRedirected.current) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-gray-600">Redirecting...</div>
@@ -333,10 +221,12 @@ export default function LoginPage() {
     )
   }
 
+  const combinedLoading = loading || isLoading
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-[380px]">
-        {/* Logo - 29CM Style: Ultra minimal */}
+        {/* Logo */}
         <div className="text-center mb-14">
           <h1 className="text-[28px] font-extralight tracking-[0.02em] text-[#111] mb-1">
             UR LIVE
@@ -346,13 +236,12 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Error/Success Messages - 29CM Style */}
+        {/* Error/Success Messages */}
         {error && (
           <div className="mb-6 p-4 bg-[#FFF8F8] border border-[#FFEBEB] text-[13px] text-[#D32F2F] font-light">
             {error}
           </div>
         )}
-        
         {successMessage && (
           <div className="mb-6 p-4 bg-[#F0F8F4] border border-[#D4EDDA] text-[13px] text-[#2E7D32] font-light">
             {successMessage}
@@ -362,20 +251,14 @@ export default function LoginPage() {
         {/* Main Login Form */}
         {!showEmailLogin && !showForgotPassword && (
           <div className="space-y-3">
-            {/* Kakao Login Button (KR only) - 29CM Style: Minimal, clean lines */}
+            {/* Kakao Login Button (KR only) */}
             {isKorea() && (
               <button
-                onClick={() => {
-                  console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
-                  console.log('[LoginPage] Kakao Ready:', kakaoReady)
-                  console.log('[LoginPage] Kakao SDK Initialized:', window.Kakao?.isInitialized())
-                  console.log('[LoginPage] Loading:', loading)
-                  handleKakaoLogin()
-                }}
-                disabled={loading || !kakaoReady}
-                className="w-full h-[48px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#F9D900]"
+                onClick={handleKakaoLogin}
+                disabled={combinedLoading || !kakaoReady}
+                className="w-full h-[48px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#F9D900] flex items-center justify-center gap-2"
               >
-                {loading ? (
+                {combinedLoading ? (
                   <>
                     <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -394,14 +277,14 @@ export default function LoginPage() {
               </button>
             )}
 
-            {/* Google Login Button (World only) - 29CM Style */}
+            {/* Google Login Button (World only) */}
             {!isKorea() && (
               <button
                 onClick={handleGoogleLogin}
-                disabled={loading}
+                disabled={combinedLoading}
                 className="w-full h-[48px] bg-white hover:bg-[#FAFAFA] text-[#111] text-[13px] font-normal tracking-wide border border-[#E0E0E0] hover:border-[#111] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? (
+                {combinedLoading ? (
                   <>
                     <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -423,7 +306,7 @@ export default function LoginPage() {
               </button>
             )}
 
-            {/* Divider - 29CM Style: Ultra minimal */}
+            {/* Divider */}
             <div className="relative py-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#F0F0F0]"></div>
@@ -433,7 +316,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Email Login Button - 29CM Style: Black minimal button */}
+            {/* Email Login Button */}
             <button
               onClick={() => setShowEmailLogin(true)}
               className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide flex items-center justify-center transition-all"
@@ -441,7 +324,7 @@ export default function LoginPage() {
               {t('auth.loginWithEmail')}
             </button>
 
-            {/* Sign Up Link - 29CM Style: Minimal, understated */}
+            {/* Sign Up Link */}
             <div className="text-center text-[12px] text-[#666] mt-8 font-light">
               {t('auth.noAccount')}{' '}
               <Link to="/register" className="text-[#111] font-normal hover:underline underline-offset-4 decoration-1">
@@ -451,7 +334,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Email Login Form - 29CM Style */}
+        {/* Email Login Form */}
         {showEmailLogin && !showForgotPassword && (
           <form onSubmit={handleEmailLogin} className="space-y-5">
             <div>
@@ -494,10 +377,7 @@ export default function LoginPage() {
             <div className="flex items-center justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  setShowForgotPassword(true)
-                  setShowEmailLogin(false)
-                }}
+                onClick={() => { setShowForgotPassword(true); setShowEmailLogin(false) }}
                 className="text-[11px] text-[#666] hover:text-[#111] underline underline-offset-4 decoration-1 font-light"
               >
                 {t('auth.forgotPassword')}
@@ -506,10 +386,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={combinedLoading}
               className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : t('auth.login')}
+              {combinedLoading ? t('common.loading') : t('auth.login')}
             </button>
 
             <button
@@ -522,7 +402,7 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Forgot Password Form - 29CM Style */}
+        {/* Forgot Password Form */}
         {showForgotPassword && (
           <div className="space-y-5">
             <div className="text-center mb-8">
@@ -547,18 +427,15 @@ export default function LoginPage() {
 
             <button
               onClick={handleResetPassword}
-              disabled={loading}
+              disabled={combinedLoading}
               className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : t('auth.sendResetLink')}
+              {combinedLoading ? t('common.loading') : t('auth.sendResetLink')}
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setShowForgotPassword(false)
-                setShowEmailLogin(true)
-              }}
+              onClick={() => { setShowForgotPassword(false); setShowEmailLogin(true) }}
               className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#111] text-[#111] text-[13px] font-normal tracking-wide transition-all"
             >
               {t('common.back')}

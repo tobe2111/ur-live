@@ -2,11 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { getUserId } from '@/utils/auth'
-// ✅ Zustand 직접 사용
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/config/region'
-// ✅ React Query Hook (Product, ProductOption 타입도 여기서 가져옴)
+import { useAuth } from '@/shared/stores/useAuth'
 import { useProduct, useProductOptions } from '@/hooks/useProduct'
 import type { Product, ProductOption } from '@/hooks/useProduct'
 
@@ -28,12 +24,8 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   
-  // ✅ Region 기반 Store 선택
-  const krUser = useAuthKR(state => state.user)
-  const worldUser = useAuthWorld(state => state.user)
-  
-  // ✅ Selector로 필요한 상태만 구독
-  const user = isKorea() ? krUser : worldUser
+  // ✅ 단일 스토어
+  const user = useAuth((s) => s.user)
   const isLoggedIn = !!user
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
