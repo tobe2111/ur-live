@@ -8,49 +8,43 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   publicDir: 'public',
   build: {
     outDir: 'dist/client',
     emptyOutDir: true,
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          // Large vendor libraries
-          if (id.includes('node_modules')) {
-            // React ecosystem
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
-            }
-            // Firebase
-            if (id.includes('firebase')) {
-              return 'vendor-firebase';
-            }
-            // UI libraries
-            if (id.includes('@radix-ui') || id.includes('lucide-react')) {
-              return 'vendor-ui';
-            }
-            // State & utilities
-            if (id.includes('zustand') || id.includes('i18next') || id.includes('date-fns')) {
-              return 'vendor-utils';
-            }
-            // All other node_modules
-            return 'vendor';
-          }
-          
-          // Seller feature pages (lazy-loaded)
-          if (id.includes('/pages/Seller') && !id.includes('Page.tsx?')) {
-            return 'feature-seller';
-          }
-          
-          // Admin feature pages (lazy-loaded)
-          if (id.includes('/pages/Admin') && !id.includes('Page.tsx?')) {
-            return 'feature-admin';
-          }
+        manualChunks: {
+          // React core - single instance critical
+          'react-core': ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
+          // React ecosystem
+          'react-router': ['react-router-dom'],
+          // Firebase
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/analytics'],
+          // TanStack Query
+          'tanstack-query': ['@tanstack/react-query'],
+          // Payment SDKs
+          'payments': ['@stripe/stripe-js', '@stripe/react-stripe-js', '@tosspayments/payment-sdk', '@tosspayments/tosspayments-sdk'],
+          // State management
+          'zustand': ['zustand'],
+          // UI libraries
+          'radix-ui': [
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-separator',
+            '@radix-ui/react-slot',
+          ],
+          // Icons
+          'lucide': ['lucide-react'],
         },
       },
     },
-    chunkSizeWarningLimit: 500, // Reduced from default 500KB
+    chunkSizeWarningLimit: 600,
   },
   server: {
     port: 5173,
