@@ -264,9 +264,25 @@ export default function CheckoutPage() {
         // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
         const cartResponse = await api.get('/api/cart')
         console.log('[CheckoutPage] 장바구니 응답:', cartResponse.data)
-        if (cartResponse.data.success && cartResponse.data.data.length > 0) {
-          console.log('[CheckoutPage] ✅ 장바구니 데이터 설정:', cartResponse.data.data.length, '개 상품')
-          setCartItems(cartResponse.data.data)
+        
+        // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
+        let cartItemsData: CartItem[] = []
+        if (cartResponse.data?.success) {
+          const resData = cartResponse.data.data
+          if (resData?.items && Array.isArray(resData.items)) {
+            // 현재 구조: data.items
+            cartItemsData = resData.items
+          } else if (Array.isArray(resData)) {
+            // 이전 구조 호환: data가 배열
+            cartItemsData = resData
+          }
+        } else if (Array.isArray(cartResponse.data)) {
+          cartItemsData = cartResponse.data
+        }
+        
+        if (cartItemsData.length > 0) {
+          console.log('[CheckoutPage] ✅ 장바구니 데이터 설정:', cartItemsData.length, '개 상품')
+          setCartItems(cartItemsData)
         } else {
           console.log('[CheckoutPage] ❌ 장바구니 비어있음')
           setError('장바구니가 비어있습니다.')

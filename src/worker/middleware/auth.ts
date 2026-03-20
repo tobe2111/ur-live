@@ -357,18 +357,8 @@ export function requireAuth() {
     console.error('[Auth]   - Firebase Project ID:', firebaseProjectId);
     console.error('[Auth]   - Token format valid:', token.split('.').length === 3);
     
-    // Return 500 with details for debugging (change to 401 after fix)
-    return c.json({
-      success: false,
-      error: 'Token verification failed',
-      debug: {
-        tokenFormat: token.split('.').length === 3 ? 'valid JWT format' : 'invalid format',
-        jwtTried: true,
-        firebaseTried: true,
-        projectIdConfigured: !!firebaseProjectId,
-        hint: 'Check Cloudflare environment variables: FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL'
-      }
-    }, 500);
+    // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
+    return c.json(unauthorizedResponse('Token verification failed'), 401);
   };
 }
 

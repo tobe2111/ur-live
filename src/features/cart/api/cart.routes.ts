@@ -1,41 +1,31 @@
 /**
- * Cart API Routes (Refactored)
- * 
+ * Cart API Routes
+ *
+ * DB 테이블: cart_items (migrations/0001_initial_schema.sql)
+ * 컬럼: id, user_id, product_id, option_id, quantity, price_snapshot, live_stream_id, added_at
+ *
  * Endpoints:
- * - GET /api/cart - 장바구니 조회
- * - POST /api/cart - 장바구니 추가
- * - PUT /api/cart/:id - 장바구니 수정
- * - DELETE /api/cart/:id - 장바구니 아이템 삭제
- * - POST /api/cart/clear - 장바구니 비우기
- * 
- * Refactored: 2026-03-09
- * - Using validation utilities
- * - Using response formatters
- * - Using database helpers
- * - Using auth middleware
+ * - GET  /api/cart         - 장바구니 조회
+ * - POST /api/cart         - 장바구니 추가
+ * - PUT  /api/cart/:id     - 장바구니 수정
+ * - DELETE /api/cart/:id   - 장바구니 아이템 삭제
+ * - POST /api/cart/clear   - 장바구니 비우기
  */
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { 
-  requireAuth, 
-  getCurrentUser 
-} from '@/worker/middleware/auth';
 import {
-  validateNumber,
-  validateOptionalString,
-  ValidationError
-} from '@/worker/utils/validation';
+  requireAuth,
+  getCurrentUser,
+} from '@/worker/middleware/auth';
 import {
   successResponse,
   createdResponse,
   notFoundResponse,
   badRequestResponse,
-  validationErrorResponse,
   unauthorizedResponse,
-  internalServerErrorResponse
+  internalServerErrorResponse,
 } from '@/worker/utils/response';
-import { createDbHelper, QueryBuilder } from '@/worker/utils/database';
 
 type Bindings = {
   DB: D1Database;
@@ -45,49 +35,52 @@ type Bindings = {
   FIREBASE_CLIENT_EMAIL: string;
 };
 
-interface CartAddRequest {
-  product_id: number;
-  quantity: number;
-  options?: string;
-}
-
-interface CartUpdateRequest {
-  quantity?: number;
-  options?: string;
-}
-
-interface CartItem {
-  id: number;
-  product_id: number;
-  quantity: number;
-  options: string | null;
-  created_at: string;
-  updated_at: string;
-  product_name: string;
-  product_description: string;
-  product_price: number;
-  product_image: string;
-  product_stock: number;
-  seller_id: number;
-  seller_name: string;
-  item_total: number;
-}
-
 export const cartRoutes = new Hono<{ Bindings: Bindings }>();
 
 // CORS 설정
-cartRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'http://localhost:5173', 'http://localhost:3000'],
-  credentials: true,
-}));
+cartRoutes.use(
+  '*',
+  cors({
+    origin: [
+      'https://live.ur-team.com',
+      'https://ur-live.pages.dev',
+      'http://localhost:5173',
+      'http://localhost:3000',
+    ],
+    credentials: true,
+  })
+);
 
-/**
- * 사용자 DB ID 가져오기 (Helper)
- */
-async function getUserDbId(db: D1Database, firebaseUid: string): Promise<number | null> {
-  const dbHelper = createDbHelper(db);
-  const user = await dbHelper.findOne<{ id: number }>('users', { firebase_uid: firebaseUid });
-  return user?.id || null;
+// ─── Helper: users 테이블에서 DB user_id 조회 ────────────────────────────────
+async function getUserDbId(
+  db: D1Database,
+  firebaseUid: string
+): Promise<number | null> {
+  const row = await db
+    .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
+    .bind(firebaseUid)
+    .first<{ id: number }>();
+  return row?.id ?? null;
+}
+
+// ─── Helper: 상품 정보 조회 ───────────────────────────────────────────────────
+async function getProduct(
+  db: D1Database,
+  productId: number
+): Promise<{
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  image: string | null;
+  seller_id: number;
+} | null> {
+  return db
+    .prepare(
+      'SELECT id, name, price, stock, image, seller_id FROM products WHERE id = ? LIMIT 1'
+    )
+    .bind(productId)
+    .first();
 }
 
 /**
@@ -97,62 +90,71 @@ async function getUserDbId(db: D1Database, firebaseUid: string): Promise<number 
 cartRoutes.get('/', requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
-    if (!user) {
-      return c.json(unauthorizedResponse(), 401);
-    }
+    if (!user) return c.json(unauthorizedResponse(), 401);
 
     const db = c.env.DB;
     const userId = await getUserDbId(db, String(user.id));
-    
-    if (!userId) {
-      return c.json(notFoundResponse('User'), 404);
-    }
+    if (!userId) return c.json(notFoundResponse('User'), 404);
 
-    // QueryBuilder로 복잡한 쿼리 작성
-    const cartItems = await new QueryBuilder()
-      .select([
-        'c.id',
-        'c.product_id',
-        'c.quantity',
-        'c.options',
-        'c.created_at',
-        'c.updated_at',
-        'p.name as product_name',
-        'p.description as product_description',
-        'p.price as product_price',
-        'p.image as product_image',
-        'p.stock as product_stock',
-        'p.seller_id',
-        's.business_name as seller_name'
-      ])
-      .from('cart c')
-      .join('products p', 'c.product_id = p.id')
-      .leftJoin('sellers s', 'p.seller_id = s.id')
-      .where('c.user_id = ?', userId)
-      .orderBy('c.created_at', 'DESC')
-      .execute<CartItem>(db);
+    const rows = await db
+      .prepare(
+        `SELECT
+           ci.id,
+           ci.product_id,
+           ci.quantity,
+           ci.price_snapshot,
+           ci.option_id,
+           ci.live_stream_id,
+           ci.added_at,
+           p.name        AS product_name,
+           p.description AS product_description,
+           p.price       AS product_price,
+           p.image       AS product_image,
+           p.stock       AS product_stock,
+           p.seller_id,
+           s.business_name AS seller_name
+         FROM cart_items ci
+         JOIN products p  ON ci.product_id = p.id
+         LEFT JOIN sellers s ON p.seller_id = s.id
+         WHERE ci.user_id = ?
+         ORDER BY ci.added_at DESC`
+      )
+      .bind(userId)
+      .all<{
+        id: number;
+        product_id: number;
+        quantity: number;
+        price_snapshot: number;
+        option_id: number | null;
+        live_stream_id: number | null;
+        added_at: string;
+        product_name: string;
+        product_description: string;
+        product_price: number;
+        product_image: string | null;
+        product_stock: number;
+        seller_id: number;
+        seller_name: string | null;
+      }>();
 
-    // 총 금액 및 아이템 수 계산
-    const items = cartItems.map((item) => ({
+    const items = (rows.results ?? []).map((item) => ({
       ...item,
-      item_total: item.product_price * item.quantity
+      // CheckoutPage / CartPage 에서 사용하는 필드 모두 포함
+      price: item.price_snapshot ?? item.product_price,
+      item_total: (item.price_snapshot ?? item.product_price) * item.quantity,
     }));
 
     const summary = items.reduce(
       (acc, item) => ({
         total_items: acc.total_items + item.quantity,
-        total_amount: acc.total_amount + item.item_total
+        total_amount: acc.total_amount + item.item_total,
       }),
       { total_items: 0, total_amount: 0 }
     );
 
-    return c.json(successResponse({
-      items,
-      summary
-    }));
-
+    return c.json(successResponse({ items, summary }));
   } catch (error: any) {
-    console.error('[Cart] Get cart error:', error);
+    console.error('[Cart] GET /api/cart error:', error);
     return c.json(internalServerErrorResponse('Failed to get cart'), 500);
   }
 });
@@ -160,278 +162,214 @@ cartRoutes.get('/', requireAuth(), async (c) => {
 /**
  * POST /api/cart
  * 장바구니 추가
+ * Body: { product_id, quantity, price_snapshot?, option_id?, live_stream_id?, options? }
+ * LivePageV2 호환: productId, liveStreamId, priceSnapshot 도 허용
  */
 cartRoutes.post('/', requireAuth(), async (c) => {
   try {
     console.log('[Cart] POST /api/cart - Start');
-    
-    const user = getCurrentUser(c);
-    if (!user) {
-      console.error('[Cart] No user found in context');
-      return c.json(unauthorizedResponse(), 401);
-    }
-    console.log('[Cart] User authenticated:', { id: user.id, email: user.email });
 
-    const body = await c.req.json<CartAddRequest>();
+    const user = getCurrentUser(c);
+    if (!user) return c.json(unauthorizedResponse(), 401);
+
+    const body = await c.req.json<Record<string, any>>();
     console.log('[Cart] Request body:', JSON.stringify(body));
 
-    // Validation
-    const product_id = validateNumber(body.product_id, 'product_id', { min: 1, integer: true });
-    const quantity = validateNumber(body.quantity, 'quantity', { min: 1, integer: true });
-    const options = validateOptionalString(body.options, 'options', { maxLength: 500 });
-    console.log('[Cart] Validation passed:', { product_id, quantity, options });
+    // ── 필드명 정규화 (camelCase / snake_case 모두 수용) ──────────────────────
+    const product_id: number =
+      Number(body.product_id ?? body.productId ?? 0);
+    const quantity: number =
+      Number(body.quantity ?? 1);
+    const price_snapshot: number | null =
+      body.price_snapshot != null
+        ? Number(body.price_snapshot)
+        : body.priceSnapshot != null
+        ? Number(body.priceSnapshot)
+        : null;
+    const option_id: number | null =
+      body.option_id != null
+        ? Number(body.option_id)
+        : body.optionId != null
+        ? Number(body.optionId)
+        : null;
+    const live_stream_id: number | null =
+      body.live_stream_id != null
+        ? Number(body.live_stream_id)
+        : body.liveStreamId != null
+        ? Number(body.liveStreamId)
+        : null;
+
+    // ── 기본 Validation ───────────────────────────────────────────────────────
+    if (!product_id || product_id < 1) {
+      return c.json(badRequestResponse('product_id is required'), 400);
+    }
+    if (!quantity || quantity < 1) {
+      return c.json(badRequestResponse('quantity must be at least 1'), 400);
+    }
 
     const db = c.env.DB;
-    console.log('[Cart] DB connected:', !!db);
-    
-    if (!db) {
-      console.error('[Cart] ❌ DB binding not found in c.env');
-      return c.json({
-        success: false,
-        error: 'Database not configured',
-        debug: {
-          envKeys: Object.keys(c.env),
-          dbBinding: !!c.env.DB
-        }
-      }, 500);
-    }
-    
-    const dbHelper = createDbHelper(db);
     const userId = await getUserDbId(db, String(user.id));
-    console.log('[Cart] User DB ID:', userId);
-    
-    if (!userId) {
-      return c.json(notFoundResponse('User'), 404);
-    }
+    if (!userId) return c.json(notFoundResponse('User'), 404);
 
-    // 상품 존재 여부 및 재고 확인
-    console.log('[Cart] Fetching product:', product_id);
-    const product = await dbHelper.findById<{ id: number; name: string; price: number; stock: number }>(
-      'products',
-      product_id
-    );
-    console.log('[Cart] Product found:', !!product, product ? { id: product.id, stock: product.stock } : null);
-
-    if (!product) {
-      console.error('[Cart] Product not found:', product_id);
-      return c.json(notFoundResponse('Product'), 404);
-    }
+    // ── 상품 존재 및 재고 확인 ────────────────────────────────────────────────
+    const product = await getProduct(db, product_id);
+    if (!product) return c.json(notFoundResponse('Product'), 404);
 
     if (product.stock < quantity) {
-      console.error('[Cart] Insufficient stock:', { available: product.stock, requested: quantity });
       return c.json(badRequestResponse('Insufficient stock'), 400);
     }
 
-    // 이미 장바구니에 있는지 확인
-    console.log('[Cart] Checking existing cart item:', { userId, product_id });
-    const existingItem = await dbHelper.findOne<{ id: number; quantity: number }>(
-      'cart',
-      { user_id: userId, product_id }
-    );
-    console.log('[Cart] Existing item:', !!existingItem);
+    // ── 이미 장바구니에 있는지 확인 ──────────────────────────────────────────
+    const existing = await db
+      .prepare(
+        'SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ? LIMIT 1'
+      )
+      .bind(userId, product_id)
+      .first<{ id: number; quantity: number }>();
 
-    if (existingItem) {
-      // 기존 아이템 수량 업데이트
-      const newQuantity = existingItem.quantity + quantity;
-      
-      if (product.stock < newQuantity) {
+    const snapshot = price_snapshot ?? product.price;
+
+    if (existing) {
+      const newQty = existing.quantity + quantity;
+      if (product.stock < newQty) {
         return c.json(badRequestResponse('Insufficient stock'), 400);
       }
 
-      await dbHelper.update(
-        'cart',
-        { 
-          quantity: newQuantity, 
-          options, 
-          updated_at: new Date().toISOString() 
-        },
-        { id: existingItem.id }
+      await db
+        .prepare(
+          'UPDATE cart_items SET quantity = ?, price_snapshot = ? WHERE id = ?'
+        )
+        .bind(newQty, snapshot, existing.id)
+        .run();
+
+      return c.json(
+        successResponse(
+          { id: existing.id, product_id, quantity: newQty, price_snapshot: snapshot },
+          'Cart item updated'
+        )
       );
-
-      return c.json(successResponse({
-        id: existingItem.id,
-        product_id,
-        quantity: newQuantity,
-        options
-      }, 'Cart item updated'));
     }
 
-    // 새 아이템 추가
-    console.log('[Cart] Inserting new cart item:', { userId, product_id, quantity, options });
-    const result = await dbHelper.insert('cart', {
-      user_id: userId,
-      product_id,
-      quantity,
-      options,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-    console.log('[Cart] Insert result:', result);
+    // ── 새 아이템 추가 ────────────────────────────────────────────────────────
+    const result = await db
+      .prepare(
+        `INSERT INTO cart_items (user_id, product_id, quantity, price_snapshot, option_id, live_stream_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .bind(userId, product_id, quantity, snapshot, option_id, live_stream_id)
+      .run();
 
-    return c.json(createdResponse({
-      id: result.meta.last_row_id,
-      product_id,
-      quantity,
-      options
-    }, 'Item added to cart'), 201);
+    console.log('[Cart] Insert result:', result.meta);
 
+    return c.json(
+      createdResponse(
+        {
+          id: result.meta.last_row_id,
+          product_id,
+          quantity,
+          price_snapshot: snapshot,
+        },
+        'Item added to cart'
+      ),
+      201
+    );
   } catch (error: any) {
-    console.error('[Cart] ❌ Add to cart error:', error);
-    console.error('[Cart] Error stack:', error.stack);
-    console.error('[Cart] Error name:', error.name);
-    console.error('[Cart] Error message:', error.message);
-    
-    if (error instanceof ValidationError) {
-      return c.json(validationErrorResponse(error.message, error.field), 422);
-    }
-    
-    // 500 에러 시 상세 정보 반환 (디버깅용)
-    return c.json({
-      success: false,
-      error: 'Failed to add item to cart',
-      debug: {
+    console.error('[Cart] POST /api/cart error:', error);
+    return c.json(
+      {
+        success: false,
+        error: 'Failed to add item to cart',
         message: error.message,
-        name: error.name,
-        stack: error.stack?.split('\n').slice(0, 3).join('\n')
-      }
-    }, 500);
+      },
+      500
+    );
   }
 });
 
 /**
  * PUT /api/cart/:id
- * 장바구니 수정
+ * 수량 변경
  */
 cartRoutes.put('/:id', requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
-    if (!user) {
-      return c.json(unauthorizedResponse(), 401);
-    }
+    if (!user) return c.json(unauthorizedResponse(), 401);
 
-    const cartItemId = validateNumber(c.req.param('id'), 'id', { min: 1, integer: true });
-    const body = await c.req.json<CartUpdateRequest>();
+    const cartItemId = Number(c.req.param('id'));
+    if (!cartItemId || cartItemId < 1)
+      return c.json(badRequestResponse('Invalid cart item id'), 400);
 
-    // Validation
-    const quantity = body.quantity !== undefined 
-      ? validateNumber(body.quantity, 'quantity', { min: 1, integer: true })
-      : undefined;
-    const options = body.options !== undefined
-      ? validateOptionalString(body.options, 'options', { maxLength: 500 })
-      : undefined;
+    const body = await c.req.json<{ quantity?: number }>();
+    const quantity = body.quantity != null ? Number(body.quantity) : undefined;
 
-    if (quantity === undefined && options === undefined) {
-      return c.json(badRequestResponse('No fields to update'), 400);
-    }
+    if (quantity === undefined)
+      return c.json(badRequestResponse('quantity is required'), 400);
+    if (quantity < 1)
+      return c.json(badRequestResponse('quantity must be at least 1'), 400);
 
     const db = c.env.DB;
-    const dbHelper = createDbHelper(db);
     const userId = await getUserDbId(db, String(user.id));
-    
-    if (!userId) {
-      return c.json(notFoundResponse('User'), 404);
-    }
+    if (!userId) return c.json(notFoundResponse('User'), 404);
 
-    // 장바구니 아이템이 해당 사용자의 것인지 확인
-    const cartItem = await new QueryBuilder()
-      .select(['c.*', 'p.stock'])
-      .from('cart c')
-      .join('products p', 'c.product_id = p.id')
-      .where('c.id = ?', cartItemId)
-      .where('c.user_id = ?', userId)
-      .execute<{ id: number; product_id: number; stock: number }>(db);
+    // 소유권 확인
+    const item = await db
+      .prepare(
+        `SELECT ci.id, ci.product_id, p.stock
+           FROM cart_items ci
+           JOIN products p ON ci.product_id = p.id
+          WHERE ci.id = ? AND ci.user_id = ? LIMIT 1`
+      )
+      .bind(cartItemId, userId)
+      .first<{ id: number; product_id: number; stock: number }>();
 
-    if (cartItem.length === 0) {
-      return c.json(notFoundResponse('Cart item'), 404);
-    }
-
-    // 재고 확인
-    if (quantity !== undefined && cartItem[0].stock < quantity) {
+    if (!item) return c.json(notFoundResponse('Cart item'), 404);
+    if (item.stock < quantity)
       return c.json(badRequestResponse('Insufficient stock'), 400);
-    }
 
-    // 업데이트할 필드 구성
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
-    
-    if (quantity !== undefined) updateData.quantity = quantity;
-    if (options !== undefined) updateData.options = options;
+    await db
+      .prepare('UPDATE cart_items SET quantity = ? WHERE id = ?')
+      .bind(quantity, cartItemId)
+      .run();
 
-    await dbHelper.update('cart', updateData, { id: cartItemId });
-
-    // 업데이트된 아이템 조회
-    const updatedItem = await new QueryBuilder()
-      .select([
-        'c.id',
-        'c.product_id',
-        'c.quantity',
-        'c.options',
-        'c.updated_at',
-        'p.name as product_name',
-        'p.price as product_price'
-      ])
-      .from('cart c')
-      .join('products p', 'c.product_id = p.id')
-      .where('c.id = ?', cartItemId)
-      .execute(db);
-
-    return c.json(successResponse(updatedItem[0], 'Cart item updated'));
-
+    return c.json(successResponse({ id: cartItemId, quantity }, 'Cart item updated'));
   } catch (error: any) {
-    console.error('[Cart] Update cart item error:', error);
-    
-    if (error instanceof ValidationError) {
-      return c.json(validationErrorResponse(error.message, error.field), 422);
-    }
-    
+    console.error('[Cart] PUT /api/cart/:id error:', error);
     return c.json(internalServerErrorResponse('Failed to update cart item'), 500);
   }
 });
 
 /**
  * DELETE /api/cart/:id
- * 장바구니 아이템 삭제
+ * 아이템 삭제
  */
 cartRoutes.delete('/:id', requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
-    if (!user) {
-      return c.json(unauthorizedResponse(), 401);
-    }
+    if (!user) return c.json(unauthorizedResponse(), 401);
 
-    const cartItemId = validateNumber(c.req.param('id'), 'id', { min: 1, integer: true });
+    const cartItemId = Number(c.req.param('id'));
+    if (!cartItemId || cartItemId < 1)
+      return c.json(badRequestResponse('Invalid cart item id'), 400);
 
     const db = c.env.DB;
-    const dbHelper = createDbHelper(db);
     const userId = await getUserDbId(db, String(user.id));
-    
-    if (!userId) {
-      return c.json(notFoundResponse('User'), 404);
-    }
+    if (!userId) return c.json(notFoundResponse('User'), 404);
 
-    // 장바구니 아이템이 해당 사용자의 것인지 확인
-    const cartItem = await dbHelper.findOne<{ id: number }>(
-      'cart',
-      { id: cartItemId, user_id: userId }
-    );
+    const item = await db
+      .prepare('SELECT id FROM cart_items WHERE id = ? AND user_id = ? LIMIT 1')
+      .bind(cartItemId, userId)
+      .first<{ id: number }>();
 
-    if (!cartItem) {
-      return c.json(notFoundResponse('Cart item'), 404);
-    }
+    if (!item) return c.json(notFoundResponse('Cart item'), 404);
 
-    // 삭제
-    await dbHelper.delete('cart', { id: cartItemId });
+    await db
+      .prepare('DELETE FROM cart_items WHERE id = ?')
+      .bind(cartItemId)
+      .run();
 
     return c.json(successResponse(null, 'Cart item deleted'));
-
   } catch (error: any) {
-    console.error('[Cart] Delete cart item error:', error);
-    
-    if (error instanceof ValidationError) {
-      return c.json(validationErrorResponse(error.message, error.field), 422);
-    }
-    
+    console.error('[Cart] DELETE /api/cart/:id error:', error);
     return c.json(internalServerErrorResponse('Failed to delete cart item'), 500);
   }
 });
@@ -443,25 +381,20 @@ cartRoutes.delete('/:id', requireAuth(), async (c) => {
 cartRoutes.post('/clear', requireAuth(), async (c) => {
   try {
     const user = getCurrentUser(c);
-    if (!user) {
-      return c.json(unauthorizedResponse(), 401);
-    }
+    if (!user) return c.json(unauthorizedResponse(), 401);
 
     const db = c.env.DB;
-    const dbHelper = createDbHelper(db);
     const userId = await getUserDbId(db, String(user.id));
-    
-    if (!userId) {
-      return c.json(notFoundResponse('User'), 404);
-    }
+    if (!userId) return c.json(notFoundResponse('User'), 404);
 
-    // 모든 장바구니 아이템 삭제
-    await dbHelper.delete('cart', { user_id: userId });
+    await db
+      .prepare('DELETE FROM cart_items WHERE user_id = ?')
+      .bind(userId)
+      .run();
 
     return c.json(successResponse(null, 'Cart cleared'));
-
   } catch (error: any) {
-    console.error('[Cart] Clear cart error:', error);
+    console.error('[Cart] POST /api/cart/clear error:', error);
     return c.json(internalServerErrorResponse('Failed to clear cart'), 500);
   }
 });
