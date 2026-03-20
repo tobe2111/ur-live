@@ -121,6 +121,19 @@ export const useAuthWorld = create<AuthWorldState>()(
 
               unsubscribeFn = await onAuthStateChanged(async (firebaseUser) => {
                 if (firebaseUser) {
+                  // ✅ 중복 처리 방지: 이미 처리된 UID면 user+ready만 보장하고 스킵
+                  const lastProcessed = sessionStorage.getItem('auth_processed_uid');
+                  if (lastProcessed === firebaseUser.uid) {
+                    console.log('[AuthWorld] ⏩ Already processed, ensuring user+ready:', firebaseUser.uid);
+                    const currentUser = useAuthWorld.getState().user;
+                    if (!currentUser) {
+                      set({ user: firebaseUser, isAuthReady: true });
+                    } else {
+                      set({ isAuthReady: true });
+                    }
+                    return;
+                  }
+
                   const currentType = localStorage.getItem('user_type');
                   if (currentType === 'seller' || currentType === 'admin') {
                     set({ isAuthReady: true });
