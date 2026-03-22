@@ -472,10 +472,10 @@ export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise
     // Sentry 초기화 실패 시 무시
   }
   
-  // Firebase 로그아웃
+  // Firebase 로그아웃 (await하여 onAuthStateChanged가 확실히 발동되도록)
   try {
     const auth = await getFirebaseAuth()
-    auth.signOut()
+    await auth.signOut()
   } catch (e) {
     console.error('[Auth] Firebase signOut 실패:', e)
   }

@@ -238,8 +238,12 @@ function UserPublicRoute({
   if (currentUser) {
     // ✅ returnUrl 쿼리파라미터 우선 (state.from 제거 → 무한루프 원인 제거)
     const searchParams = new URLSearchParams(location.search)
-    const returnUrl = searchParams.get('returnUrl')
-    const destination = returnUrl ? decodeURIComponent(returnUrl) : redirectTo
+    const rawReturnUrl = searchParams.get('returnUrl')
+    // ✅ 무한루프 방지: /login, /auth/ 경로를 returnUrl로 사용하지 않음 (LoginPage와 동일 로직)
+    const decodedUrl = rawReturnUrl ? decodeURIComponent(rawReturnUrl) : null
+    const destination = (decodedUrl && !decodedUrl.startsWith('/login') && !decodedUrl.startsWith('/auth/'))
+      ? decodedUrl
+      : redirectTo
     if (DEBUG) console.log('[PublicRoute] ✅ User 이미 로그인됨 →', destination)
     return <Navigate to={destination} replace />
   }

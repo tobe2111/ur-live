@@ -313,6 +313,27 @@ api.interceptors.response.use(
         const { useAuthStore } = await import('@/client/stores/auth.store');
         useAuthStore.getState().clearAuth();
       } catch (_) {}
+
+      // ✅ Firebase signOut 호출 (무한루프 방지 핵심)
+      // clearAuthData는 localStorage만 삭제하므로, Firebase signOut 없이
+      // window.location.href로 리다이렉트하면 onAuthStateChanged가
+      // 아직 로그인된 유저를 감지 → 재인증 → 401 → 무한루프
+      try {
+        const { isKorea } = await import('@/config/region');
+        const isKR = isKorea();
+        const { useAuthKR } = await import('@/shared/stores/useAuthKR');
+        const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
+        const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
+        authStore.setUser(null);
+        authStore.setAuthReady(true);
+      } catch (_) {}
+      try {
+        const { getFirebaseAuth } = await import('@/lib/firebase-auth');
+        const auth = await getFirebaseAuth();
+        await auth.signOut();
+      } catch (_) {}
+      sessionStorage.removeItem('auth_processed_uid');
+
       captureError(new Error('Buyer 401: Unauthorized'), { url });
 
       alert('인증이 만료되었습니다.\n다시 로그인해주세요.');

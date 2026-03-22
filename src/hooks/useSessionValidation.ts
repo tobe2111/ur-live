@@ -71,19 +71,29 @@ export function useSessionValidation() {
           const returnUrl = location.pathname + location.search
           localStorage.setItem('loginReturnUrl', returnUrl)
 
-          // 모든 인증 정보 삭제
-          logout()
-
-          // 사용자 타입에 따라 로그인 페이지 결정
+          // ✅ 사용자 타입을 logout() 호출 전에 읽기 (logout이 localStorage를 삭제하므로)
           const userType = getUserType()
-          const loginPath = userType === 'seller' 
-            ? '/seller/login' 
-            : userType === 'admin' 
-            ? '/admin/login' 
+          const loginPath = userType === 'seller'
+            ? '/seller/login'
+            : userType === 'admin'
+            ? '/admin/login'
             : '/login'
 
+          // ✅ Zustand store 먼저 업데이트 (navigate 후 PublicRoute가 즉시 user 확인하므로)
+          const isKR = isKorea()
+          if (isKR) {
+            useAuthKR.getState().setUser(null)
+            useAuthKR.getState().setAuthReady(true)
+          } else {
+            useAuthWorld.getState().setUser(null)
+            useAuthWorld.getState().setAuthReady(true)
+          }
+
+          // 모든 인증 정보 삭제 (Firebase signOut 포함)
+          await logout()
+
           // 로그인 페이지로 리다이렉트 (returnUrl 포함)
-          navigate(`${loginPath}?returnUrl=${encodeURIComponent(returnUrl)}`)
+          navigate(`${loginPath}?returnUrl=${encodeURIComponent(returnUrl)}`, { replace: true })
         } else if (error.response?.status === 429) {
           // 5. 429 Too Many Requests: 너무 많은 요청, 조용히 스킵
           console.warn('[SessionValidation] ⚠️ 429 Too Many Requests - 다음 검증까지 대기')
