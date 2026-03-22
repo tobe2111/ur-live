@@ -456,13 +456,11 @@ export class FirebaseAdmin {
    * PEM to DER converter for Web Crypto API
    */
   private async pemToDer(pem: string): Promise<ArrayBuffer> {
-    const pemHeader = '-----BEGIN PRIVATE KEY-----'
-    const pemFooter = '-----END PRIVATE KEY-----'
-    const pemContents = pem.substring(
-      pemHeader.length,
-      pem.length - pemFooter.length - 1
-    ).trim()
-    
+    const pemContents = pem
+      .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+      .replace(/-----END PRIVATE KEY-----/g, '')
+      .replace(/\s/g, '')
+
     const binaryString = atob(pemContents)
     const bytes = new Uint8Array(binaryString.length)
     for (let i = 0; i < binaryString.length; i++) {
