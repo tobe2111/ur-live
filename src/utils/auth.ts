@@ -257,17 +257,22 @@ export async function getUserId(): Promise<string | null> {
       // @ts-ignore - Firebase custom claims
       const claims = user.reloadUserInfo?.customAttributes
       if (claims) {
-        const parsed = JSON.parse(claims)
-        if (parsed.userId) {
-          console.log('[Auth] getUserId: Firebase Custom Claims userId found:', parsed.userId)
-          return parsed.userId.toString()
-        }
+        try {
+          const parsed = JSON.parse(claims)
+          if (parsed.userId) {
+            console.log('[Auth] getUserId: Firebase Custom Claims userId found:', parsed.userId)
+            return parsed.userId.toString()
+          }
+        } catch (_) {}
       }
+      // ✅ Fallback: use Firebase UID (email login users without custom claims)
+      console.log('[Auth] getUserId: Fallback to Firebase UID:', user.uid)
+      return user.uid
     }
   } catch (error) {
     console.warn('[Auth] getUserId - Firebase claims 조회 실패:', error)
   }
-  
+
   console.log('[Auth] getUserId: no ID found')
   return null
 }
