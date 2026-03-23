@@ -61,11 +61,12 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // ✅ accessToken은 persist 제외: 만료된 토큰이 localStorage에 남아 401 유발 방지
+      // 토큰은 매 세션마다 Firebase에서 새로 발급받음 (useAuthKR.getIdToken or getCachedFirebaseToken)
       partialize: (state) => ({
         user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        // accessToken, refreshToken: NOT persisted
       }),
     }
   )
