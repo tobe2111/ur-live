@@ -155,7 +155,7 @@ api.interceptors.request.use(
       const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
       const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
 
-      if (authStore.user) {
+      if (authStore.user && typeof authStore.getIdToken === 'function') {
         // getIdToken()은 내부적으로 캐시+만료 체크 후 필요시 Firebase에서 갱신
         const freshToken = await authStore.getIdToken(false);
         if (freshToken) {
@@ -264,7 +264,7 @@ api.interceptors.response.use(
           const { useAuthKR } = await import('@/shared/stores/useAuthKR');
           const { useAuthWorld } = await import('@/shared/stores/useAuthWorld');
           const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState();
-          if (authStore.user) {
+          if (authStore.user && typeof authStore.getIdToken === 'function') {
             newToken = await authStore.getIdToken(true); // force refresh
             console.log('[API] ✅ useAuthKR.getIdToken(true) 성공');
           }

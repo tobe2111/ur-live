@@ -131,6 +131,11 @@ function AppContent() {
         const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0;
         console.log('[App] 🔢 Numeric user ID from claims:', numericUserId);
         
+        // ✅ useAuthKR에 Firebase User 즉시 설정 (onAuthStateChanged 지연 방지)
+        const { useAuthKR } = await import('@/shared/stores/useAuthKR')
+        useAuthKR.getState().setUser(user)
+        console.log('[App] ✅ useAuthKR에 Firebase User 저장 완료')
+
         // ✅ useAuthStore에 토큰 저장
         const { useAuthStore } = await import('@/client/stores/auth.store')
         useAuthStore.getState().setAuth(

@@ -73,74 +73,54 @@ async function verifyJWT(
 }
 
 /**
- * Firebase 공개키 캐시 (Cloudflare Worker 인스턴스 수명 동안 유지)
- * Google의 공개키는 최대 1시간마다 갱신되므로 캐시 사용
+ * Firebase JWK 공개키 캐시 (Cloudflare Worker 인스턴스 수명 동안 유지)
+ * JWK 엔드포인트 사용: X.509 PEM 대신 Web Crypto API와 직접 호환되는 JWK 형식
  */
-const firebasePublicKeyCache: { keys: Record<string, string>; expiresAt: number } = {
-  keys: {},
+const firebaseJwkCache: { keys: JsonWebKey[]; expiresAt: number } = {
+  keys: [],
   expiresAt: 0,
 };
 
 /**
- * Firebase 공개키 조회 (캐시 포함)
+ * Firebase JWK 공개키 조회 (캐시 포함)
+ * JWK 엔드포인트는 Web Crypto importKey('jwk') 와 직접 호환됨
  */
-async function getFirebasePublicKeys(): Promise<Record<string, string>> {
+async function getFirebaseJwkKeys(): Promise<JsonWebKey[]> {
   const now = Date.now();
-  if (now < firebasePublicKeyCache.expiresAt && Object.keys(firebasePublicKeyCache.keys).length > 0) {
-    return firebasePublicKeyCache.keys;
+  if (now < firebaseJwkCache.expiresAt && firebaseJwkCache.keys.length > 0) {
+    return firebaseJwkCache.keys;
   }
 
   const res = await fetch(
-    'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com',
+    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
     { cf: { cacheTtl: 3600, cacheEverything: true } } as RequestInit
   );
 
   if (!res.ok) {
-    throw new Error(`Firebase public key fetch failed: ${res.status}`);
+    throw new Error(`Firebase JWK fetch failed: ${res.status}`);
   }
 
-  const keys = await res.json() as Record<string, string>;
+  const json = await res.json() as { keys: JsonWebKey[] };
 
   // Cache-Control 헤더에서 max-age 파싱
   const cacheControl = res.headers.get('cache-control') || '';
   const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
   const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1] ?? '3600', 10) * 1000 : 3600 * 1000;
 
-  firebasePublicKeyCache.keys = keys;
-  firebasePublicKeyCache.expiresAt = now + maxAge;
+  firebaseJwkCache.keys = json.keys;
+  firebaseJwkCache.expiresAt = now + maxAge;
 
-  return keys;
+  return json.keys;
 }
 
 /**
- * Base64URL → Uint8Array 변환 (Web Crypto API용)
+ * Base64URL → Uint8Array 변환 (JWT 서명 검증용)
  */
 function base64UrlToUint8Array(base64Url: string): Uint8Array {
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
   const binary = atob(padded);
   return new Uint8Array([...binary].map(c => c.charCodeAt(0)));
-}
-
-/**
- * PEM 인증서에서 공개키 추출 및 Web Crypto 키 임포트
- */
-async function importCertPublicKey(pem: string): Promise<CryptoKey> {
-  // PEM → DER 바이너리
-  const pemBody = pem
-    .replace(/-----BEGIN CERTIFICATE-----/, '')
-    .replace(/-----END CERTIFICATE-----/, '')
-    .replace(/\s+/g, '');
-
-  const derBuffer = base64UrlToUint8Array(pemBody).buffer as ArrayBuffer;
-
-  return crypto.subtle.importKey(
-    'spki',
-    derBuffer,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['verify']
-  );
 }
 
 /**
@@ -197,21 +177,27 @@ async function verifyFirebaseToken(
       return null;
     }
 
-    // 공개키 조회
-    console.log('[Firebase] 🔑 Fetching public keys...');
-    const publicKeys = await getFirebasePublicKeys();
-    const certPem = publicKeys[kid];
-    if (!certPem) {
-      console.error('[Firebase] ❌ Firebase public key not found for kid:', kid);
-      console.error('[Firebase] Available kids:', Object.keys(publicKeys).join(', '));
+    // JWK 공개키 조회
+    console.log('[Firebase] 🔑 Fetching JWK public keys...');
+    const jwkKeys = await getFirebaseJwkKeys();
+    const jwk = jwkKeys.find((k: any) => k.kid === kid);
+    if (!jwk) {
+      console.error('[Firebase] ❌ JWK not found for kid:', kid);
+      console.error('[Firebase] Available kids:', jwkKeys.map((k: any) => k.kid).join(', '));
       return null;
     }
-    
-    console.log('[Firebase] ✅ Public key found for kid:', kid.substring(0, 10) + '...');
 
-    // 서명 검증 (Web Crypto API)
-    console.log('[Firebase] 🔐 Verifying signature...');
-    const publicKey = await importCertPublicKey(certPem);
+    console.log('[Firebase] ✅ JWK found for kid:', kid.substring(0, 10) + '...');
+
+    // 서명 검증 (Web Crypto API - JWK 직접 임포트)
+    console.log('[Firebase] 🔐 Verifying signature with JWK...');
+    const publicKey = await crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
     const signedData = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
     const signature = base64UrlToUint8Array(signatureB64);
 
