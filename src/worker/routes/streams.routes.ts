@@ -49,10 +49,15 @@ streamsRouter.get('/', async (c) => {
         ls.updated_at,
         s.name       AS seller_name,
         s.profile_image   AS seller_image,
-        cp.id        AS current_product_id,
-        cp.name      AS current_product_name,
-        cp.price     AS current_product_price,
-        cp.thumbnail_url AS current_product_image
+        cp.id             AS current_product_id,
+        cp.name           AS current_product_name,
+        cp.price          AS current_product_price,
+        cp.original_price AS current_product_original_price,
+        cp.discount_rate  AS current_product_discount_rate,
+        cp.thumbnail_url  AS current_product_image,
+        cp.image_url      AS current_product_image_url,
+        cp.stock_quantity AS current_product_stock_quantity,
+        cp.description    AS current_product_description
       FROM live_streams ls
       LEFT JOIN sellers s ON s.id = ls.seller_id
       LEFT JOIN products cp ON cp.id = ls.current_product_id
@@ -101,7 +106,12 @@ streamsRouter.get('/', async (c) => {
             id: r.current_product_id,
             name: r.current_product_name,
             price: r.current_product_price,
-            image_url: r.current_product_image,
+            original_price: r.current_product_original_price,
+            discount_rate: r.current_product_discount_rate,
+            thumbnail_url: r.current_product_image,
+            image_url: r.current_product_image_url || r.current_product_image,
+            stock_quantity: r.current_product_stock_quantity,
+            description: r.current_product_description,
           }
         : null,
     }));

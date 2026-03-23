@@ -65,6 +65,13 @@ export function ProtectedRoute({
   return <UserProtectedRoute location={location}>{children}</UserProtectedRoute>
 }
 
+/** localStorage 동기 체크: Firebase User 로그인 흔적이 있는지 확인 */
+function hasFirebaseUserSession(): boolean {
+  const userType = localStorage.getItem('user_type')
+  const lastLoginUid = localStorage.getItem('lastLoginUid')
+  return userType === 'user' && !!lastLoginUid
+}
+
 /** Firebase User 전용 보호 라우트 */
 function UserProtectedRoute({
   children,
@@ -73,6 +80,9 @@ function UserProtectedRoute({
   children: React.ReactNode
   location: ReturnType<typeof useLocation>
 }) {
+  // ✅ 동기 사전 체크: localStorage에 로그인 흔적이 없으면 즉시 리다이렉트 (스피너 없음)
+  const hasPossibleSession = hasFirebaseUserSession()
+
   // ✅ 훅 규칙 준수: 두 스토어를 모두 구독하되, 렌더 시 region으로 선택
   // isKorea()는 순수 함수(hostname 체크)이므로 렌더 중 호출 안전
   const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
@@ -90,6 +100,8 @@ function UserProtectedRoute({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    // 로그인 흔적 없으면 타이머 불필요
+    if (!hasPossibleSession) return
     if (isAuthReady) {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
@@ -107,7 +119,18 @@ function UserProtectedRoute({
         timerRef.current = null
       }
     }
-  }, [isAuthReady])
+  }, [isAuthReady, hasPossibleSession])
+
+  // ✅ 로그인 흔적 없음 → 즉시 리다이렉트 (Firebase 대기 없음, 스피너 없음)
+  if (!hasPossibleSession) {
+    if (DEBUG) console.log('[ProtectedRoute] ⚡ 비로그인 확인 (동기) → /login')
+    const cleanParams = new URLSearchParams(location.search)
+    cleanParams.delete('firebase_token')
+    cleanParams.delete('userName')
+    const cleanSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : ''
+    const returnUrl = encodeURIComponent(location.pathname + cleanSearch)
+    return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
+  }
 
   // 아직 초기화 중 (타임아웃 전)
   if (!isAuthReady && !timedOut) {
@@ -194,6 +217,9 @@ function UserPublicRoute({
   redirectTo: string
   location: ReturnType<typeof useLocation>
 }) {
+  // ✅ 동기 사전 체크: localStorage에 로그인 흔적 없으면 즉시 렌더링 (스피너 없음)
+  const hasPossibleSession = hasFirebaseUserSession()
+
   // ✅ 훅 규칙 준수: 두 스토어 모두 구독
   const isAuthReadyKR = useAuthKR((state) => state.isAuthReady)
   const isAuthReadyWorld = useAuthWorld((state) => state.isAuthReady)
@@ -204,11 +230,13 @@ function UserPublicRoute({
   const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
   const currentUser = kr ? userKR : userWorld
 
-  // ✅ 타임아웃 안전장치: 최대 3초
+  // ✅ 타임아웃 안전장치: 최대 3초 (로그인 세션이 있을 때만)
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    // 로그인 흔적 없으면 타이머 불필요
+    if (!hasPossibleSession) return
     if (isAuthReady) {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
@@ -226,7 +254,13 @@ function UserPublicRoute({
         timerRef.current = null
       }
     }
-  }, [isAuthReady])
+  }, [isAuthReady, hasPossibleSession])
+
+  // ✅ 로그인 흔적 없음 → 즉시 렌더링 (Firebase 대기 없음, 스피너 없음)
+  if (!hasPossibleSession) {
+    if (DEBUG) console.log('[PublicRoute] ⚡ 비로그인 확인 (동기) → 즉시 렌더링')
+    return <>{children}</>
+  }
 
   // 초기화 중 (타임아웃 전)
   if (!isAuthReady && !timedOut) {
