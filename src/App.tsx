@@ -134,7 +134,9 @@ function AppContent() {
         // ✅ useAuthKR에 Firebase User 즉시 설정 (onAuthStateChanged 지연 방지)
         const { useAuthKR } = await import('@/shared/stores/useAuthKR')
         useAuthKR.getState().setUser(user)
-        console.log('[App] ✅ useAuthKR에 Firebase User 저장 완료')
+        useAuthKR.getState().setAuthReady(true)  // ProtectedRoute 스피너 즉시 해제
+        sessionStorage.setItem('auth_processed_uid', user.uid)  // onAuthStateChanged 중복 방지
+        console.log('[App] ✅ useAuthKR에 Firebase User 저장 완료 (isAuthReady=true)')
 
         // ✅ useAuthStore에 토큰 저장
         const { useAuthStore } = await import('@/client/stores/auth.store')
@@ -155,9 +157,10 @@ function AppContent() {
         localStorage.setItem('user_email', user.email || '')
         localStorage.setItem('numeric_user_id', String(numericUserId)); // ✅ 숫자 ID 저장
         
-        // URL 파라미터 제거
+        // URL 파라미터 제거 (firebase_token, userName 모두)
         urlParams.delete('firebase_token')
-        const newUrl = urlParams.toString() 
+        urlParams.delete('userName')
+        const newUrl = urlParams.toString()
           ? `${window.location.pathname}?${urlParams.toString()}`
           : window.location.pathname
         window.history.replaceState({}, '', newUrl)

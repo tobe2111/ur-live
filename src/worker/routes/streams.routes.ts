@@ -185,7 +185,7 @@ streamsRouter.get('/:id/products', async (c) => {
     // ✅ products 테이블에서 live_stream_id로 조회
     const rows = await db
       .prepare(`
-        SELECT 
+        SELECT
           id, name, description, price, original_price, discount_rate,
           image_url, thumbnail_url, stock, stock_quantity,
           category, seller_id, is_active, created_at, updated_at
@@ -196,10 +196,36 @@ streamsRouter.get('/:id/products', async (c) => {
       .bind(streamId)
       .all();
 
-    const products = rows.results || [];
-    
+    let products = rows.results || [];
+
+    // ✅ live_stream_id로 연결된 상품이 없으면 current_product_id 상품을 fallback으로 반환
+    if (products.length === 0) {
+      const stream = await db
+        .prepare('SELECT current_product_id FROM live_streams WHERE id = ?')
+        .bind(streamId)
+        .first<{ current_product_id: number | null }>();
+
+      if (stream?.current_product_id) {
+        const fallbackProduct = await db
+          .prepare(`
+            SELECT
+              id, name, description, price, original_price, discount_rate,
+              image_url, thumbnail_url, stock, stock_quantity,
+              category, seller_id, is_active, created_at, updated_at
+            FROM products WHERE id = ?
+          `)
+          .bind(stream.current_product_id)
+          .first<any>();
+
+        if (fallbackProduct) {
+          products = [fallbackProduct];
+          console.log(`[Streams] Using current_product_id ${stream.current_product_id} as fallback for stream ${streamId}`);
+        }
+      }
+    }
+
     console.log(`[Streams] Loaded ${products.length} products for stream ${streamId}`);
-    
+
     return c.json({
       success: true,
       data: products
