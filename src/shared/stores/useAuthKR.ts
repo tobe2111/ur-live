@@ -208,13 +208,39 @@ export const useAuthKR = create<AuthKRState>()(
             safeSetUserType();
             const displayName = user.displayName || user.email?.split('@')[0] || 'User';
             localStorage.setItem('user_name', displayName);
+            localStorage.setItem('lastLoginUid', user.uid);
 
-            // ✅ Phase 2.3: Clear redirect flag on successful login (무한루프 방지)
+            // ✅ onAuthStateChanged 중복 처리 방지 (kakao 콜백과 동일한 패턴)
+            sessionStorage.setItem('auth_processed_uid', user.uid);
             sessionStorage.removeItem('auth_redirect_attempted');
-            console.log('[AuthKR] ✅ Login successful, redirect flag cleared');
 
-            // onAuthStateChanged 가 자동으로 store 업데이트하므로 set() 최소화
-            set({ isLoading: false, error: null });
+            // ✅ ID Token 캐시 저장
+            const newCache: TokenCache = {
+              token: idToken,
+              expiresAt: Date.now() + TOKEN_EXPIRY_MS,
+            };
+            saveTokenCacheToStorage(newCache);
+
+            // ✅ API 요청용 accessToken 저장
+            try {
+              const { useAuthStore } = await import('@/client/stores/auth.store');
+              useAuthStore.getState().setAuth(
+                { id: user.uid, email: user.email || '', name: displayName, role: 'user' },
+                idToken,
+                ''
+              );
+            } catch (_) {}
+
+            // ✅ user를 즉시 store에 설정 — navigate 전에 ProtectedRoute가 user를 확인할 수 있도록
+            // (이전: onAuthStateChanged에 위임 → navigate 시점에 user=null → /login 리다이렉트)
+            set({
+              user,
+              userRole: role as 'user',
+              isLoading: false,
+              isAuthReady: true,
+              error: null,
+              tokenCache: newCache,
+            });
           } catch (err: any) {
             set({ error: err.message || '로그인 실패', isLoading: false });
             throw err;
