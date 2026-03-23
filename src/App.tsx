@@ -448,6 +448,10 @@ function AppContent() {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
+            {/* ✅ 마이페이지 메뉴에서 사용하는 긴 형식 경로 → 짧은 경로로 리다이렉트 */}
+            <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+            <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+            <Route path="/refund-policy" element={<Navigate to="/refund" replace />} />
             
             {/* Debug 페이지 (개발 환경만) */}
             <Route path="/kakao-debug" element={<KakaoDebugPage />} />
