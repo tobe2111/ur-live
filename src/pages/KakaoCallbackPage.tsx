@@ -69,10 +69,14 @@ export default function KakaoCallbackPage() {
         const userCredential = await signInWithCustomToken(customToken)
         console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
 
+        // ✅ 중복 처리 방지: signInWithCustomToken 직후 즉시 설정
+        // (이후 getIdToken/updateProfile 중 onAuthStateChanged가 fired되어도 fast path 처리)
+        sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
+
         // 3. ID Token 갱신 (Custom Claims 로드)
         const idToken = await userCredential.user.getIdToken(false)  // ✅ 캐시 사용 (이미 최신)
         console.log('[KakaoCallback] ✅ ID Token 갱신 완료')
-        
+
         // 3.5 ✅ Firebase User의 displayName 업데이트 (사용자 이름 표시용)
         try {
           const { updateProfile } = await import('firebase/auth');
@@ -83,10 +87,6 @@ export default function KakaoCallbackPage() {
         } catch (e) {
           console.warn('[KakaoCallback] ⚠️ displayName 업데이트 실패 (무시):', e);
         }
-
-        // ✅ 중복 처리 방지: onAuthStateChanged가 이 UID를 다시 처리하지 않도록
-        // setUser() 호출 전에 설정해야 race condition 방지
-        sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
 
         // 4. localStorage 설정
         localStorage.setItem('user_type', 'user')
