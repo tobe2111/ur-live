@@ -124,11 +124,13 @@ function UserProtectedRoute({
   }, [isAuthReady, hasPossibleSession])
 
   // ✅ 로그인 흔적 없음 → 즉시 리다이렉트 (Firebase 대기 없음, 스피너 없음)
-  if (!hasPossibleSession) {
+  // ✅ 단, Zustand store에 이미 user가 있으면 localStorage 동기화 전이어도 리다이렉트 하지 않음
+  if (!hasPossibleSession && !currentUser) {
     if (DEBUG) console.log('[ProtectedRoute] ⚡ 비로그인 확인 (동기) → /login')
     const cleanParams = new URLSearchParams(location.search)
     cleanParams.delete('firebase_token')
     cleanParams.delete('userName')
+    cleanParams.delete('profileImage')
     const cleanSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : ''
     const returnUrl = encodeURIComponent(location.pathname + cleanSearch)
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
@@ -147,11 +149,11 @@ function UserProtectedRoute({
   // 인증 확인
   if (!currentUser) {
     if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
-    // ✅ 무한루프 방지: state 대신 ?returnUrl= 쿼리파라미터 사용
-    // firebase_token / userName 은 returnUrl에 포함시키지 않음 (보안 + 무한루프 방지)
+    // ✅ 무한루프 방지: auth 관련 파라미터 모두 제거
     const cleanParams = new URLSearchParams(location.search)
     cleanParams.delete('firebase_token')
     cleanParams.delete('userName')
+    cleanParams.delete('profileImage')
     const cleanSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : ''
     const returnUrl = encodeURIComponent(location.pathname + cleanSearch)
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />

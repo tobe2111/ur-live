@@ -157,6 +157,13 @@ function AppContent() {
           }
         }
 
+        // ✅ localStorage를 먼저 업데이트 (hasFirebaseUserSession() race condition 방지)
+        localStorage.setItem('user_type', 'user')
+        localStorage.setItem('lastLoginUid', user.uid)
+        localStorage.setItem('user_id', user.uid)
+        localStorage.setItem('user_email', user.email || '')
+        localStorage.setItem('numeric_user_id', String(numericUserId))
+
         // ✅ useAuthKR에 Firebase User 즉시 설정 (onAuthStateChanged 지연 방지)
         const { useAuthKR } = await import('@/shared/stores/useAuthKR')
         useAuthKR.getState().setUser(user)
@@ -177,12 +184,6 @@ function AppContent() {
           ''
         )
         console.log('[App] ✅ useAuthStore에 accessToken 저장 완료')
-
-        localStorage.setItem('user_type', 'user')
-        localStorage.setItem('lastLoginUid', user.uid)  // ✅ hasFirebaseUserSession() 인식용
-        localStorage.setItem('user_id', user.uid)
-        localStorage.setItem('user_email', user.email || '')
-        localStorage.setItem('numeric_user_id', String(numericUserId))
 
         // URL 파라미터 제거 (auth 관련 전부)
         urlParams.delete('firebase_token')
@@ -221,9 +222,13 @@ function AppContent() {
     authInitialized.current = true
 
     const userType = localStorage.getItem('user_type')
-    
+
+    // ✅ firebase_token이 URL에 있으면 Seller/Admin 빠른 처리 건너뜀
+    // (카카오 로그인 중이므로 processFirebaseToken이 user_type을 'user'로 덮어씀)
+    const hasIncomingToken = !!new URLSearchParams(window.location.search).get('firebase_token')
+
     // ✅ Seller/Admin은 Firebase 초기화 불필요 → isAuthReady를 즉시 true로
-    if (userType === 'seller' || userType === 'admin') {
+    if (!hasIncomingToken && (userType === 'seller' || userType === 'admin')) {
       console.log(`[App] 🏪 ${userType} 세션 감지 - Firebase 초기화 스킵, isAuthReady=true`)
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
