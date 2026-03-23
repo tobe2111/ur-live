@@ -1815,7 +1815,7 @@ export default function LivePageV2() {
                         {/* 상품 정보 */}
                         <div className="flex gap-3">
                           <img
-                            src={reel.product.image}
+                            src={(reel.product as any).image_url || reel.product.image}
                             alt={reel.product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                           />

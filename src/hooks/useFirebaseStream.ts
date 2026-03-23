@@ -140,12 +140,11 @@ export function useFirebaseProduct(productId: number | null) {
     async function connectFirebase() {
       try {
         console.log(`🔥 Firebase: Lazy loading database for product ${productId}...`)
-        
-        // Lazy load Firebase Database
-        const { getDatabase } = await import('firebase/database')
+
+        // Lazy load Firebase Database using the same pattern as useFirebaseStream
+        const { getFirebaseDatabase } = await import('@/lib/firebase-config')
         const { ref, onValue, off } = await import('firebase/database')
-        const { app } = await import('@/lib/firebase')
-        const database = getDatabase(app!)
+        const database = await getFirebaseDatabase()
         
         // Firebase Realtime Database 참조 생성
         const productRef = ref(database, `products/product${productId}`)
