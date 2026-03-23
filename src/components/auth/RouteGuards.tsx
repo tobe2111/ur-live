@@ -123,8 +123,12 @@ function UserProtectedRoute({
   if (!currentUser) {
     if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
     // ✅ 무한루프 방지: state 대신 ?returnUrl= 쿼리파라미터 사용
-    // LoginPage는 searchParams.get('returnUrl')로 읽음 (location.state 미사용)
-    const returnUrl = encodeURIComponent(location.pathname + location.search)
+    // firebase_token / userName 은 returnUrl에 포함시키지 않음 (보안 + 무한루프 방지)
+    const cleanParams = new URLSearchParams(location.search)
+    cleanParams.delete('firebase_token')
+    cleanParams.delete('userName')
+    const cleanSearch = cleanParams.toString() ? `?${cleanParams.toString()}` : ''
+    const returnUrl = encodeURIComponent(location.pathname + cleanSearch)
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />
   }
 

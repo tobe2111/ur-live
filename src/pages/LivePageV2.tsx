@@ -634,14 +634,15 @@ function ReelCard({
         try {
           const response = await axios.get(`/api/streams/${stream.id}/current-product`)
           if (response.data.success && response.data.data) {
-            const newProduct = response.data.data.product
+            const newProduct = response.data.data
+            if (!newProduct) return
             setCurrentProduct(newProduct)
-            
+
             // 🎉 상품 변경 알림 Toast 표시 (셀러 제외)
             if (!isSeller && newProduct?.name) {
               setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
             }
-            
+
             log.debug(`🔥 Firebase: Product changed to ${newProduct.name}`)
           }
         } catch (error) {
@@ -686,7 +687,7 @@ function ReelCard({
       try {
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
-          setCurrentProduct(response.data.data.product)
+          setCurrentProduct(response.data.data)
           log.debug('✅ Initial product loaded')
         }
       } catch (error) {
@@ -1499,7 +1500,13 @@ export default function LivePageV2() {
               products = productsResponse.data.data
               log.debug(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
             } else {
-              console.warn(`[LivePageV2] No products found for stream ${stream.id}`)
+              // current_product_id 상품을 fallback으로 사용
+              if ((stream as any).current_product) {
+                products = [(stream as any).current_product]
+                log.debug(`[LivePageV2] Using current_product as fallback for stream ${stream.id}`)
+              } else {
+                console.warn(`[LivePageV2] No products found for stream ${stream.id}`)
+              }
             }
           } catch (error) {
             console.error(`[LivePageV2] Products API failed for stream ${stream.id}:`, error)
