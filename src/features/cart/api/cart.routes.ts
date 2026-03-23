@@ -72,12 +72,12 @@ async function getProduct(
   name: string;
   price: number;
   stock: number;
-  image: string | null;
+  image_url: string | null;
   seller_id: number;
 } | null> {
   return db
     .prepare(
-      'SELECT id, name, price, stock, image, seller_id FROM products WHERE id = ? LIMIT 1'
+      'SELECT id, name, price, stock, image_url, seller_id FROM products WHERE id = ? LIMIT 1'
     )
     .bind(productId)
     .first();
@@ -109,7 +109,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.name        AS product_name,
            p.description AS product_description,
            p.price       AS product_price,
-           p.image       AS product_image,
+           p.image_url   AS product_image,
            p.stock       AS product_stock,
            p.seller_id,
            s.business_name AS seller_name
