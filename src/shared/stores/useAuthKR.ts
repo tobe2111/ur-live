@@ -156,6 +156,14 @@ export const useAuthKR = create<AuthKRState>()(
 
           // 새 토큰 가져오기 (client-side Firebase)
           try {
+            // ✅ Defensive check: user might be a stale plain object from old localStorage data
+            // (Zustand persist reads ALL stored keys on hydration, even if partialize excludes them)
+            if (typeof user.getIdToken !== 'function') {
+              console.error('[AuthKR] user.getIdToken is not a function — stale plain object from old localStorage. Clearing user.');
+              set({ user: null });
+              return null;
+            }
+
             console.log('[AuthKR] Fetching new ID token from Firebase', forceRefresh ? '(forced)' : '(cache expired/missing)');
             const token = await user.getIdToken(forceRefresh);
             
@@ -431,9 +439,15 @@ export const useAuthKR = create<AuthKRState>()(
       }),
       {
         name: 'auth-kr-storage',
+        version: 1, // bump to invalidate stale localStorage data from older versions
         partialize: (state) => ({
           userRole: state.userRole,
           // user 객체는 persist 하지 않음 (Firebase가 관리)
+        }),
+        // ✅ Explicit merge: never restore `user` from storage (Firebase User 메서드 없는 plain object 방지)
+        merge: (persisted: unknown, current: AuthKRState): AuthKRState => ({
+          ...current,
+          userRole: (persisted as Partial<AuthKRState>)?.userRole ?? null,
         }),
       }
     ),
