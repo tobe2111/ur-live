@@ -117,4 +117,3 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 [dev]
 port = 8787
 local_protocol = "http"
-persist_to = ".wrangler/state"
