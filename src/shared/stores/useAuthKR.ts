@@ -386,6 +386,33 @@ export const useAuthKR = create<AuthKRState>()(
                     safeSetUserType();
                     localStorage.setItem('lastLoginUid', firebaseUser.uid);
 
+                    // ✅ Firebase 커스텀 클레임에서 userName/profileImage 추출 → localStorage 동기화
+                    try {
+                      const idTokenResult = await firebaseUser.getIdTokenResult();
+                      const claimsUserName = idTokenResult.claims.userName as string | undefined;
+                      const claimsProfileImage = idTokenResult.claims.profileImage as string | undefined;
+
+                      if (claimsUserName) {
+                        // 기존 user_name이 없거나 기본값이면 클레임 값으로 덮어쓰기
+                        const existing = localStorage.getItem('user_name');
+                        if (!existing || existing === 'Kakao User' || existing === '사용자') {
+                          localStorage.setItem('user_name', claimsUserName);
+                        }
+                        // Firebase displayName 미설정 시 업데이트
+                        if (!firebaseUser.displayName) {
+                          try {
+                            const { updateProfile } = await import('firebase/auth');
+                            await updateProfile(firebaseUser, { displayName: claimsUserName });
+                          } catch (_) {}
+                        }
+                      }
+                      if (claimsProfileImage) {
+                        if (!localStorage.getItem('user_profile_image')) {
+                          localStorage.setItem('user_profile_image', claimsProfileImage);
+                        }
+                      }
+                    } catch (_) {}
+
                     // ✅ API 요청용 accessToken 저장 (Firebase ID Token)
                     try {
                       const { useAuthStore } = await import('@/client/stores/auth.store');
@@ -393,7 +420,7 @@ export const useAuthKR = create<AuthKRState>()(
                         {
                           id: firebaseUser.uid,
                           email: firebaseUser.email || '',
-                          name: firebaseUser.displayName || '',
+                          name: firebaseUser.displayName || localStorage.getItem('user_name') || '',
                           role: 'user',
                         },
                         idToken,

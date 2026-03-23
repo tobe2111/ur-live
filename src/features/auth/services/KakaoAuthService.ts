@@ -73,10 +73,14 @@ export class KakaoAuthService {
   async getUserInfo(accessToken: string): Promise<KakaoUser> {
     console.log('[KakaoAuthService] Fetching user info...');
     
+    // property_keys를 명시적으로 요청하여 닉네임/프로필 이미지가 반드시 포함되도록 함
     const response = await fetch(`${this.KAKAO_API_URL}/v2/user/me`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
+      body: 'property_keys=["kakao_account.profile","kakao_account.email","properties.nickname","properties.profile_image"]',
     });
     
     if (!response.ok) {

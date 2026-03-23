@@ -67,17 +67,21 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         userId: user.id,
         userName: user.name,
         email: user.email,
-        kakaoId: kakaoUser.kakaoId
+        kakaoId: kakaoUser.kakaoId,
+        ...(user.profile_image ? { profileImage: user.profile_image } : {}),
       });
-      
+
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
-      
+
       console.log('[Kakao Sync] ✅ Login successful for user:', user.id);
       
       const stateUrl = new URL(state, 'https://dummy.com');
       stateUrl.searchParams.set('firebase_token', customToken);
       stateUrl.searchParams.set('userName', user.name);
-      
+      if (user.profile_image) {
+        stateUrl.searchParams.set('profileImage', user.profile_image);
+      }
+
       const redirectUrl = stateUrl.pathname + stateUrl.search;
       return c.redirect(redirectUrl);
       
@@ -137,11 +141,12 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
       userId: user.id,
       userName: user.name,
       email: user.email,
-      kakaoId: kakaoUser.kakaoId
+      kakaoId: kakaoUser.kakaoId,
+      ...(user.profile_image ? { profileImage: user.profile_image } : {}),
     });
-    
+
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
-    
+
     console.log('[Kakao Callback] ✅ Login successful for user:', user.id);
     
     return c.json({
@@ -195,11 +200,13 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
       userId: user.id,
       userName: user.name,
       email: user.email,
-      kakaoId: kakaoUser.kakaoId
+      kakaoId: kakaoUser.kakaoId,
+      ...(user.profile_image ? { profileImage: user.profile_image } : {}),
     });
-    
+
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
-    
+
+
     console.log('[Kakao Firebase] ✅ Token exchange successful for user:', user.id);
     
     return c.json({
