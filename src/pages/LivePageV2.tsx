@@ -679,16 +679,20 @@ function ReelCard({
     }
   }, [firebaseProduct?.stock, currentProduct?.id])
 
-  // 초기 상품 로드 (Firebase 연결 전 초기 데이터)
+  // 초기 상품 로드: 전체 상품 데이터(stock, originalPrice 등)를 DB에서 가져옴
+  // ✅ currentProduct 조건 제거 - stream 목록 API의 current_product는 일부 필드만 포함하므로 항상 전체 로드
   useEffect(() => {
-    if (!stream.id || currentProduct) return
+    if (!stream.id) return
 
     const loadInitialProduct = async () => {
       try {
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data)
-          log.debug('✅ Initial product loaded')
+          log.debug('✅ Initial product loaded (full data)')
+        } else if (response.data.success && !response.data.data) {
+          // current_product_id가 null → 상품 없음 상태로 명시적 초기화
+          setCurrentProduct(null)
         }
       } catch (error) {
         console.error('[InitialProduct] Error loading:', error)
@@ -1485,37 +1489,14 @@ export default function LivePageV2() {
         }
 
         // Create reels: ONE reel per stream (not per product)
-        // Products will be shown in bottom sheet
+        // ✅ current_product_id JOIN 결과(stream.current_product)를 바로 사용하여 더미 이미지 플래시 방지
+        // Products 카탈로그는 ReelCard 내부에서 loadStreamProducts()로 지연 로드됨
         const reelsData: ReelData[] = []
-        
-        for (const stream of streams) {
-          // Get first product for this stream (for display)
-          let products: Product[] = []
-          
-          try {
-            const productsResponse = await axios.get(`/api/streams/${stream.id}/products`)
-            log.debug(`[LivePageV2] Products API response for stream ${stream.id}:`, productsResponse.data)
-            
-            if (productsResponse.data.success && productsResponse.data.data?.length > 0) {
-              products = productsResponse.data.data
-              log.debug(`[LivePageV2] Loaded ${products.length} products for stream ${stream.id}`)
-            } else {
-              // current_product_id 상품을 fallback으로 사용
-              if ((stream as any).current_product) {
-                products = [(stream as any).current_product]
-                log.debug(`[LivePageV2] Using current_product as fallback for stream ${stream.id}`)
-              } else {
-                console.warn(`[LivePageV2] No products found for stream ${stream.id}`)
-              }
-            }
-          } catch (error) {
-            console.error(`[LivePageV2] Products API failed for stream ${stream.id}:`, error)
-          }
 
-          // Create ONE reel per stream with its first product (or null if no products)
+        for (const stream of streams) {
           reelsData.push({
             stream: stream,
-            product: products[0] || null, // null if no products
+            product: (stream as any).current_product || null,
           })
         }
 
