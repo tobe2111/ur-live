@@ -116,21 +116,47 @@ function AppContent() {
       
       try {
         console.log('[App] 🔑 firebase_token 파라미터 감지')
-        
+
+        // URL에서 사용자 정보 미리 읽기 (삭제 전에)
+        const urlUserName = urlParams.get('userName') || ''
+        const urlProfileImage = urlParams.get('profileImage') || ''
+
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
         const userCredential = await signInWithCustomToken(firebaseToken)
         const user = userCredential.user
         console.log('[App] ✅ Firebase Custom Token 로그인 성공:', user.uid)
-        
-        // ID Token 갱신
+
+        // ID Token 갱신 및 claims 추출
         const idToken = await user.getIdToken(true)
-        console.log('[App] ✅ ID Token 갱신 완료')
-        
-        // ✅ Custom Token claims에서 numeric userId 추출
-        const tokenResult = await user.getIdTokenResult(true);
-        const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0;
-        console.log('[App] 🔢 Numeric user ID from claims:', numericUserId);
-        
+        const tokenResult = await user.getIdTokenResult(true)
+        const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0
+        const claimsUserName = (tokenResult.claims?.userName as string) || urlUserName
+        const claimsProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
+        console.log('[App] 🔢 Numeric user ID from claims:', numericUserId)
+        console.log('[App] 👤 User name from claims/URL:', claimsUserName)
+
+        // ✅ user_name / profileImage localStorage 저장 (프로필 페이지 표시용)
+        if (claimsUserName) {
+          localStorage.setItem('user_name', claimsUserName)
+        }
+        if (claimsProfileImage) {
+          localStorage.setItem('user_profile_image', claimsProfileImage)
+        }
+
+        // ✅ Firebase displayName / photoURL 업데이트
+        if (!user.displayName && claimsUserName) {
+          try {
+            const { updateProfile } = await import('firebase/auth')
+            await updateProfile(user, {
+              displayName: claimsUserName,
+              ...(claimsProfileImage ? { photoURL: claimsProfileImage } : {}),
+            })
+            console.log('[App] ✅ Firebase 프로필 업데이트 완료')
+          } catch (e) {
+            console.warn('[App] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
+          }
+        }
+
         // ✅ useAuthKR에 Firebase User 즉시 설정 (onAuthStateChanged 지연 방지)
         const { useAuthKR } = await import('@/shared/stores/useAuthKR')
         useAuthKR.getState().setUser(user)
@@ -144,38 +170,41 @@ function AppContent() {
           {
             id: user.uid,
             email: user.email || '',
-            name: user.displayName || '',
+            name: claimsUserName || user.displayName || '',
             role: 'user',
           },
           idToken,
           ''
         )
         console.log('[App] ✅ useAuthStore에 accessToken 저장 완료')
-        
+
         localStorage.setItem('user_type', 'user')
+        localStorage.setItem('lastLoginUid', user.uid)  // ✅ hasFirebaseUserSession() 인식용
         localStorage.setItem('user_id', user.uid)
         localStorage.setItem('user_email', user.email || '')
-        localStorage.setItem('numeric_user_id', String(numericUserId)); // ✅ 숫자 ID 저장
-        
-        // URL 파라미터 제거 (firebase_token, userName 모두)
+        localStorage.setItem('numeric_user_id', String(numericUserId))
+
+        // URL 파라미터 제거 (auth 관련 전부)
         urlParams.delete('firebase_token')
         urlParams.delete('userName')
+        urlParams.delete('profileImage')
         const newUrl = urlParams.toString()
           ? `${window.location.pathname}?${urlParams.toString()}`
           : window.location.pathname
         window.history.replaceState({}, '', newUrl)
       } catch (error) {
         console.error('[App] ❌ Firebase Custom Token 로그인 실패:', error)
-        
-        // ✅ URL 파라미터 제거 (firebase_token, userName 포함)
+
+        // URL 파라미터 제거
         const urlParams2 = new URLSearchParams(window.location.search)
         urlParams2.delete('firebase_token')
         urlParams2.delete('userName')
+        urlParams2.delete('profileImage')
         const newUrl = urlParams2.toString()
           ? `${window.location.pathname}?${urlParams2.toString()}`
           : window.location.pathname
         window.history.replaceState({}, '', newUrl)
-        
+
         // ✅ 로그인 페이지로 리다이렉트 (무한 루프 방지)
         window.location.href = '/login'
       }

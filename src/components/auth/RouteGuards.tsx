@@ -69,7 +69,9 @@ export function ProtectedRoute({
 function hasFirebaseUserSession(): boolean {
   const userType = localStorage.getItem('user_type')
   const lastLoginUid = localStorage.getItem('lastLoginUid')
-  return userType === 'user' && !!lastLoginUid
+  if (userType === 'user' && !!lastLoginUid) return true
+  // firebase_token이 URL에 있으면 로그인 진행 중으로 간주 (즉시 리다이렉트 방지)
+  return !!new URLSearchParams(window.location.search).get('firebase_token')
 }
 
 /** Firebase User 전용 보호 라우트 */
