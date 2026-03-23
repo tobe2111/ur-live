@@ -33,49 +33,78 @@ export default function UserProfilePage() {
   useEffect(() => {
     const firebaseToken = searchParams.get('firebase_token')
     const userName = searchParams.get('userName')
-    
+    const profileImageParam = searchParams.get('profileImage')
+
     // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
+    // (단, profileImage/userName은 저장 후 정리)
     if ((firebaseToken || userName) && user) {
       console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
+      // ✅ 이미 로그인 상태라도 프로필 데이터는 저장
+      if (userName) localStorage.setItem('user_name', userName)
+      if (profileImageParam) localStorage.setItem('user_profile_image', profileImageParam)
       navigate('/user/profile', { replace: true })
-      return  // Early return to prevent further processing
+      return
     }
-    
+
     // 🔥 수정: 인증이 준비되기 전에는 처리하지 않음
     if (!isAuthReady) {
       console.log('[UserProfilePage] ⏳ Auth 초기화 대기 중...')
       return
     }
-    
+
     // 조건: 토큰 있음 + 아직 안 처리 + 로그인 안 됨
     if (firebaseToken && !hasProcessedToken.current && !user) {
       hasProcessedToken.current = true
       setIsProcessingToken(true)
 
-      // ✅ URL params에서 userName 미리 저장 (loginWithFirebaseToken은 user_name을 저장하지 않음)
+      // ✅ URL params에서 사용자 정보 미리 저장
       if (userName) {
         localStorage.setItem('user_name', userName)
         console.log('[UserProfilePage] ✅ user_name 저장:', userName)
+      }
+      if (profileImageParam) {
+        localStorage.setItem('user_profile_image', profileImageParam)
+        console.log('[UserProfilePage] ✅ user_profile_image 저장')
       }
 
       console.log('[UserProfilePage] 🔑 firebase_token 발견 - 1회만 처리')
 
       loginWithFirebaseToken(firebaseToken)
-        .then(() => {
+        .then(async () => {
           console.log('[UserProfilePage] ✅ 로그인 완료 - Auth State 동기화됨')
-          
-          // ✅ URL 완전 정리 - React Router navigate 사용
+
+          // ✅ Firebase User displayName/photoURL 업데이트 (GET redirect에서 누락된 부분)
+          try {
+            const { isKorea } = await import('@/shared/config/region')
+            const { useAuthKR } = await import('@/shared/stores/useAuthKR')
+            const { useAuthWorld } = await import('@/shared/stores/useAuthWorld')
+            const firebaseUser = (isKorea() ? useAuthKR : useAuthWorld).getState().user
+            if (firebaseUser && (!firebaseUser.displayName || !firebaseUser.photoURL)) {
+              const { updateProfile } = await import('firebase/auth')
+              await updateProfile(firebaseUser, {
+                ...(userName && !firebaseUser.displayName ? { displayName: userName } : {}),
+                ...(profileImageParam && !firebaseUser.photoURL ? { photoURL: profileImageParam } : {}),
+              })
+              // ✅ Zustand store 갱신하여 리렌더 트리거
+              if (isKorea()) {
+                useAuthKR.getState().setUser({ ...firebaseUser } as any)
+              } else {
+                useAuthWorld.getState().setUser({ ...firebaseUser } as any)
+              }
+              console.log('[UserProfilePage] ✅ Firebase 프로필 업데이트 완료')
+            }
+          } catch (e) {
+            console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
+          }
+
+          // ✅ URL 완전 정리
           navigate('/user/profile', { replace: true })
-          console.log('[UserProfilePage] ✅ URL 정리 완료')
-          
-          // ✅ 로딩 해제 - 이제 Auth State가 확실히 동기화되어 있음
           setIsProcessingToken(false)
         })
         .catch((error) => {
           console.error('[UserProfilePage] ❌ 토큰 처리 실패:', error)
-          hasProcessedToken.current = false // 실패 시 재시도 허용
+          hasProcessedToken.current = false
           setIsProcessingToken(false)
-          // 실패하면 로그인 페이지로
           navigate('/login', { replace: true })
         })
     }

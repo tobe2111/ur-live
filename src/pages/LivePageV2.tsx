@@ -1020,16 +1020,17 @@ function ReelCard({
         return
       }
 
-      const userName = localStorage.getItem('user_name') || '익명'
-      
+      const rawUserName = localStorage.getItem('user_name') || '익명'
+      const maskedChatName = maskUserName(rawUserName)
+
       // 호환성: claims.userId (숫자 ID) 사용, 없으면 0 (Anonymous)
       const numericUserId = parseInt(localStorage.getItem('numeric_user_id') || '0', 10) || 0;
 
-      // 🔥 SSE 기반 메시지 전송
+      // 🔥 SSE 기반 메시지 전송 (닉네임 마스킹 적용: 정종문 → 정*문)
       await sendChatMessage(
         chatMessage.trim(),
         numericUserId, // 숫자 ID 사용
-        userName,
+        maskedChatName,
         'viewer'
       )
 
