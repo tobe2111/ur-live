@@ -4,6 +4,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
+import { getUserProfileImage } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { Footer } from '@/components/my-page/footer'
@@ -24,6 +25,7 @@ export default function UserProfilePage() {
   const { user, isAuthReady } = authStore()
   
   const [userName, setUserName] = useState('')
+  const [profileImage, setProfileImage] = useState<string | undefined>(undefined)
   const [isProcessingToken, setIsProcessingToken] = useState(false)
   const hasProcessedToken = useRef(false)
 
@@ -49,9 +51,15 @@ export default function UserProfilePage() {
     if (firebaseToken && !hasProcessedToken.current && !user) {
       hasProcessedToken.current = true
       setIsProcessingToken(true)
-      
+
+      // ✅ URL params에서 userName 미리 저장 (loginWithFirebaseToken은 user_name을 저장하지 않음)
+      if (userName) {
+        localStorage.setItem('user_name', userName)
+        console.log('[UserProfilePage] ✅ user_name 저장:', userName)
+      }
+
       console.log('[UserProfilePage] 🔑 firebase_token 발견 - 1회만 처리')
-      
+
       loginWithFirebaseToken(firebaseToken)
         .then(() => {
           console.log('[UserProfilePage] ✅ 로그인 완료 - Auth State 동기화됨')
@@ -73,11 +81,13 @@ export default function UserProfilePage() {
     }
   }, [searchParams, isAuthReady, user, navigate])
 
-  // ✅ 사용자 이름 설정
+  // ✅ 사용자 이름 + 프로필 이미지 설정
   useEffect(() => {
     if (user) {
       const name = user?.displayName || localStorage.getItem('user_name') || '사용자'
       setUserName(name)
+      const image = user.photoURL || getUserProfileImage() || undefined
+      setProfileImage(image)
       
       console.log('[UserProfilePage] ✅ 사용자 정보:', {
         uid: user.uid,
@@ -152,7 +162,7 @@ export default function UserProfilePage() {
       </div>
 
       {/* User Info Section */}
-      <UserInfo userName={userName} />
+      <UserInfo userName={userName} profileImage={profileImage} />
 
       {/* Menu List Section */}
       <MenuList />

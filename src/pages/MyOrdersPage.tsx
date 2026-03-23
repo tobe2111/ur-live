@@ -420,8 +420,8 @@ export default function MyOrdersPage() {
                   <div className="flex justify-between">
                     <span className="text-[#6e6e73]">상품 금액</span>
                     <span className="font-medium text-[#1d1d1f]">
-                      {/* ✅ BUG #7 FIX: guard undefined price_snapshot and undefined total_amount */}
-                    {selectedOrder.items?.reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0).toLocaleString()}원
+                      {/* ✅ items가 배열이 아닌 값(object 등)으로 올 경우 .reduce is not a function 방어 */}
+                    {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).reduce((sum, item) => sum + (item.price_snapshot ?? 0) * item.quantity, 0).toLocaleString()}원
                     </span>
                   </div>
                   <div className="flex justify-between">

@@ -77,15 +77,16 @@ export default function KakaoCallbackPage() {
         const idToken = await userCredential.user.getIdToken(false)  // ✅ 캐시 사용 (이미 최신)
         console.log('[KakaoCallback] ✅ ID Token 갱신 완료')
 
-        // 3.5 ✅ Firebase User의 displayName 업데이트 (사용자 이름 표시용)
+        // 3.5 ✅ Firebase User 프로필 업데이트 (displayName + photoURL)
         try {
           const { updateProfile } = await import('firebase/auth');
           await updateProfile(userCredential.user, {
-            displayName: user.name
+            displayName: user.name,
+            ...(user.profile_image ? { photoURL: user.profile_image } : {}),
           });
-          console.log('[KakaoCallback] ✅ Firebase User displayName 업데이트:', user.name);
+          console.log('[KakaoCallback] ✅ Firebase User 프로필 업데이트:', user.name);
         } catch (e) {
-          console.warn('[KakaoCallback] ⚠️ displayName 업데이트 실패 (무시):', e);
+          console.warn('[KakaoCallback] ⚠️ 프로필 업데이트 실패 (무시):', e);
         }
 
         // 4. localStorage 설정
@@ -93,6 +94,12 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('user_name', user.name)
         localStorage.setItem('user_id', String(user.id))
         if (user.email) localStorage.setItem('user_email', user.email)
+        // ✅ 카카오 프로필 이미지 저장
+        if (user.profile_image) {
+          localStorage.setItem('user_profile_image', user.profile_image)
+        } else {
+          localStorage.removeItem('user_profile_image')
+        }
 
         // 5. Zustand Store 업데이트 (ID Token 포함)
         const authStore = getAuthStore()
