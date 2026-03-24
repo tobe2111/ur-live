@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -159,7 +160,7 @@ export default function SellerOrdersPage() {
   // CSV Export
   function exportToCSV() {
     if (filteredOrders.length === 0) {
-      alert('내보낼 주문이 없습니다.')
+      toast.info('내보낼 주문이 없습니다.')
       return
     }
 
@@ -207,7 +208,7 @@ export default function SellerOrdersPage() {
       )
 
       if (response.data.success) {
-        alert('주문 상태가 변경되었습니다.')
+        toast.success('주문 상태가 변경되었습니다.')
         loadOrders()
         if (selectedOrder && selectedOrder.order_number === orderNumber) {
           setShowDetail(false)
@@ -237,7 +238,7 @@ export default function SellerOrdersPage() {
       )
 
       if (response.data.success) {
-        alert('송장번호가 등록되었습니다.')
+        toast.success('송장번호가 등록되었습니다.')
         setTrackingForm({ courier: '', tracking_number: '' })
         loadOrders()
         if (selectedOrder && selectedOrder.order_number === orderNumber) {

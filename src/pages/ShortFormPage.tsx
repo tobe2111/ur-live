@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, Bell, Home, Heart, User, ChevronDown, Play, Users, ChevronRight, Sparkles, Clock, ShoppingBag, X, Package, LogOut } from 'lucide-react'
 import { getUserId, getUserIdSync, getUserNameSync, isLoggedInSync } from '@/utils/auth'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import MobileFooter from '@/components/MobileFooter'
 
 interface Product {
@@ -121,10 +122,10 @@ export default function ShortFormPage() {
         productId: productId,
         quantity: 1
       })
-      alert('장바구니에 추가되었습니다!')
+      toast.success('장바구니에 추가되었습니다!')
     } catch (error) {
       console.error('Failed to add to cart:', error)
-      alert('장바구니 추가에 실패했습니다.')
+      toast.error('장바구니 추가에 실패했습니다.')
     }
   }
 
@@ -138,7 +139,7 @@ export default function ShortFormPage() {
 
   function handleLogout() {
     localStorage.clear()
-    alert('\ub85c\uadf8\uc544\uc6c3\ub418\uc5c8\uc2b5\ub2c8\ub2e4.')
+    toast.info('\ub85c\uadf8\uc544\uc6c3\ub418\uc5c8\uc2b5\ub2c8\ub2e4.')
     setIsSidebarOpen(false)
     navigate('/login')
   }

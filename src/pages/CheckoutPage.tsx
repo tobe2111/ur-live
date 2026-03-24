@@ -12,6 +12,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { isKorea } from '@/config/region'
 import { captureError, captureMessage } from '@/lib/sentry'
+import { toast } from '@/hooks/useToast'
 
 // 🔥 Region-based lazy loading for payment components
 const TossPaymentWidget = lazy(() => 
@@ -312,12 +313,12 @@ export default function CheckoutPage() {
   // 배송지 저장
   const handleSaveNewAddress = async () => {
     if (!userId) {
-      alert('로그인이 필요합니다.')
+      toast.info('로그인이 필요합니다.')
       return
     }
 
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
-      alert('모든 필수 항목을 입력해주세요.')
+      toast.error('모든 필수 항목을 입력해주세요.')
       return
     }
 
@@ -378,14 +379,14 @@ export default function CheckoutPage() {
 
     // 배송지 선택 확인
     if (!selectedAddress) {
-      alert('배송지를 선택해주세요.')
+      toast.error('배송지를 선택해주세요.')
       setShowAddressModal(true)  // 자동으로 배송지 선택 모달 열기
       return
     }
 
     // 개인정보 수집 동의 확인
     if (!agreedToPrivacy) {
-      alert('개인정보 수집 및 이용에 동의해주세요.')
+      toast.error('개인정보 수집 및 이용에 동의해주세요.')
       return
     }
 
@@ -467,7 +468,7 @@ export default function CheckoutPage() {
       
       // 약관 미동의 에러
       if (err.code === 'NEED_AGREEMENT' || err.message?.includes('약관') || err.message?.includes('동의')) {
-        alert('필수 약관에 동의해주세요.')
+        toast.error('필수 약관에 동의해주세요.')
         return
       }
       // Intent URL 에러 (카드사 앱 실행 실패)

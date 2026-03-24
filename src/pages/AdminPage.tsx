@@ -2,6 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { clearAuthData } from '@/utils/auth'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
@@ -164,17 +165,17 @@ export default function AdminPage() {
         `/api/admin/sellers/${sellerId}/approve`,
         {}
       )
-      alert(response.data.message || '판매자 승인 완료!')
+      toast.success(response.data.message || '판매자 승인 완료!')
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      alert(`승인 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(`승인 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
   async function rejectSeller() {
     if (!selectedSeller || !rejectionReason.trim()) {
-      alert('거부 사유를 입력해주세요')
+      toast.error('거부 사유를 입력해주세요')
       return
     }
 
@@ -184,14 +185,14 @@ export default function AdminPage() {
         `/api/admin/sellers/${selectedSeller.id}/reject`,
         { reason: rejectionReason }
       )
-      alert(response.data.message || '판매자 승인이 거부되었습니다')
+      toast.info(response.data.message || '판매자 승인이 거부되었습니다')
       setRejectModalOpen(false)
       setSelectedSeller(null)
       setRejectionReason('')
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      alert(`거부 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(`거부 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -207,11 +208,11 @@ export default function AdminPage() {
     try {
       // Note: Authorization header will be added automatically by the API interceptor
       await api.delete(`/api/admin/streams/${streamId}`)
-      alert('라이브 삭제 완료!')
+      toast.success('라이브 삭제 완료!')
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      alert(`삭제 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(`삭제 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -221,7 +222,7 @@ export default function AdminPage() {
 
     const rate = parseFloat(newRate)
     if (isNaN(rate) || rate < 0 || rate > 100) {
-      alert('수수료율은 0에서 100 사이의 값이어야 합니다')
+      toast.error('수수료율은 0에서 100 사이의 값이어야 합니다')
       return
     }
 
@@ -231,11 +232,11 @@ export default function AdminPage() {
         `/api/admin/sellers/${sellerId}/commission`,
         { commission_rate: rate }
       )
-      alert(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
+      toast.success(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      alert(`수수료율 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(`수수료율 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -254,11 +255,11 @@ export default function AdminPage() {
         `/api/admin/sellers/${sellerId}/permissions`,
         { can_manipulate_stats: newValue }
       )
-      alert(`권한이 ${action}되었습니다!`)
+      toast.success(`권한이 ${action}되었습니다!`)
       loadData() // 데이터 새로고침
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      alert(`권한 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(`권한 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 

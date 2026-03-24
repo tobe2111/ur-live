@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -200,7 +201,7 @@ export default function AdminOrdersPage() {
       }
     } catch (error) {
       console.error('Failed to load order detail:', error)
-      alert('주문 상세 정보를 불러올 수 없습니다.')
+      toast.error('주문 상세 정보를 불러올 수 없습니다.')
     }
   }
 
@@ -228,7 +229,7 @@ export default function AdminOrdersPage() {
       link.remove()
     } catch (error) {
       console.error('Failed to export orders:', error)
-      alert('주문 내역 다운로드에 실패했습니다.')
+      toast.error('주문 내역 다운로드에 실패했습니다.')
     }
   }
 

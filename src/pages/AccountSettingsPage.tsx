@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getUserId, getUserIdSync, getUserName, getUserNameSync, getUserEmail } from '@/utils/auth';
 import api from '@/lib/api';
+import { toast } from '@/hooks/useToast';
 
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function AccountSettingsPage() {
     const loadUserData = async () => {
       const userId = getUserIdSync();
       if (!userId) {
-        alert('로그인이 필요합니다.');
+        toast.info('로그인이 필요합니다.');
         navigate('/login');
         return;
       }

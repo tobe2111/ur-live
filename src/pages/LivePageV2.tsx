@@ -9,6 +9,7 @@ import { useModal } from '@/components/CustomModal'
 import { useFirebaseChat } from '@/hooks/useFirebaseChat'
 import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
 import Toast from '@/components/Toast'
+import { toast } from '@/hooks/useToast'
 import { createLogger } from '@/utils/logger'
 import { useAuthStore } from '@/shared/stores'
 import '@/utils/console-suppressor'
@@ -1690,7 +1691,7 @@ export default function LivePageV2() {
       const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
       
       if (!accessToken) {
-        alert('로그인이 필요합니다.')
+        toast.info('로그인이 필요합니다.')
         return
       }
 
@@ -1710,14 +1711,14 @@ export default function LivePageV2() {
           ...currentStream,
           current_product_id: productId
         })
-        alert('상품이 변경되었습니다!')
+        toast.success('상품이 변경되었습니다!')
         setShowProductSelector(false)
       } else {
-        alert('상품 변경에 실패했습니다: ' + (response.data.error || '알 수 없는 오류'))
+        toast.error('상품 변경에 실패했습니다: ' + (response.data.error || '알 수 없는 오류'))
       }
     } catch (error) {
       console.error('[LivePageV2] Change product error:', error)
-      alert('상품 변경 중 오류가 발생했습니다.')
+      toast.error('상품 변경 중 오류가 발생했습니다.')
     } finally {
       setChangingProduct(false)
     }

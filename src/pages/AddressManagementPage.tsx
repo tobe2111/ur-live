@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
+import { toast } from '@/hooks/useToast'
 
 interface ShippingAddress {
   id: number
@@ -45,7 +46,7 @@ export default function AddressManagementPage() {
   useEffect(() => {
     const userId = getUserId()
     if (!userId) {
-      alert('로그인이 필요합니다.')
+      toast.info('로그인이 필요합니다.')
       navigate('/login')
       return
     }
@@ -82,7 +83,7 @@ export default function AddressManagementPage() {
       }
     } catch (error) {
       console.error('Failed to load addresses:', error)
-      alert('배송지 목록을 불러오는데 실패했습니다.')
+      toast.error('배송지 목록을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -90,7 +91,7 @@ export default function AddressManagementPage() {
 
   async function handleSaveAddress() {
     if (!formData.recipient_name || !formData.phone || !formData.address) {
-      alert('모든 필수 항목을 입력해주세요.')
+      toast.error('모든 필수 항목을 입력해주세요.')
       return
     }
 
@@ -110,7 +111,7 @@ export default function AddressManagementPage() {
       loadAddresses()
     } catch (error) {
       console.error('Failed to save address:', error)
-      alert('배송지 저장에 실패했습니다.')
+      toast.error('배송지 저장에 실패했습니다.')
     }
   }
 
@@ -121,7 +122,7 @@ export default function AddressManagementPage() {
       loadAddresses()
     } catch (error) {
       console.error('Failed to delete address:', error)
-      alert('배송지 삭제에 실패했습니다.')
+      toast.error('배송지 삭제에 실패했습니다.')
     }
   }
 
@@ -133,7 +134,7 @@ export default function AddressManagementPage() {
       loadAddresses()
     } catch (error) {
       console.error('Failed to set default:', error)
-      alert('기본 배송지 설정에 실패했습니다.')
+      toast.error('기본 배송지 설정에 실패했습니다.')
     }
   }
 

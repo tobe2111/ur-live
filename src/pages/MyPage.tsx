@@ -12,6 +12,7 @@ import {
   Phone
 } from 'lucide-react'
 import { getUserId, getUserIdSync, getUserNameSync, getUserEmail, logout as authLogout } from '@/utils/auth'
+import { toast } from '@/hooks/useToast'
 
 export default function MyPage() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export default function MyPage() {
   useEffect(() => {
     const userId = getUserIdSync()
     if (!userId) {
-      alert('로그인이 필요합니다.')
+      toast.info('로그인이 필요합니다.')
       navigate('/login')
       return
     }
@@ -39,7 +40,7 @@ export default function MyPage() {
   const handleLogout = () => {
     if (confirm('로그아웃하시겠습니까?')) {
       authLogout()
-      alert('로그아웃되었습니다.')
+      toast.info('로그아웃되었습니다.')
       navigate('/')
     }
   }

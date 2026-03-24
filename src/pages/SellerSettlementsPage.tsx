@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -107,11 +108,11 @@ export default function SellerSettlementsPage() {
       })
 
       if (response.data.success) {
-        alert('정산 신청이 완료되었습니다.')
+        toast.success('정산 신청이 완료되었습니다.')
         loadSettlements()
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || '정산 신청에 실패했습니다.')
+      toast.error(error.response?.data?.error || '정산 신청에 실패했습니다.')
     }
   }
 
@@ -131,7 +132,7 @@ export default function SellerSettlementsPage() {
       link.click()
       link.remove()
     } catch (error) {
-      alert('정산서 다운로드에 실패했습니다.')
+      toast.error('정산서 다운로드에 실패했습니다.')
     }
   }
 
