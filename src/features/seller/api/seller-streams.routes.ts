@@ -23,19 +23,15 @@ type StreamCreateRequest = {
   title: string;
   description?: string;
   thumbnail?: string;
-  stream_url?: string;
   youtube_video_id?: string;
-  scheduled_at?: string;
 };
 
 type StreamUpdateRequest = {
   title?: string;
   description?: string;
   thumbnail?: string;
-  stream_url?: string;
   youtube_video_id?: string;
   status?: 'scheduled' | 'live' | 'ended';
-  scheduled_at?: string;
 };
 
 export const sellerStreamsRoutes = new Hono<{ Bindings: Bindings }>();
@@ -86,13 +82,16 @@ sellerStreamsRoutes.get('/', async (c) => {
     const offset = parseInt(c.req.query('offset') || '0');
 
     let query = `
-      SELECT 
-        id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
-        status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
+      SELECT
+        id, seller_id, title, description,
+        thumbnail_url AS thumbnail,
+        youtube_video_id, status,
+        COALESCE(current_viewers, 0) AS viewer_count,
+        ended_at, created_at, updated_at
       FROM live_streams
       WHERE seller_id = ?
     `;
-    const params: any[] = [sellerId];
+    const params: (string | number)[] = [sellerId];
 
     if (status) {
       query += ` AND status = ?`;
@@ -106,7 +105,7 @@ sellerStreamsRoutes.get('/', async (c) => {
 
     // Get total count for pagination
     let countQuery = `SELECT COUNT(*) as total FROM live_streams WHERE seller_id = ?`;
-    const countParams: any[] = [sellerId];
+    const countParams: (string | number)[] = [sellerId];
     
     if (status) {
       countQuery += ` AND status = ?`;
@@ -126,11 +125,11 @@ sellerStreamsRoutes.get('/', async (c) => {
       }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get seller streams error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to get streams'
+      error: (error as Error).message || 'Failed to get streams'
     }, 500);
   }
 });
@@ -154,8 +153,11 @@ sellerStreamsRoutes.get('/:id', async (c) => {
 
     const stream = await db.prepare(`
       SELECT
-        id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
-        status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
+        id, seller_id, title, description,
+        thumbnail_url AS thumbnail,
+        youtube_video_id, status,
+        COALESCE(current_viewers, 0) AS viewer_count,
+        ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ? AND seller_id = ?
     `).bind(streamId, sellerId).first<Record<string, unknown>>();
@@ -172,11 +174,11 @@ sellerStreamsRoutes.get('/:id', async (c) => {
       stream
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get stream error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to get stream'
+      error: (error as Error).message || 'Failed to get stream'
     }, 500);
   }
 });
@@ -196,7 +198,7 @@ sellerStreamsRoutes.post('/', async (c) => {
     }
 
     const body = await c.req.json<StreamCreateRequest>();
-    const { title, description, thumbnail, stream_url, youtube_video_id, scheduled_at } = body;
+    const { title, description, thumbnail, youtube_video_id } = body;
 
     // 필수 필드 검증
     if (!title) {
@@ -210,17 +212,15 @@ sellerStreamsRoutes.post('/', async (c) => {
 
     const result = await db.prepare(`
       INSERT INTO live_streams (
-        seller_id, title, description, thumbnail, stream_url, youtube_video_id,
-        status, scheduled_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'scheduled', ?, datetime('now'), datetime('now'))
+        seller_id, title, description, thumbnail_url, youtube_video_id,
+        status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 'scheduled', datetime('now'), datetime('now'))
     `).bind(
       sellerId,
       title,
       description || null,
       thumbnail || null,
-      stream_url || null,
-      youtube_video_id || null,
-      scheduled_at || null
+      youtube_video_id || null
     ).run();
 
     if (!result.success) {
@@ -230,8 +230,11 @@ sellerStreamsRoutes.post('/', async (c) => {
     // 생성된 스트림 조회
     const newStream = await db.prepare(`
       SELECT
-        id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
-        status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
+        id, seller_id, title, description,
+        thumbnail_url AS thumbnail,
+        youtube_video_id, status,
+        COALESCE(current_viewers, 0) AS viewer_count,
+        ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ?
     `).bind(result.meta.last_row_id).first<Record<string, unknown>>();
@@ -242,11 +245,11 @@ sellerStreamsRoutes.post('/', async (c) => {
       stream: newStream
     }, 201);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create stream error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to create stream'
+      error: (error as Error).message || 'Failed to create stream'
     }, 500);
   }
 });
@@ -282,7 +285,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     }
 
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     // 업데이트 가능한 필드들
     if (body.title !== undefined) {
@@ -294,12 +297,8 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       values.push(body.description);
     }
     if (body.thumbnail !== undefined) {
-      updates.push('thumbnail = ?');
+      updates.push('thumbnail_url = ?');
       values.push(body.thumbnail);
-    }
-    if (body.stream_url !== undefined) {
-      updates.push('stream_url = ?');
-      values.push(body.stream_url);
     }
     if (body.youtube_video_id !== undefined) {
       updates.push('youtube_video_id = ?');
@@ -308,17 +307,9 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     if (body.status !== undefined) {
       updates.push('status = ?');
       values.push(body.status);
-      
-      // 상태에 따라 타임스탬프 업데이트
-      if (body.status === 'live') {
-        updates.push('started_at = datetime(\'now\')');
-      } else if (body.status === 'ended') {
-        updates.push('ended_at = datetime(\'now\')');
+      if (body.status === 'ended') {
+        updates.push("ended_at = datetime('now')");
       }
-    }
-    if (body.scheduled_at !== undefined) {
-      updates.push('scheduled_at = ?');
-      values.push(body.scheduled_at);
     }
 
     if (updates.length === 0) {
@@ -344,8 +335,11 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     // 업데이트된 스트림 조회
     const updatedStream = await db.prepare(`
       SELECT
-        id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
-        status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
+        id, seller_id, title, description,
+        thumbnail_url AS thumbnail,
+        youtube_video_id, status,
+        COALESCE(current_viewers, 0) AS viewer_count,
+        ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ?
     `).bind(streamId).first<Record<string, unknown>>();
@@ -356,11 +350,11 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       stream: updatedStream
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update stream error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to update stream'
+      error: (error as Error).message || 'Failed to update stream'
     }, 500);
   }
 });
@@ -405,11 +399,11 @@ sellerStreamsRoutes.delete('/:id', async (c) => {
       message: 'Stream deleted successfully'
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete stream error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to delete stream'
+      error: (error as Error).message || 'Failed to delete stream'
     }, 500);
   }
 });

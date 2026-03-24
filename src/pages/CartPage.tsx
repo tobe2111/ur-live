@@ -74,7 +74,6 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
 
 export default function CartPage() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const loggedIn = isUserLoggedIn()
 
   // 비로그인 상태: 장바구니 페이지는 보여주되 로그인 유도 UI 표시
@@ -109,18 +108,12 @@ export default function CartPage() {
   }
 
   // 로그인된 경우: 기존 장바구니 렌더링
-  return <CartPageContent navigate={navigate} searchParams={searchParams} setSearchParams={setSearchParams} />
+  return <CartPageContent />
 }
 
-function CartPageContent({
-  navigate,
-  searchParams,
-  setSearchParams,
-}: {
-  navigate: ReturnType<typeof useNavigate>
-  searchParams: URLSearchParams
-  setSearchParams: ReturnType<typeof useSearchParams>[1]
-}) {
+function CartPageContent() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
   const { data: cartData, isLoading: loading, refetch } = useCart()
   const updateQuantityMutation = useUpdateCartQuantity()

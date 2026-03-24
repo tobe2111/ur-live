@@ -92,10 +92,7 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_token')
-      
-
-      if (!sessionToken) {
+      if (!localStorage.getItem('seller_token')) {
         navigate('/seller/login')
         return
       }
@@ -201,9 +198,6 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_token')
-      
-
       // order_number 대신 id를 사용 (API가 둘 다 지원)
       const response = await api.patch(
         `/api/seller/orders/${orderNumber}/status`,
@@ -232,9 +226,6 @@ export default function SellerOrdersPage() {
     setError('')
 
     try {
-      const sessionToken = localStorage.getItem('seller_token')
-      
-
       const response = await api.put(
         `/api/seller/orders/${orderNumber}/tracking`,
         trackingForm

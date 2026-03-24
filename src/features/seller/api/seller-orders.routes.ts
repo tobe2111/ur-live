@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
@@ -125,7 +126,7 @@ sellerOrdersRoutes.get('/orders', async (c) => {
 });
 
 // ─── PUT /api/seller/orders/:id/status ────────────────────────────────────
-async function handleStatusUpdate(c: any) {
+async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -144,17 +145,21 @@ async function handleStatusUpdate(c: any) {
 
     const db = c.env.DB;
 
-    // order_number 또는 id 로 조회 (프론트가 order_number 를 id 자리에 넣는 경우 대비)
-    const order = await db.prepare(
-      `SELECT id, seller_id FROM orders WHERE (id = ? OR order_number = ?) LIMIT 1`
-    ).bind(orderId, orderId).first<{ id: string; seller_id: string }>();
+    // 소유권 확인과 상태 변경을 원자적으로 처리 (order_number 또는 id 모두 지원)
+    const result = await db.prepare(
+      `UPDATE orders SET status = ?, updated_at = datetime('now')
+       WHERE (id = ? OR order_number = ?) AND seller_id = ?`
+    ).bind(dbStatus, orderId, orderId, sellerId).run();
 
-    if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
-    if (String(order.seller_id) !== sellerId) return c.json({ success: false, error: 'Forbidden' }, 403);
-
-    await db.prepare(
-      `UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(dbStatus, order.id).run();
+    if (!result.meta.changes) {
+      // 주문이 없거나 다른 셀러의 주문
+      const exists = await db.prepare(
+        `SELECT 1 FROM orders WHERE id = ? OR order_number = ? LIMIT 1`
+      ).bind(orderId, orderId).first();
+      return exists
+        ? c.json({ success: false, error: 'Forbidden' }, 403)
+        : c.json({ success: false, error: 'Order not found' }, 404);
+    }
 
     return c.json({ success: true, message: '주문 상태가 업데이트되었습니다.' });
   } catch (error: unknown) {
@@ -182,18 +187,20 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
 
     const db = c.env.DB;
 
-    const order = await db.prepare(
-      `SELECT id, seller_id FROM orders WHERE (id = ? OR order_number = ?) LIMIT 1`
-    ).bind(orderId, orderId).first<{ id: string; seller_id: string }>();
-
-    if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
-    if (String(order.seller_id) !== sellerId) return c.json({ success: false, error: 'Forbidden' }, 403);
-
-    await db.prepare(
+    const result = await db.prepare(
       `UPDATE orders
        SET tracking_number = ?, tracking_company = ?, status = 'SHIPPING', updated_at = datetime('now')
-       WHERE id = ?`
-    ).bind(tracking_number, courier || null, order.id).run();
+       WHERE (id = ? OR order_number = ?) AND seller_id = ?`
+    ).bind(tracking_number, courier || null, orderId, orderId, sellerId).run();
+
+    if (!result.meta.changes) {
+      const exists = await db.prepare(
+        `SELECT 1 FROM orders WHERE id = ? OR order_number = ? LIMIT 1`
+      ).bind(orderId, orderId).first();
+      return exists
+        ? c.json({ success: false, error: 'Forbidden' }, 403)
+        : c.json({ success: false, error: 'Order not found' }, 404);
+    }
 
     return c.json({ success: true, message: '송장번호가 등록되었습니다.' });
   } catch (error: unknown) {
