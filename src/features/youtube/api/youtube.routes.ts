@@ -71,7 +71,7 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
     } catch (verifyError) {
       // Try without algorithm specification as fallback
       try {
-        payload = await honoVerify(token, secret) as JwtPayload
+        payload = await honoVerify(token, secret, 'HS256') as JwtPayload
       } catch {
         console.error('[YouTube Auth] JWT verification failed:', verifyError)
         return null
@@ -300,7 +300,7 @@ app.get('/channels', async (c) => {
 
     return c.json({
       success: true,
-      data: (auth.results as SellerYouTubeAuthRow[]).map((a) => ({
+      data: (auth.results as unknown as SellerYouTubeAuthRow[]).map((a) => ({
         id: a.id,
         channel_id: a.channel_id,
         channel_title: a.channel_title,

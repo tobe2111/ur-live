@@ -109,7 +109,7 @@ interface ChatMessage {
 
 interface ReelData {
   stream: Stream
-  product: Product
+  product: Product | null
 }
 
 // ============================================
@@ -436,7 +436,7 @@ function ReelCard({
   const [checkingOut, setCheckingOut] = useState(false)
   const [showNotification, setShowNotification] = useState(false)
   const [notificationText, setNotificationText] = useState('')
-  const [currentProduct, setCurrentProduct] = useState(reel.product)
+  const [currentProduct, setCurrentProduct] = useState<Product | null>(reel.product)
   const [isLoggedIn, setIsLoggedIn] = useState(!!getUserId())
   
   // Chat input
@@ -1824,7 +1824,7 @@ export default function LivePageV2() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {reels.filter(reel => reel.product !== null).map((reel) => {
+                  {reels.filter((reel): reel is ReelData & { product: Product } => reel.product !== null).map((reel) => {
                     const isCurrentProduct = currentStream?.current_product_id === reel.product.id
                     
                     return (

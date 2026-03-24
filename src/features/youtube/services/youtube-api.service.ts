@@ -129,7 +129,7 @@ export class YouTubeAPIService {
     const data = await response.json() as OAuthTokenResponse
     return {
       access_token: data.access_token,
-      refresh_token: data.refresh_token,
+      refresh_token: data.refresh_token ?? '',
       expires_at: Date.now() + data.expires_in * 1000,
       scope: data.scope
     }
