@@ -15,6 +15,7 @@ import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
+import { toast } from '@/hooks/useToast'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -37,14 +38,14 @@ export default function KakaoCallbackPage() {
 
       if (error) {
         console.error('[KakaoCallback] ❌ 카카오 에러:', error)
-        alert('카카오 로그인에 실패했습니다.')
+        toast.error('카카오 로그인에 실패했습니다.')
         navigate('/login', { replace: true })
         return
       }
 
       if (!code) {
         console.error('[KakaoCallback] ❌ code 파라미터 없음')
-        alert('인증 코드가 없습니다.')
+        toast.error('인증 코드가 없습니다.')
         navigate('/login', { replace: true })
         return
       }
@@ -158,7 +159,7 @@ export default function KakaoCallbackPage() {
         processingRef.current = false // 재시도 허용
         const msg = err.response?.data?.error || err.message || '로그인 처리 중 오류가 발생했습니다.'
         const detail = err.response?.data?.details || ''
-        alert(`로그인 실패: ${msg}${detail ? '\n\n상세: ' + detail : ''}`)
+        toast.error(`로그인 실패: ${msg}${detail ? '\n\n상세: ' + detail : ''}`)
         navigate('/login', { replace: true })
       }
     }

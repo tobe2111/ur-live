@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -205,7 +206,7 @@ export default function SellerBusinessInfoPage() {
 
   function openAddressSearch() {
     if (!window.daum || !window.daum.Postcode) {
-      alert('주소 검색 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      toast.info('주소 검색 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
       return
     }
 

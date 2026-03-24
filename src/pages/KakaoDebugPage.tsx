@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
 
 interface CheckResult {
   name: string
@@ -100,7 +101,7 @@ export default function KakaoDebugPage() {
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text)
-    alert('클립보드에 복사되었습니다!')
+    toast.success('클립보드에 복사되었습니다!')
   }
 
   function getStatusIcon(status: CheckResult['status']) {

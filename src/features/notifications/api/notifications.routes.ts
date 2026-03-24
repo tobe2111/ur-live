@@ -12,9 +12,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth } from '@/worker/middleware/auth';
+import type { AuthUser } from '@/worker/middleware/auth';
 
-type Bindings = { DB: D1Database; JWT_SECRET: string };
-type Variables = { userId: string; userType: string };
+type Bindings = { DB: D1Database; JWT_SECRET: string; FIREBASE_PROJECT_ID?: string };
+type Variables = { user: AuthUser };
 
 export const notificationsRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -26,8 +27,9 @@ notificationsRoutes.use('*', requireAuth());
 notificationsRoutes.get('/', async (c) => {
   const { DB } = c.env;
   try {
-    const userId = c.get('userId');
-    const userType = c.get('userType');
+    const user = c.get('user') as AuthUser;
+    const userId = user?.id?.toString();
+    const userType = user?.type;
     const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
     const unreadOnly = c.req.query('unread_only') === 'true';
 
@@ -50,8 +52,9 @@ notificationsRoutes.get('/', async (c) => {
 notificationsRoutes.get('/unread-count', async (c) => {
   const { DB } = c.env;
   try {
-    const userId = c.get('userId');
-    const userType = c.get('userType');
+    const user = c.get('user') as AuthUser;
+    const userId = user?.id?.toString();
+    const userType = user?.type;
     const result = await DB.prepare(
       `SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = 0`
     ).bind(userId, userType).first<{ count: number }>();
@@ -70,8 +73,9 @@ notificationsRoutes.put('/:id/read', async (c) => {
   const { DB } = c.env;
   try {
     const id = c.req.param('id');
-    const userId = c.get('userId');
-    const userType = c.get('userType');
+    const user = c.get('user') as AuthUser;
+    const userId = user?.id?.toString();
+    const userType = user?.type;
 
     const notif = await DB.prepare(
       `SELECT id FROM notifications WHERE id = ? AND user_id = ? AND user_type = ?`
@@ -89,8 +93,9 @@ notificationsRoutes.put('/:id/read', async (c) => {
 notificationsRoutes.put('/read-all', async (c) => {
   const { DB } = c.env;
   try {
-    const userId = c.get('userId');
-    const userType = c.get('userType');
+    const user = c.get('user') as AuthUser;
+    const userId = user?.id?.toString();
+    const userType = user?.type;
     await DB.prepare(
       `UPDATE notifications SET is_read = 1 WHERE user_id = ? AND user_type = ? AND is_read = 0`
     ).bind(userId, userType).run();
@@ -105,8 +110,9 @@ notificationsRoutes.delete('/:id', async (c) => {
   const { DB } = c.env;
   try {
     const id = c.req.param('id');
-    const userId = c.get('userId');
-    const userType = c.get('userType');
+    const user = c.get('user') as AuthUser;
+    const userId = user?.id?.toString();
+    const userType = user?.type;
 
     const notif = await DB.prepare(
       `SELECT id FROM notifications WHERE id = ? AND user_id = ? AND user_type = ?`

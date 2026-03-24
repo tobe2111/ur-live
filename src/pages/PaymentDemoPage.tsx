@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { toast } from '@/hooks/useToast'
 
 // 공식 샌드박스 키 (테스트용)
 // 실제 운영 시에는 MID urteamizy1의 클라이언트 키로 변경 필요
@@ -107,7 +108,7 @@ export default function PaymentDemoPage() {
   // 결제하기
   const handlePayment = async () => {
     if (!widgets || !ready) {
-      alert('결제 시스템을 불러오는 중입니다.')
+      toast.info('결제 시스템을 불러오는 중입니다.')
       return
     }
 
@@ -126,9 +127,9 @@ export default function PaymentDemoPage() {
       })
     } catch (err: any) {
       if (err.code === 'USER_CANCEL') {
-        alert('결제가 취소되었습니다.')
+        toast.info('결제가 취소되었습니다.')
       } else {
-        alert(`결제 오류: ${err.message}`)
+        toast.error(`결제 오류: ${err.message}`)
       }
     }
   }

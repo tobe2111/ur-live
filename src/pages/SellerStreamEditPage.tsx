@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { ArrowLeft, Loader2, Play, Edit, Trash2 } from 'lucide-react'
 
 interface Stream {
@@ -87,7 +88,7 @@ export default function SellerStreamEditPage() {
       })
 
       if (response.data.success) {
-        alert('스트림이 수정되었습니다')
+        toast.success('스트림이 수정되었습니다')
         navigate('/seller')
       } else {
         setError(response.data.error || '수정 실패')
@@ -113,7 +114,7 @@ export default function SellerStreamEditPage() {
       })
 
       if (response.data.success) {
-        alert('스트림이 삭제되었습니다')
+        toast.success('스트림이 삭제되었습니다')
         navigate('/seller')
       } else {
         setError(response.data.error || '삭제 실패')

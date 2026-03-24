@@ -2,6 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -85,12 +86,12 @@ export default function SellerProductsPage() {
       )
 
       if (response.data.success) {
-        alert('상품 상태가 변경되었습니다.')
+        toast.success('상품 상태가 변경되었습니다.')
         loadProducts()
       }
     } catch (error: any) {
       console.error('Failed to toggle product:', error)
-      alert(error.response?.data?.error || '상품 상태 변경에 실패했습니다.')
+      toast.error(error.response?.data?.error || '상품 상태 변경에 실패했습니다.')
     }
   }
 
@@ -110,12 +111,12 @@ export default function SellerProductsPage() {
       })
 
       if (response.data.success) {
-        alert('상품이 삭제되었습니다.')
+        toast.success('상품이 삭제되었습니다.')
         loadProducts()
       }
     } catch (error: any) {
       console.error('Failed to delete product:', error)
-      alert(error.response?.data?.error || '상품 삭제에 실패했습니다.')
+      toast.error(error.response?.data?.error || '상품 삭제에 실패했습니다.')
     } finally {
       setDeleting(null)
     }

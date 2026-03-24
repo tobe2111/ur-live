@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
@@ -181,10 +182,10 @@ export default function SellerProductEditPage() {
           })
         } catch (optError: any) {
           console.error('Failed to save options:', optError)
-          alert('상품은 수정되었으나 옵션 저장에 실패했습니다.')
+          toast.error('상품은 수정되었으나 옵션 저장에 실패했습니다.')
         }
         
-        alert('상품이 수정되었습니다.')
+        toast.success('상품이 수정되었습니다.')
         navigate('/seller/products')
       }
     } catch (error: any) {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 
 export default function SellerStreamNewPage() {
   const navigate = useNavigate()
@@ -61,7 +62,7 @@ export default function SellerStreamNewPage() {
             streamUrl: response.data.data.streamUrl,
             watchUrl: response.data.data.watchUrl,
           })
-          alert('YouTube 라이브가 생성되었습니다! 스트림 키를 복사하여 OBS에 설정하세요.')
+          toast.success('YouTube 라이브가 생성되었습니다! 스트림 키를 복사하여 OBS에 설정하세요.')
         } else {
           setError(response.data.error || '생성 실패')
         }
@@ -83,7 +84,7 @@ export default function SellerStreamNewPage() {
         })
 
         if (response.data.success) {
-          alert('라이브 스트림이 생성되었습니다!')
+          toast.success('라이브 스트림이 생성되었습니다!')
           navigate('/seller')
         } else {
           setError(response.data.error || '생성 실패')
@@ -105,7 +106,7 @@ export default function SellerStreamNewPage() {
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text)
-    alert(`${label}이(가) 복사되었습니다!`)
+    toast.success(`${label}이(가) 복사되었습니다!`)
   }
 
   return (

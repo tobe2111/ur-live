@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { toast } from '@/hooks/useToast'
 import WishlistButton from '../components/WishlistButton'
 
 interface WishlistItem {
@@ -34,7 +35,7 @@ const WishlistPage: React.FC = () => {
     
     if (!userSession || !storedUserId) {
       // 로그인 필요
-      alert('로그인이 필요합니다.')
+      toast.info('로그인이 필요합니다.')
       localStorage.setItem('loginReturnUrl', window.location.pathname)
       navigate('/login')
       return
@@ -73,7 +74,7 @@ const WishlistPage: React.FC = () => {
     e.stopPropagation()
 
     if (item.stock === 0) {
-      alert('품절된 상품입니다.')
+      toast.info('품절된 상품입니다.')
       return
     }
 
@@ -86,11 +87,11 @@ const WishlistPage: React.FC = () => {
       })
 
       if (response.data.success) {
-        alert('장바구니에 추가되었습니다.')
+        toast.success('장바구니에 추가되었습니다.')
       }
     } catch (error: any) {
       console.error('[Wishlist] Add to cart error:', error)
-      alert(error.response?.data?.error || '장바구니 추가에 실패했습니다.')
+      toast.error(error.response?.data?.error || '장바구니 추가에 실패했습니다.')
     }
   }
 

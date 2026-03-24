@@ -2,6 +2,7 @@ import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { useFirebaseStream } from '@/hooks/useFirebaseStream'
 import { GripVertical } from 'lucide-react'
 
@@ -143,7 +144,7 @@ export default function SellerLiveControlPage() {
     const count = manualViewerCount ? parseInt(manualViewerCount) : null
     
     if (count !== null && (isNaN(count) || count < 0)) {
-      alert('올바른 숫자를 입력하세요 (0 이상)')
+      toast.error('올바른 숫자를 입력하세요 (0 이상)')
       return
     }
 
@@ -154,7 +155,7 @@ export default function SellerLiveControlPage() {
       })
 
       if (response.data.success) {
-        alert(count === null ? '실제 시청자 수로 복귀했습니다!' : `시청자 수가 ${count}명으로 설정되었습니다!`)
+        toast.success(count === null ? '실제 시청자 수로 복귀했습니다!' : `시청자 수가 ${count}명으로 설정되었습니다!`)
         setManualViewerCount('')
         
         // 시청자 수 즉시 업데이트
@@ -165,7 +166,7 @@ export default function SellerLiveControlPage() {
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || '시청자 수 업데이트 실패'
-      alert(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setUpdatingViewerCount(false)
     }
@@ -176,7 +177,7 @@ export default function SellerLiveControlPage() {
     if (!selectedStream || sendingFakeNotification) return
     
     if (!fakeProductName.trim()) {
-      alert('상품명을 입력하세요')
+      toast.error('상품명을 입력하세요')
       return
     }
 
@@ -188,13 +189,13 @@ export default function SellerLiveControlPage() {
       })
 
       if (response.data.success) {
-        alert('🎉 가짜 알림이 전송되었습니다!')
+        toast.success('🎉 가짜 알림이 전송되었습니다!')
         setFakeProductName('')
         setFakeQuantity(1)
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || '알림 전송 실패'
-      alert(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setSendingFakeNotification(false)
     }
@@ -216,9 +217,9 @@ export default function SellerLiveControlPage() {
       )
 
       setCurrentProductId(productId)
-      alert('상품이 변경되었습니다!')
+      toast.success('상품이 변경되었습니다!')
     } catch (err: any) {
-      alert(`상품 변경 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`상품 변경 실패: ${err.response?.data?.error || err.message}`)
     } finally {
       setChanging(false)
     }

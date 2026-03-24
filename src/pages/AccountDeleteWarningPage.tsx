@@ -11,6 +11,7 @@ import {
 import { getUserId, logout as authLogout } from '@/utils/auth';
 import { DELETE_ACCOUNT_WARNINGS } from '@/features/account/types/delete-account.types';
 import api from '@/lib/api';
+import { toast } from '@/hooks/useToast';
 
 export default function AccountDeleteWarningPage() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function AccountDeleteWarningPage() {
     const checkAuth = async () => {
       const userId = await getUserId();
       if (!userId) {
-        alert('로그인이 필요합니다.');
+        toast.info('로그인이 필요합니다.');
         navigate('/login');
       }
     };
@@ -54,7 +55,7 @@ export default function AccountDeleteWarningPage() {
 
   const handleProceedToDelete = async () => {
     if (!canProceed) {
-      alert('모든 동의 항목을 체크하고 "회원탈퇴"를 정확히 입력해주세요.');
+      toast.error('모든 동의 항목을 체크하고 "회원탈퇴"를 정확히 입력해주세요.');
       return;
     }
 
@@ -123,7 +124,7 @@ export default function AccountDeleteWarningPage() {
         errorMessage = error.message;
       }
       
-      alert(errorMessage);
+      toast.error(errorMessage);
       
       // 401 에러인 경우 로그인 페이지로 리다이렉트
       if (error.response?.status === 401) {

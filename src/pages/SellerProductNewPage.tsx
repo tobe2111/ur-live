@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
@@ -118,11 +119,11 @@ export default function SellerProductNewPage() {
           } catch (optError: any) {
             console.error('Failed to save options:', optError)
             // 옵션 저장 실패해도 상품은 등록됨
-            alert('상품은 등록되었으나 옵션 저장에 실패했습니다. 수정 페이지에서 다시 시도해주세요.')
+            toast.error('상품은 등록되었으나 옵션 저장에 실패했습니다. 수정 페이지에서 다시 시도해주세요.')
           }
         }
         
-        alert('상품이 등록되었습니다.')
+        toast.success('상품이 등록되었습니다.')
         navigate('/seller/products')
       }
     } catch (error: any) {

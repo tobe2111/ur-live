@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Play, Mail, Lock, User, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
@@ -88,7 +89,7 @@ export default function RegisterPage() {
       console.log('[Register] ✅ Firebase 회원가입 성공')
       
       // 회원가입 성공 알림
-      alert('회원가입이 완료되었습니다! 로그인해주세요.')
+      toast.success('회원가입이 완료되었습니다! 로그인해주세요.')
       
       // 로그인 페이지로 이동
       navigate('/login')

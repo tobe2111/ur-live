@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 // Firebase Auth will be lazy loaded when needed
 import { isKorea } from '@/config/region'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -105,7 +106,7 @@ export default function LoginPage() {
   // ✅ Kakao 로그인 핸들러
   async function handleKakaoLogin() {
     if (!kakaoReady) {
-      alert(t('auth.kakaoSdkNotReady'))
+      toast.error(t('auth.kakaoSdkNotReady'))
       return
     }
 

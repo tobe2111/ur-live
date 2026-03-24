@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import ImageUpload from '@/components/ImageUpload'
@@ -121,13 +122,13 @@ export default function AdminProductsPage() {
         await api.put(`/api/admin/products/${editingProduct.id}`, payload, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-        alert('상품이 수정되었습니다.')
+        toast.success('상품이 수정되었습니다.')
       } else {
         // Create new product
         await api.post('/api/admin/products', payload, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-        alert('상품이 등록되었습니다.')
+        toast.success('상품이 등록되었습니다.')
       }
 
       setShowCreateModal(false)
@@ -154,11 +155,11 @@ export default function AdminProductsPage() {
         headers: { 'Authorization': `Bearer ${token}` }
       })
 
-      alert('상품이 삭제되었습니다.')
+      toast.success('상품이 삭제되었습니다.')
       loadProducts()
     } catch (error: any) {
       console.error('Failed to delete product:', error)
-      alert(error.response?.data?.error || '상품 삭제에 실패했습니다.')
+      toast.error(error.response?.data?.error || '상품 삭제에 실패했습니다.')
     } finally {
       setDeleting(null)
     }
@@ -174,11 +175,11 @@ export default function AdminProductsPage() {
         { headers: { 'Authorization': `Bearer ${token}` } }
       )
 
-      alert('상품 상태가 변경되었습니다.')
+      toast.success('상품 상태가 변경되었습니다.')
       loadProducts()
     } catch (error: any) {
       console.error('Failed to toggle product:', error)
-      alert(error.response?.data?.error || '상품 상태 변경에 실패했습니다.')
+      toast.error(error.response?.data?.error || '상품 상태 변경에 실패했습니다.')
     }
   }
 

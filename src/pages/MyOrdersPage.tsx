@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { logout as authLogout } from '@/utils/auth'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
@@ -107,7 +108,7 @@ export default function MyOrdersPage() {
       }
     } catch (error) {
       console.error('Failed to update quantity:', error)
-      alert('수량 변경에 실패했습니다.')
+      toast.error('수량 변경에 실패했습니다.')
     }
   }
 
@@ -120,13 +121,13 @@ export default function MyOrdersPage() {
       }
     } catch (error) {
       console.error('Failed to remove item:', error)
-      alert('삭제에 실패했습니다.')
+      toast.error('삭제에 실패했습니다.')
     }
   }
 
   function handleCheckout() {
     if (cartItems.length === 0) {
-      alert('장바구니가 비어있습니다.')
+      toast.info('장바구니가 비어있습니다.')
       return
     }
     navigate('/checkout')
@@ -146,7 +147,7 @@ export default function MyOrdersPage() {
     const { orderId } = cancelModal
     if (!orderId) return
     if (!cancelReason.trim()) {
-      alert('취소 사유를 입력해주세요.')
+      toast.error('취소 사유를 입력해주세요.')
       return
     }
     setProcessing(true)
@@ -155,16 +156,16 @@ export default function MyOrdersPage() {
         reason: cancelReason
       })
       if (response.data.success) {
-        alert('주문이 취소되었습니다.')
+        toast.success('주문이 취소되었습니다.')
         setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
         setCancelReason('')
         loadData()
       } else {
-        alert(response.data.error || '주문 취소에 실패했습니다.')
+        toast.error(response.data.error || '주문 취소에 실패했습니다.')
       }
     } catch (error: any) {
       console.error('Failed to cancel order:', error)
-      alert(error.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
+      toast.error(error.response?.data?.error || '주문 취소 중 오류가 발생했습니다.')
     } finally {
       setProcessing(false)
     }

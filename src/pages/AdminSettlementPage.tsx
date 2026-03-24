@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock, ArrowLeft } from 'lucide-react'
 
 interface SettlementStats {
@@ -104,10 +105,10 @@ export default function AdminSettlementPage() {
         `/api/admin/settlement/${orderId}/status`,
         { status }
       )
-      alert('정산 상태가 변경되었습니다')
+      toast.success('정산 상태가 변경되었습니다')
       loadData()
     } catch (err: any) {
-      alert(`상태 변경 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`상태 변경 실패: ${err.response?.data?.error || err.message}`)
     }
   }
 
@@ -119,10 +120,10 @@ export default function AdminSettlementPage() {
         '/api/admin/settlement/batch-complete',
         { order_ids: orderIds }
       )
-      alert('일괄 정산 완료!')
+      toast.success('일괄 정산 완료!')
       loadData()
     } catch (err: any) {
-      alert(`일괄 처리 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`일괄 처리 실패: ${err.response?.data?.error || err.message}`)
     }
   }
 
@@ -149,7 +150,7 @@ export default function AdminSettlementPage() {
       link.remove()
       window.URL.revokeObjectURL(url)
     } catch (err: any) {
-      alert(`CSV 다운로드 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`CSV 다운로드 실패: ${err.response?.data?.error || err.message}`)
     }
   }
 

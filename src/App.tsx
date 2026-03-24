@@ -16,6 +16,7 @@ function ProductRedirect() {
 }
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
+import ToastContainer from './components/ToastContainer'
 
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
@@ -496,6 +497,7 @@ function AppContent() {
           </Routes>
         </Suspense>
       </FrameWrapper>
+      <ToastContainer />
     </>
   )
 }

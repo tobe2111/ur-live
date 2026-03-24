@@ -12,7 +12,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { 
+import { toast } from '@/hooks/useToast'
+import {
   MessageSquare, 
   DollarSign, 
   Users, 
@@ -126,7 +127,7 @@ export default function AdminAlimtalkPricingPage() {
       loadAllData()
     } catch (err: any) {
       console.error('Failed to update price:', err)
-      alert('가격 수정에 실패했습니다.')
+      toast.error('가격 수정에 실패했습니다.')
     }
   }
 
@@ -150,7 +151,7 @@ export default function AdminAlimtalkPricingPage() {
       loadAllData()
     } catch (err: any) {
       console.error('Failed to update account status:', err)
-      alert('상태 변경에 실패했습니다.')
+      toast.error('상태 변경에 실패했습니다.')
     }
   }
 

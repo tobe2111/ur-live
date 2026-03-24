@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -140,12 +141,12 @@ export default function SellerLiveBroadcastPage() {
         window.location.href = response.data.data.authUrl
       } else {
         const errMsg = response.data.error || 'YouTube 연동 URL을 가져오지 못했습니다.'
-        alert(`YouTube 연동 실패: ${errMsg}\n\n관리자에게 문의해주세요 (YouTube API 설정 필요).`)
+        toast.error(`YouTube 연동 실패: ${errMsg}\n\n관리자에게 문의해주세요 (YouTube API 설정 필요).`)
       }
     } catch (error: any) {
       console.error('Failed to get auth URL:', error)
       const errMsg = error.response?.data?.error || error.message || '알 수 없는 오류'
-      alert(`YouTube 연동에 실패했습니다: ${errMsg}`)
+      toast.error(`YouTube 연동에 실패했습니다: ${errMsg}`)
     } finally {
       setConnectingYouTube(false)
     }
@@ -153,12 +154,12 @@ export default function SellerLiveBroadcastPage() {
 
   async function createLiveStream() {
     if (!title.trim()) {
-      alert('방송 제목을 입력해주세요.')
+      toast.error('방송 제목을 입력해주세요.')
       return
     }
 
     if (selectedProducts.length === 0) {
-      alert('최소 1개 이상의 상품을 선택해주세요.')
+      toast.error('최소 1개 이상의 상품을 선택해주세요.')
       return
     }
 
@@ -187,24 +188,24 @@ export default function SellerLiveBroadcastPage() {
       } else if (response.data) {
         const errMsg = response.data.error || '라이브 생성에 실패했습니다.'
         if (response.data.error_code === 'YOUTUBE_AUTH_REQUIRED') {
-          alert('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
+          toast.error('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
         } else if (response.data.error === 'YouTube API not configured') {
-          alert('YouTube API가 설정되지 않았습니다.\n관리자에게 문의하여 YOUTUBE_CLIENT_ID 및 YOUTUBE_CLIENT_SECRET 설정을 요청하세요.')
+          toast.error('YouTube API가 설정되지 않았습니다.\n관리자에게 문의하여 YOUTUBE_CLIENT_ID 및 YOUTUBE_CLIENT_SECRET 설정을 요청하세요.')
         } else {
-          alert(`라이브 생성 실패: ${errMsg}`)
+          toast.error(`라이브 생성 실패: ${errMsg}`)
         }
       } else {
         // Empty response - API not configured or route mismatch
         console.warn('[LiveBroadcast] Empty response - checking YouTube API configuration')
-        alert('방송 생성에 실패했습니다. YouTube API 설정을 확인해주세요.\n\n관리자에게 문의하세요.')
+        toast.error('방송 생성에 실패했습니다. YouTube API 설정을 확인해주세요.\n\n관리자에게 문의하세요.')
       }
     } catch (error: any) {
       console.error('[LiveBroadcast] Failed to create stream:', error)
       if (error.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
-        alert('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
+        toast.error('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
       } else {
         const errMsg = error.response?.data?.error || error.message || '알 수 없는 오류'
-        alert('라이브 생성에 실패했습니다: ' + errMsg)
+        toast.error('라이브 생성에 실패했습니다: ' + errMsg)
       }
     } finally {
       setCreating(false)
@@ -216,13 +217,13 @@ export default function SellerLiveBroadcastPage() {
       const res = await api.post(`/api/seller/youtube/live/${streamId}/start`)
       await loadData()
       if (res.data.success) {
-        alert('방송이 시작되었습니다!')
+        toast.success('방송이 시작되었습니다!')
       } else {
-        alert('방송 시작 실패: ' + (res.data.error || '알 수 없는 오류'))
+        toast.error('방송 시작 실패: ' + (res.data.error || '알 수 없는 오류'))
       }
     } catch (error: any) {
       console.error('Failed to start stream:', error)
-      alert('방송 시작에 실패했습니다: ' + (error.response?.data?.error || error.message))
+      toast.error('방송 시작에 실패했습니다: ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -234,13 +235,13 @@ export default function SellerLiveBroadcastPage() {
       await loadData()
       setNewStream(null)
       if (res.data.success) {
-        alert('방송이 종료되었습니다.')
+        toast.success('방송이 종료되었습니다.')
       } else {
-        alert('방송 종료 처리: ' + (res.data.error || '상태를 확인해주세요.'))
+        toast.error('방송 종료 처리: ' + (res.data.error || '상태를 확인해주세요.'))
       }
     } catch (error: any) {
       console.error('Failed to end stream:', error)
-      alert('방송 종료에 실패했습니다: ' + (error.response?.data?.error || error.message))
+      toast.error('방송 종료에 실패했습니다: ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -252,7 +253,7 @@ export default function SellerLiveBroadcastPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to disconnect:', error)
-      alert('연동 해제에 실패했습니다.')
+      toast.error('연동 해제에 실패했습니다.')
     }
   }
 
