@@ -83,7 +83,8 @@ export default function MyOrdersPage() {
       if (activeTab === 'cart') {
         const response = await api.get('/api/cart')
         if (response.data.success) {
-          setCartItems(response.data.data || [])
+          const d = response.data.data
+          setCartItems(Array.isArray(d) ? d : (d?.items || []))
         }
       } else if (activeTab === 'orders') {
         const response = await api.get('/api/orders')

@@ -1,62 +1,42 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
-import { ArrowLeft } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
+import { Mail, Lock, Eye, EyeOff, TrendingUp, Package, Users, ArrowRight } from 'lucide-react'
 
 export default function SellerLoginPage() {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+  const [formData, setFormData] = useState({ email: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPw, setShowPw] = useState(false)
 
-  // ✅ Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forSeller)에서 처리)
   useEffect(() => {
-    const savedEmail = localStorage.getItem('seller_remember_email')
-    if (savedEmail) {
-      setFormData(prev => ({ ...prev, email: savedEmail }))
-      setRememberMe(true)
-    }
+    const saved = localStorage.getItem('seller_remember_email')
+    if (saved) { setFormData(prev => ({ ...prev, email: saved })); setRememberMe(true) }
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    
     try {
-      console.log('[SellerLogin] 🔐 Starting JWT-only login (NO Firebase!)')
-
-      // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/seller/login', {
         email: formData.email,
-        password: formData.password
+        password: formData.password,
       })
-
       if (response.data.success) {
-        console.log('[SellerLogin] ✅ JWT Login successful')
-
-        // ✅ Save email if "Remember Me" is checked
         if (rememberMe) {
           localStorage.setItem('seller_remember_email', formData.email)
         } else {
           localStorage.removeItem('seller_remember_email')
         }
-
         const { seller, accessToken, refreshToken } = response.data.data
-
-        // ✅ 이전 user 세션 정리 (user_type 포함 삭제됨)
         clearFirebaseTokenCache()
-        clearAuthData('user')  // user_type 삭제됨
-        // Firebase signOut은 비동기로 처리 (다른 탭 영향 최소화를 위해 await 제거)
+        clearAuthData('user')
         import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch(() => {})
-
-        // ✅ 새 seller 토큰 저장 (clearAuthData 이후에 해야 user_type이 덮어쓰이지 않음)
         localStorage.setItem('seller_token', accessToken)
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)
@@ -64,168 +44,185 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_id', seller.id.toString())
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
-
-        console.log('[SellerLogin] Seller ID:', seller.id)
-        console.log('[SellerLogin] ✅ Seller 로그인 완료, /seller 이동')
         navigate('/seller', { replace: true })
       }
-    } catch (error: any) {
-      console.error('[SellerLogin] ❌ Error:', error)
-      setError(error.response?.data?.error || '로그인에 실패했습니다.')
+    } catch (err: any) {
+      setError(err.response?.data?.error || '이메일 또는 비밀번호를 확인해주세요.')
     } finally {
       setLoading(false)
     }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white">
-        <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-gray-900 hover:text-gray-600 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" strokeWidth={1.5} />
-            <span className="text-sm font-medium">홈으로</span>
-          </button>
-          <h1 className="text-lg font-medium tracking-tight text-gray-900">
-            Seller Login
-          </h1>
-          <div className="w-20" /> {/* Spacer for center alignment */}
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
-          {/* Logo/Brand */}
-          <div className="text-center mb-12">
-            <h2 className="text-2xl font-light tracking-tight text-gray-900 mb-2">
-              Ur Seller
-            </h2>
-            <p className="text-sm text-gray-500 font-light">
-              판매자 로그인
-            </p>
+    <div className="min-h-screen bg-[#F4F5F7] flex">
+      {/* 왼쪽 브랜딩 패널 (데스크탑) */}
+      <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-white border-r border-gray-200">
+        <div className="px-10 pt-10">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+              <span className="text-white text-lg font-bold">U</span>
+            </div>
+            <span className="text-xl font-bold text-gray-900">Ur Seller</span>
           </div>
+        </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded">
-              <p className="text-sm text-red-800 text-center font-light">
-                {error}
+        <div className="flex-1 flex flex-col justify-center px-10">
+          <h1 className="text-3xl font-bold text-gray-900 leading-tight mb-3">
+            라이브 커머스를<br />더 쉽게, 더 빠르게
+          </h1>
+          <p className="text-gray-500 text-base mb-10">
+            Ur 셀러 대시보드로 상품 관리부터 정산까지<br />한 곳에서 관리하세요.
+          </p>
+
+          <div className="space-y-5">
+            {[
+              { icon: <TrendingUp className="w-5 h-5 text-blue-600" />, title: '실시간 매출 현황', desc: '라이브 방송 중 실시간 주문·매출 확인' },
+              { icon: <Package className="w-5 h-5 text-blue-600" />, title: '통합 주문 관리', desc: '주문 처리부터 배송 추적까지 한눈에' },
+              { icon: <Users className="w-5 h-5 text-blue-600" />, title: '정산 자동화', desc: '수수료 계산 및 정산 내역 자동 처리' },
+            ].map(({ icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  {icon}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{title}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-10 pb-8 text-xs text-gray-400">© 2026 Ur Team. All rights reserved.</div>
+      </div>
+
+      {/* 오른쪽 로그인 폼 */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        {/* 모바일 로고 */}
+        <div className="lg:hidden mb-8 flex items-center gap-2">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+            <span className="text-white text-lg font-bold">U</span>
+          </div>
+          <span className="text-xl font-bold text-gray-900">Ur Seller</span>
+        </div>
+
+        <div className="w-full max-w-sm">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <div className="mb-7">
+              <h2 className="text-2xl font-bold text-gray-900">로그인</h2>
+              <p className="text-sm text-gray-500 mt-1">셀러 계정으로 로그인하세요</p>
+            </div>
+
+            {error && (
+              <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* 이메일 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
+                    required
+                    autoComplete="email"
+                    disabled={loading}
+                    placeholder="seller@example.com"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
+                  />
+                </div>
+              </div>
+
+              {/* 비밀번호 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={e => setFormData(d => ({ ...d, password: e.target.value }))}
+                    required
+                    autoComplete="current-password"
+                    disabled={loading}
+                    placeholder="비밀번호를 입력하세요"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(v => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* 이메일 기억하기 */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRememberMe(v => !v)}
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                    rememberMe ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'
+                  }`}
+                >
+                  {rememberMe && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                      <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                <span
+                  onClick={() => setRememberMe(v => !v)}
+                  className="text-sm text-gray-600 cursor-pointer select-none"
+                >
+                  이메일 기억하기
+                </span>
+              </div>
+
+              {/* 로그인 버튼 */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    로그인 중...
+                  </>
+                ) : (
+                  <>로그인 <ArrowRight className="w-4 h-4" /></>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+              <p className="text-sm text-gray-500">
+                아직 판매자 계정이 없으신가요?{' '}
+                <Link to="/seller/signup" className="text-blue-600 font-medium hover:text-blue-700 transition-colors">
+                  가입하기
+                </Link>
               </p>
             </div>
-          )}
-
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2 tracking-wide uppercase">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                autoComplete="email"
-                className="w-full px-4 py-3 border border-gray-300 bg-white text-sm font-light placeholder-gray-400 focus:border-gray-900 focus:outline-none transition-colors"
-                placeholder="이메일을 입력하세요"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2 tracking-wide uppercase">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                autoComplete="current-password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 bg-white text-sm font-light placeholder-gray-400 focus:border-gray-900 focus:outline-none transition-colors"
-                placeholder="비밀번호를 입력하세요"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="rememberMe"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 border-gray-300 text-gray-900 focus:ring-gray-900 focus:ring-offset-0 cursor-pointer"
-              />
-              <label 
-                htmlFor="rememberMe" 
-                className="ml-2 text-sm text-gray-700 font-light cursor-pointer select-none"
-              >
-                이메일 기억하기
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-gray-900 text-white text-sm font-medium tracking-wider uppercase hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed mt-8"
-            >
-              {loading ? '로그인 중...' : 'Sign In'}
-            </button>
-          </form>
-
-          {/* Links */}
-          <div className="mt-8 text-center space-y-3">
-            <p className="text-xs text-gray-500 font-light">
-              아직 판매자 계정이 없으신가요?
-            </p>
-            <Link
-              to="/seller/signup"
-              className="inline-block text-xs text-gray-900 hover:text-gray-600 transition-colors border-b border-gray-900 pb-0.5"
-            >
-              판매자 가입하기
-            </Link>
           </div>
 
-          {/* Divider */}
-          <div className="mt-12 pt-8 border-t border-gray-200">
-            <p className="text-xs text-gray-400 text-center font-light leading-relaxed">
-              로그인에 문제가 있으신가요?<br />
-              <a 
-                href="mailto:support@ur-team.com" 
-                className="text-gray-600 hover:text-gray-900 transition-colors underline"
-              >
-                support@ur-team.com
-              </a>
-            </p>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="max-w-screen-xl mx-auto px-6 py-6">
-          <p className="text-xs text-gray-400 text-center font-light">
-            © 2026 Ur Team. All rights reserved.
+          <p className="mt-5 text-center text-xs text-gray-400">
+            문의:{' '}
+            <a href="mailto:support@ur-team.com" className="hover:text-gray-600 underline transition-colors">
+              support@ur-team.com
+            </a>
           </p>
         </div>
-      </footer>
+      </div>
     </div>
   )
 }
