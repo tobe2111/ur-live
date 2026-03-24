@@ -413,12 +413,8 @@ function AppContent() {
               </ProtectedRoute>
             } />
             
-            {/* User Protected 페이지들 */}
-            <Route path="/cart" element={
-              <ProtectedRoute requireUser>
-                <CartPage />
-              </ProtectedRoute>
-            } />
+            {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
+            <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={
               <ProtectedRoute requireUser>
                 <CheckoutPage />

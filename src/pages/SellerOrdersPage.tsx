@@ -36,6 +36,7 @@ interface OrderItem {
 }
 
 interface Order {
+  id: string
   order_number: string
   user_name: string
   total_amount: number
@@ -102,7 +103,8 @@ export default function SellerOrdersPage() {
       const response = await api.get('/api/seller/orders')
 
       if (response.data.success) {
-        setOrders(response.data.data)
+        // API는 data 또는 orders 키로 응답할 수 있음
+        setOrders(response.data.data || response.data.orders || [])
       }
     } catch (error: any) {
       console.error('Failed to load orders:', error)
@@ -202,6 +204,7 @@ export default function SellerOrdersPage() {
       const sessionToken = localStorage.getItem('seller_token')
       
 
+      // order_number 대신 id를 사용 (API가 둘 다 지원)
       const response = await api.patch(
         `/api/seller/orders/${orderNumber}/status`,
         { status: newStatus }
@@ -256,19 +259,24 @@ export default function SellerOrdersPage() {
 
   function getStatusText(status: string) {
     switch (status) {
-      case 'PAY_COMPLETE': return '결제완료'
+      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return '결제완료'
+      case 'PENDING': case 'AWAITING_PAYMENT': return '결제대기'
       case 'PREPARING': return '상품준비중'
       case 'SHIPPING': return '배송중'
       case 'DELIVERED': return '배송완료'
       case 'CANCELLED': return '주문취소'
+      case 'REFUNDED': return '환불완료'
+      case 'FAILED': return '결제실패'
       default: return status
     }
   }
 
   function getStatusBadge(status: string) {
     switch (status) {
-      case 'PAY_COMPLETE':
+      case 'PAY_COMPLETE': case 'PAID': case 'DONE':
         return <Badge className="bg-blue-100 text-blue-800 border-blue-200">결제완료</Badge>
+      case 'PENDING': case 'AWAITING_PAYMENT':
+        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">결제대기</Badge>
       case 'PREPARING':
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">상품준비중</Badge>
       case 'SHIPPING':
@@ -277,6 +285,8 @@ export default function SellerOrdersPage() {
         return <Badge className="bg-green-100 text-green-800 border-green-200">배송완료</Badge>
       case 'CANCELLED':
         return <Badge className="bg-red-100 text-red-800 border-red-200">주문취소</Badge>
+      case 'REFUNDED':
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">환불완료</Badge>
       default:
         return <Badge>{status}</Badge>
     }
@@ -284,7 +294,7 @@ export default function SellerOrdersPage() {
 
   function getNextStatus(currentStatus: string): string | null {
     switch (currentStatus) {
-      case 'PAY_COMPLETE': return 'PREPARING'
+      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return 'PREPARING'
       case 'PREPARING': return 'SHIPPING'
       case 'SHIPPING': return 'DELIVERED'
       default: return null
