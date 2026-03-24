@@ -55,7 +55,12 @@ export class ProductRepository {
       query += ` AND (name LIKE ? OR description LIKE ?)`;
       params.push(`%${filter.search}%`, `%${filter.search}%`);
     }
-    
+
+    if (filter.productType) {
+      query += ` AND product_type = ?`;
+      params.push(filter.productType);
+    }
+
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
     
@@ -89,7 +94,12 @@ export class ProductRepository {
       query += ` AND (name LIKE ? OR description LIKE ?)`;
       params.push(`%${filter.search}%`, `%${filter.search}%`);
     }
-    
+
+    if (filter.productType) {
+      query += ` AND product_type = ?`;
+      params.push(filter.productType);
+    }
+
     const result = await this.db.prepare(query).bind(...params).first<{ count: number }>();
     return result?.count || 0;
   }
