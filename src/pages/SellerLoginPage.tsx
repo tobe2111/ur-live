@@ -31,15 +31,7 @@ export default function SellerLoginPage() {
     
     try {
       console.log('[SellerLogin] 🔐 Starting JWT-only login (NO Firebase!)')
-      
-      // ✅ CRITICAL: User 세션 + Firebase 완전 정리 (토큰 캐시 포함)
-      clearAuthData('user')
-      clearFirebaseTokenCache()
-      try {
-        const { signOut } = await import('@/lib/firebase-auth')
-        await signOut()
-      } catch (_) {}
-      
+
       // 🔐 JWT-based Login (NO Firebase!)
       const response = await api.post('/api/seller/login', {
         email: formData.email,
@@ -48,35 +40,32 @@ export default function SellerLoginPage() {
 
       if (response.data.success) {
         console.log('[SellerLogin] ✅ JWT Login successful')
-        
+
         // ✅ Save email if "Remember Me" is checked
         if (rememberMe) {
           localStorage.setItem('seller_remember_email', formData.email)
         } else {
           localStorage.removeItem('seller_remember_email')
         }
-        
-        // ✅ 선택적 삭제: Seller 관련 키만 삭제 (User 세션 보호)
-        clearAuthData('seller')
-        
+
         const { seller, accessToken, refreshToken } = response.data.data
-        
-        console.log('[SellerLogin] Seller ID:', seller.id)
-        
-        // ✅ Store JWT tokens (PRIMARY: seller_token)
+
+        // ✅ 이전 user 세션 정리 (user_type 포함 삭제됨)
+        clearFirebaseTokenCache()
+        clearAuthData('user')  // user_type 삭제됨
+        // Firebase signOut은 비동기로 처리 (다른 탭 영향 최소화를 위해 await 제거)
+        import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch(() => {})
+
+        // ✅ 새 seller 토큰 저장 (clearAuthData 이후에 해야 user_type이 덮어쓰이지 않음)
         localStorage.setItem('seller_token', accessToken)
-        localStorage.setItem('access_token', accessToken) // Fallback compatibility
+        localStorage.setItem('access_token', accessToken)
         localStorage.setItem('seller_refresh_token', refreshToken)
-        
-        // Store user info
         localStorage.setItem('user_type', 'seller')
         localStorage.setItem('seller_id', seller.id.toString())
-        // ❌ user_id, user_name 삭제: User 세션과 충돌 방지
-        // localStorage.setItem('user_id', seller.id.toString())
-        // localStorage.setItem('user_name', seller.name || seller.email)
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
-        
+
+        console.log('[SellerLogin] Seller ID:', seller.id)
         console.log('[SellerLogin] ✅ Seller 로그인 완료, /seller 이동')
         navigate('/seller', { replace: true })
       }
