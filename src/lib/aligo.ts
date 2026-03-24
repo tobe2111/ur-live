@@ -123,12 +123,12 @@ export async function getAligoToken(
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Token Create')
 
-  console.log('[Aligo] ✅ 토큰 생성 성공:', result.token.substring(0, 20) + '...')
+  const token = result.token as string
+  const urtime = result.urtime as number
 
-  return {
-    token: result.token,
-    urtime: result.urtime
-  }
+  console.log('[Aligo] ✅ 토큰 생성 성공:', token.substring(0, 20) + '...')
+
+  return { token, urtime }
 }
 
 // ============================================================================
@@ -167,7 +167,7 @@ export async function requestKakaoChannelAuth(
 
   return {
     success: true,
-    authNumber: result.authnum
+    authNumber: result.authnum as string | undefined
   }
 }
 
@@ -203,7 +203,7 @@ export async function registerKakaoChannel(
 
   return {
     success: true,
-    senderKey: result.senderkey
+    senderKey: result.senderkey as string
   }
 }
 
@@ -233,7 +233,7 @@ export async function getKakaoChannels(
 
   console.log('[Aligo] ✅ 채널 목록 조회 성공:', result.list?.length || 0, '개')
 
-  return result.list || []
+  return (result.list || []) as Array<{ plusid: string; senderkey: string; name: string }>
 }
 
 // ============================================================================
@@ -274,7 +274,7 @@ export async function registerTemplate(
 
   return {
     success: true,
-    templateCode: result.tpl_code
+    templateCode: result.tpl_code as string
   }
 }
 

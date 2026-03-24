@@ -755,7 +755,7 @@ sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
     if (!file) {
       return c.json({ success: false, error: '이미지 파일이 필요합니다' }, 400);
     }
-    const imgbbKey = (c.env as Record<string, string | undefined>).IMGBB_API_KEY;
+    const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
     if (!imgbbKey) {
       return c.json({ success: false, error: 'IMGBB_API_KEY 환경변수가 설정되지 않았습니다' }, 500);
     }

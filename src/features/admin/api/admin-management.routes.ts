@@ -20,11 +20,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
-
-type Bindings = {
-  DB: D1Database;
-  JWT_SECRET: string;
-};
+import { requireAdmin } from '@/worker/middleware/auth';
+import type { Env } from '@/worker/types/env';
 
 interface SellerRow {
   id: number;
@@ -134,7 +131,10 @@ interface IdRow {
   status?: string;
 }
 
-export const adminManagementRoutes = new Hono<{ Bindings: Bindings }>();
+export const adminManagementRoutes = new Hono<{ Bindings: Env }>();
+
+// 모든 admin 관리 엔드포인트는 admin 권한 필수
+adminManagementRoutes.use('*', requireAdmin());
 
 // ─── 판매자 관리 ──────────────────────────────────────────────────────────────
 

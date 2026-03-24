@@ -257,7 +257,7 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
       ])
       .from('orders o')
       .where('o.id = ?', orderData.id)
-      .execute(db);
+      .execute<OrderRow>(db);
 
     const updatedOrder = updatedOrderRows[0];
     // ✅ Map DB column (total_price) to API field (total_amount)
