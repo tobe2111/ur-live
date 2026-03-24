@@ -32,10 +32,10 @@ ordersRouter.use('*', requireAuth());
  */
 async function getUserDbId(db: any, firebaseUid: string): Promise<string> {
   try {
-    const row = await db
+    const row = await (db
       .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
       .bind(firebaseUid)
-      .first<{ id: string | number }>();
+      .first() as Promise<{ id: string | number } | null>);
     if (row?.id != null) return String(row.id);
   } catch {
     // users 테이블에 firebase_uid 컬럼이 없는 경우 (새 스키마) → Firebase UID 직접 사용

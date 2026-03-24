@@ -268,16 +268,13 @@ export function getStatusFromErrorCode(errorCode?: string): number {
 /**
  * Helper to format error from Error object
  */
-export function formatErrorResponse(error: Error | unknown): ErrorResponse {
+export function formatErrorResponse(error: unknown): ErrorResponse {
   // ValidationError from validation.ts
-  if (error.name === 'ValidationError') {
-    return validationErrorResponse(
-      error.message,
-      error.field,
-      { code: error.code }
-    );
+  if (error !== null && typeof error === 'object' && (error as { name?: string }).name === 'ValidationError') {
+    const ve = error as { name: string; message: string; field?: string; code?: string };
+    return validationErrorResponse(ve.message, ve.field, { code: ve.code });
   }
-  
+
   // Standard Error
   if (error instanceof Error) {
     return errorResponse(
@@ -287,7 +284,7 @@ export function formatErrorResponse(error: Error | unknown): ErrorResponse {
       { name: error.name, stack: error.stack }
     );
   }
-  
+
   // Unknown error
   return errorResponse(
     typeof error === 'string' ? error : 'Unknown error',
@@ -302,10 +299,12 @@ export function formatErrorResponse(error: Error | unknown): ErrorResponse {
 import { Context } from 'hono';
 
 export function jsonSuccess<T = unknown>(c: Context, data: T, message?: string, status: number = 200) {
-  return c.json({ success: true, data, message, timestamp: new Date().toISOString() }, status);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return c.json({ success: true, data, message, timestamp: new Date().toISOString() } as any, status as any);
 }
 export function jsonError(c: Context, message: string, status: number = 400) {
-  return c.json({ success: false, error: { message }, timestamp: new Date().toISOString() }, status);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return c.json({ success: false, error: { message }, timestamp: new Date().toISOString() } as any, status as any);
 }
 export function jsonCreated<T = unknown>(c: Context, data: T, message?: string) {
   return jsonSuccess(c, data, message, 201);
