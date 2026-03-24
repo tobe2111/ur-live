@@ -124,6 +124,22 @@ export function useMultiTabSync() {
         if (!debounce(event.key)) return
         if (isLoginPage()) return
 
+        // ✅ 현재 탭이 seller 세션이면 다른 탭의 user_type 변경 무시
+        // (seller 로그인 시 Firebase signOut이 다른 탭의 user_type을 'user'로 바꿔 리로드 유발하는 버그 방지)
+        const currentSellerToken = localStorage.getItem('seller_token')
+        const currentUserType = localStorage.getItem('user_type')
+        if (currentSellerToken && currentUserType === 'seller') {
+          console.log('[MultiTabSync] 🔒 Seller 세션 활성 - 다른 탭 user_type 변경 무시:', event.oldValue, '→', event.newValue)
+          return
+        }
+
+        // ✅ 현재 탭이 admin 세션이면 동일하게 무시
+        const currentAdminToken = localStorage.getItem('admin_token')
+        if (currentAdminToken && currentUserType === 'admin') {
+          console.log('[MultiTabSync] 🔒 Admin 세션 활성 - 다른 탭 user_type 변경 무시:', event.oldValue, '→', event.newValue)
+          return
+        }
+
         console.log('[MultiTabSync] 🔄 user_type 변경:', event.oldValue, '→', event.newValue)
         window.location.reload()
         return
