@@ -401,7 +401,7 @@ export class FirebaseAdmin {
 
     const header = { alg: 'RS256', typ: 'JWT' }
 
-    const base64url = (data: any) => {
+    const base64url = (data: unknown) => {
       const json = JSON.stringify(data)
       const utf8Bytes = new TextEncoder().encode(json)
       let binaryString = ''
