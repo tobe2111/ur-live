@@ -6,9 +6,16 @@ import { CartHeader } from '@/components/cart/CartHeader'
 import { CartItemComponent } from '@/components/cart/CartItem'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
-import { AlertCircle, CheckCircle, X, Info } from 'lucide-react'
+import { AlertCircle, CheckCircle, X, Info, ShoppingCart } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
+
+/** 로그인 여부를 localStorage로 동기 확인 (Firebase user 기준) */
+function isUserLoggedIn(): boolean {
+  const userType = localStorage.getItem('user_type')
+  const lastLoginUid = localStorage.getItem('lastLoginUid')
+  return userType === 'user' && !!lastLoginUid
+}
 
 interface ModalProps {
   isOpen: boolean
@@ -67,21 +74,51 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
 
 export default function CartPage() {
   const navigate = useNavigate()
+  const loggedIn = isUserLoggedIn()
+
+  // 비로그인 상태: 장바구니 페이지는 보여주되 로그인 유도 UI 표시
+  if (!loggedIn) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-md flex-col bg-gray-50">
+        <div className="flex items-center justify-between border-b bg-white px-4 py-4">
+          <button onClick={() => navigate(-1)} className="text-gray-600">
+            <X className="h-6 w-6" />
+          </button>
+          <h1 className="text-lg font-bold">장바구니</h1>
+          <div className="w-6" />
+        </div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
+          <ShoppingCart className="h-20 w-20 text-gray-300" />
+          <div>
+            <p className="text-lg font-semibold text-gray-800">로그인이 필요합니다</p>
+            <p className="mt-2 text-sm text-gray-500">장바구니를 이용하려면 로그인해 주세요</p>
+          </div>
+          <button
+            onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
+            className="w-full max-w-xs rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700"
+          >
+            로그인하기
+          </button>
+          <button onClick={() => navigate('/')} className="text-sm text-gray-500 underline">
+            쇼핑 계속하기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // 로그인된 경우: 기존 장바구니 렌더링
+  return <CartPageContent />
+}
+
+function CartPageContent() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  
   // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
   const { data: cartData, isLoading: loading, refetch } = useCart()
   const updateQuantityMutation = useUpdateCartQuantity()
   const removeItemMutation = useRemoveFromCart()
   const updateOptionMutation = useUpdateCartOption()
-  
-  // ✅ 디버깅: cartData 전체 구조 확인
-  useEffect(() => {
-    console.log('[CartPage] 📦 cartData:', cartData)
-    console.log('[CartPage] 📦 cartData?.items:', cartData?.items)
-    console.log('[CartPage] 📦 cartData?.items 타입:', typeof cartData?.items)
-    console.log('[CartPage] 📦 cartData?.items 길이:', cartData?.items?.length)
-  }, [cartData])
   
   const cartItems = cartData?.items || []
   const [updating, setUpdating] = useState(false)
