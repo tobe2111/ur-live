@@ -67,7 +67,7 @@ export default function AdminAlimtalkPricingPage() {
   const [editPrice, setEditPrice] = useState<number>(0)
 
   useEffect(() => {
-    const sessionToken = localStorage.getItem('admin_session_token')
+    const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
     const userType = localStorage.getItem('user_type')
     
     if (!sessionToken || userType !== 'admin') {
@@ -81,7 +81,7 @@ export default function AdminAlimtalkPricingPage() {
   async function loadAllData() {
     try {
       setLoading(true)
-      const sessionToken = localStorage.getItem('admin_session_token')
+      const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
 
       const [pricingRes, accountsRes, statsRes] = await Promise.all([
         api.get('/api/admin/alimtalk/pricing', {
@@ -115,7 +115,7 @@ export default function AdminAlimtalkPricingPage() {
 
   async function savePrice(id: number) {
     try {
-      const sessionToken = localStorage.getItem('admin_session_token')
+      const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
       
       await api.put(`/api/admin/alimtalk/pricing/${id}`, {
         unit_price: editPrice
@@ -140,7 +140,7 @@ export default function AdminAlimtalkPricingPage() {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
     
     try {
-      const sessionToken = localStorage.getItem('admin_session_token')
+      const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
       
       await api.patch(`/api/admin/alimtalk/accounts/${accountId}/status`, {
         status: newStatus

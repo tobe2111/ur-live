@@ -46,12 +46,12 @@ export default function SellerStreamEditPage() {
     try {
       const sessionToken = localStorage.getItem('seller_token')
 
-      const response = await api.get(`/api/seller/streams`, {
+      const response = await api.get(`/api/seller/streams/${id}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
       if (response.data.success) {
-        const foundStream = response.data.data.find((s: Stream) => s.id === Number(id))
+        const foundStream = response.data.data
         if (foundStream) {
           setStream(foundStream)
           setFormData({
