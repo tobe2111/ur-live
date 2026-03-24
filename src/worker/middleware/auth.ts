@@ -158,58 +158,47 @@ async function verifyFirebaseToken(
   projectId: string
 ): Promise<JwtPayload | null> {
   try {
-    console.log('[Firebase] 🔍 Starting Firebase token verification...');
-    console.log('[Firebase] 🎫 Token (first 50 chars):', token.substring(0, 50) + '...');
-    
     if (!projectId) {
-      console.error('[Firebase] ❌ FIREBASE_PROJECT_ID is not set');
+      console.error('[Firebase] FIREBASE_PROJECT_ID is not set');
       return null;
     }
-    
-    console.log('[Firebase] 📋 Project ID:', projectId);
 
     // JWT 구조 파싱
     const parts = token.split('.');
     if (parts.length !== 3) {
-      console.error('[Firebase] ❌ Invalid JWT structure (parts !== 3)');
+      console.error('[Firebase] Invalid JWT structure');
       return null;
     }
 
     const [headerB64, payloadB64, signatureB64] = parts;
     if (!headerB64 || !payloadB64 || !signatureB64) {
-      console.error('[Firebase] ❌ Missing JWT parts');
+      console.error('[Firebase] Missing JWT parts');
       return null;
     }
 
     // 헤더 파싱
     const header = JSON.parse(atob(headerB64.replace(/-/g, '+').replace(/_/g, '/')));
-    console.log('[Firebase] 📄 Token header alg:', header.alg, 'kid:', header.kid?.substring(0, 10) + '...');
-    
+
     if (header.alg !== 'RS256') {
-      console.error('[Firebase] ❌ Firebase token must use RS256, got:', header.alg);
+      console.error('[Firebase] Firebase token must use RS256, got:', header.alg);
       return null;
     }
 
     const kid: string = header.kid;
     if (!kid) {
-      console.error('[Firebase] ❌ Missing kid in header');
+      console.error('[Firebase] Missing kid in header');
       return null;
     }
 
     // JWK 공개키 조회
-    console.log('[Firebase] 🔑 Fetching JWK public keys...');
     const jwkKeys = await getFirebaseJwkKeys();
     const jwk = jwkKeys.find((k) => (k as { kid?: string }).kid === kid);
     if (!jwk) {
-      console.error('[Firebase] ❌ JWK not found for kid:', kid);
-      console.error('[Firebase] Available kids:', jwkKeys.map((k) => (k as { kid?: string }).kid).join(', '));
+      console.error('[Firebase] JWK not found for kid');
       return null;
     }
 
-    console.log('[Firebase] ✅ JWK found for kid:', kid.substring(0, 10) + '...');
-
     // 서명 검증 (Web Crypto API - JWK 직접 임포트)
-    console.log('[Firebase] 🔐 Verifying signature with JWK...');
     const publicKey = await crypto.subtle.importKey(
       'jwk',
       jwk,
@@ -228,64 +217,53 @@ async function verifyFirebaseToken(
     );
 
     if (!isValid) {
-      console.error('[Firebase] ❌ Signature verification FAILED');
+      console.error('[Firebase] Signature verification failed');
       return null;
     }
-    
-    console.log('[Firebase] ✅ Signature verification SUCCESS');
 
     // 페이로드 파싱
     const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
     const now = Math.floor(Date.now() / 1000);
-    
-    console.log('[Firebase] 📦 Token payload - sub:', payload.sub, 'exp:', payload.exp, 'now:', now);
 
     // exp 검증
     if (!payload.exp || payload.exp < now) {
-      console.error('[Firebase] ❌ Token EXPIRED (exp:', payload.exp, 'now:', now, 'diff:', now - payload.exp, 'sec)');
+      console.error('[Firebase] Token expired');
       return null;
     }
-    
-    console.log('[Firebase] ✅ Token NOT expired (remaining:', payload.exp - now, 'sec)');
 
     // iat 검증 (미래 발급 방지, 10분 허용)
     if (!payload.iat || payload.iat > now + 600) {
-      console.error('[Firebase] ❌ Token iat is in the future');
+      console.error('[Firebase] Token iat is in the future');
       return null;
     }
 
     // iss 검증 (일반 Firebase 토큰 OR Admin SDK Custom Token)
     const expectedIss = `https://securetoken.google.com/${projectId}`;
     const isAdminSDK = payload.iss && payload.iss.includes('firebase-adminsdk');
-    
+
     if (!isAdminSDK && payload.iss !== expectedIss) {
-      console.error('[Firebase] ❌ Token iss mismatch. Expected:', expectedIss, 'Got:', payload.iss);
+      console.error('[Firebase] Token iss mismatch');
       return null;
-    }
-    
-    if (isAdminSDK) {
-      console.log('[Firebase] ℹ️ Admin SDK Custom Token detected');
     }
 
     // aud 검증 (일반 Firebase 토큰 OR Admin SDK Custom Token)
     const expectedAud = projectId;
     const isAdminSDKAud = payload.aud && payload.aud.includes('identitytoolkit.googleapis.com');
-    
+
     if (!isAdminSDKAud && payload.aud !== expectedAud) {
-      console.error('[Firebase] ❌ Token aud mismatch. Expected:', expectedAud, 'Got:', payload.aud);
+      console.error('[Firebase] Token aud mismatch');
       return null;
     }
 
     // sub 검증 (UID)
     if (!payload.sub) {
-      console.error('[Firebase] ❌ Token missing sub (user ID)');
+      console.error('[Firebase] Token missing sub (user ID)');
       return null;
     }
-    
-    console.log('[Firebase] ✅✅✅ ALL VERIFICATIONS PASSED - User:', payload.sub);
+
     return payload;
   } catch (error) {
-    console.error('[Firebase] ❌ Exception during verification:', error);
+    console.error('[Firebase] Exception during verification:', error);
     return null;
   }
 }
@@ -297,25 +275,16 @@ export function requireAuth() {
   return async (c: Context, next: Next) => {
     const authHeader = c.req.header('Authorization');
     const token = extractToken(authHeader || null);
-    
-    console.log('[Auth] 🔐 requireAuth called, path:', c.req.path);
-    console.log('[Auth] 📝 Authorization header present:', !!authHeader);
-    
+
     if (!token) {
-      console.log('[Auth] ❌ No token extracted from Authorization header');
       return c.json(unauthorizedResponse('Authentication required'), 401);
     }
-    
-    console.log('[Auth] 🎫 Token received (first 30 chars):', token.substring(0, 30) + '...');
-    
+
     // Try JWT first (seller/admin)
     const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-in-production';
-    console.log('[Auth] 🔑 JWT_SECRET available:', !!c.env.JWT_SECRET);
-    
     const jwtPayload = await verifyJWT(token, jwtSecret);
-    
+
     if (jwtPayload) {
-      console.log('[Auth] ✅ JWT verification SUCCESS (seller/admin)');
       const user: AuthUser = {
         id: jwtPayload.userId || jwtPayload.sub,
         email: jwtPayload.email,
@@ -327,24 +296,18 @@ export function requireAuth() {
       c.set('user', user);
       return next();
     }
-    
-    console.log('[Auth] ⚠️ JWT verification failed, trying Firebase...');
-    
+
     // Try Firebase token (users)
     const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
-    console.log('[Auth] 🔥 Firebase Project ID:', firebaseProjectId);
-    console.log('[Auth] 🔑 FIREBASE_PRIVATE_KEY available:', !!c.env.FIREBASE_PRIVATE_KEY);
-    console.log('[Auth] 📧 FIREBASE_CLIENT_EMAIL available:', !!c.env.FIREBASE_CLIENT_EMAIL);
-    
+
     if (!firebaseProjectId) {
-      console.error('[Auth] ❌ FIREBASE_PROJECT_ID not configured — treating as 401');
+      console.error('[Auth] FIREBASE_PROJECT_ID not configured');
       return c.json(unauthorizedResponse('Authentication service not available'), 401);
     }
-    
+
     const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
-    
+
     if (firebasePayload) {
-      console.log('[Auth] ✅ Firebase verification SUCCESS, user:', firebasePayload.sub);
       const user: AuthUser = {
         id: firebasePayload.sub || firebasePayload.user_id,
         email: firebasePayload.email,
@@ -356,12 +319,8 @@ export function requireAuth() {
       return next();
     }
     
-    console.error('[Auth] ❌ Both JWT and Firebase verification FAILED');
-    console.error('[Auth] 🐛 DEBUG INFO:');
-    console.error('[Auth]   - Token (first 50 chars):', token.substring(0, 50));
-    console.error('[Auth]   - Firebase Project ID:', firebaseProjectId);
-    console.error('[Auth]   - Token format valid:', token.split('.').length === 3);
-    
+    console.error('[Auth] Both JWT and Firebase verification failed');
+
     // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
     return c.json(unauthorizedResponse('Token verification failed'), 401);
   };
