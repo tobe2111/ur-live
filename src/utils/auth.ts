@@ -114,14 +114,6 @@ export function getAccessToken(): string | null {
 }
 
 /**
- * @deprecated JWT refresh token은 더 이상 사용하지 않습니다 (Firebase 자동 갱신)
- */
-export function getRefreshToken(): string | null {
-  console.warn('[Auth] ⚠️ getRefreshToken는 deprecated입니다. Firebase는 자동으로 토큰을 갱신합니다.')
-  return null
-}
-
-/**
  * 로그인 상태 확인 (Firebase + JWT 통합)
  * 
  * ✅ Multi-auth Support:
@@ -539,64 +531,3 @@ export function saveFirebaseTokens(
   })
 }
 
-/**
- * 레거시 호환: saveJwtTokens (Firebase 전환 후 deprecated, saveFirebaseTokens 사용 권장)
- * 
- * @deprecated Firebase 전환 후 이 함수는 saveFirebaseTokens로 대체됩니다.
- */
-export function saveJwtTokens(
-  accessToken: string,
-  refreshToken: string,
-  userId: string | number,
-  userName: string,
-  userType: 'user' | 'seller' | 'admin',
-  userEmail?: string | null,
-  profileImage?: string | null
-): void {
-  console.warn('[Auth] ⚠️ saveJwtTokens는 deprecated입니다. saveFirebaseTokens를 사용하세요.')
-  
-  // 임시 호환 처리: accessToken을 firebase_token으로 저장
-  saveFirebaseTokens(accessToken, userId, userName, userType, userEmail, profileImage)
-}
-
-/**
- * 레거시 호환: saveUserInfo (Firebase 전환 후 deprecated, saveFirebaseTokens 사용 권장)
- * 
- * @deprecated Firebase 전환 후 이 함수는 saveFirebaseTokens로 대체됩니다.
- */
-export function saveUserInfo(
-  userId: string | number,
-  userName: string,
-  sessionToken: string,
-  userEmail?: string | null,
-  profileImage?: string | null
-): void {
-  console.warn('[Auth] ⚠️ saveUserInfo는 deprecated입니다. saveFirebaseTokens를 사용하세요.')
-  
-  // 임시 호환 처리: sessionToken을 firebase_token으로 저장
-  localStorage.setItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN, sessionToken)
-  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_ID, userId.toString())
-  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_NAME, userName)
-  localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_TYPE, 'user')
-  
-  if (userEmail) {
-    localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_EMAIL, userEmail)
-  }
-  
-  if (profileImage) {
-    localStorage.setItem(FIREBASE_STORAGE_KEYS.USER_PROFILE_IMAGE, profileImage)
-  }
-}
-
-/**
- * 레거시 호환: getSessionToken (Firebase 전환 후 deprecated, getAccessToken 사용 권장)
- * 
- * @deprecated Firebase 전환 후 이 함수는 getAccessToken으로 대체됩니다.
- */
-export function getSessionToken(): string | null {
-  console.warn('[Auth] ⚠️ getSessionToken는 deprecated입니다. getAccessToken을 사용하세요.')
-  return getAccessToken() || 
-         localStorage.getItem(LEGACY_KEYS.ACCESS_TOKEN) ||
-         localStorage.getItem(LEGACY_KEYS.SESSION_TOKEN) ||
-         localStorage.getItem(LEGACY_KEYS.SESSION_OLD)
-}

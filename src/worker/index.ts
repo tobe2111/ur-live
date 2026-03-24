@@ -18,6 +18,7 @@ import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { productsRouter } from './routes/product.routes';
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
+import { stripeRouter } from './routes/stripe.routes';
 import { sellersRouter } from './routes/seller.routes';
 import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
@@ -291,6 +292,9 @@ app.route('/api/payments', paymentsRouter);
 //    POST /confirm 은 paymentsRouter가 먼저 처리 → featurePaymentRoutes의 /confirm 미도달
 //    → /rollback 만 실질적으로 featurePaymentRoutes에서 처리됨
 app.route('/api/payments', featurePaymentRoutes);
+
+// ✅ Stripe routes (Global region): POST /api/payment/stripe/create-intent
+app.route('/api/payment/stripe', stripeRouter);
 
 // ============================================================
 // Feature Module Routes

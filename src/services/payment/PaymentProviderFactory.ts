@@ -37,18 +37,9 @@ export class PaymentProviderFactory {
         return new MockPaymentProvider();
 
       case 'toss':
-        // TODO: Implement TossPaymentProvider
-        // return new TossPaymentProvider(config);
-        throw new Error('Toss Payments provider not implemented yet. See docs/PAYMENT_GATEWAY_GUIDE.md');
-
-      case 'portone':
-        // TODO: Implement PortOnePaymentProvider
-        // return new PortOnePaymentProvider(config);
-        throw new Error('PortOne provider not implemented yet. See docs/PAYMENT_GATEWAY_GUIDE.md');
-
-      case 'nicepay':
-        // NicePay removed - use Toss or PortOne instead
-        throw new Error('NicePay has been removed. Please use Toss Payments or PortOne instead.');
+        // Toss Payments는 CheckoutPage/TossPaymentWidget에서 직접 SDK 사용
+        // 이 팩토리 패턴은 미래 서버사이드 통합 시 활용
+        throw new Error('Toss Payments는 TossPaymentWidget을 통해 직접 통합됩니다.');
 
       default:
         console.warn(`Unknown payment provider: ${type}, falling back to mock provider`);
@@ -60,8 +51,6 @@ export class PaymentProviderFactory {
    * Get available providers
    */
   static getAvailableProviders(): PaymentProviderType[] {
-    return ['mock'];
-    // When new providers are implemented, add them here:
-    // return ['mock', 'toss', 'portone'];
+    return ['mock', 'toss'];
   }
 }

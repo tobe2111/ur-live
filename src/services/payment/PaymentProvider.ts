@@ -220,15 +220,7 @@ export class PaymentProviderFactory {
     switch (provider.toLowerCase()) {
       case 'tosspayments':
         return new TossPaymentsProvider(secretKey);
-      
-      case 'portone':
-        // TODO: Implement PortOneProvider
-        throw new Error('PortOne provider not yet implemented');
-      
-      case 'nicepay':
-        // TODO: Implement NicePayProvider
-        throw new Error('NicePay provider not yet implemented');
-      
+
       default:
         throw new Error(`Unknown payment provider: ${provider}`);
     }

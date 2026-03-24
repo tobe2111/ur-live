@@ -22,6 +22,24 @@ type Bindings = {
   YOUTUBE_REDIRECT_URI?: string
 }
 
+interface JwtPayload {
+  seller_id?: number | string
+  sub?: number | string
+  type?: string
+  userType?: string
+}
+
+interface SellerYouTubeAuthRow {
+  id: number
+  channel_id: string
+  channel_title: string
+  channel_thumbnail: string
+  subscriber_count: number
+  google_email: string
+  is_active: number
+  created_at: string
+}
+
 const app = new Hono<{ Bindings: Bindings }>()
 
 // CORS configuration
@@ -47,13 +65,13 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
     const token = authHeader.substring(7)
     
     // Use hono/jwt verify (same library used during login)
-    let payload: any
+    let payload: JwtPayload
     try {
-      payload = await honoVerify(token, secret, 'HS256')
+      payload = await honoVerify(token, secret, 'HS256') as JwtPayload
     } catch (verifyError) {
       // Try without algorithm specification as fallback
       try {
-        payload = await honoVerify(token, secret)
+        payload = await honoVerify(token, secret) as JwtPayload
       } catch {
         console.error('[YouTube Auth] JWT verification failed:', verifyError)
         return null
@@ -250,11 +268,11 @@ app.post('/oauth/callback', async (c) => {
         allChannels: channels
       }
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube OAuth] Error:', error)
     return c.json({
       success: false,
-      error: error.message || 'Failed to authenticate with YouTube'
+      error: error instanceof Error ? error.message : 'Failed to authenticate with YouTube'
     }, 500)
   }
 })
@@ -282,7 +300,7 @@ app.get('/channels', async (c) => {
 
     return c.json({
       success: true,
-      data: auth.results.map((a: any) => ({
+      data: (auth.results as SellerYouTubeAuthRow[]).map((a) => ({
         id: a.id,
         channel_id: a.channel_id,
         channel_title: a.channel_title,
@@ -293,7 +311,7 @@ app.get('/channels', async (c) => {
         created_at: a.created_at
       }))
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Channels] Error:', error)
     return c.json({
       success: false,
@@ -405,11 +423,11 @@ app.post('/live/create', async (c) => {
         stream: liveSetup.stream
       }
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Live Create] Error:', error)
     return c.json({
       success: false,
-      error: error.message || 'Failed to create live stream'
+      error: error instanceof Error ? error.message : 'Failed to create live stream'
     }, 500)
   }
 })
@@ -477,11 +495,11 @@ app.post('/live/:id/start', async (c) => {
       success: true,
       message: 'Stream is now live'
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Live Start] Error:', error)
     return c.json({
       success: false,
-      error: error.message || 'Failed to start stream'
+      error: error instanceof Error ? error.message : 'Failed to start stream'
     }, 500)
   }
 })
@@ -548,11 +566,11 @@ app.post('/live/:id/end', async (c) => {
       success: true,
       message: 'Stream ended successfully'
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Live End] Error:', error)
     return c.json({
       success: false,
-      error: error.message || 'Failed to end stream'
+      error: error instanceof Error ? error.message : 'Failed to end stream'
     }, 500)
   }
 })
@@ -584,7 +602,7 @@ app.delete('/oauth/:id', async (c) => {
       success: true,
       message: 'YouTube account disconnected'
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Disconnect] Error:', error)
     return c.json({
       success: false,

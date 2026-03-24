@@ -3,6 +3,12 @@
 
 import type { CloudflareBindings as Env } from '../types/env'
 
+interface OAuthTokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type?: string;
+}
+
 /**
  * Firebase REST API를 사용한 Admin 기능 (Cloudflare Workers 호환)
  * 
@@ -32,7 +38,7 @@ export class FirebaseAdmin {
    * Firebase에 데이터 쓰기 (인증 없이, 보안 규칙에 따라 차단될 수 있음)
    * 프로덕션에서는 보안 규칙에서 읽기 전용으로 설정하고 서버 API만 쓰기
    */
-  async set(path: string, data: any): Promise<void> {
+  async set(path: string, data: unknown): Promise<void> {
     const url = `${this.databaseURL}/${path}.json`
     
     const response = await fetch(url, {
@@ -55,7 +61,7 @@ export class FirebaseAdmin {
   /**
    * Firebase 데이터 업데이트 (PATCH)
    */
-  async update(path: string, data: any): Promise<void> {
+  async update(path: string, data: unknown): Promise<void> {
     const url = `${this.databaseURL}/${path}.json`
     
     const response = await fetch(url, {
@@ -78,7 +84,7 @@ export class FirebaseAdmin {
   /**
    * Firebase에서 데이터 읽기
    */
-  async get(path: string): Promise<any> {
+  async get(path: string): Promise<unknown> {
     const url = `${this.databaseURL}/${path}.json`
     
     const response = await fetch(url, {
@@ -219,7 +225,7 @@ export class FirebaseAdmin {
    * Cloudflare Workers 환경에서 firebase-admin 없이 Custom Token 생성
    * Web Crypto API 사용
    */
-  async createCustomToken(uid: string, claims?: Record<string, any>): Promise<string> {
+  async createCustomToken(uid: string, claims?: Record<string, unknown>): Promise<string> {
     try {
       console.log(`[Firebase Custom Token] Creating for UID: ${uid}`)
       console.log(`[Firebase Custom Token] Claims:`, JSON.stringify(claims))
@@ -255,7 +261,7 @@ export class FirebaseAdmin {
       }
 
       // Base64url encode (UTF-8 safe for Cloudflare Workers)
-      const base64url = (data: any) => {
+      const base64url = (data: unknown) => {
         const json = JSON.stringify(data)
         // Convert string to UTF-8 bytes using TextEncoder
         const utf8Bytes = new TextEncoder().encode(json)
@@ -338,7 +344,7 @@ export class FirebaseAdmin {
    * - createCustomToken()만 호출하면 첫 번째 토큰에만 Claims 포함됨
    * - 이 메서드를 함께 호출하면 모든 갱신된 토큰에도 Claims 유지됨
    */
-  async setCustomUserClaims(uid: string, claims: Record<string, any>): Promise<void> {
+  async setCustomUserClaims(uid: string, claims: Record<string, unknown>): Promise<void> {
     try {
       console.log(`[Firebase Claims] Setting custom claims for UID: ${uid}`)
       console.log(`[Firebase Claims] Claims:`, JSON.stringify(claims))
@@ -395,7 +401,7 @@ export class FirebaseAdmin {
 
     const header = { alg: 'RS256', typ: 'JWT' }
 
-    const base64url = (data: any) => {
+    const base64url = (data: unknown) => {
       const json = JSON.stringify(data)
       const utf8Bytes = new TextEncoder().encode(json)
       let binaryString = ''
@@ -444,7 +450,7 @@ export class FirebaseAdmin {
       throw new Error(`Failed to get access token: ${err}`)
     }
 
-    const tokenData: any = await tokenResponse.json()
+    const tokenData = await tokenResponse.json() as OAuthTokenResponse
     this.accessToken = tokenData.access_token
     this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000)
 
@@ -483,7 +489,7 @@ export function initFirebaseAdmin(env: Env): FirebaseAdmin {
 export async function syncD1ToFirebase(
   firebase: FirebaseAdmin,
   type: 'stream' | 'product',
-  data: any
+  data: Record<string, unknown>
 ): Promise<void> {
   try {
     if (type === 'stream') {

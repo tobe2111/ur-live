@@ -18,7 +18,8 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
   const [copied, setCopied] = useState<'url' | 'key' | null>(null)
 
   // Generate mobile-friendly auto-fill URL
-  const autoFillUrl = `https://live.ur-team.com/rtmp-setup?` +
+  const appBaseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://live.ur-team.com'
+  const autoFillUrl = `${appBaseUrl}/rtmp-setup?` +
     `url=${encodeURIComponent(rtmpUrl)}&` +
     `key=${encodeURIComponent(rtmpKey)}&` +
     `title=${encodeURIComponent(streamTitle)}`

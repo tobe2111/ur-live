@@ -153,12 +153,12 @@ sellerStreamsRoutes.get('/:id', async (c) => {
     const db = c.env.DB;
 
     const stream = await db.prepare(`
-      SELECT 
+      SELECT
         id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
         status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
       FROM live_streams
       WHERE id = ? AND seller_id = ?
-    `).bind(streamId, sellerId).first<{ total: number }>();
+    `).bind(streamId, sellerId).first<Record<string, unknown>>();
 
     if (!stream) {
       return c.json({
@@ -229,12 +229,12 @@ sellerStreamsRoutes.post('/', async (c) => {
 
     // 생성된 스트림 조회
     const newStream = await db.prepare(`
-      SELECT 
+      SELECT
         id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
         status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
       FROM live_streams
       WHERE id = ?
-    `).bind(result.meta.last_row_id).first<{ total: number }>();
+    `).bind(result.meta.last_row_id).first<Record<string, unknown>>();
 
     return c.json({
       success: true,
@@ -272,7 +272,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
 
     // 스트림이 해당 셀러의 것인지 확인
     const stream = await db.prepare('SELECT id FROM live_streams WHERE id = ? AND seller_id = ?')
-      .bind(streamId, sellerId).first<{ total: number }>();
+      .bind(streamId, sellerId).first<{ id: number }>();
 
     if (!stream) {
       return c.json({
@@ -343,12 +343,12 @@ sellerStreamsRoutes.put('/:id', async (c) => {
 
     // 업데이트된 스트림 조회
     const updatedStream = await db.prepare(`
-      SELECT 
+      SELECT
         id, seller_id, title, description, thumbnail, stream_url, youtube_video_id,
         status, scheduled_at, started_at, ended_at, viewer_count, created_at, updated_at
       FROM live_streams
       WHERE id = ?
-    `).bind(streamId).first<{ total: number }>();
+    `).bind(streamId).first<Record<string, unknown>>();
 
     return c.json({
       success: true,
@@ -384,7 +384,7 @@ sellerStreamsRoutes.delete('/:id', async (c) => {
 
     // 스트림이 해당 셀러의 것인지 확인
     const stream = await db.prepare('SELECT id FROM live_streams WHERE id = ? AND seller_id = ?')
-      .bind(streamId, sellerId).first<{ total: number }>();
+      .bind(streamId, sellerId).first<{ id: number }>();
 
     if (!stream) {
       return c.json({

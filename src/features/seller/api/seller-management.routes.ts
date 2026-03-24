@@ -53,6 +53,81 @@ type BusinessInfoUpdate = {
   business_address?: string;
 };
 
+// ── DB row types ─────────────────────────────────────────────────────────────
+
+interface SellerProfileRow {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+  business_name: string;
+  phone: string;
+  address: string | null;
+  description: string | null;
+  bank_account: string | null;
+  bank_name: string | null;
+  account_holder: string | null;
+  status: string;
+  commission_rate: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface BusinessInfoRow {
+  business_number: string | null;
+  business_registration_file: string | null;
+  tax_email: string | null;
+  representative_name: string | null;
+  business_address: string | null;
+}
+
+interface SettlementStatsRow {
+  total_settled: number;
+  pending_amount: number;
+  total_requests: number;
+}
+
+interface SettlementRow {
+  id: number;
+  seller_id: number;
+  amount: number;
+  status: string;
+  bank_name: string | null;
+  account_number: string | null;
+  account_holder: string | null;
+  created_at: string;
+}
+
+interface PublicSellerRow {
+  id: number;
+  name: string;
+  slug: string | null;
+  description: string | null;
+  logo_url: string | null;
+  email: string;
+  base_shipping_fee: number | null;
+  free_shipping_threshold: number | null;
+  country: string | null;
+  currency: string | null;
+  status: string;
+  is_verified: number;
+  created_at: string;
+}
+
+interface ProductIdRow {
+  id: number;
+}
+
+interface ImgbbResponse {
+  success: boolean;
+  data?: { url: string; delete_url: string };
+  error?: { message: string };
+}
+
+interface SellerJWTPayload extends Record<string, unknown> {
+  seller_id?: number;
+}
+
 export const sellerManagementRoutes = new Hono<{ Bindings: Bindings }>();
 
 // CORS 설정
@@ -231,11 +306,11 @@ sellerManagementRoutes.get('/profile', async (c) => {
       seller
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get seller profile error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to get seller profile'
+      error: (error as Error).message || 'Failed to get seller profile'
     }, 500);
   }
 });
@@ -256,7 +331,7 @@ sellerManagementRoutes.put('/profile', async (c) => {
 
     const body = await c.req.json<SellerProfileUpdate>();
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | null)[] = [];
 
     // 업데이트 가능한 필드들
     if (body.name !== undefined) {
@@ -329,11 +404,11 @@ sellerManagementRoutes.put('/profile', async (c) => {
       seller: updatedSeller
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update seller profile error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to update seller profile'
+      error: (error as Error).message || 'Failed to update seller profile'
     }, 500);
   }
 });
@@ -373,11 +448,11 @@ sellerManagementRoutes.get('/business-info', async (c) => {
       business_info: businessInfo
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get business info error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to get business info'
+      error: (error as Error).message || 'Failed to get business info'
     }, 500);
   }
 });
@@ -398,7 +473,7 @@ sellerManagementRoutes.put('/business-info', async (c) => {
 
     const body = await c.req.json<BusinessInfoUpdate>();
     const updates: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | null)[] = [];
 
     // 업데이트 가능한 필드들
     if (body.business_number !== undefined) {
@@ -466,11 +541,11 @@ sellerManagementRoutes.put('/business-info', async (c) => {
       business_info: updatedBusinessInfo
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update business info error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to update business info'
+      error: (error as Error).message || 'Failed to update business info'
     }, 500);
   }
 });
@@ -580,11 +655,11 @@ sellerManagementRoutes.get('/stats', async (c) => {
       }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get seller stats error:', error);
     return c.json({
       success: false,
-      error: error.message || 'Failed to get seller stats'
+      error: (error as Error).message || 'Failed to get seller stats'
     }, 500);
   }
 });
@@ -614,12 +689,12 @@ sellerManagementRoutes.put('/personal-info', async (c) => {
   }
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const body = await c.req.json();
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: (string | number | null)[] = [];
     if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
     if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone); }
     if (body.email !== undefined) { fields.push('email = ?'); values.push(body.email); }
@@ -628,8 +703,8 @@ sellerManagementRoutes.put('/personal-info', async (c) => {
     values.push(sellerId);
     await db.prepare(`UPDATE sellers SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
     return c.json({ success: true, message: '개인 정보가 수정되었습니다' });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -645,7 +720,7 @@ sellerManagementRoutes.post('/change-password', async (c) => {
   }
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const { currentPassword, newPassword } = await c.req.json<{ currentPassword: string; newPassword: string }>();
@@ -664,8 +739,8 @@ sellerManagementRoutes.post('/change-password', async (c) => {
     const newHash = await hp(newPassword);
     await db.prepare("UPDATE sellers SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, sellerId).run();
     return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -680,7 +755,7 @@ sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
     if (!file) {
       return c.json({ success: false, error: '이미지 파일이 필요합니다' }, 400);
     }
-    const imgbbKey = (c.env as any).IMGBB_API_KEY;
+    const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
     if (!imgbbKey) {
       return c.json({ success: false, error: 'IMGBB_API_KEY 환경변수가 설정되지 않았습니다' }, 500);
     }
@@ -692,12 +767,12 @@ sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `image=${encodeURIComponent(base64)}&name=${encodeURIComponent(file.name)}`,
     });
-    const json = await resp.json() as any;
+    const json = await resp.json() as ImgbbResponse;
     if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
-    return c.json({ success: true, url: json.data.url, delete_url: json.data.delete_url });
-  } catch (err: any) {
+    return c.json({ success: true, url: json.data!.url, delete_url: json.data!.delete_url });
+  } catch (err: unknown) {
     console.error('[Seller] Upload image error:', err);
-    return c.json({ success: false, error: err.message }, 500);
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -713,7 +788,7 @@ sellerManagementRoutes.get('/settlements', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const limit = parseInt(c.req.query('limit') || '20');
@@ -724,8 +799,8 @@ sellerManagementRoutes.get('/settlements', async (c) => {
     const count = await db.prepare('SELECT COUNT(*) as total FROM settlements WHERE seller_id = ?')
       .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
     return c.json({ success: true, data: rows.results, total: count?.total ?? 0 });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -735,7 +810,7 @@ sellerManagementRoutes.post('/settlements/request', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const { amount, bank_name, account_number, account_holder } = await c.req.json();
@@ -747,8 +822,8 @@ sellerManagementRoutes.post('/settlements/request', async (c) => {
       .catch(() => null);
     if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
     return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -758,7 +833,7 @@ sellerManagementRoutes.get('/settlements/stats', async (c) => {
   if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증이 필요합니다' }, 401);
   try {
     const token = authorization.substring(7);
-    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as any;
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const stats = await db.prepare(`
@@ -767,10 +842,10 @@ sellerManagementRoutes.get('/settlements/stats', async (c) => {
         SUM(CASE WHEN status = 'pending'   THEN amount ELSE 0 END) as pending_amount,
         COUNT(*) as total_requests
       FROM settlements WHERE seller_id = ?
-    `).bind(sellerId).first<any>().catch(() => null);
+    `).bind(sellerId).first<SettlementStatsRow>().catch(() => null);
     return c.json({ success: true, data: stats || { total_settled: 0, pending_amount: 0, total_requests: 0 } });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -813,8 +888,8 @@ sellerManagementRoutes.get('/dashboard/stats', async (c) => {
         live_streams: streamStats?.live_streams ?? 0,
       },
     });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -830,7 +905,7 @@ sellerManagementRoutes.get('/settlements/:id/download', async (c) => {
   try {
     const settlement = await DB.prepare(
       `SELECT * FROM settlements WHERE id = ? AND seller_id = ?`
-    ).bind(settlementId, sellerId).first<any>();
+    ).bind(settlementId, sellerId).first<SettlementRow>();
 
     if (!settlement) return c.json({ success: false, error: '정산 내역을 찾을 수 없습니다' }, 404);
 
@@ -846,8 +921,8 @@ sellerManagementRoutes.get('/settlements/:id/download', async (c) => {
         'Content-Disposition': `attachment; filename="settlement-${settlementId}.csv"`,
       },
     });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -863,12 +938,12 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
               base_shipping_fee, free_shipping_threshold,
               country, currency, status, is_verified, created_at
        FROM sellers WHERE id = ? AND status = 'ACTIVE'`
-    ).bind(sellerId).first<any>();
+    ).bind(sellerId).first<PublicSellerRow>();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     return c.json({ success: true, data: seller });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -900,8 +975,8 @@ sellerManagementRoutes.get('/:sellerId/products-public', async (c) => {
       data: products.results || [],
       pagination: { page: pageNum, limit: limitNum, total: countRow?.total ?? 0 },
     });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -920,7 +995,7 @@ sellerManagementRoutes.get('/products/:id/options', async (c) => {
     // 판매자 소유 상품인지 확인
     const product = await DB.prepare(
       `SELECT id FROM products WHERE id = ? AND seller_id = ?`
-    ).bind(productId, sellerId).first<any>();
+    ).bind(productId, sellerId).first<ProductIdRow>();
     if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
 
     const result = await DB.prepare(
@@ -929,8 +1004,8 @@ sellerManagementRoutes.get('/products/:id/options', async (c) => {
     ).bind(productId).all();
 
     return c.json({ success: true, data: result.results || [] });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -949,7 +1024,7 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
     // 판매자 소유 상품인지 확인
     const product = await DB.prepare(
       `SELECT id FROM products WHERE id = ? AND seller_id = ?`
-    ).bind(productId, sellerId).first<any>();
+    ).bind(productId, sellerId).first<ProductIdRow>();
     if (!product) return c.json({ success: false, error: 'Product not found' }, 404);
 
     const body = await c.req.json<{ options: Array<{ option_type: string; option_value: string; price_adjustment?: number; stock_quantity?: number }> }>();
@@ -970,7 +1045,7 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
     ).bind(productId).all();
 
     return c.json({ success: true, data: updated.results || [] }, 201);
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

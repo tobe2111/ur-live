@@ -15,10 +15,49 @@ import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
 
+// Axios-like error shape for catch blocks
+interface ApiError {
+  response?: {
+    status?: number
+    statusText?: string
+    data?: {
+      error?: string
+    }
+  }
+  message?: string
+}
+
+function isApiError(error: unknown): error is ApiError {
+  return typeof error === 'object' && error !== null && ('response' in error || 'message' in error)
+}
+
+// YouTube IFrame API types
+interface YTPlayer {
+  playVideo(): void
+  pauseVideo(): void
+  unMute(): void
+  setVolume(volume: number): void
+  destroy(): void
+}
+
+interface YTPlayerEvent {
+  target: YTPlayer
+  data: number
+}
+
+interface YTNamespace {
+  Player: new (elementId: string, options: object) => YTPlayer
+  PlayerState: {
+    PLAYING: number
+    PAUSED: number
+    ENDED: number
+  }
+}
+
 // Extend window for YouTube IFrame API
 declare global {
   interface Window {
-    YT: any
+    YT: YTNamespace
     youtubeCallbacks: (() => void)[]
     onYouTubeIframeAPIReady: () => void
   }
@@ -40,6 +79,7 @@ interface Stream {
   seller_kakao?: string
   current_product_id?: number | null
   seller_id?: number
+  current_product?: Product | null
 }
 
 interface Product {
@@ -47,7 +87,9 @@ interface Product {
   name: string
   price: number
   originalPrice: number
+  original_price?: number
   image: string
+  image_url?: string
   description: string
   rating: number
   sold: number
@@ -281,9 +323,8 @@ function ProductListSheet({
             <div className="flex flex-col gap-3">{safeProducts.map((product) => {
                 const isCurrentProduct = product.id === currentProductId
                 const isOutOfStock = product.stock !== undefined && product.stock === 0
-                const productAny = product as any
-                const discount = productAny.original_price && productAny.original_price > product.price
-                  ? Math.round(((productAny.original_price - product.price) / productAny.original_price) * 100)
+                const discount = product.original_price && product.original_price > product.price
+                  ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
                   : 0
 
                 return (
@@ -316,7 +357,7 @@ function ProductListSheet({
 
                     <div className="relative h-20 w-20 shrink-0 rounded-xl bg-gray-100 overflow-hidden">
                       <img
-                        src={(product as any).image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')}
+                        src={product.image_url || product.image || sheetStream?.thumbnail_url || (sheetStream?.youtube_video_id ? `https://img.youtube.com/vi/${sheetStream.youtube_video_id}/maxresdefault.jpg` : '')}
                         alt={product.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -342,9 +383,9 @@ function ProductListSheet({
                         <span className="text-xl font-extrabold text-gray-900">
                           ₩{(product.price || 0).toLocaleString()}
                         </span>
-                        {(product as any).original_price && (product as any).original_price > product.price && (
+                        {product.original_price && product.original_price > product.price && (
                           <span className="text-sm text-gray-400 line-through">
-                            ₩{((product as any).original_price as number).toLocaleString()}
+                            ₩{product.original_price.toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -382,7 +423,7 @@ function ReelCard({
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<any>(null)
+  const playerRef = useRef<YTPlayer | null>(null)
   // Check if user came from homepage or direct link
   const [isDirectLink, setIsDirectLink] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
@@ -421,7 +462,7 @@ function ReelCard({
     image: undefined,
     price: 0,
     originalPrice: 0
-  }) as Product & { image_url?: string; original_price?: number }
+  }) as Product
   
   // 🔥 SSE 기반 실시간 채팅 (메시지 전송용)
   const { sendMessage: sendChatMessage } = useFirebaseChat(stream.id, true)
@@ -432,7 +473,7 @@ function ReelCard({
     // isActive check removed - this fixes YouTube video not playing issue
     if (!stream.youtube_video_id) return
 
-    let player: any = null
+    let player: YTPlayer | null = null
     let isMounted = true
 
     const initializePlayer = () => {
@@ -479,14 +520,14 @@ function ReelCard({
             origin: window.location.origin, // ✅ CORS 에러 방지
           },
           events: {
-            onReady: (event: any) => {
+            onReady: (event: YTPlayerEvent) => {
               if (!isMounted) return
               log.debug(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
               playerRef.current = event.target
               setPlayerReady(true)
               setShowPlayButton(true) // Show play button overlay
             },
-            onStateChange: (event: any) => {
+            onStateChange: (event: YTPlayerEvent) => {
               if (!isMounted) return
               try {
                 // @ts-ignore
@@ -499,7 +540,7 @@ function ReelCard({
                 // Suppress postMessage errors
               }
             },
-            onError: (event: any) => {
+            onError: (event: YTPlayerEvent) => {
               if (!isMounted) return
               console.error(`[ReelCard] YouTube player error for video ${stream.youtube_video_id}:`, event.data)
               // Error codes: 2=invalid ID, 5=HTML5 error, 100=not found, 101/150=embedding disabled
@@ -741,7 +782,7 @@ function ReelCard({
     if (addingToCart) return // Prevent double-click
     
     // Check stock
-    if ((currentProduct as any).stock === 0) {
+    if (currentProduct.stock === 0) {
       setNotificationText('품절된 상품입니다')
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
@@ -841,15 +882,16 @@ function ReelCard({
       } catch (error) {
         console.error('[handleAddToCart] ❌ 시스템 메시지 전송 실패:', error)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[handleAddToCart] ❌ Error:', error)
+      const apiErr = isApiError(error) ? error : undefined
       console.error('[handleAddToCart] ❌ Error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
+        status: apiErr?.response?.status,
+        statusText: apiErr?.response?.statusText,
+        data: apiErr?.response?.data,
+        message: apiErr?.message
       })
-      const errorMessage = error.response?.data?.error || error.message || '장바구니 추가에 실패했습니다.'
+      const errorMessage = apiErr?.response?.data?.error || apiErr?.message || '장바구니 추가에 실패했습니다.'
       const errorString = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
       
       if (errorString.includes('Insufficient stock') || errorString.includes('재고가 부족')) {
@@ -928,9 +970,10 @@ function ReelCard({
       log.debug('[Checkout] Navigating to checkout')
       navigate('/checkout')
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to add product to cart:', error)
-      const errorMessage = error.response?.data?.error || error.message || '상품 담기에 실패했습니다.'
+      const apiErr = isApiError(error) ? error : undefined
+      const errorMessage = apiErr?.response?.data?.error || apiErr?.message || '상품 담기에 실패했습니다.'
       showAlert(errorMessage, 'error', '결제 실패')
     } finally {
       setCheckingOut(false)
@@ -989,9 +1032,10 @@ function ReelCard({
       setTimeout(() => setShowNotification(false), 2000)
 
       log.debug('[Seller] Product changed successfully to:', product.id)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Seller] Failed to change product:', error)
-      showAlert(error.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
+      const apiErr = isApiError(error) ? error : undefined
+      showAlert(apiErr?.response?.data?.error || '상품 전환에 실패했습니다.', 'error', '전환 실패')
     } finally {
       setChangingProduct(false)
     }
@@ -1499,7 +1543,7 @@ export default function LivePageV2() {
         for (const stream of streams) {
           reelsData.push({
             stream: stream,
-            product: (stream as any).current_product || null,
+            product: stream.current_product || null,
           })
         }
 
@@ -1581,7 +1625,7 @@ export default function LivePageV2() {
     const targetElement = containerRef.current.children[activeIndex] as HTMLElement
     if (targetElement) {
       log.debug('[LivePageV2] Scrolling to index:', activeIndex)
-      targetElement.scrollIntoView({ behavior: 'instant' as any })
+      targetElement.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
     }
   }, [reels])
 
@@ -1739,9 +1783,9 @@ export default function LivePageV2() {
       <TopNav 
         viewers={viewerCount}
         sellerLinks={{
-          youtube: (reels[activeIndex]?.stream as any)?.seller_youtube || undefined,
-          instagram: (reels[activeIndex]?.stream as any)?.seller_instagram || undefined,
-          kakao: (reels[activeIndex]?.stream as any)?.seller_kakao || undefined,
+          youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
+          instagram: reels[activeIndex]?.stream?.seller_instagram || undefined,
+          kakao: reels[activeIndex]?.stream?.seller_kakao || undefined,
         }}
       />
       
@@ -1806,7 +1850,7 @@ export default function LivePageV2() {
                         {/* 상품 정보 */}
                         <div className="flex gap-3">
                           <img
-                            src={(reel.product as any).image_url || reel.product.image}
+                            src={reel.product.image_url || reel.product.image}
                             alt={reel.product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                           />

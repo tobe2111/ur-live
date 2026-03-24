@@ -14,6 +14,54 @@ type Bindings = {
   YOUTUBE_CLIENT_SECRET?: string
 }
 
+interface JwtPayload {
+  seller_id?: number
+  sub?: number
+}
+
+interface StreamRow {
+  youtube_live_chat_id: string | null
+}
+
+interface OAuthRow {
+  access_token: string
+  refresh_token: string
+  expires_at: number
+}
+
+interface YouTubeApiErrorResponse {
+  error?: {
+    message?: string
+  }
+}
+
+interface YouTubeChatMessageItem {
+  id: string
+  authorDetails: {
+    displayName: string
+    profileImageUrl: string
+  }
+  snippet: {
+    displayMessage: string
+    publishedAt: string
+  }
+}
+
+interface YouTubeChatListResponse {
+  items: YouTubeChatMessageItem[]
+  nextPageToken?: string
+  pollingIntervalMillis?: number
+}
+
+interface YouTubeSentMessageItem {
+  id: string
+  snippet: {
+    textMessageDetails: {
+      messageText: string
+    }
+  }
+}
+
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('/*', cors({
@@ -34,7 +82,7 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
     const isValid = await jwt.verify(token, secret)
     if (!isValid) return null
     
-    const payload = jwt.decode(token).payload as any
+    const payload = jwt.decode(token).payload as JwtPayload
     return payload.seller_id || payload.sub || null
   } catch (error) {
     return null
@@ -46,11 +94,11 @@ async function getSellerIdFromToken(authHeader: string | undefined, secret: stri
  */
 async function getAccessToken(db: D1Database, sellerId: number): Promise<string | null> {
   const auth = await db.prepare(`
-    SELECT access_token, refresh_token, expires_at 
-    FROM seller_youtube_oauth 
-    WHERE seller_id = ? AND is_active = 1 
+    SELECT access_token, refresh_token, expires_at
+    FROM seller_youtube_oauth
+    WHERE seller_id = ? AND is_active = 1
     ORDER BY created_at DESC LIMIT 1
-  `).bind(sellerId).first<any>()
+  `).bind(sellerId).first<OAuthRow>()
 
   if (!auth) return null
 
@@ -79,9 +127,9 @@ app.get('/chat/:streamId', async (c) => {
   try {
     // Get stream info
     const stream = await c.env.DB.prepare(`
-      SELECT youtube_live_chat_id FROM live_streams 
+      SELECT youtube_live_chat_id FROM live_streams
       WHERE id = ? AND seller_id = ?
-    `).bind(streamId, sellerId).first<any>()
+    `).bind(streamId, sellerId).first<StreamRow>()
 
     if (!stream || !stream.youtube_live_chat_id) {
       return c.json({ success: false, error: 'Stream not found or no chat ID' }, 404)
@@ -106,14 +154,14 @@ app.get('/chat/:streamId', async (c) => {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`YouTube API error: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as YouTubeChatListResponse
 
     // Transform messages
-    const messages = data.items.map((item: any) => ({
+    const messages = data.items.map((item: YouTubeChatMessageItem) => ({
       id: item.id,
       author: item.authorDetails.displayName,
       message: item.snippet.displayMessage,
@@ -138,11 +186,12 @@ app.get('/chat/:streamId', async (c) => {
         pollingIntervalMillis: data.pollingIntervalMillis || 5000
       }
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Chat] Error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to fetch chat messages'
     return c.json({
       success: false,
-      error: error.message || 'Failed to fetch chat messages'
+      error: message
     }, 500)
   }
 })
@@ -166,9 +215,9 @@ app.post('/chat/:streamId', async (c) => {
 
   try {
     const stream = await c.env.DB.prepare(`
-      SELECT youtube_live_chat_id FROM live_streams 
+      SELECT youtube_live_chat_id FROM live_streams
       WHERE id = ? AND seller_id = ?
-    `).bind(streamId, sellerId).first<any>()
+    `).bind(streamId, sellerId).first<StreamRow>()
 
     if (!stream || !stream.youtube_live_chat_id) {
       return c.json({ success: false, error: 'Stream not found or no chat ID' }, 404)
@@ -203,11 +252,11 @@ app.post('/chat/:streamId', async (c) => {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`YouTube API error: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as YouTubeSentMessageItem
 
     return c.json({
       success: true,
@@ -216,11 +265,12 @@ app.post('/chat/:streamId', async (c) => {
         message: data.snippet.textMessageDetails.messageText
       }
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[YouTube Chat Send] Error:', error)
+    const message2 = error instanceof Error ? error.message : 'Failed to send message'
     return c.json({
       success: false,
-      error: error.message || 'Failed to send message'
+      error: message2
     }, 500)
   }
 })
@@ -253,7 +303,7 @@ app.get('/chat/:streamId/cached', async (c) => {
         messages: messages.results.reverse() // Oldest first
       }
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Cached Chat] Error:', error)
     return c.json({
       success: false,

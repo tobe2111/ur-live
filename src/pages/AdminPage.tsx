@@ -5,6 +5,16 @@ import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
 
+interface ApiError {
+  response?: {
+    status?: number
+    data?: {
+      error?: string
+    }
+  }
+  message?: string
+}
+
 interface Seller {
   id: number
   email: string
@@ -116,9 +126,10 @@ export default function AdminPage() {
       })
 
       setLoading(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load data:', err)
-      if (err.response?.status === 401) {
+      const apiErr = err as ApiError
+      if (apiErr.response?.status === 401) {
         console.log('[AdminPage] ❌ 401 Unauthorized - clearing admin session')
         localStorage.removeItem('admin_token')
         localStorage.removeItem('access_token')
@@ -137,7 +148,7 @@ export default function AdminPage() {
       if (response.data?.success && response.data?.data) {
         setDashboardStats(response.data.data)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load dashboard stats:', err)
       // 에러는 조용히 무시 (통계는 필수가 아님)
       // 기본값 유지 (이미 state 초기값으로 설정됨)
@@ -155,8 +166,9 @@ export default function AdminPage() {
       )
       alert(response.data.message || '판매자 승인 완료!')
       loadData()
-    } catch (err: any) {
-      alert(`승인 실패: ${err.response?.data?.error || err.message}`)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      alert(`승인 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -177,8 +189,9 @@ export default function AdminPage() {
       setSelectedSeller(null)
       setRejectionReason('')
       loadData()
-    } catch (err: any) {
-      alert(`거부 실패: ${err.response?.data?.error || err.message}`)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      alert(`거부 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -196,8 +209,9 @@ export default function AdminPage() {
       await api.delete(`/api/admin/streams/${streamId}`)
       alert('라이브 삭제 완료!')
       loadData()
-    } catch (err: any) {
-      alert(`삭제 실패: ${err.response?.data?.error || err.message}`)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      alert(`삭제 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -219,8 +233,9 @@ export default function AdminPage() {
       )
       alert(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
       loadData()
-    } catch (err: any) {
-      alert(`수수료율 변경 실패: ${err.response?.data?.error || err.message}`)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      alert(`수수료율 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
@@ -241,8 +256,9 @@ export default function AdminPage() {
       )
       alert(`권한이 ${action}되었습니다!`)
       loadData() // 데이터 새로고침
-    } catch (err: any) {
-      alert(`권한 변경 실패: ${err.response?.data?.error || err.message}`)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      alert(`권한 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 

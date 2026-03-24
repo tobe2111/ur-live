@@ -14,6 +14,71 @@
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
 
+interface StreamListRow {
+  id: number;
+  title: string;
+  description: string | null;
+  youtube_video_id: string | null;
+  status: string;
+  thumbnail_url: string | null;
+  viewer_count: number | null;
+  scheduled_at: string | null;
+  ended_at: string | null;
+  seller_id: number;
+  created_at: string;
+  updated_at: string;
+  seller_name: string | null;
+  seller_image: string | null;
+  current_product_id: number | null;
+  current_product_name: string | null;
+  current_product_price: number | null;
+  current_product_original_price: number | null;
+  current_product_discount_rate: number | null;
+  current_product_image: string | null;
+  current_product_image_url: string | null;
+  current_product_stock_quantity: number | null;
+  current_product_description: string | null;
+}
+
+interface StreamDetailRow {
+  id: number;
+  title: string;
+  description: string | null;
+  youtube_video_id: string | null;
+  status: string;
+  thumbnail_url: string | null;
+  viewer_count: number | null;
+  scheduled_at: string | null;
+  ended_at: string | null;
+  seller_id: number;
+  current_product_id: number | null;
+  created_at: string;
+  updated_at: string;
+  seller_name: string | null;
+  seller_image: string | null;
+  current_product_name: string | null;
+  current_product_price: number | null;
+  current_product_image: string | null;
+}
+
+interface ProductRow {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  original_price: number | null;
+  discount_rate: number | null;
+  image_url: string | null;
+  thumbnail_url: string | null;
+  stock: number | null;
+  stock_quantity: number | null;
+  category: string | null;
+  seller_id: number | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export const streamsRouter = new Hono<{ Bindings: Env }>();
 
 // ── GET /api/streams ──────────────────────────────────────────────────────────
@@ -86,7 +151,7 @@ streamsRouter.get('/', async (c) => {
       .bind(...countParams)
       .first<{ total: number }>();
 
-    const streams = (rows.results || []).map((r: any) => ({
+    const streams = (rows.results as StreamListRow[] || []).map((r) => ({
       id: r.id,
       title: r.title,
       description: r.description,
@@ -126,13 +191,13 @@ streamsRouter.get('/', async (c) => {
         has_more: offset + limit < (countRow?.total ?? 0),
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] List error:', err);
-    return c.json({ 
-      success: false, 
+    return c.json({
+      success: false,
       error: 'Failed to fetch streams',
-      details: err?.message || String(err),
-      stack: err?.stack
+      details: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
     }, 500);
   }
 });
@@ -159,7 +224,7 @@ streamsRouter.get('/:id', async (c) => {
         WHERE ls.id = ?`
       )
       .bind(streamId)
-      .first<any>();
+      .first<StreamDetailRow>();
 
     if (!row) {
       return c.json({ success: false, error: 'Stream not found' }, 404);
@@ -180,7 +245,7 @@ streamsRouter.get('/:id', async (c) => {
     };
 
     return c.json({ success: true, data: stream });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] Detail error:', err);
     return c.json({ success: false, error: 'Failed to fetch stream' }, 500);
   }
@@ -225,7 +290,7 @@ streamsRouter.get('/:id/products', async (c) => {
             FROM products WHERE id = ?
           `)
           .bind(stream.current_product_id)
-          .first<any>();
+          .first<ProductRow>();
 
         if (fallbackProduct) {
           products = [fallbackProduct];
@@ -240,7 +305,7 @@ streamsRouter.get('/:id/products', async (c) => {
       success: true,
       data: products
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] Products error:', err);
     return c.json({ success: false, error: 'Failed to fetch stream products' }, 500);
   }
@@ -271,7 +336,7 @@ streamsRouter.get('/:id/current-product', async (c) => {
       .first();
 
     return c.json({ success: true, data: product });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] Current product error:', err);
     return c.json({ success: false, error: 'Failed to fetch current product' }, 500);
   }
@@ -291,7 +356,7 @@ streamsRouter.post('/:id/current-product', async (c) => {
       .run();
 
     return c.json({ success: true, message: 'Current product updated' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] Set current product error:', err);
     return c.json({ success: false, error: 'Failed to update current product' }, 500);
   }
@@ -309,7 +374,7 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
       .first<{ viewer_count: number }>();
 
     return c.json({ success: true, data: { viewer_count: row?.viewer_count ?? 0 } });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] Viewer count error:', err);
     return c.json({ success: false, error: 'Failed to fetch viewer count' }, 500);
   }
@@ -334,7 +399,7 @@ streamsRouter.post('/:id/viewer/join', async (c) => {
       .catch(() => {});
 
     return c.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Streams] Viewer join error:', err);
     return c.json({ success: false, error: 'Failed to join stream' }, 500);
   }
@@ -357,7 +422,7 @@ streamsRouter.post('/:id/fake-cart-notification', async (c) => {
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return c.json({ success: false, error: 'Failed to send notification' }, 500);
   }
 });

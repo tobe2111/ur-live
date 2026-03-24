@@ -72,7 +72,7 @@ export interface FeatureFlags {
  */
 export const featureFlags: FeatureFlags = {
   // Phase 2.3: Backend Token (0% rollout)
-  backendToken: false, // TODO: Set to true after localhost testing
+  backendToken: false, // Phase 2.3: Enable after backend token endpoint testing complete
 
   // Debug logs (development only)
   authDebugLogs: import.meta.env?.DEV === true,

@@ -14,13 +14,13 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
+import { requireAdmin } from '@/worker/middleware/auth';
+import type { Env } from '@/worker/types/env';
 
-type Bindings = {
-  DB: D1Database;
-  JWT_SECRET: string;
-};
+export const adminBannersRoutes = new Hono<{ Bindings: Env }>();
 
-export const adminBannersRoutes = new Hono<{ Bindings: Bindings }>();
+// 모든 배너 관리 엔드포인트는 admin 권한 필수
+adminBannersRoutes.use('*', requireAdmin());
 
 // 모든 배너 조회
 adminBannersRoutes.get('/', cors(), async (c) => {

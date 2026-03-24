@@ -18,6 +18,9 @@ export interface Env {
   TOSS_WEBHOOK_SECRET: string;
   TOSS_CLIENT_KEY: string;
 
+  // ---- Stripe (Global region) ----
+  STRIPE_SECRET_KEY?: string;
+
   // ---- Auth ----
   JWT_SECRET: string;
 
