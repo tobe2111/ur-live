@@ -357,9 +357,10 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     const db = c.env.DB;
 
-    // 신규 스키마 우선, 구 스키마 fallback
+    // 스키마 버전에 따른 INSERT (신규 → 중간 → 최소 순으로 fallback)
     let result: D1Result;
     try {
+      // 신규 스키마: slug, stock_quantity, thumbnail_url 존재
       result = await db.prepare(`
         INSERT INTO products
           (seller_id, name, slug, description, price, stock_quantity, thumbnail_url, image_url, category, status, created_at, updated_at)
@@ -369,15 +370,27 @@ sellerOrdersRoutes.post('/products', async (c) => {
         stock ?? 0, image_url || null, image_url || null, category || null
       ).run();
     } catch {
-      // 구 스키마 (stock, image 컬럼): slug 컬럼 없을 경우
-      result = await db.prepare(`
-        INSERT INTO products
-          (seller_id, name, description, price, stock, image, image_url, category, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).bind(
-        sellerId, name, description || null, price,
-        stock ?? 0, image_url || null, image_url || null, category || null
-      ).run();
+      try {
+        // 프로덕션 스키마: stock, image_url, status 존재 (slug, stock_quantity 없음)
+        result = await db.prepare(`
+          INSERT INTO products
+            (seller_id, name, description, price, stock, image_url, category, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', datetime('now'), datetime('now'))
+        `).bind(
+          sellerId, name, description || null, price,
+          stock ?? 0, image_url || null, category || null
+        ).run();
+      } catch {
+        // 최소 스키마: status 없는 경우
+        result = await db.prepare(`
+          INSERT INTO products
+            (seller_id, name, description, price, stock, image_url, category, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `).bind(
+          sellerId, name, description || null, price,
+          stock ?? 0, image_url || null, category || null
+        ).run();
+      }
     }
 
     if (!result.success) throw new Error('Failed to create product');
@@ -385,7 +398,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     const newProduct = await db.prepare(
       `SELECT id, seller_id, name, description, price,
               COALESCE(stock_quantity, stock, 0) AS stock,
-              COALESCE(thumbnail_url, image_url, image) AS image_url,
+              COALESCE(thumbnail_url, image_url) AS image_url,
               category, created_at, updated_at
        FROM products WHERE id = ?`
     ).bind(result.meta.last_row_id).first<Record<string, unknown>>();
