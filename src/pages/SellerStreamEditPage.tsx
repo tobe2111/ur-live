@@ -51,7 +51,7 @@ export default function SellerStreamEditPage() {
       })
 
       if (response.data.success) {
-        const foundStream = response.data.data
+        const foundStream = response.data.stream
         if (foundStream) {
           setStream(foundStream)
           setFormData({

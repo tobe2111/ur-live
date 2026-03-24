@@ -69,8 +69,8 @@ sellerOrdersRoutes.get('/orders', async (c) => {
         o.shipping_phone,
         o.shipping_address,
         o.tracking_number,
-        o.tracking_company  AS courier,
-        o.payment_method,
+        o.courier,
+        NULL AS payment_method,
         o.created_at,
         o.updated_at,
         u.username          AS user_name,
@@ -189,7 +189,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
 
     const result = await db.prepare(
       `UPDATE orders
-       SET tracking_number = ?, tracking_company = ?, status = 'SHIPPING', updated_at = datetime('now')
+       SET tracking_number = ?, courier = ?, status = 'SHIPPING', updated_at = datetime('now')
        WHERE (id = ? OR order_number = ?) AND seller_id = ?`
     ).bind(tracking_number, courier || null, orderId, orderId, sellerId).run();
 
