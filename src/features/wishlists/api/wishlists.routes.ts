@@ -18,13 +18,18 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth } from '@/worker/middleware/auth';
+import type { AuthUser } from '@/worker/middleware/auth';
 
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
 };
 
-export const wishlistRoutes = new Hono<{ Bindings: Bindings }>();
+type Variables = {
+  user: AuthUser;
+};
+
+export const wishlistRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // ── 공통 헬퍼: JWT에서 userId 추출 ────────────────────────────────────────────
 async function getUserIdFromToken(authHeader: string | undefined): Promise<number | null> {

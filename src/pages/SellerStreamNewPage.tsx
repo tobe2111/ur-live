@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -22,6 +22,18 @@ export default function SellerStreamNewPage() {
     streamUrl: string
     watchUrl: string
   } | null>(null)
+  const [createdStreamId, setCreatedStreamId] = useState<number | null>(null)
+  const [myProducts, setMyProducts] = useState<{ id: number; name: string; price: number }[]>([])
+  const [linkedProductIds, setLinkedProductIds] = useState<Set<number>>(new Set())
+  const [linkingProducts, setLinkingProducts] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('seller_token')
+    if (!token) return
+    api.get('/api/seller/products?limit=100', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { if (r.data.success) setMyProducts(r.data.data || []) })
+      .catch(() => {})
+  }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setFormData(prev => ({
@@ -85,7 +97,12 @@ export default function SellerStreamNewPage() {
 
         if (response.data.success) {
           toast.success('라이브 스트림이 생성되었습니다!')
-          navigate('/seller')
+          const streamId = response.data.data?.id
+          if (streamId) {
+            setCreatedStreamId(streamId)
+          } else {
+            navigate('/seller')
+          }
         } else {
           setError(response.data.error || '생성 실패')
         }
@@ -104,9 +121,87 @@ export default function SellerStreamNewPage() {
     navigate('/seller')
   }
 
+  function toggleProduct(id: number) {
+    setLinkedProductIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  async function linkProductsAndFinish() {
+    if (!createdStreamId) { navigate('/seller'); return }
+    if (linkedProductIds.size === 0) { navigate('/seller'); return }
+    setLinkingProducts(true)
+    const token = localStorage.getItem('seller_token')
+    try {
+      await Promise.all(
+        Array.from(linkedProductIds).map(pid =>
+          api.post(`/api/seller/products/${pid}/link-to-stream`,
+            { stream_id: createdStreamId },
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+        )
+      )
+      toast.success(`${linkedProductIds.size}개 상품이 라이브에 연결되었습니다!`)
+    } catch {
+      toast.error('일부 상품 연결에 실패했습니다.')
+    } finally {
+      setLinkingProducts(false)
+      navigate('/seller')
+    }
+  }
+
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text)
     toast.success(`${label}이(가) 복사되었습니다!`)
+  }
+
+  // 상품 연결 단계 (스트림 생성 완료 후)
+  if (createdStreamId !== null) {
+    return (
+      <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-lg">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">라이브에 상품 연결</h2>
+          <p className="text-sm text-gray-500 mb-5">이 라이브에서 판매할 상품을 선택하세요 (선택 사항)</p>
+          {myProducts.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">등록된 상품이 없습니다</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto mb-5">
+              {myProducts.map(p => (
+                <label key={p.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-colors ${linkedProductIds.has(p.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  <input
+                    type="checkbox"
+                    checked={linkedProductIds.has(p.id)}
+                    onChange={() => toggleProduct(p.id)}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                    <p className="text-xs text-gray-400">{p.price.toLocaleString()}원</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/seller')}
+              className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              건너뛰기
+            </button>
+            <button
+              onClick={linkProductsAndFinish}
+              disabled={linkingProducts || linkedProductIds.size === 0}
+              className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {linkingProducts ? '연결 중...' : `${linkedProductIds.size}개 상품 연결`}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

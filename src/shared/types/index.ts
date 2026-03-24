@@ -104,6 +104,10 @@ export interface Product {
   // Joined
   seller_name?: string;
   seller_slug?: string;
+  // Extended product detail fields
+  detail_images?: string | string[];
+  long_description?: string;
+  original_price?: number;
 }
 
 // ---- Cart ----

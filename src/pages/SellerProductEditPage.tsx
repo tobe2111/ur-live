@@ -51,6 +51,8 @@ export default function SellerProductEditPage() {
     stock: '',
     image_url: '',
     live_stream_id: '',
+    live_only_price: '',
+    live_price_enabled: false,
     is_active: true,
     detail_images: [] as string[],
     product_type: 'featured', // 'live' or 'featured'
@@ -105,6 +107,8 @@ export default function SellerProductEditPage() {
           stock: String(productData.stock),
           image_url: productData.image_url || '',
           live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
+          live_only_price: productData.live_only_price ? String(productData.live_only_price) : '',
+          live_price_enabled: !!productData.live_price_enabled,
           is_active: productData.is_active,
           detail_images: detailImages,
           product_type: productData.product_type || 'featured',
@@ -162,6 +166,8 @@ export default function SellerProductEditPage() {
         stock: Number(formData.stock),
         image_url: formData.image_url,
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
+        live_only_price: formData.live_only_price ? Number(formData.live_only_price) : null,
+        live_price_enabled: formData.live_price_enabled,
         is_active: formData.is_active,
         detail_images: JSON.stringify(formData.detail_images),
         product_type: formData.product_type,
@@ -366,6 +372,37 @@ export default function SellerProductEditPage() {
               </div>
               <p className="text-xs text-gray-500 mt-1">개 단위로 입력해주세요</p>
             </div>
+          </div>
+
+          {/* 라이브 전용 특가 */}
+          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-3">
+              <input
+                type="checkbox"
+                id="live_price_enabled"
+                checked={formData.live_price_enabled}
+                onChange={e => setFormData({ ...formData, live_price_enabled: e.target.checked })}
+                className="rounded border-orange-300 text-orange-600"
+              />
+              <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
+                라이브 전용 특가 설정
+              </label>
+              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">라이브 방송 중에만 적용</span>
+            </div>
+            {formData.live_price_enabled && (
+              <div>
+                <input
+                  type="number"
+                  name="live_only_price"
+                  value={formData.live_only_price}
+                  onChange={handleChange}
+                  placeholder="라이브 특가 (예: 25000)"
+                  min="0"
+                  className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
+                />
+                <p className="text-xs text-orange-600 mt-1">라이브 방송 중에만 이 가격으로 노출됩니다</p>
+              </div>
+            )}
           </div>
 
           {/* Image Upload */}

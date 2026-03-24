@@ -35,7 +35,7 @@ export class FirebaseAuthService {
     });
     
     try {
-      const customToken = await this.firebase.createCustomToken(uid, claims);
+      const customToken = await this.firebase.createCustomToken(uid, claims as unknown as Record<string, unknown>);
       console.log('[FirebaseAuthService] ✅ Custom token created');
       return customToken;
     } catch (error) {

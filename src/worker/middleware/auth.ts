@@ -84,7 +84,7 @@ async function verifyJWT(
     }
     
     const decoded = jwt.decode(token);
-    return decoded.payload;
+    return decoded.payload as unknown as JwtPayload;
   } catch (error) {
     console.error('[Auth] JWT verification failed:', error);
     return null;
@@ -286,13 +286,13 @@ export function requireAuth() {
 
     if (jwtPayload) {
       const user: AuthUser = {
-        id: jwtPayload.userId || jwtPayload.sub,
-        email: jwtPayload.email,
+        id: (jwtPayload.userId || jwtPayload.sub) as string,
+        email: jwtPayload.email as string,
         name: jwtPayload.name,
-        type: jwtPayload.type || 'user',
+        type: (jwtPayload.type || 'user') as UserType,
         role: jwtPayload.role,
       };
-      
+
       c.set('user', user);
       return next();
     }
@@ -309,16 +309,16 @@ export function requireAuth() {
 
     if (firebasePayload) {
       const user: AuthUser = {
-        id: firebasePayload.sub || firebasePayload.user_id,
-        email: firebasePayload.email,
+        id: (firebasePayload.sub || firebasePayload.user_id) as string,
+        email: firebasePayload.email as string,
         name: firebasePayload.name,
         type: 'user',
       };
-      
+
       c.set('user', user);
       return next();
     }
-    
+
     console.error('[Auth] Both JWT and Firebase verification failed');
 
     // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
@@ -405,32 +405,33 @@ export function optionalAuth() {
     
     if (jwtPayload) {
       const user: AuthUser = {
-        id: jwtPayload.userId || jwtPayload.sub,
-        email: jwtPayload.email,
+        id: (jwtPayload.userId || jwtPayload.sub) as string,
+        email: jwtPayload.email as string,
         name: jwtPayload.name,
-        type: jwtPayload.type || 'user',
+        type: (jwtPayload.type || 'user') as UserType,
         role: jwtPayload.role,
       };
-      
+
       c.set('user', user);
       return next();
     }
-    
+
     // Try Firebase
     const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
     const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
-    
+
     if (firebasePayload) {
       const user: AuthUser = {
-        id: firebasePayload.sub || firebasePayload.user_id,
-        email: firebasePayload.email,
+        id: (firebasePayload.sub || firebasePayload.user_id) as string,
+        email: firebasePayload.email as string,
         name: firebasePayload.name,
         type: 'user',
       };
-      
+
       c.set('user', user);
     }
-    
+
+
     return next();
   };
 }

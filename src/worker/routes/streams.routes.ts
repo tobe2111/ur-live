@@ -151,7 +151,7 @@ streamsRouter.get('/', async (c) => {
       .bind(...countParams)
       .first<{ total: number }>();
 
-    const streams = (rows.results as StreamListRow[] || []).map((r) => ({
+    const streams = ((rows.results as unknown as StreamListRow[]) || []).map((r) => ({
       id: r.id,
       title: r.title,
       description: r.description,
@@ -293,7 +293,7 @@ streamsRouter.get('/:id/products', async (c) => {
           .first<ProductRow>();
 
         if (fallbackProduct) {
-          products = [fallbackProduct];
+          products = [fallbackProduct as unknown as Record<string, unknown>];
           console.log(`[Streams] Using current_product_id ${stream.current_product_id} as fallback for stream ${streamId}`);
         }
       }

@@ -493,22 +493,22 @@ export async function syncD1ToFirebase(
 ): Promise<void> {
   try {
     if (type === 'stream') {
-      await firebase.updateStreamStatus(data.id, {
-        id: data.id,
-        title: data.title,
-        status: data.status,
-        current_product_id: data.current_product_id,
-        viewer_count: data.viewer_count || 0,
-        seller_id: data.seller_id,
-        youtube_video_id: data.youtube_video_id,
+      await firebase.updateStreamStatus(data.id as number, {
+        id: data.id as number,
+        title: data.title as string,
+        status: data.status as 'live' | 'scheduled' | 'ended',
+        current_product_id: data.current_product_id as number | null,
+        viewer_count: (data.viewer_count || 0) as number,
+        seller_id: data.seller_id as number,
+        youtube_video_id: data.youtube_video_id as string,
       })
     } else if (type === 'product') {
-      await firebase.updateProductStock(data.id, data.stock, {
-        name: data.name,
-        price: data.price,
-        original_price: data.original_price,
-        discount_rate: data.discount_rate,
-        image_url: data.image_url,
+      await firebase.updateProductStock(data.id as number, data.stock as number, {
+        name: data.name as string,
+        price: data.price as number,
+        original_price: data.original_price as number,
+        discount_rate: data.discount_rate as number,
+        image_url: data.image_url as string,
       })
     }
   } catch (error) {

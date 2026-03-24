@@ -1049,3 +1049,83 @@ sellerManagementRoutes.post('/products/:id/options', async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// ─── 셀러 알림톡 (Alimtalk) API ────────────────────────────────────────────
+// GET  /api/seller/alimtalk         — 알림톡 계정 조회
+// POST /api/seller/alimtalk         — 알림톡 계정 등록/수정
+// GET  /api/seller/alimtalk/balance — 잔액 조회
+// POST /api/seller/alimtalk/test    — 테스트 발송
+
+sellerManagementRoutes.get('/alimtalk', async (c) => {
+  const { DB } = c.env;
+  try {
+    const sellerIdRaw = c.req.header('Authorization');
+    const payload = sellerIdRaw?.startsWith('Bearer ')
+      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      : null;
+    const sellerId = payload?.seller_id;
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const account = await DB.prepare(
+      `SELECT id, kakao_channel_id, channel_name, phone_number, status, balance, total_sent, total_failed, created_at, updated_at
+       FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
+    ).bind(sellerId).first();
+
+    const templates = account
+      ? await DB.prepare(
+          `SELECT id, template_code, template_name, template_type, status, created_at
+           FROM alimtalk_templates WHERE account_id = ? ORDER BY created_at DESC`
+        ).bind((account as { id: number }).id).all()
+      : { results: [] };
+
+    return c.json({ success: true, data: { account: account || null, templates: templates.results || [] } });
+  } catch (err) {
+    if ((err as Error).message?.includes('no such table')) return c.json({ success: true, data: { account: null, templates: [] } });
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+sellerManagementRoutes.post('/alimtalk', async (c) => {
+  const { DB } = c.env;
+  try {
+    const sellerIdRaw = c.req.header('Authorization');
+    const payload = sellerIdRaw?.startsWith('Bearer ')
+      ? JSON.parse(atob(sellerIdRaw.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      : null;
+    const sellerId = payload?.seller_id;
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const body = await c.req.json<{
+      kakao_channel_id: string;
+      channel_name: string;
+      sender_key?: string;
+      phone_number: string;
+    }>();
+
+    const { kakao_channel_id, channel_name, sender_key, phone_number } = body;
+    if (!kakao_channel_id || !channel_name || !phone_number) {
+      return c.json({ success: false, error: '카카오 채널 ID, 채널명, 전화번호는 필수입니다.' }, 400);
+    }
+
+    const existing = await DB.prepare(
+      `SELECT id FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
+    ).bind(sellerId).first<{ id: number }>();
+
+    if (existing) {
+      await DB.prepare(
+        `UPDATE alimtalk_accounts
+         SET kakao_channel_id = ?, channel_name = ?, sender_key = ?, phone_number = ?, status = 'pending', updated_at = datetime('now')
+         WHERE seller_id = ?`
+      ).bind(kakao_channel_id, channel_name, sender_key || null, phone_number, sellerId).run();
+    } else {
+      await DB.prepare(
+        `INSERT INTO alimtalk_accounts (seller_id, kakao_channel_id, channel_name, sender_key, phone_number, status, balance, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'pending', 0, datetime('now'), datetime('now'))`
+      ).bind(sellerId, kakao_channel_id, channel_name, sender_key || null, phone_number).run();
+    }
+
+    return c.json({ success: true, message: '알림톡 계정이 등록되었습니다. 관리자 승인 후 활성화됩니다.' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
