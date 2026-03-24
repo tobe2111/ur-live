@@ -18,7 +18,14 @@ type Bindings = {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_PRIVATE_KEY: string;
   FIREBASE_CLIENT_EMAIL: string;
-  [key: string]: any;
+  FIREBASE_DATABASE_URL?: string;
+  JWT_SECRET?: string;
+  TOSS_SECRET_KEY?: string;
+  TOSS_CLIENT_KEY?: string;
+  SESSION_KV?: KVNamespace;
+  CACHE_KV?: KVNamespace;
+  RATE_LIMIT_KV?: KVNamespace;
+  DISCORD_WEBHOOK_URL?: string;
 };
 
 export const accountRoutes = new Hono<{ Bindings: Bindings }>();

@@ -42,8 +42,6 @@ export class PaymentProviderFactory {
         throw new Error('Toss Payments는 TossPaymentWidget을 통해 직접 통합됩니다.');
 
       default:
-
-      default:
         console.warn(`Unknown payment provider: ${type}, falling back to mock provider`);
         return new MockPaymentProvider();
     }
