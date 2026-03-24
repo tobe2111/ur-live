@@ -281,6 +281,50 @@ sellerOrdersRoutes.get('/products', async (c) => {
   }
 });
 
+// ─── PATCH /api/seller/orders/bulk-status ─────────────────────────────────
+// 주문 일괄 상태변경: { order_ids: number[], status: string }
+sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const body = await c.req.json<{ order_ids: number[]; status: string }>();
+    const { order_ids, status } = body;
+
+    if (!Array.isArray(order_ids) || order_ids.length === 0) {
+      return c.json({ success: false, error: '주문 ID 목록이 필요합니다.' }, 400);
+    }
+    if (order_ids.length > 100) {
+      return c.json({ success: false, error: '한 번에 최대 100건까지 처리 가능합니다.' }, 400);
+    }
+
+    const rawStatus = (status || '').toUpperCase();
+    const dbStatus = STATUS_MAP[rawStatus] ?? rawStatus;
+    if (!VALID_STATUSES.includes(dbStatus)) {
+      return c.json({ success: false, error: `유효하지 않은 상태입니다. 가능: ${VALID_STATUSES.join(', ')}` }, 400);
+    }
+
+    const db = c.env.DB;
+    const placeholders = order_ids.map(() => '?').join(',');
+
+    // 셀러 소유 확인 + 일괄 업데이트 (atomic)
+    const result = await db.prepare(
+      `UPDATE orders
+         SET status = ?, updated_at = datetime('now')
+       WHERE id IN (${placeholders}) AND seller_id = ?`
+    ).bind(dbStatus, ...order_ids, sellerId).run();
+
+    return c.json({
+      success: true,
+      updated: result.meta.changes || 0,
+      message: `${result.meta.changes || 0}건의 주문 상태가 변경되었습니다.`,
+    });
+  } catch (error: unknown) {
+    console.error('Bulk status update error:', error);
+    return c.json({ success: false, error: (error as Error).message || 'Failed to bulk update' }, 500);
+  }
+});
+
 // ─── POST /api/seller/products ─────────────────────────────────────────────
 sellerOrdersRoutes.post('/products', async (c) => {
   try {
@@ -350,5 +394,142 @@ sellerOrdersRoutes.post('/products', async (c) => {
   } catch (error: unknown) {
     console.error('Create seller product error:', error);
     return c.json({ success: false, error: (error as Error).message || 'Failed to create product' }, 500);
+  }
+});
+
+// ─── PUT /api/seller/products/:id ──────────────────────────────────────────
+sellerOrdersRoutes.put('/products/:id', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const productId = c.req.param('id');
+    const body = await c.req.json<{
+      name?: string;
+      description?: string;
+      price?: number;
+      original_price?: number;
+      stock?: number;
+      image_url?: string;
+      category?: string;
+      live_only_price?: number | null;
+      live_price_enabled?: boolean;
+      status?: string;
+    }>();
+
+    const db = c.env.DB;
+
+    // 소유권 확인
+    const existing = await db.prepare(
+      `SELECT id FROM products WHERE id = ? AND seller_id = ?`
+    ).bind(productId, sellerId).first();
+    if (!existing) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
+
+    const fields: string[] = [];
+    const values: unknown[] = [];
+
+    if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
+    if (body.description !== undefined) { fields.push('description = ?'); values.push(body.description); }
+    if (body.price !== undefined) { fields.push('price = ?'); values.push(body.price); }
+    if (body.original_price !== undefined) { fields.push('original_price = ?'); values.push(body.original_price); }
+    if (body.stock !== undefined) {
+      fields.push('stock_quantity = ?', 'stock = ?');
+      values.push(body.stock, body.stock);
+    }
+    if (body.image_url !== undefined) {
+      fields.push('image_url = ?', 'thumbnail_url = ?');
+      values.push(body.image_url, body.image_url);
+    }
+    if (body.category !== undefined) { fields.push('category = ?'); values.push(body.category); }
+    if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
+    if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }
+    if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }
+
+    if (fields.length === 0) return c.json({ success: false, error: '수정할 내용이 없습니다.' }, 400);
+
+    fields.push(`updated_at = datetime('now')`);
+    values.push(productId, sellerId);
+
+    await db.prepare(
+      `UPDATE products SET ${fields.join(', ')} WHERE id = ? AND seller_id = ?`
+    ).bind(...values).run();
+
+    const updated = await db.prepare(
+      `SELECT id, name, description, price, original_price,
+              COALESCE(stock_quantity, stock, 0) AS stock,
+              COALESCE(thumbnail_url, image_url, image) AS image_url,
+              category, live_only_price, live_price_enabled,
+              COALESCE(status, 'ACTIVE') AS status, updated_at
+       FROM products WHERE id = ?`
+    ).bind(productId).first<Record<string, unknown>>();
+
+    return c.json({ success: true, data: updated });
+  } catch (error: unknown) {
+    console.error('Update seller product error:', error);
+    return c.json({ success: false, error: (error as Error).message || 'Failed to update product' }, 500);
+  }
+});
+
+// ─── DELETE /api/seller/products/:id ───────────────────────────────────────
+sellerOrdersRoutes.delete('/products/:id', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const productId = c.req.param('id');
+    const db = c.env.DB;
+
+    // soft delete (status = DELETED)
+    const result = await db.prepare(
+      `UPDATE products SET status = 'DELETED', updated_at = datetime('now') WHERE id = ? AND seller_id = ?`
+    ).bind(productId, sellerId).run();
+
+    if (!result.meta.changes) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
+
+    return c.json({ success: true, message: '상품이 삭제되었습니다.' });
+  } catch (error: unknown) {
+    console.error('Delete seller product error:', error);
+    return c.json({ success: false, error: (error as Error).message || 'Failed to delete product' }, 500);
+  }
+});
+
+// ─── POST /api/seller/products/:id/link-to-stream ──────────────────────────
+// body: { stream_id: number | null }  — null이면 연결 해제
+sellerOrdersRoutes.post('/products/:id/link-to-stream', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    const productId = c.req.param('id');
+    const body = await c.req.json<{ stream_id: number | null }>();
+    const streamId = body.stream_id ?? null;
+
+    const db = c.env.DB;
+
+    // 상품 소유권 확인
+    const product = await db.prepare(
+      `SELECT id FROM products WHERE id = ? AND seller_id = ?`
+    ).bind(productId, sellerId).first();
+    if (!product) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
+
+    // 스트림 소유권 확인 (stream_id가 있는 경우)
+    if (streamId !== null) {
+      const stream = await db.prepare(
+        `SELECT id FROM live_streams WHERE id = ? AND seller_id = ?`
+      ).bind(streamId, sellerId).first();
+      if (!stream) return c.json({ success: false, error: 'Stream not found or forbidden' }, 404);
+    }
+
+    await db.prepare(
+      `UPDATE products SET live_stream_id = ?, updated_at = datetime('now') WHERE id = ? AND seller_id = ?`
+    ).bind(streamId, productId, sellerId).run();
+
+    return c.json({
+      success: true,
+      message: streamId ? `스트림 ${streamId}에 상품이 연결되었습니다.` : '스트림 연결이 해제되었습니다.',
+    });
+  } catch (error: unknown) {
+    console.error('Link product to stream error:', error);
+    return c.json({ success: false, error: (error as Error).message || 'Failed to link product' }, 500);
   }
 });

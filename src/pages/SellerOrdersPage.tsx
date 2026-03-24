@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -78,6 +78,11 @@ export default function SellerOrdersPage() {
     courier: '',
     tracking_number: ''
   })
+
+  // 일괄 처리
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkStatus, setBulkStatus] = useState('')
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   useEffect(() => {
     loadOrders()
@@ -247,6 +252,43 @@ export default function SellerOrdersPage() {
       setUpdating(false)
     }
   }
+
+  // 체크박스 토글
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+  function toggleSelectAll() {
+    if (selectedIds.size === currentOrders.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(currentOrders.map(o => o.id.toString())))
+    }
+  }
+
+  // 일괄 상태 변경
+  const handleBulkStatusChange = useCallback(async () => {
+    if (!bulkStatus || selectedIds.size === 0) return
+    setBulkLoading(true)
+    try {
+      const ids = Array.from(selectedIds).map(Number)
+      const response = await api.patch('/api/seller/orders/bulk-status', { order_ids: ids, status: bulkStatus })
+      if (response.data.success) {
+        toast.success(response.data.message || `${ids.length}건 상태 변경 완료`)
+        setSelectedIds(new Set())
+        setBulkStatus('')
+        loadOrders()
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } }
+      toast.error(err.response?.data?.error || '일괄 처리에 실패했습니다.')
+    } finally {
+      setBulkLoading(false)
+    }
+  }, [bulkStatus, selectedIds])
 
   function getStatusText(status: string) {
     switch (status) {
@@ -467,9 +509,48 @@ export default function SellerOrdersPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
+                  {/* 일괄 처리 바 */}
+                  {selectedIds.size > 0 && (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-200">
+                      <span className="text-sm font-medium text-blue-700">{selectedIds.size}건 선택됨</span>
+                      <select
+                        value={bulkStatus}
+                        onChange={e => setBulkStatus(e.target.value)}
+                        className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">상태 선택</option>
+                        <option value="PREPARING">준비중</option>
+                        <option value="SHIPPING">배송중</option>
+                        <option value="DELIVERED">배송완료</option>
+                        <option value="CANCELLED">취소</option>
+                      </select>
+                      <button
+                        onClick={handleBulkStatusChange}
+                        disabled={!bulkStatus || bulkLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                        일괄 변경
+                      </button>
+                      <button
+                        onClick={() => setSelectedIds(new Set())}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        선택 해제
+                      </button>
+                    </div>
+                  )}
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
+                        <th className="px-4 py-3 text-center w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.size === currentOrders.length && currentOrders.length > 0}
+                            onChange={toggleSelectAll}
+                            className="rounded border-gray-300 text-blue-600"
+                          />
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문자</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">주문금액</th>
@@ -481,7 +562,18 @@ export default function SellerOrdersPage() {
                     </thead>
                     <tbody className="divide-y">
                       {currentOrders.map((order) => (
-                        <tr key={order.order_number} className="hover:bg-gray-50">
+                        <tr
+                          key={order.order_number}
+                          className={`hover:bg-gray-50 ${selectedIds.has(order.id.toString()) ? 'bg-blue-50/50' : ''}`}
+                        >
+                          <td className="px-4 py-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(order.id.toString())}
+                              onChange={() => toggleSelect(order.id.toString())}
+                              className="rounded border-gray-300 text-blue-600"
+                            />
+                          </td>
                           <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             <div>{order.shipping_name}</div>

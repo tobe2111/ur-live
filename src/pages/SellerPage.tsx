@@ -72,12 +72,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
 }
 
 const NAV_ITEMS = [
-  { path: '/seller',             label: '대시보드',   icon: LayoutDashboard, exact: true },
-  { path: '/seller/orders',      label: '주문 관리',  icon: ShoppingBag },
-  { path: '/seller/products',    label: '상품 관리',  icon: Package },
-  { path: '/seller/live-control',label: '라이브 스트림', icon: Play },
-  { path: '/seller/settlements', label: '정산',       icon: DollarSign },
-  { path: '/seller/business-info',label: '사업자 정보', icon: Building2 },
+  { path: '/seller',              label: '대시보드',    icon: LayoutDashboard, exact: true },
+  { path: '/seller/orders',       label: '주문 관리',   icon: ShoppingBag },
+  { path: '/seller/products',     label: '상품 관리',   icon: Package },
+  { path: '/seller/live-control', label: '라이브 스트림', icon: Play },
+  { path: '/seller/settlements',  label: '정산',        icon: DollarSign },
+  { path: '/seller/alimtalk',     label: '알림톡',      icon: Bell },
+  { path: '/seller/business-info',label: '사업자 정보',  icon: Building2 },
 ]
 
 // ─── Component ───────────────────────────────────────────────────────────────
