@@ -188,6 +188,51 @@ authRouter.get('/me', authMiddleware, async (c) => {
   return c.json({ success: true, data: user });
 });
 
+// PATCH /api/auth/profile — 프로필(이름, 전화번호) 수정
+authRouter.patch('/profile', authMiddleware, async (c) => {
+  const { id } = c.get('user');
+  const db = c.env.DB;
+  try {
+    const body = await c.req.json<{ name?: string; phone?: string }>();
+    const fields: string[] = [];
+    const values: (string | null)[] = [];
+    if (body.name !== undefined) { fields.push('name = ?'); values.push(body.name); }
+    if (body.phone !== undefined) { fields.push('phone = ?'); values.push(body.phone); }
+    if (fields.length === 0) return c.json({ success: false, error: '수정할 항목이 없습니다' }, 400);
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+    await db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+    const updated = await db.prepare('SELECT id, email, name, phone, avatar_url FROM users WHERE id = ?').bind(id).first();
+    return c.json({ success: true, data: updated });
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// POST /api/auth/change-password — 비밀번호 변경
+authRouter.post('/change-password', authMiddleware, async (c) => {
+  const { id } = c.get('user');
+  const db = c.env.DB;
+  try {
+    const body = await c.req.json<{ current_password: string; new_password: string }>();
+    if (!body.current_password || !body.new_password) {
+      return c.json({ success: false, error: '현재 비밀번호와 새 비밀번호를 입력해주세요' }, 400);
+    }
+    if (body.new_password.length < 8) {
+      return c.json({ success: false, error: '새 비밀번호는 8자 이상이어야 합니다' }, 400);
+    }
+    const user = await db.prepare('SELECT password_hash FROM users WHERE id = ?').bind(id).first<{ password_hash: string }>();
+    if (!user) return c.json({ success: false, error: '사용자를 찾을 수 없습니다' }, 404);
+    const { valid } = await verifyPassword(body.current_password, user.password_hash);
+    if (!valid) return c.json({ success: false, error: '현재 비밀번호가 올바르지 않습니다' }, 400);
+    const newHash = await hashPassword(body.new_password);
+    await db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").bind(newHash, id).run();
+    return c.json({ success: true, message: '비밀번호가 변경되었습니다' });
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // GET /api/auth/validate — 세션 유효성 검증 (useSessionValidation.ts에서 호출)
 // Authorization: Bearer <token> 헤더가 유효하면 200, 없거나 만료되면 401 반환
 authRouter.get('/validate', authMiddleware, async (c) => {
