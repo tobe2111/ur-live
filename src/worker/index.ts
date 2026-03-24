@@ -269,7 +269,7 @@ app.route('/api/sellers', sellersRouter);
 // Feature seller management
 app.route('/api/seller', sellerManagementRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
-app.route('/api/seller', sellerStreamsRoutes);
+app.route('/api/seller/streams', sellerStreamsRoutes);
 
 // ============================================================
 // Order & Payment Routes

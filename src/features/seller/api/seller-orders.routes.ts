@@ -245,6 +245,67 @@ sellerOrdersRoutes.put('/orders/:id/status', async (c) => {
 });
 
 /**
+ * POST /api/seller/products
+ * 셀러 상품 등록
+ */
+sellerOrdersRoutes.post('/products', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) {
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
+    }
+
+    const body = await c.req.json<{
+      name: string;
+      description?: string;
+      price: number;
+      stock?: number;
+      image_url?: string;
+      category?: string;
+      live_stream_id?: number | null;
+      product_type?: string;
+    }>();
+
+    const { name, description, price, stock, image_url, category, live_stream_id } = body;
+
+    if (!name || price === undefined) {
+      return c.json({ success: false, error: '상품명과 가격은 필수입니다.' }, 400);
+    }
+
+    const db = c.env.DB;
+
+    const result = await db.prepare(`
+      INSERT INTO products (seller_id, name, description, price, stock, image, image_url, category, live_stream_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      sellerId,
+      name,
+      description || null,
+      price,
+      stock ?? 0,
+      image_url || null,
+      image_url || null,
+      category || null,
+      live_stream_id || null
+    ).run();
+
+    if (!result.success) {
+      throw new Error('Failed to create product');
+    }
+
+    const newProduct = await db.prepare(
+      `SELECT id, seller_id, name, description, price, stock, image, image_url, category, live_stream_id, created_at, updated_at FROM products WHERE id = ?`
+    ).bind(result.meta.last_row_id).first<Record<string, unknown>>();
+
+    return c.json({ success: true, data: newProduct }, 201);
+
+  } catch (error: any) {
+    console.error('Create seller product error:', error);
+    return c.json({ success: false, error: error.message || 'Failed to create product' }, 500);
+  }
+});
+
+/**
  * GET /api/seller/products
  * 셀러 상품 목록 조회
  */
