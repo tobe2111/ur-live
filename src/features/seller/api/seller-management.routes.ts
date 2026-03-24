@@ -286,9 +286,11 @@ sellerManagementRoutes.get('/profile', async (c) => {
 
     const db = c.env.DB;
     const seller = await db.prepare(`
-      SELECT 
+      SELECT
         id, username, email, name, business_name, phone, address, description,
         bank_account, bank_name, account_holder, status, commission_rate,
+        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+        website_url, kakao_chat_url AS kakao_chat_link,
         created_at, updated_at
       FROM sellers
       WHERE id = ?
@@ -303,7 +305,7 @@ sellerManagementRoutes.get('/profile', async (c) => {
 
     return c.json({
       success: true,
-      seller
+      data: seller
     });
 
   } catch (error: unknown) {
@@ -319,97 +321,59 @@ sellerManagementRoutes.get('/profile', async (c) => {
  * PUT /api/seller/profile
  * 셀러 프로필 수정
  */
-sellerManagementRoutes.put('/profile', async (c) => {
+sellerManagementRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 401);
+      return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
 
-    const body = await c.req.json<SellerProfileUpdate>();
+    const body = await c.req.json<SellerProfileUpdate & Record<string, unknown>>();
     const updates: string[] = [];
     const values: (string | number | null)[] = [];
 
-    // 업데이트 가능한 필드들
-    if (body.name !== undefined) {
-      updates.push('name = ?');
-      values.push(body.name);
-    }
-    if (body.business_name !== undefined) {
-      updates.push('business_name = ?');
-      values.push(body.business_name);
-    }
-    if (body.phone !== undefined) {
-      updates.push('phone = ?');
-      values.push(body.phone);
-    }
-    if (body.address !== undefined) {
-      updates.push('address = ?');
-      values.push(body.address);
-    }
-    if (body.description !== undefined) {
-      updates.push('description = ?');
-      values.push(body.description);
-    }
-    if (body.bank_account !== undefined) {
-      updates.push('bank_account = ?');
-      values.push(body.bank_account);
-    }
-    if (body.bank_name !== undefined) {
-      updates.push('bank_name = ?');
-      values.push(body.bank_name);
-    }
-    if (body.account_holder !== undefined) {
-      updates.push('account_holder = ?');
-      values.push(body.account_holder);
+    const fieldMap: Record<string, string> = {
+      name: 'name', business_name: 'business_name', phone: 'phone',
+      address: 'address', description: 'description',
+      bank_account: 'bank_account', bank_name: 'bank_name', account_holder: 'account_holder',
+      profile_image: 'profile_image', bio: 'bio',
+      sns_instagram: 'sns_instagram', sns_youtube: 'sns_youtube',
+      sns_facebook: 'sns_facebook', sns_twitter: 'sns_twitter',
+      website_url: 'website_url', kakao_chat_link: 'kakao_chat_url'
+    };
+
+    for (const [bodyKey, dbCol] of Object.entries(fieldMap)) {
+      if (body[bodyKey] !== undefined) {
+        updates.push(`${dbCol} = ?`);
+        values.push(body[bodyKey] as string | number | null);
+      }
     }
 
     if (updates.length === 0) {
-      return c.json({
-        success: false,
-        error: 'No fields to update'
-      }, 400);
+      return c.json({ success: false, error: 'No fields to update' }, 400);
     }
 
-    updates.push('updated_at = datetime(\'now\')');
+    updates.push("updated_at = datetime('now')");
     values.push(sellerId);
 
     const db = c.env.DB;
-    const result = await db.prepare(`
-      UPDATE sellers
-      SET ${updates.join(', ')}
-      WHERE id = ?
-    `).bind(...values).run();
+    await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
 
-    if (!result.success) {
-      throw new Error('Failed to update seller profile');
-    }
-
-    // 업데이트된 프로필 조회
     const updatedSeller = await db.prepare(`
-      SELECT 
+      SELECT
         id, username, email, name, business_name, phone, address, description,
         bank_account, bank_name, account_holder, status, commission_rate,
+        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+        website_url, kakao_chat_url AS kakao_chat_link,
         created_at, updated_at
-      FROM sellers
-      WHERE id = ?
+      FROM sellers WHERE id = ?
     `).bind(sellerId).first();
 
-    return c.json({
-      success: true,
-      message: 'Profile updated successfully',
-      seller: updatedSeller
-    });
+    return c.json({ success: true, data: updatedSeller });
 
   } catch (error: unknown) {
     console.error('Update seller profile error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message || 'Failed to update seller profile'
-    }, 500);
+    return c.json({ success: false, error: (error as Error).message || 'Failed to update seller profile' }, 500);
   }
 });
 
@@ -461,7 +425,7 @@ sellerManagementRoutes.get('/business-info', async (c) => {
  * PUT /api/seller/business-info
  * 사업자 정보 수정
  */
-sellerManagementRoutes.put('/business-info', async (c) => {
+sellerManagementRoutes.on(['PUT', 'PATCH'], '/business-info', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) {
@@ -526,20 +490,20 @@ sellerManagementRoutes.put('/business-info', async (c) => {
       throw new Error('Failed to update business info');
     }
 
-    // 업데이트된 사업자 정보 조회
-    const updatedBusinessInfo = await db.prepare(`
-      SELECT 
+    // 업데이트된 전체 프로필 조회
+    const updatedSeller = await db.prepare(`
+      SELECT
+        id, username, email, name, business_name, phone, address, description,
+        bank_account, bank_name, account_holder, status, commission_rate,
+        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+        website_url, kakao_chat_url AS kakao_chat_link,
         business_number, business_registration_file, tax_email,
-        representative_name, business_address
-      FROM sellers
-      WHERE id = ?
+        representative_name, business_address,
+        created_at, updated_at
+      FROM sellers WHERE id = ?
     `).bind(sellerId).first();
 
-    return c.json({
-      success: true,
-      message: 'Business info updated successfully',
-      business_info: updatedBusinessInfo
-    });
+    return c.json({ success: true, data: updatedSeller });
 
   } catch (error: unknown) {
     console.error('Update business info error:', error);
@@ -680,8 +644,7 @@ sellerManagementRoutes.get('/personal-info', async (c) => {
  * PUT /api/seller/personal-info
  * 셀러 개인 정보 수정 (profile 의 alias)
  */
-sellerManagementRoutes.put('/personal-info', async (c) => {
-  // profile PUT 과 동일 로직
+sellerManagementRoutes.on(['PUT', 'PATCH'], '/personal-info', async (c) => {
   const db = c.env.DB;
   const authorization = c.req.header('Authorization');
   if (!authorization?.startsWith('Bearer ')) {
@@ -702,7 +665,16 @@ sellerManagementRoutes.put('/personal-info', async (c) => {
     fields.push("updated_at = datetime('now')");
     values.push(sellerId);
     await db.prepare(`UPDATE sellers SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
-    return c.json({ success: true, message: '개인 정보가 수정되었습니다' });
+    const updatedSeller = await db.prepare(`
+      SELECT
+        id, username, email, name, business_name, phone, address, description,
+        bank_account, bank_name, account_holder, status, commission_rate,
+        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+        website_url, kakao_chat_url AS kakao_chat_link,
+        created_at, updated_at
+      FROM sellers WHERE id = ?
+    `).bind(sellerId).first();
+    return c.json({ success: true, data: updatedSeller });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -840,10 +812,16 @@ sellerManagementRoutes.get('/settlements/stats', async (c) => {
       SELECT
         SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END) as total_settled,
         SUM(CASE WHEN status = 'pending'   THEN amount ELSE 0 END) as pending_amount,
+        SUM(CASE WHEN status = 'approved'  THEN amount ELSE 0 END) as approved_amount,
+        SUM(CASE WHEN status = 'paid'      THEN amount ELSE 0 END) as paid_amount,
+        COUNT(CASE WHEN status = 'pending'  THEN 1 END) as total_pending,
+        COUNT(CASE WHEN status = 'approved' THEN 1 END) as total_approved,
+        COUNT(CASE WHEN status = 'paid'     THEN 1 END) as total_paid,
         COUNT(*) as total_requests
       FROM settlements WHERE seller_id = ?
     `).bind(sellerId).first<SettlementStatsRow>().catch(() => null);
-    return c.json({ success: true, data: stats || { total_settled: 0, pending_amount: 0, total_requests: 0 } });
+    const defaultStats = { total_settled: 0, pending_amount: 0, approved_amount: 0, paid_amount: 0, total_pending: 0, total_approved: 0, total_paid: 0, total_requests: 0 };
+    return c.json({ success: true, data: stats ? { ...defaultStats, ...stats } : defaultStats });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
