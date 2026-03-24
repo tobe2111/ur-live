@@ -26,6 +26,114 @@ type Bindings = {
   JWT_SECRET: string;
 };
 
+interface SellerRow {
+  id: number;
+  email: string;
+  name: string;
+  phone: string | null;
+  business_name: string | null;
+  business_number: string | null;
+  status: string;
+  created_at: string;
+  commission_rate?: number;
+  can_manipulate_stats?: number;
+}
+
+interface OrderRow {
+  id: number;
+  order_number: string;
+  user_id: string;
+  seller_id: number | null;
+  total_amount: number;
+  status: string;
+  payment_status: string;
+  payment_method: string | null;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_address: string | null;
+  shipping_address_detail: string | null;
+  shipping_zipcode: string | null;
+  courier: string | null;
+  tracking_number: string | null;
+  created_at: string;
+  updated_at: string;
+  user_name: string | null;
+  user_email: string | null;
+  seller_name: string | null;
+  items?: OrderItemRow[];
+}
+
+interface OrderItemRow {
+  id: number;
+  product_id: number | null;
+  product_name: string;
+  quantity: number;
+  price: number;
+  image_url: string | null;
+}
+
+interface ProductRow {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  stock: number | null;
+  image_url: string | null;
+  is_active: number;
+  product_type: string | null;
+  category: string | null;
+  seller_id: number | null;
+  created_at: string;
+  seller_name: string | null;
+}
+
+interface CountRow {
+  count: number;
+}
+
+interface SalesRow {
+  total: number;
+}
+
+interface SettlementOverviewRow {
+  total_orders: number;
+  total_sales: number;
+  total_commission: number;
+  total_seller_amount: number;
+}
+
+interface SettlementSellerRow {
+  seller_id: number;
+  seller_name: string | null;
+  business_name: string | null;
+  commission_rate: number;
+  order_count: number;
+  total_sales: number;
+  commission_amount: number;
+  seller_amount: number;
+}
+
+interface SettlementRecordRow {
+  id: number;
+  order_number: string;
+  seller_id: number | null;
+  seller_name: string | null;
+  business_name: string | null;
+  total_amount: number;
+  commission_rate: number;
+  commission_amount: number;
+  seller_amount: number;
+  settlement_status: string;
+  settled_at: string | null;
+  created_at: string;
+  user_name: string | null;
+}
+
+interface IdRow {
+  id: number;
+  status?: string;
+}
+
 export const adminManagementRoutes = new Hono<{ Bindings: Bindings }>();
 
 // ─── 판매자 관리 ──────────────────────────────────────────────────────────────
@@ -33,7 +141,7 @@ export const adminManagementRoutes = new Hono<{ Bindings: Bindings }>();
 adminManagementRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const sellers = await executeQuery<any>(DB, `
+    const sellers = await executeQuery<SellerRow>(DB, `
       SELECT id, email, name, phone, business_name, business_number,
              status, created_at
       FROM sellers ORDER BY created_at DESC
@@ -48,7 +156,7 @@ adminManagementRoutes.get('/sellers', cors(), async (c) => {
 adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const sellers = await executeQuery<any>(DB, `
+    const sellers = await executeQuery<SellerRow>(DB, `
       SELECT id, email, name, phone, business_name, business_number,
              status, created_at
       FROM sellers WHERE status = 'pending' ORDER BY created_at ASC
@@ -64,7 +172,7 @@ adminManagementRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
-    const rows = await executeQuery<any>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
@@ -79,7 +187,7 @@ adminManagementRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
     const { reason } = await c.req.json();
-    const rows = await executeQuery<any>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
@@ -95,11 +203,10 @@ adminManagementRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
     const { commission_rate } = await c.req.json();
     if (commission_rate === undefined || commission_rate < 0 || commission_rate > 100)
       return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
-    const rows = await executeQuery<any>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
-    // TODO: Add commission_rate column to sellers table
-    // await executeQuery(DB, `UPDATE sellers SET commission_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [commission_rate, sellerId]);
-    return c.json({ success: true, data: { id: sellerId, commission_rate, message: 'Commission rate column needs to be added to DB' } });
+    await executeQuery(DB, `UPDATE sellers SET commission_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [commission_rate, sellerId]);
+    return c.json({ success: true, data: { id: sellerId, commission_rate } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -112,12 +219,11 @@ adminManagementRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
     const { can_manipulate_stats } = await c.req.json();
     if (![0, 1, true, false].includes(can_manipulate_stats))
       return c.json({ success: false, error: 'can_manipulate_stats는 0 또는 1이어야 합니다' }, 400);
-    const rows = await executeQuery<any>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     const val = can_manipulate_stats ? 1 : 0;
-    // TODO: Add can_manipulate_stats column to sellers table
-    // await executeQuery(DB, `UPDATE sellers SET can_manipulate_stats = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [val, sellerId]);
-    return c.json({ success: true, data: { id: sellerId, can_manipulate_stats: val, message: 'Permissions column needs to be added to DB' } });
+    await executeQuery(DB, `UPDATE sellers SET can_manipulate_stats = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [val, sellerId]);
+    return c.json({ success: true, data: { id: sellerId, can_manipulate_stats: val } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -146,16 +252,16 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
       LEFT JOIN sellers s ON o.seller_id = s.id
       WHERE 1=1
     `;
-    const params: any[] = [];
+    const params: (string | number | null)[] = [];
     if (status) { query += ' AND o.status = ?'; params.push(status); }
     if (sellerId) { query += ' AND o.seller_id = ?'; params.push(sellerId); }
     if (startDate) { query += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
     if (endDate) { query += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
     query += ' ORDER BY o.created_at DESC LIMIT 1000';
 
-    const orders = await executeQuery<any>(DB, query, params);
+    const orders = await executeQuery<OrderRow>(DB, query, params);
     for (const order of orders) {
-      order.items = await executeQuery<any>(DB, `
+      order.items = await executeQuery<OrderItemRow>(DB, `
         SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, oi.price, p.image_url
         FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
         WHERE oi.order_id = ?`, [order.id]);
@@ -171,7 +277,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
 adminManagementRoutes.get('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const products = await executeQuery<any>(DB, `
+    const products = await executeQuery<ProductRow>(DB, `
       SELECT p.id, p.name, p.description, p.price, p.stock,
              p.image_url, p.is_active, p.product_type, p.category,
              p.seller_id, p.created_at, s.business_name as seller_name
@@ -191,7 +297,7 @@ adminManagementRoutes.delete('/products/:id', cors(), async (c) => {
     const productId = c.req.param('id');
     
     // Check if product exists
-    const product = await executeQuery<any>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
+    const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
@@ -243,7 +349,7 @@ adminManagementRoutes.put('/products/:id', cors(), async (c) => {
     const { name, description, price, stock, image_url, category, product_type } = body;
     
     // Check if product exists
-    const product = await executeQuery<any>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
+    const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
@@ -272,7 +378,7 @@ adminManagementRoutes.patch('/products/:id', cors(), async (c) => {
     const { is_active } = body;
     
     // Check if product exists
-    const product = await executeQuery<any>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
+    const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
@@ -294,10 +400,10 @@ adminManagementRoutes.get('/stats', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const [ts, as, tst, ast] = await Promise.all([
-      executeQuery<any>(DB, 'SELECT COUNT(*) as count FROM sellers'),
-      executeQuery<any>(DB, "SELECT COUNT(*) as count FROM sellers WHERE status = 'approved'"),
-      executeQuery<any>(DB, 'SELECT COUNT(*) as count FROM live_streams'),
-      executeQuery<any>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status = 'live'"),
+      executeQuery<CountRow>(DB, 'SELECT COUNT(*) as count FROM sellers'),
+      executeQuery<CountRow>(DB, "SELECT COUNT(*) as count FROM sellers WHERE status = 'approved'"),
+      executeQuery<CountRow>(DB, 'SELECT COUNT(*) as count FROM live_streams'),
+      executeQuery<CountRow>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status = 'live'"),
     ]);
     return c.json({ success: true, data: {
       totalSellers: ts[0]?.count || 0,
@@ -315,9 +421,9 @@ adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
     const { DB } = c.env;
     const today = new Date().toISOString().split('T')[0];
     const [sales, orders, live] = await Promise.all([
-      executeQuery<any>(DB, `SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at)=? AND payment_status='approved'`, [today]),
-      executeQuery<any>(DB, 'SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
-      executeQuery<any>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
+      executeQuery<SalesRow>(DB, `SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at)=? AND payment_status='approved'`, [today]),
+      executeQuery<CountRow>(DB, 'SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
+      executeQuery<CountRow>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
     ]);
     return c.json({ success: true, data: {
       todaySales: sales[0]?.total || 0,
@@ -341,22 +447,21 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     else if (period === 'week') df = "AND DATE(o.created_at) >= DATE('now','-7 days')";
     else if (period === 'month') df = "AND DATE(o.created_at) >= DATE('now','-30 days')";
 
-    // Default commission rate: 10% (TODO: Add commission_rate column to sellers table)
-    const defaultCommission = 10;
     const [overview, sellers] = await Promise.all([
-      executeQuery<any>(DB, `
+      executeQuery<SettlementOverviewRow>(DB, `
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(o.total_amount),0) as total_sales,
-               COALESCE(SUM(o.total_amount*${defaultCommission}/100),0) as total_commission,
-               COALESCE(SUM(o.total_amount*(1-${defaultCommission}/100)),0) as total_seller_amount
+               COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,10)/100),0) as total_commission,
+               COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,10)/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
         WHERE o.payment_status='approved' ${df}`),
-      executeQuery<any>(DB, `
-        SELECT s.id as seller_id, s.name as seller_name, s.business_name, ${defaultCommission} as commission_rate,
+      executeQuery<SettlementSellerRow>(DB, `
+        SELECT s.id as seller_id, s.name as seller_name, s.business_name,
+               COALESCE(s.commission_rate,10) as commission_rate,
                COUNT(o.id) as order_count,
                COALESCE(SUM(o.total_amount),0) as total_sales,
-               COALESCE(SUM(o.total_amount*${defaultCommission}/100),0) as commission_amount,
-               COALESCE(SUM(o.total_amount*(1-${defaultCommission}/100)),0) as seller_amount
+               COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,10)/100),0) as commission_amount,
+               COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,10)/100)),0) as seller_amount
         FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.payment_status='approved' ${df}
         GROUP BY s.id ORDER BY total_sales DESC`),
     ]);
@@ -373,19 +478,17 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     const sellerId = c.req.query('seller_id');
     const status = c.req.query('status');
 
-    // Default commission rate: 10% (TODO: Add commission_rate column to sellers table)
-    const defaultCommission = 10;
     let query = `
       SELECT o.id, o.order_number, o.seller_id, s.name as seller_name, s.business_name,
-             o.total_amount, ${defaultCommission} as commission_rate,
-             (o.total_amount*${defaultCommission}/100) as commission_amount,
-             (o.total_amount*(1-${defaultCommission}/100)) as seller_amount,
+             o.total_amount, COALESCE(s.commission_rate,10) as commission_rate,
+             (o.total_amount*COALESCE(s.commission_rate,10)/100) as commission_amount,
+             (o.total_amount*(1-COALESCE(s.commission_rate,10)/100)) as seller_amount,
              COALESCE(o.settlement_status,'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
       WHERE o.payment_status='approved'
     `;
-    const params: any[] = [];
+    const params: (string | number | null)[] = [];
     if (period === 'today') { query += ' AND DATE(o.created_at)=?'; params.push(new Date().toISOString().split('T')[0]); }
     else if (period === 'week') query += " AND DATE(o.created_at)>=DATE('now','-7 days')";
     else if (period === 'month') query += " AND DATE(o.created_at)>=DATE('now','-30 days')";
@@ -393,7 +496,7 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     if (status && status !== 'all') { query += " AND COALESCE(o.settlement_status,'pending')=?"; params.push(status); }
     query += ' ORDER BY o.created_at DESC LIMIT 1000';
 
-    const records = await executeQuery<any>(DB, query, params);
+    const records = await executeQuery<SettlementRecordRow>(DB, query, params);
     return c.json({ success: true, data: records });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -406,7 +509,7 @@ adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const streamId = c.req.param('id');
-    const rows = await executeQuery<any>(DB, 'SELECT id FROM live_streams WHERE id=?', [streamId]);
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM live_streams WHERE id=?', [streamId]);
     if (rows.length === 0) return c.json({ success: false, error: '라이브 스트림을 찾을 수 없습니다' }, 404);
     await executeQuery(DB, 'DELETE FROM live_streams WHERE id=?', [streamId]);
     return c.json({ success: true, data: { id: streamId } });
@@ -422,8 +525,16 @@ export default adminManagementRoutes;
 // 실제 알리고 API 연동이 필요하면 src/lib/aligo.ts 참고
 
 adminManagementRoutes.get('/alimtalk/pricing', cors(), async (c) => {
-  // TODO: alimtalk_templates 테이블에서 가격 정보 조회
-  return c.json({ success: true, data: [] });
+  const { DB } = c.env;
+  try {
+    const templates = await DB.prepare(
+      `SELECT id, template_code, template_name, price_per_message, is_active, created_at
+       FROM alimtalk_templates ORDER BY template_name ASC`
+    ).all().catch(() => ({ results: [] }));
+    return c.json({ success: true, data: templates.results });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
 });
 
 adminManagementRoutes.put('/alimtalk/pricing/:id', cors(), async (c) => {

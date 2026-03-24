@@ -173,7 +173,8 @@ export default function WebStreaming({
    * Connect WebSocket for real-time control
    */
   function connectWebSocket() {
-    const wsUrl = `wss://live.ur-team.com/ws/stream/${streamId}`
+    const baseUrl = import.meta.env.VITE_RTMP_SERVER_URL || 'wss://live.ur-team.com'
+    const wsUrl = `${baseUrl}/ws/stream/${streamId}`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {

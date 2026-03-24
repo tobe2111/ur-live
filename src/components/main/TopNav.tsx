@@ -29,10 +29,7 @@ export default function TopNav() {
 
   const handleNotificationClick = () => {
     if (isLoggedIn) {
-      // TODO: 알림 페이지 또는 모달 구현
-      console.log('알림 클릭')
-      // 임시로 알림 표시
-      alert('알림 기능은 준비 중입니다.')
+      navigate('/mypage/notifications')
     } else {
       navigate('/login?returnUrl=/')
     }

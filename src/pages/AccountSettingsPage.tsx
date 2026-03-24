@@ -16,6 +16,7 @@ import {
   Edit,
 } from 'lucide-react';
 import { getUserId, getUserIdSync, getUserName, getUserNameSync, getUserEmail } from '@/utils/auth';
+import api from '@/lib/api';
 
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
@@ -35,11 +36,18 @@ export default function AccountSettingsPage() {
         return;
       }
 
+      let phone = ''
+      try {
+        const res = await api.get('/api/auth/me')
+        if (res.data.success && res.data.data) {
+          phone = res.data.data.phone || ''
+        }
+      } catch {}
       setUser({
         id: userId,
         name: getUserNameSync() || '사용자',
         email: getUserEmail() || '',
-        phone: '010-1234-5678', // TODO: 실제 전화번호 가져오기
+        phone,
       });
     };
     

@@ -42,8 +42,6 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>();
  */
 accountRoutes.delete('/delete', async (c) => {
   try {
-    console.log('[Account Delete] Request received');
-
     const body = await c.req.json<DeleteAccountRequest>();
     const { userId, reason } = body;
 
@@ -54,17 +52,13 @@ accountRoutes.delete('/delete', async (c) => {
       }, 400);
     }
 
-    console.log('[Account Delete] Processing for userId:', userId);
-
     // 계정 삭제 처리
-    const result = await deleteUserAccount({ userId, reason });
-
-    console.log('[Account Delete] Success:', result);
+    const result = await deleteUserAccount({ userId, reason }, c.env.DB);
 
     return c.json(result, 200);
   } catch (error) {
     console.error('[Account Delete] Error:', error);
-    
+
     return c.json({
       success: false,
       message: error instanceof Error ? error.message : '회원 탈퇴 처리 중 오류가 발생했습니다.'
@@ -96,9 +90,7 @@ accountRoutes.get('/check-restriction', async (c) => {
       }, 400);
     }
 
-    console.log('[Account Restriction] Checking for email:', email);
-
-    const result = await checkReregistrationRestriction(email);
+    const result = await checkReregistrationRestriction(email, c.env.DB);
 
     return c.json(result, 200);
   } catch (error) {

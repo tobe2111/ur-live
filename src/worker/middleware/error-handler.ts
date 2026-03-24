@@ -75,19 +75,62 @@ async function sendToSentry(
   error: Error,
   errorResponse: ErrorResponse
 ): Promise<void> {
-  const sentryDsn = c.env.VITE_SENTRY_DSN;
-  
+  const sentryDsn = (c.env as any).SENTRY_DSN || (c.env as any).VITE_SENTRY_DSN;
+
   if (!sentryDsn) {
     return;
   }
 
   try {
-    // TODO: Sentry SDK 통합
-    console.log('[Error Handler] Sending to Sentry:', {
-      error: error.message,
-      stack: error.stack,
-      response: errorResponse,
+    // Use Sentry Envelope API (no SDK needed for Workers)
+    const sentryEvent = {
+      event_id: crypto.randomUUID().replace(/-/g, ''),
+      timestamp: Math.floor(Date.now() / 1000),
+      platform: 'javascript',
+      level: 'error',
+      logger: 'cloudflare-worker',
+      message: error.message,
+      exception: {
+        values: [{
+          type: error.name || 'Error',
+          value: error.message,
+          stacktrace: error.stack ? {
+            frames: error.stack.split('\n').slice(1).map(line => ({ filename: line.trim() }))
+          } : undefined
+        }]
+      },
+      request: {
+        url: errorResponse.path,
+        method: c.req.method,
+      },
+      extra: {
+        code: errorResponse.code,
+        statusCode: errorResponse.statusCode,
+        requestId: errorResponse.requestId,
+      },
+    };
+
+    // Parse DSN to get project endpoint
+    const url = new URL(sentryDsn);
+    const projectId = url.pathname.replace('/', '');
+    const sentryUrl = `${url.protocol}//${url.host}/api/${projectId}/envelope/`;
+
+    const envelope = [
+      JSON.stringify({ event_id: sentryEvent.event_id, sent_at: new Date().toISOString() }),
+      JSON.stringify({ type: 'event' }),
+      JSON.stringify(sentryEvent),
+    ].join('\n');
+
+    await fetch(sentryUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-sentry-envelope',
+        'X-Sentry-Auth': `Sentry sentry_key=${url.username}, sentry_version=7`,
+      },
+      body: envelope,
     });
+
+    console.log('[Error Handler] Sent to Sentry:', errorResponse.error);
   } catch (err) {
     console.error('[Error Handler] Failed to send to Sentry:', err);
   }

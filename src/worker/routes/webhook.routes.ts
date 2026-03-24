@@ -14,6 +14,69 @@ import { WebhookEventRepository } from '../repositories/webhook.repository';
 import type { TossWebhookPayload } from '../../shared/types';
 import { arrayBufferToHex } from '../../shared/utils';
 
+// ============================================================
+// Order Notification Helper
+// ============================================================
+
+/**
+ * Send an order status notification.
+ *
+ * Currently dispatches a Discord embed when DISCORD_WEBHOOK_URL is configured
+ * in env.  Alimtalk (KakaoTalk) sending is wired via src/lib/aligo.ts but
+ * requires ALIGO_API_KEY / ALIGO_USER_ID / ALIGO_SENDER_KEY to be set in env.
+ *
+ * @param orderRepo  - OrderRepository instance scoped to the current request
+ * @param orderNumber - The platform order number (equals tossOrderId)
+ * @param event      - 'cancelled' | 'failed'
+ * @param env        - Worker Bindings (access to DISCORD_WEBHOOK_URL etc.)
+ */
+async function sendOrderNotification(
+  orderRepo: OrderRepository,
+  orderNumber: string,
+  event: 'cancelled' | 'failed',
+  env: Env
+): Promise<void> {
+  // Fetch order details so we have user contact info for future Alimtalk sends
+  const orders = await orderRepo.findByOrderNumber(orderNumber).catch(() => []);
+  const firstOrder = orders[0];
+
+  const contactPhone = firstOrder?.shipping_phone ?? 'N/A';
+  const userId = firstOrder?.user_id ?? 'N/A';
+
+  console.log(`[WEBHOOK] ORDER_NOTIFICATION event=${event}`, {
+    orderNumber,
+    userId,
+    contactPhone: contactPhone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'), // mask middle digits
+    ordersCount: orders.length,
+  });
+
+  // Discord notification (configured via DISCORD_WEBHOOK_URL env var)
+  const discordUrl = (env as any).DISCORD_WEBHOOK_URL;
+  if (discordUrl) {
+    const colorMap = { cancelled: 0xFFA500, failed: 0xFF0000 };
+    const titleMap = { cancelled: 'Order Cancelled', failed: 'Payment Failed' };
+
+    const embed = {
+      title: `🔔 ${titleMap[event]}`,
+      color: colorMap[event],
+      fields: [
+        { name: 'Order Number', value: orderNumber, inline: true },
+        { name: 'User ID', value: userId, inline: true },
+        { name: 'Orders Affected', value: String(orders.length), inline: true },
+        { name: 'Timestamp', value: new Date().toISOString(), inline: false },
+      ],
+    };
+
+    await fetch(discordUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    console.log(`[WEBHOOK] Discord notification sent for ${event} order ${orderNumber}`);
+  }
+}
+
 const webhookRouter = new Hono<{ Bindings: Env }>();
 
 // ---- HMAC-SHA256 Signature Verification ----
@@ -140,11 +203,11 @@ webhookRouter.post('/', async (c) => {
         break;
 
       case 'payment.cancelled':
-        await handlePaymentCancelled(orderRepo, data, tossOrderId);
+        await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env);
         break;
 
       case 'payment.failed':
-        await handlePaymentFailed(orderRepo, data, tossOrderId);
+        await handlePaymentFailed(orderRepo, data, tossOrderId, c.env);
         break;
 
       case 'payment.virtual_account_issued':
@@ -254,7 +317,8 @@ async function handlePaymentConfirmed(
 async function handlePaymentCancelled(
   orderRepo: OrderRepository,
   data: TossWebhookPayload['data'],
-  orderNumber: string
+  orderNumber: string,
+  env: Env
 ): Promise<void> {
   console.log('[WEBHOOK] PAYMENT_CANCELLED', {
     orderNumber,
@@ -280,7 +344,9 @@ async function handlePaymentCancelled(
     }
   }
 
-  // TODO: Send cancellation notification (email/push) - Phase 2
+  // Send order cancellation notification
+  await sendOrderNotification(orderRepo, orderNumber, 'cancelled', env)
+    .catch(err => console.error('[WEBHOOK] Notification failed:', err));
   console.log('[WEBHOOK] PAYMENT_CANCELLED_COMPLETE', {
     orderNumber,
     ordersUpdated: orders.length,
@@ -294,7 +360,8 @@ async function handlePaymentCancelled(
 async function handlePaymentFailed(
   orderRepo: OrderRepository,
   data: TossWebhookPayload['data'],
-  orderNumber: string
+  orderNumber: string,
+  env: Env
 ): Promise<void> {
   console.log('[WEBHOOK] PAYMENT_FAILED', {
     orderNumber,
@@ -308,7 +375,8 @@ async function handlePaymentFailed(
     webhook_event_id: `payment.failed:${orderNumber}`,
   });
 
-  // TODO: Send failure notification (email/push) - Phase 2
+  await sendOrderNotification(orderRepo, orderNumber, 'failed', env)
+    .catch(err => console.error('[WEBHOOK] Notification failed:', err));
   console.log('[WEBHOOK] PAYMENT_FAILED_COMPLETE', { orderNumber });
 }
 

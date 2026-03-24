@@ -49,8 +49,6 @@ interface ShippingAddress {
 }
 
 export default function CheckoutPage() {
-  console.log('🚀🚀🚀 CheckoutPage 컴포넌트 마운트됨 - ' + new Date().toISOString())
-  
   // ✅ Region 기반 Store 선택
   const isKR = isKorea()
   const krUser = useAuthKR(state => state.user)
@@ -158,7 +156,6 @@ export default function CheckoutPage() {
       // 레거시 JWT 키도 정리
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
-      console.log('[CheckoutPage] ✅ URL 파라미터 정리 완료')
     }
     
     // ✅ URL 파라미터 처리 완료 표시 (data-load effect gate)
@@ -169,7 +166,6 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!isAuthReady) return
     if (user) {
-      console.log('[CheckoutPage] ✅ 인증 확인 완료, user:', user.uid)
     }
   }, [isAuthReady, user])
 
@@ -181,15 +177,12 @@ export default function CheckoutPage() {
   // 🎯 Step 3: 금액 변경 시 업데이트 (V1 - 동기 메서드)
   useEffect(() => {
     if (paymentMethodWidget == null || !ready) {
-      console.log('[TossPayments] Step 3: 대기 중 (paymentMethodWidget:', !!paymentMethodWidget, 'ready:', ready, ')')
       return
     }
 
     try {
       // V1 공식: paymentMethodWidget.updateAmount() 사용
-      console.log('[TossPayments] Step 3: 금액 업데이트 시도', totalAmount)
       paymentMethodWidget.updateAmount(totalAmount)
-      console.log('[TossPayments] ✅ Step 3: 금액 업데이트 성공', totalAmount)
     } catch (err) {
       console.error('[TossPayments] ❌ Step 3 실패:', err)
       // 금액 업데이트 실패는 치명적이지 않으므로 계속 진행
@@ -200,51 +193,32 @@ export default function CheckoutPage() {
   useEffect(() => {
     // ⏳ URL 파라미터 처리가 완료될 때까지 대기
     if (!urlParamsProcessed) {
-      console.log('[CheckoutPage] ⏳ URL 파라미터 처리 대기 중...')
       return
     }
-    
-    console.log('[CheckoutPage] 🎯 초기 데이터 로드 useEffect 실행됨')
-    
+
     // 🔥 Fix: Use Firebase UID directly if getUserId() returns null
     let uid = getUserIdSync()
     
     // Fallback to Firebase UID if userId is not in localStorage
     if (!uid && user) {
-      console.log('[CheckoutPage] ⚠️ localStorage에 userId 없음, Firebase UID 사용:', user.uid)
       uid = user.uid
       // Save Firebase UID as user_id for future use
       localStorage.setItem('user_id', user.uid)
     }
-    
-    console.log('[CheckoutPage] 👤 userId:', uid)
-    console.log('[CheckoutPage] 🔍 localStorage 전체 확인:', {
-      user_id: localStorage.getItem('user_id'),
-      userId: localStorage.getItem('userId'),
-      firebase_token: localStorage.getItem('firebase_token')?.substring(0, 20) + '...',
-      user_name: localStorage.getItem('user_name'),
-      user_type: localStorage.getItem('user_type'),
-      firebase_uid: user?.uid
-    })
-    console.log('[CheckoutPage] isLoggedIn:', isLoggedInSync())
 
     if (!uid) {
-      console.log('[CheckoutPage] ❌ userId 없음')
       captureError(new Error('CheckoutPage: userId 없음'), { context: 'CheckoutPage.loadData' })
       setError('사용자 정보를 확인할 수 없습니다.')
       setLoading(false)
       return
     }
 
-    console.log('[CheckoutPage] ✅ userId 설정:', uid)
     setUserId(uid)
 
     const loadData = async () => {
       try {
-        console.log('[CheckoutPage] 📡 장바구니 API 호출 시작: /api/cart')
         // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
         const cartResponse = await api.get('/api/cart')
-        console.log('[CheckoutPage] 장바구니 응답:', cartResponse.data)
         
         // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
         let cartItemsData: CartItem[] = []
@@ -262,27 +236,21 @@ export default function CheckoutPage() {
         }
         
         if (cartItemsData.length > 0) {
-          console.log('[CheckoutPage] ✅ 장바구니 데이터 설정:', cartItemsData.length, '개 상품')
           setCartItems(cartItemsData)
         } else {
-          console.log('[CheckoutPage] ❌ 장바구니 비어있음')
           setError('장바구니가 비어있습니다.')
           setTimeout(() => navigate('/cart'), 2000)
         }
 
         // 배송지 조회 (requireAuth 미들웨어가 userId 자동 추출)
-        console.log('[CheckoutPage] 📡 배송지 API 호출 시작: /api/shipping-addresses')
         const addressResponse = await api.get('/api/shipping-addresses')
-        console.log('[CheckoutPage] 배송지 응답:', addressResponse.data)
         if (addressResponse.data.success) {
           const addressList = addressResponse.data.data
           setAddresses(addressList)
-          console.log('[CheckoutPage] ✅ 배송지 데이터 설정:', addressList.length, '개')
-          
+
           // 기본 배송지 자동 선택
           const defaultAddr = addressList.find((addr: ShippingAddress) => addr.is_default === 1)
           if (defaultAddr) {
-            console.log('[CheckoutPage] ✅ 기본 배송지 선택:', defaultAddr)
             setSelectedAddress(defaultAddr)
           }
         }
@@ -292,12 +260,10 @@ export default function CheckoutPage() {
         handleApiError(err)
         setError('데이터를 불러올 수 없습니다.')
       } finally {
-        console.log('[CheckoutPage] 로딩 완료')
         setLoading(false)
       }
     }
 
-    console.log('[CheckoutPage] loadData() 호출')
     loadData()
 
     // ✅ BUG #14 FIX: Daum postcode script was appended to <head> unconditionally
@@ -345,32 +311,17 @@ export default function CheckoutPage() {
 
   // 배송지 저장
   const handleSaveNewAddress = async () => {
-    console.log('[CheckoutPage] 💾 handleSaveNewAddress 함수 실행됨')
-    console.log('[CheckoutPage] userId:', userId)
-    console.log('[CheckoutPage] newAddress:', newAddress)
-    
     if (!userId) {
-      console.error('[CheckoutPage] ❌ userId 없음')
       alert('로그인이 필요합니다.')
       return
     }
 
     if (!newAddress.recipient_name || !newAddress.phone || !newAddress.postal_code || !newAddress.address) {
-      console.error('[CheckoutPage] ❌ 필수 항목 누락:', {
-        recipient_name: newAddress.recipient_name,
-        phone: newAddress.phone,
-        postal_code: newAddress.postal_code,
-        address: newAddress.address
-      })
       alert('모든 필수 항목을 입력해주세요.')
       return
     }
-    
-    console.log('[CheckoutPage] ✅ 유효성 검사 통과, API 호출 시작')
 
     try {
-      console.log('[CheckoutPage] 📡 API 호출: /api/shipping-addresses')
-      
       // 첫 번째 배송지는 자동으로 기본 배송지로 설정
       const isFirstAddress = addresses.length === 0
       const addressData = {
@@ -379,14 +330,9 @@ export default function CheckoutPage() {
         is_default: isFirstAddress ? 1 : 0  // 첫 배송지면 기본으로 설정
       }
       
-      console.log('[CheckoutPage] 배송지 데이터:', addressData)
-      console.log('[CheckoutPage] 첫 번째 배송지 여부:', isFirstAddress)
-      
       const response = await api.post('/api/shipping-addresses', addressData)
-      console.log('[CheckoutPage] API 응답:', response.data)
 
       if (response.data.success) {
-        console.log('[CheckoutPage] ✅ 배송지 저장 성공')
         const newId = response.data.data.id
         const savedAddress = { ...newAddress, id: newId }
         
@@ -418,16 +364,8 @@ export default function CheckoutPage() {
       e.stopPropagation()
     }
 
-    console.log('[Payment] 🔘 버튼 클릭 감지:', {
-      isProcessing,
-      ready,
-      hasWidgets: !!widgets,
-      hasAddress: !!selectedAddress
-    })
-
     // 중복 실행 방지
     if (isProcessing) {
-      console.log('[Payment] ⚠️ 이미 결제 진행 중')
       return
     }
 
@@ -440,7 +378,6 @@ export default function CheckoutPage() {
 
     // 배송지 선택 확인
     if (!selectedAddress) {
-      console.log('[Payment] ⚠️ 배송지 미선택')
       alert('배송지를 선택해주세요.')
       setShowAddressModal(true)  // 자동으로 배송지 선택 모달 열기
       return
@@ -448,7 +385,6 @@ export default function CheckoutPage() {
 
     // 개인정보 수집 동의 확인
     if (!agreedToPrivacy) {
-      console.log('[Payment] ⚠️ 개인정보 수집 동의 미체크')
       alert('개인정보 수집 및 이용에 동의해주세요.')
       return
     }
@@ -457,7 +393,6 @@ export default function CheckoutPage() {
     try {
       const agreementCheckbox = document.querySelector('#agreement input[type="checkbox"]') as HTMLInputElement
       if (agreementCheckbox && !agreementCheckbox.checked) {
-        console.log('[Payment] ✅ 약관 동의 자동 체크')
         agreementCheckbox.checked = true
         // 체크박스 변경 이벤트 트리거 (Toss Payments 위젯에 알림)
         agreementCheckbox.dispatchEvent(new Event('change', { bubbles: true }))
@@ -468,7 +403,6 @@ export default function CheckoutPage() {
 
     // 처리 중 플래그 설정
     setIsProcessing(true)
-    console.log('[Payment] ✅ 결제 시작:', { totalAmount, selectedAddress })
 
     try {
       // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
@@ -500,19 +434,15 @@ export default function CheckoutPage() {
         option_value: item.option_value || null
       }))
       localStorage.setItem('checkoutCartBackup', JSON.stringify(cartBackup))
-      console.log('[Payment] 💾 장바구니 백업 완료:', cartBackup.length, '개 상품')
 
       // ✅ 주문 번호 생성 (Toss Payments 규격 준수)
       const orderId = generateOrderId(userId || undefined)
-      console.log('[Payment] ✅ Generated orderId:', orderId, 'Length:', orderId.length)
       
       // 주문명 생성
       const firstItem = cartItems[0]
       const orderName = cartItems.length > 1 
         ? `${firstItem.product_name} 외 ${cartItems.length - 1}건`
         : firstItem.product_name
-
-      console.log('[Payment] requestPayment 호출:', { orderId, orderName, totalAmount })
 
       // 결제 요청 옵션 (Version 1 - 모바일/PC 자동 감지)
       // ✅ V1은 자동으로 환경을 감지하여 최적화된 UI 제공 (flowMode 불필요)
@@ -525,8 +455,6 @@ export default function CheckoutPage() {
         customerName: selectedAddress.recipient_name,
         customerMobilePhone: selectedAddress.phone.replace(/-/g, '')
       }
-
-      console.log('[Payment] 최종 요청 옵션 (V1 - 자동 모바일/PC 감지):', requestOptions)
 
       // 결제 요청
       // ⚠️ V1에서 successUrl/failUrl을 설정하면 리다이렉트 방식으로 작동
@@ -544,7 +472,6 @@ export default function CheckoutPage() {
       }
       // Intent URL 에러 (카드사 앱 실행 실패)
       if (err.message && err.message.includes('intent://')) {
-        console.log('[Payment] ⚠️ Intent URL 에러 발생 - 모바일 앱 실행 실패')
         showErrorToast('카드사 앱을 실행할 수 없습니다. 다른 결제 수단을 이용해주세요.')
       }
       // 팝업 차단 에러
@@ -553,8 +480,7 @@ export default function CheckoutPage() {
       } 
       // 사용자 취소는 조용히 처리
       else if (err.code === 'USER_CANCEL') {
-        console.log('[Payment] 사용자가 결제를 취소했습니다.')
-      } 
+      }
       // 그 외 에러
       else {
         showErrorToast('결제 요청에 실패했습니다. 다시 시도해주세요.')
@@ -569,7 +495,6 @@ export default function CheckoutPage() {
 
   // ✅ BUG #3 FIX: Auth-guard and loading checks rendered here (after all hooks)
   if (!isAuthReady || authLoading) {
-    console.log('[CheckoutPage] ⏳ 인증 초기화 대기 중...', { authLoading, isAuthReady })
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
@@ -581,7 +506,6 @@ export default function CheckoutPage() {
   }
 
   if (!user) {
-    console.log('[CheckoutPage] ❌ 사용자 없음 - ProtectedRoute로 처리됨')
     // ProtectedRoute가 /login 으로 리다이렉트하므로 여기서는 null만 반환
     return null
   }
@@ -649,9 +573,6 @@ export default function CheckoutPage() {
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    console.log('[CheckoutPage] 배송지 변경 버튼 클릭')
-                    console.log('[CheckoutPage] 현재 showAddressModal:', showAddressModal)
-                    console.log('[CheckoutPage] 배송지 목록:', addresses)
                     setShowAddressModal(true)
                   }}
                   className="flex items-center text-[14px] sm:text-[15px] lg:text-[16px] font-semibold text-blue-600 transition-all hover:text-blue-700 hover:underline active:scale-95 cursor-pointer px-3 py-2 -mr-2 touch-manipulation relative z-10"
@@ -786,7 +707,6 @@ export default function CheckoutPage() {
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
-                      console.log('[CheckoutPage] 결제 성공:', { orderId, paymentKey, amount })
                       navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
                     }}
                     onPaymentError={(error) => {
@@ -809,7 +729,6 @@ export default function CheckoutPage() {
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {
-                      console.log('[CheckoutPage] Payment success:', { orderId, paymentIntentId, amount })
                       navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
                     }}
                     onPaymentError={(error) => {
@@ -921,7 +840,6 @@ export default function CheckoutPage() {
       <CustomModal
         isOpen={showAddressModal}
         onClose={() => {
-          console.log('[CheckoutPage] 배송지 모달 닫기')
           setShowAddressModal(false)
         }}
         title="배송지 선택"
@@ -946,7 +864,6 @@ export default function CheckoutPage() {
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
-                  console.log('[CheckoutPage] 배송지 아이템 클릭:', addr.id)
                   setSelectedAddress(addr)
                   setShowAddressModal(false)
                 }}
@@ -987,7 +904,6 @@ export default function CheckoutPage() {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              console.log('[CheckoutPage] 새 배송지 추가 버튼 클릭')
               setShowAddressModal(false)
               setTimeout(() => setShowNewAddressForm(true), 100)
             }}
@@ -1098,7 +1014,6 @@ export default function CheckoutPage() {
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
-                console.log('[CheckoutPage] 저장 버튼 클릭')
                 handleSaveNewAddress()
               }}
               className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[16px] font-bold hover:bg-blue-700 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
@@ -1109,7 +1024,6 @@ export default function CheckoutPage() {
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
-                console.log('[CheckoutPage] 취소 버튼 클릭')
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}

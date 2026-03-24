@@ -1,15 +1,13 @@
 /**
- * Sentry 에러 추적 설정
- * 
- * TODO: Sentry 프로젝트 생성 및 DSN 설정
- * 1. https://sentry.io 에서 프로젝트 생성
- * 2. DSN 복사
- * 3. wrangler.jsonc에 환경 변수 추가: SENTRY_DSN
- * 4. Cloudflare Workers용 Sentry SDK 설치
- * 
- * npm install @sentry/browser (클라이언트)
- * 또는 Toucan (Cloudflare Workers용)
- * npm install toucan-js
+ * Sentry 에러 추적 설정 (Workers용)
+ *
+ * 연동 방법:
+ * 1. https://sentry.io 에서 프로젝트 생성 후 DSN 복사
+ * 2. wrangler.jsonc의 [vars] 또는 secrets에 SENTRY_DSN 추가:
+ *    wrangler secret put SENTRY_DSN
+ * 3. 클라이언트 Sentry는 src/lib/sentry.ts 참고 (VITE_SENTRY_DSN 필요)
+ *
+ * Workers 에러 핸들러는 src/worker/middleware/error-handler.ts에서 자동 처리됨
  */
 
 /*

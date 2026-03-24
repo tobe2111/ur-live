@@ -148,13 +148,21 @@ export function detectUserTier(c: Context): keyof typeof RATE_LIMIT_TIERS {
     return 'PUBLIC';
   }
 
-  // TODO: JWT에서 역할 추출
-  // const token = authHeader.replace('Bearer ', '');
-  // const decoded = decodeJWT(token);
-  // if (decoded.role === 'admin' || decoded.role === 'seller') {
-  //   return 'PREMIUM';
-  // }
-  
+  // JWT payload는 base64url 인코딩 — 서명 검증 없이 역할만 빠르게 읽음
+  // (실제 서명 검증은 auth 미들웨어에서 수행)
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const payloadB64 = token.split('.')[1];
+    if (payloadB64) {
+      const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+      if (payload?.role === 'admin' || payload?.role === 'seller') {
+        return 'PREMIUM';
+      }
+    }
+  } catch {
+    // 파싱 실패 시 일반 인증 티어로 처리
+  }
+
   return 'AUTHENTICATED';
 }
 

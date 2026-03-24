@@ -425,9 +425,15 @@ export default function ShortFormPage() {
 
                 {/* Like Button */}
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation()
-                    // TODO: Add to favorites
+                    const userId = getUserIdSync()
+                    if (!userId) { navigate('/login'); return }
+                    try {
+                      await api.post('/api/wishlists', { product_id: product.id })
+                    } catch {
+                      // 이미 찜한 상품이면 무시
+                    }
                   }}
                   className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md hover:bg-white hover:scale-110 transition-all duration-200"
                 >

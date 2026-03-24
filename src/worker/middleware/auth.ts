@@ -13,6 +13,25 @@ import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
 
 /**
+ * JWT payload type (both seller/admin JWT and Firebase token)
+ */
+interface JwtPayload {
+  uid?: string;
+  userId?: string;
+  sub?: string;
+  user_id?: string;
+  email?: string;
+  name?: string;
+  type?: string;
+  role?: string;
+  exp?: number;
+  iat?: number;
+  iss?: string;
+  aud?: string;
+  [key: string]: unknown;
+}
+
+/**
  * User types
  */
 export type UserType = 'user' | 'seller' | 'admin';
@@ -56,7 +75,7 @@ function extractToken(authHeader: string | null): string | null {
 async function verifyJWT(
   token: string,
   secret: string
-): Promise<any> {
+): Promise<JwtPayload | null> {
   try {
     const isValid = await jwt.verify(token, secret);
     
@@ -137,7 +156,7 @@ function base64UrlToUint8Array(base64Url: string): Uint8Array {
 async function verifyFirebaseToken(
   token: string,
   projectId: string
-): Promise<any> {
+): Promise<JwtPayload | null> {
   try {
     console.log('[Firebase] 🔍 Starting Firebase token verification...');
     console.log('[Firebase] 🎫 Token (first 50 chars):', token.substring(0, 50) + '...');
@@ -180,10 +199,10 @@ async function verifyFirebaseToken(
     // JWK 공개키 조회
     console.log('[Firebase] 🔑 Fetching JWK public keys...');
     const jwkKeys = await getFirebaseJwkKeys();
-    const jwk = jwkKeys.find((k: any) => k.kid === kid);
+    const jwk = jwkKeys.find((k) => (k as { kid?: string }).kid === kid);
     if (!jwk) {
       console.error('[Firebase] ❌ JWK not found for kid:', kid);
-      console.error('[Firebase] Available kids:', jwkKeys.map((k: any) => k.kid).join(', '));
+      console.error('[Firebase] Available kids:', jwkKeys.map((k) => (k as { kid?: string }).kid).join(', '));
       return null;
     }
 
@@ -513,7 +532,7 @@ export function requireOwnership(userIdParam: string = 'id') {
  * Generate JWT token
  */
 export async function generateJWT(
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
   secret: string,
   expiresIn: number = 86400 // 24 hours
 ): Promise<string> {
