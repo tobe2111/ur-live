@@ -48,6 +48,32 @@ interface PaymentConfirmRequest {
   amount: number;
 }
 
+// ── DB row types ─────────────────────────────────────────────────────────────
+
+interface OrderRow {
+  id: number;
+  user_id: number;
+  order_number: string;
+  total_price: number;
+  status: string;
+  payment_key: string | null;
+  payment_method: string | null;
+  cancel_reason: string | null;
+  shipping_address: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TossPaymentErrorResponse {
+  message?: string;
+  [key: string]: unknown;
+}
+
+interface TossPaymentResponse {
+  method?: string;
+  [key: string]: unknown;
+}
+
 interface PaymentRollbackRequest {
   paymentKey: string;
   cancelReason: string;
@@ -79,7 +105,7 @@ async function confirmTossPayment(
   orderId: string,
   amount: number,
   secretKey: string
-): Promise<any> {
+): Promise<TossPaymentResponse> {
   try {
     const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
       method: 'POST',
@@ -91,12 +117,12 @@ async function confirmTossPayment(
     });
 
     if (!response.ok) {
-      const error = await response.json() as any;
+      const error = await response.json() as TossPaymentErrorResponse;
       throw new Error(error.message || 'Toss payment confirmation failed');
     }
 
-    return await response.json() as any;
-  } catch (error: any) {
+    return await response.json() as TossPaymentResponse;
+  } catch (error: unknown) {
     console.error('[Payment] Toss confirmation error:', error);
     throw error;
   }
@@ -110,9 +136,9 @@ async function cancelTossPayment(
   cancelReason: string,
   cancelAmount: number | undefined,
   secretKey: string
-): Promise<any> {
+): Promise<TossPaymentResponse> {
   try {
-    const body: any = { cancelReason };
+    const body: { cancelReason: string; cancelAmount?: number } = { cancelReason };
     if (cancelAmount !== undefined) {
       body.cancelAmount = cancelAmount;
     }
@@ -130,12 +156,12 @@ async function cancelTossPayment(
     );
 
     if (!response.ok) {
-      const error = await response.json() as any;
+      const error = await response.json() as TossPaymentErrorResponse;
       throw new Error(error.message || 'Toss payment cancellation failed');
     }
 
-    return await response.json() as any;
-  } catch (error: any) {
+    return await response.json() as TossPaymentResponse;
+  } catch (error: unknown) {
     console.error('[Payment] Toss cancellation error:', error);
     throw error;
   }
@@ -178,7 +204,7 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
       .from('orders o')
       .where('o.order_number = ?', orderId)
       .where('o.user_id = ?', userId)
-      .execute<any>(db);
+      .execute<OrderRow>(db);
 
     if (order.length === 0) {
       return c.json(notFoundResponse('Order'), 404);
@@ -245,15 +271,15 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
       order: mappedOrder
     }, 'Payment confirmed successfully'));
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Payment] Confirmation error:', error);
-    
+
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
     }
-    
+
     return c.json(internalServerErrorResponse(
-      error.message || 'Payment confirmation failed'
+      (error as Error).message || 'Payment confirmation failed'
     ), 500);
   }
 });
@@ -293,7 +319,7 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       .from('orders o')
       .where('o.payment_key = ?', paymentKey)
       .where('o.user_id = ?', userId)
-      .execute<any>(db);
+      .execute<OrderRow>(db);
 
     if (order.length === 0) {
       return c.json(notFoundResponse('Order'), 404);
@@ -355,15 +381,15 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       order: updatedOrder[0]
     }, 'Payment cancelled successfully'));
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Payment] Rollback error:', error);
-    
+
     if (error instanceof ValidationError) {
       return c.json(validationErrorResponse(error.message, error.field), 422);
     }
-    
+
     return c.json(internalServerErrorResponse(
-      error.message || 'Payment rollback failed'
+      (error as Error).message || 'Payment rollback failed'
     ), 500);
   }
 });

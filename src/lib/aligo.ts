@@ -20,7 +20,30 @@ export interface AligoTokenResponse {
 export interface AligoApiResponse {
   result_code: string
   message: string
-  [key: string]: any
+  token?: string
+  urtime?: number
+  authnum?: string
+  senderkey?: string
+  tpl_code?: string
+  msg_id?: string
+  list?: AligoListItem[]
+  [key: string]: unknown
+}
+
+export interface AligoListItem {
+  plusid?: string
+  senderkey?: string
+  name?: string
+  result?: string
+  tpl_code?: string
+  tpl_name?: string
+  tpl_content?: string
+  [key: string]: unknown
+}
+
+export interface AligoEnv {
+  ALIGO_API_KEY: string
+  ALIGO_USER_ID: string
 }
 
 export interface KakaoChannelData {
@@ -54,7 +77,7 @@ export interface AlimtalkMessage {
 /**
  * URL 인코딩된 폼 데이터 생성
  */
-function createFormData(data: Record<string, any>): URLSearchParams {
+function createFormData(data: Record<string, string | number | boolean | undefined>): URLSearchParams {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined && value !== null) {
@@ -82,7 +105,7 @@ function validateAligoResponse(result: AligoApiResponse, operation: string): voi
  * @description 모든 API 호출 전에 토큰을 생성해야 합니다. (유효시간: 30초)
  */
 export async function getAligoToken(
-  env: any
+  env: AligoEnv
 ): Promise<AligoTokenResponse> {
   console.log('[Aligo] 토큰 생성 시작')
 
@@ -117,7 +140,7 @@ export async function getAligoToken(
  * @description 채널 등록 전에 인증이 필요합니다.
  */
 export async function requestKakaoChannelAuth(
-  env: any,
+  env: AligoEnv,
   data: KakaoChannelData
 ): Promise<{ success: boolean; authNumber?: string }> {
   console.log('[Aligo] 카카오 채널 인증 요청:', data.channelId)
@@ -153,7 +176,7 @@ export async function requestKakaoChannelAuth(
  * @description 인증 후 채널을 등록합니다. 발신키(senderKey)를 받습니다.
  */
 export async function registerKakaoChannel(
-  env: any,
+  env: AligoEnv,
   data: KakaoChannelData
 ): Promise<{ success: boolean; senderKey: string }> {
   console.log('[Aligo] 카카오 채널 등록:', data.channelId)
@@ -188,7 +211,7 @@ export async function registerKakaoChannel(
  * 카카오 채널 목록 조회
  */
 export async function getKakaoChannels(
-  env: any
+  env: AligoEnv
 ): Promise<Array<{ plusid: string; senderkey: string; name: string }>> {
   console.log('[Aligo] 카카오 채널 목록 조회')
 
@@ -221,7 +244,7 @@ export async function getKakaoChannels(
  * 템플릿 등록
  */
 export async function registerTemplate(
-  env: any,
+  env: AligoEnv,
   senderKey: string,
   data: TemplateData
 ): Promise<{ success: boolean; templateCode: string }> {
@@ -259,9 +282,9 @@ export async function registerTemplate(
  * 템플릿 목록 조회
  */
 export async function getTemplates(
-  env: any,
+  env: AligoEnv,
   senderKey: string
-): Promise<Array<any>> {
+): Promise<AligoListItem[]> {
   console.log('[Aligo] 템플릿 목록 조회')
 
   const { token } = await getAligoToken(env)
@@ -294,7 +317,7 @@ export async function getTemplates(
  * 알림톡 발송 (단건)
  */
 export async function sendAlimtalk(
-  env: any,
+  env: AligoEnv,
   data: AlimtalkMessage
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   console.log('[Aligo] 알림톡 발송:', data.to)
@@ -338,11 +361,11 @@ export async function sendAlimtalk(
       success: true,
       messageId: result.msg_id
     }
-  } catch (error: any) {
-    console.error('[Aligo] ❌ 알림톡 발송 에러:', error.message)
+  } catch (error: unknown) {
+    console.error('[Aligo] ❌ 알림톡 발송 에러:', (error as Error).message)
     return {
       success: false,
-      error: error.message
+      error: (error as Error).message
     }
   }
 }
@@ -351,9 +374,9 @@ export async function sendAlimtalk(
  * 알림톡 발송 결과 조회
  */
 export async function getAlimtalkResult(
-  env: any,
+  env: AligoEnv,
   messageId: string
-): Promise<{ success: boolean; status: string; detail?: any }> {
+): Promise<{ success: boolean; status: string; detail?: AligoListItem }> {
   console.log('[Aligo] 알림톡 발송 결과 조회:', messageId)
 
   const { token } = await getAligoToken(env)

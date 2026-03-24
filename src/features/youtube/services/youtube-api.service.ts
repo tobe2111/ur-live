@@ -11,6 +11,88 @@ import type {
   YouTubeLiveSetup 
 } from '../types'
 
+// Raw API response shapes
+interface OAuthErrorResponse {
+  error?: string
+  error_description?: string
+}
+
+interface OAuthTokenResponse {
+  access_token: string
+  refresh_token?: string
+  expires_in: number
+  scope: string
+}
+
+interface YouTubeApiErrorResponse {
+  error?: {
+    message?: string
+  }
+}
+
+interface YouTubeThumbnail {
+  url: string
+}
+
+interface YouTubeChannelItem {
+  id: string
+  snippet: {
+    title: string
+    description: string
+    customUrl?: string
+    thumbnails: {
+      high?: YouTubeThumbnail
+      default: YouTubeThumbnail
+    }
+  }
+  statistics: {
+    subscriberCount?: string
+  }
+}
+
+interface YouTubeChannelListResponse {
+  items: YouTubeChannelItem[]
+}
+
+interface YouTubeBroadcastItem {
+  id: string
+  snippet: {
+    title: string
+    description: string
+    scheduledStartTime: string
+    liveChatId?: string
+    thumbnails?: {
+      high?: YouTubeThumbnail
+    }
+  }
+  status: {
+    lifeCycleStatus: string
+  }
+}
+
+interface YouTubeBroadcastListResponse {
+  items: YouTubeBroadcastItem[]
+}
+
+interface YouTubeStreamItem {
+  id: string
+  snippet: {
+    title: string
+  }
+  cdn: {
+    ingestionInfo: {
+      streamName: string
+      ingestionAddress: string
+      rtmpsIngestionAddress?: string
+    }
+    format: string
+    ingestionType: string
+  }
+  status: {
+    streamStatus: string
+  }
+}
+
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3'
 const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com'
 
@@ -40,11 +122,11 @@ export class YouTubeAPIService {
     })
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as OAuthErrorResponse
       throw new Error(`Token exchange failed: ${error.error_description || error.error}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as OAuthTokenResponse
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
@@ -69,11 +151,11 @@ export class YouTubeAPIService {
     })
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as OAuthErrorResponse
       throw new Error(`Token refresh failed: ${error.error_description || error.error}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as OAuthTokenResponse
     return {
       access_token: data.access_token,
       refresh_token: refreshToken, // Keep the same refresh token
@@ -94,12 +176,12 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to fetch channels: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json() as any
-    return data.items.map((item: any) => ({
+    const data = await response.json() as YouTubeChannelListResponse
+    return data.items.map((item: YouTubeChannelItem) => ({
       id: item.id,
       title: item.snippet.title,
       description: item.snippet.description,
@@ -151,11 +233,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to create broadcast: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as YouTubeBroadcastItem
     return {
       id: data.id,
       title: data.snippet.title,
@@ -197,11 +279,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to create stream: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as YouTubeStreamItem
     return {
       id: data.id,
       title: data.snippet.title,
@@ -235,7 +317,7 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to bind broadcast: ${error.error?.message || 'Unknown error'}`)
     }
   }
@@ -293,7 +375,7 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to go live: ${error.error?.message || 'Unknown error'}`)
     }
   }
@@ -311,7 +393,7 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to end broadcast: ${error.error?.message || 'Unknown error'}`)
     }
   }
@@ -328,11 +410,11 @@ export class YouTubeAPIService {
     )
 
     if (!response.ok) {
-      const error = await response.json() as any
+      const error = await response.json() as YouTubeApiErrorResponse
       throw new Error(`Failed to get broadcast: ${error.error?.message || 'Unknown error'}`)
     }
 
-    const data = await response.json() as any
+    const data = await response.json() as YouTubeBroadcastListResponse
     const item = data.items[0]
     
     return {
