@@ -212,6 +212,59 @@ app.get('/api/debug/bindings', (c) => {
   });
 });
 
+// KV usage monitoring (admin only)
+app.get('/api/debug/kv-usage', async (c) => {
+  const env = c.env as Env;
+  try {
+    // SESSION_KV의 활성 세션 키 수를 집계 (KV list 사용)
+    let sessionCount = 0;
+    if (env.SESSION_KV) {
+      const listed = await env.SESSION_KV.list({ limit: 1000 });
+      sessionCount = listed.keys.length;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const nextReset = new Date();
+    nextReset.setUTCHours(24, 0, 0, 0);
+
+    // Free tier limits: reads 100k/day, writes 1k/day
+    // Paid plan: reads 10M/day, writes 1M/day
+    const readLimit = 100000;
+    const writeLimit = 1000;
+    // Estimate: each session = ~10 reads/day (token validation), 1 write (creation)
+    const estimatedReads = sessionCount * 10;
+    const estimatedWrites = Math.ceil(sessionCount * 0.3);
+    const readUsagePercent = Math.min(100, Math.round((estimatedReads / readLimit) * 100));
+    const writeUsagePercent = Math.min(100, Math.round((estimatedWrites / writeLimit) * 100));
+
+    return c.json({
+      success: true,
+      data: {
+        timestamp: new Date().toISOString(),
+        note: 'KV 사용량은 활성 세션 수 기반 추정치입니다. 정확한 수치는 Cloudflare 대시보드에서 확인하세요.',
+        activeSessions: sessionCount,
+        reads: {
+          current: estimatedReads,
+          limit: readLimit,
+          resetDate: today,
+        },
+        writes: {
+          current: estimatedWrites,
+          limit: writeLimit,
+          resetDate: today,
+        },
+        readLimit,
+        writeLimit,
+        readUsagePercent,
+        writeUsagePercent,
+        estimatedDailyCost: 0,
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ============================================================
 // Auth Routes
 // ============================================================
