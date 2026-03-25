@@ -385,6 +385,65 @@ ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
 });
 
 /**
+ * POST /api/orders/:id/confirm
+ * 구매확정: 유저가 직접 배송완료 처리 (배송중 상태에서만 가능)
+ */
+ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
+  const { DB } = c.env;
+  const authUser = getCurrentUser(c);
+  if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const id = Number(c.req.param('id'));
+  if (isNaN(id)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
+
+  const repository = new OrderRepository(DB);
+  const order = await repository.findById(id) as any;
+  if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
+
+  if (authUser.type === 'user') {
+    const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
+    if (order.user_id !== dbUserId) return c.json({ success: false, error: 'Forbidden' }, 403);
+  }
+
+  if (!['shipping', 'SHIPPING'].includes(order.status)) {
+    return c.json({ success: false, error: '배송중 상태에서만 구매확정이 가능합니다.' }, 400);
+  }
+
+  await DB.prepare(`
+    UPDATE orders
+    SET status = 'delivered', delivered_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ? AND status IN ('shipping', 'SHIPPING')
+  `).bind(id).run();
+
+  return c.json({ success: true, data: { message: '구매확정이 완료되었습니다.' } });
+});
+
+/**
+ * POST /api/orders/internal/auto-confirm
+ * Cron 전용: shipped_at 기준 14일 경과한 배송중 주문 자동 구매확정
+ * X-Internal-Token: cron-sync-deliveries 헤더 필요
+ */
+ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
+  if (c.req.header('X-Internal-Token') !== 'cron-sync-deliveries') {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+
+  const { DB } = c.env;
+
+  const { meta } = await DB.prepare(`
+    UPDATE orders
+    SET status = 'delivered', delivered_at = datetime('now'), updated_at = datetime('now')
+    WHERE status IN ('shipping', 'SHIPPING')
+      AND shipped_at < datetime('now', '-14 days')
+  `).run();
+
+  const confirmed = meta.changes ?? 0;
+  console.log(`[AutoConfirm] ✅ ${confirmed} orders auto-confirmed (14-day rule)`);
+
+  return c.json({ success: true, data: { confirmed } });
+});
+
+/**
  * POST /api/orders/internal/sync-deliveries
  * Cron 전용: 배송중 주문을 DeliveryTracker로 확인해 자동 완료 처리
  * X-Internal-Token: cron-sync-deliveries 헤더 필요

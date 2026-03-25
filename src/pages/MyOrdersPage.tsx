@@ -136,6 +136,24 @@ export default function MyOrdersPage() {
     navigate('/checkout')
   }
 
+  async function handleConfirmOrder(orderId: number | string, orderNumber: string) {
+    if (!confirm(`주문 ${orderNumber}을(를) 구매확정 하시겠습니까?\n구매확정 후에는 취소할 수 없습니다.`)) return
+    setProcessing(true)
+    try {
+      const response = await api.post(`/api/orders/${orderId}/confirm`)
+      if (response.data.success) {
+        toast.success('구매확정이 완료되었습니다.')
+        loadData()
+      } else {
+        toast.error(response.data.error || '구매확정에 실패했습니다.')
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || '구매확정 중 오류가 발생했습니다.')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   async function handleCancelOrder(orderId: number | string, orderNumber: string) {
     // 취소 모달 열기
     setCancelModal({
@@ -279,10 +297,11 @@ export default function MyOrdersPage() {
             )}
             
             {activeTab === 'orders' && (
-              <OrdersTab 
+              <OrdersTab
                 orders={orders}
                 onCancelOrder={handleCancelOrder}
                 onSelectOrder={(order) => setSelectedOrder(order)}
+                onConfirmOrder={handleConfirmOrder}
               />
             )}
             

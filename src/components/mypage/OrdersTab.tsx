@@ -9,6 +9,7 @@ interface OrdersTabProps {
   orders: Order[]
   onCancelOrder: (orderId: number | string, orderNumber: string) => void
   onSelectOrder: (order: Order) => void
+  onConfirmOrder?: (orderId: number | string, orderNumber: string) => void
 }
 
 // ─── 상태 표시 ────────────────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ function OrderFlowStepper({ status }: { status: string }) {
 
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
 
-export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabProps) {
+export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder }: OrdersTabProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'>('all')
 
   const filteredOrders = orders.filter(order =>
@@ -243,6 +244,14 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
                       className="px-4 py-2 text-[13px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-full hover:bg-[#ff3b30] hover:text-white transition-colors"
                     >
                       주문취소
+                    </button>
+                  )}
+                  {order.status === 'shipping' && onConfirmOrder && (
+                    <button
+                      onClick={() => onConfirmOrder(order.id, order.order_number ?? String(order.id))}
+                      className="px-4 py-2 text-[13px] font-medium text-[#34c759] border border-[#34c759] rounded-full hover:bg-[#34c759] hover:text-white transition-colors"
+                    >
+                      구매확정
                     </button>
                   )}
                   <button

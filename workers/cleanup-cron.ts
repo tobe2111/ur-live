@@ -59,6 +59,23 @@ export default {
       } catch (error) {
         console.error('[Cron] ❌ Delivery sync failed:', error);
       }
+
+      // ── 3. 14일 경과 배송중 주문 자동 구매확정 ──────────────────────────────
+      console.log('[Cron] 🛒 Running 14-day auto-confirm...');
+      try {
+        const confirmResponse = await fetch(`${BASE_URL}/api/orders/internal/auto-confirm`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Token': 'cron-sync-deliveries',
+          },
+        });
+        if (!confirmResponse.ok) throw new Error(`${confirmResponse.status} ${confirmResponse.statusText}`);
+        const confirmResult = await confirmResponse.json() as any;
+        console.log(`[Cron] ✅ Auto-confirm: ${confirmResult?.data?.confirmed ?? 0} orders auto-confirmed`);
+      } catch (error) {
+        console.error('[Cron] ❌ Auto-confirm failed:', error);
+      }
     }
   },
 };

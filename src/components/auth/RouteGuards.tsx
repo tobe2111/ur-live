@@ -74,6 +74,18 @@ function hasFirebaseUserSession(): boolean {
   return !!new URLSearchParams(window.location.search).get('firebase_token')
 }
 
+/** localStorage에 유효한(만료 전) Firebase 토큰 캐시가 있는지 확인 */
+function hasValidTokenCache(): boolean {
+  try {
+    const cached = localStorage.getItem('firebase_token_cache')
+    if (!cached) return false
+    const { expiresAt } = JSON.parse(cached)
+    return typeof expiresAt === 'number' && Date.now() < expiresAt
+  } catch {
+    return false
+  }
+}
+
 /** Firebase User 전용 보호 라우트 */
 function UserProtectedRoute({
   children,
@@ -137,7 +149,8 @@ function UserProtectedRoute({
   }
 
   // 아직 초기화 중 (타임아웃 전)
-  if (!isAuthReady && !timedOut) {
+  // ✅ 유효한 토큰 캐시가 있으면 스피너 생략 → 깜빡거림 제거 (optimistic render)
+  if (!isAuthReady && !timedOut && !hasValidTokenCache()) {
     if (DEBUG) console.log('[ProtectedRoute] ⏳ Firebase Auth 초기화 대기 중...')
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -146,8 +159,8 @@ function UserProtectedRoute({
     )
   }
 
-  // 인증 확인
-  if (!currentUser) {
+  // 인증 확인 (isAuthReady 완료 또는 타임아웃 후에만 미인증 리다이렉트)
+  if ((isAuthReady || timedOut) && !currentUser) {
     if (DEBUG) console.log('[ProtectedRoute] ❌ User 미인증 → /login')
     // ✅ 무한루프 방지: auth 관련 파라미터 모두 제거
     const cleanParams = new URLSearchParams(location.search)
