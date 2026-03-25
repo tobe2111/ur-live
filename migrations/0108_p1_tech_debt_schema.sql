@@ -23,10 +23,17 @@ UPDATE users SET password_hash_version = 'sha256' WHERE password_hash_version IS
 -- 신규 등록 사용자의 기본값은 pbkdf2
 -- (auth.routes.ts의 register 핸들러에서 'pbkdf2'로 설정)
 
--- 3. Toss payment key 인덱스 (취소 API 경로에서 자주 사용)
+-- 3. Toss payment key / order id 컬럼 추가 (001_initial.sql이 IF NOT EXISTS로 스킵됐을 경우 대비)
+ALTER TABLE orders ADD COLUMN toss_order_id TEXT;
+ALTER TABLE orders ADD COLUMN toss_payment_key TEXT;
+
+-- Toss payment key 인덱스 (취소 API 경로에서 자주 사용)
 CREATE INDEX IF NOT EXISTS idx_orders_toss_payment_key_v2
   ON orders(toss_payment_key)
   WHERE toss_payment_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_toss_order_id
+  ON orders(toss_order_id)
+  WHERE toss_order_id IS NOT NULL;
 
 -- 4. 주문 취소 추적 인덱스
 CREATE INDEX IF NOT EXISTS idx_orders_cancelled_at
