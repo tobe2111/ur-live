@@ -37,10 +37,37 @@ export default function PaymentSuccessPage() {
       return
     }
 
-    // 백엔드에 결제 승인 요청
-    confirmPayment()
+    // 🔥 Firebase Auth 초기화 완료 후 결제 승인 실행
+    // 토스페이먼츠 리다이렉트 직후에는 Firebase가 아직 세션을 복원 중이므로
+    // onAuthStateChanged가 한 번 발화할 때까지 대기 (최대 8초)
+    waitForFirebaseAndConfirm()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentKey, orderId, amount])
+
+  async function waitForFirebaseAndConfirm() {
+    try {
+      const { getFirebaseAuth } = await import('@/lib/firebase-auth')
+      const auth = await getFirebaseAuth()
+
+      // Firebase v10+: authStateReady() 사용 가능 시 우선 사용
+      if (typeof (auth as any).authStateReady === 'function') {
+        await (auth as any).authStateReady()
+      } else {
+        // Fallback: onAuthStateChanged가 처음 발화할 때까지 대기
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 8000) // 최대 8초 대기
+          const unsubscribe = auth.onAuthStateChanged(() => {
+            clearTimeout(timer)
+            unsubscribe()
+            resolve()
+          })
+        })
+      }
+    } catch (_) {
+      // Firebase 초기화 실패해도 진행 (localStorage fallback)
+    }
+    confirmPayment()
+  }
 
   async function confirmPayment() {
     // 🔒 중복 호출 방지 (ref 사용)

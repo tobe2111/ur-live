@@ -407,9 +407,8 @@ export const useAuthKR = create<AuthKRState>()(
                         }
                       }
                       if (claimsProfileImage) {
-                        if (!localStorage.getItem('user_profile_image')) {
-                          localStorage.setItem('user_profile_image', claimsProfileImage);
-                        }
+                        // 항상 최신 클레임 값으로 덮어쓰기 (Kakao 썸네일 미표시 방지)
+                        localStorage.setItem('user_profile_image', claimsProfileImage);
                       }
                     } catch (_) {}
 

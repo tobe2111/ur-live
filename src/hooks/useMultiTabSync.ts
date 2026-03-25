@@ -30,13 +30,19 @@ export function useMultiTabSync() {
         p === '/seller/login' ||
         p === '/admin/login' ||
         p === '/register' ||
-        p === '/seller/register'
+        p === '/seller/register' ||
+        p.startsWith('/auth/')
       )
     }
 
     const debounce = (key: string): boolean => {
       const now = Date.now()
-      if (lastHandled.current.key === key && now - lastHandled.current.ts < 200) {
+      // Auth storage keys can be written multiple times during a single login flow
+      // (setUser, setAuthReady, onAuthStateChanged) — use a longer window to treat
+      // all writes within 3 seconds as a single login event.
+      const window_ms =
+        key === 'auth-kr-storage' || key === 'auth-world-storage' ? 3000 : 200
+      if (lastHandled.current.key === key && now - lastHandled.current.ts < window_ms) {
         return false // 중복 이벤트, 무시
       }
       lastHandled.current = { key, ts: now }

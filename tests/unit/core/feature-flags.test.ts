@@ -175,16 +175,10 @@ describe('Feature Flags System', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const groupEndSpy = vi.spyOn(console, 'groupEnd').mockImplementation(() => {});
 
-      // Mock development
-      vi.stubGlobal('import', {
-        meta: {
-          env: { DEV: true },
-        },
-      });
-
       const { logFeatureFlagStatus } = await import('@/shared/config/feature-flags');
 
-      logFeatureFlagStatus();
+      // forceLog=true bypasses environment check (import.meta.env cannot be stubbed in vitest)
+      logFeatureFlagStatus(true);
 
       expect(consoleSpy).toHaveBeenCalledWith('🚩 Feature Flags Status');
       expect(logSpy).toHaveBeenCalledWith(

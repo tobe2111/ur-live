@@ -217,9 +217,11 @@ function CartPageContent() {
   const updateQuantity = useCallback(async (cartItemId: number | string, delta: number) => {
     const item = cartItems.find(i => String(i.id) === String(cartItemId))
     if (!item) return
-    
+
     const newQuantity = item.quantity + delta
     if (newQuantity < 1) return
+    const stock = (item as any).product_stock
+    if (stock !== undefined && newQuantity > stock) return
     if (updating) return
 
     setUpdating(true)

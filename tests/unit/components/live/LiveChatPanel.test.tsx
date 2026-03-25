@@ -66,10 +66,11 @@ describe('LiveChatPanel', () => {
 
   it('renders messages correctly', () => {
     render(<LiveChatPanel {...defaultProps} messages={mockMessages} />);
-    
-    expect(screen.getByText('User1')).toBeInTheDocument();
+
+    // Usernames are masked by maskUserName(): 'User1' → 'U***1', 'User2' → 'U***2'
+    expect(screen.getByText('U***1')).toBeInTheDocument();
     expect(screen.getByText('Hello!')).toBeInTheDocument();
-    expect(screen.getByText('User2')).toBeInTheDocument();
+    expect(screen.getByText('U***2')).toBeInTheDocument();
     expect(screen.getByText('Hi there!')).toBeInTheDocument();
   });
 

@@ -307,6 +307,13 @@ api.interceptors.response.use(
       }
 
       // Firebase 갱신도 실패 → 로그아웃
+      // ⚠️ 결제 성공 페이지는 Firebase 초기화 지연으로 인한 일시적 401일 수 있으므로 제외
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/payment/')) {
+        captureError(new Error('Buyer 401: Unauthorized (payment page - skipping logout)'), { url });
+        return Promise.reject(error);
+      }
+
       clearFirebaseTokenCache();
       const { clearAuthData } = await import('@/utils/auth');
       clearAuthData('user');
@@ -318,11 +325,10 @@ api.interceptors.response.use(
       captureError(new Error('Buyer 401: Unauthorized'), { url });
 
       alert('인증이 만료되었습니다.\n다시 로그인해주세요.');
-      localStorage.setItem('loginReturnUrl', window.location.pathname);
-      const path = window.location.pathname;
-      window.location.href = path.startsWith('/seller')
+      localStorage.setItem('loginReturnUrl', currentPath);
+      window.location.href = currentPath.startsWith('/seller')
         ? '/seller/login'
-        : path.startsWith('/admin')
+        : currentPath.startsWith('/admin')
         ? '/admin/login'
         : '/login';
       return Promise.reject(error);

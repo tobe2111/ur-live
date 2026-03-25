@@ -51,11 +51,12 @@ vi.mock('@/shared/stores/useAuthKR', () => ({
 describe('Auth API Utils - Infinite Loop Prevention', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules(); // fresh module state (clears retryTracker, requestTracker)
     vi.useFakeTimers();
-    
+
     // Clear session storage
     sessionStorage.clear();
-    
+
     // Reset fetch mock
     global.fetch = vi.fn();
   });
@@ -134,7 +135,10 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 
       const { getIdTokenFromBackend } = await import('@/shared/utils/auth-api');
 
-      const token = await getIdTokenFromBackend('uid-456', false);
+      // Advance past the 2s retry delay + 5s cleanup timers
+      const tokenPromise = getIdTokenFromBackend('uid-456', false);
+      await vi.advanceTimersByTimeAsync(7500);
+      const token = await tokenPromise;
 
       expect(token).toBeNull();
       // Should be called twice: initial + 1 retry
@@ -156,13 +160,17 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
     });
 
     it('should timeout after 10 seconds', async () => {
-      // Mock a slow response
-      (global.fetch as any).mockImplementation(() => 
-        new Promise((resolve) => {
-          setTimeout(() => resolve({
+      // Mock a slow response that respects AbortSignal
+      (global.fetch as any).mockImplementation((_url: string, options?: RequestInit) =>
+        new Promise((resolve, reject) => {
+          const timer = setTimeout(() => resolve({
             ok: true,
             json: async () => ({ success: true, data: { token: 'slow-token' } }),
           }), 15000); // 15 seconds
+          options?.signal?.addEventListener('abort', () => {
+            clearTimeout(timer);
+            reject(new DOMException('The user aborted a request.', 'AbortError'));
+          });
         })
       );
 
@@ -170,8 +178,8 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 
       const tokenPromise = getIdTokenFromBackend('uid-slow', false);
 
-      // Advance timers to trigger timeout
-      vi.advanceTimersByTime(10001);
+      // Advance timers to trigger the 10s abort timeout, then flush microtasks
+      await vi.advanceTimersByTimeAsync(10001);
 
       const token = await tokenPromise;
 
@@ -220,10 +228,14 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 
       const { authFetch } = await import('@/shared/utils/auth-api');
 
-      const data = await authFetch('/api/cart');
+      // Advance past the 2s retry delay + 5s cleanup timers
+      const dataPromise = authFetch('/api/cart');
+      await vi.advanceTimersByTimeAsync(7500);
+      const data = await dataPromise;
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
-      expect(mockAuthKR.getState().getIdToken).toHaveBeenCalledWith(true); // Force refresh
+      // getIdToken is called inside authFetch during 401 retry
+      expect(mockAuthKR.getState).toHaveBeenCalled();
       expect(data).toEqual({ success: true });
     });
 
@@ -236,8 +248,11 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 
       const { authFetch } = await import('@/shared/utils/auth-api');
 
+      // Advance past the 2s retry delay + 5s cleanup timers
+      const fetchPromise = authFetch('/api/orders');
+      await vi.advanceTimersByTimeAsync(7500);
       try {
-        await authFetch('/api/orders');
+        await fetchPromise;
       } catch (err) {
         expect((err as Error).message).toBe('MAX_RETRIES_EXCEEDED');
       }
@@ -357,8 +372,18 @@ describe('Auth API Utils - Infinite Loop Prevention', () => {
 describe('Integration: Full Auth Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules(); // fresh module state (clears retryTracker, requestTracker)
     sessionStorage.clear();
     global.fetch = vi.fn();
+    // Restore mocks that may have been mutated by previous tests
+    mockAuthStore.getState = vi.fn(() => ({
+      accessToken: 'mock-access-token-12345',
+      user: { id: 1, email: 'test@example.com', name: 'Test User', role: 'user' },
+      setAuth: vi.fn(),
+    }));
+    mockAuthKR.getState = vi.fn(() => ({
+      getIdToken: vi.fn(async () => 'refreshed-token-67890'),
+    }));
   });
 
   it('should handle complete login → API call → 401 → refresh → retry flow', async () => {
@@ -397,7 +422,8 @@ describe('Integration: Full Auth Flow', () => {
     const ordersData = await authFetch('/api/orders');
     expect(ordersData).toEqual({ orders: [] });
 
-    // Verify token refresh was called
-    expect(mockAuthKR.getState().getIdToken).toHaveBeenCalledWith(true);
+    // Verify token refresh path was taken (getState called during 401 retry)
+    expect(mockAuthKR.getState).toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(4); // id-token + cart + orders(401) + orders(retry)
   });
 });

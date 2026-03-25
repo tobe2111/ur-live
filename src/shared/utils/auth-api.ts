@@ -83,9 +83,9 @@ export async function getIdTokenFromBackend(
     return null;
   }
 
-  // Check retry count
+  // Check retry count - allow 1 retry (block on 2nd retry attempt)
   const retryCount = retryTracker.get(requestKey) || 0;
-  if (retryCount >= 1) {
+  if (retryCount >= 2) {
     console.error('[AuthAPI] Max retries exceeded for:', requestKey);
     retryTracker.delete(requestKey);
     return null;
@@ -114,7 +114,7 @@ export async function getIdTokenFromBackend(
 
     if (!response.ok) {
       console.error('[AuthAPI] Backend token request failed:', response.status);
-      
+
       // Increment retry count
       retryTracker.set(requestKey, retryCount + 1);
 
@@ -123,10 +123,11 @@ export async function getIdTokenFromBackend(
         return null;
       }
 
-      // On 500, could retry once after delay
+      // On 500, retry once after delay
       if (response.status >= 500 && retryCount === 0) {
         console.log('[AuthAPI] Server error, will retry once after 2s');
         await new Promise(resolve => setTimeout(resolve, 2000));
+        requestTracker.delete(requestKey); // clear dedup so retry can proceed
         return getIdTokenFromBackend(uid, forceRefresh); // Recursive retry (max 1)
       }
 
@@ -204,9 +205,9 @@ export async function authFetch<T = any>(
     throw new Error('NOT_AUTHENTICATED');
   }
 
-  // Check retry count
+  // Check retry count - allow 1 retry (block on 2nd retry attempt)
   const retryCount = retryTracker.get(requestKey) || 0;
-  if (retryCount >= 1) {
+  if (retryCount >= 2) {
     console.error('[AuthAPI] Max retries exceeded for:', requestKey);
     retryTracker.delete(requestKey);
     throw new Error('MAX_RETRIES_EXCEEDED');
@@ -224,6 +225,12 @@ export async function authFetch<T = any>(
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    // On retry (retryCount > 0) getting 401 again → give up
+    if (response.status === 401 && retryCount > 0) {
+      retryTracker.delete(requestKey);
+      throw new Error('MAX_RETRIES_EXCEEDED');
+    }
 
     if (response.status === 401 && featureFlags.authRetryOn401 && retryCount === 0) {
       console.warn('[AuthAPI] 401 Unauthorized, attempting token refresh...');
