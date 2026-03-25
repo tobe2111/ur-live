@@ -4,16 +4,6 @@
 
 ---
 
-## 🔴 Critical
-
-### [ ] Drizzle schema vs 실제 SQL schema 불일치
-- `src/shared/db/schema.ts`: 8개 테이블 (단순화된 버전)
-- `migrations/`: 47개 테이블 (실제 운영 스키마)
-- Drizzle을 실제 쿼리에 사용 중이라면 타입 불일치 오류 가능
-- 실제로 Drizzle이 쿼리에 쓰이는지 확인 후 판단 필요
-
----
-
 ## 🟡 High
 
 ### [ ] 운영 E2E 테스트 (8개 시나리오)
@@ -46,6 +36,11 @@
 ---
 
 ## ✅ 완료
+
+- [x] Drizzle schema 불일치 확인 → **실제로 Drizzle 미사용** (false alarm)
+  - 모든 Worker 라우트는 `src/worker/repositories/` 의 raw D1 SQL 쿼리 사용
+  - `src/shared/db/schema.ts` + `src/shared/repositories/` 는 미완성 stub (실제 쿼리에 미연결)
+  - `src/shared/repositories/index.ts` 에 명시적으로 "future-work stubs" 로 표기됨
 
 - [x] D1 migration 운영 DB 적용 확인 (47개 테이블 정상)
 - [x] D1 로컬 DB migration 전체 적용 (77개 파일)
