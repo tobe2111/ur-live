@@ -4,15 +4,14 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { clearAuthData } from '@/utils/auth'
-import { Users, Play, Package, TrendingUp, CheckCircle, XCircle } from 'lucide-react'
+import {
+  Users, Play, Package, TrendingUp, CheckCircle, XCircle,
+  DollarSign, Eye, RefreshCw
+} from 'lucide-react'
+import AdminLayout from '@/components/AdminLayout'
 
 interface ApiError {
-  response?: {
-    status?: number
-    data?: {
-      error?: string
-    }
-  }
+  response?: { status?: number; data?: { error?: string } }
   message?: string
 }
 
@@ -27,7 +26,7 @@ interface Seller {
   company_name?: string
   status: string
   commission_rate?: number
-  can_manipulate_stats?: number // 0 or 1
+  can_manipulate_stats?: number
   created_at: string
 }
 
@@ -59,81 +58,50 @@ export default function AdminPage() {
   const [sellers, setSellers] = useState<Seller[]>([])
   const [pendingSellers, setPendingSellers] = useState<Seller[]>([])
   const [streams, setStreams] = useState<Stream[]>([])
-  const [stats, setStats] = useState<Stats>({
-    totalSellers: 0,
-    activeSellers: 0,
-    totalStreams: 0,
-    activeStreams: 0
-  })
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
-    todaySales: 0,
-    todayOrders: 0,
-    currentVisitors: 0,
-    liveStreams: 0
-  })
+  const [stats, setStats] = useState<Stats>({ totalSellers: 0, activeSellers: 0, totalStreams: 0, activeStreams: 0 })
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({ todaySales: 0, todayOrders: 0, currentVisitors: 0, liveStreams: 0 })
   const [loading, setLoading] = useState(true)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
 
   useEffect(() => {
-    // ✅ Admin JWT 즉시 체크 (Firebase isAuthReady 불필요 - Admin은 JWT 전용)
     const token = localStorage.getItem('admin_token')
     const userType = localStorage.getItem('user_type')
-    const adminId = localStorage.getItem('admin_id')
-    
     if (!token || userType !== 'admin') {
       navigate('/admin/login', { replace: true })
       return
     }
-    
-    console.log('[AdminPage] ✅ Auth success, loading data')
     loadData()
-    
-    // 실시간 대시보드 통계 로드 (5초마다)
     loadDashboardStats()
     const interval = setInterval(loadDashboardStats, 5000)
-    
     return () => clearInterval(interval)
   }, [navigate])
 
   async function loadData() {
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
-      
-      // Load all sellers
-      const sellersRes = await api.get('/api/admin/sellers')
-
-      // Load pending sellers
-      const pendingRes = await api.get('/api/admin/sellers/pending')
-      
-      // Load streams
-      const streamsRes = await api.get('/api/streams')
-
+      const [sellersRes, pendingRes, streamsRes] = await Promise.all([
+        api.get('/api/admin/sellers'),
+        api.get('/api/admin/sellers/pending'),
+        api.get('/api/streams'),
+      ])
       const sellersData = sellersRes.data.data || []
       const pendingData = pendingRes.data.data || []
       const streamsData = streamsRes.data.data || []
-
       setSellers(sellersData)
       setPendingSellers(pendingData)
       setStreams(streamsData)
-
-      // Calculate stats
       setStats({
         totalSellers: sellersData.length,
         activeSellers: sellersData.filter((s: Seller) => s.status === 'approved').length,
         totalStreams: streamsData.length,
-        activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length
+        activeStreams: streamsData.filter((s: Stream) => s.status === 'live').length,
       })
-
       setLoading(false)
     } catch (err: unknown) {
-      console.error('Failed to load data:', err)
       const apiErr = err as ApiError
       if (apiErr.response?.status === 401) {
-        console.log('[AdminPage] ❌ 401 Unauthorized - clearing admin session')
         localStorage.removeItem('admin_token')
-        localStorage.removeItem('access_token')
         localStorage.removeItem('user_type')
         navigate('/admin/login')
       }
@@ -143,28 +111,17 @@ export default function AdminPage() {
 
   async function loadDashboardStats() {
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
       const response = await api.get('/api/admin/dashboard/stats')
-      
       if (response.data?.success && response.data?.data) {
         setDashboardStats(response.data.data)
       }
-    } catch (err: unknown) {
-      console.error('Failed to load dashboard stats:', err)
-      // 에러는 조용히 무시 (통계는 필수가 아님)
-      // 기본값 유지 (이미 state 초기값으로 설정됨)
-    }
+    } catch { /* silent */ }
   }
 
   async function approveSeller(sellerId: number) {
     if (!confirm('이 판매자를 승인하시겠습니까?')) return
-
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
-      const response = await api.patch(
-        `/api/admin/sellers/${sellerId}/approve`,
-        {}
-      )
+      const response = await api.patch(`/api/admin/sellers/${sellerId}/approve`, {})
       toast.success(response.data.message || '판매자 승인 완료!')
       loadData()
     } catch (err: unknown) {
@@ -178,13 +135,8 @@ export default function AdminPage() {
       toast.error('거부 사유를 입력해주세요')
       return
     }
-
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
-      const response = await api.patch(
-        `/api/admin/sellers/${selectedSeller.id}/reject`,
-        { reason: rejectionReason }
-      )
+      const response = await api.patch(`/api/admin/sellers/${selectedSeller.id}/reject`, { reason: rejectionReason })
       toast.info(response.data.message || '판매자 승인이 거부되었습니다')
       setRejectModalOpen(false)
       setSelectedSeller(null)
@@ -204,9 +156,7 @@ export default function AdminPage() {
 
   async function deleteStream(streamId: number) {
     if (!confirm('정말 이 라이브를 삭제하시겠습니까?')) return
-
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
       await api.delete(`/api/admin/streams/${streamId}`)
       toast.success('라이브 삭제 완료!')
       loadData()
@@ -217,468 +167,275 @@ export default function AdminPage() {
   }
 
   async function updateCommissionRate(sellerId: number, currentRate: number) {
-    const newRate = prompt(`새로운 수수료율을 입력하세요 (0-100%, 현재: ${currentRate}%)`, currentRate.toString())
+    const newRate = prompt(`새 수수료율 (0-100%, 현재: ${currentRate}%)`, currentRate.toString())
     if (!newRate) return
-
     const rate = parseFloat(newRate)
     if (isNaN(rate) || rate < 0 || rate > 100) {
-      toast.error('수수료율은 0에서 100 사이의 값이어야 합니다')
+      toast.error('수수료율은 0~100 사이여야 합니다')
       return
     }
-
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
-      await api.patch(
-        `/api/admin/sellers/${sellerId}/commission`,
-        { commission_rate: rate }
-      )
-      toast.success(`수수료율이 ${currentRate}%에서 ${rate}%로 변경되었습니다`)
+      await api.patch(`/api/admin/sellers/${sellerId}/commission`, { commission_rate: rate })
+      toast.success(`수수료율 ${currentRate}% → ${rate}%로 변경`)
       loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
-      toast.error(`수수료율 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+      toast.error(`변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
-  // 🎭 시청자 수 조작 권한 토글
   async function toggleManipulateStatsPermission(sellerId: number, currentValue: number) {
     const newValue = currentValue ? 0 : 1
     const action = newValue ? '승인' : '해제'
-    
-    if (!confirm(`이 판매자에게 시청자 수 조작 및 가짜 알림 전송 권한을 ${action}하시겠습니까?`)) {
-      return
-    }
-
+    if (!confirm(`시청자 수 조작 권한을 ${action}하시겠습니까?`)) return
     try {
-      // Note: Authorization header will be added automatically by the API interceptor
-      await api.patch(
-        `/api/admin/sellers/${sellerId}/permissions`,
-        { can_manipulate_stats: newValue }
-      )
+      await api.patch(`/api/admin/sellers/${sellerId}/permissions`, { can_manipulate_stats: newValue })
       toast.success(`권한이 ${action}되었습니다!`)
-      loadData() // 데이터 새로고침
+      loadData()
     } catch (err: unknown) {
       const apiErr = err as ApiError
       toast.error(`권한 변경 실패: ${apiErr.response?.data?.error || apiErr.message}`)
     }
   }
 
-  function logout() {
-    // ✅ Clear only admin session (preserves User and Seller sessions)
-    clearAuthData('admin')
-    console.log('[AdminPage] 🚪 관리자 로그아웃 완료 (User/Seller sessions preserved)')
-    navigate('/admin/login')
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">대시보드 불러오는 중...</p>
         </div>
       </div>
     )
   }
 
+  function fmtPrice(n: number) {
+    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n || 0)
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">👨‍💼 관리자 대시보드</h1>
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate('/admin/orders')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
-            >
-              📦 주문 관리
-            </button>
-            <button
-              onClick={() => navigate('/admin/products')}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 font-medium"
-            >
-              🏷️ 상품 관리
-            </button>
-            <button
-              onClick={() => navigate('/admin/banners')}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-medium"
-            >
-              🎨 배너 관리
-            </button>
-            <button
-              onClick={() => navigate('/admin/settlement')}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
-            >
-              💰 정산 대시보드
-            </button>
-            <button
-              onClick={() => navigate('/admin/alimtalk')}
-              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 font-medium"
-            >
-              💬 알림톡 관리
-            </button>
-            <button
-              onClick={() => navigate('/admin/kv-monitoring')}
-              className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 font-medium"
-            >
-              🔍 KV 모니터링
-            </button>
-            <button
-              onClick={logout}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              로그아웃
-            </button>
+    <AdminLayout title="관리자 대시보드" pendingCount={pendingSellers.length}>
+      {/* Rejection Modal */}
+      {rejectModalOpen && selectedSeller && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">판매자 승인 거부</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              <strong>{selectedSeller.name || selectedSeller.username}</strong>님의 승인을 거부합니다.
+            </p>
+            <p className="text-xs text-gray-500 mb-3">거부 사유를 입력해주세요:</p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="예: 사업자등록증 확인 불가"
+              rows={3}
+              className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { setRejectModalOpen(false); setSelectedSeller(null); setRejectionReason('') }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >취소</button>
+              <button
+                onClick={rejectSeller}
+                disabled={!rejectionReason.trim()}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >거부 확정</button>
+            </div>
           </div>
         </div>
-      </header>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* 실시간 대시보드 통계 (TailwindCSS only) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium opacity-90">오늘 매출</div>
-              <div className="text-2xl">💰</div>
-            </div>
-            <p className="text-3xl font-bold">₩{(dashboardStats?.todaySales || 0).toLocaleString()}</p>
-            <p className="text-sm opacity-75 mt-1">실시간 업데이트</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium opacity-90">오늘 주문</div>
-              <div className="text-2xl">📦</div>
-            </div>
-            <p className="text-3xl font-bold">{(dashboardStats?.todayOrders || 0).toLocaleString()}</p>
-            <p className="text-sm opacity-75 mt-1">건</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium opacity-90">현재 방문자</div>
-              <div className="text-2xl">👥</div>
-            </div>
-            <p className="text-3xl font-bold">{(dashboardStats?.currentVisitors || 0).toLocaleString()}</p>
-            <p className="text-sm opacity-75 mt-1">최근 5분</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium opacity-90">라이브 방송</div>
-              <div className="text-2xl">📺</div>
-            </div>
-            <p className="text-3xl font-bold">{(dashboardStats?.liveStreams || 0).toLocaleString()}</p>
-            <p className="text-sm opacity-75 mt-1">진행 중</p>
-          </div>
-        </div>
-        
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Users className="w-10 h-10 text-blue-600" />
-              <TrendingUp className="w-4 h-4 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-600">총 판매자</p>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalSellers}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-600">승인된 판매자</p>
-            <p className="text-3xl font-bold text-gray-900">{stats.activeSellers}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Play className="w-10 h-10 text-red-600" />
-            </div>
-            <p className="text-sm text-gray-600">총 라이브</p>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalStreams}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Package className="w-10 h-10 text-orange-600" />
-            </div>
-            <p className="text-sm text-gray-600">진행 중 라이브</p>
-            <p className="text-3xl font-bold text-gray-900">{stats.activeStreams}</p>
-          </div>
-        </div>
-
-        {/* Pending Sellers Approval Section */}
-        {pendingSellers.length > 0 && (
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow mb-8">
-            <div className="p-6 border-b border-yellow-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Users className="w-6 h-6 text-yellow-600" />
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">⏳ 승인 대기 중인 판매자</h2>
-                    <p className="text-sm text-gray-600">{pendingSellers.length}명의 판매자가 승인을 기다리고 있습니다</p>
-                  </div>
-                </div>
+      {/* ── 실시간 통계 카드 ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: '오늘 매출', value: fmtPrice(dashboardStats.todaySales), sub: '실시간', icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: '오늘 주문', value: `${(dashboardStats.todayOrders || 0).toLocaleString()}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: '현재 방문자', value: `${(dashboardStats.currentVisitors || 0).toLocaleString()}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: '라이브 방송', value: `${(dashboardStats.liveStreams || 0).toLocaleString()}개`, sub: '진행 중', icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
+        ].map(card => (
+          <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-gray-500">{card.label}</span>
+              <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
+                {card.icon}
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-yellow-100 border-b border-yellow-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">신청일시</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">이름</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">이메일</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">연락처</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">상호명</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">사업자번호</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">승인 관리</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {pendingSellers.map((seller) => (
-                    <tr key={seller.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(seller.created_at).toLocaleString('ko-KR')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{seller.name || '-'}</div>
-                        <div className="text-xs text-gray-500">{seller.username}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {seller.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {seller.phone || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {seller.business_name || seller.company_name || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {seller.business_number || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => approveSeller(seller.id)}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-1"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            승인
-                          </button>
-                          <button
-                            onClick={() => openRejectModal(seller)}
-                            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex items-center gap-1"
-                          >
-                            <XCircle className="w-4 h-4" />
-                            거부
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+            <p className="text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
+            <p className="text-xs text-gray-400">{card.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 판매자 통계 카드 ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: '총 판매자', value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: '승인된 판매자', value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: '총 라이브', value: stats.totalStreams, icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50' },
+          { label: '진행 중 라이브', value: stats.activeStreams, icon: <TrendingUp className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+        ].map(card => (
+          <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-gray-500">{card.label}</span>
+              <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
+                {card.icon}
+              </div>
+            </div>
+            <p className="text-xl font-bold text-gray-900">{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 승인 대기 판매자 ── */}
+      {pendingSellers.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-amber-100 bg-amber-50 flex items-center gap-2">
+            <Users className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-semibold text-gray-900">승인 대기 판매자</h2>
+            <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+              {pendingSellers.length}명
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  {['신청일시', '이름', '이메일', '연락처', '상호명', '사업자번호', '승인 관리'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Rejection Modal */}
-        {rejectModalOpen && selectedSeller && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">판매자 승인 거부</h3>
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  <strong>{selectedSeller.name || selectedSeller.username}</strong>님의 승인을 거부하시겠습니까?
-                </p>
-                <p className="text-sm text-gray-500 mb-4">거부 사유를 입력해주세요:</p>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="예: 사업자등록증 확인 불가, 부적절한 상호명 등"
-                  rows={4}
-                  className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setRejectModalOpen(false)
-                    setSelectedSeller(null)
-                    setRejectionReason('')
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={rejectSeller}
-                  disabled={!rejectionReason.trim()}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  거부 확정
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Sellers Section */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">판매자 관리</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이메일</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">회사명</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">수수료율</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">🎭 특수권한</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">가입일</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">액션</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {sellers.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                      등록된 판매자가 없습니다
+              <tbody className="divide-y divide-gray-50">
+                {pendingSellers.map(seller => (
+                  <tr key={seller.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(seller.created_at).toLocaleString('ko-KR')}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-xs font-medium text-gray-900">{seller.name || '-'}</p>
+                      <p className="text-xs text-gray-400">{seller.username}</p>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{seller.email}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{seller.phone || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{seller.business_number || '-'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button onClick={() => approveSeller(seller.id)} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700">
+                          <CheckCircle className="w-3 h-3" /> 승인
+                        </button>
+                        <button onClick={() => openRejectModal(seller)} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700">
+                          <XCircle className="w-3 h-3" /> 거부
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  sellers.map(seller => (
-                    <tr key={seller.id}>
-                      <td className="px-6 py-4 text-sm text-gray-900">{seller.id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{seller.email}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => updateCommissionRate(seller.id, seller.commission_rate || 10.00)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          {(seller.commission_rate || 10.00).toFixed(2)}%
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => toggleManipulateStatsPermission(seller.id, seller.can_manipulate_stats || 0)}
-                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                            seller.can_manipulate_stats
-                              ? 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                          title={seller.can_manipulate_stats ? '클릭하여 권한 해제' : '클릭하여 권한 승인'}
-                        >
-                          {seller.can_manipulate_stats ? (
-                            <>
-                              <CheckCircle className="w-3 h-3" />
-                              승인됨
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="w-3 h-3" />
-                              미승인
-                            </>
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          seller.status === 'approved'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {seller.status === 'approved' ? '승인됨' : '대기중'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(seller.created_at).toLocaleDateString('ko-KR')}
-                      </td>
-                      <td className="px-6 py-4">
-                        {seller.status !== 'approved' && (
-                          <button
-                            onClick={() => approveSeller(seller.id)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-2"
-                          >
-                            승인
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
+      )}
 
-        {/* Streams Section */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">라이브 스트림 관리</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">제목</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">YouTube ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">생성일</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">액션</th>
+      {/* ── 판매자 관리 ── */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">판매자 관리</h2>
+          <button onClick={loadData} className="p-1.5 rounded-lg hover:bg-gray-100">
+            <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                {['ID', '이메일', '회사명', '수수료율', '특수권한', '상태', '가입일', '액션'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {sellers.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">등록된 판매자가 없습니다</td></tr>
+              ) : sellers.map(seller => (
+                <tr key={seller.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-xs text-gray-500">{seller.id}</td>
+                  <td className="px-4 py-3 text-xs text-gray-900">{seller.email}</td>
+                  <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => updateCommissionRate(seller.id, seller.commission_rate || 10)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                      {(seller.commission_rate || 10).toFixed(2)}%
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => toggleManipulateStatsPermission(seller.id, seller.can_manipulate_stats || 0)}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        seller.can_manipulate_stats ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {seller.can_manipulate_stats ? <><CheckCircle className="w-3 h-3" />승인됨</> : <><XCircle className="w-3 h-3" />미승인</>}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                      seller.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                    }`}>
+                      {seller.status === 'approved' ? '승인됨' : '대기중'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(seller.created_at).toLocaleDateString('ko-KR')}</td>
+                  <td className="px-4 py-3">
+                    {seller.status !== 'approved' && (
+                      <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">승인</button>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {streams.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                      등록된 라이브가 없습니다
-                    </td>
-                  </tr>
-                ) : (
-                  streams.map(stream => (
-                    <tr key={stream.id}>
-                      <td className="px-6 py-4 text-sm text-gray-900">{stream.id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{stream.title}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 font-mono">{stream.youtube_video_id}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          stream.status === 'live'
-                            ? 'bg-red-100 text-red-800'
-                            : stream.status === 'scheduled'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {stream.status === 'live' ? '🔴 라이브' : stream.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(stream.created_at).toLocaleDateString('ko-KR')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => deleteStream(stream.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
-                        >
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+
+      {/* ── 라이브 스트림 관리 ── */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">라이브 스트림 관리</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                {['ID', '제목', 'YouTube ID', '상태', '생성일', '액션'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {streams.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">등록된 라이브가 없습니다</td></tr>
+              ) : streams.map(stream => (
+                <tr key={stream.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-xs text-gray-500">{stream.id}</td>
+                  <td className="px-4 py-3 text-xs text-gray-900">{stream.title}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500 font-mono">{stream.youtube_video_id}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                      stream.status === 'live' ? 'bg-red-50 text-red-600' :
+                      stream.status === 'scheduled' ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {stream.status === 'live' ? '🔴 라이브' : stream.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(stream.created_at).toLocaleDateString('ko-KR')}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => deleteStream(stream.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">삭제</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </AdminLayout>
   )
 }

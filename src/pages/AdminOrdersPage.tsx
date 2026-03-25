@@ -2,29 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Package,
-  Truck,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Eye,
-  Calendar,
-  User,
-  MapPin,
-  Phone,
-  Mail,
-  DollarSign,
-  FileText,
-  Search,
-  Filter,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw
+import AdminLayout from '@/components/AdminLayout'
+import {
+  Package, Truck, CheckCircle2, XCircle, Loader2, Eye,
+  Calendar, User, Search, Filter, Download, ChevronLeft,
+  ChevronRight, RefreshCw, Clock, DollarSign
 } from 'lucide-react'
 
 interface OrderItem {
@@ -60,6 +42,21 @@ interface Order {
   items?: OrderItem[]
 }
 
+const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
+  pending:   { label: '주문 접수', color: 'text-amber-700',   bg: 'bg-amber-50' },
+  confirmed: { label: '주문 확인', color: 'text-blue-700',    bg: 'bg-blue-50' },
+  shipped:   { label: '배송 중',   color: 'text-purple-700',  bg: 'bg-purple-50' },
+  delivered: { label: '배송 완료', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  cancelled: { label: '취소',      color: 'text-red-700',     bg: 'bg-red-50' },
+  refunded:  { label: '환불',      color: 'text-gray-600',    bg: 'bg-gray-100' },
+}
+
+const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string }> = {
+  paid:    { label: '결제 완료', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  pending: { label: '결제 대기', color: 'text-amber-700',   bg: 'bg-amber-50' },
+  failed:  { label: '결제 실패', color: 'text-red-700',     bg: 'bg-red-50' },
+}
+
 export default function AdminOrdersPage() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
@@ -68,741 +65,312 @@ export default function AdminOrdersPage() {
   const [error, setError] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [showDetail, setShowDetail] = useState(false)
-
-  // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
-  const [sellerFilter, setSellerFilter] = useState<string>('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [sellerFilter, setSellerFilter] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
-  const [dateFilter, setDateFilter] = useState({
-    start: '',
-    end: ''
-  })
-
-  // Pagination
+  const [dateFilter, setDateFilter] = useState({ start: '', end: '' })
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
+  const [sellers, setSellers] = useState<Array<{ id: number; name: string }>>([])
 
-  // Sellers list for filter
-  const [sellers, setSellers] = useState<Array<{id: number, name: string}>>([])
-
-  useEffect(() => {
-    loadOrders()
-    loadSellers()
-  }, [])
-
-  useEffect(() => {
-    filterOrders()
-  }, [orders, statusFilter, sellerFilter, searchQuery, dateFilter])
+  useEffect(() => { loadOrders(); loadSellers() }, [])
+  useEffect(() => { filterOrders() }, [orders, statusFilter, sellerFilter, searchQuery, dateFilter])
 
   async function loadOrders() {
-    setLoading(true)
-    setError('')
-
+    setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const userType = localStorage.getItem('user_type')
-      
-      if (!token || userType !== 'admin') {
-        navigate('/admin/login')
-        return
-      }
-
-      const response = await api.get('/api/admin/orders', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      if (response.data.success) {
-        setOrders(response.data.data)
-      }
-    } catch (error: any) {
-      console.error('Failed to load orders:', error)
+      if (!token || localStorage.getItem('user_type') !== 'admin') { navigate('/admin/login'); return }
+      const response = await api.get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
+      if (response.data.success) setOrders(response.data.data)
+    } catch (err: any) {
       setError('주문 목록을 불러올 수 없습니다.')
-      if (error.response?.status === 401) {
-        navigate('/admin/login')
-      }
-    } finally {
-      setLoading(false)
-    }
+      if (err.response?.status === 401) navigate('/admin/login')
+    } finally { setLoading(false) }
   }
 
   async function loadSellers() {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const response = await api.get('/api/admin/sellers', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
+      const response = await api.get('/api/admin/sellers', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) {
-        setSellers(response.data.data.map((s: any) => ({
-          id: s.id,
-          name: s.name || s.username || s.business_name || `Seller ${s.id}`
-        })))
+        setSellers(response.data.data.map((s: any) => ({ id: s.id, name: s.name || s.username || s.business_name || `Seller ${s.id}` })))
       }
-    } catch (error) {
-      console.error('Failed to load sellers:', error)
-    }
+    } catch { /* silent */ }
   }
 
   function filterOrders() {
     let result = [...orders]
-
-    // Status filter
-    if (statusFilter !== 'ALL') {
-      result = result.filter(order => order.status === statusFilter)
-    }
-
-    // Seller filter
-    if (sellerFilter !== 'ALL') {
-      result = result.filter(order => order.seller_id === parseInt(sellerFilter))
-    }
-
-    // Search filter (order number, customer name, phone, email)
+    if (statusFilter !== 'ALL') result = result.filter(o => o.status === statusFilter)
+    if (sellerFilter !== 'ALL') result = result.filter(o => o.seller_id === parseInt(sellerFilter))
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(order => 
-        order.order_number.toLowerCase().includes(query) ||
-        order.shipping_name.toLowerCase().includes(query) ||
-        order.shipping_phone.includes(query) ||
-        order.user_email?.toLowerCase().includes(query)
+      const q = searchQuery.toLowerCase()
+      result = result.filter(o =>
+        o.order_number.toLowerCase().includes(q) ||
+        o.shipping_name.toLowerCase().includes(q) ||
+        o.shipping_phone.includes(q) ||
+        o.user_email?.toLowerCase().includes(q)
       )
     }
-
-    // Date filter
-    if (dateFilter.start) {
-      const startDate = new Date(dateFilter.start)
-      result = result.filter(order => new Date(order.created_at) >= startDate)
-    }
+    if (dateFilter.start) result = result.filter(o => new Date(o.created_at) >= new Date(dateFilter.start))
     if (dateFilter.end) {
-      const endDate = new Date(dateFilter.end)
-      endDate.setHours(23, 59, 59, 999) // End of day
-      result = result.filter(order => new Date(order.created_at) <= endDate)
+      const end = new Date(dateFilter.end); end.setHours(23, 59, 59, 999)
+      result = result.filter(o => new Date(o.created_at) <= end)
     }
-
-    setFilteredOrders(result)
-    setCurrentPage(1) // Reset to first page when filters change
+    setFilteredOrders(result); setCurrentPage(1)
   }
 
-  // Pagination
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentOrders = filteredOrders.slice(startIndex, endIndex)
+  const currentOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage)
 
   async function viewOrderDetail(orderNumber: string) {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      const response = await api.get(`/api/admin/orders/${orderNumber}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      if (response.data.success) {
-        setSelectedOrder(response.data.data)
-        setShowDetail(true)
-      }
-    } catch (error) {
-      console.error('Failed to load order detail:', error)
-      toast.error('주문 상세 정보를 불러올 수 없습니다.')
-    }
+      const response = await api.get(`/api/admin/orders/${orderNumber}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (response.data.success) { setSelectedOrder(response.data.data); setShowDetail(true) }
+    } catch { toast.error('주문 상세 정보를 불러올 수 없습니다.') }
   }
 
   async function exportOrders() {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get('/api/admin/orders/export', {
-        headers: { 'Authorization': `Bearer ${token}` },
-        params: {
-          status: statusFilter !== 'ALL' ? statusFilter : undefined,
-          seller_id: sellerFilter !== 'ALL' ? sellerFilter : undefined,
-          start_date: dateFilter.start || undefined,
-          end_date: dateFilter.end || undefined
-        },
+        headers: { Authorization: `Bearer ${token}` },
+        params: { status: statusFilter !== 'ALL' ? statusFilter : undefined, seller_id: sellerFilter !== 'ALL' ? sellerFilter : undefined, start_date: dateFilter.start || undefined, end_date: dateFilter.end || undefined },
         responseType: 'blob'
       })
-
-      // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
       link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.xlsx`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-    } catch (error) {
-      console.error('Failed to export orders:', error)
-      toast.error('주문 내역 다운로드에 실패했습니다.')
-    }
+      document.body.appendChild(link); link.click(); link.remove()
+    } catch { toast.error('주문 내역 다운로드에 실패했습니다.') }
   }
 
-  function getStatusBadge(status: string) {
-    const styles: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      shipped: 'bg-purple-100 text-purple-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-      refunded: 'bg-gray-100 text-gray-800'
-    }
-
-    const labels: Record<string, string> = {
-      pending: '주문 접수',
-      confirmed: '주문 확인',
-      shipped: '배송 중',
-      delivered: '배송 완료',
-      cancelled: '취소',
-      refunded: '환불'
-    }
-
-    return (
-      <Badge className={styles[status] || 'bg-gray-100 text-gray-800'}>
-        {labels[status] || status}
-      </Badge>
-    )
-  }
-
-  function getPaymentStatusBadge(paymentStatus: string) {
-    if (paymentStatus === 'paid') {
-      return <Badge className="bg-green-100 text-green-800">결제 완료</Badge>
-    }
-    if (paymentStatus === 'pending') {
-      return <Badge className="bg-yellow-100 text-yellow-800">결제 대기</Badge>
-    }
-    if (paymentStatus === 'failed') {
-      return <Badge className="bg-red-100 text-red-800">결제 실패</Badge>
-    }
-    return <Badge className="bg-gray-100 text-gray-800">{paymentStatus}</Badge>
-  }
-
-  // Statistics
-  const stats = {
+  const orderStats = {
     total: filteredOrders.length,
     pending: filteredOrders.filter(o => o.status === 'pending').length,
-    confirmed: filteredOrders.filter(o => o.status === 'confirmed').length,
     shipped: filteredOrders.filter(o => o.status === 'shipped').length,
     delivered: filteredOrders.filter(o => o.status === 'delivered').length,
     cancelled: filteredOrders.filter(o => o.status === 'cancelled').length,
-    totalAmount: filteredOrders.reduce((sum, o) => sum + o.total_amount, 0)
+    totalAmount: filteredOrders.reduce((s, o) => s + o.total_amount, 0),
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">주문 목록을 불러오는 중...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => loadOrders()}>다시 시도</Button>
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">주문 목록을 불러오는 중...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/admin')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">주문 관리</h1>
-                <p className="text-sm text-gray-600">전체 주문 목록 및 관리</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => loadOrders()}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                새로고침
-              </Button>
-              <Button
-                onClick={exportOrders}
-                variant="outline"
-                size="sm"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                엑셀 다운로드
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <AdminLayout
+      title="주문 관리"
+      headerRight={
+        <>
+          <button onClick={loadOrders} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+            <RefreshCw className="w-3.5 h-3.5" /> 새로고침
+          </button>
+          <button onClick={exportOrders} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
+            <Download className="w-3.5 h-3.5" /> 엑셀
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">전체 주문</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: '전체', value: orderStats.total, color: 'text-gray-900' },
+          { label: '주문 접수', value: orderStats.pending, color: 'text-amber-600' },
+          { label: '배송 중', value: orderStats.shipped, color: 'text-purple-600' },
+          { label: '배송 완료', value: orderStats.delivered, color: 'text-emerald-600' },
+          { label: '취소', value: orderStats.cancelled, color: 'text-red-600' },
+          { label: '총 매출', value: `₩${orderStats.totalAmount.toLocaleString()}`, color: 'text-blue-600' },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm">
+            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
+            <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">주문 접수</p>
-            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">주문 확인</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.confirmed}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">배송 중</p>
-            <p className="text-2xl font-bold text-purple-600">{stats.shipped}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">배송 완료</p>
-            <p className="text-2xl font-bold text-green-600">{stats.delivered}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">취소</p>
-            <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-sm text-gray-600">총 매출</p>
-            <p className="text-2xl font-bold text-green-600">₩{stats.totalAmount.toLocaleString()}</p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Filter className="w-4 h-4 inline mr-1" />
-                주문 상태
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">전체</option>
-                <option value="pending">주문 접수</option>
-                <option value="confirmed">주문 확인</option>
-                <option value="shipped">배송 중</option>
-                <option value="delivered">배송 완료</option>
-                <option value="cancelled">취소</option>
-                <option value="refunded">환불</option>
-              </select>
-            </div>
-
-            {/* Seller Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <User className="w-4 h-4 inline mr-1" />
-                판매자
-              </label>
-              <select
-                value={sellerFilter}
-                onChange={(e) => setSellerFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">전체 판매자</option>
-                {sellers.map(seller => (
-                  <option key={seller.id} value={seller.id}>{seller.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                시작일
-              </label>
-              <input
-                type="date"
-                value={dateFilter.start}
-                onChange={(e) => setDateFilter({...dateFilter, start: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                종료일
-              </label>
-              <input
-                type="date"
-                value={dateFilter.end}
-                onChange={(e) => setDateFilter({...dateFilter, end: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Search className="w-4 h-4 inline mr-1" />
-              검색 (주문번호, 고객명, 전화번호, 이메일)
-            </label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="검색어를 입력하세요"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Clear Filters */}
-          {(statusFilter !== 'ALL' || sellerFilter !== 'ALL' || searchQuery || dateFilter.start || dateFilter.end) && (
-            <div className="mt-4">
-              <Button
-                onClick={() => {
-                  setStatusFilter('ALL')
-                  setSellerFilter('ALL')
-                  setSearchQuery('')
-                  setDateFilter({start: '', end: ''})
-                }}
-                variant="outline"
-                size="sm"
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                필터 초기화
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Orders Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    주문번호
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    주문일시
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    판매자
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    고객명
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    주문 상태
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    결제 상태
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    금액
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    액션
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {currentOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      주문 내역이 없습니다.
-                    </td>
-                  </tr>
-                ) : (
-                  currentOrders.map((order) => (
-                    <tr key={order.order_number} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{order.order_number}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {new Date(order.created_at).toLocaleString('ko-KR')}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{order.seller_name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{order.shipping_name}</div>
-                        <div className="text-xs text-gray-500">{order.shipping_phone}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(order.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getPaymentStatusBadge(order.payment_status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          ₩{order.total_amount.toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <Button
-                          onClick={() => viewOrderDetail(order.order_number)}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <Button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  variant="outline"
-                  size="sm"
-                >
-                  이전
-                </Button>
-                <span className="text-sm text-gray-700">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  variant="outline"
-                  size="sm"
-                >
-                  다음
-                </Button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    전체 <span className="font-medium">{filteredOrders.length}</span>개 중{' '}
-                    <span className="font-medium">{startIndex + 1}</span>-
-                    <span className="font-medium">{Math.min(endIndex, filteredOrders.length)}</span>개 표시
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
-                      let pageNum
-                      if (totalPages <= 5) {
-                        pageNum = i + 1
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i
-                      } else {
-                        pageNum = currentPage - 2 + i
-                      }
-                      
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === pageNum
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    })}
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        ))}
       </div>
 
-      {/* Order Detail Modal */}
+      {/* 필터 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Filter className="w-3.5 h-3.5 inline mr-1" />주문 상태</label>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="ALL">전체</option>
+              {Object.entries(STATUS_STYLES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><User className="w-3.5 h-3.5 inline mr-1" />판매자</label>
+            <select value={sellerFilter} onChange={e => setSellerFilter(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="ALL">전체 판매자</option>
+              {sellers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />시작일</label>
+            <input type="date" value={dateFilter.start} onChange={e => setDateFilter({ ...dateFilter, start: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5"><Calendar className="w-3.5 h-3.5 inline mr-1" />종료일</label>
+            <input type="date" value={dateFilter.end} onChange={e => setDateFilter({ ...dateFilter, end: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+        <div className="mt-3">
+          <label className="block text-xs font-medium text-gray-500 mb-1.5"><Search className="w-3.5 h-3.5 inline mr-1" />검색</label>
+          <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="주문번호, 고객명, 전화번호, 이메일" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        {(statusFilter !== 'ALL' || sellerFilter !== 'ALL' || searchQuery || dateFilter.start || dateFilter.end) && (
+          <button onClick={() => { setStatusFilter('ALL'); setSellerFilter('ALL'); setSearchQuery(''); setDateFilter({ start: '', end: '' }) }} className="mt-3 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
+            <XCircle className="w-3.5 h-3.5" /> 필터 초기화
+          </button>
+        )}
+      </div>
+
+      {/* 주문 테이블 */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px]">
+            <thead>
+              <tr className="bg-gray-50">
+                {['주문번호', '주문일시', '판매자', '고객명', '주문 상태', '결제 상태', '금액', ''].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {currentOrders.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">주문 내역이 없습니다.</td></tr>
+              ) : currentOrders.map(order => {
+                const ss = STATUS_STYLES[order.status] || { label: order.status, color: 'text-gray-600', bg: 'bg-gray-100' }
+                const ps = PAYMENT_STYLES[order.payment_status] || { label: order.payment_status, color: 'text-gray-600', bg: 'bg-gray-100' }
+                return (
+                  <tr key={order.order_number} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-xs font-mono text-gray-700">{order.order_number}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(order.created_at).toLocaleString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-xs text-gray-700">{order.seller_name}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-xs font-medium text-gray-900">{order.shipping_name}</p>
+                      <p className="text-xs text-gray-400">{order.shipping_phone}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${ss.bg} ${ss.color}`}>{ss.label}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${ps.bg} ${ps.color}`}>{ps.label}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-900">₩{order.total_amount.toLocaleString()}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => viewOrderDetail(order.order_number)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                        <Eye className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              전체 <span className="font-medium">{filteredOrders.length}</span>개 중 <span className="font-medium">{startIndex + 1}</span>-<span className="font-medium">{Math.min(startIndex + itemsPerPage, filteredOrders.length)}</span>개
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
+                <ChevronLeft className="w-4 h-4 text-gray-500" />
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let p = currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i
+                return (
+                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
+                )
+              })}
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
+                <ChevronRight className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 주문 상세 모달 */}
       {showDetail && selectedOrder && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowDetail(false)}></div>
-
-            <div className="inline-block w-full max-w-3xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
-              {/* Modal Header */}
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900">주문 상세 정보</h3>
-                  <button
-                    onClick={() => setShowDetail(false)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <XCircle className="w-6 h-6" />
-                  </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowDetail(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">주문 상세</h3>
+              <button onClick={() => setShowDetail(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <XCircle className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">주문 정보</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {[
+                    ['주문번호', selectedOrder.order_number],
+                    ['주문일시', new Date(selectedOrder.created_at).toLocaleString('ko-KR')],
+                    ['판매자', selectedOrder.seller_name],
+                    ['결제 방법', selectedOrder.payment_method || '-'],
+                  ].map(([k, v]) => (
+                    <div key={k}>
+                      <p className="text-xs text-gray-400">{k}</p>
+                      <p className="font-medium text-gray-900 mt-0.5">{v}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Modal Content */}
-              <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
-                {/* Order Info */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">주문 정보</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-600">주문번호</p>
-                      <p className="font-medium">{selectedOrder.order_number}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">주문일시</p>
-                      <p className="font-medium">{new Date(selectedOrder.created_at).toLocaleString('ko-KR')}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">판매자</p>
-                      <p className="font-medium">{selectedOrder.seller_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">주문 상태</p>
-                      <p>{getStatusBadge(selectedOrder.status)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">결제 상태</p>
-                      <p>{getPaymentStatusBadge(selectedOrder.payment_status)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">결제 방법</p>
-                      <p className="font-medium">{selectedOrder.payment_method || '-'}</p>
-                    </div>
-                  </div>
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">배송 정보</h4>
+                <div className="space-y-2 text-sm">
+                  <div><p className="text-xs text-gray-400">받는 사람</p><p className="font-medium text-gray-900">{selectedOrder.shipping_name}</p></div>
+                  <div><p className="text-xs text-gray-400">연락처</p><p className="font-medium text-gray-900">{selectedOrder.shipping_phone}</p></div>
+                  <div><p className="text-xs text-gray-400">주소</p><p className="font-medium text-gray-900">[{selectedOrder.shipping_zipcode}] {selectedOrder.shipping_address} {selectedOrder.shipping_address_detail}</p></div>
+                  {selectedOrder.tracking_number && <div><p className="text-xs text-gray-400">운송장</p><p className="font-medium text-gray-900">{selectedOrder.courier} {selectedOrder.tracking_number}</p></div>}
                 </div>
-
-                {/* Customer Info */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">고객 정보</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-600">고객명</p>
-                      <p className="font-medium">{selectedOrder.user_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">이메일</p>
-                      <p className="font-medium">{selectedOrder.user_email || '-'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shipping Info */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">배송 정보</h4>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-gray-600">받는 사람</p>
-                      <p className="font-medium">{selectedOrder.shipping_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">연락처</p>
-                      <p className="font-medium">{selectedOrder.shipping_phone}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">배송 주소</p>
-                      <p className="font-medium">
-                        [{selectedOrder.shipping_zipcode}] {selectedOrder.shipping_address} {selectedOrder.shipping_address_detail}
-                      </p>
-                    </div>
-                    {selectedOrder.courier && (
-                      <div>
-                        <p className="text-gray-600">택배사</p>
-                        <p className="font-medium">{selectedOrder.courier}</p>
-                      </div>
-                    )}
-                    {selectedOrder.tracking_number && (
-                      <div>
-                        <p className="text-gray-600">운송장 번호</p>
-                        <p className="font-medium">{selectedOrder.tracking_number}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Order Items */}
-                {selectedOrder.items && selectedOrder.items.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">주문 상품</h4>
-                    <div className="space-y-3">
-                      {selectedOrder.items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                          {item.image_url && (
-                            <img
-                              src={item.image_url}
-                              alt={item.product_name}
-                              className="w-16 h-16 object-cover rounded"
-                            />
-                          )}
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{item.product_name}</p>
-                            <p className="text-xs text-gray-600">수량: {item.quantity}개</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">₩{(item.price * item.quantity).toLocaleString()}</p>
-                            <p className="text-xs text-gray-600">개당 ₩{item.price.toLocaleString()}</p>
-                          </div>
+              </div>
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">주문 상품</h4>
+                  <div className="space-y-2">
+                    {selectedOrder.items.map(item => (
+                      <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        {item.image_url && <img src={item.image_url} alt={item.product_name} className="w-12 h-12 object-cover rounded-lg" />}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{item.product_name}</p>
+                          <p className="text-xs text-gray-400">수량 {item.quantity}개</p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Payment Summary */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">결제 금액</h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between items-center text-lg font-bold">
-                      <span>총 결제 금액</span>
-                      <span className="text-blue-600">₩{selectedOrder.total_amount.toLocaleString()}</span>
-                    </div>
+                        <p className="text-sm font-semibold text-gray-900">₩{(item.price * item.quantity).toLocaleString()}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                <div className="flex justify-end">
-                  <Button onClick={() => setShowDetail(false)} variant="outline">
-                    닫기
-                  </Button>
-                </div>
+              )}
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
+                <span className="text-sm font-medium text-gray-700">총 결제 금액</span>
+                <span className="text-lg font-bold text-blue-600">₩{selectedOrder.total_amount.toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   )
 }

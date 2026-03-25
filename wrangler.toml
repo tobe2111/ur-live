@@ -4,9 +4,13 @@
 # ============================================================
 
 name = "ur-live"
+main = "src/worker/index.ts"
 compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = "dist"
+
+# Static assets (React SPA)
+[assets]
+directory = "./dist/client"
 
 # ============================================================
 # D1 Database
@@ -29,16 +33,16 @@ database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
 # ============================================================
 # Durable Objects (for live streaming)
-# NOTE: Temporarily commented out for Pages deployment
+# One DO instance per stream — handles WebSocket chat + product/viewer broadcasts
 # ============================================================
-# [durable_objects]
-# bindings = [
-#   { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject", script_name = "ur-live" }
-# ]
+[durable_objects]
+bindings = [
+  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" }
+]
 
-# [[migrations]]
-# tag = "v1"
-# new_classes = ["LiveStreamDurableObject"]
+[[migrations]]
+tag = "v1"
+new_classes = ["LiveStreamDurableObject"]
 
 # ============================================================
 # Development Variables

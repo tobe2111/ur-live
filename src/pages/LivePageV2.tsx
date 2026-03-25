@@ -5,9 +5,9 @@ import axios from 'axios'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
-// import { useLiveChat } from '@/hooks/useLiveChat' // ❌ SSE 폴링 방식 (5초 지연)
-import { useFirebaseChat } from '@/hooks/useFirebaseChat'
-import { useFirebaseStream, useFirebaseProduct } from '@/hooks/useFirebaseStream'
+import { useLiveStreamWebSocket } from '@/hooks/useLiveStreamWebSocket'
+import { useProductStock } from '@/hooks/useProductStock'
+import type { ChatMessage } from '@/hooks/useFirebaseChat'
 import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
 import { createLogger } from '@/utils/logger'
@@ -97,14 +97,6 @@ interface Product {
   stock?: number // 🔥 Firebase 실시간 재고
   colors?: { name: string; hex: string }[]
   sizes?: string[]
-}
-
-interface ChatMessage {
-  id: string
-  username: string
-  message: string
-  role?: string
-  userName?: string
 }
 
 interface ReelData {
@@ -225,9 +217,8 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
   )
 }
 
-function LiveChat({ streamId, onChatClick }: { streamId: number; onChatClick: () => void }) {
+function LiveChat({ messages, onChatClick }: { messages: ChatMessage[]; onChatClick: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { messages, isConnected, error, sendMessage } = useFirebaseChat(streamId, !!streamId)
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -465,8 +456,14 @@ function ReelCard({
     originalPrice: 0
   }) as Product
   
-  // 🔥 SSE 기반 실시간 채팅 (메시지 전송용)
-  const { sendMessage: sendChatMessage } = useFirebaseChat(stream.id, true)
+  // 🔥 DO WebSocket 기반 실시간 채팅 + 스트림 상태
+  const {
+    messages: chatMessages,
+    isConnected: chatConnected,
+    error: chatError,
+    sendMessage: sendChatMessage,
+    streamData: wsStreamData,
+  } = useLiveStreamWebSocket(stream.id, true)
 
   // YouTube Player Integration
   useEffect(() => {
@@ -652,26 +649,19 @@ function ReelCard({
   }
 
   // ============================================
-  // Real-time Product Updates (Long Polling - 비용 99% 절감! 🎉)
+  // Real-time Product Updates via DO WebSocket + D1 polling
   // ============================================
-  // ============================================
-  // 🔥 Firebase Realtime Product Updates
-  // ============================================
-  // Firebase 실시간 스트림 구독 (상품 변경 감지)
-  const { streamData: firebaseStream } = useFirebaseStream(stream.id || null)
-  
-  // Firebase 실시간 상품 재고 구독 (currentProduct가 있을 때만)
-  const { productData: firebaseProduct } = useFirebaseProduct(currentProduct?.id || null)
 
-  // Firebase에서 상품 변경 감지 시 UI 업데이트
+  // D1 폴링 기반 재고 모니터링 (Firebase 제거, 5초 주기)
+  const { productData: polledProduct } = useProductStock(currentProduct?.id || null)
+
+  // WebSocket에서 상품 변경 감지 시 UI 업데이트
   useEffect(() => {
-    if (!firebaseStream) return
-    
-    // 상품이 변경되었을 때 (current_product_id)
-    const newProductId = firebaseStream.current_product_id
-    
+    if (!wsStreamData) return
+
+    const newProductId = wsStreamData.current_product_id
+
     if (newProductId && newProductId !== currentProduct?.id) {
-      // 새로운 상품 정보 로드
       const loadNewProduct = async () => {
         try {
           const response = await axios.get(`/api/streams/${stream.id}/current-product`)
@@ -680,46 +670,40 @@ function ReelCard({
             if (!newProduct) return
             setCurrentProduct(newProduct)
 
-            // 🎉 상품 변경 알림 Toast 표시 (셀러 제외)
             if (!isSeller && newProduct?.name) {
               setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
             }
 
-            log.debug(`🔥 Firebase: Product changed to ${newProduct.name}`)
+            log.debug(`[WS] Product changed to ${newProduct.name}`)
           }
         } catch (error) {
-          console.error('[Firebase] Error loading new product:', error)
+          console.error('[WS] Error loading new product:', error)
         }
       }
-      
+
       loadNewProduct()
     }
-  }, [firebaseStream?.current_product_id, stream.id, isSeller])
+  }, [wsStreamData?.current_product_id, stream.id, isSeller])
 
-  // Firebase에서 재고 변경 감지 시 UI 업데이트
+  // D1 폴링에서 재고 변경 감지 시 UI 업데이트
   useEffect(() => {
-    if (!firebaseProduct || !currentProduct) return
-    
-    // 재고가 변경되었을 때만 업데이트
-    if (firebaseProduct.stock !== currentProduct.stock) {
+    if (!polledProduct || !currentProduct) return
+
+    if (polledProduct.stock !== currentProduct.stock) {
       setCurrentProduct(prev => {
         if (!prev) return prev
-        return {
-          ...prev,
-          stock: firebaseProduct.stock,
-        }
+        return { ...prev, stock: polledProduct.stock }
       })
-      
-      log.debug(`🔥 Firebase: Stock updated to ${firebaseProduct.stock}`)
-      
-      // 품절 알림
-      if (firebaseProduct.stock === 0) {
-        setProductChangeToast(`🔴 ${firebaseProduct.name}이(가) 품절되었습니다!`)
-      } else if (firebaseProduct.stock <= 5 && firebaseProduct.stock > 0) {
-        setProductChangeToast(`⚠️ ${firebaseProduct.name} 재고가 ${firebaseProduct.stock}개 남았습니다!`)
+
+      log.debug(`[Stock] Stock updated to ${polledProduct.stock}`)
+
+      if (polledProduct.stock === 0) {
+        setProductChangeToast(`🔴 ${polledProduct.name}이(가) 품절되었습니다!`)
+      } else if (polledProduct.stock <= 5 && polledProduct.stock > 0) {
+        setProductChangeToast(`⚠️ ${polledProduct.name} 재고가 ${polledProduct.stock}개 남았습니다!`)
       }
     }
-  }, [firebaseProduct?.stock, currentProduct?.id])
+  }, [polledProduct?.stock, currentProduct?.id])
 
   // 초기 상품 로드: 전체 상품 데이터(stock, originalPrice 등)를 DB에서 가져옴
   // ✅ currentProduct 조건 제거 - stream 목록 API의 current_product는 일부 필드만 포함하므로 항상 전체 로드
@@ -1185,7 +1169,7 @@ function ReelCard({
           <div className="flex items-end gap-3 mb-2.5">
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
-              <LiveChat streamId={stream.id} onChatClick={() => setChatModalOpen(true)} />
+              <LiveChat messages={chatMessages} onChatClick={() => setChatModalOpen(true)} />
             </div>
 
             {/* Chat + Share buttons - right side */}

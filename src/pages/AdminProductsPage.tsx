@@ -2,22 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import ImageUpload from '@/components/ImageUpload'
-import { 
-  ArrowLeft, 
-  Package,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Image as ImageIcon,
-  DollarSign,
-  Box,
-  Star
+import AdminLayout from '@/components/AdminLayout'
+import {
+  Package, Plus, Edit, Trash2, Eye, EyeOff,
+  Loader2, Image as ImageIcon, Star, X
 } from 'lucide-react'
 
 interface Product {
@@ -38,619 +27,290 @@ interface Product {
   created_at: string
 }
 
+const EMPTY_FORM = {
+  name: '', description: '', long_description: '', price: '', compare_at_price: '',
+  stock: '', image_url: '', detail_images: ['', '', '', ''] as string[],
+  category: 'lifestyle', product_type: 'featured' as 'live' | 'featured'
+}
+
 export default function AdminProductsPage() {
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    long_description: '',
-    price: '',
-    compare_at_price: '',
-    stock: '',
-    image_url: '',
-    detail_images: ['', '', '', ''], // 상세 이미지 4장
-    category: 'lifestyle',
-    product_type: 'featured' as 'live' | 'featured'
-  })
+  const [formData, setFormData] = useState(EMPTY_FORM)
 
   useEffect(() => {
-    checkAuth()
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+    if (!token) { navigate('/admin/login'); return }
     loadProducts()
   }, [])
 
-  function checkAuth() {
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-    if (!token) {
-      navigate('/admin/login')
-      return
-    }
-  }
-
   async function loadProducts() {
-    setLoading(true)
-    setError('')
-
+    setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      
-      const response = await api.get('/api/admin/products', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      if (response.data.success) {
-        setProducts(response.data.data)
-      }
-    } catch (error: any) {
-      console.error('Failed to load products:', error)
+      const response = await api.get('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } })
+      if (response.data.success) setProducts(response.data.data)
+    } catch (err: any) {
       setError('상품 목록을 불러올 수 없습니다.')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
+    e.preventDefault(); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      
       const payload = {
-        name: formData.name,
-        description: formData.description,
+        name: formData.name, description: formData.description,
         long_description: formData.long_description || undefined,
         price: Number(formData.price),
         compare_at_price: formData.compare_at_price ? Number(formData.compare_at_price) : undefined,
-        stock: Number(formData.stock),
-        image_url: formData.image_url,
-        detail_images: JSON.stringify(formData.detail_images.filter(url => url.trim() !== '')),
-        category: formData.category,
-        product_type: formData.product_type,
-        is_active: 1
+        stock: Number(formData.stock), image_url: formData.image_url,
+        detail_images: JSON.stringify(formData.detail_images.filter(u => u.trim())),
+        category: formData.category, product_type: formData.product_type, is_active: 1
       }
-
       if (editingProduct) {
-        // Update existing product
-        await api.put(`/api/admin/products/${editingProduct.id}`, payload, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        await api.put(`/api/admin/products/${editingProduct.id}`, payload, { headers: { Authorization: `Bearer ${token}` } })
         toast.success('상품이 수정되었습니다.')
       } else {
-        // Create new product
-        await api.post('/api/admin/products', payload, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        await api.post('/api/admin/products', payload, { headers: { Authorization: `Bearer ${token}` } })
         toast.success('상품이 등록되었습니다.')
       }
-
-      setShowCreateModal(false)
-      setEditingProduct(null)
-      resetForm()
-      loadProducts()
-    } catch (error: any) {
-      console.error('Failed to save product:', error)
-      setError(error.response?.data?.error || '상품 저장에 실패했습니다.')
+      setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); loadProducts()
+    } catch (err: any) {
+      setError(err.response?.data?.error || '상품 저장에 실패했습니다.')
     }
   }
 
   async function handleDelete(productId: number) {
-    if (!confirm('정말 이 상품을 삭제하시겠습니까?')) {
-      return
-    }
-
+    if (!confirm('정말 이 상품을 삭제하시겠습니까?')) return
     setDeleting(productId)
-
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      
-      await api.delete(`/api/admin/products/${productId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-
-      toast.success('상품이 삭제되었습니다.')
-      loadProducts()
-    } catch (error: any) {
-      console.error('Failed to delete product:', error)
-      toast.error(error.response?.data?.error || '상품 삭제에 실패했습니다.')
-    } finally {
-      setDeleting(null)
-    }
+      await api.delete(`/api/admin/products/${productId}`, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success('상품이 삭제되었습니다.'); loadProducts()
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || '상품 삭제에 실패했습니다.')
+    } finally { setDeleting(null) }
   }
 
-  async function handleToggleActive(productId: number, currentStatus: boolean) {
+  async function handleToggleActive(productId: number, current: boolean) {
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      
-      await api.patch(
-        `/api/admin/products/${productId}`,
-        { is_active: !currentStatus },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      )
-
-      toast.success('상품 상태가 변경되었습니다.')
-      loadProducts()
-    } catch (error: any) {
-      console.error('Failed to toggle product:', error)
-      toast.error(error.response?.data?.error || '상품 상태 변경에 실패했습니다.')
+      await api.patch(`/api/admin/products/${productId}`, { is_active: !current }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success('상품 상태가 변경되었습니다.'); loadProducts()
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || '상품 상태 변경에 실패했습니다.')
     }
   }
 
   function handleEdit(product: Product) {
     setEditingProduct(product)
-    
-    // Parse detail_images if it's a JSON string
-    let detailImagesArray = ['', '', '', '']
+    let detailImages = ['', '', '', '']
     if (product.detail_images) {
       try {
-        const parsed = typeof product.detail_images === 'string' 
-          ? JSON.parse(product.detail_images) 
-          : product.detail_images
-        detailImagesArray = [...parsed, '', '', '', ''].slice(0, 4)
-      } catch (e) {
-        console.error('Failed to parse detail_images:', e)
-      }
+        const parsed = typeof product.detail_images === 'string' ? JSON.parse(product.detail_images) : product.detail_images
+        detailImages = [...parsed, '', '', '', ''].slice(0, 4)
+      } catch { /* ignore */ }
     }
-    
     setFormData({
-      name: product.name,
-      description: product.description,
-      long_description: product.long_description || '',
-      price: product.price.toString(),
+      name: product.name, description: product.description,
+      long_description: product.long_description || '', price: product.price.toString(),
       compare_at_price: product.compare_at_price?.toString() || '',
-      stock: product.stock.toString(),
-      image_url: product.image_url,
-      detail_images: detailImagesArray,
-      category: product.category,
-      product_type: product.product_type
+      stock: product.stock.toString(), image_url: product.image_url,
+      detail_images: detailImages, category: product.category, product_type: product.product_type
     })
-    setShowCreateModal(true)
+    setShowModal(true)
   }
 
-  function resetForm() {
-    setFormData({
-      name: '',
-      description: '',
-      long_description: '',
-      price: '',
-      compare_at_price: '',
-      stock: '',
-      image_url: '',
-      detail_images: ['', '', '', ''],
-      category: 'lifestyle',
-      product_type: 'featured'
-    })
-  }
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
-
-  function formatPrice(price: number) {
-    return price.toLocaleString('ko-KR')
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">상품 목록을 불러오는 중...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/admin')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>어드민 대시보드로 돌아가기</span>
-          </button>
-        </div>
-      </div>
+    <AdminLayout
+      title="상품 관리"
+      headerRight={
+        <button
+          onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+        >
+          <Plus className="w-3.5 h-3.5" /> Ur 특가 상품 등록
+        </button>
+      }
+    >
+      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Title & Actions */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Package className="w-10 h-10 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">상품 관리 (어드민)</h1>
-            </div>
-            <p className="text-gray-600 mt-2">
-              "Ur 특가" 상품을 포함한 모든 상품을 관리할 수 있습니다.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              setEditingProduct(null)
-              resetForm()
-              setShowCreateModal(true)
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Ur 특가 상품 등록</span>
-          </Button>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
-              <Trash2 className="w-5 h-5" />
-              <p>{error}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+      {/* 상품 테이블 */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        {products.length === 0 ? (
+          <div className="py-20 text-center">
+            <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-sm text-gray-400 mb-4">등록된 상품이 없습니다.</p>
+            <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 mx-auto">
+              <Plus className="w-4 h-4" /> 첫 상품 등록하기
+            </button>
           </div>
         ) : (
-          /* Products Table */
-          <div className="bg-white rounded-lg shadow-sm border">
-            {products.length === 0 ? (
-              <div className="text-center py-20">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">등록된 상품이 없습니다.</p>
-                <Button
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  첫 상품 등록하기
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이미지</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">타입</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">가격</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">재고</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상태</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">액션</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {products.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                            {product.image_url ? (
-                              <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="w-10 h-10 text-gray-400" />
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                            <p className="text-xs text-gray-500 line-clamp-1 mt-1">{product.description || '설명 없음'}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {product.product_type === 'featured' ? (
-                            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                              <Star className="w-3 h-3 mr-1" />
-                              Ur 특가
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-red-100 text-red-800 border-red-200">
-                              라이브
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                          {formatPrice(product.price)}원
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
-                            {product.stock > 0 ? `${product.stock}개` : '품절'}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => handleToggleActive(product.id, product.is_active)}
-                            className="inline-flex items-center gap-1"
-                          >
-                            {product.is_active ? (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200">
-                                <Eye className="w-3 h-3 mr-1" />
-                                판매중
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200">
-                                <EyeOff className="w-3 h-3 mr-1" />
-                                비활성
-                              </Badge>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEdit(product)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                              title="수정"
-                            >
-                              <Edit className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(product.id)}
-                              disabled={deleting === product.id}
-                              className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50"
-                              title="삭제"
-                            >
-                              {deleting === product.id ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-5 h-5" />
-                              )}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <thead>
+                <tr className="bg-gray-50">
+                  {['이미지', '상품명', '타입', '가격', '재고', '상태', '액션'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {products.map(product => (
+                  <tr key={product.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                        {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                      <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description || '설명 없음'}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {product.product_type === 'featured' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                          <Star className="w-3 h-3" /> Ur 특가
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">라이브</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">{product.price.toLocaleString()}원</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                        {product.stock > 0 ? `${product.stock}개` : '품절'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => handleToggleActive(product.id, product.is_active)}>
+                        {product.is_active ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                            <Eye className="w-3 h-3" /> 판매중
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer">
+                            <EyeOff className="w-3 h-3" /> 비활성
+                          </span>
+                        )}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleEdit(product)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(product.id)} disabled={deleting === product.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50">
+                          {deleting === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {editingProduct ? '상품 수정' : 'Ur 특가 상품 등록'}
-              </h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Product Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상품명 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+      {/* 등록/수정 모달 */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? '상품 수정' : 'Ur 특가 상품 등록'}</h2>
+              <button onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <X className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    짧은 설명 <span className="text-gray-400">(상품 카드에 표시)</span>
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="예: Premium noise-cancelling headphones with 30-hour battery life."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">상품명 <span className="text-red-500">*</span></label>
+                <input type="text" name="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
 
-                {/* Long Description */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상세 설명 <span className="text-gray-400">(상품 상세 페이지 하단에 표시)</span>
-                  </label>
-                  <textarea
-                    name="long_description"
-                    value={formData.long_description}
-                    onChange={handleChange}
-                    rows={10}
-                    placeholder="상품의 자세한 특징, 사양, 패키지 구성, 사용 방법 등을 작성하세요.
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">짧은 설명</label>
+                <textarea name="description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
 
-예시:
-최고급 노이즈 캔슬링 헤드폰으로 완벽한 몰입감을 선사합니다.
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">상세 설명</label>
+                <textarea name="long_description" value={formData.long_description} onChange={e => setFormData({ ...formData, long_description: e.target.value })} rows={6} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
 
-【주요 특징】
-✓ 액티브 노이즈 캔슬링 (ANC) 기술
-✓ 30시간 초장시간 배터리
-✓ 고해상도 40mm 드라이버
-..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    💡 Tip: 줄바꿈은 그대로 표시됩니다. 특수문자(✓, 【】, ■ 등)를 활용하면 더 보기 좋습니다.
-                  </p>
-                </div>
-
-                {/* Price & Compare Price & Stock */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      판매가격 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleChange}
-                      required
-                      min="0"
-                      placeholder="89000"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: '판매가격 *', name: 'price', placeholder: '89000' },
+                  { label: '정가 (할인 전)', name: 'compare_at_price', placeholder: '149000' },
+                  { label: '재고 수량 *', name: 'stock', placeholder: '50' },
+                ].map(f => (
+                  <div key={f.name}>
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">{f.label}</label>
+                    <input type="number" name={f.name} value={(formData as any)[f.name]} onChange={e => setFormData({ ...formData, [f.name]: e.target.value })} required={f.label.includes('*')} min="0" placeholder={f.placeholder} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
                   </div>
+                ))}
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      정가 <span className="text-gray-400">(할인 전)</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="compare_at_price"
-                      value={formData.compare_at_price}
-                      onChange={handleChange}
-                      min="0"
-                      placeholder="149000"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">대표 이미지</label>
+                <ImageUpload value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} label="" maxSizeKB={800} />
+                <input type="url" name="image_url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder="또는 이미지 URL 직접 입력" className="w-full px-3 py-2 mt-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      재고 수량 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="stock"
-                      value={formData.stock}
-                      onChange={handleChange}
-                      required
-                      min="0"
-                      placeholder="50"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">상세 이미지 (최대 4장)</label>
+                <div className="space-y-2">
+                  {formData.detail_images.map((url, i) => (
+                    <input key={i} type="url" value={url} onChange={e => { const imgs = [...formData.detail_images]; imgs[i] = e.target.value; setFormData({ ...formData, detail_images: imgs }) }} placeholder={`상세 이미지 ${i + 1} URL`} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  ))}
                 </div>
+              </div>
 
-                {/* Image Upload */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    대표 이미지 <span className="text-gray-400">(썸네일)</span>
-                  </label>
-                  <ImageUpload
-                    value={formData.image_url}
-                    onChange={(url) => setFormData({ ...formData, image_url: url })}
-                    label=""
-                    maxSizeKB={800}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    또는 이미지 URL을 직접 입력:
-                  </p>
-                  <input
-                    type="url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleChange}
-                    placeholder="https://images.unsplash.com/photo-..."
-                    className="w-full px-4 py-2 mt-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                  />
-                </div>
-
-                {/* Detail Images */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상세 이미지 (4장) <span className="text-gray-400">(상품 상세 페이지에 표시)</span>
-                  </label>
-                  <div className="space-y-3">
-                    {formData.detail_images.map((url, index) => (
-                      <div key={index}>
-                        <label className="block text-xs text-gray-500 mb-1">
-                          상세 이미지 {index + 1}
-                        </label>
-                        <input
-                          type="url"
-                          value={url}
-                          onChange={(e) => {
-                            const newDetailImages = [...formData.detail_images]
-                            newDetailImages[index] = e.target.value
-                            setFormData({ ...formData, detail_images: newDetailImages })
-                          }}
-                          placeholder={`https://images.unsplash.com/photo-...?w=1200 (${index === 0 ? '제품 전체샷' : index === 1 ? '제품 상세샷' : index === 2 ? '제품 특징' : '패키지 구성'})`}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">
-                    💡 Tip: Unsplash에서 `?w=1200` 파라미터를 추가하면 최적 크기로 로드됩니다.
-                  </p>
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    카테고리 <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="fashion">패션</option>
-                    <option value="beauty">뷰티</option>
-                    <option value="food">식품</option>
-                    <option value="electronics">전자기기</option>
-                    <option value="lifestyle">라이프스타일</option>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">카테고리 *</label>
+                  <select name="category" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    {[['fashion', '패션'], ['beauty', '뷰티'], ['food', '식품'], ['electronics', '전자기기'], ['lifestyle', '라이프스타일']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
-
-                {/* Product Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    상품 타입 <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="product_type"
-                    value={formData.product_type}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">상품 타입 *</label>
+                  <select name="product_type" value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     <option value="featured">Ur 특가 (메인 페이지 노출)</option>
                     <option value="live">라이브 방송 전용</option>
                   </select>
                 </div>
+              </div>
 
-                {/* Buttons */}
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateModal(false)
-                      setEditingProduct(null)
-                      resetForm()
-                    }}
-                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800"
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {editingProduct ? '수정' : '등록'}
-                  </Button>
-                </div>
-              </form>
-            </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
+                <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">{editingProduct ? '수정' : '등록'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   )
 }

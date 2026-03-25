@@ -47,6 +47,7 @@ import { shippingAddressRoutes } from '../features/shipping/api/shipping-address
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
+import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -330,6 +331,10 @@ app.route('/api/account', accountRoutes);
 app.route('/api/seller/youtube', youtubeRoutes);
 app.route('/api/youtube', youtubeRoutes); // legacy path alias
 app.route('/api/youtube/chat', youtubeChatRoutes);
+
+// Live stream real-time (SSE fallback + WebSocket → DO + chat messages)
+app.route('/api/live', liveSseRoutes);
+app.route('/api/chat', chatRoutes);
 
 // ============================================================
 // [참고] 라우트 등록 원칙 (이 주석을 절대 삭제하지 말 것)
