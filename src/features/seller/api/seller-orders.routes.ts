@@ -73,7 +73,7 @@ sellerOrdersRoutes.get('/orders', async (c) => {
         NULL AS payment_method,
         o.created_at,
         o.updated_at,
-        u.username          AS user_name,
+        COALESCE(u.name, u.email) AS user_name,
         u.email             AS user_email
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
@@ -229,7 +229,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
         p.description,
         p.price,
         COALESCE(p.stock_quantity, p.stock, 0)                    AS stock,
-        COALESCE(p.thumbnail_url, p.image_url, p.image)           AS image_url,
+        COALESCE(p.thumbnail_url, p.image_url)                    AS image_url,
         COALESCE(p.status, 'ACTIVE')                              AS status,
         p.category,
         p.created_at,
