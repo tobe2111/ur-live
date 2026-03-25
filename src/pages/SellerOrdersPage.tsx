@@ -808,14 +808,22 @@ export default function SellerOrdersPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           택배사 <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
+                        <select
                           value={trackingForm.courier}
                           onChange={(e) => setTrackingForm({ ...trackingForm, courier: e.target.value })}
-                          placeholder="예: CJ대한통운, 우체국택배"
                           required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                          <option value="">택배사 선택</option>
+                          <option value="CJ대한통운">CJ대한통운</option>
+                          <option value="우체국택배">우체국택배</option>
+                          <option value="한진택배">한진택배</option>
+                          <option value="로젠택배">로젠택배</option>
+                          <option value="롯데택배">롯데택배</option>
+                          <option value="GS택배">GS택배</option>
+                          <option value="쿠팡로켓배송">쿠팡로켓배송</option>
+                          <option value="홈픽">홈픽</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">

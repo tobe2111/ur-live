@@ -15,36 +15,50 @@ interface Env {
   DB: D1Database;
 }
 
+const BASE_URL = 'https://live.ur-team.com';
+
 export default {
   async scheduled(
     event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    console.log('[Cron] 🕐 Starting cleanup of expired reservations...');
+    console.log('[Cron] 🕐 Starting scheduled tasks...');
 
+    // ── 1. 만료된 예약 정리 (매 실행) ─────────────────────────────────────────
     try {
-      // Call the cleanup API endpoint (internal call)
-      const apiUrl = 'https://live.ur-team.com/api/cleanup/expired-reservations';
-      
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`${BASE_URL}/api/cleanup/expired-reservations`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Cron-Token': 'internal-cron-call' // Add authentication if needed
-        }
+        headers: { 'Content-Type': 'application/json', 'X-Cron-Token': 'internal-cron-call' },
       });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
       const result = await response.json();
-      console.log('[Cron] ✅ Cleanup completed:', result);
-
+      console.log('[Cron] ✅ Reservation cleanup completed:', result);
     } catch (error) {
-      console.error('[Cron] ❌ Cleanup failed:', error);
-      // Don't throw - let the cron continue next time
+      console.error('[Cron] ❌ Reservation cleanup failed:', error);
     }
-  }
+
+    // ── 2. 배송 자동 완료 처리 (6시간마다: 0, 6, 12, 18 UTC) ─────────────────
+    const now = new Date(event.scheduledTime);
+    const hour = now.getUTCHours();
+    const minute = now.getUTCMinutes();
+
+    if (hour % 6 === 0 && minute < 5) {
+      console.log('[Cron] 🚚 Running delivery sync...');
+      try {
+        const response = await fetch(`${BASE_URL}/api/orders/internal/sync-deliveries`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Token': 'cron-sync-deliveries',
+          },
+        });
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        const result = await response.json() as any;
+        console.log(`[Cron] ✅ Delivery sync: ${result?.data?.delivered ?? 0} orders marked delivered`);
+      } catch (error) {
+        console.error('[Cron] ❌ Delivery sync failed:', error);
+      }
+    }
+  },
 };

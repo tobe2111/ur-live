@@ -19,9 +19,62 @@ type Bindings = {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_PRIVATE_KEY: string;
   FIREBASE_CLIENT_EMAIL: string;
+  DELIVERY_TRACKER_API_KEY?: string;
 };
 
 export const ordersRoutes = new Hono<{ Bindings: Bindings }>();
+
+// ─── 택배사 이름 → DeliveryTracker carrier ID 매핑 ───────────────────────────
+const CARRIER_ID_MAP: Record<string, string> = {
+  'CJ대한통운':       'kr.cjlogistics',
+  '우체국택배':        'kr.epost',
+  '한진택배':         'kr.hanjin',
+  '로젠택배':         'kr.logen',
+  '롯데택배':         'kr.lotte',
+  'GS택배':          'kr.gs',
+  'GS Postbox 택배':  'kr.gs',
+  '쿠팡로켓배송':      'kr.coupanglogistics',
+  '홈픽':            'kr.homepick',
+};
+
+const TRACKING_GQL = `
+  query Track($carrierId: ID!, $trackId: ID!) {
+    track(carrierId: $carrierId, trackId: $trackId) {
+      lastEvent {
+        time
+        status { code name }
+        description
+        location { name }
+      }
+      events(last: 30) {
+        edges {
+          node {
+            time
+            status { code name }
+            description
+            location { name }
+          }
+        }
+      }
+    }
+  }
+`;
+
+async function fetchDeliveryTracker(
+  carrierId: string,
+  trackId: string,
+  apiKey?: string
+) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+  const res = await fetch('https://apis.tracker.delivery/graphql', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query: TRACKING_GQL, variables: { carrierId, trackId } }),
+  });
+  return res.json() as Promise<any>;
+}
 
 /**
  * Helper: map Firebase UID → DB integer user id
@@ -250,6 +303,136 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
       }
     }, 500);
   }
+});
+
+/**
+ * GET /api/orders/:id/tracking
+ * 실시간 배송 추적 (DeliveryTracker GraphQL)
+ * DELIVERY_TRACKER_API_KEY 환경변수가 없으면 빈 이벤트 반환
+ */
+ordersRoutes.get('/:id/tracking', cors(), requireAuth(), async (c) => {
+  const { DB } = c.env;
+  const authUser = getCurrentUser(c);
+  if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const id = Number(c.req.param('id'));
+  if (isNaN(id)) return c.json({ success: false, error: 'Invalid order ID' }, 400);
+
+  const repository = new OrderRepository(DB);
+  const order = await repository.findById(id) as any;
+  if (!order) return c.json({ success: false, error: 'Order not found' }, 404);
+
+  if (authUser.type === 'user') {
+    const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
+    if (order.user_id !== dbUserId) return c.json({ success: false, error: 'Forbidden' }, 403);
+  }
+
+  const { courier, tracking_number } = order;
+  if (!courier || !tracking_number) {
+    return c.json({ success: true, data: { events: [], orderStatus: order.status } });
+  }
+
+  const carrierId = CARRIER_ID_MAP[courier];
+  if (!carrierId) {
+    return c.json({
+      success: true,
+      data: {
+        events: [], orderStatus: order.status,
+        courier, trackingNumber: tracking_number, unsupported: true,
+      },
+    });
+  }
+
+  try {
+    const json = await fetchDeliveryTracker(carrierId, tracking_number, c.env.DELIVERY_TRACKER_API_KEY);
+
+    if (json.errors?.length) {
+      return c.json({
+        success: true,
+        data: { events: [], orderStatus: order.status, courier, trackingNumber: tracking_number, apiError: json.errors[0].message },
+      });
+    }
+
+    const track = json.data?.track;
+    const events = ((track?.events?.edges ?? []) as any[])
+      .map((e: any) => ({
+        time: e.node.time,
+        statusCode: e.node.status?.code ?? '',
+        statusName: e.node.status?.name ?? '',
+        description: e.node.description ?? '',
+        location: e.node.location?.name ?? '',
+      }))
+      .reverse();
+
+    return c.json({
+      success: true,
+      data: {
+        events,
+        lastStatusCode: track?.lastEvent?.status?.code ?? '',
+        lastStatusName: track?.lastEvent?.status?.name ?? '',
+        orderStatus: order.status,
+        courier,
+        trackingNumber: tracking_number,
+      },
+    });
+  } catch (err) {
+    console.error('[Tracking] fetch error:', err);
+    return c.json({
+      success: true,
+      data: { events: [], orderStatus: order.status, courier, trackingNumber: tracking_number, apiError: '배송 조회 서비스 연결 실패' },
+    });
+  }
+});
+
+/**
+ * POST /api/orders/internal/sync-deliveries
+ * Cron 전용: 배송중 주문을 DeliveryTracker로 확인해 자동 완료 처리
+ * X-Internal-Token: cron-sync-deliveries 헤더 필요
+ */
+ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
+  if (c.req.header('X-Internal-Token') !== 'cron-sync-deliveries') {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+
+  const { DB } = c.env;
+
+  // 12시간 이상 배송중인 주문 최대 5개만 처리 (API 한도 절약)
+  const { results: rows = [] } = await DB.prepare(`
+    SELECT id, order_number, courier, tracking_number
+    FROM orders
+    WHERE status IN ('shipping', 'SHIPPING')
+      AND tracking_number IS NOT NULL
+      AND shipped_at < datetime('now', '-12 hours')
+    ORDER BY shipped_at ASC
+    LIMIT 5
+  `).all<{ id: number; order_number: string; courier: string; tracking_number: string }>();
+
+  let delivered = 0;
+  const errors: string[] = [];
+
+  for (const row of rows) {
+    const carrierId = CARRIER_ID_MAP[row.courier];
+    if (!carrierId) continue;
+
+    try {
+      const json = await fetchDeliveryTracker(carrierId, row.tracking_number, c.env.DELIVERY_TRACKER_API_KEY);
+      const lastStatus = json.data?.track?.lastEvent?.status?.code;
+
+      if (lastStatus === 'DELIVERED') {
+        await DB.prepare(`
+          UPDATE orders
+          SET status = 'delivered', delivered_at = datetime('now'), updated_at = datetime('now')
+          WHERE id = ? AND status IN ('shipping', 'SHIPPING')
+        `).bind(row.id).run();
+        delivered++;
+        console.log(`[DeliverySync] ✅ ${row.order_number} → delivered`);
+      }
+    } catch (err) {
+      errors.push(`${row.order_number}: ${(err as Error).message}`);
+    }
+  }
+
+  return c.json({ success: true, data: { processed: rows.length, delivered, errors } });
 });
 
 export default ordersRoutes;
