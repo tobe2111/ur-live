@@ -331,6 +331,8 @@ adminManagementRoutes.get('/products', cors(), async (c) => {
     const products = await executeQuery<ProductRow>(DB, `
       SELECT p.id, p.name, p.description, p.price, p.stock,
              p.image_url, p.is_active, p.product_type, p.category,
+             COALESCE(p.supply_price, 0) AS supply_price,
+             COALESCE(p.is_supply_product, 0) AS is_supply_product,
              p.seller_id, p.created_at, s.business_name as seller_name
       FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
       ORDER BY p.created_at DESC LIMIT 1000
@@ -373,27 +375,42 @@ adminManagementRoutes.post('/products', cors(), async (c) => {
     const body = await c.req.json();
     const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
 
-    // Validation
     if (!name || !price) {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다' }, 400);
     }
 
-    // Insert product (no seller_id for admin-created products)
-    const result = await executeRun(DB, `
-      INSERT INTO products (
-        name, description, long_description, price, compare_at_price, supply_price,
-        stock, image_url, detail_images, category, product_type,
-        is_supply_product, is_active, created_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
-    `, [
-      name, description || '', long_description || null, price,
-      compare_at_price || null, supply_price || 0,
-      stock || 0, image_url || '',
-      detail_images || null,
-      category || 'lifestyle', product_type || 'featured',
-      is_supply_product ? 1 : 0,
-    ]);
+    // 풀 스키마 시도 (long_description, compare_at_price, detail_images, supply_price, is_supply_product)
+    let result: any;
+    try {
+      result = await executeRun(DB, `
+        INSERT INTO products (
+          name, description, long_description, price, compare_at_price, supply_price,
+          stock, image_url, detail_images, category, product_type,
+          is_supply_product, is_active, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      `, [
+        name, description || '', long_description || null, price,
+        compare_at_price || null, supply_price || 0,
+        stock || 0, image_url || '',
+        detail_images || null,
+        category || 'lifestyle', product_type || 'featured',
+        is_supply_product ? 1 : 0,
+      ]);
+    } catch {
+      // 구버전 스키마 폴백 (extra 컬럼 없음)
+      result = await executeRun(DB, `
+        INSERT INTO products (
+          name, description, price, stock, image_url,
+          category, product_type, is_active, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      `, [
+        name, description || '', price,
+        stock || 0, image_url || '',
+        category || 'lifestyle', product_type || 'featured',
+      ]);
+    }
 
     return c.json({ success: true, data: { id: result.meta.last_row_id, name, price } });
   } catch (err) {
@@ -410,31 +427,47 @@ adminManagementRoutes.put('/products/:id', cors(), async (c) => {
     const body = await c.req.json();
     const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
 
-    // Check if product exists
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
 
-    // Update product
-    await executeRun(DB, `
-      UPDATE products
-      SET name = ?, description = ?, long_description = ?, price = ?,
-          compare_at_price = ?, supply_price = ?,
-          stock = ?, image_url = ?, detail_images = ?,
-          category = ?, product_type = ?,
-          is_supply_product = ?,
-          updated_at = datetime('now')
-      WHERE id = ?
-    `, [
-      name, description || '', long_description || null, price,
-      compare_at_price || null, supply_price || 0,
-      stock || 0, image_url || '',
-      detail_images || null,
-      category || 'lifestyle', product_type || 'featured',
-      is_supply_product ? 1 : 0,
-      productId,
-    ]);
+    // 풀 스키마 시도
+    try {
+      await executeRun(DB, `
+        UPDATE products
+        SET name = ?, description = ?, long_description = ?, price = ?,
+            compare_at_price = ?, supply_price = ?,
+            stock = ?, image_url = ?, detail_images = ?,
+            category = ?, product_type = ?,
+            is_supply_product = ?,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `, [
+        name, description || '', long_description || null, price,
+        compare_at_price || null, supply_price || 0,
+        stock || 0, image_url || '',
+        detail_images || null,
+        category || 'lifestyle', product_type || 'featured',
+        is_supply_product ? 1 : 0,
+        productId,
+      ]);
+    } catch {
+      // 구버전 스키마 폴백
+      await executeRun(DB, `
+        UPDATE products
+        SET name = ?, description = ?, price = ?,
+            stock = ?, image_url = ?,
+            category = ?, product_type = ?,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `, [
+        name, description || '', price,
+        stock || 0, image_url || '',
+        category || 'lifestyle', product_type || 'featured',
+        productId,
+      ]);
+    }
 
     return c.json({ success: true, data: { id: productId, name } });
   } catch (err) {
@@ -487,34 +520,43 @@ adminManagementRoutes.get('/sample-requests', cors(), async (c) => {
     const params: (string | number)[] = [];
     if (status) { where += ' AND sr.status = ?'; params.push(status); }
 
-    const rows = await DB.prepare(`
-      SELECT
-        sr.id,
-        sr.seller_id,
-        sr.product_id,
-        sr.status,
-        sr.seller_memo,
-        sr.admin_memo,
-        sr.created_at,
-        sr.approved_at,
-        s.name        AS seller_name,
-        s.business_name,
-        s.email       AS seller_email,
-        p.name        AS product_name,
-        p.price       AS retail_price,
-        p.supply_price,
-        p.image_url   AS product_image
-      FROM sample_requests sr
-      JOIN sellers  s ON sr.seller_id  = s.id
-      JOIN products p ON sr.product_id = p.id
-      WHERE ${where}
-      ORDER BY sr.created_at DESC
-      LIMIT ? OFFSET ?
-    `).bind(...params, limit, offset).all();
+    // supply_price 컬럼이 없는 구버전 스키마를 위해 COALESCE 사용
+    // sample_requests 테이블이 없으면(마이그레이션 미실행) 빈 배열 반환
+    let rows: { results: any[] } = { results: [] };
+    let total: { count: number } | null = { count: 0 };
+    try {
+      rows = await DB.prepare(`
+        SELECT
+          sr.id,
+          sr.seller_id,
+          sr.product_id,
+          sr.status,
+          sr.seller_memo,
+          sr.admin_memo,
+          sr.created_at,
+          sr.approved_at,
+          s.name        AS seller_name,
+          COALESCE(s.business_name, s.name) AS business_name,
+          COALESCE(s.email, '') AS seller_email,
+          p.name        AS product_name,
+          p.price       AS retail_price,
+          COALESCE(p.supply_price, 0) AS supply_price,
+          p.image_url   AS product_image
+        FROM sample_requests sr
+        JOIN sellers  s ON sr.seller_id  = s.id
+        JOIN products p ON sr.product_id = p.id
+        WHERE ${where}
+        ORDER BY sr.created_at DESC
+        LIMIT ? OFFSET ?
+      `).bind(...params, limit, offset).all();
 
-    const total = await DB.prepare(
-      `SELECT COUNT(*) as count FROM sample_requests sr WHERE ${where}`
-    ).bind(...params).first<{ count: number }>();
+      total = await DB.prepare(
+        `SELECT COUNT(*) as count FROM sample_requests sr WHERE ${where}`
+      ).bind(...params).first<{ count: number }>();
+    } catch (tableErr) {
+      // 테이블 또는 컬럼 미존재 (마이그레이션 0120 미실행) → 빈 목록 반환
+      console.warn('[Admin] sample_requests table not ready:', (tableErr as Error).message);
+    }
 
     return c.json({
       success: true,
@@ -573,6 +615,83 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
 });
 
 // ─── 통계 ────────────────────────────────────────────────────────────────────
+
+// GET /api/admin/supply/sales - 공급 상품 셀러별 판매 현황 + 정산 데이터
+adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const supplyProductId = c.req.query('product_id') || '';  // 특정 공급 상품 필터
+    const sellerId = c.req.query('seller_id') || '';
+
+    // supply_source_id 컬럼 존재 여부 확인
+    const hasCol = await DB.prepare(
+      "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='supply_source_id'"
+    ).first<{ c: number }>().catch(() => null);
+
+    if (!hasCol || hasCol.c === 0) {
+      return c.json({ success: true, data: { rows: [], summary: { total_orders: 0, total_qty: 0, total_revenue: 0, total_supply_cost: 0 } } });
+    }
+
+    let where = "sp.supply_source_id IS NOT NULL AND o.payment_status IN ('approved','APPROVED','paid','PAID')";
+    const params: (string | number)[] = [];
+    if (supplyProductId) { where += ' AND sp.supply_source_id = ?'; params.push(supplyProductId); }
+    if (sellerId) { where += ' AND sp.seller_id = ?'; params.push(sellerId); }
+
+    const rows = await DB.prepare(`
+      SELECT
+        src.id            AS supply_product_id,
+        src.name          AS supply_product_name,
+        COALESCE(src.supply_price, 0) AS supply_price,
+        sp.id             AS seller_product_id,
+        sp.name           AS seller_product_name,
+        sp.price          AS seller_price,
+        sp.seller_id,
+        s.name            AS seller_name,
+        COALESCE(s.business_name, s.name) AS business_name,
+        COUNT(DISTINCT o.id)      AS order_count,
+        COALESCE(SUM(oi.quantity), 0) AS total_qty,
+        COALESCE(SUM(oi.quantity * oi.price), 0)               AS total_revenue,
+        COALESCE(SUM(oi.quantity * src.supply_price), 0)       AS total_supply_cost,
+        COALESCE(SUM(oi.quantity * (oi.price - COALESCE(src.supply_price,0))), 0) AS seller_margin
+      FROM products sp
+      JOIN products src ON sp.supply_source_id = src.id
+      JOIN sellers  s   ON sp.seller_id = s.id
+      JOIN order_items oi ON oi.product_id = sp.id
+      JOIN orders o      ON oi.order_id = o.id
+      WHERE ${where}
+      GROUP BY sp.supply_source_id, sp.seller_id
+      ORDER BY total_supply_cost DESC
+    `).bind(...params).all<{
+      supply_product_id: number;
+      supply_product_name: string;
+      supply_price: number;
+      seller_product_id: number;
+      seller_product_name: string;
+      seller_price: number;
+      seller_id: number;
+      seller_name: string;
+      business_name: string;
+      order_count: number;
+      total_qty: number;
+      total_revenue: number;
+      total_supply_cost: number;
+      seller_margin: number;
+    }>();
+
+    const items = rows.results ?? [];
+    const summary = {
+      total_orders: items.reduce((s, r) => s + r.order_count, 0),
+      total_qty:    items.reduce((s, r) => s + r.total_qty, 0),
+      total_revenue: items.reduce((s, r) => s + r.total_revenue, 0),
+      total_supply_cost: items.reduce((s, r) => s + r.total_supply_cost, 0),
+    };
+
+    return c.json({ success: true, data: { rows: items, summary } });
+  } catch (err) {
+    console.error('[Admin] GET /supply/sales error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
 
 adminManagementRoutes.get('/stats', cors(), async (c) => {
   try {

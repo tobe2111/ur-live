@@ -6,7 +6,8 @@ import ImageUpload from '@/components/ImageUpload'
 import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
-  Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock
+  Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock,
+  BarChart2, TrendingUp
 } from 'lucide-react'
 
 interface Product {
@@ -27,6 +28,30 @@ interface Product {
   seller_id?: number
   seller_name?: string
   created_at: string
+}
+
+interface SupplySalesRow {
+  supply_product_id: number
+  supply_product_name: string
+  supply_price: number
+  seller_product_id: number
+  seller_product_name: string
+  seller_price: number
+  seller_id: number
+  seller_name: string
+  business_name: string
+  order_count: number
+  total_qty: number
+  total_revenue: number
+  total_supply_cost: number
+  seller_margin: number
+}
+
+interface SupplySalesSummary {
+  total_orders: number
+  total_qty: number
+  total_revenue: number
+  total_supply_cost: number
 }
 
 interface SampleRequest {
@@ -54,9 +79,12 @@ const EMPTY_FORM = {
 
 export default function AdminProductsPage() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests'>('products')
+  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests' | 'supply-sales'>('products')
   const [products, setProducts] = useState<Product[]>([])
   const [sampleRequests, setSampleRequests] = useState<SampleRequest[]>([])
+  const [supplySales, setSupplySales] = useState<SupplySalesRow[]>([])
+  const [supplySummary, setSupplySummary] = useState<SupplySalesSummary | null>(null)
+  const [salesLoading, setSalesLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [srLoading, setSrLoading] = useState(false)
   const [error, setError] = useState('')
@@ -75,6 +103,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     if (activeTab === 'sample-requests') loadSampleRequests()
+    if (activeTab === 'supply-sales') loadSupplySales()
   }, [activeTab])
 
   async function loadProducts() {
@@ -97,6 +126,20 @@ export default function AdminProductsPage() {
     } catch {
       toast.error('샘플 신청 목록을 불러올 수 없습니다.')
     } finally { setSrLoading(false) }
+  }
+
+  async function loadSupplySales() {
+    setSalesLoading(true)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const res = await api.get('/api/admin/supply/sales', { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) {
+        setSupplySales(res.data.data?.rows ?? [])
+        setSupplySummary(res.data.data?.summary ?? null)
+      }
+    } catch {
+      toast.error('판매 현황을 불러올 수 없습니다.')
+    } finally { setSalesLoading(false) }
   }
 
   async function handleSampleAction(reqId: number, action: 'approve' | 'reject') {
@@ -230,6 +273,12 @@ export default function AdminProductsPage() {
               <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
             )}
           </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('supply-sales')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> 공급 판매 현황</span>
         </button>
       </div>
 
@@ -395,6 +444,71 @@ export default function AdminProductsPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── 공급 판매 현황 탭 ── */}
+      {activeTab === 'supply-sales' && (
+        <div className="space-y-4">
+          {/* 요약 카드 */}
+          {supplySummary && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: '총 주문 수', value: `${supplySummary.total_orders.toLocaleString()}건`, color: 'text-blue-700' },
+                { label: '총 판매 수량', value: `${supplySummary.total_qty.toLocaleString()}개`, color: 'text-gray-700' },
+                { label: '셀러 총 매출', value: `${supplySummary.total_revenue.toLocaleString()}원`, color: 'text-gray-700' },
+                { label: '어드민 공급 수익', value: `${supplySummary.total_supply_cost.toLocaleString()}원`, color: 'text-purple-700' },
+              ].map(c => (
+                <div key={c.label} className="bg-white rounded-xl shadow-sm p-4">
+                  <p className="text-xs text-gray-400 mb-1">{c.label}</p>
+                  <p className={`text-base font-bold ${c.color}`}>{c.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            {salesLoading ? (
+              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" /></div>
+            ) : supplySales.length === 0 ? (
+              <div className="py-20 text-center">
+                <TrendingUp className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">공급 상품 판매 내역이 없습니다.</p>
+                <p className="text-xs text-gray-300 mt-1">셀러가 공급 상품을 등록하고 판매하면 여기에 표시됩니다.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px]">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      {['공급 상품', '셀러', '셀러 판매가', '공급가', '주문', '판매량', '셀러 매출', '어드민 수익', '셀러 마진'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {supplySales.map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="text-xs font-medium text-gray-900 line-clamp-1">{row.supply_product_name}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-xs font-medium text-gray-900">{row.business_name || row.seller_name}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-700 text-right">{row.seller_price.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-xs text-purple-600 font-medium text-right">{row.supply_price.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-xs text-gray-700 text-center">{row.order_count}건</td>
+                        <td className="px-4 py-3 text-xs text-gray-700 text-center">{row.total_qty}개</td>
+                        <td className="px-4 py-3 text-xs text-gray-900 font-medium text-right">{row.total_revenue.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-xs text-purple-700 font-semibold text-right">{row.total_supply_cost.toLocaleString()}원</td>
+                        <td className="px-4 py-3 text-xs text-emerald-600 text-right">{row.seller_margin.toLocaleString()}원</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
