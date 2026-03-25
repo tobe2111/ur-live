@@ -45,6 +45,7 @@ import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes'
 import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
+import { supplyRoutes } from '../features/supply/api/supply.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
@@ -378,6 +379,9 @@ app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
 
 // Account
 app.route('/api/account', accountRoutes);
+
+// Supply chain (공급가 시스템)
+app.route('/api/supply', supplyRoutes);
 
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments

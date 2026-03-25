@@ -6,7 +6,7 @@ import ImageUpload from '@/components/ImageUpload'
 import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
-  Loader2, Image as ImageIcon, Star, X
+  Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock
 } from 'lucide-react'
 
 interface Product {
@@ -16,6 +16,8 @@ interface Product {
   long_description?: string
   price: number
   compare_at_price?: number
+  supply_price?: number
+  is_supply_product?: boolean
   stock: number
   image_url: string
   detail_images?: string | string[]
@@ -27,21 +29,43 @@ interface Product {
   created_at: string
 }
 
+interface SampleRequest {
+  id: number
+  seller_id: number
+  seller_name: string
+  seller_email: string
+  product_id: number
+  product_name: string
+  retail_price: number
+  supply_price: number
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  seller_memo: string | null
+  admin_memo: string | null
+  created_at: string
+  approved_at: string | null
+}
+
 const EMPTY_FORM = {
   name: '', description: '', long_description: '', price: '', compare_at_price: '',
-  stock: '', image_url: '', detail_images: ['', '', '', ''] as string[],
-  category: 'lifestyle', product_type: 'featured' as 'live' | 'featured'
+  supply_price: '', stock: '', image_url: '', detail_images: ['', '', '', ''] as string[],
+  category: 'lifestyle', product_type: 'featured' as 'live' | 'featured',
+  is_supply_product: false
 }
 
 export default function AdminProductsPage() {
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState<'products' | 'sample-requests'>('products')
   const [products, setProducts] = useState<Product[]>([])
+  const [sampleRequests, setSampleRequests] = useState<SampleRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [srLoading, setSrLoading] = useState(false)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState(EMPTY_FORM)
+  const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -49,15 +73,45 @@ export default function AdminProductsPage() {
     loadProducts()
   }, [])
 
+  useEffect(() => {
+    if (activeTab === 'sample-requests') loadSampleRequests()
+  }, [activeTab])
+
   async function loadProducts() {
     setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const response = await api.get('/api/admin/products', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) setProducts(response.data.data)
-    } catch (err: any) {
+    } catch {
       setError('상품 목록을 불러올 수 없습니다.')
     } finally { setLoading(false) }
+  }
+
+  async function loadSampleRequests() {
+    setSrLoading(true)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const res = await api.get('/api/admin/sample-requests', { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) setSampleRequests(res.data.data?.items ?? [])
+    } catch {
+      toast.error('샘플 신청 목록을 불러올 수 없습니다.')
+    } finally { setSrLoading(false) }
+  }
+
+  async function handleSampleAction(reqId: number, action: 'approve' | 'reject') {
+    setActionLoading(reqId)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.patch(`/api/admin/sample-requests/${reqId}`, {
+        action,
+        admin_memo: adminMemoMap[reqId] || null,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(action === 'approve' ? '샘플 신청이 승인되었습니다.' : '샘플 신청이 거부되었습니다.')
+      loadSampleRequests()
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || '처리에 실패했습니다.')
+    } finally { setActionLoading(null) }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -69,6 +123,8 @@ export default function AdminProductsPage() {
         long_description: formData.long_description || undefined,
         price: Number(formData.price),
         compare_at_price: formData.compare_at_price ? Number(formData.compare_at_price) : undefined,
+        supply_price: formData.supply_price ? Number(formData.supply_price) : undefined,
+        is_supply_product: formData.is_supply_product ? 1 : 0,
         stock: Number(formData.stock), image_url: formData.image_url,
         detail_images: JSON.stringify(formData.detail_images.filter(u => u.trim())),
         category: formData.category, product_type: formData.product_type, is_active: 1
@@ -121,11 +177,15 @@ export default function AdminProductsPage() {
       name: product.name, description: product.description,
       long_description: product.long_description || '', price: product.price.toString(),
       compare_at_price: product.compare_at_price?.toString() || '',
+      supply_price: product.supply_price?.toString() || '',
       stock: product.stock.toString(), image_url: product.image_url,
-      detail_images: detailImages, category: product.category, product_type: product.product_type
+      detail_images: detailImages, category: product.category, product_type: product.product_type,
+      is_supply_product: !!product.is_supply_product
     })
     setShowModal(true)
   }
+
+  const pendingCount = sampleRequests.filter(r => r.status === 'PENDING').length
 
   if (loading) {
     return (
@@ -142,93 +202,201 @@ export default function AdminProductsPage() {
     <AdminLayout
       title="상품 관리"
       headerRight={
-        <button
-          onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-3.5 h-3.5" /> Ur 특가 상품 등록
-        </button>
+        activeTab === 'products' ? (
+          <button
+            onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-3.5 h-3.5" /> 상품 등록
+          </button>
+        ) : undefined
       }
     >
-      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
+      {/* 탭 */}
+      <div className="flex gap-1 mb-4 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> 상품 목록</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('sample-requests')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Truck className="w-4 h-4" /> 샘플 신청 목록
+            {pendingCount > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>
+            )}
+          </span>
+        </button>
+      </div>
 
-      {/* 상품 테이블 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {products.length === 0 ? (
-          <div className="py-20 text-center">
-            <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-sm text-gray-400 mb-4">등록된 상품이 없습니다.</p>
-            <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 mx-auto">
-              <Plus className="w-4 h-4" /> 첫 상품 등록하기
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead>
-                <tr className="bg-gray-50">
-                  {['이미지', '상품명', '타입', '가격', '재고', '상태', '액션'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {products.map(product => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                        {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                      <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description || '설명 없음'}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      {product.product_type === 'featured' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
-                          <Star className="w-3 h-3" /> Ur 특가
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">라이브</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">{product.price.toLocaleString()}원</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                        {product.stock > 0 ? `${product.stock}개` : '품절'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button onClick={() => handleToggleActive(product.id, product.is_active)}>
-                        {product.is_active ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
-                            <Eye className="w-3 h-3" /> 판매중
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer">
-                            <EyeOff className="w-3 h-3" /> 비활성
+      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 mb-4">{error}</div>}
+
+      {/* ── 상품 목록 탭 ── */}
+      {activeTab === 'products' && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {products.length === 0 ? (
+            <div className="py-20 text-center">
+              <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm text-gray-400 mb-4">등록된 상품이 없습니다.</p>
+              <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 mx-auto">
+                <Plus className="w-4 h-4" /> 첫 상품 등록하기
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
+                <thead>
+                  <tr className="bg-gray-50">
+                    {['이미지', '상품명', '타입', '판매가 / 공급가', '재고', '상태', '액션'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {products.map(product => (
+                    <tr key={product.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                          {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> : <ImageIcon className="w-6 h-6 text-gray-300" />}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                        <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description || '설명 없음'}</p>
+                        {product.is_supply_product && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mt-1 text-xs font-medium rounded-full bg-purple-50 text-purple-700">
+                            <Truck className="w-3 h-3" /> 공급 상품
                           </span>
                         )}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => handleEdit(product)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600">
-                          <Edit className="w-4 h-4" />
+                      </td>
+                      <td className="px-4 py-3">
+                        {product.product_type === 'featured' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                            <Star className="w-3 h-3" /> Ur 특가
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">라이브</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-medium text-gray-900">{product.price.toLocaleString()}원</p>
+                        {product.is_supply_product && product.supply_price != null && product.supply_price > 0 && (
+                          <p className="text-xs text-purple-600 mt-0.5">공급가 {product.supply_price.toLocaleString()}원</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                          {product.stock > 0 ? `${product.stock}개` : '품절'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => handleToggleActive(product.id, product.is_active)}>
+                          {product.is_active ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                              <Eye className="w-3 h-3" /> 판매중
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 cursor-pointer">
+                              <EyeOff className="w-3 h-3" /> 비활성
+                            </span>
+                          )}
                         </button>
-                        <button onClick={() => handleDelete(product.id)} disabled={deleting === product.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50">
-                          {deleting === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleEdit(product)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(product.id)} disabled={deleting === product.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50">
+                            {deleting === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 샘플 신청 목록 탭 ── */}
+      {activeTab === 'sample-requests' && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {srLoading ? (
+            <div className="py-16 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" />
+            </div>
+          ) : sampleRequests.length === 0 ? (
+            <div className="py-20 text-center">
+              <Truck className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">샘플 신청 내역이 없습니다.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {sampleRequests.map(req => (
+                <div key={req.id} className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> 대기중</span>}
+                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> 승인됨</span>}
+                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> 거부됨</span>}
+                        <span className="text-xs text-gray-400">{new Date(req.created_at).toLocaleDateString('ko-KR')}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                      <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        셀러: <span className="font-medium">{req.seller_name || req.seller_email}</span>
+                        &nbsp;·&nbsp; 판매가 {req.retail_price?.toLocaleString()}원
+                        &nbsp;·&nbsp; 공급가 <span className="text-purple-600 font-medium">{req.supply_price?.toLocaleString()}원</span>
+                      </p>
+                      {req.seller_memo && (
+                        <p className="mt-1 text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">셀러 메모: {req.seller_memo}</p>
+                      )}
+                      {req.admin_memo && req.status !== 'PENDING' && (
+                        <p className="mt-1 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">어드민 메모: {req.admin_memo}</p>
+                      )}
+                    </div>
+                    {req.status === 'PENDING' && (
+                      <div className="flex-shrink-0 flex flex-col gap-2 w-48">
+                        <textarea
+                          placeholder="어드민 메모 (선택)"
+                          value={adminMemoMap[req.id] || ''}
+                          onChange={e => setAdminMemoMap(prev => ({ ...prev, [req.id]: e.target.value }))}
+                          rows={2}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSampleAction(req.id, 'approve')}
+                            disabled={actionLoading === req.id}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {actionLoading === req.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                            승인
+                          </button>
+                          <button
+                            onClick={() => handleSampleAction(req.id, 'reject')}
+                            disabled={actionLoading === req.id}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50"
+                          >
+                            <XCircle className="w-3 h-3" /> 거부
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 등록/수정 모달 */}
       {showModal && (
@@ -236,7 +404,7 @@ export default function AdminProductsPage() {
           <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? '상품 수정' : 'Ur 특가 상품 등록'}</h2>
+              <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? '상품 수정' : '상품 등록'}</h2>
               <button onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} className="p-1.5 rounded-lg hover:bg-gray-100">
                 <X className="w-4 h-4 text-gray-400" />
               </button>
@@ -246,36 +414,68 @@ export default function AdminProductsPage() {
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">상품명 <span className="text-red-500">*</span></label>
-                <input type="text" name="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">짧은 설명</label>
-                <textarea name="description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={2} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">상세 설명</label>
-                <textarea name="long_description" value={formData.long_description} onChange={e => setFormData({ ...formData, long_description: e.target.value })} rows={6} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <textarea value={formData.long_description} onChange={e => setFormData({ ...formData, long_description: e.target.value })} rows={6} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: '판매가격 *', name: 'price', placeholder: '89000' },
-                  { label: '정가 (할인 전)', name: 'compare_at_price', placeholder: '149000' },
-                  { label: '재고 수량 *', name: 'stock', placeholder: '50' },
-                ].map(f => (
-                  <div key={f.name}>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">{f.label}</label>
-                    <input type="number" name={f.name} value={(formData as any)[f.name]} onChange={e => setFormData({ ...formData, [f.name]: e.target.value })} required={f.label.includes('*')} min="0" placeholder={f.placeholder} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">판매가 (Ur 특가 노출) <span className="text-red-500">*</span></label>
+                  <input type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} required min="0" placeholder="89000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">정가 (할인 전)</label>
+                  <input type="number" value={formData.compare_at_price} onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })} min="0" placeholder="149000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div>
+              </div>
+
+              {/* 공급가 섹션 */}
+              <div className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_supply_product}
+                    onChange={e => setFormData({ ...formData, is_supply_product: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span className="text-xs font-semibold text-purple-800 flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5" /> 셀러 공급 상품으로 등록
+                  </span>
+                </label>
+                {formData.is_supply_product && (
+                  <div>
+                    <label className="block text-xs font-medium text-purple-700 mb-1.5">공급가 (셀러에게만 노출)</label>
+                    <input
+                      type="number"
+                      value={formData.supply_price}
+                      onChange={e => setFormData({ ...formData, supply_price: e.target.value })}
+                      min="0"
+                      placeholder="55000"
+                      className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                    />
+                    <p className="text-xs text-purple-600 mt-1">셀러가 샘플 신청 후 승인되면 공급가로 상품을 등록해 판매할 수 있습니다.</p>
                   </div>
-                ))}
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">재고 수량 <span className="text-red-500">*</span></label>
+                <input type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} required min="0" placeholder="50" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">대표 이미지</label>
                 <ImageUpload value={formData.image_url} onChange={url => setFormData({ ...formData, image_url: url })} label="" maxSizeKB={800} />
-                <input type="url" name="image_url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder="또는 이미지 URL 직접 입력" className="w-full px-3 py-2 mt-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <input type="url" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} placeholder="또는 이미지 URL 직접 입력" className="w-full px-3 py-2 mt-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
 
               <div>
@@ -289,14 +489,14 @@ export default function AdminProductsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">카테고리 *</label>
-                  <select name="category" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">카테고리 <span className="text-red-500">*</span></label>
+                  <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     {[['fashion', '패션'], ['beauty', '뷰티'], ['food', '식품'], ['electronics', '전자기기'], ['lifestyle', '라이프스타일']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">상품 타입 *</label>
-                  <select name="product_type" value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">상품 타입 <span className="text-red-500">*</span></label>
+                  <select value={formData.product_type} onChange={e => setFormData({ ...formData, product_type: e.target.value as 'live' | 'featured' })} required className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     <option value="featured">Ur 특가 (메인 페이지 노출)</option>
                     <option value="live">라이브 방송 전용</option>
                   </select>

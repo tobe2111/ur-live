@@ -112,7 +112,9 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.image_url   AS product_image,
            p.stock       AS product_stock,
            p.seller_id,
-           s.business_name AS seller_name
+           s.business_name AS seller_name,
+           COALESCE(s.shipping_fee, 3000)        AS shipping_fee,
+           COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
          FROM cart_items ci
          JOIN products p  ON ci.product_id = p.id
          LEFT JOIN sellers s ON p.seller_id = s.id
@@ -135,6 +137,8 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         product_stock: number;
         seller_id: number;
         seller_name: string | null;
+        shipping_fee: number;
+        free_shipping_threshold: number;
       }>();
 
     const items = (rows.results ?? []).map((item) => ({
