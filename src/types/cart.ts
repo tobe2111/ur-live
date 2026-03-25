@@ -24,6 +24,7 @@ export interface CartItem {
   option_value?: string
   selected_options?: string[]
   stock_quantity?: number
+  product_stock?: number    // API 응답 필드명 (cart.routes.ts → product_stock)
   seller_id?: number | string
   seller_name?: string
   shipping_fee?: number
