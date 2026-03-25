@@ -331,6 +331,8 @@ adminManagementRoutes.get('/products', cors(), async (c) => {
     const products = await executeQuery<ProductRow>(DB, `
       SELECT p.id, p.name, p.description, p.price, p.stock,
              p.image_url, p.is_active, p.product_type, p.category,
+             COALESCE(p.supply_price, 0) AS supply_price,
+             COALESCE(p.is_supply_product, 0) AS is_supply_product,
              p.seller_id, p.created_at, s.business_name as seller_name
       FROM products p LEFT JOIN sellers s ON p.seller_id = s.id
       ORDER BY p.created_at DESC LIMIT 1000
