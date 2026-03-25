@@ -375,27 +375,42 @@ adminManagementRoutes.post('/products', cors(), async (c) => {
     const body = await c.req.json();
     const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
 
-    // Validation
     if (!name || !price) {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다' }, 400);
     }
 
-    // Insert product (no seller_id for admin-created products)
-    const result = await executeRun(DB, `
-      INSERT INTO products (
-        name, description, long_description, price, compare_at_price, supply_price,
-        stock, image_url, detail_images, category, product_type,
-        is_supply_product, is_active, created_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
-    `, [
-      name, description || '', long_description || null, price,
-      compare_at_price || null, supply_price || 0,
-      stock || 0, image_url || '',
-      detail_images || null,
-      category || 'lifestyle', product_type || 'featured',
-      is_supply_product ? 1 : 0,
-    ]);
+    // 풀 스키마 시도 (long_description, compare_at_price, detail_images, supply_price, is_supply_product)
+    let result: any;
+    try {
+      result = await executeRun(DB, `
+        INSERT INTO products (
+          name, description, long_description, price, compare_at_price, supply_price,
+          stock, image_url, detail_images, category, product_type,
+          is_supply_product, is_active, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      `, [
+        name, description || '', long_description || null, price,
+        compare_at_price || null, supply_price || 0,
+        stock || 0, image_url || '',
+        detail_images || null,
+        category || 'lifestyle', product_type || 'featured',
+        is_supply_product ? 1 : 0,
+      ]);
+    } catch {
+      // 구버전 스키마 폴백 (extra 컬럼 없음)
+      result = await executeRun(DB, `
+        INSERT INTO products (
+          name, description, price, stock, image_url,
+          category, product_type, is_active, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+      `, [
+        name, description || '', price,
+        stock || 0, image_url || '',
+        category || 'lifestyle', product_type || 'featured',
+      ]);
+    }
 
     return c.json({ success: true, data: { id: result.meta.last_row_id, name, price } });
   } catch (err) {
@@ -412,31 +427,47 @@ adminManagementRoutes.put('/products/:id', cors(), async (c) => {
     const body = await c.req.json();
     const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
 
-    // Check if product exists
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
 
-    // Update product
-    await executeRun(DB, `
-      UPDATE products
-      SET name = ?, description = ?, long_description = ?, price = ?,
-          compare_at_price = ?, supply_price = ?,
-          stock = ?, image_url = ?, detail_images = ?,
-          category = ?, product_type = ?,
-          is_supply_product = ?,
-          updated_at = datetime('now')
-      WHERE id = ?
-    `, [
-      name, description || '', long_description || null, price,
-      compare_at_price || null, supply_price || 0,
-      stock || 0, image_url || '',
-      detail_images || null,
-      category || 'lifestyle', product_type || 'featured',
-      is_supply_product ? 1 : 0,
-      productId,
-    ]);
+    // 풀 스키마 시도
+    try {
+      await executeRun(DB, `
+        UPDATE products
+        SET name = ?, description = ?, long_description = ?, price = ?,
+            compare_at_price = ?, supply_price = ?,
+            stock = ?, image_url = ?, detail_images = ?,
+            category = ?, product_type = ?,
+            is_supply_product = ?,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `, [
+        name, description || '', long_description || null, price,
+        compare_at_price || null, supply_price || 0,
+        stock || 0, image_url || '',
+        detail_images || null,
+        category || 'lifestyle', product_type || 'featured',
+        is_supply_product ? 1 : 0,
+        productId,
+      ]);
+    } catch {
+      // 구버전 스키마 폴백
+      await executeRun(DB, `
+        UPDATE products
+        SET name = ?, description = ?, price = ?,
+            stock = ?, image_url = ?,
+            category = ?, product_type = ?,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `, [
+        name, description || '', price,
+        stock || 0, image_url || '',
+        category || 'lifestyle', product_type || 'featured',
+        productId,
+      ]);
+    }
 
     return c.json({ success: true, data: { id: productId, name } });
   } catch (err) {
