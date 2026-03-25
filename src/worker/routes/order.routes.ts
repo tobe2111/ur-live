@@ -92,14 +92,31 @@ ordersRouter.post('/', async (c) => {
     }
 
     // Fetch seller info
+    // Note: old schema (migration 0003 + 0035) uses 'shipping_fee' column
+    //       new schema (001_initial.sql) uses 'base_shipping_fee' column
+    //       Try new schema first, fall back to old schema column name
     const qb = new QueryBuilder(c.env.DB);
-    const seller = request.seller_id ? await qb.queryOne<{
-      id: string;
-      name: string;
-      base_shipping_fee: number;
-      free_shipping_threshold: number | null;
-      status: string;
-    }>('SELECT id, name, base_shipping_fee, free_shipping_threshold, status FROM sellers WHERE id = ?', [request.seller_id]) : null;
+    type SellerRow = { id: string; name: string; base_shipping_fee: number; free_shipping_threshold: number | null; status: string };
+    let seller: SellerRow | null = null;
+    if (request.seller_id) {
+      try {
+        seller = await qb.queryOne<SellerRow>(
+          'SELECT id, name, base_shipping_fee, free_shipping_threshold, status FROM sellers WHERE id = ?',
+          [request.seller_id]
+        );
+      } catch {
+        // Old schema: 'base_shipping_fee' column doesn't exist, try 'shipping_fee'
+        try {
+          const row = await qb.queryOne<Omit<SellerRow, 'base_shipping_fee'> & { shipping_fee: number }>(
+            'SELECT id, name, shipping_fee, free_shipping_threshold, status FROM sellers WHERE id = ?',
+            [request.seller_id]
+          );
+          if (row) seller = { ...row, base_shipping_fee: row.shipping_fee ?? 3000 };
+        } catch {
+          console.warn('[ORDERS] Seller query failed for seller_id:', request.seller_id, '— using default shipping fee');
+        }
+      }
+    }
 
     // seller_id 없거나 ACTIVE 아닌 경우 기본값 사용 (주문 차단 대신 경고 로그)
     if (!seller) {
