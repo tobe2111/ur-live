@@ -46,7 +46,9 @@ supplyRoutes.get('/products', async (c) => {
   const category = c.req.query('category') || '';
 
   try {
-    let where = "p.is_supply_product = 1 AND p.is_active = 1";
+    // is_supply_product / supply_price 컬럼이 없는 구버전 스키마 대응
+    // 컬럼이 없으면 빈 목록 반환
+    let where = "p.is_active = 1";
     const params: (string | number)[] = [];
 
     if (search) {
@@ -58,13 +60,27 @@ supplyRoutes.get('/products', async (c) => {
       params.push(category);
     }
 
+    // is_supply_product 컬럼 존재 여부를 먼저 확인
+    const hasSupplyCol = await DB.prepare(
+      "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
+    ).first<{ c: number }>().catch(() => null);
+
+    if (!hasSupplyCol || hasSupplyCol.c === 0) {
+      // 마이그레이션 0120 미실행 — 빈 목록 반환
+      return c.json({ success: true, data: { items: [], total: 0, page, limit, has_more: false } });
+    }
+
+    where = "p.is_supply_product = 1 AND p.is_active = 1";
+    if (search) { where += " AND p.name LIKE ?"; }
+    if (category) { where += " AND p.category = ?"; }
+
     const rows = await DB.prepare(`
       SELECT
         p.id,
         p.name,
         p.description,
         p.price         AS retail_price,
-        p.supply_price,
+        COALESCE(p.supply_price, 0) AS supply_price,
         p.image_url,
         p.stock,
         p.category,
@@ -132,6 +148,14 @@ supplyRoutes.post('/sample-requests', async (c) => {
   }
 
   try {
+    // 마이그레이션 0120 미실행 확인
+    const hasSupplyCol = await DB.prepare(
+      "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
+    ).first<{ c: number }>().catch(() => null);
+    if (!hasSupplyCol || hasSupplyCol.c === 0) {
+      return c.json({ success: false, error: '공급가 시스템이 아직 활성화되지 않았습니다. 관리자에게 문의하세요.' }, 503);
+    }
+
     // 공급 상품인지 확인
     const product = await DB.prepare(
       'SELECT id, name FROM products WHERE id = ? AND is_supply_product = 1 AND is_active = 1'
@@ -180,6 +204,14 @@ supplyRoutes.get('/sample-requests', async (c) => {
   const status = c.req.query('status') || '';
 
   try {
+    // 테이블 미존재 시 빈 배열 반환
+    const hasTable = await DB.prepare(
+      "SELECT COUNT(*) as c FROM sqlite_master WHERE type='table' AND name='sample_requests'"
+    ).first<{ c: number }>().catch(() => null);
+    if (!hasTable || hasTable.c === 0) {
+      return c.json({ success: true, data: [] });
+    }
+
     let where = 'sr.seller_id = ?';
     const params: (string | number)[] = [sellerId];
 

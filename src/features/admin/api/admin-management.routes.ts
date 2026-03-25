@@ -487,34 +487,43 @@ adminManagementRoutes.get('/sample-requests', cors(), async (c) => {
     const params: (string | number)[] = [];
     if (status) { where += ' AND sr.status = ?'; params.push(status); }
 
-    const rows = await DB.prepare(`
-      SELECT
-        sr.id,
-        sr.seller_id,
-        sr.product_id,
-        sr.status,
-        sr.seller_memo,
-        sr.admin_memo,
-        sr.created_at,
-        sr.approved_at,
-        s.name        AS seller_name,
-        s.business_name,
-        s.email       AS seller_email,
-        p.name        AS product_name,
-        p.price       AS retail_price,
-        p.supply_price,
-        p.image_url   AS product_image
-      FROM sample_requests sr
-      JOIN sellers  s ON sr.seller_id  = s.id
-      JOIN products p ON sr.product_id = p.id
-      WHERE ${where}
-      ORDER BY sr.created_at DESC
-      LIMIT ? OFFSET ?
-    `).bind(...params, limit, offset).all();
+    // supply_price 컬럼이 없는 구버전 스키마를 위해 COALESCE 사용
+    // sample_requests 테이블이 없으면(마이그레이션 미실행) 빈 배열 반환
+    let rows: { results: any[] } = { results: [] };
+    let total: { count: number } | null = { count: 0 };
+    try {
+      rows = await DB.prepare(`
+        SELECT
+          sr.id,
+          sr.seller_id,
+          sr.product_id,
+          sr.status,
+          sr.seller_memo,
+          sr.admin_memo,
+          sr.created_at,
+          sr.approved_at,
+          s.name        AS seller_name,
+          COALESCE(s.business_name, s.name) AS business_name,
+          COALESCE(s.email, '') AS seller_email,
+          p.name        AS product_name,
+          p.price       AS retail_price,
+          COALESCE(p.supply_price, 0) AS supply_price,
+          p.image_url   AS product_image
+        FROM sample_requests sr
+        JOIN sellers  s ON sr.seller_id  = s.id
+        JOIN products p ON sr.product_id = p.id
+        WHERE ${where}
+        ORDER BY sr.created_at DESC
+        LIMIT ? OFFSET ?
+      `).bind(...params, limit, offset).all();
 
-    const total = await DB.prepare(
-      `SELECT COUNT(*) as count FROM sample_requests sr WHERE ${where}`
-    ).bind(...params).first<{ count: number }>();
+      total = await DB.prepare(
+        `SELECT COUNT(*) as count FROM sample_requests sr WHERE ${where}`
+      ).bind(...params).first<{ count: number }>();
+    } catch (tableErr) {
+      // 테이블 또는 컬럼 미존재 (마이그레이션 0120 미실행) → 빈 목록 반환
+      console.warn('[Admin] sample_requests table not ready:', (tableErr as Error).message);
+    }
 
     return c.json({
       success: true,
