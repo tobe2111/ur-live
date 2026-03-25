@@ -75,6 +75,7 @@ const NAV_ITEMS = [
   { path: '/seller',              label: '대시보드',    icon: LayoutDashboard, exact: true },
   { path: '/seller/orders',       label: '주문 관리',   icon: ShoppingBag },
   { path: '/seller/products',     label: '상품 관리',   icon: Package },
+  { path: '/seller/supply',       label: '공급 상품',   icon: Truck },
   { path: '/seller/live-control', label: '라이브 스트림', icon: Play },
   { path: '/seller/settlements',  label: '정산',        icon: DollarSign },
   { path: '/seller/alimtalk',     label: '알림톡',      icon: Bell },

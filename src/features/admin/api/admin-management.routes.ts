@@ -371,19 +371,30 @@ adminManagementRoutes.post('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const body = await c.req.json();
-    const { name, description, price, stock, image_url, category, product_type } = body;
-    
+    const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
+
     // Validation
     if (!name || !price) {
       return c.json({ success: false, error: '상품명과 가격은 필수입니다' }, 400);
     }
-    
+
     // Insert product (no seller_id for admin-created products)
     const result = await executeRun(DB, `
-      INSERT INTO products (name, description, price, stock, image_url, category, product_type, is_active, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
-    `, [name, description || '', price, stock || 0, image_url || '', category || 'lifestyle', product_type || 'featured']);
-    
+      INSERT INTO products (
+        name, description, long_description, price, compare_at_price, supply_price,
+        stock, image_url, detail_images, category, product_type,
+        is_supply_product, is_active, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+    `, [
+      name, description || '', long_description || null, price,
+      compare_at_price || null, supply_price || 0,
+      stock || 0, image_url || '',
+      detail_images || null,
+      category || 'lifestyle', product_type || 'featured',
+      is_supply_product ? 1 : 0,
+    ]);
+
     return c.json({ success: true, data: { id: result.meta.last_row_id, name, price } });
   } catch (err) {
     console.error('[Admin] create product error:', err);
@@ -397,22 +408,34 @@ adminManagementRoutes.put('/products/:id', cors(), async (c) => {
     const { DB } = c.env;
     const productId = c.req.param('id');
     const body = await c.req.json();
-    const { name, description, price, stock, image_url, category, product_type } = body;
-    
+    const { name, description, long_description, price, compare_at_price, supply_price, stock, image_url, detail_images, category, product_type, is_supply_product } = body;
+
     // Check if product exists
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
-    
+
     // Update product
     await executeRun(DB, `
-      UPDATE products 
-      SET name = ?, description = ?, price = ?, stock = ?, image_url = ?, 
-          category = ?, product_type = ?, updated_at = datetime('now')
+      UPDATE products
+      SET name = ?, description = ?, long_description = ?, price = ?,
+          compare_at_price = ?, supply_price = ?,
+          stock = ?, image_url = ?, detail_images = ?,
+          category = ?, product_type = ?,
+          is_supply_product = ?,
+          updated_at = datetime('now')
       WHERE id = ?
-    `, [name, description || '', price, stock || 0, image_url || '', category || 'lifestyle', product_type || 'featured', productId]);
-    
+    `, [
+      name, description || '', long_description || null, price,
+      compare_at_price || null, supply_price || 0,
+      stock || 0, image_url || '',
+      detail_images || null,
+      category || 'lifestyle', product_type || 'featured',
+      is_supply_product ? 1 : 0,
+      productId,
+    ]);
+
     return c.json({ success: true, data: { id: productId, name } });
   } catch (err) {
     console.error('[Admin] update product error:', err);
@@ -441,6 +464,110 @@ adminManagementRoutes.patch('/products/:id', cors(), async (c) => {
     return c.json({ success: true, data: { id: productId, is_active: activeValue } });
   } catch (err) {
     console.error('[Admin] patch product error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 공급 상품: supply_price / is_supply_product 필드 포함 수정 ───────────────
+// POST /api/admin/products 및 PUT /api/admin/products/:id에 supply_price 추가는
+// 기존 핸들러를 body에서 읽도록 수정 (아래 통계 위에 삽입)
+
+// ─── 샘플 신청 관리 (Sample Requests) ────────────────────────────────────────
+
+// GET /api/admin/sample-requests  - 전체 샘플 신청 목록
+adminManagementRoutes.get('/sample-requests', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const status = c.req.query('status') || '';
+    const page = parseInt(c.req.query('page') || '1', 10);
+    const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
+    const offset = (page - 1) * limit;
+
+    let where = '1=1';
+    const params: (string | number)[] = [];
+    if (status) { where += ' AND sr.status = ?'; params.push(status); }
+
+    const rows = await DB.prepare(`
+      SELECT
+        sr.id,
+        sr.seller_id,
+        sr.product_id,
+        sr.status,
+        sr.seller_memo,
+        sr.admin_memo,
+        sr.created_at,
+        sr.approved_at,
+        s.name        AS seller_name,
+        s.business_name,
+        s.email       AS seller_email,
+        p.name        AS product_name,
+        p.price       AS retail_price,
+        p.supply_price,
+        p.image_url   AS product_image
+      FROM sample_requests sr
+      JOIN sellers  s ON sr.seller_id  = s.id
+      JOIN products p ON sr.product_id = p.id
+      WHERE ${where}
+      ORDER BY sr.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...params, limit, offset).all();
+
+    const total = await DB.prepare(
+      `SELECT COUNT(*) as count FROM sample_requests sr WHERE ${where}`
+    ).bind(...params).first<{ count: number }>();
+
+    return c.json({
+      success: true,
+      data: {
+        items: rows.results ?? [],
+        total: total?.count ?? 0,
+        page,
+        limit,
+      },
+    });
+  } catch (err) {
+    console.error('[Admin] GET /sample-requests error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PATCH /api/admin/sample-requests/:id  - 승인/거부
+adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const reqId = c.req.param('id');
+    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string }>();
+
+    if (!body.action || !['approve', 'reject'].includes(body.action)) {
+      return c.json({ success: false, error: 'action은 approve 또는 reject이어야 합니다' }, 400);
+    }
+
+    const existing = await DB.prepare(
+      'SELECT id, status FROM sample_requests WHERE id = ?'
+    ).bind(reqId).first<{ id: number; status: string }>();
+
+    if (!existing) return c.json({ success: false, error: '신청을 찾을 수 없습니다' }, 404);
+    if (existing.status !== 'PENDING') {
+      return c.json({ success: false, error: `이미 처리된 신청입니다 (${existing.status})` }, 409);
+    }
+
+    const newStatus = body.action === 'approve' ? 'APPROVED' : 'REJECTED';
+    const approvedAt = body.action === 'approve' ? `datetime('now')` : 'NULL';
+
+    await DB.prepare(`
+      UPDATE sample_requests
+      SET status = ?, admin_memo = ?, updated_at = datetime('now'),
+          approved_at = ${approvedAt}
+      WHERE id = ?
+    `).bind(newStatus, body.admin_memo || null, reqId).run();
+
+    return c.json({
+      success: true,
+      data: { id: reqId, status: newStatus },
+      message: body.action === 'approve' ? '샘플 신청이 승인되었습니다.' : '샘플 신청이 거부되었습니다.',
+    });
+  } catch (err) {
+    console.error('[Admin] PATCH /sample-requests/:id error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
