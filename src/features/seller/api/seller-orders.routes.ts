@@ -363,8 +363,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       // 신규 스키마: slug, stock_quantity, thumbnail_url 존재
       result = await db.prepare(`
         INSERT INTO products
-          (seller_id, name, slug, description, price, stock_quantity, thumbnail_url, image_url, category, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', datetime('now'), datetime('now'))
+          (seller_id, name, slug, description, price, stock_quantity, thumbnail_url, image_url, category, product_type, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', datetime('now'), datetime('now'))
       `).bind(
         sellerId, name, slug, description || null, price,
         stock ?? 0, image_url || null, image_url || null, category || null
@@ -374,8 +374,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
         // 프로덕션 스키마: stock, image_url, status 존재 (slug, stock_quantity 없음)
         result = await db.prepare(`
           INSERT INTO products
-            (seller_id, name, description, price, stock, image_url, category, status, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', datetime('now'), datetime('now'))
+            (seller_id, name, description, price, stock, image_url, category, product_type, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', datetime('now'), datetime('now'))
         `).bind(
           sellerId, name, description || null, price,
           stock ?? 0, image_url || null, category || null
@@ -384,8 +384,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
         // 최소 스키마: status 없는 경우
         result = await db.prepare(`
           INSERT INTO products
-            (seller_id, name, description, price, stock, image_url, category, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            (seller_id, name, description, price, stock, image_url, category, product_type, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', datetime('now'), datetime('now'))
         `).bind(
           sellerId, name, description || null, price,
           stock ?? 0, image_url || null, category || null
