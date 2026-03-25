@@ -616,6 +616,83 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
 
 // ─── 통계 ────────────────────────────────────────────────────────────────────
 
+// GET /api/admin/supply/sales - 공급 상품 셀러별 판매 현황 + 정산 데이터
+adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const supplyProductId = c.req.query('product_id') || '';  // 특정 공급 상품 필터
+    const sellerId = c.req.query('seller_id') || '';
+
+    // supply_source_id 컬럼 존재 여부 확인
+    const hasCol = await DB.prepare(
+      "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='supply_source_id'"
+    ).first<{ c: number }>().catch(() => null);
+
+    if (!hasCol || hasCol.c === 0) {
+      return c.json({ success: true, data: { rows: [], summary: { total_orders: 0, total_qty: 0, total_revenue: 0, total_supply_cost: 0 } } });
+    }
+
+    let where = "sp.supply_source_id IS NOT NULL AND o.payment_status IN ('approved','APPROVED','paid','PAID')";
+    const params: (string | number)[] = [];
+    if (supplyProductId) { where += ' AND sp.supply_source_id = ?'; params.push(supplyProductId); }
+    if (sellerId) { where += ' AND sp.seller_id = ?'; params.push(sellerId); }
+
+    const rows = await DB.prepare(`
+      SELECT
+        src.id            AS supply_product_id,
+        src.name          AS supply_product_name,
+        COALESCE(src.supply_price, 0) AS supply_price,
+        sp.id             AS seller_product_id,
+        sp.name           AS seller_product_name,
+        sp.price          AS seller_price,
+        sp.seller_id,
+        s.name            AS seller_name,
+        COALESCE(s.business_name, s.name) AS business_name,
+        COUNT(DISTINCT o.id)      AS order_count,
+        COALESCE(SUM(oi.quantity), 0) AS total_qty,
+        COALESCE(SUM(oi.quantity * oi.price), 0)               AS total_revenue,
+        COALESCE(SUM(oi.quantity * src.supply_price), 0)       AS total_supply_cost,
+        COALESCE(SUM(oi.quantity * (oi.price - COALESCE(src.supply_price,0))), 0) AS seller_margin
+      FROM products sp
+      JOIN products src ON sp.supply_source_id = src.id
+      JOIN sellers  s   ON sp.seller_id = s.id
+      JOIN order_items oi ON oi.product_id = sp.id
+      JOIN orders o      ON oi.order_id = o.id
+      WHERE ${where}
+      GROUP BY sp.supply_source_id, sp.seller_id
+      ORDER BY total_supply_cost DESC
+    `).bind(...params).all<{
+      supply_product_id: number;
+      supply_product_name: string;
+      supply_price: number;
+      seller_product_id: number;
+      seller_product_name: string;
+      seller_price: number;
+      seller_id: number;
+      seller_name: string;
+      business_name: string;
+      order_count: number;
+      total_qty: number;
+      total_revenue: number;
+      total_supply_cost: number;
+      seller_margin: number;
+    }>();
+
+    const items = rows.results ?? [];
+    const summary = {
+      total_orders: items.reduce((s, r) => s + r.order_count, 0),
+      total_qty:    items.reduce((s, r) => s + r.total_qty, 0),
+      total_revenue: items.reduce((s, r) => s + r.total_revenue, 0),
+      total_supply_cost: items.reduce((s, r) => s + r.total_supply_cost, 0),
+    };
+
+    return c.json({ success: true, data: { rows: items, summary } });
+  } catch (err) {
+    console.error('[Admin] GET /supply/sales error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 adminManagementRoutes.get('/stats', cors(), async (c) => {
   try {
     const { DB } = c.env;
