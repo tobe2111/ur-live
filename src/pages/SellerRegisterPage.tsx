@@ -13,7 +13,8 @@ export default function SellerRegisterPage() {
     name: '',
     phone: '',
     businessNumber: '',
-    businessName: ''
+    businessName: '',
+    youtubeEmail: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -45,6 +46,11 @@ export default function SellerRegisterPage() {
       return
     }
 
+    if (!formData.youtubeEmail.includes('@')) {
+      setError('유튜브 라이브에 사용할 구글 계정 이메일을 올바르게 입력해주세요')
+      return
+    }
+
     if (formData.username.length < 3) {
       setError('아이디는 3자 이상이어야 합니다')
       return
@@ -67,7 +73,8 @@ export default function SellerRegisterPage() {
         name: formData.name,
         phone: formData.phone,
         business_number: formData.businessNumber,
-        business_name: formData.businessName
+        business_name: formData.businessName,
+        youtube_email: formData.youtubeEmail
       })
 
       if (response.data.success) {
@@ -136,6 +143,25 @@ export default function SellerRegisterPage() {
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="seller@example.com"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="youtubeEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                  유튜브 라이브에 사용할 구글 계정 이메일 * (필수)
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  유튜브 라이브 방송에 연동할 구글 계정(@gmail.com)을 입력해주세요.
+                </p>
+                <input
+                  id="youtubeEmail"
+                  name="youtubeEmail"
+                  type="email"
+                  value={formData.youtubeEmail}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="example@gmail.com"
                 />
               </div>
 
