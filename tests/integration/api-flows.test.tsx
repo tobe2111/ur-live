@@ -58,15 +58,16 @@ describe('E-Commerce Integration Tests', () => {
       )
 
       // Simulate logged-in user so CartPage doesn't redirect
-      localStorage.setItem('user_id', 'test-user-123')
+      // isUserLoggedIn() checks lastLoginUid + user_type
+      localStorage.setItem('lastLoginUid', 'test-user-123')
       localStorage.setItem('user_type', 'user')
 
       renderWithProviders(<CartPage />)
 
       await waitFor(
         () => {
-          const emptyMessage = screen.getByText(/장바구니가 비어있습니다/i)
-          expect(emptyMessage).toBeInTheDocument()
+          const emptyMessages = screen.getAllByText(/장바구니가 비어있습니다/i)
+          expect(emptyMessages.length).toBeGreaterThan(0)
         },
         { timeout: 5000 }
       )
@@ -123,7 +124,8 @@ describe('E-Commerce Integration Tests', () => {
       )
 
       // Simulate logged-in user so CartPage doesn't redirect
-      localStorage.setItem('user_id', 'test-user-123')
+      // isUserLoggedIn() checks lastLoginUid + user_type
+      localStorage.setItem('lastLoginUid', 'test-user-123')
       localStorage.setItem('user_type', 'user')
 
       renderWithProviders(<CartPage />)
@@ -131,8 +133,8 @@ describe('E-Commerce Integration Tests', () => {
       // Verify cart page structure
       await waitFor(
         () => {
-          const emptyMessage = screen.getByText(/장바구니가 비어있습니다/i)
-          expect(emptyMessage).toBeInTheDocument()
+          const emptyMessages = screen.getAllByText(/장바구니가 비어있습니다/i)
+          expect(emptyMessages.length).toBeGreaterThan(0)
         },
         { timeout: 5000 }
       )

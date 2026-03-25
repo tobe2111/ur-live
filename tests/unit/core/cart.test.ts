@@ -59,11 +59,6 @@ describe('Cart Business Logic', () => {
 
     it('should not exceed stock limit', () => {
       const item = { id: 1, product_id: 101, name: 'Product A', price: 10000, quantity: 10, stock: 5 };
-      
-      // Validation logic
-      if (item.quantity > item.stock) {
-        throw new Error('Quantity exceeds stock');
-      }
 
       expect(() => {
         if (item.quantity > item.stock) throw new Error('Quantity exceeds stock');

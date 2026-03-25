@@ -6,7 +6,9 @@
 
 ## 🟡 High
 
-### [ ] 운영 E2E 테스트 (8개 시나리오)
+### [x] 운영 단위/통합 테스트 (595개 전체 통과) ✅
+
+### [ ] 운영 E2E 테스트 - Cypress/Playwright (브라우저 필요, CI 환경에서 실행 권장)
 - Kakao 로그인
 - Email 회원가입 & 로그인
 - Checkout 인증 가드
@@ -36,6 +38,15 @@
 ---
 
 ## ✅ 완료
+
+- [x] Vitest 단위/통합 테스트 595개 전체 통과
+  - Feature Flags `isFeatureEnabled` 해시 버킷 계산 버그 수정 (base flag 무시하고 rollout% 기준으로)
+  - `logFeatureFlagStatus` test mode 조건 추가 (`import.meta.env.MODE === 'test'`)
+  - `auth-api.ts` retry tracker 설계 버그 수정 (`>= 1` → `>= 2`, requestTracker dedup 충돌 해결)
+  - Cart test 이중 throw 버그 수정
+  - Auth-api timeout 테스트 `vi.advanceTimersByTimeAsync` + AbortSignal mock 적용
+  - Cart integration 테스트 localStorage key 수정 (`user_id` → `lastLoginUid`)
+  - LiveChatPanel username masking 반영 (`User1` → `U***1`)
 
 - [x] Drizzle schema 불일치 확인 → **실제로 Drizzle 미사용** (false alarm)
   - 모든 Worker 라우트는 `src/worker/repositories/` 의 raw D1 SQL 쿼리 사용

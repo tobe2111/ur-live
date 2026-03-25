@@ -93,13 +93,11 @@ export function isFeatureEnabled(
   userId?: number | string,
   rolloutPercent: number = 100
 ): boolean {
-  const baseValue = featureFlags[flagName];
+  // Clamp percent to valid range
+  const pct = Math.max(0, Math.min(100, rolloutPercent));
 
-  // If flag is explicitly false, always return false
-  if (!baseValue) return false;
-
-  // If no rollout percentage or 100%, return base value
-  if (rolloutPercent >= 100) return baseValue;
+  if (pct <= 0) return false;
+  if (pct >= 100) return true;
 
   // User-based gradual rollout (deterministic)
   if (userId !== undefined) {
@@ -108,13 +106,13 @@ export function isFeatureEnabled(
       return ((acc << 5) - acc) + char.charCodeAt(0);
     }, 0);
     const bucket = Math.abs(hash) % 100;
-    
+
     // Enable for users in rollout percentage bucket
-    return bucket < rolloutPercent;
+    return bucket < pct;
   }
 
   // Random rollout if no userId provided
-  return Math.random() * 100 < rolloutPercent;
+  return Math.random() * 100 < pct;
 }
 
 /**
@@ -122,8 +120,8 @@ export function isFeatureEnabled(
  * 
  * Prints current flag status to console (dev only)
  */
-export function logFeatureFlagStatus() {
-  if (!import.meta.env?.DEV) return;
+export function logFeatureFlagStatus(forceLog = false) {
+  if (!forceLog && (!import.meta.env?.DEV || import.meta.env?.MODE === 'test')) return;
 
   console.group('🚩 Feature Flags Status');
   console.log('backendToken:', featureFlags.backendToken ? '🟢 Enabled' : '🔴 Disabled');
@@ -132,7 +130,7 @@ export function logFeatureFlagStatus() {
   console.groupEnd();
 }
 
-// Log on module load (dev only)
-if (import.meta.env?.DEV) {
+// Log on module load (dev only, not in test)
+if (import.meta.env?.DEV && import.meta.env?.MODE !== 'test') {
   logFeatureFlagStatus();
 }
