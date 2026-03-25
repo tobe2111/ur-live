@@ -6,15 +6,17 @@ import { logout as authLogout } from '@/utils/auth'
 import { Badge } from '@/components/ui/badge'
 import MobileFooter from '@/components/MobileFooter'
 import { CartTab } from '@/components/mypage/CartTab'
-import { OrdersTab } from '@/components/mypage/OrdersTab'
+import { OrdersTab, getTrackingUrl } from '@/components/mypage/OrdersTab'
 import { ProfileTab } from '@/components/mypage/ProfileTab'
-import { 
-  ArrowLeft, 
-  Package, 
+import {
+  ArrowLeft,
+  Package,
   ShoppingCart,
   User,
   X,
-  AlertCircle
+  AlertCircle,
+  Truck,
+  ChevronRight
 } from 'lucide-react'
 import { getUserIdSync, getUserNameSync, getUserEmail, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order, OrderItem } from '@/types/order'
@@ -407,9 +409,29 @@ export default function MyOrdersPage() {
                     </span>
                   </div>
                   {selectedOrder.tracking_number && (
-                    <div className="flex gap-2 pt-2 border-t border-[#d2d2d7]">
-                      <span className="text-[#6e6e73] min-w-[60px]">송장번호</span>
-                      <span className="font-medium text-[#007aff]">{selectedOrder.tracking_number}</span>
+                    <div className="pt-2 border-t border-[#d2d2d7]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-[#007aff]" />
+                          <div className="text-[13px]">
+                            {selectedOrder.courier && (
+                              <span className="text-[#6e6e73]">{selectedOrder.courier} · </span>
+                            )}
+                            <span className="font-medium text-[#1d1d1f]">{selectedOrder.tracking_number}</span>
+                          </div>
+                        </div>
+                        {getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number) && (
+                          <a
+                            href={getTrackingUrl(selectedOrder.courier, selectedOrder.tracking_number)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                          >
+                            배송조회
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

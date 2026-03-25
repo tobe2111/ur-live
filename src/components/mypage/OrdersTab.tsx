@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, MapPin, Truck, ChevronRight, X, CheckCircle, Circle, Loader2 } from 'lucide-react'
+import { Package, MapPin, Truck, ChevronRight, CheckCircle, Circle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import api from '@/lib/api'
 import type { Order } from '@/types/order'
 
 interface OrdersTabProps {
@@ -47,6 +46,24 @@ const getStatusLabel = (status: string) => {
   }
 }
 
+// ─── 택배사별 외부 추적 URL ───────────────────────────────────────────────────
+
+export function getTrackingUrl(courier?: string, trackingNumber?: string): string {
+  if (!courier || !trackingNumber) return ''
+  const n = encodeURIComponent(trackingNumber)
+  const urls: Record<string, string> = {
+    'CJ대한통운':    `https://www.cjlogistics.com/ko/tool/parcel/tracking?gnbInvNo=${n}`,
+    '우체국택배':     `https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm?sid1=${n}`,
+    '한진택배':      `https://www.hanjin.com/kor/CMS/DeliveryMgr/WaybillResult.do?mCode=MN038&schLang=KR&wblnumText2=${n}`,
+    '로젠택배':      `https://www.ilogen.com/web/personal/trace/${n}`,
+    '롯데택배':      `https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=${n}`,
+    'GS택배':       `https://www.cvsnet.co.kr/invoice/tracking.do?invoice_no=${n}`,
+    '쿠팡로켓배송':   `https://www.coupang.com/my/orders/lookup?q=${n}`,
+    '홈픽':         `https://www.homepick.com/parcel-tracking?trackingNo=${n}`,
+  }
+  return urls[courier] ?? `https://tracker.delivery/#/${courier}/${n}`
+}
+
 // ─── 구매 플로우 스텝퍼 ───────────────────────────────────────────────────────
 
 const FLOW_STEPS = [
@@ -57,7 +74,7 @@ const FLOW_STEPS = [
 ]
 
 const STATUS_ORDER: Record<string, number> = {
-  pending: 0, paid: 1, preparing: 2, shipping: 3, delivered: 4,
+  pending: 1, paid: 1, preparing: 2, shipping: 3, delivered: 4,
 }
 
 function OrderFlowStepper({ status }: { status: string }) {
@@ -66,7 +83,7 @@ function OrderFlowStepper({ status }: { status: string }) {
   const currentIdx = STATUS_ORDER[s] ?? 1
 
   return (
-    <div className="flex items-center gap-0 mb-4">
+    <div className="flex items-center mb-4">
       {FLOW_STEPS.map((step, idx) => {
         const stepIdx = STATUS_ORDER[step.key]
         const done = stepIdx <= currentIdx
@@ -101,170 +118,10 @@ function OrderFlowStepper({ status }: { status: string }) {
   )
 }
 
-// ─── 배송 타임라인 모달 ───────────────────────────────────────────────────────
-
-interface TrackingEvent {
-  time: string
-  statusCode: string
-  statusName: string
-  description: string
-  location: string
-}
-
-interface TrackingData {
-  events: TrackingEvent[]
-  lastStatusCode?: string
-  lastStatusName?: string
-  orderStatus: string
-  courier?: string
-  trackingNumber?: string
-  unsupported?: boolean
-  apiError?: string
-}
-
-const STATUS_CODE_ICON: Record<string, string> = {
-  INFORMATION_RECEIVED: '📋',
-  AT_PICKUP:            '📦',
-  IN_TRANSIT:           '🚛',
-  OUT_FOR_DELIVERY:     '🏠',
-  DELIVERED:            '✅',
-  ATTEMPT_FAIL:         '⚠️',
-}
-
-function TrackingModal({
-  orderId, courier, trackingNumber, onClose,
-}: {
-  orderId: number | string
-  courier: string
-  trackingNumber: string
-  onClose: () => void
-}) {
-  const [data, setData] = useState<TrackingData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  useState(() => {
-    api.get(`/api/orders/${orderId}/tracking`)
-      .then(res => {
-        if (res.data?.success) setData(res.data.data)
-        else setError('배송 정보를 불러올 수 없습니다.')
-      })
-      .catch(() => setError('배송 조회 중 오류가 발생했습니다.'))
-      .finally(() => setLoading(false))
-  })
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[80vh] flex flex-col">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#f0f0f0]">
-          <div>
-            <h3 className="text-[17px] font-bold text-[#1d1d1f]">배송 추적</h3>
-            <p className="text-[13px] text-[#6e6e73] mt-0.5">
-              {courier} · {trackingNumber}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#f5f5f7] hover:bg-[#e5e5ea] transition-colors"
-          >
-            <X className="w-4 h-4 text-[#6e6e73]" />
-          </button>
-        </div>
-
-        {/* 콘텐츠 */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <Loader2 className="w-8 h-8 text-[#007aff] animate-spin" />
-              <p className="text-[14px] text-[#6e6e73]">배송 정보 조회 중...</p>
-            </div>
-          )}
-
-          {!loading && error && (
-            <div className="text-center py-8">
-              <p className="text-[14px] text-[#ff3b30]">{error}</p>
-            </div>
-          )}
-
-          {!loading && data && data.unsupported && (
-            <div className="text-center py-8">
-              <Truck className="w-12 h-12 text-[#c7c7cc] mx-auto mb-3" />
-              <p className="text-[14px] font-medium text-[#1d1d1f] mb-1">자동 조회 미지원 택배사</p>
-              <p className="text-[13px] text-[#6e6e73]">택배사 홈페이지에서 직접 조회해주세요.</p>
-            </div>
-          )}
-
-          {!loading && data && data.apiError && (
-            <div className="text-center py-8">
-              <p className="text-[13px] text-[#6e6e73]">{data.apiError}</p>
-              <p className="text-[12px] text-[#aeaeb2] mt-1">
-                송장번호: {data.trackingNumber}
-              </p>
-            </div>
-          )}
-
-          {!loading && data && !data.unsupported && !data.apiError && (
-            <>
-              {data.events.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="w-12 h-12 text-[#c7c7cc] mx-auto mb-3" />
-                  <p className="text-[14px] text-[#6e6e73]">아직 배송 정보가 없습니다.</p>
-                </div>
-              ) : (
-                <div className="relative">
-                  {/* 타임라인 세로선 */}
-                  <div className="absolute left-[18px] top-3 bottom-3 w-[2px] bg-[#f0f0f0]" />
-
-                  <div className="space-y-4">
-                    {data.events.map((event, idx) => (
-                      <div key={idx} className="flex gap-3 relative">
-                        {/* 아이콘 */}
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[16px] shrink-0 z-10 ${
-                          idx === 0 ? 'bg-[#007aff]' : 'bg-[#f5f5f7]'
-                        }`}>
-                          {STATUS_CODE_ICON[event.statusCode] ?? '📍'}
-                        </div>
-
-                        {/* 내용 */}
-                        <div className="flex-1 pt-1 pb-2">
-                          <p className={`text-[14px] font-semibold ${idx === 0 ? 'text-[#007aff]' : 'text-[#1d1d1f]'}`}>
-                            {event.statusName || event.description}
-                          </p>
-                          {event.description && event.description !== event.statusName && (
-                            <p className="text-[13px] text-[#6e6e73] mt-0.5">{event.description}</p>
-                          )}
-                          {event.location && (
-                            <p className="text-[12px] text-[#aeaeb2] mt-0.5 flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {event.location}
-                            </p>
-                          )}
-                          <p className="text-[12px] text-[#c7c7cc] mt-1">
-                            {new Date(event.time).toLocaleString('ko-KR', {
-                              month: 'long', day: 'numeric',
-                              hour: '2-digit', minute: '2-digit',
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
 
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'>('all')
-  const [trackingModal, setTrackingModal] = useState<{ orderId: number | string; courier: string; trackingNumber: string } | null>(null)
 
   const filteredOrders = orders.filter(order =>
     statusFilter === 'all' || order.status.toLowerCase() === statusFilter
@@ -298,7 +155,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
         <div className="space-y-4">
           {filteredOrders.map(order => (
             <div key={order.id} className="apple-card p-6">
-              {/* 주문번호 + 상태 */}
+              {/* 주문번호 + 상태 배지 */}
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="text-[13px] text-[#6e6e73] mb-1">
@@ -338,7 +195,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
                 )}
               </div>
 
-              {/* 배송지 */}
+              {/* 배송지 + 배송 추적 */}
               <div className="p-4 bg-[#f5f5f7] rounded-xl mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="h-4 w-4 text-[#6e6e73]" />
@@ -351,29 +208,25 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
                   <p className="text-[14px] text-[#6e6e73] ml-6">{order.shipping_address_detail}</p>
                 )}
 
-                {/* 송장번호 + 배송조회 버튼 */}
+                {/* 송장번호 + 배송조회 링크 */}
                 {order.courier && order.tracking_number && (
-                  <div className="mt-3 pt-3 border-t border-[#d2d2d7]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Truck className="h-4 w-4 text-[#007aff]" />
-                        <div className="text-[13px]">
-                          <span className="text-[#6e6e73]">{order.courier} · </span>
-                          <span className="font-medium text-[#1d1d1f]">{order.tracking_number}</span>
-                        </div>
+                  <div className="mt-3 pt-3 border-t border-[#d2d2d7] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-[#007aff]" />
+                      <div className="text-[13px]">
+                        <span className="text-[#6e6e73]">{order.courier} · </span>
+                        <span className="font-medium text-[#1d1d1f]">{order.tracking_number}</span>
                       </div>
-                      <button
-                        onClick={() => setTrackingModal({
-                          orderId: order.id,
-                          courier: order.courier!,
-                          trackingNumber: order.tracking_number!,
-                        })}
-                        className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-1"
-                      >
-                        배송조회
-                        <ChevronRight className="h-3 w-3" />
-                      </button>
                     </div>
+                    <a
+                      href={getTrackingUrl(order.courier, order.tracking_number)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[13px] text-[#007aff] font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                    >
+                      배송조회
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </a>
                   </div>
                 )}
               </div>
@@ -404,16 +257,6 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder }: OrdersTabPro
             </div>
           ))}
         </div>
-      )}
-
-      {/* 배송 타임라인 모달 */}
-      {trackingModal && (
-        <TrackingModal
-          orderId={trackingModal.orderId}
-          courier={trackingModal.courier}
-          trackingNumber={trackingModal.trackingNumber}
-          onClose={() => setTrackingModal(null)}
-        />
       )}
     </div>
   )
