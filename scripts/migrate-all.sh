@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-DB_NAME="marketplace-db"
+DB_NAME="toss-live-commerce-db"
 MIGRATIONS_DIR="$(dirname "$0")/../migrations"
 PROD=false
 
