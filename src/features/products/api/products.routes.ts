@@ -80,6 +80,8 @@ productsRoutes.get('/', cors(), async (c) => {
   
   try {
     // Query params 파싱
+    // featured=true 이면 어드민이 등록한 ur특가 상품(product_type='featured')만 반환
+    const featuredOnly = c.req.query('featured') === 'true';
     const filter: ProductFilter = {
       sellerId: c.req.query('seller_id') ? Number(c.req.query('seller_id')) : undefined,
       category: c.req.query('category'),
@@ -87,6 +89,7 @@ productsRoutes.get('/', cors(), async (c) => {
       search: c.req.query('search'),
       minPrice: c.req.query('min_price') ? Number(c.req.query('min_price')) : undefined,
       maxPrice: c.req.query('max_price') ? Number(c.req.query('max_price')) : undefined,
+      productType: featuredOnly ? 'featured' : undefined,
     };
     
     const pagination = {

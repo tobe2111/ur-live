@@ -29,6 +29,7 @@ export interface ProductFilter {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
+  productType?: 'featured' | 'live'; // 'featured': 어드민 등록 ur특가 상품, 'live': 셀러 라이브 전용 상품
 }
 
 export interface ProductCreateInput {

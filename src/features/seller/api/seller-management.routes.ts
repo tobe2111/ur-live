@@ -32,6 +32,7 @@ type SellerRegisterRequest = {
   phone: string;
   address?: string;
   description?: string;
+  youtube_email: string; // 유튜브 라이브에 사용할 구글 계정 (필수)
 };
 
 type SellerProfileUpdate = {
@@ -161,10 +162,10 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
 sellerManagementRoutes.post('/register', async (c) => {
   try {
     const body = await c.req.json<SellerRegisterRequest>();
-    const { username, email, password, name, business_name, business_number, phone, address, description } = body;
+    const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email } = body;
 
     // 필수 필드 검증
-    if (!username || !email || !password || !name || !business_name || !business_number || !phone) {
+    if (!username || !email || !password || !name || !business_name || !business_number || !phone || !youtube_email) {
       return c.json({
         success: false,
         error: 'Missing required fields'
@@ -177,6 +178,14 @@ sellerManagementRoutes.post('/register', async (c) => {
       return c.json({
         success: false,
         error: 'Invalid email format'
+      }, 400);
+    }
+
+    // 유튜브 구글 계정 이메일 형식 검증
+    if (!emailRegex.test(youtube_email)) {
+      return c.json({
+        success: false,
+        error: '유튜브 라이브에 사용할 구글 계정 이메일 형식이 올바르지 않습니다'
       }, 400);
     }
 
@@ -224,8 +233,8 @@ sellerManagementRoutes.post('/register', async (c) => {
     const result = await db.prepare(`
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
-        phone, address, description, status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 10.00, datetime('now'), datetime('now'))
+        phone, address, description, youtube_email, status, commission_rate, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 10.00, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,
@@ -235,7 +244,8 @@ sellerManagementRoutes.post('/register', async (c) => {
       business_number,
       phone,
       address || null,
-      description || null
+      description || null,
+      youtube_email
     ).run();
 
     if (!result.success) {
