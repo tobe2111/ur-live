@@ -11,7 +11,7 @@
     "build:client": "vite build",
     "build:worker": "node scripts/build-worker.js",
     "build:prepare": "cp dist/_worker.js dist/client/_worker.js && (cp dist/_routes.json dist/client/_routes.json 2>/dev/null || cp public/_routes.json dist/client/_routes.json)",
-    "deploy": "npm run build && wrangler pages deploy dist/client --project-name=ur-live-working",
+    "deploy": "npm run build:client && wrangler deploy",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",

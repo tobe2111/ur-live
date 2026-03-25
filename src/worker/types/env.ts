@@ -3,7 +3,7 @@
 // All bindings used across worker + feature modules
 // ============================================================
 
-import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import type { D1Database, KVNamespace, DurableObjectNamespace } from '@cloudflare/workers-types';
 
 export interface Env {
   // ---- D1 Database ----
@@ -12,6 +12,9 @@ export interface Env {
   // ---- KV Namespaces ----
   RATE_LIMIT_KV?: KVNamespace;
   SESSION_KV?: KVNamespace;
+
+  // ---- Durable Objects ----
+  LIVE_STREAM?: DurableObjectNamespace;
 
   // ---- Toss Payments ----
   TOSS_SECRET_KEY: string;
