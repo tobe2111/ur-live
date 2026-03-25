@@ -241,9 +241,14 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
 
     let query = `
       SELECT o.id, o.order_number, o.user_id, o.seller_id, o.total_amount,
-             o.status, o.payment_status, o.payment_method,
-             o.shipping_name, o.shipping_phone, o.shipping_address,
-             o.shipping_address_detail, o.shipping_zipcode,
+             COALESCE(o.status, 'pending') as status,
+             COALESCE(o.payment_status, 'pending') as payment_status,
+             COALESCE(o.payment_method, '') as payment_method,
+             COALESCE(o.shipping_name, '') as shipping_name,
+             COALESCE(o.shipping_phone, '') as shipping_phone,
+             COALESCE(o.shipping_address, '') as shipping_address,
+             COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
+             COALESCE(o.shipping_zipcode, '') as shipping_zipcode,
              o.courier, o.tracking_number, o.created_at, o.updated_at,
              u.name as user_name, u.email as user_email,
              s.business_name as seller_name
@@ -253,7 +258,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
       WHERE 1=1
     `;
     const params: (string | number | null)[] = [];
-    if (status) { query += ' AND o.status = ?'; params.push(status); }
+    if (status) { query += ' AND COALESCE(o.status, \'pending\') = ?'; params.push(status); }
     if (sellerId) { query += ' AND o.seller_id = ?'; params.push(sellerId); }
     if (startDate) { query += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
     if (endDate) { query += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
@@ -261,13 +266,59 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
 
     const orders = await executeQuery<OrderRow>(DB, query, params);
     for (const order of orders) {
+      // order_items 테이블은 unit_price 컬럼 사용 (구 스키마는 price)
       order.items = await executeQuery<OrderItemRow>(DB, `
-        SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, oi.price, p.image_url
+        SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
+               COALESCE(oi.unit_price, oi.price, 0) as price,
+               COALESCE(p.image_url, p.thumbnail_url, oi.product_image) as image_url
         FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
         WHERE oi.order_id = ?`, [order.id]);
     }
     return c.json({ success: true, data: orders });
   } catch (err) {
+    console.error('[Admin] orders error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 주문 상세 조회 ──────────────────────────────────────────────────────────
+
+adminManagementRoutes.get('/orders/:orderNumber', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+
+    const orders = await executeQuery<OrderRow>(DB, `
+      SELECT o.id, o.order_number, o.user_id, o.seller_id, o.total_amount,
+             COALESCE(o.status, 'pending') as status,
+             COALESCE(o.payment_status, 'pending') as payment_status,
+             COALESCE(o.payment_method, '') as payment_method,
+             COALESCE(o.shipping_name, '') as shipping_name,
+             COALESCE(o.shipping_phone, '') as shipping_phone,
+             COALESCE(o.shipping_address, '') as shipping_address,
+             COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
+             COALESCE(o.shipping_zipcode, '') as shipping_zipcode,
+             o.courier, o.tracking_number, o.created_at, o.updated_at,
+             u.name as user_name, u.email as user_email,
+             s.business_name as seller_name
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN sellers s ON o.seller_id = s.id
+      WHERE o.order_number = ?`, [orderNumber]);
+
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    const order = orders[0];
+    order.items = await executeQuery<OrderItemRow>(DB, `
+      SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
+             COALESCE(oi.unit_price, oi.price, 0) as price,
+             COALESCE(p.image_url, p.thumbnail_url, oi.product_image) as image_url
+      FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ?`, [order.id]);
+
+    return c.json({ success: true, data: order });
+  } catch (err) {
+    console.error('[Admin] order detail error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -498,6 +549,104 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
 
     const records = await executeQuery<SettlementRecordRow>(DB, query, params);
     return c.json({ success: true, data: records });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 정산 상태 변경 ───────────────────────────────────────────────────────────
+
+adminManagementRoutes.patch('/settlement/:id/status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderId = c.req.param('id');
+    const { status } = await c.req.json<{ status: string }>();
+    if (!['pending', 'completed'].includes(status))
+      return c.json({ success: false, error: '유효하지 않은 상태입니다' }, 400);
+    const settled_at = status === 'completed' ? new Date().toISOString() : null;
+    await executeRun(DB,
+      `UPDATE orders SET settlement_status = ?, settled_at = ? WHERE id = ?`,
+      [status, settled_at, orderId]);
+    return c.json({ success: true, data: { id: orderId, settlement_status: status } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 정산 일괄 완료 ───────────────────────────────────────────────────────────
+
+adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const { order_ids } = await c.req.json<{ order_ids: number[] }>();
+    if (!Array.isArray(order_ids) || order_ids.length === 0)
+      return c.json({ success: false, error: '주문 ID 목록이 필요합니다' }, 400);
+    const settled_at = new Date().toISOString();
+    const placeholders = order_ids.map(() => '?').join(',');
+    await executeRun(DB,
+      `UPDATE orders SET settlement_status = 'completed', settled_at = ? WHERE id IN (${placeholders})`,
+      [settled_at, ...order_ids]);
+    return c.json({ success: true, data: { updated: order_ids.length } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 정산 CSV 내보내기 ────────────────────────────────────────────────────────
+
+adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const period = c.req.query('period') || 'all';
+    const sellerId = c.req.query('seller_id');
+
+    let query = `
+      SELECT o.order_number, s.name as seller_name, s.business_name,
+             o.total_amount, COALESCE(s.commission_rate,10) as commission_rate,
+             ROUND(o.total_amount*COALESCE(s.commission_rate,10)/100) as commission_amount,
+             ROUND(o.total_amount*(1-COALESCE(s.commission_rate,10)/100)) as seller_amount,
+             COALESCE(o.settlement_status,'pending') as settlement_status,
+             o.settled_at, o.created_at, u.name as user_name
+      FROM orders o
+      LEFT JOIN sellers s ON o.seller_id = s.id
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.payment_status = 'approved'
+    `;
+    const params: (string | number | null)[] = [];
+    if (period === 'today') { query += ' AND DATE(o.created_at) = ?'; params.push(new Date().toISOString().split('T')[0]); }
+    else if (period === 'week') query += " AND DATE(o.created_at) >= DATE('now','-7 days')";
+    else if (period === 'month') query += " AND DATE(o.created_at) >= DATE('now','-30 days')";
+    if (sellerId) { query += ' AND o.seller_id = ?'; params.push(sellerId); }
+    query += ' ORDER BY o.created_at DESC';
+
+    const records = await executeQuery<SettlementRecordRow>(DB, query, params);
+
+    const headers = ['주문번호', '판매자명', '사업자명', '구매자명', '주문금액', '수수료율', '수수료', '정산액', '정산상태', '정산일시', '주문일시'];
+    const rows = records.map(r => [
+      r.order_number,
+      r.seller_name || '',
+      r.business_name || '',
+      r.user_name || '',
+      r.total_amount,
+      `${r.commission_rate}%`,
+      r.commission_amount,
+      r.seller_amount,
+      r.settlement_status === 'completed' ? '완료' : '대기',
+      r.settled_at ? new Date(r.settled_at).toLocaleString('ko-KR') : '-',
+      new Date(r.created_at).toLocaleString('ko-KR'),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const bom = '\uFEFF';
+    return new Response(bom + csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="settlement_${period}_${Date.now()}.csv"`,
+      },
+    });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
