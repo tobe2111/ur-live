@@ -17,9 +17,11 @@ import type {
 } from 'firebase/auth';
 
 let authInstance: Auth | null = null;
+// ✅ Race condition 방지: 진행 중인 초기화 Promise 재사용
+let authInitPromise: Promise<Auth> | null = null;
 
 /**
- * Get Firebase Auth instance (lazy loaded)
+ * Get Firebase Auth instance (lazy loaded, singleton)
  * @returns Promise<Auth> - Firebase Auth instance
  */
 export async function getFirebaseAuth(): Promise<Auth> {
@@ -27,34 +29,44 @@ export async function getFirebaseAuth(): Promise<Auth> {
     return authInstance;
   }
 
-  try {
-    // Lazy load firebase/auth
-    const { getAuth, setPersistence, browserLocalPersistence } = await import('firebase/auth');
-    const { initializeAll } = await import('./firebase-config');
-    
-    // Initialize Firebase app first
-    const app = await initializeAll();
-    
-    if (!app) {
-      throw new Error('Firebase app not initialized');
-    }
-
-    authInstance = getAuth(app);
-    
-    // ✅ 무조건 browserLocalPersistence 설정 (세션 유지 핵심)
-    try {
-      await setPersistence(authInstance, browserLocalPersistence);
-      console.log('[Firebase Auth] ✅ Persistence set to browserLocalPersistence (세션 유지)');
-    } catch (persistErr) {
-      console.error('[Firebase Auth] ❌ Persistence 설정 실패:', persistErr);
-    }
-    
-    console.log('[Firebase Auth] ✅ Lazy loaded successfully');
-    return authInstance;
-  } catch (error) {
-    console.error('[Firebase Auth] ❌ Failed to lazy load:', error);
-    throw error;
+  // 이미 초기화 중이면 동일 Promise 반환 (race condition 방지)
+  if (authInitPromise) {
+    return authInitPromise;
   }
+
+  authInitPromise = (async () => {
+    try {
+      // Lazy load firebase/auth
+      const { getAuth, setPersistence, browserLocalPersistence } = await import('firebase/auth');
+      const { initializeAll } = await import('./firebase-config');
+
+      // Initialize Firebase app first
+      const app = await initializeAll();
+
+      if (!app) {
+        throw new Error('Firebase app not initialized');
+      }
+
+      authInstance = getAuth(app);
+
+      // ✅ 무조건 browserLocalPersistence 설정 (세션 유지 핵심)
+      try {
+        await setPersistence(authInstance, browserLocalPersistence);
+        console.log('[Firebase Auth] ✅ Persistence set to browserLocalPersistence (세션 유지)');
+      } catch (persistErr) {
+        console.error('[Firebase Auth] ❌ Persistence 설정 실패:', persistErr);
+      }
+
+      console.log('[Firebase Auth] ✅ Lazy loaded successfully');
+      return authInstance;
+    } catch (error) {
+      authInitPromise = null; // 실패 시 재시도 허용
+      console.error('[Firebase Auth] ❌ Failed to lazy load:', error);
+      throw error;
+    }
+  })();
+
+  return authInitPromise;
 }
 
 /**
@@ -166,7 +178,8 @@ export async function signOut(): Promise<void> {
     const { signOut: signOutFn } = await import('firebase/auth');
     
     await signOutFn(auth);
-    authInstance = null; // Reset instance after sign out
+    authInstance = null;     // Reset instance after sign out
+    authInitPromise = null;  // Allow re-initialization
     console.log('[Firebase Auth] ✅ Sign out successful');
   } catch (error) {
     console.error('[Firebase Auth] ❌ Sign out failed:', error);
