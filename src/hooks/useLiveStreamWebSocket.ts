@@ -65,45 +65,19 @@ export function useLiveStreamWebSocket(
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      // 로컬 메시지 객체 (서버 실패 시에도 채팅에 표시하기 위해)
-      const localMsg: ChatMessage = {
-        id: `local-${Date.now()}`,
-        userId,
-        userName,
-        userType,
-        message: message.trim(),
-        timestamp: Date.now(),
-        isSeller: userType === 'streamer',
-        isAdmin: userType === 'system',
-      }
+      const response = await fetch(`/api/chat/${streamId}/messages`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          userId,
+          userName,
+          message: message.trim(),
+          isSeller: userType === 'streamer',
+          isAdmin: userType === 'system',
+        }),
+      })
 
-      try {
-        const response = await fetch(`/api/chat/${streamId}/messages`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            userId,
-            userName,
-            message: message.trim(),
-            isSeller: userType === 'streamer',
-            isAdmin: userType === 'system',
-          }),
-        })
-
-        if (!response.ok) {
-          // 서버 전송 실패해도 로컬 채팅에 직접 추가
-          setMessages((prev) => [...prev, localMsg])
-          throw new Error('메시지 전송 실패')
-        }
-      } catch (e) {
-        // 네트워크 에러 등에서도 로컬 메시지 추가
-        setMessages((prev) => {
-          // 이미 추가되었으면 중복 방지
-          if (prev.some(m => m.id === localMsg.id)) return prev
-          return [...prev, localMsg]
-        })
-        throw e
-      }
+      if (!response.ok) throw new Error('메시지 전송 실패')
     },
     [streamId]
   )
