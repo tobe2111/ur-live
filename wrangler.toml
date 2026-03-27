@@ -115,6 +115,12 @@ binding = "DB"
 database_name = "toss-live-commerce-db"
 database_id = "d9530ba6-7a26-4c02-9295-3ce5aef112a3"
 
+# Durable Objects binding for production (required for WebSocket chat)
+[env.production.durable_objects]
+bindings = [
+  { name = "LIVE_STREAM", class_name = "LiveStreamDurableObject" }
+]
+
 # ============================================================
 # Local dev server
 # ============================================================

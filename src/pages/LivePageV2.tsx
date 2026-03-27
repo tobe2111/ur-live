@@ -1095,13 +1095,13 @@ function ReelCard({
         </div>
       )}
       
-      {/* Background image - 상품 이미지만 표시 (오류 시 자동 숨김) */}
-      {(safeProduct.image || safeProduct.image_url) && (
+      {/* Background image - 상품 이미지만 표시 (YouTube 플레이어 로드 전까지만, 오류 시 자동 숨김) */}
+      {(safeProduct.image || safeProduct.image_url) && !playerReady && (
         <img
           src={safeProduct.image || safeProduct.image_url}
           alt={safeProduct.name}
-          className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 ${
-            isActive ? 'scale-100' : 'scale-110'
+          className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${
+            isActive ? 'scale-100 opacity-100' : 'scale-110 opacity-0'
           }`}
           onError={(e) => {
             // 이미지 로드 실패 시 숨기기
@@ -1138,8 +1138,8 @@ function ReelCard({
             
             {/* Play Icon */}
             <div className="w-20 h-20 rounded-full bg-white/90 shadow-2xl flex items-center justify-center transition-all hover:scale-110 hover:bg-white active:scale-95">
-              <svg className="w-10 h-10 text-red-600 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
+              <svg className="w-10 h-10 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9.5 4.27v15.46a1 1 0 0 0 1.52.86l11.45-7.73a1 1 0 0 0 0-1.72L11.02 3.41a1 1 0 0 0-1.52.86z" />
               </svg>
             </div>
             

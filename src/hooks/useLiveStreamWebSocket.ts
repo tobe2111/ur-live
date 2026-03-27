@@ -49,6 +49,7 @@ export function useLiveStreamWebSocket(
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const MAX_RECONNECT = 5
 
   const clearMessages = useCallback(() => setMessages([]), [])
@@ -105,6 +106,21 @@ export function useLiveStreamWebSocket(
       console.error('[WS] Initial messages fetch failed:', e)
     }
   }, [streamId])
+
+  // Polling fallback when WebSocket is unavailable
+  const startPolling = useCallback(() => {
+    if (pollingIntervalRef.current || !streamId) return
+    console.log('[WS] Falling back to polling for stream', streamId)
+
+    // Fetch messages initially
+    fetchInitialMessages()
+    setIsConnected(true) // Mark as connected so chat UI works
+
+    // Poll every 5 seconds for new messages
+    pollingIntervalRef.current = setInterval(() => {
+      fetchInitialMessages()
+    }, 5000)
+  }, [streamId, fetchInitialMessages])
 
   const connect = useCallback(() => {
     if (!enabled || !streamId) return
@@ -192,7 +208,9 @@ export function useLiveStreamWebSocket(
           setError(`연결 끊김. ${delay / 1000}초 후 재연결...`)
           reconnectTimeoutRef.current = setTimeout(connect, delay)
         } else {
-          setError('연결 실패. 페이지를 새로고침해주세요.')
+          // WebSocket failed after max retries — fall back to polling
+          setError(null) // Clear error so UI doesn't show stale message
+          startPolling()
         }
       }
 
@@ -218,6 +236,10 @@ export function useLiveStreamWebSocket(
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
         reconnectTimeoutRef.current = null
+      }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
       }
     }
   }, [connect, enabled, streamId])
