@@ -227,6 +227,32 @@ export default function SellerLiveBroadcastPage() {
     }
   }
 
+  // OBS/프리즘 방송 시 자동 상태 감지 (YouTube autoStart 연동)
+  useEffect(() => {
+    const scheduledStreams = streams.filter(s => s.status === 'scheduled')
+    if (scheduledStreams.length === 0) return
+
+    const pollStatus = async () => {
+      for (const stream of scheduledStreams) {
+        try {
+          const res = await api.get(`/api/seller/youtube/live/${stream.id}/status`)
+          if (res.data?.success && res.data.data?.synced) {
+            // YouTube에서 자동으로 라이브 시작됨 → 데이터 리로드
+            toast.success(`"${stream.title}" 방송이 자동으로 시작되었습니다!`)
+            await loadData()
+            return
+          }
+        } catch {
+          // Polling error는 무시
+        }
+      }
+    }
+
+    // 10초마다 상태 확인
+    const interval = setInterval(pollStatus, 10000)
+    return () => clearInterval(interval)
+  }, [streams])
+
   async function endStream(streamId: number) {
     if (!confirm('방송을 종료하시겠습니까?')) return
 
@@ -488,7 +514,7 @@ export default function SellerLiveBroadcastPage() {
                         <h4 className="text-[15px] font-semibold text-[#1d1d1f]">OBS Studio로 방송</h4>
                       </div>
                       <p className="text-[13px] text-[#6e6e73] mb-4">
-                        자막, 로고, 오버레이 등을 자유롭게 설정할 수 있습니다. 틱톡/인스타 동시 송출도 가능합니다.
+                        자막, 로고, 오버레이 등을 자유롭게 설정할 수 있습니다.
                       </p>
 
                       {/* 간단 가이드 */}
@@ -498,9 +524,21 @@ export default function SellerLiveBroadcastPage() {
                           <li>OBS 실행 → 설정 → 방송</li>
                           <li>서비스: <strong>사용자 지정</strong> 선택</li>
                           <li>아래 서버 URL과 스트림 키를 붙여넣기</li>
-                          <li>OBS에서 <strong>방송 시작</strong> 클릭</li>
-                          <li>아래 <strong>"방송 시작"</strong> 버튼 클릭</li>
+                          <li>OBS에서 <strong>방송 시작</strong> 클릭하면 자동으로 라이브 시작!</li>
                         </ol>
+                      </div>
+
+                      {/* 동시 송출 가이드 */}
+                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
+                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">동시 송출 (틱톡/인스타/트위치)</p>
+                        <p className="text-[12px] text-[#6e6e73] mb-2">
+                          하나의 방송으로 여러 플랫폼에 동시 송출할 수 있습니다.
+                        </p>
+                        <ul className="text-[12px] text-[#6e6e73] space-y-1">
+                          <li><strong>obs-multi-rtmp 플러그인</strong> (무료) — OBS에서 직접 여러 RTMP 추가</li>
+                          <li><strong>Restream.io</strong> (무료 2개) — 30+개 플랫폼 동시 송출</li>
+                          <li><strong>Streamlabs</strong> (무료) — 멀티 플랫폼 기본 지원</li>
+                        </ul>
                       </div>
 
                       {/* RTMP 정보 */}
@@ -564,8 +602,26 @@ export default function SellerLiveBroadcastPage() {
                         <h4 className="text-[15px] font-semibold text-[#1d1d1f]">프리즘 라이브로 방송</h4>
                       </div>
                       <p className="text-[13px] text-[#6e6e73] mb-4">
-                        스마트폰에서 간편하게 방송합니다. 모바일 오버레이와 꾸미기 기능을 사용할 수 있습니다.
+                        스마트폰에서 간편하게 방송합니다. 오버레이, 꾸미기, 동시 송출(YouTube+틱톡+인스타) 기능을 지원합니다.
                       </p>
+
+                      {/* 간단 가이드 */}
+                      <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
+                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">설정 방법</p>
+                        <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
+                          <li>QR 코드를 스캔하거나 아래 RTMP 정보를 복사</li>
+                          <li>프리즘 앱 → 외부 RTMP → 붙여넣기</li>
+                          <li>방송 시작하면 자동으로 라이브 시작!</li>
+                        </ol>
+                      </div>
+
+                      {/* 동시 송출 안내 */}
+                      <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
+                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-1">프리즘 동시 송출 (무료)</p>
+                        <p className="text-[12px] text-[#6e6e73]">
+                          프리즘 앱에서 YouTube + 틱톡 + 인스타 + 트위치 등 여러 플랫폼에 동시 송출이 가능합니다. 프리즘 설정에서 플랫폼을 추가하세요.
+                        </p>
+                      </div>
 
                       {newStream.rtmp_url && newStream.rtmp_key && (
                         <PrismQRCode
@@ -574,16 +630,6 @@ export default function SellerLiveBroadcastPage() {
                           streamTitle={newStream.title}
                         />
                       )}
-
-                      <div className="flex gap-3 mt-4">
-                        <Button
-                          onClick={() => startStream(newStream.id)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
-                        >
-                          <Radio className="h-5 w-5 mr-2" />
-                          방송 시작
-                        </Button>
-                      </div>
                     </div>
                   )}
 

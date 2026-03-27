@@ -481,25 +481,122 @@ app.post('/live/:id/start', async (c) => {
       }, 401)
     }
 
-    // Transition to live
-    await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+    // Check if YouTube already auto-started (enableAutoStart: true)
+    const broadcast = await youtubeService.getBroadcast(accessToken, stream.youtube_broadcast_id as string)
+
+    if (broadcast.status === 'live') {
+      // Already live (auto-started by OBS/Prism RTMP) — just sync DB
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'live', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+
+      return c.json({ success: true, message: 'Stream is already live (auto-started)' })
+    }
+
+    // Not yet live — manually transition
+    try {
+      await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+    } catch (transitionError: unknown) {
+      // If transition fails (e.g., no RTMP data yet), still update DB
+      console.warn('[YouTube Live Start] Transition warning:', transitionError)
+    }
 
     // Update database
     await c.env.DB.prepare(`
-      UPDATE live_streams 
+      UPDATE live_streams
       SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(streamId).run()
 
-    return c.json({
-      success: true,
-      message: 'Stream is now live'
-    })
+    return c.json({ success: true, message: 'Stream is now live' })
   } catch (error: unknown) {
     console.error('[YouTube Live Start] Error:', error)
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to start stream'
+    }, 500)
+  }
+})
+
+/**
+ * GET /api/youtube/live/:id/status
+ * Check YouTube broadcast status and auto-sync to DB
+ * Used by frontend polling to detect when OBS/Prism starts streaming
+ */
+app.get('/live/:id/status', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+
+  if (!sellerId) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  }
+
+  const streamId = parseInt(c.req.param('id'))
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+
+  if (!clientId || !clientSecret) {
+    return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+  }
+
+  try {
+    const stream = await c.env.DB.prepare(`
+      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+    `).bind(streamId, sellerId).first()
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found' }, 404)
+    }
+
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+
+    if (!accessToken) {
+      return c.json({ success: false, error: 'YouTube authentication required' }, 401)
+    }
+
+    // Check YouTube broadcast status
+    const broadcast = await youtubeService.getBroadcast(accessToken, stream.youtube_broadcast_id as string)
+    const ytStatus = broadcast.status
+
+    // Auto-sync: YouTube says live but our DB says scheduled → update DB
+    if (ytStatus === 'live' && stream.status === 'scheduled') {
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+
+      return c.json({
+        success: true,
+        data: { status: 'live', youtube_status: ytStatus, synced: true }
+      })
+    }
+
+    // Auto-sync: YouTube says complete but our DB says live → update DB
+    if (ytStatus === 'complete' && stream.status === 'live') {
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+
+      return c.json({
+        success: true,
+        data: { status: 'ended', youtube_status: ytStatus, synced: true }
+      })
+    }
+
+    return c.json({
+      success: true,
+      data: { status: stream.status, youtube_status: ytStatus, synced: false }
+    })
+  } catch (error: unknown) {
+    console.error('[YouTube Live Status] Error:', error)
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to check status'
     }, 500)
   }
 })
