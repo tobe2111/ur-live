@@ -1092,8 +1092,24 @@ function ReelCard({
         </div>
       )}
       
-      {/* 기본 배경: 어두운 그라데이션 (항상 표시) */}
-      <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-10" />
+      {/* 배경 레이어: YouTube 썸네일 → 그라데이션 폴백 (순서대로) */}
+      {stream.youtube_video_id ? (
+        <img
+          src={`https://img.youtube.com/vi/${stream.youtube_video_id}/maxresdefault.jpg`}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover -z-10"
+          onError={(e) => {
+            // maxresdefault 실패 시 hqdefault로 폴백
+            const img = e.currentTarget
+            if (!img.src.includes('hqdefault')) {
+              img.src = `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
+            } else {
+              img.style.display = 'none'
+            }
+          }}
+        />
+      ) : null}
+      <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
       {/* YouTube Player Container */}
       {/* ✅ 세로 화면에서 16:9 영상이 cover 모드로 채워지도록 iframe CSS 강제 적용
@@ -1103,30 +1119,43 @@ function ReelCard({
         className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!aspect-video"
       />
 
-      {/* 방송 입장 버튼 */}
-      {showPlayButton && playerReady && (
+      {/* 로딩 → 입장 버튼 → 재생 중 (3단계 상태 관리) */}
+      {showPlayButton && (
         <button
-          onClick={handleVideoClick}
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-b from-black/40 via-black/60 to-black/80 backdrop-blur-sm transition-all hover:bg-black/70"
+          onClick={playerReady ? handleVideoClick : undefined}
+          className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all ${
+            playerReady
+              ? 'bg-black/40 backdrop-blur-[2px] cursor-pointer'
+              : 'bg-black/60 cursor-default'
+          }`}
           aria-label="방송 입장하기"
+          disabled={!playerReady}
         >
-          <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="flex flex-col items-center gap-4">
             {/* Live Badge */}
             <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               <span className="text-white text-sm font-bold">LIVE</span>
             </div>
-            
-            {/* Play Icon - 흰색 세모만 (원 없이) */}
-            <svg className="w-16 h-16 text-white drop-shadow-2xl transition-all hover:scale-110 active:scale-95" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-            
-            {/* Text */}
-            <div className="text-center px-6">
-              <p className="text-white text-xl font-bold mb-1.5">방송 입장하기</p>
-              <p className="text-white/80 text-sm">탭하여 라이브 시청 시작</p>
-            </div>
+
+            {playerReady ? (
+              <>
+                {/* 준비 완료: 재생 버튼 */}
+                <svg className="w-16 h-16 text-white drop-shadow-2xl transition-all hover:scale-110 active:scale-95" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                <div className="text-center px-6">
+                  <p className="text-white text-xl font-bold mb-1.5">방송 입장하기</p>
+                  <p className="text-white/80 text-sm">탭하여 라이브 시청 시작</p>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* 로딩 중: 스피너 */}
+                <div className="w-12 h-12 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                <p className="text-white/80 text-sm">방송 준비 중...</p>
+              </>
+            )}
           </div>
         </button>
       )}
