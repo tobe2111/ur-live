@@ -31,15 +31,20 @@ liveSseRoutes.get('/:liveId/sse', (c) => {
 liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
   const { liveId } = c.req.param()
 
-  const messages = await c.env.DB.prepare(`
-    SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
-    FROM chat_messages
-    WHERE live_stream_id = ? AND is_deleted = 0
-    ORDER BY id DESC
-    LIMIT 50
-  `).bind(liveId).all()
+  try {
+    const messages = await c.env.DB.prepare(`
+      SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
+      FROM chat_messages
+      WHERE live_stream_id = ? AND is_deleted = 0
+      ORDER BY id DESC
+      LIMIT 50
+    `).bind(liveId).all()
 
-  return c.json({ success: true, data: messages.results.reverse() })
+    return c.json({ success: true, data: messages.results.reverse() })
+  } catch (err) {
+    console.error('[Chat] Failed to fetch messages:', err)
+    return c.json({ success: true, data: [] })
+  }
 })
 
 // ── WebSocket → Durable Object proxy ────────────────────────────────────────
@@ -54,10 +59,15 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
     return c.json({ error: 'Real-time service unavailable', fallback: 'sse' }, 503)
   }
 
-  const doId = c.env.LIVE_STREAM.idFromName(liveId)
-  const stub = c.env.LIVE_STREAM.get(doId)
-  // Cast to any to avoid Cloudflare types header mismatch between hono and workers-types
-  return stub.fetch(c.req.raw as any) as any
+  try {
+    const doId = c.env.LIVE_STREAM.idFromName(liveId)
+    const stub = c.env.LIVE_STREAM.get(doId)
+    // Cast to any to avoid Cloudflare types header mismatch between hono and workers-types
+    return stub.fetch(c.req.raw as any) as any
+  } catch (err) {
+    console.error('[WS] Durable Object proxy failed:', err)
+    return c.json({ error: 'WebSocket connection failed', fallback: 'sse' }, 503)
+  }
 })
 
 // ── Broadcast event to all WebSocket viewers ─────────────────────────────────
@@ -98,20 +108,27 @@ chatRoutes.post('/:liveId/messages', async (c) => {
     return c.json({ error: 'message and userName are required' }, 400)
   }
 
-  // Save to D1
-  const result = await c.env.DB.prepare(`
-    INSERT INTO chat_messages (live_stream_id, user_id, user_name, message, is_seller, is_admin)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(
-    liveId,
-    userId ?? null,
-    userName,
-    message.trim(),
-    isSeller ? 1 : 0,
-    isAdmin ? 1 : 0,
-  ).run()
+  let insertedId: number | null = null
 
-  const insertedId = result.meta.last_row_id
+  // Save to D1
+  try {
+    const result = await c.env.DB.prepare(`
+      INSERT INTO chat_messages (live_stream_id, user_id, user_name, message, is_seller, is_admin)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+      liveId,
+      userId ?? null,
+      userName,
+      message.trim(),
+      isSeller ? 1 : 0,
+      isAdmin ? 1 : 0,
+    ).run()
+
+    insertedId = result.meta.last_row_id
+  } catch (err) {
+    console.error('[Chat] D1 insert failed:', err)
+    return c.json({ error: 'Failed to save message', detail: (err as Error).message }, 500)
+  }
 
   // Broadcast to DO WebSocket clients (non-fatal if DO unavailable)
   if (c.env.LIVE_STREAM) {
