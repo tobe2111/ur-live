@@ -357,7 +357,6 @@ export const useAuthKR = create<AuthKRState>()(
                   const lastProcessed = sessionStorage.getItem('auth_processed_uid');
                   if (lastProcessed === firebaseUser.uid) {
                     console.log('[AuthKR] ⏩ Already processed, ensuring user+ready:', firebaseUser.uid);
-                    // user가 이미 설정되어 있으면 그대로, 없으면(가능성 낮음) 다시 설정
                     const currentUser = get().user;
                     if (!currentUser) {
                       set({ user: firebaseUser, isAuthReady: true });
@@ -366,99 +365,99 @@ export const useAuthKR = create<AuthKRState>()(
                     }
                     return;
                   }
-                  
+
                   // Firebase 유저 있음 → user_type 이 seller/admin 이면 간섭하지 않음
                   const currentType = localStorage.getItem('user_type');
                   if (currentType === 'seller' || currentType === 'admin') {
-                    // Seller/Admin 탭에서 Firebase 이벤트가 와도 무시
                     set({ isAuthReady: true });
                     return;
                   }
 
-                  try {
-                    const idToken = await firebaseUser.getIdToken(false); // 캐시된 토큰 사용
-                    const res = await fetch('/api/users/role', {
-                      headers: { Authorization: `Bearer ${idToken}` },
-                    });
-                    const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
-                    const role = (body.role || 'user') as 'user';
+                  // ✅ 핵심 수정: user와 isAuthReady를 먼저 설정하여 ProtectedRoute가 즉시 통과
+                  // 비동기 작업(role 확인, claims, accessToken)은 백그라운드에서 진행
+                  safeSetUserType();
+                  localStorage.setItem('lastLoginUid', firebaseUser.uid);
+                  set({
+                    user: firebaseUser,
+                    userRole: 'user',
+                    isLoading: false,
+                    isAuthReady: true,
+                    error: null,
+                  });
 
-                    safeSetUserType();
-                    localStorage.setItem('lastLoginUid', firebaseUser.uid);
-
-                    // ✅ Firebase 커스텀 클레임에서 userName/profileImage 추출 → localStorage 동기화
+                  // ✅ 백그라운드 비동기 작업: role 확인, claims 동기화, accessToken 저장
+                  // 이 작업이 느려도 UI는 이미 정상 표시됨
+                  (async () => {
                     try {
-                      const idTokenResult = await firebaseUser.getIdTokenResult();
-                      const claimsUserName = idTokenResult.claims.userName as string | undefined;
-                      const claimsProfileImage = idTokenResult.claims.profileImage as string | undefined;
+                      const idToken = await firebaseUser.getIdToken(false);
 
-                      if (claimsUserName) {
-                        // 기존 user_name이 없거나 기본값이면 클레임 값으로 덮어쓰기
-                        const existing = localStorage.getItem('user_name');
-                        if (!existing || existing === 'Kakao User' || existing === '사용자') {
-                          localStorage.setItem('user_name', claimsUserName);
-                        }
-                        // Firebase displayName 미설정 시 업데이트
-                        if (!firebaseUser.displayName) {
-                          try {
-                            const { updateProfile } = await import('firebase/auth');
-                            await updateProfile(firebaseUser, { displayName: claimsUserName });
-                          } catch (_) {}
-                        }
-                      }
-                      if (claimsProfileImage) {
-                        // 항상 최신 클레임 값으로 덮어쓰기 (Kakao 썸네일 미표시 방지)
-                        localStorage.setItem('user_profile_image', claimsProfileImage);
-                      }
-                    } catch (_) {}
+                      // Role 확인
+                      const res = await fetch('/api/users/role', {
+                        headers: { Authorization: `Bearer ${idToken}` },
+                      });
+                      const body = (await res.json().catch(() => ({ role: 'user' }))) as { role?: string };
+                      const role = (body.role || 'user') as 'user';
 
-                    // ✅ API 요청용 accessToken 저장 (Firebase ID Token)
-                    try {
-                      const { useAuthStore } = await import('@/client/stores/auth.store');
-                      useAuthStore.getState().setAuth(
-                        {
-                          id: firebaseUser.uid,
-                          email: firebaseUser.email || '',
-                          name: firebaseUser.displayName || localStorage.getItem('user_name') || '',
-                          role: 'user',
-                        },
-                        idToken,
-                        '' // refreshToken은 Firebase에서 자동 관리
-                      );
-                      console.log('[AuthKR] ✅ accessToken 저장 완료 (API 요청 가능)');
-                    } catch (e) {
-                      console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
+                      // Claims에서 userName/profileImage 추출
+                      try {
+                        const idTokenResult = await firebaseUser.getIdTokenResult();
+                        const claimsUserName = idTokenResult.claims.userName as string | undefined;
+                        const claimsProfileImage = idTokenResult.claims.profileImage as string | undefined;
+
+                        if (claimsUserName) {
+                          const existing = localStorage.getItem('user_name');
+                          if (!existing || existing === 'Kakao User' || existing === '사용자') {
+                            localStorage.setItem('user_name', claimsUserName);
+                          }
+                          if (!firebaseUser.displayName) {
+                            try {
+                              const { updateProfile } = await import('firebase/auth');
+                              await updateProfile(firebaseUser, { displayName: claimsUserName });
+                            } catch (_) {}
+                          }
+                        }
+                        if (claimsProfileImage) {
+                          localStorage.setItem('user_profile_image', claimsProfileImage);
+                        }
+                      } catch (_) {}
+
+                      // accessToken 저장
+                      try {
+                        const { useAuthStore } = await import('@/client/stores/auth.store');
+                        useAuthStore.getState().setAuth(
+                          {
+                            id: firebaseUser.uid,
+                            email: firebaseUser.email || '',
+                            name: firebaseUser.displayName || localStorage.getItem('user_name') || '',
+                            role: 'user',
+                          },
+                          idToken,
+                          ''
+                        );
+                        console.log('[AuthKR] ✅ accessToken 저장 완료 (API 요청 가능)');
+                      } catch (e) {
+                        console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
+                      }
+
+                      sessionStorage.setItem('auth_processed_uid', firebaseUser.uid);
+
+                      // Role이 다르면 업데이트
+                      if (role !== get().userRole) {
+                        set({ userRole: role });
+                      }
+                    } catch (err) {
+                      // 백그라운드 실패해도 user/isAuthReady는 이미 설정됨 → 무시
+                      console.warn('[AuthKR] ⚠️ 백그라운드 인증 작업 실패 (무시):', err);
+                      try {
+                        const idTokenFallback = await firebaseUser.getIdToken(false);
+                        const { useAuthStore } = await import('@/client/stores/auth.store');
+                        useAuthStore.getState().setAuth(
+                          { id: firebaseUser.uid, email: firebaseUser.email || '', name: firebaseUser.displayName || '', role: 'user' },
+                          idTokenFallback, ''
+                        );
+                      } catch (_) {}
                     }
-
-                    // ✅ 처리 완료 플래그 설정
-                    sessionStorage.setItem('auth_processed_uid', firebaseUser.uid);
-
-                    set({
-                      user: firebaseUser,
-                      userRole: role,
-                      isLoading: false,
-                      isAuthReady: true,
-                      error: null,
-                    });
-                  } catch (err) {
-                    // 역할 조회 실패해도 user 로 처리 — 그래도 accessToken은 저장
-                    safeSetUserType();
-                    localStorage.setItem('lastLoginUid', firebaseUser.uid);
-                    try {
-                      const idTokenFallback = await firebaseUser.getIdToken(false);
-                      const { useAuthStore } = await import('@/client/stores/auth.store');
-                      useAuthStore.getState().setAuth(
-                        { id: firebaseUser.uid, email: firebaseUser.email || '', name: firebaseUser.displayName || '', role: 'user' },
-                        idTokenFallback, ''
-                      );
-                    } catch (_) {}
-                    set({
-                      user: firebaseUser,
-                      userRole: 'user',
-                      isLoading: false,
-                      isAuthReady: true,
-                    });
-                  }
+                  })();
                 } else {
                   // ✅ 로그아웃 시 플래그 제거
                   sessionStorage.removeItem('auth_processed_uid');

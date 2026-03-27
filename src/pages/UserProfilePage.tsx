@@ -30,37 +30,31 @@ export default function UserProfilePage() {
   const hasProcessedToken = useRef(false)
 
   // ✅ firebase_token 한 번만 처리
+  // 의존성에서 searchParams, user 제거 → 무한 루프 방지
+  // searchParams는 마운트 시 읽고, user 변화는 hasProcessedToken으로 제어
   useEffect(() => {
     const firebaseToken = searchParams.get('firebase_token')
-    const userName = searchParams.get('userName')
+    const userNameParam = searchParams.get('userName')
     const profileImageParam = searchParams.get('profileImage')
 
     // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
-    // (단, profileImage/userName은 저장 후 정리)
-    if ((firebaseToken || userName) && user) {
+    const currentUser = authStore.getState().user
+    if ((firebaseToken || userNameParam) && currentUser) {
       console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
-      // ✅ 이미 로그인 상태라도 프로필 데이터는 저장
-      if (userName) localStorage.setItem('user_name', userName)
+      if (userNameParam) localStorage.setItem('user_name', userNameParam)
       if (profileImageParam) localStorage.setItem('user_profile_image', profileImageParam)
       navigate('/user/profile', { replace: true })
       return
     }
 
-    // 🔥 수정: 인증이 준비되기 전에는 처리하지 않음
-    if (!isAuthReady) {
-      console.log('[UserProfilePage] ⏳ Auth 초기화 대기 중...')
-      return
-    }
-
     // 조건: 토큰 있음 + 아직 안 처리 + 로그인 안 됨
-    if (firebaseToken && !hasProcessedToken.current && !user) {
+    if (firebaseToken && !hasProcessedToken.current && !currentUser) {
       hasProcessedToken.current = true
       setIsProcessingToken(true)
 
-      // ✅ URL params에서 사용자 정보 미리 저장
-      if (userName) {
-        localStorage.setItem('user_name', userName)
-        console.log('[UserProfilePage] ✅ user_name 저장:', userName)
+      if (userNameParam) {
+        localStorage.setItem('user_name', userNameParam)
+        console.log('[UserProfilePage] ✅ user_name 저장:', userNameParam)
       }
       if (profileImageParam) {
         localStorage.setItem('user_profile_image', profileImageParam)
@@ -73,7 +67,6 @@ export default function UserProfilePage() {
         .then(async () => {
           console.log('[UserProfilePage] ✅ 로그인 완료 - Auth State 동기화됨')
 
-          // ✅ Firebase User displayName/photoURL 업데이트 (GET redirect에서 누락된 부분)
           try {
             const { isKorea } = await import('@/shared/config/region')
             const { useAuthKR } = await import('@/shared/stores/useAuthKR')
@@ -82,10 +75,9 @@ export default function UserProfilePage() {
             if (firebaseUser && (!firebaseUser.displayName || !firebaseUser.photoURL)) {
               const { updateProfile } = await import('firebase/auth')
               await updateProfile(firebaseUser, {
-                ...(userName && !firebaseUser.displayName ? { displayName: userName } : {}),
+                ...(userNameParam && !firebaseUser.displayName ? { displayName: userNameParam } : {}),
                 ...(profileImageParam && !firebaseUser.photoURL ? { photoURL: profileImageParam } : {}),
               })
-              // ✅ Zustand store 갱신하여 리렌더 트리거
               if (isKorea()) {
                 useAuthKR.getState().setUser({ ...firebaseUser } as any)
               } else {
@@ -97,7 +89,6 @@ export default function UserProfilePage() {
             console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
           }
 
-          // ✅ URL 완전 정리
           navigate('/user/profile', { replace: true })
           setIsProcessingToken(false)
         })
@@ -108,7 +99,7 @@ export default function UserProfilePage() {
           navigate('/login', { replace: true })
         })
     }
-  }, [searchParams, isAuthReady, user, navigate])
+  }, [isAuthReady]) // ✅ isAuthReady만 의존: auth 준비 완료 시 1회 실행
 
   // ✅ 사용자 이름 + 프로필 이미지 설정
   useEffect(() => {
