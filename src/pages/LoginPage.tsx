@@ -55,30 +55,33 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   
-  // ✅ 무한루프 방지: returnUrl은 쿼리파라미터 전용 (location.state?.from 제거)
-  // RouteGuards.tsx가 ?returnUrl= 쿼리파라미터로 전달하므로 여기서 일관되게 읽음
-  // ✅ /login 자체나 auth 경로를 returnUrl로 쓰면 무한루프 → '/'로 안전 변환
-  const _rawReturnUrl = searchParams.get('returnUrl')
-    ? decodeURIComponent(searchParams.get('returnUrl')!)
-    : sessionStorage.getItem('returnUrl') || '/'
-  const returnUrl = (_rawReturnUrl.startsWith('/login') || _rawReturnUrl.startsWith('/auth/'))
-    ? '/'
-    : _rawReturnUrl
+  // ✅ 무한루프 방지: returnUrl은 마운트 시 1회만 계산 (useRef로 고정)
+  const returnUrlRef = useRef<string | null>(null)
+  if (returnUrlRef.current === null) {
+    const _rawReturnUrl = searchParams.get('returnUrl')
+      ? decodeURIComponent(searchParams.get('returnUrl')!)
+      : sessionStorage.getItem('returnUrl') || '/'
+    returnUrlRef.current = (_rawReturnUrl.startsWith('/login') || _rawReturnUrl.startsWith('/auth/'))
+      ? '/'
+      : _rawReturnUrl
+  }
+  const returnUrl = returnUrlRef.current
   const isLoggedIn = !!user
 
   // ✅ 로그인 상태 확인 및 리다이렉트
+  // 의존성에서 returnUrl 제거 → searchParams 변경으로 인한 무한 루프 차단
   useEffect(() => {
     if (!isAuthReady) {
       console.log('[LoginPage] ⏳ Auth 초기화 대기 중...')
       return
     }
-    
+
     if (isLoggedIn && !hasRedirected.current) {
-      console.log('[LoginPage] ✅ 이미 로그인됨 - returnUrl로 리다이렉트:', returnUrl)
+      console.log('[LoginPage] ✅ 이미 로그인됨 - returnUrl로 리다이렉트:', returnUrlRef.current)
       hasRedirected.current = true
-      navigate(returnUrl, { replace: true })
+      navigate(returnUrlRef.current!, { replace: true })
     }
-  }, [isAuthReady, isLoggedIn, navigate, returnUrl])
+  }, [isAuthReady, isLoggedIn, navigate])
 
   // ✅ Kakao SDK 초기화 및 returnUrl 저장
   useEffect(() => {

@@ -108,13 +108,12 @@ function UserProtectedRoute({
   const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
   const currentUser = kr ? userKR : userWorld
 
-  // ✅ 타임아웃 안전장치: 최대 5초 대기 후 강제 진행
-  // Firebase onAuthStateChanged 가 늦게 응답해도 무한 스피너 방지
+  // ✅ 타임아웃 안전장치: 최대 8초 대기 후 강제 진행
+  // Firebase onAuthStateChanged + 비동기 role/claims 확인이 느릴 수 있음
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // 로그인 흔적 없으면 타이머 불필요
     if (!hasPossibleSession) return
     if (isAuthReady) {
       if (timerRef.current) {
@@ -124,9 +123,9 @@ function UserProtectedRoute({
       return
     }
     timerRef.current = setTimeout(() => {
-      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (5s) - 강제 진행')
+      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (8s) - 강제 진행')
       setTimedOut(true)
-    }, 5000)
+    }, 8000)
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
