@@ -758,33 +758,59 @@ export default function SellerLiveBroadcastPage() {
 
             {/* Create Live Stream Section */}
             {!showSetup && !newStream && (
-              <div className="apple-card p-8 sm:p-12 text-center mb-8 bg-gradient-to-br from-blue-50 to-indigo-50">
-                <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Play className="h-12 w-12 text-white" />
-                </div>
-                <h2 className="text-[28px] font-bold text-[#1d1d1f] mb-3">
+              <div className="apple-card p-6 sm:p-8 mb-8">
+                <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2 text-center">
                   새 라이브 방송 시작
                 </h2>
-                <p className="text-[15px] text-[#6e6e73] mb-6 max-w-md mx-auto">
-                  한 번의 클릭으로 YouTube 라이브 방송을 시작하세요.
-                  상품을 선택하고 방송을 시작하면 자동으로 RTMP 스트림이 생성됩니다.
+                <p className="text-[14px] text-[#6e6e73] mb-6 text-center">
+                  방송 방식을 선택하고 시작하세요
                 </p>
-                <Button
-                  onClick={() => setShowSetup(true)}
-                  className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-10 py-6 text-[19px] font-bold h-auto shadow-lg"
-                >
-                  <Play className="h-6 w-6 mr-3" />
-                  라이브 방송 만들기
-                </Button>
+
+                {/* 방송 방식 선택 */}
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  <button
+                    onClick={() => { setStreamingMethod('web'); setShowSetup(true) }}
+                    className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-[#007aff] hover:bg-[#007aff]/5 transition-all text-center"
+                  >
+                    <Monitor className="h-8 w-8 mx-auto mb-2 text-[#007aff]" />
+                    <p className="text-[14px] font-semibold text-[#1d1d1f]">브라우저</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">웹캠으로 바로 시작</p>
+                  </button>
+                  <button
+                    onClick={() => { setStreamingMethod('obs'); setShowSetup(true) }}
+                    className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-purple-500 hover:bg-purple-50 transition-all text-center"
+                  >
+                    <VideoIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                    <p className="text-[14px] font-semibold text-[#1d1d1f]">OBS Studio</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">자막/오버레이/동시송출</p>
+                  </button>
+                  <button
+                    onClick={() => { setStreamingMethod('prism'); setShowSetup(true) }}
+                    className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-orange-500 hover:bg-orange-50 transition-all text-center"
+                  >
+                    <Smartphone className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                    <p className="text-[14px] font-semibold text-[#1d1d1f]">프리즘 라이브</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">모바일/동시송출</p>
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Setup Form */}
             {showSetup && !newStream && (
               <div className="apple-card p-6 sm:p-8 mb-8">
-                <h3 className="text-[21px] font-bold text-[#1d1d1f] mb-6">
-                  방송 정보 입력
-                </h3>
+                <div className="flex items-center gap-3 mb-6">
+                  <h3 className="text-[21px] font-bold text-[#1d1d1f]">
+                    방송 정보 입력
+                  </h3>
+                  <Badge className={`text-[12px] ${
+                    streamingMethod === 'web' ? 'bg-[#007aff] text-white' :
+                    streamingMethod === 'obs' ? 'bg-purple-600 text-white' :
+                    'bg-orange-500 text-white'
+                  }`}>
+                    {streamingMethod === 'web' ? '브라우저' : streamingMethod === 'obs' ? 'OBS' : '프리즘'}
+                  </Badge>
+                </div>
 
                 <div className="space-y-6">
                   <div>
