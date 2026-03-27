@@ -338,157 +338,116 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-[380px]">
-        {/* Logo - 29CM Style: Ultra minimal */}
-        <div className="text-center mb-14">
-          <h1 className="text-[28px] font-extralight tracking-[0.02em] text-[#111] mb-1">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5 py-12">
+      <div className="w-full max-w-[360px]">
+
+        {/* Logo */}
+        <div className="text-center mb-16">
+          <h1 className="text-[32px] font-bold tracking-[0.08em] text-[#111]">
             UR LIVE
           </h1>
-          <p className="text-[12px] font-light text-[#666] tracking-wide mt-3">
-            {t('auth.loginTitle')}
+          <p className="text-[14px] text-[#999] mt-3 font-light">
+            라이브 쇼핑의 새로운 경험
           </p>
         </div>
 
-        {/* Error/Success Messages - 29CM Style */}
+        {/* Error/Success Messages */}
         {error && (
-          <div className="mb-6 p-4 bg-[#FFF8F8] border border-[#FFEBEB] text-[13px] text-[#D32F2F] font-light">
+          <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600 text-center">
             {error}
           </div>
         )}
-        
+
         {successMessage && (
-          <div className="mb-6 p-4 bg-[#F0F8F4] border border-[#D4EDDA] text-[13px] text-[#2E7D32] font-light">
+          <div className="mb-5 px-4 py-3 bg-green-50 border border-green-100 rounded-xl text-[13px] text-green-700 text-center">
             {successMessage}
           </div>
         )}
 
-        {/* Main Login Form */}
+        {/* Main Login */}
         {!showEmailLogin && !showForgotPassword && (
-          <div className="space-y-3">
-            {/* Kakao Login Button (KR only) - 29CM Style: Minimal, clean lines */}
-            {isKorea() && (
-              <button
-                onClick={() => {
-                  console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
-                  console.log('[LoginPage] Kakao Ready:', kakaoReady)
-                  console.log('[LoginPage] Kakao SDK Initialized:', window.Kakao?.isInitialized())
-                  console.log('[LoginPage] Loading:', loading)
-                  handleKakaoLogin()
-                }}
-                disabled={loading || !kakaoReady}
-                className="w-full h-[48px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#F9D900]"
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {t('common.loading')}
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
-                    </svg>
-                    {t('auth.loginWithKakao')}
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Google Login Button (World only) - 29CM Style */}
-            {!isKorea() && (
-              <button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full h-[48px] bg-white hover:bg-[#FAFAFA] text-[#111] text-[13px] font-normal tracking-wide border border-[#E0E0E0] hover:border-[#111] flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {t('common.loading')}
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    {t('auth.loginWithGoogle')}
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Divider - 29CM Style: Ultra minimal */}
-            <div className="relative py-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#F0F0F0]"></div>
-              </div>
-              <div className="relative flex justify-center">
-                <span className="px-4 text-[11px] text-[#999] bg-white font-light tracking-widest">OR</span>
-              </div>
-            </div>
-
-            {/* Email Login Button - 29CM Style: Black minimal button */}
+          <div>
+            {/* Kakao Login Button */}
             <button
-              onClick={() => setShowEmailLogin(true)}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide flex items-center justify-center transition-all"
+              onClick={() => {
+                console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
+                handleKakaoLogin()
+              }}
+              disabled={loading || !kakaoReady}
+              className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
             >
-              {t('auth.loginWithEmail')}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>로그인 중...</span>
+                </div>
+              ) : (
+                <>
+                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                    <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
+                  </svg>
+                  <span>카카오로 3초 만에 시작하기</span>
+                </>
+              )}
             </button>
 
-            {/* Sign Up Link - 29CM Style: Minimal, understated */}
-            <div className="text-center text-[12px] text-[#666] mt-8 font-light">
-              {t('auth.noAccount')}{' '}
-              <Link to="/register" className="text-[#111] font-normal hover:underline underline-offset-4 decoration-1">
-                {t('auth.signUp')}
+            {/* Email Login Link */}
+            <div className="text-center mt-8">
+              <button
+                onClick={() => setShowEmailLogin(true)}
+                className="text-[13px] text-[#888] hover:text-[#111] underline underline-offset-4 decoration-1 font-light transition-colors"
+              >
+                이메일로 로그인하기
+              </button>
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="text-center text-[13px] text-[#aaa] mt-5 font-light">
+              계정이 없으신가요?{' '}
+              <Link to="/register" className="text-[#111] font-medium hover:underline underline-offset-4 decoration-1">
+                회원가입
               </Link>
             </div>
           </div>
         )}
 
-        {/* Email Login Form - 29CM Style */}
+        {/* Email Login Form */}
         {showEmailLogin && !showForgotPassword && (
-          <form onSubmit={handleEmailLogin} className="space-y-5">
+          <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-normal text-[#666] mb-2 tracking-wide uppercase">
-                {t('auth.email')}
+              <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+                이메일
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#E0E0E0] text-[13px] font-light focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
-                placeholder={t('auth.emailPlaceholder')}
+                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                placeholder="example@email.com"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-normal text-[#666] mb-2 tracking-wide uppercase">
-                {t('auth.password')}
+              <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+                비밀번호
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] text-[13px] font-light focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
-                  placeholder={t('auth.passwordPlaceholder')}
+                  className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                  placeholder="비밀번호를 입력하세요"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#999] hover:text-[#111]"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-[#555]"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -502,49 +461,49 @@ export default function LoginPage() {
                   setShowForgotPassword(true)
                   setShowEmailLogin(false)
                 }}
-                className="text-[11px] text-[#666] hover:text-[#111] underline underline-offset-4 decoration-1 font-light"
+                className="text-[12px] text-[#888] hover:text-[#111] underline underline-offset-4 decoration-1 font-light"
               >
-                {t('auth.forgotPassword')}
+                비밀번호를 잊으셨나요?
               </button>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : t('auth.login')}
+              {loading ? '로그인 중...' : '로그인'}
             </button>
 
             <button
               type="button"
               onClick={() => setShowEmailLogin(false)}
-              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#111] text-[#111] text-[13px] font-normal tracking-wide transition-all"
+              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
             >
-              {t('common.back')}
+              돌아가기
             </button>
           </form>
         )}
 
-        {/* Forgot Password Form - 29CM Style */}
+        {/* Forgot Password Form */}
         {showForgotPassword && (
-          <div className="space-y-5">
-            <div className="text-center mb-8">
-              <p className="text-[13px] text-[#666] font-light leading-relaxed">
-                Enter your email to receive a password reset link
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <p className="text-[14px] text-[#666] font-light leading-relaxed">
+                가입한 이메일을 입력하시면<br />비밀번호 재설정 링크를 보내드립니다.
               </p>
             </div>
 
             <div>
-              <label className="block text-[11px] font-normal text-[#666] mb-2 tracking-wide uppercase">
-                {t('auth.email')}
+              <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+                이메일
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#E0E0E0] text-[13px] font-light focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
-                placeholder={t('auth.emailPlaceholder')}
+                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                placeholder="example@email.com"
                 required
               />
             </div>
@@ -552,9 +511,9 @@ export default function LoginPage() {
             <button
               onClick={handleResetPassword}
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white text-[13px] font-normal tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : t('auth.sendResetLink')}
+              {loading ? '전송 중...' : '재설정 링크 보내기'}
             </button>
 
             <button
@@ -563,9 +522,9 @@ export default function LoginPage() {
                 setShowForgotPassword(false)
                 setShowEmailLogin(true)
               }}
-              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#111] text-[#111] text-[13px] font-normal tracking-wide transition-all"
+              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
             >
-              {t('common.back')}
+              돌아가기
             </button>
           </div>
         )}
