@@ -300,7 +300,7 @@ app.get('/channels', async (c) => {
 
     return c.json({
       success: true,
-      data: (auth.results as unknown as SellerYouTubeAuthRow[]).map((a) => ({
+      data: (auth.results as unknown as (SellerYouTubeAuthRow & { default_stream_id?: string; default_rtmp_url?: string; default_rtmp_key?: string })[]).map((a) => ({
         id: a.id,
         channel_id: a.channel_id,
         channel_title: a.channel_title,
@@ -308,7 +308,10 @@ app.get('/channels', async (c) => {
         subscriber_count: a.subscriber_count,
         google_email: a.google_email,
         is_active: a.is_active,
-        created_at: a.created_at
+        created_at: a.created_at,
+        default_rtmp_url: a.default_rtmp_url || null,
+        default_rtmp_key: a.default_rtmp_key || null,
+        has_persistent_key: !!a.default_stream_id,
       }))
     })
   } catch (error: unknown) {
@@ -369,12 +372,46 @@ app.post('/live/create', async (c) => {
 
     // Create YouTube live setup
     const scheduledTime = scheduled_start_time || new Date().toISOString()
-    const liveSetup = await youtubeService.setupLiveStream(
-      accessToken,
-      title,
-      description || '',
-      scheduledTime
-    )
+
+    // Check if seller has a persistent stream key (OBS/Prism set once)
+    const sellerAuth = await c.env.DB.prepare(`
+      SELECT default_stream_id, default_rtmp_url, default_rtmp_key
+      FROM seller_youtube_oauth
+      WHERE seller_id = ? AND is_active = 1
+      LIMIT 1
+    `).bind(sellerId).first() as any
+
+    let liveSetup
+    if (sellerAuth?.default_stream_id) {
+      // Reuse persistent stream (no new RTMP key needed)
+      liveSetup = await youtubeService.setupLiveStreamWithPersistentStream(
+        accessToken,
+        title,
+        description || '',
+        sellerAuth.default_stream_id,
+        scheduledTime
+      )
+    } else {
+      // First time or no persistent stream — create new + save as default
+      liveSetup = await youtubeService.setupLiveStream(
+        accessToken,
+        title,
+        description || '',
+        scheduledTime
+      )
+
+      // Save as persistent stream for future use
+      await c.env.DB.prepare(`
+        UPDATE seller_youtube_oauth
+        SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE seller_id = ? AND is_active = 1
+      `).bind(
+        liveSetup.stream.id,
+        liveSetup.rtmpUrl,
+        liveSetup.rtmpKey,
+        sellerId
+      ).run()
+    }
 
     // Save to database
     const streamResult = await c.env.DB.prepare(`
@@ -481,25 +518,122 @@ app.post('/live/:id/start', async (c) => {
       }, 401)
     }
 
-    // Transition to live
-    await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+    // Check if YouTube already auto-started (enableAutoStart: true)
+    const broadcast = await youtubeService.getBroadcast(accessToken, stream.youtube_broadcast_id as string)
+
+    if (broadcast.status === 'live') {
+      // Already live (auto-started by OBS/Prism RTMP) — just sync DB
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'live', started_at = COALESCE(started_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+
+      return c.json({ success: true, message: 'Stream is already live (auto-started)' })
+    }
+
+    // Not yet live — manually transition
+    try {
+      await youtubeService.transitionBroadcastToLive(accessToken, stream.youtube_broadcast_id as string)
+    } catch (transitionError: unknown) {
+      // If transition fails (e.g., no RTMP data yet), still update DB
+      console.warn('[YouTube Live Start] Transition warning:', transitionError)
+    }
 
     // Update database
     await c.env.DB.prepare(`
-      UPDATE live_streams 
+      UPDATE live_streams
       SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(streamId).run()
 
-    return c.json({
-      success: true,
-      message: 'Stream is now live'
-    })
+    return c.json({ success: true, message: 'Stream is now live' })
   } catch (error: unknown) {
     console.error('[YouTube Live Start] Error:', error)
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to start stream'
+    }, 500)
+  }
+})
+
+/**
+ * GET /api/youtube/live/:id/status
+ * Check YouTube broadcast status and auto-sync to DB
+ * Used by frontend polling to detect when OBS/Prism starts streaming
+ */
+app.get('/live/:id/status', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+
+  if (!sellerId) {
+    return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  }
+
+  const streamId = parseInt(c.req.param('id'))
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+
+  if (!clientId || !clientSecret) {
+    return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+  }
+
+  try {
+    const stream = await c.env.DB.prepare(`
+      SELECT * FROM live_streams WHERE id = ? AND seller_id = ?
+    `).bind(streamId, sellerId).first()
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found' }, 404)
+    }
+
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+
+    if (!accessToken) {
+      return c.json({ success: false, error: 'YouTube authentication required' }, 401)
+    }
+
+    // Check YouTube broadcast status
+    const broadcast = await youtubeService.getBroadcast(accessToken, stream.youtube_broadcast_id as string)
+    const ytStatus = broadcast.status
+
+    // Auto-sync: YouTube says live but our DB says scheduled → update DB
+    if (ytStatus === 'live' && stream.status === 'scheduled') {
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'live', started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+
+      return c.json({
+        success: true,
+        data: { status: 'live', youtube_status: ytStatus, synced: true }
+      })
+    }
+
+    // Auto-sync: YouTube says complete but our DB says live → update DB
+    if (ytStatus === 'complete' && stream.status === 'live') {
+      await c.env.DB.prepare(`
+        UPDATE live_streams
+        SET status = 'ended', ended_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).bind(streamId).run()
+
+      return c.json({
+        success: true,
+        data: { status: 'ended', youtube_status: ytStatus, synced: true }
+      })
+    }
+
+    return c.json({
+      success: true,
+      data: { status: stream.status, youtube_status: ytStatus, synced: false }
+    })
+  } catch (error: unknown) {
+    console.error('[YouTube Live Status] Error:', error)
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to check status'
     }, 500)
   }
 })

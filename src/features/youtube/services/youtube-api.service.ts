@@ -301,6 +301,76 @@ export class YouTubeAPIService {
   }
 
   /**
+   * Get an existing YouTube live stream by ID
+   */
+  async getStream(accessToken: string, streamId: string): Promise<YouTubeStream> {
+    const response = await fetch(
+      `${YOUTUBE_API_BASE}/liveStreams?part=snippet,cdn,status&id=${streamId}`,
+      {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.json() as YouTubeApiErrorResponse
+      throw new Error(`Failed to get stream: ${error.error?.message || 'Unknown error'}`)
+    }
+
+    const data = await response.json() as { items: YouTubeStreamItem[] }
+    const item = data.items[0]
+    if (!item) throw new Error('Stream not found')
+
+    return {
+      id: item.id,
+      title: item.snippet.title,
+      ingestionInfo: {
+        streamName: item.cdn.ingestionInfo.streamName,
+        ingestionAddress: item.cdn.ingestionInfo.ingestionAddress,
+        rtmpsIngestionAddress: item.cdn.ingestionInfo.rtmpsIngestionAddress
+      },
+      cdn: {
+        format: item.cdn.format,
+        ingestionType: item.cdn.ingestionType
+      },
+      status: this.mapStreamStatus(item.status.streamStatus)
+    }
+  }
+
+  /**
+   * Setup live stream reusing a persistent stream (no new RTMP key needed)
+   */
+  async setupLiveStreamWithPersistentStream(
+    accessToken: string,
+    title: string,
+    description: string,
+    persistentStreamId: string,
+    scheduledStartTime: string = new Date().toISOString()
+  ): Promise<YouTubeLiveSetup> {
+    // Create broadcast only (no new stream)
+    const broadcast = await this.createBroadcast(
+      accessToken,
+      title,
+      description,
+      scheduledStartTime
+    )
+
+    // Get existing persistent stream info
+    const stream = await this.getStream(accessToken, persistentStreamId)
+
+    // Bind broadcast to existing stream
+    await this.bindBroadcastToStream(accessToken, broadcast.id, stream.id)
+
+    return {
+      broadcast,
+      stream,
+      rtmpUrl: stream.ingestionInfo.ingestionAddress,
+      rtmpKey: stream.ingestionInfo.streamName,
+      youtubeUrl: `https://www.youtube.com/watch?v=${broadcast.id}`,
+      embedUrl: `https://www.youtube.com/embed/${broadcast.id}?autoplay=1`
+    }
+  }
+
+  /**
    * Bind broadcast to stream
    */
   async bindBroadcastToStream(
