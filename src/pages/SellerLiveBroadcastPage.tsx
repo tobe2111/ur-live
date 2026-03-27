@@ -587,11 +587,26 @@ export default function SellerLiveBroadcastPage() {
 
                           {/* 동시 송출 가이드 */}
                           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">동시 송출 (틱톡/인스타/트위치)</p>
-                            <ul className="text-[12px] text-[#6e6e73] space-y-1">
-                              <li><strong>obs-multi-rtmp 플러그인</strong> (무료) — OBS에서 직접 여러 RTMP 추가</li>
-                              <li><strong>Restream.io</strong> (무료 2개) — 30+개 플랫폼 동시 송출</li>
-                            </ul>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출</p>
+                            <p className="text-[12px] text-[#6e6e73] mb-3">
+                              <strong>obs-multi-rtmp</strong> 플러그인(무료)을 설치하면 여러 플랫폼에 동시 송출할 수 있습니다.
+                            </p>
+                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">송출 가능 플랫폼 (RTMP 키 필요)</p>
+                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
+                              <span>• TikTok 라이브</span>
+                              <span>• Instagram 라이브</span>
+                              <span>• Twitch</span>
+                              <span>• 페이스북 라이브</span>
+                              <span>• 카카오TV</span>
+                              <span>• 네이버 쇼핑라이브</span>
+                              <span>• 아프리카TV</span>
+                              <span>• X (트위터) 라이브</span>
+                              <span>• Kick</span>
+                              <span>• LinkedIn 라이브</span>
+                            </div>
+                            <p className="text-[11px] text-purple-600 mt-2">
+                              각 플랫폼 대시보드에서 RTMP URL + 키를 받아 OBS에 추가하세요.
+                            </p>
                           </div>
                         </>
                       ) : (
@@ -612,15 +627,26 @@ export default function SellerLiveBroadcastPage() {
 
                           {/* 동시 송출 가이드 */}
                           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">동시 송출 (틱톡/인스타/트위치)</p>
-                            <p className="text-[12px] text-[#6e6e73] mb-2">
-                              하나의 방송으로 여러 플랫폼에 동시 송출할 수 있습니다.
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출</p>
+                            <p className="text-[12px] text-[#6e6e73] mb-3">
+                              <strong>obs-multi-rtmp</strong> 플러그인(무료)을 설치하면 여러 플랫폼에 동시 송출할 수 있습니다.
                             </p>
-                            <ul className="text-[12px] text-[#6e6e73] space-y-1">
-                              <li><strong>obs-multi-rtmp 플러그인</strong> (무료) — OBS에서 직접 여러 RTMP 추가</li>
-                              <li><strong>Restream.io</strong> (무료 2개) — 30+개 플랫폼 동시 송출</li>
-                              <li><strong>Streamlabs</strong> (무료) — 멀티 플랫폼 기본 지원</li>
-                            </ul>
+                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">송출 가능 플랫폼 (각 플랫폼에서 RTMP 키 발급)</p>
+                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
+                              <span>• TikTok 라이브</span>
+                              <span>• Instagram 라이브</span>
+                              <span>• Twitch</span>
+                              <span>• 페이스북 라이브</span>
+                              <span>• 카카오TV</span>
+                              <span>• 네이버 쇼핑라이브</span>
+                              <span>• 아프리카TV</span>
+                              <span>• X (트위터) 라이브</span>
+                              <span>• Kick</span>
+                              <span>• LinkedIn 라이브</span>
+                            </div>
+                            <p className="text-[11px] text-purple-600 mt-2">
+                              각 플랫폼 대시보드에서 RTMP URL + 키를 받아 OBS에 추가하세요.
+                            </p>
                           </div>
 
                           {/* RTMP 정보 */}
@@ -704,9 +730,22 @@ export default function SellerLiveBroadcastPage() {
                           </div>
 
                           <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-1">프리즘 동시 송출 (무료)</p>
-                            <p className="text-[12px] text-[#6e6e73]">
-                              프리즘 앱에서 YouTube + 틱톡 + 인스타 + 트위치 등 여러 플랫폼에 동시 송출이 가능합니다.
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출 (무료)</p>
+                            <p className="text-[12px] text-[#6e6e73] mb-2">
+                              프리즘 앱 설정에서 플랫폼 계정을 연동하면 동시 송출됩니다.
+                            </p>
+                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
+                              <span>• TikTok 라이브</span>
+                              <span>• Instagram 라이브</span>
+                              <span>• Twitch</span>
+                              <span>• 페이스북 라이브</span>
+                              <span>• 카카오TV</span>
+                              <span>• 네이버 쇼핑라이브</span>
+                              <span>• 아프리카TV</span>
+                              <span>• X (트위터) 라이브</span>
+                            </div>
+                            <p className="text-[11px] text-orange-600 mt-2">
+                              프리즘 앱 → 설정 → 플랫폼 추가에서 계정 연동 또는 외부 RTMP 추가
                             </p>
                           </div>
                         </>
@@ -726,9 +765,22 @@ export default function SellerLiveBroadcastPage() {
                           </div>
 
                           <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-1">프리즘 동시 송출 (무료)</p>
-                            <p className="text-[12px] text-[#6e6e73]">
-                              프리즘 앱에서 YouTube + 틱톡 + 인스타 + 트위치 등 여러 플랫폼에 동시 송출이 가능합니다. 프리즘 설정에서 플랫폼을 추가하세요.
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출 (무료)</p>
+                            <p className="text-[12px] text-[#6e6e73] mb-2">
+                              프리즘 앱에서 계정 연동 또는 외부 RTMP로 동시 송출이 가능합니다.
+                            </p>
+                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
+                              <span>• TikTok 라이브</span>
+                              <span>• Instagram 라이브</span>
+                              <span>• Twitch</span>
+                              <span>• 페이스북 라이브</span>
+                              <span>• 카카오TV</span>
+                              <span>• 네이버 쇼핑라이브</span>
+                              <span>• 아프리카TV</span>
+                              <span>• X (트위터) 라이브</span>
+                            </div>
+                            <p className="text-[11px] text-orange-600 mt-2">
+                              프리즘 앱 → 설정 → 플랫폼 추가에서 계정 연동 또는 외부 RTMP 추가
                             </p>
                           </div>
                         </>
