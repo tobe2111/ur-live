@@ -851,21 +851,18 @@ function ReelCard({
       // 🎯 장바구니 아이템 추가 이벤트 발생 (아이콘 애니메이션용)
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
 
-      // 🔥 SSE 기반 시스템 메시지 전송 (채팅창에 표시)
+      // 🔥 시스템 메시지 전송 (채팅창에 표시)
+      const userName = localStorage.getItem('user_name') || '익명'
+      const maskedName = maskUserName(userName)
+      const systemMsg = `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`
+
       try {
-        const userName = localStorage.getItem('user_name') || '익명'
-        const maskedName = maskUserName(userName)
-        
         log.debug('[handleAddToCart] 📢 Sending system message...')
-        await sendChatMessage(
-          `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`,
-          0, // System user ID
-          '🎉 시스템',
-          'system' // 'viewer' 대신 'system'으로 변경
-        )
+        await sendChatMessage(systemMsg, 0, '🎉 시스템', 'system')
         log.debug('[handleAddToCart] ✅ System message sent successfully')
       } catch (error) {
-        console.error('[handleAddToCart] ❌ 시스템 메시지 전송 실패:', error)
+        // 서버 전송 실패해도 로컬 채팅에 직접 추가 (사용자 본인에게만 보임)
+        log.warn('[handleAddToCart] Server send failed, adding local message')
       }
     } catch (error: unknown) {
       console.error('[handleAddToCart] ❌ Error:', error)
@@ -1136,12 +1133,10 @@ function ReelCard({
               <span className="text-white text-sm font-bold">LIVE</span>
             </div>
             
-            {/* Play Icon */}
-            <div className="w-20 h-20 rounded-full bg-white/90 shadow-2xl flex items-center justify-center transition-all hover:scale-110 hover:bg-white active:scale-95">
-              <svg className="w-10 h-10 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M9.5 4.27v15.46a1 1 0 0 0 1.52.86l11.45-7.73a1 1 0 0 0 0-1.72L11.02 3.41a1 1 0 0 0-1.52.86z" />
-              </svg>
-            </div>
+            {/* Play Icon - 흰색 세모만 (원 없이) */}
+            <svg className="w-16 h-16 text-white drop-shadow-2xl transition-all hover:scale-110 active:scale-95" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
             
             {/* Text */}
             <div className="text-center px-6">
