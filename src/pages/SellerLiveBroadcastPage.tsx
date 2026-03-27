@@ -27,7 +27,8 @@ import {
   Trash2,
   Monitor,
   Smartphone,
-  Zap
+  Zap,
+  Key
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import WebStreaming from '@/components/streaming/WebStreaming'
@@ -42,6 +43,9 @@ interface YouTubeChannel {
   subscriber_count: number
   google_email: string
   is_active: boolean
+  default_rtmp_url?: string | null
+  default_rtmp_key?: string | null
+  has_persistent_key?: boolean
 }
 
 interface Product {
@@ -419,6 +423,59 @@ export default function SellerLiveBroadcastPage() {
               </div>
             </div>
 
+            {/* 고정 RTMP 키 (OBS/프리즘 원클릭 설정) */}
+            {channels.some(ch => ch.has_persistent_key) && (
+              <div className="apple-card p-5 sm:p-6 mb-8 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Key className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-[#1d1d1f]">내 고정 RTMP 설정</h3>
+                    <p className="text-[12px] text-[#6e6e73]">OBS/프리즘에 한 번만 입력하면 매번 자동으로 연결됩니다</p>
+                  </div>
+                </div>
+                {channels.filter(ch => ch.has_persistent_key).map(channel => (
+                  <div key={channel.id} className="space-y-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">서버 URL</label>
+                      <div className="flex gap-2 mt-1">
+                        <code className="flex-1 px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate select-all">
+                          {channel.default_rtmp_url}
+                        </code>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_url || ''); toast.success('URL 복사됨') }}
+                          className="px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors flex-shrink-0"
+                          title="복사"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">스트림 키</label>
+                      <div className="flex gap-2 mt-1">
+                        <code className="flex-1 px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate select-all">
+                          {channel.default_rtmp_key}
+                        </code>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_key || ''); toast.success('키 복사됨') }}
+                          className="px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors flex-shrink-0"
+                          title="복사"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-purple-600 flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      이 키는 영구적으로 사용 가능합니다. 방송마다 새로 입력할 필요 없습니다.
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* New Stream Success Modal */}
             {newStream && (
               <div className="apple-card p-6 sm:p-8 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-500/20">
@@ -513,65 +570,96 @@ export default function SellerLiveBroadcastPage() {
                         <VideoIcon className="h-5 w-5 text-purple-600" />
                         <h4 className="text-[15px] font-semibold text-[#1d1d1f]">OBS Studio로 방송</h4>
                       </div>
-                      <p className="text-[13px] text-[#6e6e73] mb-4">
-                        자막, 로고, 오버레이 등을 자유롭게 설정할 수 있습니다.
-                      </p>
 
-                      {/* 간단 가이드 */}
-                      <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">설정 방법</p>
-                        <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
-                          <li>OBS 실행 → 설정 → 방송</li>
-                          <li>서비스: <strong>사용자 지정</strong> 선택</li>
-                          <li>아래 서버 URL과 스트림 키를 붙여넣기</li>
-                          <li>OBS에서 <strong>방송 시작</strong> 클릭하면 자동으로 라이브 시작!</li>
-                        </ol>
-                      </div>
-
-                      {/* 동시 송출 가이드 */}
-                      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">동시 송출 (틱톡/인스타/트위치)</p>
-                        <p className="text-[12px] text-[#6e6e73] mb-2">
-                          하나의 방송으로 여러 플랫폼에 동시 송출할 수 있습니다.
-                        </p>
-                        <ul className="text-[12px] text-[#6e6e73] space-y-1">
-                          <li><strong>obs-multi-rtmp 플러그인</strong> (무료) — OBS에서 직접 여러 RTMP 추가</li>
-                          <li><strong>Restream.io</strong> (무료 2개) — 30+개 플랫폼 동시 송출</li>
-                          <li><strong>Streamlabs</strong> (무료) — 멀티 플랫폼 기본 지원</li>
-                        </ul>
-                      </div>
-
-                      {/* RTMP 정보 */}
-                      <div className="space-y-3 mb-4">
-                        <div>
-                          <label className="text-[11px] font-semibold text-[#6e6e73]">서버 URL</label>
-                          <div className="flex gap-2 mt-1">
-                            <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
-                              {newStream.rtmp_url}
-                            </code>
-                            <button
-                              onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success('복사됨') }}
-                              className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </button>
+                      {channels.some(ch => ch.has_persistent_key) ? (
+                        <>
+                          {/* 고정 키가 있으면 간단 안내만 */}
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-600" />
+                              <p className="text-[13px] font-semibold text-green-800">RTMP 설정 완료</p>
+                            </div>
+                            <p className="text-[13px] text-green-700">
+                              OBS에 이미 RTMP 키가 설정되어 있다면, OBS에서 <strong>방송 시작</strong>만 클릭하세요.
+                              자동으로 라이브가 시작됩니다.
+                            </p>
                           </div>
-                        </div>
-                        <div>
-                          <label className="text-[11px] font-semibold text-[#6e6e73]">스트림 키</label>
-                          <div className="flex gap-2 mt-1">
-                            <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
-                              {newStream.rtmp_key}
-                            </code>
-                            <button
-                              onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success('복사됨') }}
-                              className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </button>
+
+                          {/* 동시 송출 가이드 */}
+                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">동시 송출 (틱톡/인스타/트위치)</p>
+                            <ul className="text-[12px] text-[#6e6e73] space-y-1">
+                              <li><strong>obs-multi-rtmp 플러그인</strong> (무료) — OBS에서 직접 여러 RTMP 추가</li>
+                              <li><strong>Restream.io</strong> (무료 2개) — 30+개 플랫폼 동시 송출</li>
+                            </ul>
                           </div>
-                        </div>
-                      </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* 처음 설정 가이드 */}
+                          <p className="text-[13px] text-[#6e6e73] mb-4">
+                            자막, 로고, 오버레이 등을 자유롭게 설정할 수 있습니다.
+                          </p>
+                          <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">최초 1회 설정</p>
+                            <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
+                              <li>OBS 실행 → 설정 → 방송</li>
+                              <li>서비스: <strong>사용자 지정</strong> 선택</li>
+                              <li>아래 서버 URL과 스트림 키를 붙여넣기</li>
+                              <li>다음 방송부터는 OBS에서 <strong>방송 시작</strong>만 클릭!</li>
+                            </ol>
+                          </div>
+
+                          {/* 동시 송출 가이드 */}
+                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">동시 송출 (틱톡/인스타/트위치)</p>
+                            <p className="text-[12px] text-[#6e6e73] mb-2">
+                              하나의 방송으로 여러 플랫폼에 동시 송출할 수 있습니다.
+                            </p>
+                            <ul className="text-[12px] text-[#6e6e73] space-y-1">
+                              <li><strong>obs-multi-rtmp 플러그인</strong> (무료) — OBS에서 직접 여러 RTMP 추가</li>
+                              <li><strong>Restream.io</strong> (무료 2개) — 30+개 플랫폼 동시 송출</li>
+                              <li><strong>Streamlabs</strong> (무료) — 멀티 플랫폼 기본 지원</li>
+                            </ul>
+                          </div>
+
+                          {/* RTMP 정보 */}
+                          <div className="space-y-3 mb-4">
+                            <div>
+                              <label className="text-[11px] font-semibold text-[#6e6e73]">서버 URL</label>
+                              <div className="flex gap-2 mt-1">
+                                <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
+                                  {newStream.rtmp_url}
+                                </code>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success('복사됨') }}
+                                  className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-semibold text-[#6e6e73]">스트림 키</label>
+                              <div className="flex gap-2 mt-1">
+                                <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
+                                  {newStream.rtmp_key}
+                                </code>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success('복사됨') }}
+                                  className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-purple-600 flex items-center gap-1">
+                              <Key className="h-3 w-3" />
+                              이 키는 영구적입니다. 한 번 입력하면 다시 입력할 필요 없습니다.
+                            </p>
+                          </div>
+                        </>
+                      )}
 
                       <div className="flex gap-3">
                         <Button
@@ -601,29 +689,52 @@ export default function SellerLiveBroadcastPage() {
                         <Smartphone className="h-5 w-5 text-orange-600" />
                         <h4 className="text-[15px] font-semibold text-[#1d1d1f]">프리즘 라이브로 방송</h4>
                       </div>
-                      <p className="text-[13px] text-[#6e6e73] mb-4">
-                        스마트폰에서 간편하게 방송합니다. 오버레이, 꾸미기, 동시 송출(YouTube+틱톡+인스타) 기능을 지원합니다.
-                      </p>
 
-                      {/* 간단 가이드 */}
-                      <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">설정 방법</p>
-                        <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
-                          <li>QR 코드를 스캔하거나 아래 RTMP 정보를 복사</li>
-                          <li>프리즘 앱 → 외부 RTMP → 붙여넣기</li>
-                          <li>방송 시작하면 자동으로 라이브 시작!</li>
-                        </ol>
-                      </div>
+                      {channels.some(ch => ch.has_persistent_key) ? (
+                        <>
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-600" />
+                              <p className="text-[13px] font-semibold text-green-800">RTMP 설정 완료</p>
+                            </div>
+                            <p className="text-[13px] text-green-700">
+                              프리즘에 이미 RTMP 키가 설정되어 있다면, 프리즘에서 <strong>방송 시작</strong>만 하세요.
+                              자동으로 라이브가 시작됩니다.
+                            </p>
+                          </div>
 
-                      {/* 동시 송출 안내 */}
-                      <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                        <p className="text-[13px] font-semibold text-[#1d1d1f] mb-1">프리즘 동시 송출 (무료)</p>
-                        <p className="text-[12px] text-[#6e6e73]">
-                          프리즘 앱에서 YouTube + 틱톡 + 인스타 + 트위치 등 여러 플랫폼에 동시 송출이 가능합니다. 프리즘 설정에서 플랫폼을 추가하세요.
-                        </p>
-                      </div>
+                          <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-1">프리즘 동시 송출 (무료)</p>
+                            <p className="text-[12px] text-[#6e6e73]">
+                              프리즘 앱에서 YouTube + 틱톡 + 인스타 + 트위치 등 여러 플랫폼에 동시 송출이 가능합니다.
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[13px] text-[#6e6e73] mb-4">
+                            스마트폰에서 간편하게 방송합니다. 오버레이, 꾸미기, 동시 송출 기능을 지원합니다.
+                          </p>
 
-                      {newStream.rtmp_url && newStream.rtmp_key && (
+                          <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">최초 1회 설정</p>
+                            <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
+                              <li>QR 코드를 스캔하거나 아래 RTMP 정보를 복사</li>
+                              <li>프리즘 앱 → 외부 RTMP → 붙여넣기</li>
+                              <li>다음 방송부터는 프리즘에서 <strong>방송 시작</strong>만!</li>
+                            </ol>
+                          </div>
+
+                          <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-1">프리즘 동시 송출 (무료)</p>
+                            <p className="text-[12px] text-[#6e6e73]">
+                              프리즘 앱에서 YouTube + 틱톡 + 인스타 + 트위치 등 여러 플랫폼에 동시 송출이 가능합니다. 프리즘 설정에서 플랫폼을 추가하세요.
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {newStream.rtmp_url && newStream.rtmp_key && !channels.some(ch => ch.has_persistent_key) && (
                         <PrismQRCode
                           rtmpUrl={newStream.rtmp_url}
                           rtmpKey={newStream.rtmp_key}

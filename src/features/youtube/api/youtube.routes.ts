@@ -300,7 +300,7 @@ app.get('/channels', async (c) => {
 
     return c.json({
       success: true,
-      data: (auth.results as unknown as SellerYouTubeAuthRow[]).map((a) => ({
+      data: (auth.results as unknown as (SellerYouTubeAuthRow & { default_stream_id?: string; default_rtmp_url?: string; default_rtmp_key?: string })[]).map((a) => ({
         id: a.id,
         channel_id: a.channel_id,
         channel_title: a.channel_title,
@@ -308,7 +308,10 @@ app.get('/channels', async (c) => {
         subscriber_count: a.subscriber_count,
         google_email: a.google_email,
         is_active: a.is_active,
-        created_at: a.created_at
+        created_at: a.created_at,
+        default_rtmp_url: a.default_rtmp_url || null,
+        default_rtmp_key: a.default_rtmp_key || null,
+        has_persistent_key: !!a.default_stream_id,
       }))
     })
   } catch (error: unknown) {
@@ -369,12 +372,46 @@ app.post('/live/create', async (c) => {
 
     // Create YouTube live setup
     const scheduledTime = scheduled_start_time || new Date().toISOString()
-    const liveSetup = await youtubeService.setupLiveStream(
-      accessToken,
-      title,
-      description || '',
-      scheduledTime
-    )
+
+    // Check if seller has a persistent stream key (OBS/Prism set once)
+    const sellerAuth = await c.env.DB.prepare(`
+      SELECT default_stream_id, default_rtmp_url, default_rtmp_key
+      FROM seller_youtube_oauth
+      WHERE seller_id = ? AND is_active = 1
+      LIMIT 1
+    `).bind(sellerId).first() as any
+
+    let liveSetup
+    if (sellerAuth?.default_stream_id) {
+      // Reuse persistent stream (no new RTMP key needed)
+      liveSetup = await youtubeService.setupLiveStreamWithPersistentStream(
+        accessToken,
+        title,
+        description || '',
+        sellerAuth.default_stream_id,
+        scheduledTime
+      )
+    } else {
+      // First time or no persistent stream — create new + save as default
+      liveSetup = await youtubeService.setupLiveStream(
+        accessToken,
+        title,
+        description || '',
+        scheduledTime
+      )
+
+      // Save as persistent stream for future use
+      await c.env.DB.prepare(`
+        UPDATE seller_youtube_oauth
+        SET default_stream_id = ?, default_rtmp_url = ?, default_rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE seller_id = ? AND is_active = 1
+      `).bind(
+        liveSetup.stream.id,
+        liveSetup.rtmpUrl,
+        liveSetup.rtmpKey,
+        sellerId
+      ).run()
+    }
 
     // Save to database
     const streamResult = await c.env.DB.prepare(`
