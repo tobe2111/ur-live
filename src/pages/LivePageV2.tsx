@@ -1092,22 +1092,6 @@ function ReelCard({
         </div>
       )}
       
-      {/* Background image - 상품 이미지만 표시 (YouTube 플레이어 로드 전까지만, 오류 시 자동 숨김) */}
-      {(safeProduct.image || safeProduct.image_url) && !playerReady && (
-        <img
-          src={safeProduct.image || safeProduct.image_url}
-          alt={safeProduct.name}
-          className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${
-            isActive ? 'scale-100 opacity-100' : 'scale-110 opacity-0'
-          }`}
-          onError={(e) => {
-            // 이미지 로드 실패 시 숨기기
-            e.currentTarget.style.display = 'none'
-            log.debug(`[ReelCard] Image load failed for stream ${stream.id}:`, safeProduct.image || safeProduct.image_url)
-          }}
-        />
-      )}
-      
       {/* 기본 배경: 어두운 그라데이션 (항상 표시) */}
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-10" />
 
