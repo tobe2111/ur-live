@@ -56,6 +56,7 @@ const SellerProfileEditPage = lazy(() => import('./pages/SellerProfileEditPage')
 const SellerPublicPage = lazy(() => import('./pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('./pages/SellerSettlementsPage'))
 const SellerAlimtalkPage = lazy(() => import('./pages/SellerAlimtalkPage'))
+const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
 const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
 const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
@@ -364,6 +365,11 @@ function AppContent() {
             <Route path="/seller/alimtalk" element={
               <ProtectedRoute requireSeller>
                 <SellerAlimtalkPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/donations" element={
+              <ProtectedRoute requireSeller>
+                <SellerDonationsPage />
               </ProtectedRoute>
             } />
             <Route path="/seller/live-broadcast" element={

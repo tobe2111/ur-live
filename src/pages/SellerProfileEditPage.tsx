@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { 
-  ArrowLeft,
+import SellerLayout from '@/components/SellerLayout'
+import {
   Save,
   User,
   Image as ImageIcon,
@@ -312,38 +312,20 @@ export default function SellerProfileEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#007aff] mx-auto mb-4"></div>
-          <p className="text-[17px] text-[#6e6e73]">프로필 로딩 중...</p>
+      <SellerLayout title="프로필 편집">
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-sm text-gray-500">프로필 로딩 중...</p>
+          </div>
         </div>
-      </div>
+      </SellerLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd]">
-      {/* Header */}
-      <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
-          <div className="flex h-[52px] items-center justify-between">
-            <Link 
-              to="/seller"
-              className="flex items-center space-x-2 text-[#1d1d1f] hover:opacity-60 transition-opacity"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="text-[14px] font-normal hidden sm:inline">대시보드</span>
-            </Link>
-            <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
-              프로필 편집
-            </h1>
-            <div className="w-10" />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-[980px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <SellerLayout title="프로필 편집">
+      <div className="max-w-[980px] mx-auto">
         {/* Success/Error Messages */}
         {successMessage && (
           <div className="mb-6 p-4 bg-[#34c759]/10 border border-[#34c759]/30 rounded-xl flex items-center gap-3">
@@ -619,7 +601,7 @@ export default function SellerProfileEditPage() {
             </button>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </SellerLayout>
   )
 }
