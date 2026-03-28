@@ -9,15 +9,15 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Play, 
-  Youtube, 
-  Link as LinkIcon, 
-  Settings, 
-  Eye, 
+import SellerLayout from '@/components/SellerLayout'
+import {
+  Play,
+  Youtube,
+  Link as LinkIcon,
+  Settings,
+  Eye,
   Clock,
   Loader2,
-  ArrowLeft,
   ExternalLink,
   Radio,
   VideoIcon,
@@ -329,27 +329,8 @@ export default function SellerLiveBroadcastPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd]">
-      {/* Header */}
-      <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6">
-          <div className="flex h-[52px] items-center justify-between">
-            <button
-              onClick={() => navigate('/seller')}
-              className="flex items-center space-x-2 text-[#1d1d1f] hover:opacity-60 transition-opacity"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="text-[14px] font-normal">대시보드</span>
-            </button>
-            <h1 className="text-[17px] font-semibold text-[#1d1d1f]">
-              YouTube 라이브 방송
-            </h1>
-            <div className="w-20"></div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <SellerLayout title="YouTube 라이브 방송">
+      <div className="max-w-[1280px] mx-auto">
         {/* YouTube Connection Status */}
         {channels.length === 0 ? (
           <div className="apple-card p-8 sm:p-12 text-center mb-8 bg-gradient-to-br from-red-50 to-orange-50">
@@ -1148,7 +1129,7 @@ export default function SellerLiveBroadcastPage() {
             )}
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </SellerLayout>
   )
 }

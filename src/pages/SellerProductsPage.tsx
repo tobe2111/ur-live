@@ -5,8 +5,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
+import SellerLayout from '@/components/SellerLayout'
+import {
   Package,
   Plus,
   Edit,
@@ -127,23 +127,8 @@ export default function SellerProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <button
-            onClick={() => navigate('/seller')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors text-sm sm:text-base"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">판매자 대시보드로 돌아가기</span>
-            <span className="sm:hidden">뒤로</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+    <SellerLayout title="상품 관리">
+      <div className="max-w-7xl mx-auto">
         {/* Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
@@ -438,6 +423,6 @@ export default function SellerProductsPage() {
           </div>
         )}
       </div>
-    </div>
+    </SellerLayout>
   )
 }

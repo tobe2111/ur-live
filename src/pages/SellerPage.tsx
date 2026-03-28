@@ -1,17 +1,18 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import {
-  LayoutDashboard, Package, ShoppingBag, Play, DollarSign,
-  Bell, Settings, LogOut, TrendingUp, Users, Eye, Clock,
-  ChevronRight, RefreshCw, ArrowUpRight, Menu, X,
-  AlertCircle, CheckCircle2, Truck, XCircle, Building2
+  Package, ShoppingBag, Play, DollarSign,
+  TrendingUp, Clock,
+  ChevronRight, RefreshCw, ArrowUpRight,
+  AlertCircle, CheckCircle2, Truck, XCircle
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer
 } from 'recharts'
-import { getSellerToken, isSellerAuthenticated, getSellerId, redirectToLogin, logoutSeller } from '@/lib/seller-auth'
+import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import SellerLayout from '@/components/SellerLayout'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface DashboardStats {
@@ -71,21 +72,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   CANCELLED: { label: '취소',     color: '#DC2626', bg: '#FEE2E2', icon: <XCircle className="w-3 h-3" /> },
 }
 
-const NAV_ITEMS = [
-  { path: '/seller',              label: '대시보드',    icon: LayoutDashboard, exact: true },
-  { path: '/seller/orders',       label: '주문 관리',   icon: ShoppingBag },
-  { path: '/seller/products',     label: '상품 관리',   icon: Package },
-  { path: '/seller/supply',       label: '공급 상품',   icon: Truck },
-  { path: '/seller/live-control', label: '라이브 스트림', icon: Play },
-  { path: '/seller/settlements',  label: '정산',        icon: DollarSign },
-  { path: '/seller/alimtalk',     label: '알림톡',      icon: Bell },
-  { path: '/seller/business-info',label: '사업자 정보',  icon: Building2 },
-]
-
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function SellerPage() {
   const navigate = useNavigate()
-  const location = useLocation()
 
   // Stats
   const [stats, setStats] = useState<DashboardStats>({
@@ -105,11 +94,6 @@ export default function SellerPage() {
   const [ordersRefreshing, setOrdersRefreshing] = useState(false)
   const lastMaxIdRef = useRef<number>(0)
   const newOrderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // UI state
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const sellerName = localStorage.getItem('seller_name') || '셀러'
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -218,153 +202,50 @@ export default function SellerPage() {
     if (s < 3600) return `${Math.floor(s / 60)}분 전`
     return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   }
-  function isActive(path: string, exact?: boolean) {
-    return exact ? location.pathname === path : location.pathname.startsWith(path)
-  }
-
-  // ── Sidebar ────────────────────────────────────────────────────────────────
-  const Sidebar = () => (
-    <aside className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full">
-      {/* Workspace */}
-      <div className="px-4 pt-5 pb-4 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-            {sellerName.charAt(0)}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-gray-400">워크스페이스</p>
-            <p className="text-sm font-semibold text-gray-800 truncate">{sellerName}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, exact }) => {
-          const active = isActive(path, exact)
-          return (
-            <Link
-              key={path}
-              to={path}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-              {label === '주문 관리' && (stats.pendingOrders || 0) > 0 && (
-                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                  active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {stats.pendingOrders}
-                </span>
-              )}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Bottom */}
-      <div className="px-3 py-4 border-t border-gray-100 space-y-0.5">
-        <Link
-          to="/seller/profile"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-          설정
-        </Link>
-        <button
-          onClick={() => logoutSeller(navigate)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          로그아웃
-        </button>
-      </div>
-    </aside>
-  )
-
   // ── Loading ─────────────────────────────────────────────────────────────────
+  const sellerName = localStorage.getItem('seller_name') || '셀러'
+
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">대시보드 불러오는 중...</p>
+      <SellerLayout title="대시보드">
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm text-gray-500">대시보드 불러오는 중...</p>
+          </div>
         </div>
-      </div>
+      </SellerLayout>
     )
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  const headerRight = (
+    <div className="flex items-center gap-2">
+      <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+        {(['7d', '30d', '90d'] as const).map(p => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {p === '7d' ? '7일' : p === '30d' ? '30일' : '90일'}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => navigate('/seller/live-broadcast')}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <Play className="w-3.5 h-3.5" />
+        라이브 시작
+      </button>
+    </div>
+  )
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F4F5F7]">
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex">
-        <Sidebar />
-      </div>
-
-      {/* Mobile sidebar drawer */}
-      <div className={`fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar />
-      </div>
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-        {/* Top bar */}
-        <header className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            <div>
-              <h1 className="text-base font-semibold text-gray-900">대시보드</h1>
-              <p className="text-xs text-gray-400 hidden sm:block">안녕하세요, {sellerName}님</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Period selector */}
-            <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-              {(['7d', '30d', '90d'] as const).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {p === '7d' ? '7일' : p === '30d' ? '30일' : '90일'}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => navigate('/seller/live-broadcast')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Play className="w-3.5 h-3.5" />
-              라이브 시작
-            </button>
-          </div>
-        </header>
-
-        {/* Scrollable content */}
-        <main className="flex-1 overflow-y-auto p-5 space-y-5">
+    <SellerLayout title="대시보드" headerRight={headerRight} pendingOrders={stats.pendingOrders}>
 
           {/* ── Stats row ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -653,8 +534,6 @@ export default function SellerPage() {
             </div>
           )}
 
-        </main>
-      </div>
-    </div>
+    </SellerLayout>
   )
 }

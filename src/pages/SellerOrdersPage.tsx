@@ -4,8 +4,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
+import SellerLayout from '@/components/SellerLayout'
+import {
   Package,
   Truck,
   CheckCircle2,
@@ -352,22 +352,8 @@ export default function SellerOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/seller')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>판매자 대시보드로 돌아가기</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <SellerLayout title="주문 관리">
+      <div className="max-w-7xl mx-auto">
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
@@ -870,6 +856,6 @@ export default function SellerOrdersPage() {
           </div>
         </div>
       )}
-    </div>
+    </SellerLayout>
   )
 }

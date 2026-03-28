@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
-  ArrowLeft, MessageSquare, CheckCircle2, Clock, AlertCircle,
-  ExternalLink, Loader2, Settings, Zap
+  MessageSquare, CheckCircle2, Clock, AlertCircle,
+  ExternalLink, Loader2, Settings, Zap, CreditCard
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import SellerLayout from '@/components/SellerLayout'
 
 interface AlimtalkAccount {
   id: number
@@ -28,10 +29,20 @@ const STATUS_CONFIG = {
   rejected:  { label: '반려됨',  color: 'text-red-600',    bg: 'bg-red-50',    icon: <AlertCircle className="w-4 h-4" /> },
 }
 
+const CHARGE_OPTIONS = [
+  { amount: 1000,  label: '1,000건',  price: 8000 },
+  { amount: 5000,  label: '5,000건',  price: 35000 },
+  { amount: 10000, label: '10,000건', price: 60000 },
+  { amount: 50000, label: '50,000건', price: 250000 },
+]
+
 export default function SellerAlimtalkPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [charging, setCharging] = useState(false)
+  const [showChargeModal, setShowChargeModal] = useState(false)
+  const [selectedCharge, setSelectedCharge] = useState(CHARGE_OPTIONS[0])
   const [account, setAccount] = useState<AlimtalkAccount | null>(null)
   const [form, setForm] = useState({
     kakao_channel_id: '',
@@ -87,43 +98,115 @@ export default function SellerAlimtalkPage() {
     }
   }
 
+  async function handleCharge() {
+    setCharging(true)
+    try {
+      const resp = await api.post('/api/seller/alimtalk/charge', {
+        amount: selectedCharge.amount,
+      }, {
+        headers: { Authorization: `Bearer ${getSellerToken()}` }
+      })
+      if (resp.data.success) {
+        toast.success(resp.data.message || '충전이 완료되었습니다.')
+        setShowChargeModal(false)
+        loadAccount()
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '충전에 실패했습니다.')
+    } finally {
+      setCharging(false)
+    }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-      </div>
+      <SellerLayout title="알림톡 설정">
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      </SellerLayout>
     )
   }
 
   const sc = account ? STATUS_CONFIG[account.status] : null
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 h-14 flex items-center gap-3">
-        <Link to="/seller" className="text-gray-400 hover:text-gray-600 transition-colors">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <MessageSquare className="w-5 h-5 text-blue-600" />
-        <h1 className="text-base font-semibold text-gray-900">알림톡 설정</h1>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <SellerLayout title="알림톡 설정">
+      <div className="max-w-2xl mx-auto space-y-6">
 
         {/* 상태 카드 (계정이 있는 경우) */}
         {account && sc && (
-          <div className={`${sc.bg} border border-current/10 rounded-xl p-4 flex items-center gap-3`}>
-            <span className={sc.color}>{sc.icon}</span>
-            <div>
-              <p className={`text-sm font-semibold ${sc.color}`}>{sc.label}</p>
-              <p className="text-xs text-gray-500">
-                {account.status === 'pending' && '등록 정보를 검토 중입니다. 영업일 1~2일 소요됩니다.'}
-                {account.status === 'active' && `잔액 ${account.balance.toLocaleString()}건 · 총 발송 ${account.total_sent.toLocaleString()}건`}
-                {account.status === 'rejected' && '등록 정보를 다시 확인 후 재신청해 주세요.'}
-                {account.status === 'suspended' && '관리자에게 문의해 주세요.'}
-              </p>
+          <div className={`${sc.bg} border border-current/10 rounded-xl p-4 flex items-center justify-between`}>
+            <div className="flex items-center gap-3">
+              <span className={sc.color}>{sc.icon}</span>
+              <div>
+                <p className={`text-sm font-semibold ${sc.color}`}>{sc.label}</p>
+                <p className="text-xs text-gray-500">
+                  {account.status === 'pending' && '등록 정보를 검토 중입니다. 영업일 1~2일 소요됩니다.'}
+                  {account.status === 'active' && `잔액 ${account.balance.toLocaleString()}건 · 총 발송 ${account.total_sent.toLocaleString()}건`}
+                  {account.status === 'rejected' && '등록 정보를 다시 확인 후 재신청해 주세요.'}
+                  {account.status === 'suspended' && '관리자에게 문의해 주세요.'}
+                </p>
+              </div>
             </div>
+            {account.status === 'active' && (
+              <button
+                onClick={() => setShowChargeModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                충전
+              </button>
+            )}
           </div>
+        )}
+
+        {/* 충전 모달 */}
+        {showChargeModal && (
+          <>
+            <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowChargeModal(false)} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">알림톡 크레딧 충전</h3>
+                <p className="text-xs text-gray-500 mb-4">현재 잔액: {account?.balance.toLocaleString()}건</p>
+
+                <div className="space-y-2 mb-6">
+                  {CHARGE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.amount}
+                      onClick={() => setSelectedCharge(opt)}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 transition-colors ${
+                        selectedCharge.amount === opt.amount
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="text-sm font-semibold text-gray-900">{opt.label}</span>
+                      <span className="text-sm text-gray-600">{opt.price.toLocaleString()}원</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowChargeModal(false)}
+                    className="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleCharge}
+                    disabled={charging}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  >
+                    {charging ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                    {selectedCharge.price.toLocaleString()}원 충전
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* 안내 박스 */}
@@ -250,7 +333,7 @@ export default function SellerAlimtalkPage() {
           <p className="text-xs text-gray-400 mt-4">* 계정 활성화 후 자동으로 발송됩니다. 템플릿 심사는 카카오 정책에 따라 2~5 영업일 소요됩니다.</p>
         </div>
 
-      </main>
-    </div>
+      </div>
+    </SellerLayout>
   )
 }
