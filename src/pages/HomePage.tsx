@@ -103,10 +103,12 @@ export default function HomePage() {
       console.log('[HomePage] ✅ URL 파라미터 정리 완료')
     }
     
-    // React Query가 자동으로 스트림 로딩 & 30초마다 갱신
-    loadScheduledStreams()
-    loadBanners()
-    loadUserInfo()
+    // 3개 API 병렬 호출 (waterfall 제거)
+    Promise.all([
+      loadScheduledStreams(),
+      loadBanners(),
+      loadUserInfo(),
+    ])
   }, [searchParams])
 
   async function loadUserInfo() {
