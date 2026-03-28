@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, LogOut, Menu, X
+  Bell, Image, Monitor, LogOut, Menu, X, Store
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
 
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { path: '/admin/settlement',    label: '정산',        icon: DollarSign },
   { path: '/admin/alimtalk',      label: '알림톡',      icon: Bell },
   { path: '/admin/kv-monitoring', label: 'KV 모니터링', icon: Monitor },
+  { path: '/admin/cafe24',       label: 'Cafe24 연동', icon: Store },
 ]
 
 interface AdminLayoutProps {

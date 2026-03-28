@@ -36,6 +36,11 @@ export interface Env {
   // ---- Kakao ----
   KAKAO_REST_API_KEY?: string;
 
+  // ---- Cafe24 ----
+  CAFE24_CLIENT_ID?: string;
+  CAFE24_CLIENT_SECRET?: string;
+  CAFE24_MALL_ID?: string;
+
   // ---- YouTube ----
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;
