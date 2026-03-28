@@ -177,6 +177,47 @@
   animation: scale-in 0.2s cubic-bezier(0.28, 0.11, 0.32, 1);
 }
 
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
+}
+
+@keyframes donation-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.05);
+  }
+  30% {
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+}
+
+.animate-donation-pop {
+  animation: donation-pop 5s cubic-bezier(0.28, 0.11, 0.32, 1) forwards;
+}
+
 /* Apple frosted glass effect */
 .apple-glass {
   background: rgba(255, 255, 255, 0.72);

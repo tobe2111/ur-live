@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send } from 'lucide-react'
+import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart } from 'lucide-react'
 import axios from 'axios'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
@@ -12,6 +12,7 @@ import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
 import { createLogger } from '@/utils/logger'
 import { useAuthStore } from '@/shared/stores'
+import LiveDonation, { DonationEffect } from '@/components/LiveDonation'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
@@ -446,6 +447,9 @@ function ReelCard({
   
   // Toast notification state
   const [productChangeToast, setProductChangeToast] = useState<string | null>(null)
+
+  // Donation effects
+  const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
   
   // Handle null product case
   const safeProduct = (product || {
@@ -463,7 +467,25 @@ function ReelCard({
     error: chatError,
     sendMessage: sendChatMessage,
     streamData: wsStreamData,
+    lastDonation,
   } = useLiveStreamWebSocket(stream.id, true)
+
+  // Handle incoming donation events from WebSocket
+  useEffect(() => {
+    if (!lastDonation) return
+    const effectId = `don-${Date.now()}`
+    setDonationEffects(prev => [...prev, {
+      id: effectId,
+      donorName: lastDonation.donorName,
+      amount: lastDonation.amount,
+      message: lastDonation.message,
+    }])
+    // Auto-remove after 5 seconds
+    const timer = setTimeout(() => {
+      setDonationEffects(prev => prev.filter(d => d.id !== effectId))
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [lastDonation])
 
   // YouTube Player Integration
   useEffect(() => {
@@ -1168,6 +1190,9 @@ function ReelCard({
         {/* Bottom gradient */}
         <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
+        {/* Donation effects overlay */}
+        <DonationEffect donations={donationEffects} />
+
         {/* Spacer pushes content to bottom */}
         <div className="flex-1" />
 
@@ -1180,8 +1205,12 @@ function ReelCard({
               <LiveChat messages={chatMessages} onChatClick={() => setChatModalOpen(true)} />
             </div>
 
-            {/* Chat + Share buttons - right side */}
+            {/* Chat + Donate + Share buttons - right side */}
             <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
+              {/* Donate button - 셀러 본인이 아닌 경우에만 표시 */}
+              {!isSeller && (
+                <LiveDonation streamId={stream.id} />
+              )}
               <button
                 onClick={() => setChatModalOpen(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
