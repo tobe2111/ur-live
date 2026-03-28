@@ -15,6 +15,7 @@ interface Env {
   DB: D1Database
   ALIGO_API_KEY: string
   ALIGO_USER_ID: string
+  ALIMTALK_SENDER_KEY?: string
 }
 
 interface Order {
@@ -147,14 +148,16 @@ export async function sendOrderConfirmation(env: Env, orderId: number) {
     const { order, products } = await getOrderDetails(env.DB, orderId)
     const account = await getSellerAlimtalkAccount(env.DB, order.seller_id)
 
-    if (!account) {
-      console.warn(`Skipping alimtalk for order ${orderId}: no active account`)
-      return { success: false, reason: 'no_account' }
+    // senderKey: 계정 발신키 → 환경변수 기본 발신키 순으로 사용
+    const senderKey = account?.sender_key || env.ALIMTALK_SENDER_KEY
+    if (!senderKey) {
+      console.warn(`Skipping alimtalk for order ${orderId}: no sender key`)
+      return { success: false, reason: 'no_sender_key' }
     }
 
-    // 잔액 확인 (건당 15원 가정)
+    // 잔액 확인 (건당 15원 가정) - 계정이 있는 경우만
     const cost = 15
-    if (account.balance < cost) {
+    if (account && account.balance < cost) {
       console.warn(`Skipping alimtalk for order ${orderId}: insufficient balance`)
       return { success: false, reason: 'insufficient_balance' }
     }
@@ -183,19 +186,19 @@ ${productList}
 
     // 알리고 API로 발송
     const result = await sendAlimtalk(env, {
-      senderKey: account.sender_key,
+      senderKey,
       templateCode: 'order_confirm',
       to: order.buyer_phone,
       message: message
     })
 
     if (result.success) {
-      // 잔액 차감
-      await deductBalance(env.DB, order.seller_id, cost)
+      // 잔액 차감 (계정이 있는 경우만)
+      if (account) await deductBalance(env.DB, order.seller_id, cost)
 
       // 발송 기록 저장
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: order.buyer_phone,
         message_content: message,
         cost: cost,
@@ -208,7 +211,7 @@ ${productList}
     } else {
       // 실패 기록
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: order.buyer_phone,
         message_content: message,
         cost: 0,
@@ -240,12 +243,11 @@ export async function sendShippingNotification(
     const { order } = await getOrderDetails(env.DB, orderId)
     const account = await getSellerAlimtalkAccount(env.DB, order.seller_id)
 
-    if (!account) {
-      return { success: false, reason: 'no_account' }
-    }
+    const senderKey = account?.sender_key || env.ALIMTALK_SENDER_KEY
+    if (!senderKey) return { success: false, reason: 'no_sender_key' }
 
     const cost = 15
-    if (account.balance < cost) {
+    if (account && account.balance < cost) {
       return { success: false, reason: 'insufficient_balance' }
     }
 
@@ -276,16 +278,16 @@ export async function sendShippingNotification(
 빠른 배송을 위해 최선을 다하겠습니다.`
 
     const result = await sendAlimtalk(env, {
-      senderKey: account.sender_key,
+      senderKey,
       templateCode: 'shipping_start',
       to: order.buyer_phone,
       message: message
     })
 
     if (result.success) {
-      await deductBalance(env.DB, order.seller_id, cost)
+      if (account) await deductBalance(env.DB, order.seller_id, cost)
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: order.buyer_phone,
         message_content: message,
         cost: cost,
@@ -297,7 +299,7 @@ export async function sendShippingNotification(
       return { success: true }
     } else {
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: order.buyer_phone,
         message_content: message,
         cost: 0,
@@ -323,12 +325,11 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
     const { order } = await getOrderDetails(env.DB, orderId)
     const account = await getSellerAlimtalkAccount(env.DB, order.seller_id)
 
-    if (!account) {
-      return { success: false, reason: 'no_account' }
-    }
+    const senderKey = account?.sender_key || env.ALIMTALK_SENDER_KEY
+    if (!senderKey) return { success: false, reason: 'no_sender_key' }
 
     const cost = 15
-    if (account.balance < cost) {
+    if (account && account.balance < cost) {
       return { success: false, reason: 'insufficient_balance' }
     }
 
@@ -347,16 +348,16 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
 리뷰를 남겨주시면 다음 쇼핑 시 혜택을 드립니다!`
 
     const result = await sendAlimtalk(env, {
-      senderKey: account.sender_key,
+      senderKey,
       templateCode: 'delivery_completed',
       to: order.buyer_phone,
       message: message
     })
 
     if (result.success) {
-      await deductBalance(env.DB, order.seller_id, cost)
+      if (account) await deductBalance(env.DB, order.seller_id, cost)
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: order.buyer_phone,
         message_content: message,
         cost: cost,
@@ -368,7 +369,7 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
       return { success: true }
     } else {
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: order.buyer_phone,
         message_content: message,
         cost: 0,
@@ -406,12 +407,11 @@ export async function sendLowStockAlert(
     }
 
     const account = await getSellerAlimtalkAccount(env.DB, sellerId)
-    if (!account) {
-      return { success: false, reason: 'no_account' }
-    }
+    const senderKey = account?.sender_key || env.ALIMTALK_SENDER_KEY
+    if (!senderKey) return { success: false, reason: 'no_sender_key' }
 
     const cost = 15
-    if (account.balance < cost) {
+    if (account && account.balance < cost) {
       return { success: false, reason: 'insufficient_balance' }
     }
 
@@ -421,20 +421,20 @@ export async function sendLowStockAlert(
 현재 재고: ${currentStock}개
 권장 재고: ${threshold}개 이상
 
-재고가 부족합니다. 
+재고가 부족합니다.
 빠른 시일 내에 재고를 보충해주세요.`
 
     const result = await sendAlimtalk(env, {
-      senderKey: account.sender_key,
+      senderKey,
       templateCode: 'low_stock_alert',
       to: seller.phone,
       message: message
     })
 
     if (result.success) {
-      await deductBalance(env.DB, sellerId, cost)
+      if (account) await deductBalance(env.DB, sellerId, cost)
       await saveAlimtalkMessage(env.DB, {
-        account_id: account.id,
+        account_id: account?.id ?? 0,
         recipient_phone: seller.phone,
         message_content: message,
         cost: cost,

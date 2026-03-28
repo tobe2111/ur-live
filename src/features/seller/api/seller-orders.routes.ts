@@ -21,6 +21,7 @@ type Bindings = {
   JWT_SECRET: string;
   ALIGO_API_KEY?: string;
   ALIGO_USER_ID?: string;
+  ALIMTALK_SENDER_KEY?: string;
 };
 
 export const sellerOrdersRoutes = new Hono<{ Bindings: Bindings }>();
@@ -170,7 +171,7 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
         const numericId = parseInt(orderId || '0', 10);
         if (numericId > 0) {
           sendDeliveryCompleted(
-            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID },
+            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
             numericId
           ).catch((err: Error) => console.error('[Alimtalk] Delivery notification failed:', err.message));
         }
@@ -225,7 +226,7 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
         const numericId = parseInt(orderId || '0', 10);
         if (numericId > 0) {
           sendShippingNotification(
-            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID },
+            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
             numericId,
             courier || '',
             tracking_number

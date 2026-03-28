@@ -235,7 +235,7 @@ ordersRouter.post('/', async (c) => {
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
       import('../../lib/alimtalk-auto').then(({ sendOrderConfirmation }) => {
         sendOrderConfirmation(
-          { DB: c.env.DB, ALIGO_API_KEY: c.env.ALIGO_API_KEY!, ALIGO_USER_ID: c.env.ALIGO_USER_ID! },
+          { DB: c.env.DB, ALIGO_API_KEY: c.env.ALIGO_API_KEY!, ALIGO_USER_ID: c.env.ALIGO_USER_ID!, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
           typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10)
         ).catch((err: Error) => console.error('[Alimtalk] Order confirmation failed:', err.message));
       }).catch(() => { /* alimtalk not critical */ });
