@@ -26,10 +26,14 @@ export function useLiveStreams() {
     queryKey: ['live-streams'],
     queryFn: async () => {
       const response = await api.get('/api/streams')
-      return response.data.data.streams as LiveStream[]
+      // 백엔드 응답: { success, data: [...], pagination }
+      const data = response.data.data
+      return (Array.isArray(data) ? data : data?.streams ?? []) as LiveStream[]
     },
-    staleTime: 30 * 1000, // 30초마다 갱신 (실시간성)
-    refetchInterval: 30 * 1000, // 자동 폴링
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchIntervalInBackground: false, // 탭 비활성 시 폴링 중지
+    retry: 1, // 실패 시 1회만 재시도 (기본 3회 → 1회)
   })
 }
 

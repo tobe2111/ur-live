@@ -32,17 +32,23 @@ export default function NotificationDropdown({ userId }: NotificationDropdownPro
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  // Load notifications when dropdown opens
+  // Load notifications only when dropdown opens
   useEffect(() => {
     if (isOpen && userId) {
       loadNotifications()
     }
   }, [isOpen, userId])
 
-  // Load notifications on mount (for badge count)
+  // On mount: only fetch unread count (lightweight, not full list)
   useEffect(() => {
     if (userId) {
-      loadNotifications()
+      api.get(`/api/notifications?userId=${userId}&limit=1`)
+        .then(res => {
+          if (res.data.success) {
+            setUnreadCount(res.data.data.unread_count ?? 0)
+          }
+        })
+        .catch(() => {})
     }
   }, [userId])
 
