@@ -80,9 +80,10 @@ async function getOrderDetails(DB: D1Database, orderId: number) {
  */
 async function getSellerAlimtalkAccount(DB: D1Database, sellerId: number) {
   const account = await DB.prepare(`
-    SELECT 
-      kakao_channel_id as sender_key,
-      sender_phone,
+    SELECT
+      id,
+      COALESCE(sender_key, kakao_channel_id) as sender_key,
+      phone_number,
       balance
     FROM alimtalk_accounts
     WHERE seller_id = ? AND status = 'active'
@@ -93,33 +94,32 @@ async function getSellerAlimtalkAccount(DB: D1Database, sellerId: number) {
     return null
   }
 
-  return account as { sender_key: string; sender_phone: string; balance: number }
+  return account as { id: number; sender_key: string; phone_number: string; balance: number }
 }
 
 /**
  * 알림톡 발송 기록 저장
  */
 async function saveAlimtalkMessage(
-  DB: D1Database, 
+  DB: D1Database,
   data: {
-    seller_id: number
-    template_code: string
+    account_id: number
     recipient_phone: string
-    message: string
+    message_content: string
     cost: number
     status: string
     order_id?: number
   }
 ) {
+  // template_id는 자동 발송이라 0 (미등록 템플릿)
   await DB.prepare(`
-    INSERT INTO alimtalk_messages 
-    (seller_id, template_code, recipient_phone, message, cost, status, order_id, sent_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO alimtalk_messages
+    (account_id, template_id, recipient_phone, message_content, cost, status, order_id, sent_at, created_at)
+    VALUES (?, 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `).bind(
-    data.seller_id,
-    data.template_code,
+    data.account_id,
     data.recipient_phone,
-    data.message,
+    data.message_content,
     data.cost,
     data.status,
     data.order_id || null
@@ -132,9 +132,9 @@ async function saveAlimtalkMessage(
 async function deductBalance(DB: D1Database, sellerId: number, amount: number) {
   await DB.prepare(`
     UPDATE alimtalk_accounts
-    SET balance = balance - ?
-    WHERE seller_id = ?
-  `).bind(amount, sellerId).run()
+    SET balance = balance - ?, updated_at = datetime('now')
+    WHERE seller_id = ? AND balance >= ?
+  `).bind(amount, sellerId, amount).run()
 }
 
 /**
@@ -195,10 +195,9 @@ ${productList}
 
       // 발송 기록 저장
       await saveAlimtalkMessage(env.DB, {
-        seller_id: order.seller_id,
-        template_code: 'order_confirm',
+        account_id: account.id,
         recipient_phone: order.buyer_phone,
-        message: message,
+        message_content: message,
         cost: cost,
         status: 'sent',
         order_id: orderId
@@ -209,10 +208,9 @@ ${productList}
     } else {
       // 실패 기록
       await saveAlimtalkMessage(env.DB, {
-        seller_id: order.seller_id,
-        template_code: 'order_confirm',
+        account_id: account.id,
         recipient_phone: order.buyer_phone,
-        message: message,
+        message_content: message,
         cost: 0,
         status: 'failed',
         order_id: orderId
@@ -287,10 +285,9 @@ export async function sendShippingNotification(
     if (result.success) {
       await deductBalance(env.DB, order.seller_id, cost)
       await saveAlimtalkMessage(env.DB, {
-        seller_id: order.seller_id,
-        template_code: 'shipping_start',
+        account_id: account.id,
         recipient_phone: order.buyer_phone,
-        message: message,
+        message_content: message,
         cost: cost,
         status: 'sent',
         order_id: orderId
@@ -300,10 +297,9 @@ export async function sendShippingNotification(
       return { success: true }
     } else {
       await saveAlimtalkMessage(env.DB, {
-        seller_id: order.seller_id,
-        template_code: 'shipping_start',
+        account_id: account.id,
         recipient_phone: order.buyer_phone,
-        message: message,
+        message_content: message,
         cost: 0,
         status: 'failed',
         order_id: orderId
@@ -360,10 +356,9 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
     if (result.success) {
       await deductBalance(env.DB, order.seller_id, cost)
       await saveAlimtalkMessage(env.DB, {
-        seller_id: order.seller_id,
-        template_code: 'delivery_completed',
+        account_id: account.id,
         recipient_phone: order.buyer_phone,
-        message: message,
+        message_content: message,
         cost: cost,
         status: 'sent',
         order_id: orderId
@@ -373,10 +368,9 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
       return { success: true }
     } else {
       await saveAlimtalkMessage(env.DB, {
-        seller_id: order.seller_id,
-        template_code: 'delivery_completed',
+        account_id: account.id,
         recipient_phone: order.buyer_phone,
-        message: message,
+        message_content: message,
         cost: 0,
         status: 'failed',
         order_id: orderId
@@ -440,10 +434,9 @@ export async function sendLowStockAlert(
     if (result.success) {
       await deductBalance(env.DB, sellerId, cost)
       await saveAlimtalkMessage(env.DB, {
-        seller_id: sellerId,
-        template_code: 'low_stock_alert',
+        account_id: account.id,
         recipient_phone: seller.phone,
-        message: message,
+        message_content: message,
         cost: cost,
         status: 'sent'
       })

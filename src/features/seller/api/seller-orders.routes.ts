@@ -19,6 +19,8 @@ import type { JWTPayload } from 'hono/utils/jwt/types';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
+  ALIGO_API_KEY?: string;
+  ALIGO_USER_ID?: string;
 };
 
 export const sellerOrdersRoutes = new Hono<{ Bindings: Bindings }>();
@@ -161,6 +163,20 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
         : c.json({ success: false, error: 'Order not found' }, 404);
     }
 
+    // 자동 알림톡 발송 (배송 완료 시)
+    if (dbStatus === 'DELIVERED' && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+      try {
+        const { sendDeliveryCompleted } = await import('../../../lib/alimtalk-auto');
+        const numericId = parseInt(orderId || '0', 10);
+        if (numericId > 0) {
+          sendDeliveryCompleted(
+            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID },
+            numericId
+          ).catch((err: Error) => console.error('[Alimtalk] Delivery notification failed:', err.message));
+        }
+      } catch (e) { /* alimtalk not critical */ }
+    }
+
     return c.json({ success: true, message: '주문 상태가 업데이트되었습니다.' });
   } catch (error: unknown) {
     console.error('Update order status error:', error);
@@ -200,6 +216,22 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
       return exists
         ? c.json({ success: false, error: 'Forbidden' }, 403)
         : c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    // 자동 알림톡 발송 (배송 시작)
+    if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+      try {
+        const { sendShippingNotification } = await import('../../../lib/alimtalk-auto');
+        const numericId = parseInt(orderId || '0', 10);
+        if (numericId > 0) {
+          sendShippingNotification(
+            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID },
+            numericId,
+            courier || '',
+            tracking_number
+          ).catch((err: Error) => console.error('[Alimtalk] Shipping notification failed:', err.message));
+        }
+      } catch (e) { /* alimtalk not critical */ }
     }
 
     return c.json({ success: true, message: '송장번호가 등록되었습니다.' });
