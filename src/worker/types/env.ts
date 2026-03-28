@@ -41,6 +41,14 @@ export interface Env {
   CAFE24_CLIENT_SECRET?: string;
   CAFE24_MALL_ID?: string;
 
+  // ---- Aligo 알림톡 ----
+  ALIGO_API_KEY?: string;
+  ALIGO_USER_ID?: string;
+  ALIGO_SENDER_KEY?: string;
+  ALIGO_SENDER_PHONE?: string;           // 발신번호 (예: 07080420000)
+  ALIGO_TPL_ORDER_CONFIRM?: string;      // 주문완료 템플릿 코드
+  ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
+
   // ---- YouTube ----
   YOUTUBE_CLIENT_ID?: string;
   YOUTUBE_CLIENT_SECRET?: string;
