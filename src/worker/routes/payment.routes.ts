@@ -12,6 +12,8 @@ import { OrderRepository } from '../repositories/order.repository';
 import { requireAuth, type AuthUser } from '../middleware/auth';
 import { webhookRouter } from './webhook.routes';
 import { TOSS_PAYMENT_URL } from '../../shared/constants';
+import { sendSellerAlimtalk } from '../../features/alimtalk/send';
+import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
 
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -136,6 +138,36 @@ paymentsRouter.post('/confirm', async (c) => {
       method: tossData.method,
       ordersCount: updatedOrders.length,
     });
+
+    // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────
+    // 실패해도 결제 응답에 영향 없도록 fire-and-forget
+    if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+      for (const order of updatedOrders) {
+        if (!order.seller_id || !order.buyer_phone) continue;
+        const { subject, message } = buildOrderConfirmMessage({
+          orderId: orderNumber,
+          buyerName: order.buyer_name ?? '고객',
+          buyerPhone: order.buyer_phone,
+          productName: order.items?.[0]?.product_name ?? '상품',
+          totalAmount: order.total_amount,
+          sellerName: order.seller_name ?? '',
+        });
+        sendSellerAlimtalk({
+          DB: c.env.DB,
+          aligoApiKey: c.env.ALIGO_API_KEY,
+          aligoUserId: c.env.ALIGO_USER_ID,
+          aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
+          senderPhone: c.env.ALIGO_SENDER_PHONE,
+          sellerId: order.seller_id,
+          receiver: order.buyer_phone,
+          receiverName: order.buyer_name ?? '고객',
+          templateCode: c.env.ALIGO_TPL_ORDER_CONFIRM ?? 'TBD',
+          subject,
+          message,
+          orderId: orderNumber,
+        }).catch(e => console.warn('[Alimtalk] 주문완료 발송 실패:', e));
+      }
+    }
 
     return c.json({ success: true, data: { orders: updatedOrders, payment: tossData } });
 
