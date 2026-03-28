@@ -916,32 +916,15 @@ adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
 export default adminManagementRoutes;
 
 // ─── Alimtalk 관리 ────────────────────────────────────────────────────────────
-// AdminAlimtalkPricingPage.tsx 에서 호출하는 엔드포인트 스텁
-// 실제 알리고 API 연동이 필요하면 src/lib/aligo.ts 참고
+// alimtalk_packages 테이블 기반 실제 구현 (migration 0123 필요)
 
+// GET /alimtalk/pricing — 패키지 목록
 adminManagementRoutes.get('/alimtalk/pricing', cors(), async (c) => {
   const { DB } = c.env;
   try {
-    const templates = await DB.prepare(
-      `SELECT id, template_code, template_name, price_per_message, is_active, created_at
-       FROM alimtalk_templates ORDER BY template_name ASC`
-    ).all().catch(() => ({ results: [] }));
-    return c.json({ success: true, data: templates.results });
-  } catch {
-    return c.json({ success: true, data: [] });
-  }
-});
-
-adminManagementRoutes.put('/alimtalk/pricing/:id', cors(), async (c) => {
-  return c.json({ success: true, message: '알림톡 요금 업데이트됨' });
-});
-
-adminManagementRoutes.get('/alimtalk/accounts', cors(), async (c) => {
-  const { DB } = c.env;
-  try {
     const { results } = await DB.prepare(
-      `SELECT id, seller_id, aligo_user_id, sender_key, is_active, balance, updated_at
-       FROM alimtalk_accounts ORDER BY created_at DESC`
+      `SELECT id, label, credits, price, is_active, sort_order, created_at, updated_at
+       FROM alimtalk_packages ORDER BY sort_order ASC`
     ).all().catch(() => ({ results: [] }));
     return c.json({ success: true, data: results });
   } catch {
@@ -949,34 +932,93 @@ adminManagementRoutes.get('/alimtalk/accounts', cors(), async (c) => {
   }
 });
 
-adminManagementRoutes.patch('/alimtalk/accounts/:accountId/status', cors(), async (c) => {
+// PUT /alimtalk/pricing/:id — 패키지 수정
+adminManagementRoutes.put('/alimtalk/pricing/:id', cors(), async (c) => {
   const { DB } = c.env;
-  const accountId = c.req.param('accountId');
+  const id = c.req.param('id');
   try {
-    const { is_active } = await c.req.json<{ is_active: boolean }>();
+    const body = await c.req.json<{
+      label?: string; credits?: number; price?: number;
+      is_active?: boolean; sort_order?: number;
+    }>();
+    const fields: string[] = [];
+    const values: (string | number)[] = [];
+    if (body.label !== undefined)      { fields.push('label = ?');      values.push(body.label); }
+    if (body.credits !== undefined)    { fields.push('credits = ?');    values.push(body.credits); }
+    if (body.price !== undefined)      { fields.push('price = ?');      values.push(body.price); }
+    if (body.is_active !== undefined)  { fields.push('is_active = ?');  values.push(body.is_active ? 1 : 0); }
+    if (body.sort_order !== undefined) { fields.push('sort_order = ?'); values.push(body.sort_order); }
+    if (fields.length === 0) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
+    fields.push("updated_at = datetime('now')");
+    values.push(parseInt(id));
     await DB.prepare(
-      `UPDATE alimtalk_accounts SET is_active = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(is_active ? 1 : 0, accountId).run().catch(() => {});
-    return c.json({ success: true, message: '알림톡 계정 상태가 변경되었습니다.' });
+      `UPDATE alimtalk_packages SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+    return c.json({ success: true, message: '패키지가 업데이트되었습니다' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
+// POST /alimtalk/pricing — 새 패키지 추가
+adminManagementRoutes.post('/alimtalk/pricing', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json<{ label: string; credits: number; price: number; sort_order?: number }>();
+    if (!body.label || !body.credits || !body.price) {
+      return c.json({ success: false, error: '필수 항목 누락 (label, credits, price)' }, 400);
+    }
+    const result = await DB.prepare(
+      `INSERT INTO alimtalk_packages (label, credits, price, is_active, sort_order)
+       VALUES (?, ?, ?, 1, ?)`
+    ).bind(body.label, body.credits, body.price, body.sort_order ?? 99).run();
+    return c.json({ success: true, data: { id: result.meta.last_row_id } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /alimtalk/accounts — 셀러별 크레딧 잔액 현황
+adminManagementRoutes.get('/alimtalk/accounts', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const { results } = await DB.prepare(`
+      SELECT s.id, s.name AS seller_name, s.email,
+             COALESCE(sc.balance, 0) AS balance,
+             sc.updated_at
+      FROM sellers s
+      LEFT JOIN seller_credits sc ON sc.seller_id = s.id
+      WHERE s.status = 'approved'
+      ORDER BY sc.balance DESC, s.name ASC
+    `).all().catch(() => ({ results: [] }));
+    return c.json({ success: true, data: results });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
+
+// GET /alimtalk/statistics — 실제 통계
 adminManagementRoutes.get('/alimtalk/statistics', cors(), async (c) => {
   const { DB } = c.env;
   try {
-    const total = await DB.prepare('SELECT COUNT(*) as cnt FROM alimtalk_messages').first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
-    const success_count = await DB.prepare("SELECT COUNT(*) as cnt FROM alimtalk_messages WHERE status = 'sent'").first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
+    const [totalSent, totalBalance, activeAccounts] = await Promise.all([
+      DB.prepare('SELECT COUNT(*) AS cnt FROM alimtalk_logs WHERE success = 1')
+        .first<{ cnt: number }>().catch(() => ({ cnt: 0 })),
+      DB.prepare('SELECT COALESCE(SUM(balance), 0) AS total FROM seller_credits')
+        .first<{ total: number }>().catch(() => ({ total: 0 })),
+      DB.prepare('SELECT COUNT(*) AS cnt FROM seller_credits WHERE balance > 0')
+        .first<{ cnt: number }>().catch(() => ({ cnt: 0 })),
+    ]);
     return c.json({
       success: true,
       data: {
-        total: total?.cnt ?? 0,
-        success: success_count?.cnt ?? 0,
-        failed: (total?.cnt ?? 0) - (success_count?.cnt ?? 0),
+        total_sent: totalSent?.cnt ?? 0,
+        total_cost: (totalSent?.cnt ?? 0) * 9,
+        active_accounts: activeAccounts?.cnt ?? 0,
+        total_balance: totalBalance?.total ?? 0,
       },
     });
   } catch {
-    return c.json({ success: true, data: { total: 0, success: 0, failed: 0 } });
+    return c.json({ success: true, data: { total_sent: 0, total_cost: 0, active_accounts: 0, total_balance: 0 } });
   }
 });

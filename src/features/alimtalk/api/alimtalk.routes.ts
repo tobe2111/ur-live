@@ -1,7 +1,7 @@
 /**
  * 알림톡 크레딧 시스템 API
  *
- * GET  /api/seller/alimtalk/credits          - 잔액 + 이력 조회
+ * GET  /api/seller/alimtalk/credits          - 잔액 + 이력 + 패키지 조회
  * POST /api/seller/alimtalk/credits/charge   - 충전 결제 시작 (토스)
  * POST /api/seller/alimtalk/credits/confirm  - 결제 완료 → 크레딧 지급
  * GET  /api/seller/alimtalk/logs             - 발송 이력
@@ -18,14 +18,14 @@ alimtalkRoutes.use('*', cors({
   credentials: true,
 }));
 
-// 충전 패키지 정의 (판매가 9원/건)
-export const CREDIT_PACKAGES = [
-  { id: 'p100',  credits: 100,  price: 900,    label: '100건' },
-  { id: 'p500',  credits: 500,  price: 4500,   label: '500건' },
-  { id: 'p1000', credits: 1000, price: 9000,   label: '1,000건' },
-  { id: 'p3000', credits: 3000, price: 27000,  label: '3,000건' },
-  { id: 'p5000', credits: 5000, price: 45000,  label: '5,000건' },
-] as const;
+interface DbPackage {
+  id: number;
+  label: string;
+  credits: number;
+  price: number;
+  is_active: number;
+  sort_order: number;
+}
 
 // ── JWT에서 seller_id 추출 ────────────────────────────────────────────────────
 async function getSellerIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
@@ -39,6 +39,21 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
   }
 }
 
+// ── DB에서 활성 패키지 목록 조회 ──────────────────────────────────────────────
+async function getActivePackages(DB: Env['DB']): Promise<DbPackage[]> {
+  try {
+    const { results } = await DB.prepare(
+      `SELECT id, label, credits, price, is_active, sort_order
+       FROM alimtalk_packages WHERE is_active = 1
+       ORDER BY sort_order ASC`
+    ).all<DbPackage>();
+    return results ?? [];
+  } catch {
+    // 테이블 미생성 시 빈 배열 반환
+    return [];
+  }
+}
+
 // ── GET /credits ──────────────────────────────────────────────────────────────
 alimtalkRoutes.get('/credits', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
@@ -46,7 +61,7 @@ alimtalkRoutes.get('/credits', async (c) => {
 
   const { DB } = c.env;
   try {
-    const [credit, history] = await Promise.all([
+    const [credit, history, packages] = await Promise.all([
       DB.prepare('SELECT balance FROM seller_credits WHERE seller_id = ?')
         .bind(sellerId).first<{ balance: number }>(),
       DB.prepare(`
@@ -58,13 +73,14 @@ alimtalkRoutes.get('/credits', async (c) => {
         id: number; type: string; amount: number;
         price_paid: number | null; description: string | null; created_at: string;
       }>(),
+      getActivePackages(DB),
     ]);
 
     return c.json({
       success: true,
       data: {
         balance: credit?.balance ?? 0,
-        packages: CREDIT_PACKAGES,
+        packages,
         history: history.results ?? [],
       },
     });
@@ -74,17 +90,22 @@ alimtalkRoutes.get('/credits', async (c) => {
 });
 
 // ── POST /credits/charge ──────────────────────────────────────────────────────
-// 충전 결제 시작: 패키지 선택 → 토스 결제창 오픈에 필요한 정보 반환
+// 충전 결제 시작: 패키지 ID(DB) → 토스 결제창 오픈에 필요한 정보 반환
 alimtalkRoutes.post('/credits/charge', async (c) => {
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
-  const body = await c.req.json<{ package_id: string }>();
-  const pkg = CREDIT_PACKAGES.find(p => p.id === body.package_id);
+  const body = await c.req.json<{ package_id: number }>();
+
+  // DB에서 패키지 조회
+  const pkg = await c.env.DB.prepare(
+    'SELECT id, label, credits, price, is_active FROM alimtalk_packages WHERE id = ? AND is_active = 1'
+  ).bind(body.package_id).first<DbPackage>().catch(() => null);
+
   if (!pkg) return c.json({ success: false, error: '유효하지 않은 패키지입니다' }, 400);
 
-  // 토스 결제용 주문 ID (고유해야 함)
-  const orderId = `ALT-${sellerId}-${pkg.id}-${Date.now()}`;
+  // 토스 결제용 주문 ID
+  const orderId = `ALT-${sellerId}-pkg${pkg.id}-${Date.now()}`;
 
   return c.json({
     success: true,
@@ -106,17 +127,25 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
 
   const body = await c.req.json<{ paymentKey: string; orderId: string; amount: number }>();
 
-  // orderId에서 패키지 ID 추출 (ALT-{sellerId}-{pkgId}-{ts})
-  const parts = body.orderId.split('-');
-  const pkgId = parts[2] ? `p${parts[2].replace('p', '')}` : '';
-  const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId) ??
-    // 금액 기반 폴백
-    CREDIT_PACKAGES.find(p => p.price === body.amount);
-
-  if (!pkg) return c.json({ success: false, error: '패키지 정보를 확인할 수 없습니다' }, 400);
-  if (pkg.price !== body.amount) return c.json({ success: false, error: '결제 금액이 패키지와 다릅니다' }, 400);
+  // orderId에서 패키지 ID 추출 (ALT-{sellerId}-pkg{id}-{ts})
+  const pkgIdMatch = body.orderId.match(/pkg(\d+)/);
+  const pkgId = pkgIdMatch ? parseInt(pkgIdMatch[1]) : null;
 
   const { DB } = c.env;
+
+  // DB에서 패키지 조회 (is_active 여부 무관 — 결제 시점엔 활성이었음)
+  const pkg = pkgId
+    ? await DB.prepare('SELECT id, label, credits, price FROM alimtalk_packages WHERE id = ?')
+        .bind(pkgId).first<DbPackage>().catch(() => null)
+    : null;
+
+  // 금액 기반 폴백 (패키지 ID 파싱 실패 시)
+  const resolvedPkg = pkg ??
+    await DB.prepare('SELECT id, label, credits, price FROM alimtalk_packages WHERE price = ? AND is_active = 1 LIMIT 1')
+      .bind(body.amount).first<DbPackage>().catch(() => null);
+
+  if (!resolvedPkg) return c.json({ success: false, error: '패키지 정보를 확인할 수 없습니다' }, 400);
+  if (resolvedPkg.price !== body.amount) return c.json({ success: false, error: '결제 금액이 패키지와 다릅니다' }, 400);
 
   // 중복 결제 확인
   const dup = await DB.prepare(
@@ -139,7 +168,7 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
     return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
   }
 
-  // D1 트랜잭션: 잔액 증가 + 이력 기록
+  // D1 배치: 잔액 증가 + 이력 기록
   await DB.batch([
     DB.prepare(`
       INSERT INTO seller_credits (seller_id, balance, updated_at)
@@ -147,17 +176,17 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
       ON CONFLICT(seller_id) DO UPDATE SET
         balance = balance + excluded.balance,
         updated_at = datetime('now')
-    `).bind(sellerId, pkg.credits),
+    `).bind(sellerId, resolvedPkg.credits),
     DB.prepare(`
       INSERT INTO credit_transactions (seller_id, type, amount, price_paid, description, payment_key, created_at)
       VALUES (?, 'charge', ?, ?, ?, ?, datetime('now'))
-    `).bind(sellerId, pkg.credits, pkg.price, `알림톡 ${pkg.label} 충전`, body.paymentKey),
+    `).bind(sellerId, resolvedPkg.credits, resolvedPkg.price, `알림톡 ${resolvedPkg.label} 충전`, body.paymentKey),
   ]);
 
   return c.json({
     success: true,
-    data: { credits_added: pkg.credits, description: `알림톡 ${pkg.label} 충전` },
-    message: `${pkg.credits.toLocaleString()}건이 충전되었습니다.`,
+    data: { credits_added: resolvedPkg.credits, description: `알림톡 ${resolvedPkg.label} 충전` },
+    message: `${resolvedPkg.credits.toLocaleString()}건이 충전되었습니다.`,
   });
 });
 

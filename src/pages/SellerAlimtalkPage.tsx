@@ -9,14 +9,14 @@ import {
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 
-// 충전 패키지 (백엔드와 동일하게 유지)
-const PACKAGES = [
-  { id: 'p100',  credits: 100,  price: 900,   label: '100건',   unit: '9원/건' },
-  { id: 'p500',  credits: 500,  price: 4500,  label: '500건',   unit: '9원/건' },
-  { id: 'p1000', credits: 1000, price: 9000,  label: '1,000건', unit: '9원/건' },
-  { id: 'p3000', credits: 3000, price: 27000, label: '3,000건', unit: '9원/건' },
-  { id: 'p5000', credits: 5000, price: 45000, label: '5,000건', unit: '9원/건' },
-]
+interface DbPackage {
+  id: number
+  label: string
+  credits: number
+  price: number
+  is_active: number
+  sort_order: number
+}
 
 interface CreditHistory {
   id: number
@@ -52,9 +52,9 @@ export default function SellerAlimtalkPage() {
   const [loading, setLoading] = useState(true)
   const [logsLoading, setLogsLoading] = useState(false)
   const [chargeModal, setChargeModal] = useState(false)
-  const [selectedPkg, setSelectedPkg] = useState(PACKAGES[2])  // 기본: 1000건
+  const [packages, setPackages] = useState<DbPackage[]>([])
+  const [selectedPkgId, setSelectedPkgId] = useState<number | null>(null)
   const [paying, setPaying] = useState(false)
-  const [clientKey, setClientKey] = useState('')
 
   useEffect(() => {
     if (!isSellerAuthenticated()) { redirectToLogin(navigate); return }
@@ -74,7 +74,12 @@ export default function SellerAlimtalkPage() {
       if (res.data.success) {
         setBalance(res.data.data.balance ?? 0)
         setCreditHistory(res.data.data.history ?? [])
-        setClientKey(res.data.data.clientKey ?? '')
+        const pkgs: DbPackage[] = res.data.data.packages ?? []
+        setPackages(pkgs)
+        // 기본 선택: 중간 패키지
+        if (pkgs.length > 0 && selectedPkgId === null) {
+          setSelectedPkgId(pkgs[Math.floor(pkgs.length / 2)]?.id ?? pkgs[0].id)
+        }
       }
     } catch {
       // 테이블 미생성 시 조용히 처리
@@ -92,25 +97,25 @@ export default function SellerAlimtalkPage() {
   }
 
   async function handleCharge() {
+    if (!selectedPkgId) { toast.error('패키지를 선택해주세요'); return }
     setPaying(true)
     try {
       // 1. 충전 주문 생성
       const res = await api.post('/api/seller/alimtalk/credits/charge',
-        { package_id: selectedPkg.id },
+        { package_id: selectedPkgId },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
       )
       if (!res.data.success) { toast.error(res.data.error); return }
 
-      const { orderId, amount, orderName, clientKey: ck } = res.data.data
-      const key = ck || clientKey
+      const { orderId, amount, orderName, clientKey } = res.data.data
 
-      if (!key) {
+      if (!clientKey) {
         toast.error('결제 설정을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.')
         return
       }
 
       // 2. 토스페이먼츠 결제창 호출
-      const toss = window.TossPayments(key)
+      const toss = window.TossPayments(clientKey)
       await toss.requestPayment('카드', {
         amount,
         orderId,
@@ -315,39 +320,50 @@ export default function SellerAlimtalkPage() {
             <p className="text-xs text-gray-400 mb-4">건당 9원 · 카카오 알림톡 자동 발송</p>
 
             <div className="space-y-2 mb-5">
-              {PACKAGES.map(pkg => (
-                <button
-                  key={pkg.id}
-                  onClick={() => setSelectedPkg(pkg)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${selectedPkg.id === pkg.id ? 'border-blue-600 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Package className={`w-4 h-4 ${selectedPkg.id === pkg.id ? 'text-blue-600' : 'text-gray-400'}`} />
-                    <div className="text-left">
-                      <p className={`text-sm font-semibold ${selectedPkg.id === pkg.id ? 'text-blue-700' : 'text-gray-800'}`}>{pkg.label}</p>
-                      <p className="text-xs text-gray-400">{pkg.unit}</p>
+              {packages.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">패키지를 불러오는 중...</p>
+              ) : packages.map(pkg => {
+                const unitPrice = pkg.credits > 0 ? (pkg.price / pkg.credits).toFixed(1) : '0'
+                const isSelected = selectedPkgId === pkg.id
+                return (
+                  <button
+                    key={pkg.id}
+                    onClick={() => setSelectedPkgId(pkg.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Package className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <div className="text-left">
+                        <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>{pkg.label}</p>
+                        <p className="text-xs text-gray-400">건당 {unitPrice}원</p>
+                      </div>
                     </div>
-                  </div>
-                  <p className={`text-sm font-bold ${selectedPkg.id === pkg.id ? 'text-blue-700' : 'text-gray-700'}`}>
-                    {pkg.price.toLocaleString()}원
-                  </p>
-                </button>
-              ))}
+                    <p className={`text-sm font-bold ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                      {pkg.price.toLocaleString()}원
+                    </p>
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="flex gap-3">
-              <button onClick={() => setChargeModal(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
-                취소
-              </button>
-              <button
-                onClick={handleCharge}
-                disabled={paying}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                {selectedPkg.price.toLocaleString()}원 결제
-              </button>
-            </div>
+            {(() => {
+              const selectedPkg = packages.find(p => p.id === selectedPkgId)
+              return (
+                <div className="flex gap-3">
+                  <button onClick={() => setChargeModal(false)} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+                    취소
+                  </button>
+                  <button
+                    onClick={handleCharge}
+                    disabled={paying || !selectedPkg}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                    {selectedPkg ? `${selectedPkg.price.toLocaleString()}원 결제` : '패키지 선택'}
+                  </button>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
