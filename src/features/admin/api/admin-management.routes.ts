@@ -919,29 +919,51 @@ export default adminManagementRoutes;
 // AdminAlimtalkPricingPage.tsx 에서 호출하는 엔드포인트 스텁
 // 실제 알리고 API 연동이 필요하면 src/lib/aligo.ts 참고
 
+// ─── 알림톡 요금제 조회 (alimtalk_pricing 테이블) ────────────────────────
 adminManagementRoutes.get('/alimtalk/pricing', cors(), async (c) => {
   const { DB } = c.env;
   try {
-    const templates = await DB.prepare(
-      `SELECT id, template_code, template_name, price_per_message, is_active, created_at
-       FROM alimtalk_templates ORDER BY template_name ASC`
+    const plans = await DB.prepare(
+      `SELECT id, plan_name as name,
+              min_quantity || '~' || COALESCE(max_quantity, '∞') as description,
+              unit_price, min_quantity as monthly_quota,
+              0 as discount_rate, is_active, created_at, updated_at
+       FROM alimtalk_pricing ORDER BY min_quantity ASC`
     ).all().catch(() => ({ results: [] }));
-    return c.json({ success: true, data: templates.results });
+    return c.json({ success: true, data: plans.results });
   } catch {
     return c.json({ success: true, data: [] });
   }
 });
 
+// ─── 알림톡 요금제 수정 ──────────────────────────────────────────────
 adminManagementRoutes.put('/alimtalk/pricing/:id', cors(), async (c) => {
-  return c.json({ success: true, message: '알림톡 요금 업데이트됨' });
+  const { DB } = c.env;
+  const id = c.req.param('id');
+  try {
+    const { unit_price } = await c.req.json<{ unit_price: number }>();
+    await DB.prepare(
+      `UPDATE alimtalk_pricing SET unit_price = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(unit_price, id).run();
+    return c.json({ success: true, message: '알림톡 요금 업데이트됨' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
 });
 
+// ─── 알림톡 셀러 계정 목록 (alimtalk_accounts 테이블) ────────────────
 adminManagementRoutes.get('/alimtalk/accounts', cors(), async (c) => {
   const { DB } = c.env;
   try {
     const { results } = await DB.prepare(
-      `SELECT id, seller_id, aligo_user_id, sender_key, is_active, balance, updated_at
-       FROM alimtalk_accounts ORDER BY created_at DESC`
+      `SELECT a.id, a.seller_id, a.kakao_channel_id, a.channel_name,
+              a.phone_number as sender_phone, a.sender_key, a.status,
+              a.balance, a.total_sent, a.total_failed,
+              a.created_at, a.updated_at,
+              COALESCE(s.name, s.email) as seller_name
+       FROM alimtalk_accounts a
+       LEFT JOIN sellers s ON a.seller_id = s.id
+       ORDER BY a.created_at DESC`
     ).all().catch(() => ({ results: [] }));
     return c.json({ success: true, data: results });
   } catch {
@@ -949,34 +971,43 @@ adminManagementRoutes.get('/alimtalk/accounts', cors(), async (c) => {
   }
 });
 
+// ─── 알림톡 계정 상태 변경 (status 필드 사용) ────────────────────────
 adminManagementRoutes.patch('/alimtalk/accounts/:accountId/status', cors(), async (c) => {
   const { DB } = c.env;
   const accountId = c.req.param('accountId');
   try {
-    const { is_active } = await c.req.json<{ is_active: boolean }>();
+    const { status } = await c.req.json<{ status: string }>();
+    const newStatus = status === 'active' ? 'active' : status === 'suspended' ? 'suspended' : status;
     await DB.prepare(
-      `UPDATE alimtalk_accounts SET is_active = ?, updated_at = datetime('now') WHERE id = ?`
-    ).bind(is_active ? 1 : 0, accountId).run().catch(() => {});
+      `UPDATE alimtalk_accounts SET status = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newStatus, accountId).run();
     return c.json({ success: true, message: '알림톡 계정 상태가 변경되었습니다.' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
+// ─── 알림톡 통계 ─────────────────────────────────────────────────────
 adminManagementRoutes.get('/alimtalk/statistics', cors(), async (c) => {
   const { DB } = c.env;
   try {
     const total = await DB.prepare('SELECT COUNT(*) as cnt FROM alimtalk_messages').first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
     const success_count = await DB.prepare("SELECT COUNT(*) as cnt FROM alimtalk_messages WHERE status = 'sent'").first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
+    const total_cost = await DB.prepare("SELECT COALESCE(SUM(cost), 0) as total FROM alimtalk_messages WHERE status = 'sent'").first<{ total: number }>().catch(() => ({ total: 0 }));
+    const active_accounts = await DB.prepare("SELECT COUNT(*) as cnt FROM alimtalk_accounts WHERE status = 'active'").first<{ cnt: number }>().catch(() => ({ cnt: 0 }));
+    const total_balance = await DB.prepare('SELECT COALESCE(SUM(balance), 0) as total FROM alimtalk_accounts').first<{ total: number }>().catch(() => ({ total: 0 }));
     return c.json({
       success: true,
       data: {
-        total: total?.cnt ?? 0,
+        total_sent: total?.cnt ?? 0,
+        total_cost: total_cost?.total ?? 0,
+        active_accounts: active_accounts?.cnt ?? 0,
+        total_balance: total_balance?.total ?? 0,
         success: success_count?.cnt ?? 0,
         failed: (total?.cnt ?? 0) - (success_count?.cnt ?? 0),
       },
     });
   } catch {
-    return c.json({ success: true, data: { total: 0, success: 0, failed: 0 } });
+    return c.json({ success: true, data: { total_sent: 0, total_cost: 0, active_accounts: 0, total_balance: 0, success: 0, failed: 0 } });
   }
 });

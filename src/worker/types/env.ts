@@ -33,6 +33,11 @@ export interface Env {
   FIREBASE_CLIENT_EMAIL?: string;
   FIREBASE_DATABASE_URL?: string;
 
+  // ---- Aligo (알림톡) ----
+  ALIGO_API_KEY?: string;
+  ALIGO_USER_ID?: string;
+  ALIMTALK_SENDER_KEY?: string;
+
   // ---- Kakao ----
   KAKAO_REST_API_KEY?: string;
 
