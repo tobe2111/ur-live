@@ -17,7 +17,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { requireAuth } from '@/worker/middleware/auth';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { AuthUser } from '@/worker/middleware/auth';
 
 type Bindings = {
@@ -31,30 +31,13 @@ type Variables = {
 
 export const wishlistRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// ── 공통 헬퍼: JWT에서 userId 추출 ────────────────────────────────────────────
-async function getUserIdFromToken(authHeader: string | undefined): Promise<number | null> {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  try {
-    const token = authHeader.substring(7);
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    // Firebase ID 토큰(sub) 또는 자체 JWT(user_id/id)
-    const uid = payload.sub || payload.user_id || payload.id;
-    if (!uid) return null;
-    return typeof uid === 'number' ? uid : null;
-  } catch { return null; }
-}
-
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────
 wishlistRoutes.get('/', cors(), requireAuth(), async (c) => {
-  console.log('[Wishlist] GET / - User:', c.get('user')?.id);
   const { DB } = c.env;
   try {
-    const userId = c.req.query('user_id') || c.req.query('userId');
-    if (!userId) {
-      return c.json({ success: false, error: 'user_id 파라미터가 필요합니다.' }, 400);
-    }
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userId = String(authUser.id);
     const limit = parseInt(c.req.query('limit') || '50');
     const offset = parseInt(c.req.query('offset') || '0');
     const { results } = await DB.prepare(`
@@ -78,15 +61,15 @@ wishlistRoutes.get('/', cors(), requireAuth(), async (c) => {
 });
 
 // ── POST /api/wishlists/toggle  (useToggleWishlist hook) ──────────────────────
-wishlistRoutes.post('/toggle', cors(), async (c) => {
+wishlistRoutes.post('/toggle', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   try {
-    const { product_id, user_id } = await c.req.json<{ product_id: string | number; user_id?: string | number }>();
-    if (!product_id) return c.json({ success: false, error: 'product_id가 필요합니다.' }, 400);
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userId = String(authUser.id);
 
-    // user_id를 body 또는 query에서 수신
-    const userId = user_id || c.req.query('user_id');
-    if (!userId) return c.json({ success: false, error: 'user_id가 필요합니다.' }, 400);
+    const { product_id } = await c.req.json<{ product_id: string | number }>();
+    if (!product_id) return c.json({ success: false, error: 'product_id가 필요합니다.' }, 400);
 
     const existing = await DB.prepare('SELECT id FROM wishlists WHERE user_id = ? AND product_id = ?')
       .bind(userId, product_id).first();
@@ -106,11 +89,12 @@ wishlistRoutes.post('/toggle', cors(), async (c) => {
 });
 
 // ── DELETE /api/wishlists  (useClearWishlist hook - 전체 비우기) ──────────────
-wishlistRoutes.delete('/', cors(), async (c) => {
+wishlistRoutes.delete('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   try {
-    const userId = c.req.query('user_id') || c.req.query('userId');
-    if (!userId) return c.json({ success: false, error: 'user_id가 필요합니다.' }, 400);
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userId = String(authUser.id);
     await DB.prepare('DELETE FROM wishlists WHERE user_id = ?').bind(userId).run();
     return c.json({ success: true, message: '위시리스트를 모두 비웠습니다.' });
   } catch (err) {
@@ -119,19 +103,18 @@ wishlistRoutes.delete('/', cors(), async (c) => {
 });
 
 // 찜하기 추가
-wishlistRoutes.post('/', cors(), async (c) => {
+wishlistRoutes.post('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
-    const { userId, productId } = await c.req.json();
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userId = String(authUser.id);
 
-    if (!userId || !productId) {
-      return c.json({ success: false, error: '사용자 ID와 상품 ID가 필요합니다.' }, 400);
-    }
+    const { productId } = await c.req.json();
 
-    const user = await DB.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first();
-    if (!user) {
-      return c.json({ success: false, error: '존재하지 않는 사용자입니다.' }, 404);
+    if (!productId) {
+      return c.json({ success: false, error: '상품 ID가 필요합니다.' }, 400);
     }
 
     const product = await DB.prepare('SELECT id, name FROM products WHERE id = ? AND is_active = 1')
@@ -165,16 +148,14 @@ wishlistRoutes.post('/', cors(), async (c) => {
 });
 
 // 찜하기 삭제 (wishlist ID)
-wishlistRoutes.delete('/:id', cors(), async (c) => {
+wishlistRoutes.delete('/:id', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
     const id = c.req.param('id');
-    const { userId } = c.req.query();
-
-    if (!userId) {
-      return c.json({ success: false, error: '사용자 ID가 필요합니다.' }, 400);
-    }
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userId = String(authUser.id);
 
     const wishlist = await DB.prepare('SELECT id FROM wishlists WHERE id = ? AND user_id = ?')
       .bind(id, userId)
@@ -194,16 +175,14 @@ wishlistRoutes.delete('/:id', cors(), async (c) => {
 });
 
 // 찜하기 삭제 (상품 ID)
-wishlistRoutes.delete('/product/:productId', cors(), async (c) => {
+wishlistRoutes.delete('/product/:productId', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
 
   try {
     const productId = c.req.param('productId');
-    const { userId } = c.req.query();
-
-    if (!userId) {
-      return c.json({ success: false, error: '사용자 ID가 필요합니다.' }, 400);
-    }
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userId = String(authUser.id);
 
     const result = await DB.prepare('DELETE FROM wishlists WHERE user_id = ? AND product_id = ?')
       .bind(userId, productId)

@@ -7,10 +7,13 @@
  */
 
 import { Hono } from 'hono';
-import { 
-  deleteUserAccount, 
+import { cors } from 'hono/cors';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
+import {
+  deleteUserAccount,
   checkReregistrationRestriction,
-  type DeleteAccountRequest 
+  type DeleteAccountRequest
 } from '@/worker/services/delete-account.service';
 
 type Bindings = {
@@ -29,6 +32,7 @@ type Bindings = {
 };
 
 export const accountRoutes = new Hono<{ Bindings: Bindings }>();
+accountRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
 
 /**
  * DELETE /api/account/delete
@@ -47,28 +51,29 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>();
  *   deletedAt: string;
  * }
  */
-accountRoutes.delete('/delete', async (c) => {
+accountRoutes.delete('/delete', requireAuth(), async (c) => {
   try {
-    const body = await c.req.json<DeleteAccountRequest>();
-    const { userId, reason } = body;
-
-    if (!userId) {
-      return c.json({
-        success: false,
-        message: '사용자 ID가 필요합니다.'
-      }, 400);
+    const authenticatedUser = getCurrentUser(c);
+    if (!authenticatedUser) {
+      return c.json({ success: false, message: '인증이 필요합니다.' }, 401);
     }
+
+    const body = await c.req.json<DeleteAccountRequest>();
+    const { reason } = body;
+
+    // userId는 반드시 인증된 사용자 본인의 ID만 사용 — 요청 body userId 무시
+    const userId = String(authenticatedUser.id);
 
     // 계정 삭제 처리
     const result = await deleteUserAccount({ userId, reason }, c.env.DB);
 
     return c.json(result, 200);
   } catch (error) {
-    console.error('[Account Delete] Error:', error);
+    console.error('[Account Delete] Error:', (error as Error).message);
 
     return c.json({
       success: false,
-      message: error instanceof Error ? error.message : '회원 탈퇴 처리 중 오류가 발생했습니다.'
+      message: '회원 탈퇴 처리 중 오류가 발생했습니다.'
     }, 500);
   }
 });
