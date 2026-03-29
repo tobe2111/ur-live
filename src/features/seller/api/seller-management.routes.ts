@@ -438,7 +438,7 @@ sellerManagementRoutes.get('/business-info', async (c) => {
  * PUT /api/seller/business-info
  * 사업자 정보 수정
  */
-sellerManagementRoutes.on(['PUT', 'PATCH'], '/business-info', async (c) => {
+sellerManagementRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) {
