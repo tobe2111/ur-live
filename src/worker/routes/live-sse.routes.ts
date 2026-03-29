@@ -11,6 +11,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { handleChatSSE, handleLiveStreamSSE } from '../../lib/sse-realtime'
+import { optionalAuth, getCurrentUser, requireSellerOrAdmin } from '../middleware/auth'
 
 export const liveSseRoutes = new Hono<{ Bindings: Env }>()
 export const chatRoutes = new Hono<{ Bindings: Env }>()
@@ -70,8 +71,8 @@ liveSseRoutes.get('/:liveId/ws', async (c) => {
   }
 })
 
-// ── Broadcast event to all WebSocket viewers ─────────────────────────────────
-liveSseRoutes.post('/:liveId/broadcast', async (c) => {
+// ── Broadcast event to all WebSocket viewers (seller/admin only) ─────────────
+liveSseRoutes.post('/:liveId/broadcast', requireSellerOrAdmin(), async (c) => {
   const { liveId } = c.req.param()
 
   if (!c.env.LIVE_STREAM) {
@@ -92,7 +93,8 @@ liveSseRoutes.post('/:liveId/broadcast', async (c) => {
 })
 
 // ── Send chat message: POST /api/chat/:liveId/messages ──────────────────────
-chatRoutes.post('/:liveId/messages', async (c) => {
+// optionalAuth: 비로그인 시청자도 채팅 가능하나 isSeller/isAdmin은 서버에서만 결정
+chatRoutes.post('/:liveId/messages', optionalAuth(), async (c) => {
   const { liveId } = c.req.param()
 
   let body: any
@@ -102,11 +104,17 @@ chatRoutes.post('/:liveId/messages', async (c) => {
     return c.json({ error: 'Invalid JSON' }, 400)
   }
 
-  const { userId, userName, message, isSeller, isAdmin } = body
+  const { userId: bodyUserId, userName, message } = body
 
   if (!message?.trim() || !userName) {
     return c.json({ error: 'message and userName are required' }, 400)
   }
+
+  // isSeller/isAdmin은 인증 토큰에서만 결정 — 클라이언트 입력 무시
+  const authUser = getCurrentUser(c)
+  const isSeller = authUser?.type === 'seller'
+  const isAdmin = authUser?.type === 'admin'
+  const userId = authUser ? String(authUser.id) : (bodyUserId ?? null)
 
   let insertedId: number | null = null
 

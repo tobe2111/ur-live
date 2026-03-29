@@ -10,41 +10,22 @@
 
 import { Hono } from 'hono';
 import type { Env } from '../types/env';
+import { requireAuth, getCurrentUser, optionalAuth } from '../middleware/auth';
 
 export const usersRouter = new Hono<{ Bindings: Env }>();
 
 // ── GET /api/users/role ───────────────────────────────────────────────────────
-// Firebase ID 토큰으로 인증 후 DB에서 역할 조회
-// seller/admin 계정이 일반 로그인 경로로 접근하는 것 차단에 사용
-usersRouter.get('/role', async (c) => {
+// Firebase ID 토큰으로 인증 후 DB에서 역할 조회 (서명 검증 포함)
+usersRouter.get('/role', optionalAuth(), async (c) => {
   try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ success: true, role: 'user', message: 'No token – default role' });
+    // optionalAuth()가 서명 검증을 처리함 — 미인증 시 기본 'user' 반환
+    const authUser = getCurrentUser(c);
+    if (!authUser) {
+      return c.json({ success: true, role: 'user', message: 'No valid token – default role' });
     }
 
-    const idToken = authHeader.substring(7);
+    const firebaseUid = String(authUser.id);
     const db = c.env.DB;
-
-    // Firebase ID 토큰 decode (검증 없이 payload만 파싱 – Cloudflare Worker 환경)
-    // 보안 중요: 실제 서명 검증은 Firebase Admin SDK가 필요하지만
-    // Worker 환경에서는 jose 로 공개키 검증하거나, DB 조회로 역할 확인
-    // 여기서는 토큰에서 sub(UID)를 추출해 DB에서 역할을 조회한다.
-    let firebaseUid: string | null = null;
-    try {
-      const parts = idToken.split('.');
-      if (parts.length === 3) {
-        const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-        const payload = JSON.parse(payloadJson);
-        firebaseUid = payload.sub || payload.user_id || null;
-      }
-    } catch {
-      // 파싱 실패 시 기본값 반환
-    }
-
-    if (!firebaseUid) {
-      return c.json({ success: true, role: 'user', message: 'Token parse failed – default role' });
-    }
 
     // DB에서 역할 조회 (sellers / admin 계정 체크)
     const seller = await db
@@ -76,35 +57,20 @@ usersRouter.get('/role', async (c) => {
 });
 
 // ── POST /api/users/init ──────────────────────────────────────────────────────
-// Firebase 회원가입 후 DB 사용자 레코드 초기화
+// Firebase 회원가입 후 DB 사용자 레코드 초기화 (서명 검증 포함)
 // fire-and-forget 방식으로 호출됨 (.catch(() => {}))
-usersRouter.post('/init', async (c) => {
+usersRouter.post('/init', requireAuth(), async (c) => {
   try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authUser = getCurrentUser(c);
+    if (!authUser) {
       return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
 
-    const idToken = authHeader.substring(7);
     const { displayName } = await c.req.json<{ displayName?: string }>().catch(() => ({} as any));
 
-    // Firebase UID 추출
-    let firebaseUid: string | null = null;
-    let email: string | null = null;
-    try {
-      const parts = idToken.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-        firebaseUid = payload.sub || payload.user_id || null;
-        email = payload.email || null;
-      }
-    } catch {
-      //
-    }
-
-    if (!firebaseUid) {
-      return c.json({ success: false, error: 'Invalid token' }, 400);
-    }
+    // 서명 검증된 토큰에서 UID/이메일 사용
+    const firebaseUid = String(authUser.id);
+    const email = authUser.email ?? null;
 
     const db = c.env.DB;
 
