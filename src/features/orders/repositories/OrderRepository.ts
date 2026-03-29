@@ -95,7 +95,7 @@ export class OrderRepository {
       data.seller_id,
       data.total_amount,   // OrderCreateInput field stays as total_amount for API compat
       data.payment_method || null,
-      data.shipping_address || null,
+      typeof data.shipping_address === 'object' ? JSON.stringify(data.shipping_address) : (data.shipping_address || null),
       data.shipping_name || null,
       data.shipping_phone || null
     ).run();
