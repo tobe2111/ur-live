@@ -252,16 +252,8 @@ app.get('/api/debug/kv-usage', async (c) => {
         timestamp: new Date().toISOString(),
         note: 'KV 사용량은 활성 세션 수 기반 추정치입니다. 정확한 수치는 Cloudflare 대시보드에서 확인하세요.',
         activeSessions: sessionCount,
-        reads: {
-          current: estimatedReads,
-          limit: readLimit,
-          resetDate: today,
-        },
-        writes: {
-          current: estimatedWrites,
-          limit: writeLimit,
-          resetDate: today,
-        },
+        reads: estimatedReads,
+        writes: estimatedWrites,
         readLimit,
         writeLimit,
         readUsagePercent,

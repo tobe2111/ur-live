@@ -51,8 +51,9 @@ donationsRoutes.post('/init', async (c) => {
 
   const { DB } = c.env;
 
-  // 스트림 + 셀러 정보 조회
-  let stream: { id: number; title: string; seller_id: number; seller_name: string; commission_rate: number; } | null = null;
+  // 스트림 + 셀러 정보 조회 (two-step: donation_commission_rate 컬럼 없을 수 있음)
+  type StreamRow = { id: number; title: string; seller_id: number; seller_name: string; commission_rate: number; };
+  let stream: StreamRow | null = null;
   try {
     stream = await DB.prepare(
       `SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name,
@@ -60,10 +61,20 @@ donationsRoutes.post('/init', async (c) => {
        FROM live_streams ls
        JOIN sellers s ON ls.seller_id = s.id
        WHERE ls.id = ?`
-    ).bind(body.stream_id).first<typeof stream>();
-  } catch (err) {
-    console.error('[donations/init] DB error:', (err as Error).message);
-    return c.json({ success: false, error: 'DB 오류: ' + (err as Error).message }, 500);
+    ).bind(body.stream_id).first<StreamRow>();
+  } catch {
+    // Fallback: live_streams table or donation_commission_rate column may not exist yet
+    try {
+      stream = await DB.prepare(
+        `SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name, 15.0 AS commission_rate
+         FROM live_streams ls
+         JOIN sellers s ON ls.seller_id = s.id
+         WHERE ls.id = ?`
+      ).bind(body.stream_id).first<StreamRow>();
+    } catch (err2) {
+      console.error('[donations/init] DB error:', (err2 as Error).message);
+      return c.json({ success: false, error: 'live_streams 테이블이 없습니다. 마이그레이션을 실행해주세요.' }, 500);
+    }
   }
 
   if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
@@ -106,21 +117,28 @@ donationsRoutes.post('/confirm', async (c) => {
 
   const { DB } = c.env;
 
-  // 중복 결제 확인
+  // 중복 결제 확인 (donations 테이블 없으면 무시)
   const dup = await DB.prepare('SELECT id FROM donations WHERE order_id = ?')
     .bind(body.orderId).first<{ id: number }>().catch(() => null);
   if (dup) return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
 
-  // 스트림 + 수수료율 조회
-  const stream = await DB.prepare(
-    `SELECT ls.seller_id, s.name AS seller_name,
-            COALESCE(s.donation_commission_rate, 15.0) AS commission_rate
-     FROM live_streams ls
-     JOIN sellers s ON ls.seller_id = s.id
-     WHERE ls.id = ?`
-  ).bind(body.stream_id).first<{
-    seller_id: number; seller_name: string; commission_rate: number;
-  }>().catch(() => null);
+  // 스트림 + 수수료율 조회 (two-step fallback)
+  type ConfirmStreamRow = { seller_id: number; seller_name: string; commission_rate: number; };
+  let stream: ConfirmStreamRow | null = null;
+  try {
+    stream = await DB.prepare(
+      `SELECT ls.seller_id, s.name AS seller_name,
+              COALESCE(s.donation_commission_rate, 15.0) AS commission_rate
+       FROM live_streams ls JOIN sellers s ON ls.seller_id = s.id
+       WHERE ls.id = ?`
+    ).bind(body.stream_id).first<ConfirmStreamRow>();
+  } catch {
+    stream = await DB.prepare(
+      `SELECT ls.seller_id, s.name AS seller_name, 15.0 AS commission_rate
+       FROM live_streams ls JOIN sellers s ON ls.seller_id = s.id
+       WHERE ls.id = ?`
+    ).bind(body.stream_id).first<ConfirmStreamRow>().catch(() => null);
+  }
 
   if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
 

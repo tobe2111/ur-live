@@ -346,41 +346,72 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
     const startDate = c.req.query('start_date');
     const endDate = c.req.query('end_date');
 
-    let query = `
-      SELECT o.id, o.order_number, o.user_id, o.seller_id,
-             COALESCE(o.total_amount, o.total_price, 0) as total_amount,
-             COALESCE(o.status, 'pending') as status,
-             COALESCE(o.payment_status, 'pending') as payment_status,
-             COALESCE(o.payment_method, '') as payment_method,
-             COALESCE(o.shipping_name, '') as shipping_name,
-             COALESCE(o.shipping_phone, '') as shipping_phone,
-             COALESCE(o.shipping_address, '') as shipping_address,
-             COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
-             COALESCE(o.shipping_zipcode, '') as shipping_zipcode,
-             o.courier, o.tracking_number, o.created_at, o.updated_at,
-             u.name as user_name, u.email as user_email,
-             s.business_name as seller_name
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      LEFT JOIN sellers s ON o.seller_id = s.id
-      WHERE 1=1
-    `;
-    const params: (string | number | null)[] = [];
-    if (status) { query += ' AND COALESCE(o.status, \'pending\') = ?'; params.push(status); }
-    if (sellerId) { query += ' AND o.seller_id = ?'; params.push(sellerId); }
-    if (startDate) { query += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
-    if (endDate) { query += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
-    query += ' ORDER BY o.created_at DESC LIMIT 1000';
+    const buildWhere = (base: string) => {
+      const params: (string | number | null)[] = [];
+      let q = base;
+      if (status) { q += ' AND COALESCE(o.status,\'pending\') = ?'; params.push(status); }
+      if (sellerId) { q += ' AND o.seller_id = ?'; params.push(sellerId); }
+      if (startDate) { q += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
+      if (endDate) { q += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
+      q += ' ORDER BY o.created_at DESC LIMIT 1000';
+      return { q, params };
+    };
 
-    const orders = await executeQuery<OrderRow>(DB, query, params);
+    // Try with all columns first; fall back to minimal columns if any are missing
+    let orders: OrderRow[];
+    try {
+      const { q, params } = buildWhere(`
+        SELECT o.id, o.order_number, o.user_id, o.seller_id,
+               COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+               COALESCE(o.status,'pending') as status,
+               COALESCE(o.payment_status,'pending') as payment_status,
+               COALESCE(o.payment_method,'') as payment_method,
+               COALESCE(o.shipping_name,'') as shipping_name,
+               COALESCE(o.shipping_phone,'') as shipping_phone,
+               COALESCE(o.shipping_address,'') as shipping_address,
+               COALESCE(o.shipping_address_detail,'') as shipping_address_detail,
+               COALESCE(o.shipping_zipcode,'') as shipping_zipcode,
+               COALESCE(o.courier,'') as courier,
+               COALESCE(o.tracking_number,'') as tracking_number,
+               o.created_at, o.updated_at,
+               u.name as user_name, u.email as user_email,
+               COALESCE(s.business_name, s.name, '') as seller_name
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN sellers s ON o.seller_id = s.id
+        WHERE 1=1`);
+      orders = await executeQuery<OrderRow>(DB, q, params);
+    } catch {
+      // Fallback: minimal columns that are always safe
+      const { q, params } = buildWhere(`
+        SELECT o.id, o.order_number, o.user_id, o.seller_id,
+               COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+               COALESCE(o.status,'pending') as status,
+               'pending' as payment_status, '' as payment_method,
+               COALESCE(o.shipping_name,'') as shipping_name,
+               COALESCE(o.shipping_phone,'') as shipping_phone,
+               COALESCE(o.shipping_address,'') as shipping_address,
+               '' as shipping_address_detail, '' as shipping_zipcode,
+               '' as courier, '' as tracking_number,
+               o.created_at, o.updated_at,
+               u.name as user_name, u.email as user_email,
+               COALESCE(s.name,'') as seller_name
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN sellers s ON o.seller_id = s.id
+        WHERE 1=1`);
+      orders = await executeQuery<OrderRow>(DB, q, params);
+    }
+
     for (const order of orders) {
-      // order_items 테이블은 unit_price 컬럼 사용 (구 스키마는 price)
-      order.items = await executeQuery<OrderItemRow>(DB, `
-        SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
-               COALESCE(oi.unit_price, oi.price, 0) as price,
-               COALESCE(p.image_url, p.thumbnail_url, oi.product_image) as image_url
-        FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = ?`, [order.id]);
+      try {
+        order.items = await executeQuery<OrderItemRow>(DB, `
+          SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
+                 COALESCE(oi.unit_price, oi.price, 0) as price,
+                 COALESCE(p.image_url, p.thumbnail_url, oi.product_image) as image_url
+          FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = ?`, [order.id]);
+      } catch { order.items = []; }
     }
     return c.json({ success: true, data: orders });
   } catch (err) {
@@ -889,29 +920,61 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     else if (period === 'week') df = "AND DATE(o.created_at) >= DATE('now','-7 days')";
     else if (period === 'month') df = "AND DATE(o.created_at) >= DATE('now','-30 days')";
 
-    const safe = async <T>(q: string): Promise<T[]> => {
+    const safeFull = async <T>(q: string): Promise<T[] | null> => {
+      try { return await executeQuery<T>(DB, q); } catch { return null; }
+    };
+    const safeFallback = async <T>(q: string): Promise<T[]> => {
       try { return await executeQuery<T>(DB, q); } catch { return []; }
     };
 
-    const [overview, sellers] = await Promise.all([
-      safe<SettlementOverviewRow>(`
+    // Try full query (with commission_rate and payment_status); fall back if columns missing
+    let overview: SettlementOverviewRow[];
+    const fullOverview = await safeFull<SettlementOverviewRow>(`
+      SELECT COUNT(*) as total_orders,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
+      FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
+      WHERE COALESCE(o.payment_status,'pending')='approved' ${df}`);
+    if (fullOverview !== null) {
+      overview = fullOverview;
+    } else {
+      overview = await safeFallback<SettlementOverviewRow>(`
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
+               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
+               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
-        WHERE COALESCE(o.payment_status,'pending')='approved' ${df}`),
-      safe<SettlementSellerRow>(`
+        WHERE 1=1 ${df}`);
+    }
+
+    let sellers: SettlementSellerRow[];
+    const fullSellers = await safeFull<SettlementSellerRow>(`
+      SELECT s.id as seller_id, s.name as seller_name, s.business_name,
+             COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             COUNT(o.id) as order_count,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
+      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND COALESCE(o.payment_status,'pending')='approved' ${df}
+      GROUP BY s.id ORDER BY total_sales DESC`);
+    if (fullSellers !== null) {
+      sellers = fullSellers;
+    } else {
+      sellers = await safeFallback<SettlementSellerRow>(`
         SELECT s.id as seller_id, s.name as seller_name, s.business_name,
-               COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
+               ${DEFAULT_COMMISSION_RATE} as commission_rate,
                COUNT(o.id) as order_count,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
-        FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND COALESCE(o.payment_status,'pending')='approved' ${df}
-        GROUP BY s.id ORDER BY total_sales DESC`),
-    ]);
-    return c.json({ success: true, data: { overview: overview[0] || {}, sellers } });
+               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as commission_amount,
+               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount
+        FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id
+        WHERE 1=1 ${df}
+        GROUP BY s.id ORDER BY total_sales DESC`);
+    }
+
+    const defaultOverview = { total_orders: 0, total_sales: 0, total_commission: 0, total_seller_amount: 0 };
+    return c.json({ success: true, data: { overview: overview[0] || defaultOverview, sellers } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -924,25 +987,48 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     const sellerId = c.req.query('seller_id');
     const status = c.req.query('status');
 
-    let query = `
-      SELECT o.id, o.order_number, o.seller_id, s.name as seller_name, s.business_name,
-             COALESCE(o.total_amount, o.total_price, 0), COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-             (COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as commission_amount,
-             (COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)) as seller_amount,
-             COALESCE(o.settlement_status,'pending') as settlement_status,
-             o.settled_at, o.created_at, u.name as user_name
-      FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
-      WHERE o.payment_status='approved'
-    `;
-    const params: (string | number | null)[] = [];
-    if (period === 'today') { query += ' AND DATE(o.created_at)=?'; params.push(new Date().toISOString().split('T')[0]); }
-    else if (period === 'week') query += " AND DATE(o.created_at)>=DATE('now','-7 days')";
-    else if (period === 'month') query += " AND DATE(o.created_at)>=DATE('now','-30 days')";
-    if (sellerId) { query += ' AND o.seller_id=?'; params.push(sellerId); }
-    if (status && status !== 'all') { query += " AND COALESCE(o.settlement_status,'pending')=?"; params.push(status); }
-    query += ' ORDER BY o.created_at DESC LIMIT 1000';
+    const safe = async <T>(q: string, p: (string|number|null)[] = []): Promise<T[]> => {
+      try { return await executeQuery<T>(DB, q, p); } catch { return []; }
+    };
 
-    const records = await executeQuery<SettlementRecordRow>(DB, query, params);
+    const buildQuery = (withNewCols: boolean) => {
+      let q = withNewCols
+        ? `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
+                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
+                  COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
+                  COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
+                  COALESCE(o.settlement_status,'pending') as settlement_status,
+                  o.settled_at, o.created_at, COALESCE(u.name,'') as user_name
+           FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
+           WHERE COALESCE(o.payment_status,'pending')='approved'`
+        : `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
+                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  ${DEFAULT_COMMISSION_RATE} as commission_rate,
+                  COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
+                  COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
+                  'pending' as settlement_status,
+                  NULL as settled_at, o.created_at, COALESCE(u.name,'') as user_name
+           FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
+           WHERE 1=1`;
+      const params: (string|number|null)[] = [];
+      if (period === 'today') { q += ' AND DATE(o.created_at)=?'; params.push(new Date().toISOString().split('T')[0]); }
+      else if (period === 'week') q += " AND DATE(o.created_at)>=DATE('now','-7 days')";
+      else if (period === 'month') q += " AND DATE(o.created_at)>=DATE('now','-30 days')";
+      if (sellerId) { q += ' AND o.seller_id=?'; params.push(sellerId); }
+      if (withNewCols && status && status !== 'all') { q += " AND COALESCE(o.settlement_status,'pending')=?"; params.push(status); }
+      q += ' ORDER BY o.created_at DESC LIMIT 1000';
+      return { q, params };
+    };
+
+    let records: SettlementRecordRow[];
+    try {
+      const { q, params } = buildQuery(true);
+      records = await executeQuery<SettlementRecordRow>(DB, q, params);
+    } catch {
+      const { q, params } = buildQuery(false);
+      records = await safe<SettlementRecordRow>(q, params);
+    }
     return c.json({ success: true, data: records });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
