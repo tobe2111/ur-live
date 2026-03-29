@@ -86,7 +86,7 @@ export const authMiddleware = createMiddleware<{
   }
 
   const token = authHeader.slice(7);
-  const payload = await verifyJwt(token, c.env.JWT_SECRET ?? 'dev-secret-change-in-prod');
+  const payload = await verifyJwt(token, c.env.JWT_SECRET);
 
   if (!payload) {
     return c.json({ success: false, error: 'Invalid or expired token' }, 401);
@@ -109,7 +109,7 @@ export const optionalAuthMiddleware = createMiddleware<{
   const authHeader = c.req.header('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    const payload = await verifyJwt(token, c.env.JWT_SECRET ?? 'dev-secret-change-in-prod');
+    const payload = await verifyJwt(token, c.env.JWT_SECRET);
     if (payload) {
       c.set('user', {
         id: payload.sub,

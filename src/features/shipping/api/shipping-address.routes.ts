@@ -16,10 +16,11 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { 
-  requireAuth, 
-  getCurrentUser 
+import {
+  requireAuth,
+  getCurrentUser
 } from '@/worker/middleware/auth';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
   validateRequiredString,
   validateOptionalString,
@@ -67,7 +68,7 @@ export const shippingAddressRoutes = new Hono<{ Bindings: Bindings }>();
 
 // CORS 설정
 shippingAddressRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [...ALLOWED_ORIGINS],
   credentials: true,
 }));
 

@@ -23,6 +23,7 @@ import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
+import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 
 interface SellerRow {
   id: number;
@@ -780,17 +781,17 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
       executeQuery<SettlementOverviewRow>(DB, `
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(o.total_amount),0) as total_sales,
-               COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,10)/100),0) as total_commission,
-               COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,10)/100)),0) as total_seller_amount
+               COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
+               COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
         WHERE o.payment_status='approved' ${df}`),
       executeQuery<SettlementSellerRow>(DB, `
         SELECT s.id as seller_id, s.name as seller_name, s.business_name,
-               COALESCE(s.commission_rate,10) as commission_rate,
+               COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
                COUNT(o.id) as order_count,
                COALESCE(SUM(o.total_amount),0) as total_sales,
-               COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,10)/100),0) as commission_amount,
-               COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,10)/100)),0) as seller_amount
+               COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
+               COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
         FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.payment_status='approved' ${df}
         GROUP BY s.id ORDER BY total_sales DESC`),
     ]);
@@ -809,9 +810,9 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
 
     let query = `
       SELECT o.id, o.order_number, o.seller_id, s.name as seller_name, s.business_name,
-             o.total_amount, COALESCE(s.commission_rate,10) as commission_rate,
-             (o.total_amount*COALESCE(s.commission_rate,10)/100) as commission_amount,
-             (o.total_amount*(1-COALESCE(s.commission_rate,10)/100)) as seller_amount,
+             o.total_amount, COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             (o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as commission_amount,
+             (o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)) as seller_amount,
              COALESCE(o.settlement_status,'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
@@ -880,9 +881,9 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
 
     let query = `
       SELECT o.order_number, s.name as seller_name, s.business_name,
-             o.total_amount, COALESCE(s.commission_rate,10) as commission_rate,
-             ROUND(o.total_amount*COALESCE(s.commission_rate,10)/100) as commission_amount,
-             ROUND(o.total_amount*(1-COALESCE(s.commission_rate,10)/100)) as seller_amount,
+             o.total_amount, COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             ROUND(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as commission_amount,
+             ROUND(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)) as seller_amount,
              COALESCE(o.settlement_status,'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o

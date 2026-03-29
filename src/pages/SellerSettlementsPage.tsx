@@ -4,8 +4,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
+import SellerLayout from '@/components/SellerLayout'
+import {
   DollarSign,
   Calendar,
   CheckCircle,
@@ -181,47 +181,22 @@ export default function SellerSettlementsPage() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/seller')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">정산 관리</h1>
-                <p className="text-sm text-gray-600">판매 정산 내역 및 관리</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => loadSettlements()}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                새로고침
-              </Button>
-              <Button
-                onClick={requestSettlement}
-                className="bg-blue-600 hover:bg-blue-700"
-                size="sm"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                정산 신청
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+  const headerRight = (
+    <div className="flex gap-2">
+      <Button onClick={() => loadSettlements()} variant="outline" size="sm">
+        <RefreshCw className="w-4 h-4 mr-2" />
+        새로고침
+      </Button>
+      <Button onClick={requestSettlement} className="bg-blue-600 hover:bg-blue-700" size="sm">
+        <FileText className="w-4 h-4 mr-2" />
+        정산 신청
+      </Button>
+    </div>
+  )
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+  return (
+    <SellerLayout title="정산 관리" headerRight={headerRight}>
+      <div className="max-w-7xl mx-auto">
         {/* Statistics Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
@@ -418,6 +393,6 @@ export default function SellerSettlementsPage() {
           </ul>
         </div>
       </div>
-    </div>
+    </SellerLayout>
   )
 }

@@ -101,7 +101,7 @@ authTokenRoutes.post('/id-token', async (c) => {
       exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
     };
 
-    const token = await sign(tokenPayload, c.env.JWT_SECRET || 'dev-secret-change-in-prod');
+    const token = await sign(tokenPayload, c.env.JWT_SECRET);
 
     // Token expires in 55 minutes (5-minute buffer like client cache)
     const expiresAt = Date.now() + (55 * 60 * 1000);
@@ -168,7 +168,7 @@ authTokenRoutes.get('/token-info', async (c) => {
 
     // Verify token
     const { verify } = await import('hono/jwt');
-    const decoded = await verify(token, c.env.JWT_SECRET || 'dev-secret-change-in-prod', 'HS256').catch(() => null);
+    const decoded = await verify(token, c.env.JWT_SECRET, 'HS256').catch(() => null);
 
     if (!decoded) {
       return c.json({

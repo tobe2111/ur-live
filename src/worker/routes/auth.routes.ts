@@ -58,7 +58,7 @@ authRouter.post('/register', async (c) => {
       [userId, email, passwordHash, name, phone ?? null]
     );
 
-    const secret = c.env.JWT_SECRET ?? 'dev-secret-change-in-prod';
+    const secret = c.env.JWT_SECRET;
     const accessToken = await createJwt(
       { sub: userId, email, role: 'BUYER' },
       secret,
@@ -142,7 +142,7 @@ authRouter.post('/login', async (c) => {
       }
     }
 
-    const secret = c.env.JWT_SECRET ?? 'dev-secret-change-in-prod';
+    const secret = c.env.JWT_SECRET;
     const accessToken = await createJwt(
       { sub: user.id, email: user.email, role: user.role },
       secret,

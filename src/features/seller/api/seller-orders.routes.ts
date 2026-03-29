@@ -17,6 +17,7 @@ import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { sendSellerAlimtalk } from '../../alimtalk/send';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 type Bindings = {
   DB: D1Database;
@@ -32,7 +33,7 @@ type Bindings = {
 export const sellerOrdersRoutes = new Hono<{ Bindings: Bindings }>();
 
 sellerOrdersRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [...ALLOWED_ORIGINS],
   credentials: true,
 }));
 

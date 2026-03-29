@@ -8,8 +8,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import SellerLayout from '@/components/SellerLayout'
 import {
-  Truck, Package, ArrowLeft, Loader2,
+  Truck, Package, Loader2,
   Search, CheckCircle, XCircle, Clock,
   ShoppingBag, Tag, Plus
 } from 'lucide-react'
@@ -145,19 +146,8 @@ export default function SellerSupplyPage() {
   const approvedCount = requests.filter(r => r.status === 'APPROVED').length
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate('/seller')} className="p-1.5 rounded-lg hover:bg-gray-100">
-          <ArrowLeft className="w-4 h-4 text-gray-500" />
-        </button>
-        <div className="flex items-center gap-2">
-          <Truck className="w-5 h-5 text-purple-600" />
-          <h1 className="text-sm font-semibold text-gray-900">공급 상품</h1>
-        </div>
-      </div>
-
-      <div className="max-w-3xl mx-auto px-4 py-6">
+    <SellerLayout title="공급 상품">
+      <div className="max-w-3xl mx-auto">
         {/* Tabs */}
         <div className="flex gap-1 mb-5 border-b border-gray-200">
           <button
@@ -432,6 +422,6 @@ export default function SellerSupplyPage() {
           </div>
         </div>
       )}
-    </div>
+    </SellerLayout>
   )
 }

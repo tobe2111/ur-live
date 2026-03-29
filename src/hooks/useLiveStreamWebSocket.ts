@@ -20,6 +20,13 @@ import { getAccessToken } from '@/utils/auth'
 import type { ChatMessage } from './useFirebaseChat'
 import type { StreamData } from './useFirebaseStream'
 
+export interface DonationEvent {
+  donorName: string
+  amount: number
+  message: string
+  creditAmount: number
+}
+
 export interface UseLiveStreamWebSocketReturn {
   // Chat (useFirebaseChat 동일 인터페이스)
   messages: ChatMessage[]
@@ -35,6 +42,9 @@ export interface UseLiveStreamWebSocketReturn {
 
   // Stream (useFirebaseStream 동일 인터페이스)
   streamData: StreamData | null
+
+  // Donations
+  lastDonation: DonationEvent | null
 }
 
 export function useLiveStreamWebSocket(
@@ -45,6 +55,7 @@ export function useLiveStreamWebSocket(
   const [streamData, setStreamData] = useState<StreamData | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastDonation, setLastDonation] = useState<DonationEvent | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectAttemptsRef = useRef(0)
@@ -192,6 +203,8 @@ export function useLiveStreamWebSocket(
                     updated_at: Date.now(),
                   }
             )
+          } else if (msg.type === 'donation') {
+            setLastDonation(msg.data as DonationEvent)
           }
         } catch (e) {
           console.error('[WS] Message parse error:', e)
@@ -251,5 +264,6 @@ export function useLiveStreamWebSocket(
     sendMessage,
     clearMessages,
     streamData,
+    lastDonation,
   }
 }

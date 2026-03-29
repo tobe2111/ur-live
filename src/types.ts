@@ -108,12 +108,13 @@ export interface OrderItem {
 }
 
 // WebSocket Message Types
-export type WSMessageType = 
+export type WSMessageType =
   | 'product_change'
   | 'cart_update'
   | 'viewer_count'
   | 'chat_message'
-  | 'stream_status';
+  | 'stream_status'
+  | 'donation';
 
 export interface WSMessage {
   type: WSMessageType;

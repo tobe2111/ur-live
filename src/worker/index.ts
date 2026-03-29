@@ -51,6 +51,9 @@ import youtubeRoutes from '../features/youtube/api/youtube.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
+import { donationRoutes } from '../features/donations/api/donation.routes';
+
+import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -70,15 +73,9 @@ app.use('/api/*', rateLimiterMiddleware as any);
 app.use('*', cors({
   origin: (origin, c) => {
     const env = (c as any).env as Env;
-    const allowed = [
-      env?.FRONTEND_URL ?? 'http://localhost:5173',
-      'https://ur-live.pages.dev',
-      'https://www.ur-live.com',
-      'https://live.ur-team.com',   // ✅ 실제 프로덕션 도메인 추가
-      'https://ur-team.com',
-      'https://www.ur-team.com',
-      'http://localhost:5173',
-      'http://localhost:3000',
+    const allowed: string[] = [
+      ...ALLOWED_ORIGINS,
+      ...(env?.FRONTEND_URL ? [env.FRONTEND_URL] : []),
     ];
     if (!origin || allowed.includes(origin)) return origin ?? '';
     return '';
@@ -103,44 +100,35 @@ app.use('*', cors({
 app.use('*', async (c, next) => {
   await next();
   // Content-Security-Policy — worker-src blob: allows Web Workers from blob URLs
+  // CSP — 공통 script sources (script-src와 script-src-elem에서 공유)
+  const scriptSources = [
+    "'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:",
+    "https://*.cloudflare.com", "https://static.cloudflareinsights.com", "https://cloudflareinsights.com",
+    "https://*.googletagmanager.com", "https://*.google-analytics.com",
+    "https://*.tosspayments.com", "https://js.tosspayments.com",
+    "https://*.stripe.com", "https://js.stripe.com", "https://m.stripe.network", "https://m.stripe.com",
+    "https://*.firebase.google.com", "https://*.firebaseio.com", "https://*.firebasedatabase.app",
+    FIREBASE_RTDB_URL,
+    "https://apis.google.com", "https://*.googleapis.com",
+    "https://kauth.kakao.com", "https://*.kakao.com", "https://t1.kakaocdn.net", "https://*.daumcdn.net",
+    "https://www.youtube.com", "https://youtube.com", "https://s.ytimg.com", "https://*.youtube.com",
+    "https://cdn.jsdelivr.net", "https://unpkg.com", "https://*.sentry.io",
+    `https://*.firebaseapp.com`, FIREBASE_APP_URL,
+  ].join(' ');
+
   c.header('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: " +
-      "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
-      "https://*.googletagmanager.com https://*.google-analytics.com " +
-      "https://*.tosspayments.com https://js.tosspayments.com " +
-      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
-      "https://*.firebase.google.com https://*.firebaseio.com https://*.firebasedatabase.app " +
-      "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app " +
-      "https://apis.google.com https://*.googleapis.com " +
-      "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
-      "https://www.youtube.com https://youtube.com https://s.ytimg.com https://*.youtube.com " +
-      "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
-      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com; " +
-    "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: " +
-      "https://*.cloudflare.com https://static.cloudflareinsights.com https://cloudflareinsights.com " +
-      "https://*.googletagmanager.com https://*.google-analytics.com " +
-      "https://*.tosspayments.com https://js.tosspayments.com " +
-      "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
-      "https://*.firebase.google.com https://*.firebaseio.com https://*.firebasedatabase.app " +
-      "https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app " +
-      "https://apis.google.com https://*.googleapis.com " +
-      "https://kauth.kakao.com https://*.kakao.com https://t1.kakaocdn.net https://*.daumcdn.net " +
-      "https://www.youtube.com https://youtube.com https://s.ytimg.com https://*.youtube.com " +
-      "https://cdn.jsdelivr.net https://unpkg.com https://*.sentry.io " +
-      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com; " +
+    `script-src ${scriptSources}; ` +
+    `script-src-elem ${scriptSources}; ` +
     "worker-src 'self' blob:; " +
     "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://*.stripe.com https://m.stripe.network; " +
     "img-src 'self' 'unsafe-inline' data: https: blob:; " +
     "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
-    "connect-src 'self' https: wss: " +
-      "https://*.firebaseio.com https://*.firebasedatabase.app " +
-      "wss://*.firebaseio.com wss://*.firebasedatabase.app " +
-      "wss://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app; " +
+    `connect-src 'self' https: wss: https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com wss://*.firebasedatabase.app wss://${new URL(FIREBASE_RTDB_URL).host}; ` +
     "frame-src 'self' " +
       "https://*.tosspayments.com https://js.tosspayments.com " +
       "https://*.stripe.com https://js.stripe.com https://m.stripe.network https://m.stripe.com " +
-      "https://*.firebaseapp.com https://urteam-live-commerce-5b284.firebaseapp.com " +
+      `https://*.firebaseapp.com ${FIREBASE_APP_URL} ` +
       "https://*.firebase.google.com https://*.firebaseio.com " +
       "https://accounts.google.com https://*.google.com " +
       "https://apis.google.com " +
@@ -402,6 +390,9 @@ app.route('/api/chat', chatRoutes);
 app.route('/api/admin/cafe24', cafe24Routes);
 // Public callback path (Cafe24 redirects here, no auth needed for the callback itself)
 app.route('/admin/cafe24', cafe24Routes);
+
+// ---- Donations ----
+app.route('/api/donations', donationRoutes);
 
 // ============================================================
 // [참고] 라우트 등록 원칙 (이 주석을 절대 삭제하지 말 것)

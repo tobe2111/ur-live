@@ -231,6 +231,16 @@ ordersRouter.post('/', async (c) => {
       total: order.total_amount,
     });
 
+    // 자동 알림톡 발송 (주문 확인) - 비동기로 처리, 실패해도 주문 생성에 영향 없음
+    if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+      import('../../lib/alimtalk-auto').then(({ sendOrderConfirmation }) => {
+        sendOrderConfirmation(
+          { DB: c.env.DB, ALIGO_API_KEY: c.env.ALIGO_API_KEY!, ALIGO_USER_ID: c.env.ALIGO_USER_ID!, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
+          typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10)
+        ).catch((err: Error) => console.error('[Alimtalk] Order confirmation failed:', err.message));
+      }).catch(() => { /* alimtalk not critical */ });
+    }
+
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {

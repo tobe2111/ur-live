@@ -6,6 +6,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import jwt from '@tsndr/cloudflare-worker-jwt'
+import { ALLOWED_ORIGINS } from '@/shared/constants'
 
 type Bindings = {
   DB: D1Database
@@ -65,7 +66,7 @@ interface YouTubeSentMessageItem {
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('/*', cors({
-  origin: ['https://live.ur-team.com', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [...ALLOWED_ORIGINS],
   allowHeaders: ['Content-Type', 'Authorization'],
   allowMethods: ['GET', 'POST', 'OPTIONS'],
   credentials: true

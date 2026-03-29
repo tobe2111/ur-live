@@ -9,8 +9,8 @@ export const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000,
       // 🔥 30분 후 가비지 컬렉션
       gcTime: 30 * 60 * 1000,
-      // 🔥 에러 발생 시 3회 재시도
-      retry: 3,
+      // 🔥 에러 발생 시 1회 재시도 (3회 → 1회로 변경, 불필요한 지연 방지)
+      retry: 1,
       // 🔥 백그라운드 자동 갱신
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
