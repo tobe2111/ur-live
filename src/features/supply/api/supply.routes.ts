@@ -10,11 +10,12 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 const supplyRoutes = new Hono<{ Bindings: Env }>();
 
 supplyRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'https://ur-live.pages.dev', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [...ALLOWED_ORIGINS],
   credentials: true,
 }));
 

@@ -69,3 +69,39 @@ export const MAX_QUANTITY_PER_ITEM = 99;
 
 export const JWT_ACCESS_TOKEN_EXPIRY = 15 * 60;       // 15 minutes
 export const JWT_REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days
+
+// ============================================================
+// CORS — 허용 도메인 목록 (모든 라우트에서 공유)
+// ============================================================
+export const ALLOWED_ORIGINS = [
+  'https://ur-live.pages.dev',
+  'https://www.ur-live.com',
+  'https://live.ur-team.com',
+  'https://ur-team.com',
+  'https://www.ur-team.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+] as const;
+
+// ============================================================
+// 비즈니스 상수
+// ============================================================
+export const DEFAULT_COMMISSION_RATE = 10.00;           // 셀러 기본 수수료율 (%)
+export const DONATION_COMMISSION_RATE = 0.10;           // 후원 플랫폼 수수료율 (10%)
+export const CREDIT_UNIT_PRICE = 8;                     // 알림톡 크레딧 1건 = 8원
+export const MIN_PASSWORD_LENGTH = 8;                   // 비밀번호 최소 길이
+
+// ============================================================
+// Firebase
+// ============================================================
+export const FIREBASE_RTDB_URL = 'https://urteam-live-commerce-5b284-default-rtdb.asia-southeast1.firebasedatabase.app';
+export const FIREBASE_APP_URL = 'https://urteam-live-commerce-5b284.firebaseapp.com';
+
+// ============================================================
+// 외부 API Base URLs
+// ============================================================
+export const TOSS_PAYMENT_CONFIRM_URL = `${TOSS_PAYMENT_URL}/payments/confirm`;
+export const ALIGO_API_BASE = 'https://kakaoapi.aligo.in/akv10';
+export const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
+export const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com';
+export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';
