@@ -184,14 +184,35 @@ export default function SellerAlimtalkPage() {
   }
 
   return (
-    <SellerLayout title="알림톡" headerRight={headerRight}>
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#F4F5F7]">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-6 h-14 flex items-center gap-3">
+        <Link to="/seller" className="text-gray-400 hover:text-gray-600">
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <MessageSquare className="w-5 h-5 text-purple-600" />
+        <h1 className="text-base font-semibold text-gray-900">브랜드메시지</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-gray-400">잔여 크레딧</span>
+          <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+            {balance.toLocaleString()}건
+          </span>
+          <button
+            onClick={() => setChargeModal(true)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+          >
+            <CreditCard className="w-3.5 h-3.5" /> 충전
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-2xl mx-auto px-4 py-6">
         {/* 잔액 카드 */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-5 text-white mb-5 shadow">
-          <p className="text-xs text-blue-100 mb-1">알림톡 크레딧 잔액</p>
+          <p className="text-xs text-blue-100 mb-1">브랜드메시지 크레딧 잔액</p>
           <p className="text-3xl font-bold">{balance.toLocaleString()}<span className="text-lg font-normal ml-1">건</span></p>
           <p className="text-xs text-blue-100 mt-2">
-            주문 완료·배송 시작 시 자동 발송 · 건당 9원
+            라이브 팔로워에게 마케팅 메시지 발송 · 건당 25원
           </p>
         </div>
 
@@ -216,11 +237,11 @@ export default function SellerAlimtalkPage() {
         {activeTab === 'overview' && (
           <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-50">
             {[
-              { trigger: '주문 접수 완료',   desc: '구매자에게 주문 확인 알림톡 발송',     active: true },
-              { trigger: '배송 시작',         desc: '운송장 번호 포함 배송 시작 알림톡 발송', active: true },
-              { trigger: '배송 완료',         desc: '배송 완료 안내 알림톡',               active: false },
-              { trigger: '라이브 10분 전',    desc: '팔로워에게 라이브 예고 알림톡',        active: false },
-              { trigger: '주문 취소',         desc: '취소 처리 완료 알림톡',               active: true },
+              { trigger: '주문 접수 완료',   desc: '자동 발송 (플랫폼 처리, 크레딧 불차감)',     active: true },
+              { trigger: '배송 시작',         desc: '자동 발송 (플랫폼 처리, 크레딧 불차감)', active: true },
+              { trigger: '배송 완료',         desc: '배송 완료 알림 (준비 중)',               active: false },
+              { trigger: '라이브 10분 전',    desc: '라이브 시작 전 팔로워에게 브랜드메시지 발송',        active: false },
+              { trigger: '주문 취소',         desc: '자동 발송 (플랫폼 처리, 크레딧 불차감)',               active: true },
             ].map(item => (
               <div key={item.trigger} className="flex items-center justify-between p-4">
                 <div>
@@ -314,7 +335,7 @@ export default function SellerAlimtalkPage() {
           <div className="fixed inset-0 bg-black/50" onClick={() => setChargeModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">크레딧 충전</h3>
-            <p className="text-xs text-gray-400 mb-4">건당 9원 · 카카오 알림톡 자동 발송</p>
+            <p className="text-xs text-gray-400 mb-4">건당 25원 · 카카오 친구톡(브랜드메시지)</p>
 
             <div className="space-y-2 mb-5">
               {packages.length === 0 ? (
@@ -364,6 +385,6 @@ export default function SellerAlimtalkPage() {
           </div>
         </div>
       )}
-    </SellerLayout>
+    </div>
   )
 }

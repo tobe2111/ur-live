@@ -47,11 +47,12 @@ import { shippingAddressRoutes } from '../features/shipping/api/shipping-address
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
 import { alimtalkRoutes } from '../features/alimtalk/api/alimtalk.routes';
+import { donationsRoutes } from '../features/donations/api/donations.routes';
+import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
-import { donationRoutes } from '../features/donations/api/donation.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 
@@ -376,6 +377,10 @@ app.route('/api/supply', supplyRoutes);
 // 알림톡 크레딧 시스템
 app.route('/api/seller/alimtalk', alimtalkRoutes);
 
+// ── 후원(도네이션) ──
+app.route('/api/donations', donationsRoutes);
+app.route('/api/seller', sellerDonationsRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
@@ -391,8 +396,6 @@ app.route('/api/admin/cafe24', cafe24Routes);
 // Public callback path (Cafe24 redirects here, no auth needed for the callback itself)
 app.route('/admin/cafe24', cafe24Routes);
 
-// ---- Donations ----
-app.route('/api/donations', donationRoutes);
 
 // ============================================================
 // [참고] 라우트 등록 원칙 (이 주석을 절대 삭제하지 말 것)

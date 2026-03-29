@@ -7,6 +7,46 @@
 
 const ALIGO_API_BASE = 'https://kakaoapi.aligo.in/akv10';
 
+// ── 친구톡 (브랜드메시지) 발송 ─────────────────────────────────────────────────
+
+export interface AligoFriendParams {
+  apikey: string;
+  userid: string;
+  senderkey: string;
+  sender: string;          // 발신번호
+  receiver_1: string;      // 수신자 전화번호
+  recvname_1: string;      // 수신자명
+  subject_1: string;       // 메시지 제목 (35자 이내)
+  message_1: string;       // 메시지 본문
+  ptype_1?: 'I' | 'W';    // I=이미지, W=와이드이미지 (없으면 텍스트)
+  image_1?: string;        // 이미지 URL (ptype_1=I일 때)
+  button_1?: string;       // 버튼 JSON
+  failover?: 'Y' | 'N';   // 실패 시 SMS 대체
+  fsubject_1?: string;
+  fmessage_1?: string;
+}
+
+export async function sendFriendTalk(params: AligoFriendParams): Promise<AligoSendResult> {
+  const body = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) body.append(k, String(v));
+  });
+
+  const res = await fetch(`${ALIGO_API_BASE}/friend/send/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const json = await res.json<{ code: number; message: string; info?: any }>();
+  return {
+    success: json.code === 0,
+    code: json.code,
+    message: json.message,
+    info: json.info,
+  };
+}
+
 export interface AligoSendParams {
   apikey: string;
   userid: string;

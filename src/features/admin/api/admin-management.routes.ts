@@ -214,6 +214,27 @@ adminManagementRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
   }
 });
 
+// ── 후원 수수료율 변경 ────────────────────────────────────────────────────────
+adminManagementRoutes.patch('/sellers/:id/donation-commission', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const { donation_commission_rate } = await c.req.json();
+    if (donation_commission_rate === undefined || donation_commission_rate < 0 || donation_commission_rate > 100) {
+      return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
+    }
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
+    if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    await executeQuery(DB,
+      `UPDATE sellers SET donation_commission_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [donation_commission_rate, sellerId]
+    );
+    return c.json({ success: true, data: { id: sellerId, donation_commission_rate } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 adminManagementRoutes.patch('/sellers/:id/permissions', cors(), async (c) => {
   try {
     const { DB } = c.env;
@@ -1053,5 +1074,92 @@ adminManagementRoutes.get('/alimtalk/statistics', cors(), async (c) => {
     });
   } catch {
     return c.json({ success: true, data: { total_sent: 0, total_cost: 0, active_accounts: 0, total_balance: 0 } });
+  }
+});
+
+
+// ─── 후원 정산 관리 ───────────────────────────────────────────────────────────
+
+// GET /api/admin/donations/settlements - 전체 정산 신청 목록
+adminManagementRoutes.get('/donations/settlements', cors(), async (c) => {
+  const { DB } = c.env;
+  const status = c.req.query('status') || '';
+  try {
+    let query = `
+      SELECT ds.id, ds.seller_id, s.name AS seller_name, s.business_name,
+             ds.total_amount, ds.commission_amount, ds.settlement_amount,
+             ds.donation_count, ds.status, ds.requested_at, ds.settled_at,
+             ds.admin_memo, ds.bank_info, ds.created_at
+      FROM donation_settlements ds
+      JOIN sellers s ON ds.seller_id = s.id
+    `;
+    const params: (string | number)[] = [];
+    if (status) { query += ' WHERE ds.status = ?'; params.push(status); }
+    query += ' ORDER BY ds.created_at DESC LIMIT 200';
+
+    const { results } = await DB.prepare(query).bind(...params).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
+
+// GET /api/admin/donations/stats - 후원 통계
+adminManagementRoutes.get('/donations/stats', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    const [totalDonations, pendingSettlements, totalCommission] = await Promise.all([
+      DB.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total FROM donations WHERE status='DONE'`)
+        .first<{ cnt: number; total: number }>().catch(() => ({ cnt: 0, total: 0 })),
+      DB.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(settlement_amount),0) AS total FROM donation_settlements WHERE status='REQUESTED'`)
+        .first<{ cnt: number; total: number }>().catch(() => ({ cnt: 0, total: 0 })),
+      DB.prepare(`SELECT COALESCE(SUM(commission_amount),0) AS total FROM donations WHERE status='DONE'`)
+        .first<{ total: number }>().catch(() => ({ total: 0 })),
+    ]);
+    return c.json({
+      success: true,
+      data: {
+        total_donations: totalDonations?.cnt ?? 0,
+        total_amount: totalDonations?.total ?? 0,
+        pending_settlements: pendingSettlements?.cnt ?? 0,
+        pending_settlement_amount: pendingSettlements?.total ?? 0,
+        total_commission: totalCommission?.total ?? 0,
+      },
+    });
+  } catch {
+    return c.json({ success: true, data: { total_donations: 0, total_amount: 0, pending_settlements: 0, pending_settlement_amount: 0, total_commission: 0 } });
+  }
+});
+
+// PATCH /api/admin/donations/settlements/:id - 정산 완료/거부
+adminManagementRoutes.patch('/donations/settlements/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  const settleId = c.req.param('id');
+  try {
+    const body = await c.req.json<{ action: 'done' | 'reject'; admin_memo?: string }>();
+    if (!['done', 'reject'].includes(body.action)) {
+      return c.json({ success: false, error: 'action은 done 또는 reject이어야 합니다' }, 400);
+    }
+    const existing = await DB.prepare(
+      `SELECT id, status FROM donation_settlements WHERE id = ?`
+    ).bind(settleId).first<{ id: number; status: string }>();
+    if (!existing) return c.json({ success: false, error: '정산 신청을 찾을 수 없습니다' }, 404);
+    if (existing.status !== 'REQUESTED') {
+      return c.json({ success: false, error: `이미 처리된 정산입니다 (${existing.status})` }, 409);
+    }
+    const newStatus = body.action === 'done' ? 'DONE' : 'REJECTED';
+    const settledAt = body.action === 'done' ? `datetime('now')` : 'NULL';
+    await DB.prepare(`
+      UPDATE donation_settlements
+      SET status = ?, admin_memo = ?, settled_at = ${settledAt}, updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(newStatus, body.admin_memo || null, settleId).run();
+    return c.json({
+      success: true,
+      data: { id: settleId, status: newStatus },
+      message: body.action === 'done' ? '정산이 완료 처리되었습니다.' : '정산이 거부되었습니다.',
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });

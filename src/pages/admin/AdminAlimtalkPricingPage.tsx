@@ -141,7 +141,7 @@ export default function AdminAlimtalkPricingPage() {
   }
 
   return (
-    <AdminLayout title="알림톡 관리">
+    <AdminLayout title="브랜드메시지 관리">
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -165,7 +165,7 @@ export default function AdminAlimtalkPricingPage() {
       {/* 패키지 관리 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">충전 패키지 관리</h2>
+          <h2 className="text-sm font-semibold text-gray-900">브랜드메시지 패키지 관리</h2>
           <button
             onClick={() => setShowAdd(v => !v)}
             className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700"
@@ -329,10 +329,10 @@ export default function AdminAlimtalkPricingPage() {
         </div>
       </div>
 
-      {/* 셀러 크레딧 현황 */}
+      {/* 셀러 브랜드메시지 크레딧 현황 */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">셀러 크레딧 현황</h2>
+          <h2 className="text-sm font-semibold text-gray-900">셀러 브랜드메시지 크레딧 현황</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[500px]">
