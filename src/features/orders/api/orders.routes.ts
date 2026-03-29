@@ -256,12 +256,27 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
       return c.json({ success: false, error: 'User not found' }, 404);
     }
     
-    const data: OrderCreateInput = await c.req.json();
-    console.log('[Orders] Request body:', JSON.stringify(data));
-    
-    // ✅ Automatically set user_id from auth context (security)
-    data.user_id = dbUserId;
-    
+    const rawData = await c.req.json();
+    console.log('[Orders] Request body:', JSON.stringify(rawData));
+
+    // ✅ 타입 안전 변환 (프론트에서 String으로 올 수 있음)
+    const data: OrderCreateInput = {
+      ...rawData,
+      user_id: dbUserId,
+      seller_id: Number(rawData.seller_id),
+      total_amount: Number(rawData.total_amount) || 0,
+      items: (rawData.items || []).map((item: any) => ({
+        product_id: Number(item.product_id),
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
+      })),
+    };
+
+    // total_amount가 0이면 아이템 합산으로 계산
+    if (!data.total_amount) {
+      data.total_amount = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    }
+
     // 필수 필드 검증 (user_id는 자동 설정되므로 제외)
     if (!data.seller_id || !data.items || data.items.length === 0) {
       console.error('[Orders] Missing required fields:', { seller_id: data.seller_id, items_count: data.items?.length });
