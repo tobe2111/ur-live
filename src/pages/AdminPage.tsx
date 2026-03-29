@@ -28,10 +28,19 @@ interface Seller {
   commission_rate?: number
   can_manipulate_stats?: number
   created_at: string
-  tax_email?: string
-  representative_name?: string
-  business_address?: string
-  business_registration_file?: string
+  // seller_business_info joined fields
+  biz_number?: string
+  biz_name?: string
+  ceo_name?: string
+  business_type?: string
+  business_category?: string
+  postal_code?: string
+  address?: string
+  address_detail?: string
+  biz_phone?: string
+  biz_email?: string
+  biz_is_verified?: number
+  biz_verified_at?: string | null
 }
 
 interface Stream {
@@ -168,6 +177,28 @@ export default function AdminPage() {
       setBizInfoSeller(res.data.data)
     } catch {
       setBizInfoSeller(seller)
+    }
+  }
+
+  async function approveBizInfo(sellerId: number) {
+    try {
+      await api.patch(`/api/admin/sellers/${sellerId}/business-info/approve`)
+      toast.success('사업자 정보를 승인했습니다')
+      setBizInfoSeller(prev => prev ? { ...prev, biz_is_verified: 1, biz_verified_at: new Date().toISOString() } : null)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      toast.error(apiErr.response?.data?.error || '승인 실패')
+    }
+  }
+
+  async function rejectBizInfo(sellerId: number) {
+    try {
+      await api.patch(`/api/admin/sellers/${sellerId}/business-info/reject`)
+      toast.success('사업자 정보를 반려했습니다')
+      setBizInfoSeller(prev => prev ? { ...prev, biz_is_verified: 0, biz_verified_at: null } : null)
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      toast.error(apiErr.response?.data?.error || '반려 실패')
     }
   }
 
@@ -460,47 +491,69 @@ export default function AdminPage() {
       {bizInfoSeller && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setBizInfoSeller(null)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              사업자 정보 — {bizInfoSeller.business_name || bizInfoSeller.name}
-            </h3>
-            <dl className="space-y-3">
-              {[
-                { label: '대표자명', value: bizInfoSeller.representative_name },
-                { label: '사업자번호', value: bizInfoSeller.business_number },
-                { label: '상호명', value: bizInfoSeller.business_name },
-                { label: '사업장 주소', value: bizInfoSeller.business_address },
-                { label: '세금계산서 이메일', value: bizInfoSeller.tax_email },
-                { label: '이메일', value: bizInfoSeller.email },
-                { label: '연락처', value: bizInfoSeller.phone },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex gap-3">
-                  <dt className="text-xs text-gray-400 w-36 shrink-0">{label}</dt>
-                  <dd className="text-xs text-gray-900 break-all">{value || <span className="text-gray-300">미입력</span>}</dd>
-                </div>
-              ))}
-              {bizInfoSeller.business_registration_file && (
-                <div className="flex gap-3">
-                  <dt className="text-xs text-gray-400 w-36 shrink-0">사업자등록증</dt>
-                  <dd>
-                    <a
-                      href={bizInfoSeller.business_registration_file}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 underline"
-                    >
-                      파일 보기
-                    </a>
-                  </dd>
-                </div>
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">
+                사업자 정보 — {bizInfoSeller.business_name || bizInfoSeller.name}
+              </h3>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                bizInfoSeller.biz_is_verified
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : bizInfoSeller.biz_number
+                    ? 'bg-yellow-50 text-yellow-700'
+                    : 'bg-gray-100 text-gray-400'
+              }`}>
+                {bizInfoSeller.biz_is_verified ? '승인됨' : bizInfoSeller.biz_number ? '승인 대기' : '미제출'}
+              </span>
+            </div>
+            {!bizInfoSeller.biz_number ? (
+              <p className="text-sm text-gray-400 text-center py-6">사업자 정보가 아직 제출되지 않았습니다.</p>
+            ) : (
+              <dl className="space-y-3">
+                {[
+                  { label: '사업자번호', value: bizInfoSeller.biz_number },
+                  { label: '상호명', value: bizInfoSeller.biz_name },
+                  { label: '대표자명', value: bizInfoSeller.ceo_name },
+                  { label: '업태', value: bizInfoSeller.business_type },
+                  { label: '업종', value: bizInfoSeller.business_category },
+                  { label: '우편번호', value: bizInfoSeller.postal_code },
+                  { label: '사업장 주소', value: bizInfoSeller.address },
+                  { label: '상세 주소', value: bizInfoSeller.address_detail },
+                  { label: '전화번호', value: bizInfoSeller.biz_phone },
+                  { label: '이메일', value: bizInfoSeller.biz_email },
+                  { label: '승인일시', value: bizInfoSeller.biz_verified_at ? new Date(bizInfoSeller.biz_verified_at).toLocaleString('ko-KR') : null },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex gap-3">
+                    <dt className="text-xs text-gray-400 w-28 shrink-0">{label}</dt>
+                    <dd className="text-xs text-gray-900 break-all">{value || <span className="text-gray-300">미입력</span>}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            <div className="mt-5 flex gap-2">
+              {bizInfoSeller.biz_number && !bizInfoSeller.biz_is_verified && (
+                <button
+                  onClick={() => approveBizInfo(bizInfoSeller.id)}
+                  className="flex-1 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700"
+                >
+                  승인
+                </button>
               )}
-            </dl>
-            <button
-              onClick={() => setBizInfoSeller(null)}
-              className="mt-5 w-full py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-200"
-            >
-              닫기
-            </button>
+              {bizInfoSeller.biz_number && !!bizInfoSeller.biz_is_verified && (
+                <button
+                  onClick={() => rejectBizInfo(bizInfoSeller.id)}
+                  className="flex-1 py-2.5 bg-red-100 text-red-600 text-sm font-medium rounded-xl hover:bg-red-200"
+                >
+                  승인 취소
+                </button>
+              )}
+              <button
+                onClick={() => setBizInfoSeller(null)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-200"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}

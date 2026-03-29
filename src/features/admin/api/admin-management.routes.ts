@@ -176,13 +176,60 @@ adminManagementRoutes.get('/sellers/:id', cors(), async (c) => {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
     const row = await DB.prepare(`
-      SELECT id, email, name, phone, business_name, business_number, status,
-             commission_rate, can_manipulate_stats, created_at,
-             tax_email, representative_name, business_address, business_registration_file
-      FROM sellers WHERE id = ?
+      SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number, s.status,
+             s.commission_rate, s.can_manipulate_stats, s.created_at,
+             b.business_number AS biz_number, b.business_name AS biz_name, b.ceo_name,
+             b.business_type, b.business_category, b.postal_code,
+             b.address, b.address_detail, b.phone AS biz_phone, b.email AS biz_email,
+             b.is_verified AS biz_is_verified, b.verified_at AS biz_verified_at
+      FROM sellers s
+      LEFT JOIN seller_business_info b ON b.seller_id = s.id
+      WHERE s.id = ?
     `).bind(sellerId).first();
     if (!row) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({ success: true, data: row });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/sellers/:id/business-info/approve', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const existing = await DB.prepare(
+      `SELECT id, is_verified FROM seller_business_info WHERE seller_id = ?`
+    ).bind(sellerId).first<{ id: number; is_verified: number }>();
+    if (!existing) return c.json({ success: false, error: '사업자 정보가 없습니다' }, 404);
+    if (existing.is_verified) return c.json({ success: false, error: '이미 승인된 사업자 정보입니다' }, 400);
+    await DB.prepare(`
+      UPDATE seller_business_info
+      SET is_verified = 1, verified_at = datetime('now'), updated_at = datetime('now')
+      WHERE seller_id = ?
+    `).bind(sellerId).run();
+    await writeAuditLog(c, { action: 'approve_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: true } });
+    return c.json({ success: true, message: '사업자 정보를 승인했습니다' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/sellers/:id/business-info/reject', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const { reason } = await c.req.json<{ reason?: string }>();
+    const existing = await DB.prepare(
+      `SELECT id FROM seller_business_info WHERE seller_id = ?`
+    ).bind(sellerId).first();
+    if (!existing) return c.json({ success: false, error: '사업자 정보가 없습니다' }, 404);
+    await DB.prepare(`
+      UPDATE seller_business_info
+      SET is_verified = 0, verified_at = NULL, updated_at = datetime('now')
+      WHERE seller_id = ?
+    `).bind(sellerId).run();
+    await writeAuditLog(c, { action: 'reject_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: false, reason } });
+    return c.json({ success: true, message: '사업자 정보를 반려했습니다' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
