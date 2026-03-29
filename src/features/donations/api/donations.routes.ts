@@ -52,16 +52,19 @@ donationsRoutes.post('/init', async (c) => {
   const { DB } = c.env;
 
   // 스트림 + 셀러 정보 조회
-  const stream = await DB.prepare(
-    `SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name,
-            COALESCE(s.donation_commission_rate, 15.0) AS commission_rate
-     FROM live_streams ls
-     JOIN sellers s ON ls.seller_id = s.id
-     WHERE ls.id = ?`
-  ).bind(body.stream_id).first<{
-    id: number; title: string; seller_id: number;
-    seller_name: string; commission_rate: number;
-  }>().catch(() => null);
+  let stream: { id: number; title: string; seller_id: number; seller_name: string; commission_rate: number; } | null = null;
+  try {
+    stream = await DB.prepare(
+      `SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name,
+              COALESCE(s.donation_commission_rate, 15.0) AS commission_rate
+       FROM live_streams ls
+       JOIN sellers s ON ls.seller_id = s.id
+       WHERE ls.id = ?`
+    ).bind(body.stream_id).first<typeof stream>();
+  } catch (err) {
+    console.error('[donations/init] DB error:', (err as Error).message);
+    return c.json({ success: false, error: 'DB 오류: ' + (err as Error).message }, 500);
+  }
 
   if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
 
