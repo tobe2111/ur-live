@@ -110,3 +110,62 @@ export function buildShippingMessage(info: ShippingInfo): { subject: string; mes
     ].join('\n'),
   };
 }
+
+export interface CancellationInfo {
+  orderId: string;
+  buyerName: string;
+  buyerPhone: string;
+  productName: string;
+  totalAmount: number;
+}
+
+/** 주문 취소 알림톡 메시지 생성 */
+export function buildCancellationMessage(info: CancellationInfo): { subject: string; message: string } {
+  return {
+    subject: '주문이 취소되었습니다',
+    message: [
+      `[주문 취소] 안내`,
+      '',
+      `주문번호: ${info.orderId}`,
+      `취소 상품: ${info.productName}`,
+      `환불 금액: ${info.totalAmount.toLocaleString()}원`,
+      '',
+      '환불은 결제 수단에 따라 3~5 영업일 소요될 수 있습니다.',
+    ].join('\n'),
+  };
+}
+
+export interface SampleApprovalInfo {
+  sellerName: string;
+  productName: string;
+  approved: boolean;
+  adminMemo?: string | null;
+}
+
+/** 샘플 신청 승인/거부 알림톡 메시지 생성 */
+export function buildSampleApprovalMessage(info: SampleApprovalInfo): { subject: string; message: string } {
+  if (info.approved) {
+    return {
+      subject: '샘플 신청이 승인되었습니다',
+      message: [
+        `[샘플 승인] ${info.productName}`,
+        '',
+        `안녕하세요, ${info.sellerName}님.`,
+        '신청하신 샘플이 승인되었습니다.',
+        '',
+        info.adminMemo ? `승인 메모: ${info.adminMemo}` : '셀러 대시보드에서 스토어에 등록하실 수 있습니다.',
+      ].filter(Boolean).join('\n'),
+    };
+  }
+  return {
+    subject: '샘플 신청이 반려되었습니다',
+    message: [
+      `[샘플 반려] ${info.productName}`,
+      '',
+      `안녕하세요, ${info.sellerName}님.`,
+      '죄송합니다. 신청하신 샘플이 반려되었습니다.',
+      '',
+      info.adminMemo ? `반려 사유: ${info.adminMemo}` : '자세한 문의는 관리자에게 연락해주세요.',
+    ].filter(Boolean).join('\n'),
+  };
+}

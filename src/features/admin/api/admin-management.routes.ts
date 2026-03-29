@@ -22,6 +22,7 @@ import { cors } from 'hono/cors';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 
 interface SellerRow {
   id: number;
@@ -596,12 +597,43 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
     const newStatus = body.action === 'approve' ? 'APPROVED' : 'REJECTED';
     const approvedAt = body.action === 'approve' ? `datetime('now')` : 'NULL';
 
+    // 알림톡 발송용: 셀러 전화번호 + 상품명 조회
+    const reqInfo = await DB.prepare(`
+      SELECT s.phone AS seller_phone, s.name AS seller_name, p.name AS product_name
+      FROM sample_requests sr
+      JOIN sellers s ON sr.seller_id = s.id
+      JOIN products p ON sr.product_id = p.id
+      WHERE sr.id = ?
+    `).bind(reqId).first<{ seller_phone: string | null; seller_name: string; product_name: string }>()
+      .catch(() => null);
+
     await DB.prepare(`
       UPDATE sample_requests
       SET status = ?, admin_memo = ?, updated_at = datetime('now'),
           approved_at = ${approvedAt}
       WHERE id = ?
     `).bind(newStatus, body.admin_memo || null, reqId).run();
+
+    // ── 셀러에게 알림톡 (플랫폼 발신, fire-and-forget) ──
+    if (reqInfo?.seller_phone && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID && c.env.ALIGO_SENDER_PHONE) {
+      const { subject, message } = buildSampleApprovalMessage({
+        sellerName: reqInfo.seller_name,
+        productName: reqInfo.product_name,
+        approved: body.action === 'approve',
+        adminMemo: body.admin_memo,
+      });
+      sendAlimtalk({
+        apikey: c.env.ALIGO_API_KEY,
+        userid: c.env.ALIGO_USER_ID,
+        senderkey: c.env.ALIGO_SENDER_KEY ?? '',
+        tpl_code: c.env.ALIGO_TPL_SAMPLE_APPROVED ?? 'TBD',
+        sender: c.env.ALIGO_SENDER_PHONE,
+        receiver_1: reqInfo.seller_phone.replace(/-/g, ''),
+        recvname_1: reqInfo.seller_name,
+        subject_1: subject,
+        message_1: message,
+      }).catch(e => console.warn('[Alimtalk] 샘플 승인 알림 실패:', e));
+    }
 
     return c.json({
       success: true,

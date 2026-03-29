@@ -33,7 +33,7 @@ export async function sendSellerAlimtalk(opts: SendAlimtalkOptions): Promise<{ s
     DB, aligoApiKey, aligoUserId, aligoSenderKey,
     sellerId, receiver, receiverName,
     templateCode, subject, message, orderId,
-    senderPhone = '07080420000',  // 알리고 대표 발신번호 — 실제 발신번호로 교체 필요
+    senderPhone = '',  // ALIGO_SENDER_PHONE 환경변수로 주입 필요
   } = opts;
 
   // 1. 잔액 확인

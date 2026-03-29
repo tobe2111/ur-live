@@ -116,7 +116,7 @@ export default function SellerAlimtalkPage() {
 
       // 2. 토스페이먼츠 결제창 호출
       const toss = window.TossPayments(clientKey)
-      await toss.requestPayment('카드', {
+      await toss.requestPayment('결제', {
         amount,
         orderId,
         orderName,
