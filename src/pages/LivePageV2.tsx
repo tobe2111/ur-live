@@ -12,7 +12,7 @@ import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
 import { createLogger } from '@/utils/logger'
 import { useAuthStore } from '@/shared/stores'
-import LiveDonation, { DonationEffect } from '@/components/LiveDonation'
+import { DonationEffect } from '@/components/LiveDonation'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
@@ -1278,10 +1278,6 @@ function ReelCard({
 
             {/* Chat + Donate + Share buttons - right side */}
             <div className="flex flex-col items-center gap-2.5 shrink-0 pb-1 mr-1">
-              {/* Donate button - 셀러 본인이 아닌 경우에만 표시 */}
-              {!isSeller && (
-                <LiveDonation streamId={stream.id} />
-              )}
               <button
                 onClick={() => setChatModalOpen(true)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all active:scale-90"
