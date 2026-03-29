@@ -53,7 +53,6 @@ import youtubeRoutes from '../features/youtube/api/youtube.routes';
 import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
-import { donationRoutes } from '../features/donations/api/donation.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 
@@ -397,8 +396,6 @@ app.route('/api/admin/cafe24', cafe24Routes);
 // Public callback path (Cafe24 redirects here, no auth needed for the callback itself)
 app.route('/admin/cafe24', cafe24Routes);
 
-// ---- Donations ----
-app.route('/api/donations', donationRoutes);
 
 // ============================================================
 // [참고] 라우트 등록 원칙 (이 주석을 절대 삭제하지 말 것)
