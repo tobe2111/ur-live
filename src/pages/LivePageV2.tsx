@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart } from 'lucide-react'
+import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart, Loader2 } from 'lucide-react'
 import axios from 'axios'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
@@ -450,6 +450,13 @@ function ReelCard({
 
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
+
+  // ── 후원 모달 상태 ──
+  const [donationModal, setDonationModal] = useState(false)
+  const [donationAmount, setDonationAmount] = useState(5000)
+  const [donationMessage, setDonationMessage] = useState('')
+  const [donationAnonymous, setDonationAnonymous] = useState(false)
+  const [donating, setDonating] = useState(false)
   
   // Handle null product case
   const safeProduct = (product || {
@@ -1046,6 +1053,70 @@ function ReelCard({
   }
 
   // ============================================
+  // 후원 처리
+  // ============================================
+  async function handleDonate() {
+    if (!isLoggedIn) { showAlert('로그인 후 후원하실 수 있습니다.', 'info', '로그인 필요'); return }
+    if (donationAmount < 1000 || donationAmount % 100 !== 0) {
+      toast.error('후원 금액은 최소 1,000원이며 100원 단위여야 합니다')
+      return
+    }
+    setDonating(true)
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token')
+      const initRes = await api.post('/api/donations/init', {
+        stream_id: stream.id,
+        amount: donationAmount,
+        message: donationMessage || undefined,
+        is_anonymous: donationAnonymous,
+      }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+
+      if (!initRes.data.success) { toast.error(initRes.data.error); return }
+      const { orderId, amount, orderName, clientKey } = initRes.data.data
+
+      if (!clientKey) { toast.error('결제 설정을 불러올 수 없습니다'); return }
+
+      const toss = (window as any).TossPayments(clientKey)
+      await toss.requestPayment('결제', {
+        amount,
+        orderId,
+        orderName,
+        successUrl: `${window.location.origin}/live/${stream.id}?donation=success&orderId=${orderId}&amount=${amount}`,
+        failUrl: `${window.location.origin}/live/${stream.id}?donation=fail`,
+      })
+    } catch (err: any) {
+      if (err?.code !== 'USER_CANCEL') toast.error(err?.message || '결제 중 오류가 발생했습니다')
+    } finally { setDonating(false) }
+  }
+
+  // 후원 결제 완료 리다이렉트 처리
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const donation = params.get('donation')
+    const paymentKey = params.get('paymentKey')
+    const orderId = params.get('orderId')
+    const amount = params.get('amount')
+    if (donation === 'success' && paymentKey && orderId && amount) {
+      window.history.replaceState({}, '', window.location.pathname)
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token')
+      api.post('/api/donations/confirm', {
+        paymentKey, orderId, amount: Number(amount),
+        stream_id: stream.id,
+        message: donationMessage || undefined,
+        is_anonymous: donationAnonymous,
+      }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        .then(res => {
+          if (res.data.success) toast.success(res.data.message || '후원이 완료되었습니다!')
+          else toast.error(res.data.error || '후원 처리에 실패했습니다')
+        })
+        .catch(() => toast.error('후원 처리에 실패했습니다'))
+    } else if (donation === 'fail') {
+      window.history.replaceState({}, '', window.location.pathname)
+      toast.error('후원이 취소되었습니다')
+    }
+  }, [])
+
+  // ============================================
   // Send Chat Message (with throttling)
   // ============================================
   async function handleSendMessage(e: React.FormEvent) {
@@ -1234,6 +1305,17 @@ function ReelCard({
               >
                 <Share2 className="h-5 w-5 text-white/90" />
               </button>
+
+              {/* 후원하기 버튼 */}
+              {!isSeller && (
+                <button
+                  onClick={() => setDonationModal(true)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-all"
+                >
+                  <Heart className="h-3.5 w-3.5 fill-white" />
+                  후원
+                </button>
+              )}
             </div>
           </div>
 
@@ -1380,6 +1462,88 @@ function ReelCard({
                   <Send className="h-5 w-5" />
                 </button>
               </form>
+            </div>
+          </div>
+        </>
+      )}
+      {/* 후원 모달 */}
+      {donationModal && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm" onClick={() => setDonationModal(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-pink-500 fill-pink-500" />
+                  <h3 className="text-lg font-bold text-gray-900">{stream.streamerName || '셀러'} 후원하기</h3>
+                </div>
+                <button onClick={() => setDonationModal(false)} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+                  <X className="h-4 w-4 text-gray-600" />
+                </button>
+              </div>
+
+              {/* 금액 빠른 선택 */}
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {[1000, 3000, 5000, 10000].map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => setDonationAmount(amt)}
+                    className={`py-2 rounded-xl text-sm font-semibold transition-colors ${
+                      donationAmount === amt
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {(amt/1000)}천원
+                  </button>
+                ))}
+              </div>
+
+              {/* 직접 입력 */}
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="number"
+                  value={donationAmount}
+                  onChange={e => {
+                    const v = Math.floor(Number(e.target.value) / 100) * 100
+                    setDonationAmount(Math.max(1000, v))
+                  }}
+                  step={100}
+                  min={1000}
+                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-right focus:border-pink-400 focus:outline-none"
+                />
+                <span className="text-sm text-gray-500 shrink-0">원</span>
+              </div>
+
+              {/* 메시지 */}
+              <input
+                type="text"
+                placeholder="응원 메시지 (선택)"
+                value={donationMessage}
+                onChange={e => setDonationMessage(e.target.value)}
+                maxLength={50}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm mb-3 focus:border-pink-400 focus:outline-none"
+              />
+
+              {/* 익명 */}
+              <label className="flex items-center gap-2 mb-4 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={donationAnonymous}
+                  onChange={e => setDonationAnonymous(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm text-gray-600">익명으로 후원</span>
+              </label>
+
+              <button
+                onClick={handleDonate}
+                disabled={donating || donationAmount < 1000}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-base disabled:opacity-50 active:scale-[0.98] transition-all"
+              >
+                {donating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5 fill-white" />}
+                {donationAmount.toLocaleString()}원 후원하기
+              </button>
             </div>
           </div>
         </>

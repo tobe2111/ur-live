@@ -1,10 +1,13 @@
 /**
- * 알림톡 크레딧 시스템 API
+ * 브랜드메시지(카카오 친구톡) 크레딧 시스템 API
  *
  * GET  /api/seller/alimtalk/credits          - 잔액 + 이력 + 패키지 조회
  * POST /api/seller/alimtalk/credits/charge   - 충전 결제 시작 (토스)
  * POST /api/seller/alimtalk/credits/confirm  - 결제 완료 → 크레딧 지급
  * GET  /api/seller/alimtalk/logs             - 발송 이력
+ *
+ * 브랜드메시지(친구톡): 25원/건  |  알리고 원가: 19.9원/건
+ * 자동 발송 알림톡(주문/배송/취소)은 플랫폼 예산으로 별도 처리
  */
 
 import { Hono } from 'hono';
