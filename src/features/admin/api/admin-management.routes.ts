@@ -24,6 +24,7 @@ import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
+import { writeAuditLog } from '@/worker/middleware/admin-security';
 
 interface SellerRow {
   id: number;
@@ -195,6 +196,7 @@ adminManagementRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'approved' } });
     return c.json({ success: true, data: { id: sellerId, status: 'approved' } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -209,6 +211,7 @@ adminManagementRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -222,9 +225,10 @@ adminManagementRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
     const { commission_rate } = await c.req.json();
     if (commission_rate === undefined || commission_rate < 0 || commission_rate > 100)
       return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
-    const rows = await executeQuery<IdRow>(DB, 'SELECT id FROM sellers WHERE id = ?', [sellerId]);
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id, commission_rate FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
     await executeQuery(DB, `UPDATE sellers SET commission_rate = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [commission_rate, sellerId]);
+    await writeAuditLog(c, { action: 'change_commission', targetType: 'seller', targetId: sellerId, before: { commission_rate: rows[0].commission_rate }, after: { commission_rate } });
     return c.json({ success: true, data: { id: sellerId, commission_rate } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);

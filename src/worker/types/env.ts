@@ -69,6 +69,9 @@ export interface Env {
   DISCORD_WEBHOOK_URL?: string;
   SENTRY_DSN?: string;
 
+  // ---- Security ----
+  ADMIN_IP_WHITELIST?: string; // comma-separated IPs/CIDRs, e.g. "1.2.3.4,10.0.0.0/8"
+
   // ---- App Config ----
   ENVIRONMENT: string;
   FRONTEND_URL: string;

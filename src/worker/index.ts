@@ -55,11 +55,28 @@ import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
+import { requireAdmin } from './middleware/auth';
+import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
+import { rateLimit } from './middleware/rate-limit';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
 
 const app = new Hono<{ Bindings: Env }>();
+
+// ============================================================
+// Admin Sub-Application (code-level separation)
+// All admin routes go through their own Hono app with:
+//   1. CORS
+//   2. IP whitelist (ADMIN_IP_WHITELIST env var)
+//   3. requireAdmin() auth
+//   4. Audit logging middleware
+// ============================================================
+const adminApp = new Hono<{ Bindings: Env }>();
+adminApp.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
+adminApp.use('*', adminIpWhitelist());
+adminApp.use('*', requireAdmin());
+adminApp.use('*', adminAuditMiddleware());
 
 // ============================================================
 // Global Middleware
@@ -271,10 +288,12 @@ app.route('/api/auth', authTokenRoutes);
 app.route('/auth/kakao', kakaoRoutes);
 app.route('/api/auth/kakao', kakaoRoutes);
 
-// Feature: Admin auth   →  /api/admin/login, /api/admin/refresh
+// Feature: Admin auth — rate limited: 5 attempts per 5 min per IP
+app.use('/api/admin/login', rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }));
 app.route('/api/admin', adminAuthRoutes);
 
-// Feature: Seller auth  →  /api/seller/login, /api/seller/refresh
+// Feature: Seller auth — rate limited: 10 attempts per 5 min per IP
+app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 
 // Feature: Google/Firebase auth
@@ -360,10 +379,17 @@ app.route('/api/wishlists', wishlistRoutes);
 
 // Banners
 app.route('/api/banners', bannerRoutes);
-app.route('/api/admin/banners', adminBannersRoutes);
 
-// Admin management
-app.route('/api/admin', adminManagementRoutes);
+// ============================================================
+// Admin routes — all handled by adminApp (separate auth chain)
+// adminApp has: CORS + IP whitelist + requireAdmin() + audit log
+// ============================================================
+adminApp.route('/', adminManagementRoutes);
+adminApp.route('/banners', adminBannersRoutes);
+adminApp.route('/cafe24', cafe24Routes);
+app.route('/api/admin', adminApp);
+// Cafe24 public callback (no admin auth needed for OAuth redirect)
+app.route('/admin/cafe24/callback', cafe24Routes);
 
 // Push notifications
 app.route('/', pushRoutes);  // pushRoutes already uses full path /api/push/*
@@ -374,7 +400,8 @@ app.route('/api/account', accountRoutes);
 // Supply chain (공급가 시스템)
 app.route('/api/supply', supplyRoutes);
 
-// 알림톡 크레딧 시스템
+// 알림톡/브랜드메시지 크레딧 시스템 — rate limit send: 60/min per seller
+app.use('/api/seller/alimtalk/send', rateLimit({ action: 'alimtalk_send', max: 60, windowSec: 60 }));
 app.route('/api/seller/alimtalk', alimtalkRoutes);
 
 // ── 후원(도네이션) ──
@@ -391,10 +418,7 @@ app.route('/api/youtube/chat', youtubeChatRoutes);
 app.route('/api/live', liveSseRoutes);
 app.route('/api/chat', chatRoutes);
 
-// Cafe24 integration (product sync)
-app.route('/api/admin/cafe24', cafe24Routes);
-// Public callback path (Cafe24 redirects here, no auth needed for the callback itself)
-app.route('/admin/cafe24', cafe24Routes);
+// (Cafe24 is registered under adminApp above)
 
 
 // ============================================================
