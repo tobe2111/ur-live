@@ -82,6 +82,7 @@ const AdminProductsPage = lazy(() => import('./pages/AdminProductsPage'))
 const AdminAlimtalkPricingPage = lazy(() => import('./pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('./pages/admin/KVMonitoringPage'))
 const AdminCafe24Page = lazy(() => import('./pages/admin/AdminCafe24Page'))
+const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequestsPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -429,6 +430,11 @@ function AppContent() {
             <Route path="/admin/kv-monitoring" element={
               <ProtectedRoute requireAdmin>
                 <KVMonitoringPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/sample-requests" element={
+              <ProtectedRoute requireAdmin>
+                <AdminSampleRequestsPage />
               </ProtectedRoute>
             } />
             <Route path="/admin/cafe24" element={

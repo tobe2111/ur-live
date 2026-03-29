@@ -108,9 +108,10 @@ export default function SellerLiveControlPage() {
       // Load products
       const productsRes = await api.get('/api/seller/products')
 
-      const liveStreams = streamsRes.data.data.filter((s: LiveStream) => s.status === 'live')
+      const allStreams = streamsRes.data?.data ?? []
+      const liveStreams = allStreams.filter((s: LiveStream) => s.status === 'live')
       setStreams(liveStreams)
-      setProducts(productsRes.data.data)
+      setProducts(productsRes.data?.data ?? [])
 
       // Auto-select first live stream
       if (liveStreams.length > 0) {
