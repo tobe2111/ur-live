@@ -170,6 +170,23 @@ adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
   }
 });
 
+adminManagementRoutes.get('/sellers/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const row = await DB.prepare(`
+      SELECT id, email, name, phone, business_name, business_number, status,
+             commission_rate, can_manipulate_stats, created_at,
+             tax_email, representative_name, business_address, business_registration_file
+      FROM sellers WHERE id = ?
+    `).bind(sellerId).first();
+    if (!row) return c.json({ success: false, error: 'Not found' }, 404);
+    return c.json({ success: true, data: row });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 adminManagementRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
   try {
     const { DB } = c.env;

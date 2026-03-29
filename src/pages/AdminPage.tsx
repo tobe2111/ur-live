@@ -28,6 +28,10 @@ interface Seller {
   commission_rate?: number
   can_manipulate_stats?: number
   created_at: string
+  tax_email?: string
+  representative_name?: string
+  business_address?: string
+  business_registration_file?: string
 }
 
 interface Stream {
@@ -64,6 +68,7 @@ export default function AdminPage() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [bizInfoSeller, setBizInfoSeller] = useState<Seller | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
@@ -152,6 +157,18 @@ export default function AdminPage() {
     setSelectedSeller(seller)
     setRejectionReason('')
     setRejectModalOpen(true)
+  }
+
+  async function openBizInfo(seller: Seller) {
+    try {
+      const token = localStorage.getItem('admin_token')
+      const res = await api.get(`/api/admin/sellers/${seller.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setBizInfoSeller(res.data.data)
+    } catch {
+      setBizInfoSeller(seller)
+    }
   }
 
   async function deleteStream(streamId: number) {
@@ -385,9 +402,12 @@ export default function AdminPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{new Date(seller.created_at).toLocaleDateString('ko-KR')}</td>
                   <td className="px-4 py-3">
-                    {seller.status !== 'approved' && (
-                      <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">승인</button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">사업자정보</button>
+                      {seller.status !== 'approved' && (
+                        <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">승인</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -436,6 +456,54 @@ export default function AdminPage() {
           </table>
         </div>
       </div>
+      {/* ── 사업자 정보 상세 모달 ── */}
+      {bizInfoSeller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setBizInfoSeller(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+              사업자 정보 — {bizInfoSeller.business_name || bizInfoSeller.name}
+            </h3>
+            <dl className="space-y-3">
+              {[
+                { label: '대표자명', value: bizInfoSeller.representative_name },
+                { label: '사업자번호', value: bizInfoSeller.business_number },
+                { label: '상호명', value: bizInfoSeller.business_name },
+                { label: '사업장 주소', value: bizInfoSeller.business_address },
+                { label: '세금계산서 이메일', value: bizInfoSeller.tax_email },
+                { label: '이메일', value: bizInfoSeller.email },
+                { label: '연락처', value: bizInfoSeller.phone },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex gap-3">
+                  <dt className="text-xs text-gray-400 w-36 shrink-0">{label}</dt>
+                  <dd className="text-xs text-gray-900 break-all">{value || <span className="text-gray-300">미입력</span>}</dd>
+                </div>
+              ))}
+              {bizInfoSeller.business_registration_file && (
+                <div className="flex gap-3">
+                  <dt className="text-xs text-gray-400 w-36 shrink-0">사업자등록증</dt>
+                  <dd>
+                    <a
+                      href={bizInfoSeller.business_registration_file}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      파일 보기
+                    </a>
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <button
+              onClick={() => setBizInfoSeller(null)}
+              className="mt-5 w-full py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-200"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }
