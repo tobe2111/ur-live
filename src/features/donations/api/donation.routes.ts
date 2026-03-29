@@ -9,15 +9,10 @@
 import { Hono } from 'hono';
 import type { Env } from '../../../worker/types/env';
 import { requireAuth, type AuthUser } from '../../../worker/middleware/auth';
-import { TOSS_PAYMENT_URL } from '../../../shared/constants';
+import { TOSS_PAYMENT_URL, DONATION_COMMISSION_RATE, CREDIT_UNIT_PRICE } from '../../../shared/constants';
 
 type AuthVariables = { user: AuthUser };
 const donationRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
-
-const COMMISSION_RATE = 0.10; // 10% 플랫폼 수수료
-
-// 알림톡 크레딧 환율: 1건 = 8원 (기본 요금제 기준)
-const CREDIT_UNIT_PRICE = 8;
 
 // ── POST /api/donations — 후원 생성 ─────────────────────────────────────────
 donationRoutes.post('/', requireAuth(), async (c) => {
@@ -64,7 +59,7 @@ donationRoutes.post('/', requireAuth(), async (c) => {
   }
 
   // 수수료 계산
-  const commissionAmount = Math.floor(amount * COMMISSION_RATE);
+  const commissionAmount = Math.floor(amount * DONATION_COMMISSION_RATE);
   const creditAmount = amount - commissionAmount;
 
   // 고유 주문번호 생성
@@ -84,7 +79,7 @@ donationRoutes.post('/', requireAuth(), async (c) => {
     stream.seller_id,
     streamId,
     amount,
-    COMMISSION_RATE,
+    DONATION_COMMISSION_RATE,
     commissionAmount,
     creditAmount,
     message.slice(0, 100), // 메시지 100자 제한

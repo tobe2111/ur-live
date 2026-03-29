@@ -16,6 +16,7 @@ import { sign, verify } from 'hono/jwt';
 import { hashPassword } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { ApiError } from '@/shared/types/common';
+import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
 
 type Bindings = {
   DB: D1Database;
@@ -135,7 +136,7 @@ export const sellerManagementRoutes = new Hono<{ Bindings: Bindings }>();
 
 // CORS 설정
 sellerManagementRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [...ALLOWED_ORIGINS],
   credentials: true,
 }));
 
@@ -191,11 +192,11 @@ sellerManagementRoutes.post('/register', async (c) => {
       }, 400);
     }
 
-    // 비밀번호 강도 검증 (최소 6자)
-    if (password.length < 6) {
+    // 비밀번호 강도 검증
+    if (password.length < MIN_PASSWORD_LENGTH) {
       return c.json({
         success: false,
-        error: 'Password must be at least 6 characters'
+        error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
       }, 400);
     }
 
@@ -236,7 +237,7 @@ sellerManagementRoutes.post('/register', async (c) => {
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
         phone, address, description, youtube_email, status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 10.00, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,

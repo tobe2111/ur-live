@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAdmin } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
   exchangeCodeForTokens,
   saveTokens,
@@ -28,7 +29,7 @@ const cafe24Routes = new Hono<{ Bindings: Env }>();
 cafe24Routes.use(
   '/*',
   cors({
-    origin: ['https://live.ur-team.com', 'http://localhost:5173'],
+    origin: [...ALLOWED_ORIGINS],
     allowHeaders: ['Content-Type', 'Authorization'],
     allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,

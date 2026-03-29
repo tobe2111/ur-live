@@ -14,10 +14,11 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { 
-  requireAuth, 
-  getCurrentUser 
+import {
+  requireAuth,
+  getCurrentUser
 } from '@/worker/middleware/auth';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
 import {
   validateRequiredString,
   validateNumber,
@@ -84,7 +85,7 @@ export const paymentRoutes = new Hono<{ Bindings: Bindings }>();
 
 // CORS 설정
 paymentRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [...ALLOWED_ORIGINS],
   credentials: true,
 }));
 
@@ -225,7 +226,7 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
     }
 
     // Toss Payments API 호출
-    const tossSecretKey = c.env.TOSS_SECRET_KEY || 'test_sk_fake_secret_key';
+    const tossSecretKey = c.env.TOSS_SECRET_KEY!;
     const tossPayment = await confirmTossPayment(paymentKey, orderId, amount, tossSecretKey);
 
     // 주문 상태 업데이트
@@ -338,7 +339,7 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     }
 
     // Toss Payments API 호출
-    const tossSecretKey = c.env.TOSS_SECRET_KEY || 'test_sk_fake_secret_key';
+    const tossSecretKey = c.env.TOSS_SECRET_KEY!;
     const tossPayment = await cancelTossPayment(
       paymentKey,
       cancelReason,
