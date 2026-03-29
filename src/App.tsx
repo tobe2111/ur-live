@@ -137,7 +137,8 @@ function AppContent() {
         const tokenResult = await user.getIdTokenResult(true)
         const numericUserId = tokenResult.claims?.userId || tokenResult.claims?.user_id || 0
         const claimsUserName = (tokenResult.claims?.userName as string) || urlUserName
-        const claimsProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
+        const rawProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
+        const claimsProfileImage = rawProfileImage.replace(/^http:\/\//, 'https://')
         console.log('[App] 🔢 Numeric user ID from claims:', numericUserId)
         console.log('[App] 👤 User name from claims/URL:', claimsUserName)
 
@@ -238,6 +239,13 @@ function AppContent() {
       console.log(`[App] 🏪 ${userType} 세션 감지 - Firebase 초기화 스킵, isAuthReady=true`)
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
+      return
+    }
+
+    // ✅ firebase_token이 있으면 processFirebaseToken이 인증을 처리하므로
+    // initializeAuth()를 호출하지 않음 (onAuthStateChanged(null) → 깜빡임 방지)
+    if (hasIncomingToken) {
+      console.log('[App] 🔑 firebase_token 처리 중 - initializeAuth 스킵')
       return
     }
 

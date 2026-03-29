@@ -101,8 +101,9 @@ export class KakaoAuthService {
             data.kakao_account?.profile?.nickname || 
             'Kakao User',
       email: data.kakao_account?.email,
-      profileImage: data.properties?.profile_image || 
-                    data.kakao_account?.profile?.profile_image_url,
+      profileImage: (data.properties?.profile_image ||
+                    data.kakao_account?.profile?.profile_image_url || '')
+                    .replace(/^http:\/\//, 'https://'),
     };
     
     console.log('[KakaoAuthService] ✅ User info obtained:', {
