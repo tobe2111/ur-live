@@ -15,6 +15,8 @@ import type { Context } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { JWTPayload } from 'hono/utils/jwt/types';
+import { sendSellerAlimtalk } from '../../alimtalk/send';
+import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 type Bindings = {
@@ -22,7 +24,10 @@ type Bindings = {
   JWT_SECRET: string;
   ALIGO_API_KEY?: string;
   ALIGO_USER_ID?: string;
-  ALIMTALK_SENDER_KEY?: string;
+  ALIGO_SENDER_KEY?: string;
+  ALIGO_SENDER_PHONE?: string;
+  ALIGO_TPL_SHIPPING_START?: string;
+  ALIGO_TPL_ORDER_CANCEL?: string;
 };
 
 export const sellerOrdersRoutes = new Hono<{ Bindings: Bindings }>();
@@ -165,18 +170,41 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
         : c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    // 자동 알림톡 발송 (배송 완료 시)
-    if (dbStatus === 'DELIVERED' && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
-      try {
-        const { sendDeliveryCompleted } = await import('../../../lib/alimtalk-auto');
-        const numericId = parseInt(orderId || '0', 10);
-        if (numericId > 0) {
-          sendDeliveryCompleted(
-            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
-            numericId
-          ).catch((err: Error) => console.error('[Alimtalk] Delivery notification failed:', err.message));
-        }
-      } catch (e) { /* alimtalk not critical */ }
+    // ── 주문 취소 알림톡 (fire-and-forget) ──
+    if (dbStatus === 'CANCELLED' && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
+      const order = await db.prepare(
+        `SELECT order_number, shipping_phone, shipping_name, seller_id, total_amount,
+                (SELECT name FROM order_items oi JOIN products p ON oi.product_id = p.id
+                 WHERE oi.order_id = o.id LIMIT 1) AS product_name
+         FROM orders o WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
+      ).bind(orderId, orderId, sellerId).first<{
+        order_number: string; shipping_phone: string | null; shipping_name: string | null;
+        seller_id: number; total_amount: number; product_name: string | null;
+      }>().catch(() => null);
+
+      if (order?.shipping_phone && order.seller_id) {
+        const { subject, message } = buildCancellationMessage({
+          orderId: order.order_number,
+          buyerName: order.shipping_name ?? '고객',
+          buyerPhone: order.shipping_phone,
+          productName: order.product_name ?? '상품',
+          totalAmount: order.total_amount,
+        });
+        sendSellerAlimtalk({
+          DB: db,
+          aligoApiKey: c.env.ALIGO_API_KEY,
+          aligoUserId: c.env.ALIGO_USER_ID,
+          aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
+          senderPhone: c.env.ALIGO_SENDER_PHONE,
+          sellerId: order.seller_id,
+          receiver: order.shipping_phone,
+          receiverName: order.shipping_name ?? '고객',
+          templateCode: c.env.ALIGO_TPL_ORDER_CANCEL ?? 'TBD',
+          subject,
+          message,
+          orderId: order.order_number,
+        }).catch(e => console.warn('[Alimtalk] 주문취소 발송 실패:', e));
+      }
     }
 
     return c.json({ success: true, message: '주문 상태가 업데이트되었습니다.' });
@@ -220,20 +248,42 @@ sellerOrdersRoutes.put('/orders/:id/tracking', async (c) => {
         : c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    // 자동 알림톡 발송 (배송 시작)
+    // ── 배송 시작 알림톡 (fire-and-forget) ──
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
-      try {
-        const { sendShippingNotification } = await import('../../../lib/alimtalk-auto');
-        const numericId = parseInt(orderId || '0', 10);
-        if (numericId > 0) {
-          sendShippingNotification(
-            { DB: db, ALIGO_API_KEY: c.env.ALIGO_API_KEY, ALIGO_USER_ID: c.env.ALIGO_USER_ID, ALIMTALK_SENDER_KEY: c.env.ALIMTALK_SENDER_KEY },
-            numericId,
-            courier || '',
-            tracking_number
-          ).catch((err: Error) => console.error('[Alimtalk] Shipping notification failed:', err.message));
-        }
-      } catch (e) { /* alimtalk not critical */ }
+      const order = await db.prepare(
+        `SELECT order_number, shipping_phone, shipping_name, seller_id,
+                (SELECT name FROM order_items oi JOIN products p ON oi.product_id = p.id
+                 WHERE oi.order_id = o.id LIMIT 1) AS product_name
+         FROM orders o WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
+      ).bind(orderId, orderId, sellerId).first<{
+        order_number: string; shipping_phone: string | null;
+        shipping_name: string | null; seller_id: number; product_name: string | null;
+      }>().catch(() => null);
+
+      if (order?.shipping_phone && order.seller_id) {
+        const { subject, message } = buildShippingMessage({
+          orderId: order.order_number,
+          buyerName: order.shipping_name ?? '고객',
+          buyerPhone: order.shipping_phone,
+          productName: order.product_name ?? '상품',
+          courier: courier || '택배사',
+          trackingNumber: tracking_number,
+        });
+        sendSellerAlimtalk({
+          DB: db,
+          aligoApiKey: c.env.ALIGO_API_KEY,
+          aligoUserId: c.env.ALIGO_USER_ID,
+          aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
+          senderPhone: c.env.ALIGO_SENDER_PHONE,
+          sellerId: order.seller_id,
+          receiver: order.shipping_phone,
+          receiverName: order.shipping_name ?? '고객',
+          templateCode: c.env.ALIGO_TPL_SHIPPING_START ?? 'TBD',
+          subject,
+          message,
+          orderId: order.order_number,
+        }).catch(e => console.warn('[Alimtalk] 배송시작 발송 실패:', e));
+      }
     }
 
     return c.json({ success: true, message: '송장번호가 등록되었습니다.' });

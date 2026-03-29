@@ -53,6 +53,8 @@ export interface Env {
   ALIGO_SENDER_PHONE?: string;           // 발신번호 (예: 07080420000)
   ALIGO_TPL_ORDER_CONFIRM?: string;      // 주문완료 템플릿 코드
   ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
+  ALIGO_TPL_ORDER_CANCEL?: string;       // 주문취소 템플릿 코드
+  ALIGO_TPL_SAMPLE_APPROVED?: string;    // 샘플 신청 승인 템플릿 코드
 
   // ---- YouTube ----
   YOUTUBE_CLIENT_ID?: string;
