@@ -157,28 +157,12 @@ export default function SellerAlimtalkPage() {
     }
   }, [])
 
-  const headerRight = (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-gray-400">잔여 크레딧</span>
-      <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
-        {balance.toLocaleString()}건
-      </span>
-      <button
-        onClick={() => setChargeModal(true)}
-        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
-      >
-        <CreditCard className="w-3.5 h-3.5" /> 충전
-      </button>
-    </div>
-  )
 
   if (loading) {
     return (
-      <SellerLayout title="알림톡" headerRight={headerRight}>
-        <div className="flex items-center justify-center py-32">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        </div>
-      </SellerLayout>
+      <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
     )
   }
 
