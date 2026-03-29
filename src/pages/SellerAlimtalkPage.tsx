@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
-  MessageSquare, Loader2, Zap,
+  MessageSquare, Loader2, Zap, ArrowLeft,
   CreditCard, History, CheckCircle2, XCircle,
   Package
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
-import SellerLayout from '@/components/SellerLayout'
 
 interface DbPackage {
   id: number
