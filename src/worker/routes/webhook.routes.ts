@@ -128,6 +128,17 @@ async function verifyTossSignature(
   }
 }
 
+// Replay-attack defense: reject webhooks older than 5 minutes
+const WEBHOOK_TIMESTAMP_TOLERANCE_SEC = 5 * 60;
+
+function verifyTimestamp(timestampHeader: string | undefined | null): boolean {
+  if (!timestampHeader) return false; // require timestamp in production
+  const ts = parseInt(timestampHeader, 10);
+  if (isNaN(ts)) return false;
+  const nowSec = Math.floor(Date.now() / 1000);
+  return Math.abs(nowSec - ts) <= WEBHOOK_TIMESTAMP_TOLERANCE_SEC;
+}
+
 // ---- Main Webhook Endpoint ----
 webhookRouter.post('/', async (c) => {
   const startTime = Date.now();
@@ -140,24 +151,32 @@ webhookRouter.post('/', async (c) => {
   const webhookRepo = new WebhookEventRepository(c.env.DB);
 
   try {
-    // 1. Read raw body for signature verification
+    // 1. Read raw body — must happen before any other logic
     const rawBody = await c.req.text();
 
-    // 2. Verify signature (skip in development if no secret set)
+    // 2. Verify signature FIRST — reject before any DB access
     const webhookSecret = c.env.TOSS_WEBHOOK_SECRET;
     if (webhookSecret && webhookSecret !== 'dev_skip') {
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
-        console.error('[WEBHOOK] ❌ INVALID_SIGNATURE - possible spoofed request', {
+        console.error('[WEBHOOK] ❌ INVALID_SIGNATURE', {
           ip: c.req.header('CF-Connecting-IP'),
-          userAgent: c.req.header('User-Agent'),
         });
-        // Return 200 even for invalid signature (Toss should not retry invalid sigs)
+        return c.json({ received: true, status: 'rejected' }, 200);
+      }
+
+      // 3. Timestamp verification (replay attack defense) — BEFORE any logic
+      const timestampHeader = c.req.header('Toss-Timestamp');
+      if (!verifyTimestamp(timestampHeader)) {
+        console.error('[WEBHOOK] ❌ INVALID_TIMESTAMP — possible replay attack', {
+          timestamp: timestampHeader,
+          ip: c.req.header('CF-Connecting-IP'),
+        });
         return c.json({ received: true, status: 'rejected' }, 200);
       }
     } else {
-      console.warn('[WEBHOOK] ⚠️ Signature verification skipped (development mode)');
+      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (dev mode)');
     }
 
     // 3. Parse payload

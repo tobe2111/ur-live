@@ -281,7 +281,11 @@ export function requireAuth() {
     }
 
     // Try JWT first (seller/admin)
-    const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-in-production';
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('[Auth] JWT_SECRET is not configured');
+      return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
+    }
     const jwtPayload = await verifyJWT(token, jwtSecret);
 
     if (jwtPayload) {
@@ -400,7 +404,8 @@ export function optionalAuth() {
     }
     
     // Try JWT
-    const jwtSecret = c.env.JWT_SECRET || 'default-secret-change-in-production';
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) return next(); // optional auth — skip if misconfigured
     const jwtPayload = await verifyJWT(token, jwtSecret);
     
     if (jwtPayload) {

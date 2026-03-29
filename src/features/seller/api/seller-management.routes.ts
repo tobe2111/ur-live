@@ -283,13 +283,7 @@ sellerManagementRoutes.post('/register', async (c) => {
  */
 sellerManagementRoutes.get('/profile', async (c) => {
   try {
-    const authorization = c.req.header('Authorization');
-    console.log('[Profile] Authorization header:', authorization ? 'Present' : 'Missing');
-    console.log('[Profile] JWT_SECRET:', c.env.JWT_SECRET ? 'Present' : 'Missing');
-    
-    const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
-    console.log('[Profile] Seller ID extracted:', sellerId);
-    
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
     if (!sellerId) {
       return c.json({
         success: false,
@@ -732,32 +726,64 @@ sellerManagementRoutes.post('/change-password', async (c) => {
 /**
  * POST /api/seller/upload-image
  * 셀러 이미지 업로드 (imgbb 사용)
+ * Security: auth required, MIME whitelist, 5MB size limit, safe filename
  */
+const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const ALLOWED_IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+
 sellerManagementRoutes.post('/upload-image', cors(), async (c) => {
+  // ── Auth required ──────────────────────────────────────────────────────────
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+  if (!sellerId) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+
   try {
     const formData = await c.req.formData();
     const file = formData.get('image') as File | null;
     if (!file) {
       return c.json({ success: false, error: '이미지 파일이 필요합니다' }, 400);
     }
+
+    // ── Size limit ────────────────────────────────────────────────────────────
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return c.json({ success: false, error: `파일 크기는 5MB 이하여야 합니다 (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)` }, 400);
+    }
+
+    // ── MIME type whitelist ───────────────────────────────────────────────────
+    if (!ALLOWED_IMAGE_MIME.has(file.type)) {
+      return c.json({ success: false, error: '허용되지 않는 파일 형식입니다. JPEG, PNG, WebP, GIF만 허용됩니다.' }, 400);
+    }
+
+    // ── Extension whitelist (double-check, MIME can be spoofed) ──────────────
+    const ext = ('.' + file.name.split('.').pop()?.toLowerCase()) as string;
+    if (!ALLOWED_IMAGE_EXT.has(ext)) {
+      return c.json({ success: false, error: '허용되지 않는 파일 확장자입니다.' }, 400);
+    }
+
     const imgbbKey = (c.env as unknown as Record<string, string | undefined>).IMGBB_API_KEY;
     if (!imgbbKey) {
       return c.json({ success: false, error: 'IMGBB_API_KEY 환경변수가 설정되지 않았습니다' }, 500);
     }
+
+    // ── Safe filename (no path traversal) ─────────────────────────────────────
+    const safeName = `seller_${sellerId}_${Date.now()}${ext}`;
+
     const base64 = await file.arrayBuffer().then(buf =>
       btoa(String.fromCharCode(...new Uint8Array(buf)))
     );
     const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `image=${encodeURIComponent(base64)}&name=${encodeURIComponent(file.name)}`,
+      body: `image=${encodeURIComponent(base64)}&name=${encodeURIComponent(safeName)}`,
     });
     const json = await resp.json() as ImgbbResponse;
     if (!json.success) throw new Error(json.error?.message || 'imgbb upload failed');
     return c.json({ success: true, url: json.data!.url, delete_url: json.data!.delete_url });
   } catch (err: unknown) {
-    console.error('[Seller] Upload image error:', err);
-    return c.json({ success: false, error: (err as Error).message }, 500);
+    console.error('[Seller] Upload image error:', (err as Error).message);
+    return c.json({ success: false, error: '이미지 업로드에 실패했습니다.' }, 500);
   }
 });
 
