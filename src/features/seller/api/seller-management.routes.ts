@@ -386,138 +386,139 @@ sellerManagementRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
 
 /**
  * GET /api/seller/business-info
- * 사업자 정보 조회
+ * 사업자 정보 조회 (seller_business_info 테이블)
  */
 sellerManagementRoutes.get('/business-info', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 401);
-    }
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const db = c.env.DB;
     const businessInfo = await db.prepare(`
-      SELECT 
-        business_number, business_registration_file, tax_email,
-        representative_name, business_address
-      FROM sellers
-      WHERE id = ?
+      SELECT
+        id, business_number, business_name, ceo_name,
+        business_type, business_category,
+        postal_code, address, address_detail,
+        phone, email,
+        is_verified, verified_at, created_at
+      FROM seller_business_info
+      WHERE seller_id = ?
     `).bind(sellerId).first();
 
     if (!businessInfo) {
-      return c.json({
-        success: false,
-        error: 'Seller not found'
-      }, 404);
+      return c.json({ success: false, error: 'Not found' }, 404);
     }
 
-    return c.json({
-      success: true,
-      business_info: businessInfo
-    });
+    return c.json({ success: true, data: businessInfo });
 
   } catch (error: unknown) {
     console.error('Get business info error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message || 'Failed to get business info'
-    }, 500);
+    return c.json({ success: false, error: 'Failed to get business info' }, 500);
   }
 });
 
 /**
- * PUT /api/seller/business-info
- * 사업자 정보 수정
+ * POST/PUT/PATCH /api/seller/business-info
+ * 사업자 정보 등록/수정 (seller_business_info 테이블 UPSERT)
+ * 수정 시 is_verified = 0 으로 초기화 (재승인 필요)
  */
 sellerManagementRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => {
   try {
     const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) {
-      return c.json({
-        success: false,
-        error: 'Unauthorized'
-      }, 401);
-    }
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-    const body = await c.req.json<BusinessInfoUpdate>();
-    const updates: string[] = [];
-    const values: (string | number | null)[] = [];
+    const body = await c.req.json<{
+      business_number?: string;
+      business_name?: string;
+      ceo_name?: string;
+      business_type?: string;
+      business_category?: string;
+      postal_code?: string;
+      address?: string;
+      address_detail?: string;
+      phone?: string;
+      email?: string;
+    }>();
 
-    // 업데이트 가능한 필드들
-    if (body.business_number !== undefined) {
-      // 사업자번호 형식 검증
+    // 사업자번호 형식 검증
+    if (body.business_number) {
       const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
       if (!businessNumberRegex.test(body.business_number)) {
-        return c.json({
-          success: false,
-          error: 'Invalid business number format (XXX-XX-XXXXX)'
-        }, 400);
+        return c.json({ success: false, error: 'Invalid business number format (XXX-XX-XXXXX)' }, 400);
       }
-      updates.push('business_number = ?');
-      values.push(body.business_number);
     }
-    if (body.business_registration_file !== undefined) {
-      updates.push('business_registration_file = ?');
-      values.push(body.business_registration_file);
-    }
-    if (body.tax_email !== undefined) {
-      updates.push('tax_email = ?');
-      values.push(body.tax_email);
-    }
-    if (body.representative_name !== undefined) {
-      updates.push('representative_name = ?');
-      values.push(body.representative_name);
-    }
-    if (body.business_address !== undefined) {
-      updates.push('business_address = ?');
-      values.push(body.business_address);
-    }
-
-    if (updates.length === 0) {
-      return c.json({
-        success: false,
-        error: 'No fields to update'
-      }, 400);
-    }
-
-    updates.push('updated_at = datetime(\'now\')');
-    values.push(sellerId);
 
     const db = c.env.DB;
-    const result = await db.prepare(`
-      UPDATE sellers
-      SET ${updates.join(', ')}
-      WHERE id = ?
-    `).bind(...values).run();
+    const existing = await db.prepare(
+      'SELECT id, is_verified FROM seller_business_info WHERE seller_id = ?'
+    ).bind(sellerId).first<{ id: number; is_verified: number }>();
 
-    if (!result.success) {
-      throw new Error('Failed to update business info');
+    if (existing) {
+      // UPDATE — 재제출 시 승인 상태 초기화
+      await db.prepare(`
+        UPDATE seller_business_info SET
+          business_number = COALESCE(?, business_number),
+          business_name   = COALESCE(?, business_name),
+          ceo_name        = COALESCE(?, ceo_name),
+          business_type   = COALESCE(?, business_type),
+          business_category = COALESCE(?, business_category),
+          postal_code     = COALESCE(?, postal_code),
+          address         = COALESCE(?, address),
+          address_detail  = COALESCE(?, address_detail),
+          phone           = COALESCE(?, phone),
+          email           = COALESCE(?, email),
+          is_verified     = 0,
+          verified_at     = NULL,
+          updated_at      = datetime('now')
+        WHERE seller_id = ?
+      `).bind(
+        body.business_number ?? null,
+        body.business_name ?? null,
+        body.ceo_name ?? null,
+        body.business_type ?? null,
+        body.business_category ?? null,
+        body.postal_code ?? null,
+        body.address ?? null,
+        body.address_detail ?? null,
+        body.phone ?? null,
+        body.email ?? null,
+        sellerId
+      ).run();
+    } else {
+      // INSERT
+      await db.prepare(`
+        INSERT INTO seller_business_info
+          (seller_id, business_number, business_name, ceo_name,
+           business_type, business_category, postal_code, address, address_detail,
+           phone, email, is_verified)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      `).bind(
+        sellerId,
+        body.business_number ?? null,
+        body.business_name ?? null,
+        body.ceo_name ?? null,
+        body.business_type ?? null,
+        body.business_category ?? null,
+        body.postal_code ?? null,
+        body.address ?? null,
+        body.address_detail ?? null,
+        body.phone ?? null,
+        body.email ?? null
+      ).run();
     }
 
-    // 업데이트된 전체 프로필 조회
-    const updatedSeller = await db.prepare(`
-      SELECT
-        id, username, email, name, business_name, phone, address, description,
-        bank_account, bank_name, account_holder, status, commission_rate,
-        profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
-        website_url, kakao_chat_url AS kakao_chat_link,
-        business_number, business_registration_file, tax_email,
-        representative_name, business_address,
-        created_at, updated_at
-      FROM sellers WHERE id = ?
+    const saved = await db.prepare(`
+      SELECT id, business_number, business_name, ceo_name,
+             business_type, business_category, postal_code, address, address_detail,
+             phone, email, is_verified, verified_at, created_at
+      FROM seller_business_info WHERE seller_id = ?
     `).bind(sellerId).first();
 
-    return c.json({ success: true, data: updatedSeller });
+    return c.json({ success: true, data: saved });
 
   } catch (error: unknown) {
     console.error('Update business info error:', error);
-    return c.json({
-      success: false,
-      error: (error as Error).message || 'Failed to update business info'
-    }, 500);
+    return c.json({ success: false, error: 'Failed to save business info' }, 500);
   }
 });
 

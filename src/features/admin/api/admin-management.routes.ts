@@ -175,14 +175,77 @@ adminManagementRoutes.get('/sellers/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');
-    const row = await DB.prepare(`
-      SELECT id, email, name, phone, business_name, business_number, status,
-             commission_rate, can_manipulate_stats, created_at,
-             tax_email, representative_name, business_address, business_registration_file
-      FROM sellers WHERE id = ?
-    `).bind(sellerId).first();
-    if (!row) return c.json({ success: false, error: 'Not found' }, 404);
-    return c.json({ success: true, data: row });
+
+    // base seller info (always safe columns)
+    const seller = await DB.prepare(`
+      SELECT s.id, s.email, s.name, s.phone, s.business_name, s.business_number,
+             s.status, s.created_at,
+             COALESCE(s.commission_rate, 10) AS commission_rate,
+             COALESCE(s.can_manipulate_stats, 0) AS can_manipulate_stats
+      FROM sellers s WHERE s.id = ?
+    `).bind(sellerId).first().catch(() => null);
+
+    if (!seller) {
+      // fallback: query without potentially-missing columns
+      const row2 = await DB.prepare(
+        `SELECT id, email, name, phone, business_name, business_number, status, created_at FROM sellers WHERE id = ?`
+      ).bind(sellerId).first();
+      if (!row2) return c.json({ success: false, error: 'Not found' }, 404);
+      return c.json({ success: true, data: { ...row2, commission_rate: 10, can_manipulate_stats: 0 } });
+    }
+
+    // business info (LEFT JOIN — safe even if table missing)
+    const biz = await DB.prepare(`
+      SELECT business_number AS biz_number, business_name AS biz_name, ceo_name,
+             business_type, business_category, postal_code,
+             address, address_detail, phone AS biz_phone, email AS biz_email,
+             is_verified AS biz_is_verified, verified_at AS biz_verified_at
+      FROM seller_business_info WHERE seller_id = ?
+    `).bind(sellerId).first().catch(() => null);
+
+    return c.json({ success: true, data: { ...seller, ...(biz || {}) } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/sellers/:id/business-info/approve', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const existing = await DB.prepare(
+      `SELECT id, is_verified FROM seller_business_info WHERE seller_id = ?`
+    ).bind(sellerId).first<{ id: number; is_verified: number }>();
+    if (!existing) return c.json({ success: false, error: '사업자 정보가 없습니다' }, 404);
+    if (existing.is_verified) return c.json({ success: false, error: '이미 승인된 사업자 정보입니다' }, 400);
+    await DB.prepare(`
+      UPDATE seller_business_info
+      SET is_verified = 1, verified_at = datetime('now'), updated_at = datetime('now')
+      WHERE seller_id = ?
+    `).bind(sellerId).run();
+    await writeAuditLog(c, { action: 'approve_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: true } });
+    return c.json({ success: true, message: '사업자 정보를 승인했습니다' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.patch('/sellers/:id/business-info/reject', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const { reason } = await c.req.json<{ reason?: string }>();
+    const existing = await DB.prepare(
+      `SELECT id FROM seller_business_info WHERE seller_id = ?`
+    ).bind(sellerId).first();
+    if (!existing) return c.json({ success: false, error: '사업자 정보가 없습니다' }, 404);
+    await DB.prepare(`
+      UPDATE seller_business_info
+      SET is_verified = 0, verified_at = NULL, updated_at = datetime('now')
+      WHERE seller_id = ?
+    `).bind(sellerId).run();
+    await writeAuditLog(c, { action: 'reject_business_info', targetType: 'seller', targetId: sellerId, after: { is_verified: false, reason } });
+    return c.json({ success: true, message: '사업자 정보를 반려했습니다' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -773,15 +836,18 @@ adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
 adminManagementRoutes.get('/stats', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const [ts, as, tst, ast] = await Promise.all([
-      executeQuery<CountRow>(DB, 'SELECT COUNT(*) as count FROM sellers'),
-      executeQuery<CountRow>(DB, "SELECT COUNT(*) as count FROM sellers WHERE status = 'approved'"),
-      executeQuery<CountRow>(DB, 'SELECT COUNT(*) as count FROM live_streams'),
-      executeQuery<CountRow>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status = 'live'"),
+    const safe = async <T>(q: string): Promise<T[]> => {
+      try { return await executeQuery<T>(DB, q); } catch { return []; }
+    };
+    const [ts, as_, tst, ast] = await Promise.all([
+      safe<CountRow>('SELECT COUNT(*) as count FROM sellers'),
+      safe<CountRow>("SELECT COUNT(*) as count FROM sellers WHERE status = 'approved'"),
+      safe<CountRow>('SELECT COUNT(*) as count FROM live_streams'),
+      safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status = 'live'"),
     ]);
     return c.json({ success: true, data: {
       totalSellers: ts[0]?.count || 0,
-      activeSellers: as[0]?.count || 0,
+      activeSellers: as_[0]?.count || 0,
       totalStreams: tst[0]?.count || 0,
       activeStreams: ast[0]?.count || 0,
     }});
@@ -791,23 +857,25 @@ adminManagementRoutes.get('/stats', cors(), async (c) => {
 });
 
 adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
-  try {
-    const { DB } = c.env;
-    const today = new Date().toISOString().split('T')[0];
-    const [sales, orders, live] = await Promise.all([
-      executeQuery<SalesRow>(DB, `SELECT COALESCE(SUM(COALESCE(total_amount, total_price, 0)),0) as total FROM orders WHERE DATE(created_at)=? AND payment_status='approved'`, [today]),
-      executeQuery<CountRow>(DB, 'SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
-      executeQuery<CountRow>(DB, "SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
-    ]);
-    return c.json({ success: true, data: {
-      todaySales: sales[0]?.total || 0,
-      todayOrders: orders[0]?.count || 0,
-      currentVisitors: Math.floor(Math.random() * 100) + 50,
-      liveStreams: live[0]?.count || 0,
-    }});
-  } catch (err) {
-    return c.json({ success: false, error: (err as Error).message }, 500);
-  }
+  const { DB } = c.env;
+  const today = new Date().toISOString().split('T')[0];
+
+  const safe = async <T>(q: string, p: unknown[] = []): Promise<T[]> => {
+    try { return await executeQuery<T>(DB, q, p); } catch { return []; }
+  };
+
+  const [sales, orders, live] = await Promise.all([
+    safe<SalesRow>(`SELECT COALESCE(SUM(COALESCE(total_amount, total_price, 0)),0) as total FROM orders WHERE DATE(created_at)=? AND COALESCE(payment_status,'pending')='approved'`, [today]),
+    safe<CountRow>('SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
+    safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
+  ]);
+
+  return c.json({ success: true, data: {
+    todaySales: (sales[0] as SalesRow)?.total || 0,
+    todayOrders: (orders[0] as CountRow)?.count || 0,
+    currentVisitors: 0,
+    liveStreams: (live[0] as CountRow)?.count || 0,
+  }});
 });
 
 // ─── 정산 관리 ───────────────────────────────────────────────────────────────
@@ -821,22 +889,26 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     else if (period === 'week') df = "AND DATE(o.created_at) >= DATE('now','-7 days')";
     else if (period === 'month') df = "AND DATE(o.created_at) >= DATE('now','-30 days')";
 
+    const safe = async <T>(q: string): Promise<T[]> => {
+      try { return await executeQuery<T>(DB, q); } catch { return []; }
+    };
+
     const [overview, sellers] = await Promise.all([
-      executeQuery<SettlementOverviewRow>(DB, `
+      safe<SettlementOverviewRow>(`
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
-        WHERE o.payment_status='approved' ${df}`),
-      executeQuery<SettlementSellerRow>(DB, `
+        WHERE COALESCE(o.payment_status,'pending')='approved' ${df}`),
+      safe<SettlementSellerRow>(`
         SELECT s.id as seller_id, s.name as seller_name, s.business_name,
                COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
                COUNT(o.id) as order_count,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
-        FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.payment_status='approved' ${df}
+        FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND COALESCE(o.payment_status,'pending')='approved' ${df}
         GROUP BY s.id ORDER BY total_sales DESC`),
     ]);
     return c.json({ success: true, data: { overview: overview[0] || {}, sellers } });

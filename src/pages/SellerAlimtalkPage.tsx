@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import {
-  MessageSquare, Loader2, Zap, ArrowLeft,
+  MessageSquare, Loader2, Zap,
   CreditCard, History, CheckCircle2, XCircle,
   Package
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import SellerLayout from '@/components/SellerLayout'
 
 interface DbPackage {
   id: number
@@ -166,30 +167,24 @@ export default function SellerAlimtalkPage() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-[#F4F5F7]">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 h-14 flex items-center gap-3">
-        <Link to="/seller" className="text-gray-400 hover:text-gray-600">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <MessageSquare className="w-5 h-5 text-purple-600" />
-        <h1 className="text-base font-semibold text-gray-900">브랜드메시지</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-gray-400">잔여 크레딧</span>
-          <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
-            {balance.toLocaleString()}건
-          </span>
-          <button
-            onClick={() => setChargeModal(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
-          >
-            <CreditCard className="w-3.5 h-3.5" /> 충전
-          </button>
-        </div>
-      </header>
+  const headerRight = (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-400">잔여 크레딧</span>
+      <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+        {balance.toLocaleString()}건
+      </span>
+      <button
+        onClick={() => setChargeModal(true)}
+        className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+      >
+        <CreditCard className="w-3.5 h-3.5" /> 충전
+      </button>
+    </div>
+  )
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
+  return (
+    <SellerLayout title="브랜드메시지" headerRight={headerRight}>
+      <div className="max-w-2xl mx-auto">
         {/* 잔액 카드 */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-5 text-white mb-5 shadow">
           <p className="text-xs text-blue-100 mb-1">브랜드메시지 크레딧 잔액</p>
@@ -368,6 +363,6 @@ export default function SellerAlimtalkPage() {
           </div>
         </div>
       )}
-    </div>
+    </SellerLayout>
   )
 }

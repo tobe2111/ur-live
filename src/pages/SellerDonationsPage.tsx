@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { ArrowLeft, Heart, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, CreditCard } from 'lucide-react'
+import { Heart, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, CreditCard } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import SellerLayout from '@/components/SellerLayout'
 
 interface DonationRow {
   id: number
@@ -122,16 +123,8 @@ export default function SellerDonationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
-      <header className="bg-white border-b border-gray-200 px-6 h-14 flex items-center gap-3">
-        <Link to="/seller" className="text-gray-400 hover:text-gray-600">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />
-        <h1 className="text-base font-semibold text-gray-900">후원 관리</h1>
-      </header>
-
-      <div className="max-w-2xl mx-auto px-4 py-5">
+    <SellerLayout title="후원 관리">
+      <div className="max-w-2xl mx-auto">
         {/* 요약 카드 */}
         {summary && (
           <div className="grid grid-cols-2 gap-3 mb-5">
@@ -275,6 +268,6 @@ export default function SellerDonationsPage() {
           </div>
         </div>
       )}
-    </div>
+    </SellerLayout>
   )
 }
