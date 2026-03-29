@@ -116,6 +116,10 @@ export default function SellerLiveBroadcastPage() {
 
       console.log('[LiveBroadcast] Channels result:', channelsRes.status,
         channelsRes.status === 'fulfilled' ? channelsRes.value.data : (channelsRes as any).reason?.response?.data)
+      console.log('[LiveBroadcast] Products result:', productsRes.status,
+        productsRes.status === 'fulfilled' ? productsRes.value.data : (productsRes as any).reason?.message)
+      console.log('[LiveBroadcast] Streams result:', streamsRes.status,
+        streamsRes.status === 'fulfilled' ? streamsRes.value.data : (streamsRes as any).reason?.message)
 
       if (channelsRes.status === 'fulfilled' && channelsRes.value.data?.success) {
         setChannels(channelsRes.value.data.data || [])
