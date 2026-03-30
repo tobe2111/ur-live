@@ -23,10 +23,7 @@ export default function LoginPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
-  
-  // ✅ Zustand Store 선택 (KR/World)
-  // Region-based auth (see below)
-  
+
   // ✅ Region-based auth store 선택 (hooks 규칙 준수)
   const isKR = isKorea()
   const krUser = useAuthKR(state => state.user)
@@ -37,13 +34,13 @@ export default function LoginPage() {
   const worldUser = useAuthWorld(state => state.user)
   const worldIsAuthReady = useAuthWorld(state => state.isAuthReady)
   const worldGlobalLoading = useAuthWorld(state => state.isLoading)
-  
+
   const user = isKR ? krUser : worldUser
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   const globalLoading = isKR ? krGlobalLoading : worldGlobalLoading
   const loginWithEmailAction = krLoginWithEmail
   const sendPasswordResetEmailAction = krSendPasswordReset
-  
+
   // Local State
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -54,7 +51,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  
+
   // ✅ 무한루프 방지: returnUrl은 마운트 시 1회만 계산 (useRef로 고정)
   const returnUrlRef = useRef<string | null>(null)
   if (returnUrlRef.current === null) {
@@ -69,7 +66,6 @@ export default function LoginPage() {
   const isLoggedIn = !!user
 
   // ✅ 로그인 상태 확인 및 리다이렉트
-  // 의존성에서 returnUrl 제거 → searchParams 변경으로 인한 무한 루프 차단
   useEffect(() => {
     if (!isAuthReady) {
       console.log('[LoginPage] ⏳ Auth 초기화 대기 중...')
@@ -83,19 +79,21 @@ export default function LoginPage() {
     }
   }, [isAuthReady, isLoggedIn, navigate])
 
-  // ✅ Kakao SDK 초기화 및 returnUrl 저장
+  // ✅ Kakao SDK 초기화 및 returnUrl 저장 (KR만)
   useEffect(() => {
     const urlParam = searchParams.get('returnUrl')
     if (urlParam) {
       sessionStorage.setItem('returnUrl', urlParam)
       console.log('[LoginPage] 🎯 returnUrl 저장:', urlParam)
     }
-    
+
+    if (!isKR) return // GLOBAL에서는 Kakao SDK 불필요
+
     const checkKakaoSDK = () => {
       if (window.Kakao && !window.Kakao.isInitialized()) {
         window.Kakao.init('975a2e7f97254b08f15dba4d177a2865')
       }
-      
+
       if (window.Kakao && window.Kakao.isInitialized()) {
         setKakaoReady(true)
       } else {
@@ -104,7 +102,7 @@ export default function LoginPage() {
     }
 
     checkKakaoSDK()
-  }, [searchParams])
+  }, [searchParams, isKR])
 
   // ✅ Kakao 로그인 핸들러
   async function handleKakaoLogin() {
@@ -118,7 +116,7 @@ export default function LoginPage() {
 
     try {
       const accessToken = window.Kakao.Auth.getAccessToken()
-      
+
       // 기존 토큰이 있으면 재사용
       if (accessToken) {
         await processKakaoLogin(accessToken)
@@ -127,29 +125,28 @@ export default function LoginPage() {
 
       // ✅ 환경 변수 검증
       const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY
-      
+
       if (!KAKAO_REST_API_KEY) {
         console.error('[Kakao Login] ❌ VITE_KAKAO_REST_API_KEY 환경 변수가 설정되지 않았습니다')
-        console.error('[Kakao Login] 📖 해결 방법: KAKAO_LOGIN_KOE101_FIX.md 파일을 참고하세요')
         setError('카카오 로그인 설정 오류입니다. 관리자에게 문의하세요. (KOE101)')
         setLoading(false)
         return
       }
-      
+
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
-      
+
       console.log('[Kakao Login] 🔑 REST API Key:', KAKAO_REST_API_KEY.substring(0, 10) + '...')
       console.log('[Kakao Login] 🔗 Redirect URI:', REDIRECT_URI)
-      
+
       // returnUrl을 state로 전달
-      const currentReturnUrl = searchParams.get('returnUrl') 
-        || sessionStorage.getItem('returnUrl') 
+      const currentReturnUrl = searchParams.get('returnUrl')
+        || sessionStorage.getItem('returnUrl')
         || '/'
-      
+
       const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${encodeURIComponent(currentReturnUrl)}`
-      
+
       window.location.href = kakaoAuthUrl
-      
+
     } catch (err: any) {
       console.error('[Kakao Login] ❌ 오류 발생:', err)
       setError(t('auth.kakaoLoginError'))
@@ -161,7 +158,7 @@ export default function LoginPage() {
   async function processKakaoLogin(accessToken: string) {
     try {
       console.log('[Kakao Login] 🔥 Firebase Custom Token 요청 시작')
-      
+
       const response = await api.post('/api/auth/kakao/firebase', {
         accessToken: accessToken
       })
@@ -177,7 +174,7 @@ export default function LoginPage() {
 
         // ✅ Lazy load Firebase Auth
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
-        
+
         // Firebase signInWithCustomToken
         const credential = await signInWithCustomToken(customToken)
 
@@ -194,7 +191,7 @@ export default function LoginPage() {
         if (kakaoUser.email) localStorage.setItem('user_email', kakaoUser.email)
 
         // ✅ Zustand store 직접 업데이트 (onAuthStateChanged 대기 없이 즉시 인증)
-        const authStore = isKR ? useAuthKR.getState() : useAuthWorld.getState()
+        const authStore = useAuthKR.getState()
         authStore.setUser(credential.user)
         authStore.setAuthReady(true)
 
@@ -212,10 +209,10 @@ export default function LoginPage() {
             ''
           )
         } catch (_) {}
-        
+
         const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
         sessionStorage.removeItem('returnUrl')
-        
+
         console.log('[Kakao Login] ✅ Firebase 로그인 성공:', kakaoUser.name, '→', savedReturnUrl)
         navigate(savedReturnUrl, { replace: true })
       } else {
@@ -242,23 +239,19 @@ export default function LoginPage() {
 
       // ✅ Zustand action 직접 호출
       await loginWithEmailAction(email, password)
-      
+
       // ✅ role에 따라 리다이렉트 경로 결정
       const { userRole } = isKR ? useAuthKR.getState() : useAuthWorld.getState()
       console.log('[Email Login] ✅ 로그인 성공 - Role:', userRole)
-      
+
       sessionStorage.removeItem('returnUrl')
-      
+
       // role별 리다이렉트
       if (userRole === 'seller') {
-        console.log('[Email Login] 📍 Seller 대시보드로 이동')
         navigate('/seller/dashboard', { replace: true })
       } else if (userRole === 'admin') {
-        console.log('[Email Login] 📍 Admin 대시보드로 이동')
         navigate('/admin', { replace: true })
       } else {
-        // 기본값: user → returnUrl 또는 홈
-        console.log('[Email Login] 📍 User 페이지로 이동:', returnUrl)
         navigate(returnUrl, { replace: true })
       }
     } catch (err: any) {
@@ -278,9 +271,8 @@ export default function LoginPage() {
 
     setLoading(true)
     setError('')
-    
+
     try {
-      // ✅ Zustand action 직접 호출
       await sendPasswordResetEmailAction(email)
       setSuccessMessage(t('auth.resetPasswordSuccess'))
       setShowForgotPassword(false)
@@ -291,22 +283,27 @@ export default function LoginPage() {
     }
   }
 
-  // ✅ Google 로그인 핸들러 (글로벌 전용)
+  // ✅ Google 로그인 핸들러 (GLOBAL 전용)
   async function handleGoogleLogin() {
     setLoading(true)
     setError('')
-    
+
     try {
-      // Lazy load Firebase Auth
       const { signInWithGoogle } = await import('@/lib/firebase-auth')
-      
+
       const result = await signInWithGoogle()
-      
+
       // ✅ localStorage에 user_type 설정 (API Interceptor를 위해 필수)
       localStorage.setItem('user_type', 'user')
       localStorage.setItem('user_name', result.user.displayName || result.user.email?.split('@')[0] || 'User')
-      console.log('[Google Login] ✅ localStorage에 user_type 설정: user')
-      
+      localStorage.setItem('user_id', result.user.uid)
+      if (result.user.email) localStorage.setItem('user_email', result.user.email)
+
+      // ✅ Zustand store 업데이트
+      const authStore = useAuthWorld.getState()
+      authStore.setUser(result.user)
+      authStore.setAuthReady(true)
+
       // 백엔드에 사용자 정보 저장 (D1 DB)
       await api.post('/api/auth/google/register', {
         uid: result.user.uid,
@@ -314,15 +311,20 @@ export default function LoginPage() {
         name: result.user.displayName,
         photoURL: result.user.photoURL
       })
-      
+
       console.log('[Google Login] ✅ 성공:', result.user.email)
-      
+
       sessionStorage.removeItem('returnUrl')
       navigate(returnUrl, { replace: true })
-      
+
     } catch (error: any) {
       console.error('[Google Login] ❌ 실패:', error)
-      setError(t('auth.googleLoginError'))
+      if (error?.code === 'auth/popup-closed-by-user') {
+        // 사용자가 팝업을 닫은 경우 — 에러 표시하지 않음
+        console.log('[Google Login] 사용자가 팝업을 닫았습니다')
+      } else {
+        setError(t('auth.googleLoginError'))
+      }
     } finally {
       setLoading(false)
     }
@@ -347,7 +349,7 @@ export default function LoginPage() {
             UR LIVE
           </h1>
           <p className="text-[14px] text-[#999] mt-3 font-light">
-            라이브 쇼핑의 새로운 경험
+            {t('auth.tagline')}
           </p>
         </div>
 
@@ -367,32 +369,62 @@ export default function LoginPage() {
         {/* Main Login */}
         {!showEmailLogin && !showForgotPassword && (
           <div>
-            {/* Kakao Login Button */}
-            <button
-              onClick={() => {
-                console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
-                handleKakaoLogin()
-              }}
-              disabled={loading || !kakaoReady}
-              className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>로그인 중...</span>
-                </div>
-              ) : (
-                <>
-                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
-                    <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
-                  </svg>
-                  <span>카카오로 3초 만에 시작하기</span>
-                </>
-              )}
-            </button>
+            {/* ✅ Region-based Primary Login Button */}
+            {isKR ? (
+              /* Kakao Login Button (KR) */
+              <button
+                onClick={() => {
+                  console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
+                  handleKakaoLogin()
+                }}
+                disabled={loading || !kakaoReady}
+                className="w-full h-[52px] bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 border border-[#F5DC00]"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{t('common.loading')}</span>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                      <path fill="#3C1E1E" d="M12 3c5.5 0 10 3.58 10 8 0 4.42-4.5 8-10 8-1.15 0-2.25-.16-3.28-.45L3 21l1.45-5.72C3.55 14.2 3 12.66 3 11c0-4.42 4.5-8 9-8z"/>
+                    </svg>
+                    <span>{t('auth.kakaoQuickStart')}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              /* Google Login Button (GLOBAL) */
+              <button
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full h-[52px] bg-white hover:bg-gray-50 text-[#3c4043] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-[#dadce0]"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{t('common.loading')}</span>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>{t('auth.loginWithGoogle')}</span>
+                  </>
+                )}
+              </button>
+            )}
 
             {/* Email Login Link */}
             <div className="text-center mt-8">
@@ -400,15 +432,15 @@ export default function LoginPage() {
                 onClick={() => setShowEmailLogin(true)}
                 className="text-[13px] text-[#888] hover:text-[#111] underline underline-offset-4 decoration-1 font-light transition-colors"
               >
-                이메일로 로그인하기
+                {t('auth.loginWithEmail')}
               </button>
             </div>
 
             {/* Sign Up Link */}
             <div className="text-center text-[13px] text-[#aaa] mt-5 font-light">
-              계정이 없으신가요?{' '}
+              {t('auth.noAccount')}{' '}
               <Link to="/register" className="text-[#111] font-medium hover:underline underline-offset-4 decoration-1">
-                회원가입
+                {t('common.signup')}
               </Link>
             </div>
           </div>
@@ -419,21 +451,21 @@ export default function LoginPage() {
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
               <label className="block text-[12px] font-medium text-[#555] mb-1.5">
-                이메일
+                {t('auth.email')}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
-                placeholder="example@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 required
               />
             </div>
 
             <div>
               <label className="block text-[12px] font-medium text-[#555] mb-1.5">
-                비밀번호
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <input
@@ -441,13 +473,14 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
-                  placeholder="비밀번호를 입력하세요"
+                  placeholder={t('auth.passwordPlaceholder')}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-[#555]"
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -463,7 +496,7 @@ export default function LoginPage() {
                 }}
                 className="text-[12px] text-[#888] hover:text-[#111] underline underline-offset-4 decoration-1 font-light"
               >
-                비밀번호를 잊으셨나요?
+                {t('auth.forgotPassword')}
               </button>
             </div>
 
@@ -472,7 +505,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '로그인 중...' : '로그인'}
+              {loading ? t('common.loading') : t('common.login')}
             </button>
 
             <button
@@ -480,7 +513,7 @@ export default function LoginPage() {
               onClick={() => setShowEmailLogin(false)}
               className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
             >
-              돌아가기
+              {t('common.back')}
             </button>
           </form>
         )}
@@ -490,20 +523,20 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div className="text-center mb-6">
               <p className="text-[14px] text-[#666] font-light leading-relaxed">
-                가입한 이메일을 입력하시면<br />비밀번호 재설정 링크를 보내드립니다.
+                {t('auth.resetPasswordDesc')}
               </p>
             </div>
 
             <div>
               <label className="block text-[12px] font-medium text-[#555] mb-1.5">
-                이메일
+                {t('auth.email')}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
-                placeholder="example@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 required
               />
             </div>
@@ -513,7 +546,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '전송 중...' : '재설정 링크 보내기'}
+              {loading ? t('common.loading') : t('auth.resetPasswordButton')}
             </button>
 
             <button
@@ -524,7 +557,7 @@ export default function LoginPage() {
               }}
               className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
             >
-              돌아가기
+              {t('common.back')}
             </button>
           </div>
         )}

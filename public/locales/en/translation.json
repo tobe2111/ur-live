@@ -47,7 +47,10 @@
     "emailPlaceholder": "Enter your email",
     "passwordPlaceholder": "Enter your password",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "tagline": "A new way to shop live",
+    "kakaoQuickStart": "Start in 3 seconds with Kakao",
+    "resetPasswordDesc": "Enter your registered email and\nwe'll send you a password reset link."
   },
   "payment": {
     "checkout": "Checkout",
