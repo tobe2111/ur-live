@@ -83,6 +83,10 @@ export interface Order {
   tracking_number?: string
   shipped_at?: string
   delivered_at?: string
+  cancelled_at?: string
+  refunded_at?: string
+  cancel_reason?: string
+  refund_status?: 'pending' | 'completed' | 'failed'
   created_at: string
   updated_at?: string
   items?: OrderItem[]

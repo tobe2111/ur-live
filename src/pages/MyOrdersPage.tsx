@@ -43,6 +43,8 @@ export default function MyOrdersPage() {
     orderNumber: ''
   })
   const [cancelReason, setCancelReason] = useState('')
+  const [isPartialCancel, setIsPartialCancel] = useState(false)
+  const [cancelAmount, setCancelAmount] = useState('')
 
   // Check login status (통합 인증 사용)
   const userId = getUserIdSync()
@@ -155,13 +157,10 @@ export default function MyOrdersPage() {
   }
 
   async function handleCancelOrder(orderId: number | string, orderNumber: string) {
-    // 취소 모달 열기
-    setCancelModal({
-      isOpen: true,
-      orderId,
-      orderNumber
-    })
+    setCancelModal({ isOpen: true, orderId, orderNumber })
     setCancelReason('')
+    setIsPartialCancel(false)
+    setCancelAmount('')
   }
 
   async function confirmCancelOrder() {
@@ -171,15 +170,22 @@ export default function MyOrdersPage() {
       toast.error('취소 사유를 입력해주세요.')
       return
     }
+    if (isPartialCancel && (!cancelAmount || Number(cancelAmount) <= 0)) {
+      toast.error('부분 취소 금액을 입력해주세요.')
+      return
+    }
     setProcessing(true)
     try {
       const response = await api.post(`/api/orders/${orderId}/cancel`, {
-        reason: cancelReason
+        reason: cancelReason,
+        ...(isPartialCancel && cancelAmount ? { cancel_amount: Number(cancelAmount) } : {}),
       })
       if (response.data.success) {
         toast.success('주문이 취소되었습니다.')
         setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
         setCancelReason('')
+        setIsPartialCancel(false)
+        setCancelAmount('')
         loadData()
       } else {
         toast.error(response.data.error || '주문 취소에 실패했습니다.')
@@ -515,7 +521,7 @@ export default function MyOrdersPage() {
                 주문 취소
               </h3>
               <button
-                onClick={() => setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })}
+                onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="h-6 w-6" />
@@ -529,7 +535,7 @@ export default function MyOrdersPage() {
             </div>
 
             {/* Cancel Reason */}
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 취소 사유 <span className="text-red-500">*</span>
               </label>
@@ -547,6 +553,41 @@ export default function MyOrdersPage() {
               </select>
             </div>
 
+            {/* Partial Cancel */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">환불 방식</label>
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPartialCancel(false)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  전액 취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPartialCancel(true)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
+                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  부분 취소
+                </button>
+              </div>
+              {isPartialCancel && (
+                <input
+                  type="number"
+                  value={cancelAmount}
+                  onChange={(e) => setCancelAmount(e.target.value)}
+                  placeholder="취소할 금액 입력 (원)"
+                  min="1"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              )}
+            </div>
+
             {/* Notice */}
             <div className="mb-6 p-4 bg-blue-50 rounded-xl">
               <div className="flex items-start gap-2">
@@ -562,10 +603,7 @@ export default function MyOrdersPage() {
             {/* Actions */}
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
-                  setCancelReason('')
-                }}
+                onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
                 className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-medium rounded-full hover:bg-gray-200 transition-colors"
                 disabled={processing}
               >
