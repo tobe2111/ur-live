@@ -37,6 +37,8 @@ export class OrderRepository {
     const totalAmount = subtotal + shippingFee;
 
     // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환
+    // seller_id가 빈 문자열이면 null로 변환 (FK 위반 및 타입 불일치 방지)
+    const safeSellerId = request.seller_id || null;
     const orderResult = await this.qb.execute(
       `INSERT INTO orders (
         order_number, user_id, seller_id,
@@ -47,7 +49,7 @@ export class OrderRepository {
       [
         request.order_number,
         userId,
-        request.seller_id,
+        safeSellerId,
         subtotal,
         shippingFee,
         totalAmount,
@@ -79,7 +81,7 @@ export class OrderRepository {
         params: [
           orderId,
           item.product_id,
-          item.seller_id,
+          item.seller_id || null,  // seller_id가 빈 문자열이면 null
           item.product_name,
           item.product_thumbnail ?? null,
           item.product_sku ?? null,

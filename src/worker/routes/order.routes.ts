@@ -128,12 +128,17 @@ ordersRouter.post('/', async (c) => {
     const products = await productRepo.findByIds(productIds);
 
     if (products.length !== productIds.length) {
-      return c.json({ success: false, error: '일부 상품을 찾을 수 없습니다' }, 400);
+      const missingIds = productIds.filter(id => !products.find(p => p.id === id));
+      return c.json({ success: false, error: `일부 상품을 찾을 수 없습니다 (ID: ${missingIds.join(', ')})` }, 400);
     }
 
-    // Verify all products belong to the specified seller (skip if seller_id is empty)
-    if (request.seller_id) {
-      const wrongSeller = products.find(p => p.seller_id !== request.seller_id);
+    // seller_id가 빈 문자열이면 null로 치환 (FK 위반 방지)
+    // 상품에 seller_id가 없는 경우 (null) 주문 생성 시 seller_id도 null 허용
+    const effectiveSellerId = request.seller_id || null;
+
+    // Verify all products belong to the specified seller (skip if seller_id is empty/null)
+    if (effectiveSellerId) {
+      const wrongSeller = products.find(p => p.seller_id !== effectiveSellerId);
       if (wrongSeller) {
         return c.json({
           success: false,
@@ -204,6 +209,7 @@ ordersRouter.post('/', async (c) => {
     }
 
     // Create order (재고 차감 완료 후 주문 생성)
+    // Note: repository 내부에서 seller_id 빈 문자열 → null 변환 처리
     let order;
     try {
       order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
