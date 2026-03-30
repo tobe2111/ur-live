@@ -342,7 +342,8 @@ export default function CheckoutPage() {
 
     for (const group of Object.values(sellerGroups)) {
       const response = await api.post('/api/orders', {
-        seller_id: String(group.seller_id),
+        // seller_id가 0(null에서 변환)이면 빈 문자열 → order route의 seller 검증 skip
+        seller_id: group.seller_id ? String(group.seller_id) : '',
         order_number: orderId,
         items: group.items.map(item => ({
           product_id: String(item.product_id),
