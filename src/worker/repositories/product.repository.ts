@@ -81,8 +81,7 @@ export class ProductRepository {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(', ');
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.slug as seller_slug,
-              s.base_shipping_fee, s.free_shipping_threshold
+      `SELECT p.*, s.name as seller_name, s.slug as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        WHERE p.id IN (${placeholders}) AND p.status = 'ACTIVE'`,

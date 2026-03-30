@@ -329,12 +329,11 @@ export class OrderRepository {
     const statements = items.map(item => ({
       sql: `UPDATE products
             SET stock_quantity = stock_quantity - ?,
-                sold_count     = sold_count + ?,
                 updated_at     = datetime('now')
             WHERE id = ?
               AND stock_quantity >= ?
               AND status = 'ACTIVE'`,
-      params: [item.quantity, item.quantity, item.product_id, item.quantity],
+      params: [item.quantity, item.product_id, item.quantity],
     }));
 
     const results = await this.qb.batch(statements);
@@ -348,6 +347,16 @@ export class OrderRepository {
         };
       }
     }
+
+    // sold_count 업데이트는 별도로 시도 (구 스키마에 컬럼이 없을 수 있어 에러 무시)
+    const soldCountStmts = items.map(item => ({
+      sql: `UPDATE products SET sold_count = sold_count + ? WHERE id = ?`,
+      params: [item.quantity, item.product_id],
+    }));
+    await this.qb.batch(soldCountStmts).catch(() => {
+      // sold_count 컬럼이 없는 구 스키마에서는 무시 (stock 차감은 이미 완료)
+      console.warn('[OrderRepository] sold_count update skipped (column may not exist)');
+    });
 
     return { success: true };
   }
