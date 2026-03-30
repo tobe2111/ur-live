@@ -1,15 +1,11 @@
 /**
- * Payment API Routes (Refactored)
- * 
+ * Payment API Routes (Feature Module)
+ *
  * Endpoints:
- * - POST /api/payments/confirm - 결제 승인
  * - POST /api/payments/rollback - 결제 취소/환불
- * 
- * Refactored: 2026-03-09
- * - Using validation utilities
- * - Using response formatters
- * - Using database helpers
- * - Using auth middleware
+ *
+ * NOTE: POST /api/payments/confirm 은 paymentsRouter (worker/routes/payment.routes.ts)에서 처리.
+ *       여기서는 /rollback 만 담당합니다.
  */
 
 import { Hono } from 'hono';
@@ -32,7 +28,7 @@ import {
   unauthorizedResponse,
   internalServerErrorResponse
 } from '@/worker/utils/response';
-import { createDbHelper, QueryBuilder } from '@/worker/utils/database';
+import { QueryBuilder } from '@/worker/utils/database';
 
 type Bindings = {
   DB: D1Database;
@@ -43,22 +39,14 @@ type Bindings = {
   TOSS_SECRET_KEY?: string;
 };
 
-interface PaymentConfirmRequest {
-  paymentKey: string;
-  orderId: string;
-  amount: number;
-}
-
-// ── DB row types ─────────────────────────────────────────────────────────────
-
 interface OrderRow {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   order_number: string;
-  total_price: number;
   total_amount: number;
   status: string;
   payment_key: string | null;
+  toss_payment_key: string | null;
   payment_method: string | null;
   cancel_reason: string | null;
   shipping_address: string | null;
@@ -67,6 +55,7 @@ interface OrderRow {
 }
 
 interface TossPaymentErrorResponse {
+  code?: string;
   message?: string;
   [key: string]: unknown;
 }
@@ -91,43 +80,20 @@ paymentRoutes.use('*', cors({
 }));
 
 /**
- * 사용자 DB ID 가져오기 (Helper)
+ * Firebase UID → DB user_id 변환 헬퍼
+ * 새 스키마(001_initial.sql)에서는 users.id = Firebase UID (TEXT)
  */
-async function getUserDbId(db: D1Database, firebaseUid: string): Promise<number | null> {
-  const dbHelper = createDbHelper(db);
-  const user = await dbHelper.findOne<{ id: number }>('users', { firebase_uid: firebaseUid });
-  return user?.id || null;
-}
-
-/**
- * Toss Payments API 호출 (결제 승인)
- */
-async function confirmTossPayment(
-  paymentKey: string,
-  orderId: string,
-  amount: number,
-  secretKey: string
-): Promise<TossPaymentResponse> {
+async function getUserDbId(db: D1Database, firebaseUid: string): Promise<string | null> {
   try {
-    const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(secretKey + ':')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ paymentKey, orderId, amount })
-    });
-
-    if (!response.ok) {
-      const error = await response.json() as TossPaymentErrorResponse;
-      throw new Error(error.message || 'Toss payment confirmation failed');
-    }
-
-    return await response.json() as TossPaymentResponse;
-  } catch (error: unknown) {
-    console.error('[Payment] Toss confirmation error:', error);
-    throw error;
+    const row = await db
+      .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
+      .bind(firebaseUid)
+      .first<{ id: string | number }>();
+    if (row?.id != null) return String(row.id);
+  } catch {
+    // firebase_uid 컬럼이 없는 경우 (새 스키마) → Firebase UID 직접 사용
   }
+  return firebaseUid;
 }
 
 /**
@@ -139,153 +105,31 @@ async function cancelTossPayment(
   cancelAmount: number | undefined,
   secretKey: string
 ): Promise<TossPaymentResponse> {
-  try {
-    const body: { cancelReason: string; cancelAmount?: number } = { cancelReason };
-    if (cancelAmount !== undefined) {
-      body.cancelAmount = cancelAmount;
-    }
-
-    const response = await fetch(
-      `https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(secretKey + ':')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json() as TossPaymentErrorResponse;
-      throw new Error(error.message || 'Toss payment cancellation failed');
-    }
-
-    return await response.json() as TossPaymentResponse;
-  } catch (error: unknown) {
-    console.error('[Payment] Toss cancellation error:', error);
-    throw error;
+  const body: { cancelReason: string; cancelAmount?: number } = { cancelReason };
+  if (cancelAmount !== undefined) {
+    body.cancelAmount = cancelAmount;
   }
-}
 
-/**
- * POST /api/payments/confirm
- * 결제 승인
- */
-paymentRoutes.post('/confirm', requireAuth(), async (c) => {
-  try {
-    const user = getCurrentUser(c);
-    if (!user) {
-      return c.json(unauthorizedResponse(), 401);
-    }
-
-    const body = await c.req.json<PaymentConfirmRequest>();
-
-    // Validation
-    const paymentKey = validateRequiredString(body.paymentKey, 'paymentKey', { minLength: 1 });
-    const orderId = validateRequiredString(body.orderId, 'orderId', { minLength: 1 });
-    const amount = validateNumber(body.amount, 'amount', { min: 0, integer: true });
-
-    const db = c.env.DB;
-    const dbHelper = createDbHelper(db);
-    const userId = await getUserDbId(db, String(user.id));
-    
-    if (!userId) {
-      return c.json(notFoundResponse('User'), 404);
-    }
-
-    // orderId로 주문 조회
-    // ✅ BUG #10 FIX: Query by order_number string column instead of parsing a numeric id.
-    // ✅ BUG #11 FIX: The `orders` table schema does NOT have a `product_id` column —
-    // that column lives in `order_items`.  Joining `products` on `o.product_id`
-    // causes a runtime SQL error and always returns 0 rows (→ 404).
-    // Fix: remove the broken JOIN; the amount field in the schema is `total_price`.
-    const order = await new QueryBuilder()
-      .select(['o.*'])
-      .from('orders o')
-      .where('o.order_number = ?', orderId)
-      .where('o.user_id = ?', userId)
-      .execute<OrderRow>(db);
-
-    if (order.length === 0) {
-      return c.json(notFoundResponse('Order'), 404);
-    }
-
-    const orderData = order[0];
-
-    // 금액 검증: total_amount (새 스키마) 또는 total_price (구 스키마) 둘 다 지원
-    const orderTotal = orderData.total_amount ?? orderData.total_price ?? 0;
-    if (orderTotal !== amount) {
-      return c.json(badRequestResponse('Amount mismatch'), 400);
-    }
-
-    // 이미 결제 완료된 주문인지 확인 (대문자 통일)
-    const completedStatuses = ['DONE', 'PAID', 'PREPARING', 'SHIPPING', 'DELIVERED', 'confirmed', 'shipped', 'delivered'];
-    if (completedStatuses.includes(orderData.status)) {
-      return c.json(badRequestResponse('Order already confirmed'), 400);
-    }
-
-    // Toss Payments API 호출
-    const tossSecretKey = c.env.TOSS_SECRET_KEY!;
-    const tossPayment = await confirmTossPayment(paymentKey, orderId, amount, tossSecretKey);
-
-    // 주문 상태 업데이트 (대문자 상태로 통일 - worker cancel과 호환)
-    await dbHelper.update(
-      'orders',
-      {
-        status: 'PAID',
-        payment_key: paymentKey,
-        toss_payment_key: paymentKey,
-        payment_method: tossPayment.method || 'card',
-        updated_at: new Date().toISOString()
+  const response = await fetch(
+    `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(secretKey + ':')}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `cancel-${paymentKey}-${Date.now()}`,
       },
-      { id: orderData.id }
-    );
-
-    // 업데이트된 주문 조회
-    // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
-    // ✅ BUG #3 FIX: Map total_price (DB column) to total_amount (API field)
-    const updatedOrderRows = await new QueryBuilder()
-      .select([
-        'o.id',
-        'o.user_id',
-        'o.total_price',
-        'o.status',
-        'o.payment_key',
-        'o.payment_method',
-        'o.shipping_address',
-        'o.created_at',
-        'o.updated_at'
-      ])
-      .from('orders o')
-      .where('o.id = ?', orderData.id)
-      .execute<OrderRow>(db);
-
-    const updatedOrder = updatedOrderRows[0];
-    // ✅ Map DB column (total_price) to API field (total_amount)
-    const mappedOrder = {
-      ...updatedOrder,
-      total_amount: updatedOrder.total_price,
-    };
-
-    return c.json(successResponse({
-      payment: tossPayment,
-      order: mappedOrder
-    }, 'Payment confirmed successfully'));
-
-  } catch (error: unknown) {
-    console.error('[Payment] Confirmation error:', error);
-
-    if (error instanceof ValidationError) {
-      return c.json(validationErrorResponse(error.message, error.field), 422);
+      body: JSON.stringify(body),
     }
+  );
 
-    return c.json(internalServerErrorResponse(
-      (error as Error).message || 'Payment confirmation failed'
-    ), 500);
+  if (!response.ok) {
+    const error = await response.json() as TossPaymentErrorResponse;
+    throw new Error(error.message || 'Toss payment cancellation failed');
   }
-});
+
+  return await response.json() as TossPaymentResponse;
+}
 
 /**
  * POST /api/payments/rollback
@@ -308,19 +152,17 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       : undefined;
 
     const db = c.env.DB;
-    const dbHelper = createDbHelper(db);
     const userId = await getUserDbId(db, String(user.id));
-    
+
     if (!userId) {
       return c.json(notFoundResponse('User'), 404);
     }
 
-    // paymentKey로 주문 조회
-    // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
+    // paymentKey 또는 toss_payment_key로 주문 조회
     const order = await new QueryBuilder()
       .select(['o.*'])
       .from('orders o')
-      .where('o.payment_key = ?', paymentKey)
+      .where('(o.payment_key = ? OR o.toss_payment_key = ?)', paymentKey)
       .where('o.user_id = ?', userId)
       .execute<OrderRow>(db);
 
@@ -330,18 +172,23 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
 
     const orderData = order[0];
 
-    // 이미 취소된 주문인지 확인 (대문자 통일)
-    if (['CANCELLED', 'cancelled'].includes(orderData.status)) {
+    // 이미 취소된 주문인지 확인
+    if (['CANCELLED', 'REFUNDED'].includes(orderData.status)) {
       return c.json(badRequestResponse('Order already cancelled'), 400);
     }
 
-    // 취소 불가능한 상태인지 확인 (대문자 통일)
-    if (['DELIVERED', 'delivered'].includes(orderData.status)) {
+    // 취소 불가능한 상태인지 확인
+    if (['DELIVERED'].includes(orderData.status)) {
       return c.json(badRequestResponse('Cannot cancel delivered order'), 400);
     }
 
     // Toss Payments API 호출
-    const tossSecretKey = c.env.TOSS_SECRET_KEY!;
+    const tossSecretKey = c.env.TOSS_SECRET_KEY;
+    if (!tossSecretKey) {
+      console.error('[Payment] TOSS_SECRET_KEY is not configured');
+      return c.json(internalServerErrorResponse('Payment service not configured'), 500);
+    }
+
     const tossPayment = await cancelTossPayment(
       paymentKey,
       cancelReason,
@@ -349,18 +196,12 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       tossSecretKey
     );
 
-    // 주문 상태 업데이트 (대문자 CANCELLED로 통일)
-    await dbHelper.update(
-      'orders',
-      {
-        status: 'CANCELLED',
-        cancel_reason: cancelReason,
-        updated_at: new Date().toISOString()
-      },
-      { id: orderData.id }
-    );
+    // 주문 상태 업데이트
+    await db.prepare(
+      'UPDATE orders SET status = ?, cancel_reason = ?, updated_at = ? WHERE id = ?'
+    ).bind('CANCELLED', cancelReason, new Date().toISOString(), orderData.id).run();
 
-    // order_items 재고 복구 (reserveStock에서 차감된 stock_quantity 반환)
+    // order_items 재고 복구
     const items = await db.prepare(
       'SELECT product_id, quantity FROM order_items WHERE order_id = ? AND status != ?'
     ).bind(String(orderData.id), 'CANCELLED').all<{ product_id: string; quantity: number }>();
@@ -376,27 +217,15 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
     }
 
     // 업데이트된 주문 조회
-    // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
-    const updatedOrder = await new QueryBuilder()
-      .select([
-        'o.id',
-        'o.user_id',
-        'o.total_price',
-        'o.status',
-        'o.payment_key',
-        'o.payment_method',
-        'o.cancel_reason',
-        'o.shipping_address',
-        'o.created_at',
-        'o.updated_at'
-      ])
+    const updatedOrderRows = await new QueryBuilder()
+      .select(['o.*'])
       .from('orders o')
       .where('o.id = ?', orderData.id)
-      .execute(db);
+      .execute<OrderRow>(db);
 
     return c.json(successResponse({
       payment: tossPayment,
-      order: updatedOrder[0]
+      order: updatedOrderRows[0]
     }, 'Payment cancelled successfully'));
 
   } catch (error: unknown) {

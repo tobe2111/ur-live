@@ -345,9 +345,7 @@ app.route('/api/orders', featureOrdersRoutes);
 // ✅ paymentsRouter: POST /confirm, POST /checkout-session (worker-native)
 app.route('/api/payments', paymentsRouter);
 
-// ✅ featurePaymentRoutes: POST /rollback (paymentsRouter에 없는 경로만)
-//    POST /confirm 은 paymentsRouter가 먼저 처리 → featurePaymentRoutes의 /confirm 미도달
-//    → /rollback 만 실질적으로 featurePaymentRoutes에서 처리됨
+// ✅ featurePaymentRoutes: POST /rollback 만 담당 (confirm은 paymentsRouter가 처리)
 app.route('/api/payments', featurePaymentRoutes);
 
 // ✅ Stripe routes (Global region): POST /api/payment/stripe/create-intent
