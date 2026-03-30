@@ -155,8 +155,13 @@ webhookRouter.post('/', async (c) => {
     const rawBody = await c.req.text();
 
     // 2. Verify signature FIRST — reject before any DB access
+    const isProduction = c.env.ENVIRONMENT === 'production';
     const webhookSecret = c.env.TOSS_WEBHOOK_SECRET;
-    if (webhookSecret && webhookSecret !== 'dev_skip') {
+    if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
+      if (!webhookSecret) {
+        console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
+        return c.json({ received: true, status: 'rejected' }, 200);
+      }
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
@@ -176,7 +181,7 @@ webhookRouter.post('/', async (c) => {
         return c.json({ received: true, status: 'rejected' }, 200);
       }
     } else {
-      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (dev mode)');
+      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (non-production, no secret configured)');
     }
 
     // 3. Parse payload
@@ -354,10 +359,11 @@ async function handlePaymentCancelled(
     webhook_event_id: `payment.cancelled:${orderNumber}`,
   });
 
-  // Restore stock for each order
+  // Restore stock for each order.
+  // reserveStock() is called at order-creation time (PENDING), so any order that
+  // hasn't already been fully restored needs its stock returned here.
   for (const order of orders) {
-    // Only restore if order was in a state where stock was reduced
-    if (['DONE', 'PAID', 'PREPARING', 'SHIPPING'].includes(order.status)) {
+    if (!['CANCELLED', 'FAILED', 'REFUNDED'].includes(order.status)) {
       await orderRepo.restoreStock(order.id);
       console.log('[WEBHOOK] STOCK_RESTORED', { orderId: order.id, sellerId: order.seller_id });
     }
@@ -393,6 +399,13 @@ async function handlePaymentFailed(
     webhook_processed_at: new Date().toISOString(),
     webhook_event_id: `payment.failed:${orderNumber}`,
   });
+
+  // Restore stock — reserveStock() was called at order creation (PENDING).
+  const failedOrders = await orderRepo.findByOrderNumber(orderNumber);
+  for (const order of failedOrders) {
+    await orderRepo.restoreStock(order.id);
+    console.log('[WEBHOOK] STOCK_RESTORED_ON_FAILURE', { orderId: order.id });
+  }
 
   await sendOrderNotification(orderRepo, orderNumber, 'failed', env)
     .catch(err => console.error('[WEBHOOK] Notification failed:', err));

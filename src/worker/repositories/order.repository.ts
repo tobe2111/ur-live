@@ -353,28 +353,16 @@ export class OrderRepository {
   }
 
   /**
-   * Reduce stock when order is confirmed
+   * Mark order items as CONFIRMED when payment is confirmed.
+   *
+   * stock_quantity is already decremented by reserveStock() at order creation time.
+   * This method only updates order_items.status — no additional stock change needed.
    */
   async reduceStock(orderId: string): Promise<void> {
-    const items = await this.qb.queryMany<{ product_id: string; quantity: number }>(
-      'SELECT product_id, quantity FROM order_items WHERE order_id = ?',
-      [orderId]
+    await this.qb.execute(
+      'UPDATE order_items SET status = ? WHERE order_id = ?',
+      ['CONFIRMED', orderId],
     );
-
-    if (items.length === 0) return;
-
-    const statements = items.map(item => ({
-      sql: 'UPDATE products SET stock_quantity = stock_quantity - ?, sold_count = sold_count + ? WHERE id = ? AND stock_quantity >= ?',
-      params: [item.quantity, item.quantity, item.product_id, item.quantity],
-    }));
-
-    // Update order items status
-    statements.push({
-      sql: 'UPDATE order_items SET status = ? WHERE order_id = ?',
-      params: ['CONFIRMED', orderId],
-    });
-
-    await this.qb.batch(statements);
   }
 
   /**
