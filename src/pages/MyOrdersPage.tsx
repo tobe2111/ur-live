@@ -21,6 +21,7 @@ import {
 import { getUserIdSync, getUserNameSync, getUserEmail, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order, OrderItem } from '@/types/order'
 import type { CartItem } from '@/types/cart'
+import { formatKST } from '@/utils/date'
 
 type TabType = 'cart' | 'orders' | 'profile'
 
@@ -349,7 +350,7 @@ export default function MyOrdersPage() {
                   <div className="flex justify-between">
                     <span className="text-[#6e6e73]">주문일시</span>
                     <span className="font-medium text-[#1d1d1f]">
-                      {new Date(selectedOrder.created_at).toLocaleString('ko-KR')}
+                      {formatKST(selectedOrder.created_at)}
                     </span>
                   </div>
                   <div className="flex justify-between">

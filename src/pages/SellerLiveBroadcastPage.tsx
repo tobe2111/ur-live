@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
+import { formatKSTTime, formatKSTDate } from '@/utils/date'
 import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
 import {
@@ -1015,7 +1016,7 @@ export default function SellerLiveBroadcastPage() {
                             {stream.started_at && (
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" />
-                                시작: {new Date(stream.started_at).toLocaleTimeString('ko-KR')}
+                                시작: {formatKSTTime(stream.started_at)}
                               </div>
                             )}
                           </div>
@@ -1113,7 +1114,7 @@ export default function SellerLiveBroadcastPage() {
                         {stream.ended_at && (
                           <div className="flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" />
-                            {new Date(stream.ended_at).toLocaleDateString('ko-KR')}
+                            {formatKSTDate(stream.ended_at)}
                           </div>
                         )}
                       </div>

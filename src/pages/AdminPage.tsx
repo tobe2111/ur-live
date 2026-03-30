@@ -9,6 +9,7 @@ import {
   DollarSign, Eye, RefreshCw
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { formatKST, formatKSTDate } from '@/utils/date'
 
 interface ApiError {
   response?: { status?: number; data?: { error?: string } }
@@ -357,7 +358,7 @@ export default function AdminPage() {
               <tbody className="divide-y divide-gray-50">
                 {pendingSellers.map(seller => (
                   <tr key={seller.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(seller.created_at).toLocaleString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatKST(seller.created_at)}</td>
                     <td className="px-4 py-3">
                       <p className="text-xs font-medium text-gray-900">{seller.name || '-'}</p>
                       <p className="text-xs text-gray-400">{seller.username}</p>
@@ -431,7 +432,7 @@ export default function AdminPage() {
                       {seller.status === 'approved' ? '승인됨' : '대기중'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(seller.created_at).toLocaleDateString('ko-KR')}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(seller.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button onClick={() => openBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">사업자정보</button>
@@ -477,7 +478,7 @@ export default function AdminPage() {
                       {stream.status === 'live' ? '🔴 라이브' : stream.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{new Date(stream.created_at).toLocaleDateString('ko-KR')}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(stream.created_at)}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => deleteStream(stream.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">삭제</button>
                   </td>
@@ -521,7 +522,7 @@ export default function AdminPage() {
                   { label: '상세 주소', value: bizInfoSeller.address_detail },
                   { label: '전화번호', value: bizInfoSeller.biz_phone },
                   { label: '이메일', value: bizInfoSeller.biz_email },
-                  { label: '승인일시', value: bizInfoSeller.biz_verified_at ? new Date(bizInfoSeller.biz_verified_at).toLocaleString('ko-KR') : null },
+                  { label: '승인일시', value: bizInfoSeller.biz_verified_at ? formatKST(bizInfoSeller.biz_verified_at) : null },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-3">
                     <dt className="text-xs text-gray-400 w-28 shrink-0">{label}</dt>

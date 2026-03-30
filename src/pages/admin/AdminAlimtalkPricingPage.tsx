@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { MessageSquare, DollarSign, Users, TrendingUp, Edit2, Save, X, Plus, Eye, EyeOff } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface AlimtalkPackage {
   id: number
@@ -127,7 +128,7 @@ export default function AdminAlimtalkPricingPage() {
   }
 
   function fmt(n: number) { return new Intl.NumberFormat('ko-KR').format(n || 0) }
-  function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString('ko-KR') : '-' }
+  function fmtDate(s: string | null) { return s ? formatKSTDate(s) : '-' }
 
   if (loading) {
     return (

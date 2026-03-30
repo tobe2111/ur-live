@@ -8,6 +8,7 @@ import {
   Package
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 
 interface DbPackage {
@@ -269,7 +270,7 @@ export default function SellerAlimtalkPage() {
                   <div key={tx.id} className="flex items-center justify-between px-4 py-3">
                     <div>
                       <p className="text-sm text-gray-800">{tx.description ?? (tx.type === 'charge' ? '충전' : '차감')}</p>
-                      <p className="text-xs text-gray-400">{new Date(tx.created_at).toLocaleString('ko-KR')}</p>
+                      <p className="text-xs text-gray-400">{formatKST(tx.created_at)}</p>
                     </div>
                     <div className="text-right">
                       <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
@@ -310,7 +311,7 @@ export default function SellerAlimtalkPage() {
                         {log.order_id && <span className="text-xs text-gray-400 ml-2">주문 {log.order_id}</span>}
                       </p>
                       {log.error_msg && <p className="text-xs text-red-400">{log.error_msg}</p>}
-                      <p className="text-xs text-gray-400">{new Date(log.created_at).toLocaleString('ko-KR')}</p>
+                      <p className="text-xs text-gray-400">{formatKST(log.created_at)}</p>
                     </div>
                   </div>
                 ))}

@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { formatKST } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import {
   Package,
@@ -179,7 +180,7 @@ export default function SellerOrdersPage() {
       order.payment_status === 'completed' ? '결제완료' : order.payment_status,
       order.courier || '',
       order.tracking_number || '',
-      new Date(order.created_at).toLocaleString('ko-KR')
+      formatKST(order.created_at)
     ])
 
     const csvContent = [
@@ -573,7 +574,7 @@ export default function SellerOrdersPage() {
                             </Badge>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
-                            {new Date(order.created_at).toLocaleString('ko-KR')}
+                            {formatKST(order.created_at)}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
@@ -665,7 +666,7 @@ export default function SellerOrdersPage() {
                     <div>
                       <p className="text-gray-500 mb-1">주문일시</p>
                       <p className="font-medium">
-                        {new Date(selectedOrder.created_at).toLocaleString('ko-KR')}
+                        {formatKST(selectedOrder.created_at)}
                       </p>
                     </div>
                     <div>

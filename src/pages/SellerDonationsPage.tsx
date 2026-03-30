@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Heart, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, CreditCard } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 
 interface DonationRow {
@@ -106,7 +107,7 @@ export default function SellerDonationsPage() {
   }
 
   function fmt(n: number) { return new Intl.NumberFormat('ko-KR').format(n || 0) }
-  function fmtDate(s: string) { return new Date(s).toLocaleDateString('ko-KR') }
+  function fmtDate(s: string) { return formatKSTDate(s) }
 
   const STATUS_MAP: Record<string, { label: string; color: string }> = {
     REQUESTED: { label: '정산 대기', color: 'bg-amber-50 text-amber-700' },

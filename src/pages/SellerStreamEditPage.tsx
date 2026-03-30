@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { ArrowLeft, Loader2, Play, Edit, Trash2 } from 'lucide-react'
+import { formatKST } from '@/utils/date'
 
 interface Stream {
   id: number
@@ -229,7 +230,7 @@ export default function SellerStreamEditPage() {
             </div>
             <div className="flex">
               <span className="w-32 text-gray-600">생성일:</span>
-              <span className="text-gray-900">{new Date(stream.created_at).toLocaleString('ko-KR')}</span>
+              <span className="text-gray-900">{formatKST(stream.created_at)}</span>
             </div>
           </div>
         </div>

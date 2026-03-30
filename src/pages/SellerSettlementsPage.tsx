@@ -18,6 +18,7 @@ import {
   RefreshCw,
   FileText
 } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface Settlement {
   id: number
@@ -329,10 +330,10 @@ export default function SellerSettlementsPage() {
                     <tr key={settlement.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {new Date(settlement.period_start).toLocaleDateString('ko-KR')} ~
+                          {formatKSTDate(settlement.period_start)} ~
                         </div>
                         <div className="text-sm text-gray-600">
-                          {new Date(settlement.period_end).toLocaleDateString('ko-KR')}
+                          {formatKSTDate(settlement.period_end)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -360,7 +361,7 @@ export default function SellerSettlementsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {new Date(settlement.requested_at).toLocaleDateString('ko-KR')}
+                          {formatKSTDate(settlement.requested_at)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
