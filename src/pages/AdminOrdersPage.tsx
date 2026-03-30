@@ -327,7 +327,7 @@ export default function AdminOrdersPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {[
                     ['주문번호', selectedOrder.order_number],
-                    ['주문일시', new Date(selectedOrder.created_at).toLocaleString('ko-KR')],
+                    ['주문일시', formatKST(selectedOrder.created_at)],
                     ['판매자', selectedOrder.seller_name],
                     ['결제 방법', selectedOrder.payment_method || '-'],
                   ].map(([k, v]) => (
