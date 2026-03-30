@@ -1,9 +1,14 @@
 // Cloudflare Worker용 환불 처리 유틸리티
+//
+// ⚠️ 참고: 실제 주문 취소는 worker/routes/order.routes.ts → tossCancelPayment() 경로로 처리됩니다.
+// 이 파일의 함수들은 현재 직접 import되지 않지만, 재고 복구/환불 기록 등
+// 유틸리티 함수로 유지합니다.
 
 export interface RefundPayload {
   orderId: string
   reason: string
   refundAmount?: number
+  secretKey: string
 }
 
 export interface RefundResult {
@@ -13,24 +18,34 @@ export interface RefundResult {
 }
 
 /**
- * Toss Payments 환불 요청 (모의)
+ * Toss Payments 환불 요청
  */
 export async function requestTossRefund(
   paymentKey: string,
-  reason: string
+  reason: string,
+  secretKey: string,
+  cancelAmount?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // 실제로는 Toss API 호출
-    // const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': `Basic ${btoa(TOSS_SECRET_KEY + ':')}`,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ cancelReason: reason }),
-    // })
+    const body: Record<string, unknown> = { cancelReason: reason }
+    if (cancelAmount !== undefined && cancelAmount > 0) {
+      body.cancelAmount = cancelAmount
+    }
 
-    // 현재는 성공으로 간주
+    const response = await fetch(`https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(secretKey + ':')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({ message: 'Unknown Toss error' })) as { message?: string }
+      return { success: false, error: errBody.message || `Toss API error: ${response.status}` }
+    }
+
     console.log(`✅ Toss 환불 요청 성공: ${paymentKey}`)
     return { success: true }
   } catch (error) {
@@ -93,29 +108,36 @@ export async function processRefund(
   db: D1Database,
   payload: RefundPayload
 ): Promise<RefundResult> {
-  const { orderId, reason, refundAmount } = payload
+  const { orderId, reason, refundAmount, secretKey } = payload
 
   try {
     // 1. 주문 조회
     const order = await db
       .prepare('SELECT * FROM orders WHERE id = ?')
       .bind(orderId)
-      .first<{ id: string; amount: number; payment_key: string; status: string }>()
+      .first<{ id: string; amount: number; total_amount: number; payment_key: string; toss_payment_key: string; status: string }>()
 
     if (!order) {
       return { success: false, error: '주문을 찾을 수 없습니다.' }
     }
 
-    if (order.status === 'refunded') {
+    const status = order.status.toUpperCase()
+
+    if (status === 'REFUNDED') {
       return { success: false, error: '이미 환불된 주문입니다.' }
     }
 
-    if (order.status === 'cancelled') {
+    if (status === 'CANCELLED') {
       return { success: false, error: '취소된 주문입니다.' }
     }
 
     // 2. Toss 환불 요청
-    const refundResult = await requestTossRefund(order.payment_key, reason)
+    const paymentKey = order.toss_payment_key || order.payment_key
+    if (!paymentKey) {
+      return { success: false, error: '결제 키를 찾을 수 없습니다.' }
+    }
+
+    const refundResult = await requestTossRefund(paymentKey, reason, secretKey, refundAmount)
     if (!refundResult.success) {
       return { success: false, error: refundResult.error }
     }
@@ -123,14 +145,15 @@ export async function processRefund(
     // 3. 재고 복구
     await restoreStock(db, orderId)
 
-    // 4. 주문 상태 업데이트
+    // 4. 주문 상태 업데이트 (DB constraint는 uppercase)
     await db
-      .prepare('UPDATE orders SET status = ?, updated_at = datetime("now") WHERE id = ?')
-      .bind('refunded', orderId)
+      .prepare('UPDATE orders SET status = ?, refund_status = ?, refunded_at = datetime("now"), updated_at = datetime("now") WHERE id = ?')
+      .bind('REFUNDED', 'completed', orderId)
       .run()
 
     // 5. 환불 내역 기록
-    await recordRefundHistory(db, orderId, refundAmount || order.amount, reason)
+    const orderAmount = order.total_amount ?? order.amount ?? 0
+    await recordRefundHistory(db, orderId, refundAmount || orderAmount, reason)
 
     console.log(`✅ 환불 처리 완료: ${orderId}`)
     return { success: true, refundId: orderId }
