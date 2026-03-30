@@ -95,101 +95,12 @@ export default function PaymentSuccessPage() {
       }
 
 
-      // 2️⃣ 장바구니 조회 (주문 데이터 생성을 위해 필수)
-      const cartResponse = await api.get('/api/cart')
-      // ✅ FIX: API response shape is { success, data: { items: [...], summary: {...} } }
-      // NOT { data: [] } — must extract .items array
-      const cartResData = cartResponse.data?.data
-      let cartItems: any[] = []
-      if (cartResData?.items && Array.isArray(cartResData.items)) {
-        cartItems = cartResData.items
-      } else if (Array.isArray(cartResData)) {
-        cartItems = cartResData
-      }
-      
-      // 💾 장바구니가 비어있으면 localStorage 백업에서 복원
-      if (cartItems.length === 0) {
-        const cartBackup = localStorage.getItem('checkoutCartBackup')
-        
-        if (cartBackup) {
-          try {
-            cartItems = JSON.parse(cartBackup)
-          } catch (e) {
-            console.warn('[PaymentSuccess] Cart backup parse failed:', e)
-          }
-        }
-        
-        // 여전히 비어있으면 에러
-        if (cartItems.length === 0) {
-          setError('주문 정보를 찾을 수 없습니다. 다시 시도해주세요.')
-          return
-        }
-      }
-
-      // 3️⃣ 주문 데이터 생성 (결제 승인 전에 필수!)
-      
-      // localStorage에서 배송지 정보 가져오기
-      const shippingAddressRaw = localStorage.getItem('checkoutShippingAddress') || ''
-      const shippingAddressDetail = localStorage.getItem('checkoutShippingAddressDetail') || ''
-      const recipientName = localStorage.getItem('checkoutRecipientName') || ''
-      const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
-      
-      // ✅ Full address JSON saved by CheckoutPage (includes postal_code)
-      let shippingAddressObj: any = {
-        postal_code: '',
-        address1: shippingAddressRaw,
-        address2: shippingAddressDetail,
-        country: 'KR',
-        recipient_name: recipientName,
-      }
-      try {
-        const savedFull = localStorage.getItem('checkoutShippingAddressFull')
-        if (savedFull) {
-          shippingAddressObj = JSON.parse(savedFull)
-        }
-      } catch (e) {
-        console.warn('[PaymentSuccess] Full address parse failed:', e)
-      }
-
-      // 주문 아이템 매핑 (worker/order.routes.ts createOrderSchema에 맞게)
-      const sellerIdForOrder = String(cartItems[0]?.seller_id || cartItems[0]?.sellerId || '')
-
-      const orderItems = cartItems.map((item: any) => ({
-        product_id: String(item.product_id || item.productId || ''),
-        quantity: Number(item.quantity) || 1,
-        options: item.option_value ? { value: item.option_value } : undefined,
-      }))
-
-      const orderData = {
-        seller_id: String(sellerIdForOrder || ''),
-        order_number: orderId!,
-        idempotency_key: orderId!,
-        items: orderItems,
-        shipping_address: shippingAddressObj,
-        shipping_name: recipientName,
-        shipping_phone: recipientPhone || '',
-      }
-
-
-      // DB에 주문 생성
-      const orderCreateResponse = await api.post('/api/orders', orderData)
-
-      if (!orderCreateResponse.data.success) {
-        setError('주문 생성에 실패했습니다.')
-        return
-      }
-
-
-      // 4️⃣ 결제 승인 요청 (주문 생성 후!)
-      
-      const confirmData = {
+      // 2️⃣ 결제 승인 요청 (주문은 CheckoutPage에서 결제 전에 이미 생성됨)
+      const response = await api.post('/api/payments/confirm', {
         paymentKey,
         orderId,
-        amount: Number(amount) // ✅ 명시적으로 Number 타입으로 변환
-      }
-      
-      const response = await api.post('/api/payments/confirm', confirmData)
-
+        amount: Number(amount),
+      })
 
       if (!response.data.success) {
         setError(response.data.error || '결제 승인에 실패했습니다.')
@@ -198,25 +109,13 @@ export default function PaymentSuccessPage() {
 
       const paymentData = response.data.data
       setOrderInfo(paymentData)
-      
-      // 5️⃣ 장바구니 비우기 및 백업 삭제
+
+      // 3️⃣ 장바구니 비우기
       try {
-        if (cartItems.length > 0) {
-          // ✅ BUG #5 FIX: Server defines POST /api/cart/clear, not DELETE.
-          // Using api.delete('/api/cart/clear') returns 404/405.
-          await api.post('/api/cart/clear')
-        }
+        await api.post('/api/cart/clear')
         localStorage.removeItem('hasCartItems')
-        localStorage.removeItem('checkoutCartBackup')  // 백업 삭제
       } catch (cartErr) {
       }
-
-      // 6️⃣ 배송지 정보 localStorage 정리
-      localStorage.removeItem('checkoutShippingAddress')
-      localStorage.removeItem('checkoutShippingAddressDetail')
-      localStorage.removeItem('checkoutShippingAddressFull')
-      localStorage.removeItem('checkoutRecipientName')
-      localStorage.removeItem('checkoutRecipientPhone')
 
     } catch (err: any) {
       setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')

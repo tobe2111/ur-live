@@ -155,8 +155,13 @@ webhookRouter.post('/', async (c) => {
     const rawBody = await c.req.text();
 
     // 2. Verify signature FIRST — reject before any DB access
+    const isProduction = c.env.ENVIRONMENT === 'production';
     const webhookSecret = c.env.TOSS_WEBHOOK_SECRET;
-    if (webhookSecret && webhookSecret !== 'dev_skip') {
+    if (isProduction || (webhookSecret && webhookSecret.length > 0)) {
+      if (!webhookSecret) {
+        console.error('[WEBHOOK] ❌ TOSS_WEBHOOK_SECRET not configured in production');
+        return c.json({ received: true, status: 'rejected' }, 200);
+      }
       const signatureHeader = c.req.header('Toss-Signature');
       const isValid = await verifyTossSignature(rawBody, signatureHeader, webhookSecret);
       if (!isValid) {
@@ -176,7 +181,7 @@ webhookRouter.post('/', async (c) => {
         return c.json({ received: true, status: 'rejected' }, 200);
       }
     } else {
-      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (dev mode)');
+      console.warn('[WEBHOOK] ⚠️ Signature/timestamp verification skipped (non-production, no secret configured)');
     }
 
     // 3. Parse payload

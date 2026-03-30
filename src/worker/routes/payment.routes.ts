@@ -209,6 +209,11 @@ paymentsRouter.post('/checkout-session', async (c) => {
       ? `${firstItem.product_name}${orders.reduce((sum, o) => sum + (o.items?.length ?? 0), 0) > 1 ? ` 외 ${orders.reduce((sum, o) => sum + (o.items?.length ?? 0), 0) - 1}건` : ''}`
       : '마켓플레이스 주문';
 
+    if (!c.env.TOSS_CLIENT_KEY) {
+      console.error('[PAYMENTS] TOSS_CLIENT_KEY is not configured');
+      return c.json({ success: false, error: 'Payment service not configured' }, 500);
+    }
+
     return c.json({
       success: true,
       data: {
@@ -216,7 +221,7 @@ paymentsRouter.post('/checkout-session', async (c) => {
         orders,
         total_amount: totalAmount,
         order_name: orderName,
-        toss_client_key: c.env.TOSS_CLIENT_KEY ?? 'test_ck_placeholder',
+        toss_client_key: c.env.TOSS_CLIENT_KEY,
         customer_name: orders[0]?.shipping_name ?? '',
         customer_phone: orders[0]?.shipping_phone ?? '',
       },

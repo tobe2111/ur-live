@@ -80,6 +80,13 @@ donationsRoutes.post('/init', async (c) => {
 
   if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
 
+  // 라이브 중인 스트림에만 후원 가능
+  const streamStatus = await DB.prepare('SELECT status FROM live_streams WHERE id = ?')
+    .bind(body.stream_id).first<{ status: string }>().catch(() => null);
+  if (!streamStatus || streamStatus.status !== 'live') {
+    return c.json({ success: false, error: '현재 라이브 중인 방송에만 후원할 수 있습니다' }, 400);
+  }
+
   const orderId = `DON-${userId}-${stream.id}-${Date.now()}`;
   const commissionAmount = Math.round(body.amount * stream.commission_rate / 100);
   const sellerAmount = body.amount - commissionAmount;

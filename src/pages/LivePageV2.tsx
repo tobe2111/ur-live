@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -1079,10 +1080,13 @@ function ReelCard({
       const { orderId, amount, orderName, clientKey } = initRes.data.data
       if (!clientKey) { toast.error('결제 설정을 불러올 수 없습니다'); return }
 
-      // PaymentWidget v1 (gck_ 키)
+      // PaymentWidget V2
       const userId = getUserId()
-      const customerKey = userId ? `user_${userId}` : (window as any).PaymentWidget?.ANONYMOUS ?? '__anonymous__'
-      const widget = (window as any).PaymentWidget(clientKey, customerKey)
+      const customerKey = userId
+        ? `user_${String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)}`
+        : 'ANONYMOUS'
+      const tossPayments = await loadTossPayments(clientKey)
+      const widget = tossPayments.widgets({ customerKey })
       paymentWidgetRef.current = widget
       setDonationOrderData({ orderId, amount, orderName })
       setDonationStep(2) // useEffect가 위젯 렌더링 실행
@@ -1091,19 +1095,21 @@ function ReelCard({
     } finally { setDonating(false) }
   }
 
-  // Step 2에서 위젯 렌더링 (DOM이 준비된 후)
+  // Step 2에서 위젯 렌더링 (DOM이 준비된 후, V2 API)
   useEffect(() => {
     if (donationStep !== 2 || !paymentWidgetRef.current || !donationOrderData) return
     const widget = paymentWidgetRef.current
-    Promise.all([
-      widget.renderPaymentMethods('#toss-donation-methods', { value: donationOrderData.amount, currency: 'KRW' }),
-      widget.renderAgreement('#toss-donation-agreement'),
-    ]).catch((err: any) => {
-      console.error('[Donation] widget render error:', err)
-      toast.error('결제창 로드에 실패했습니다. 다시 시도해주세요.')
-      setDonationStep(1)
-      paymentWidgetRef.current = null
-    })
+    widget.setAmount({ currency: 'KRW', value: donationOrderData.amount })
+      .then(() => Promise.all([
+        widget.renderPaymentMethods({ selector: '#toss-donation-methods', variantKey: 'DEFAULT' }),
+        widget.renderAgreement({ selector: '#toss-donation-agreement', variantKey: 'AGREEMENT' }),
+      ]))
+      .catch((err: any) => {
+        console.error('[Donation] widget render error:', err)
+        toast.error('결제창 로드에 실패했습니다. 다시 시도해주세요.')
+        setDonationStep(1)
+        paymentWidgetRef.current = null
+      })
   }, [donationStep, donationOrderData])
 
   // Step 2: 결제 최종 요청
