@@ -430,19 +430,60 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
       }
     }
 
-    for (const order of orders) {
-      try {
-        order.items = await executeQuery<OrderItemRow>(DB, `
-          SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
-                 COALESCE(oi.unit_price, oi.price, 0) as price,
-                 '' as image_url
-          FROM order_items oi
-          WHERE oi.order_id = ?`, [order.id]);
-      } catch { order.items = []; }
-    }
+    // 목록에서는 items 생략 (N+1 쿼리 방지 → 성능 개선)
+    // 상세 조회(/orders/:orderNumber)에서만 items 포함
     return c.json({ success: true, data: orders });
   } catch (err) {
     console.error('[Admin] orders error:', err);
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 주문 엑셀 내보내기 ──────────────────────────────────────────────────────
+// ⚠ /orders/export 는 /orders/:orderNumber 보다 위에 있어야 라우팅 충돌 없음
+adminManagementRoutes.get('/orders/export', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const status = c.req.query('status');
+    const sellerId = c.req.query('seller_id');
+    const startDate = c.req.query('start_date');
+    const endDate = c.req.query('end_date');
+
+    let q = `
+      SELECT o.id, o.order_number, o.user_id, o.seller_id,
+             COALESCE(o.total_amount, 0) as total_amount,
+             COALESCE(o.status,'pending') as status,
+             COALESCE(o.shipping_name,'') as shipping_name,
+             COALESCE(o.shipping_phone,'') as shipping_phone,
+             COALESCE(o.shipping_address,'') as shipping_address,
+             COALESCE(o.tracking_number,'') as tracking_number,
+             o.created_at
+      FROM orders o WHERE 1=1`;
+    const params: (string | number)[] = [];
+    if (status) { q += ' AND o.status = ?'; params.push(status); }
+    if (sellerId) { q += ' AND o.seller_id = ?'; params.push(sellerId); }
+    if (startDate) { q += ' AND DATE(o.created_at) >= ?'; params.push(startDate); }
+    if (endDate) { q += ' AND DATE(o.created_at) <= ?'; params.push(endDate); }
+    q += ' ORDER BY o.created_at DESC LIMIT 5000';
+
+    const orders = await executeQuery<OrderRow>(DB, q, params);
+
+    // CSV 생성 (엑셀 호환 UTF-8 BOM)
+    const BOM = '\uFEFF';
+    const header = '주문번호,주문일시,주문상태,고객명,연락처,주소,운송장번호,결제금액';
+    const rows = orders.map(o =>
+      [o.order_number, o.created_at, o.status, o.shipping_name, o.shipping_phone, `"${o.shipping_address}"`, o.tracking_number, o.total_amount].join(',')
+    );
+    const csv = BOM + header + '\n' + rows.join('\n');
+
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="orders_${new Date().toISOString().split('T')[0]}.csv"`,
+      },
+    });
+  } catch (err) {
+    console.error('[Admin] orders export error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
@@ -454,34 +495,55 @@ adminManagementRoutes.get('/orders/:orderNumber', cors(), async (c) => {
     const { DB } = c.env;
     const orderNumber = c.req.param('orderNumber');
 
-    const orders = await executeQuery<OrderRow>(DB, `
-      SELECT o.id, o.order_number, o.user_id, o.seller_id,
-             COALESCE(o.total_amount, o.total_price, 0) as total_amount,
-             COALESCE(o.status, 'pending') as status,
-             COALESCE(o.payment_status, 'pending') as payment_status,
-             COALESCE(o.payment_method, '') as payment_method,
-             COALESCE(o.shipping_name, '') as shipping_name,
-             COALESCE(o.shipping_phone, '') as shipping_phone,
-             COALESCE(o.shipping_address, '') as shipping_address,
-             COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
-             COALESCE(o.shipping_zipcode, '') as shipping_zipcode,
-             o.courier, o.tracking_number, o.created_at, o.updated_at,
-             u.name as user_name, u.email as user_email,
-             s.business_name as seller_name
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      LEFT JOIN sellers s ON o.seller_id = s.id
-      WHERE o.order_number = ?`, [orderNumber]);
+    let orders;
+    try {
+      orders = await executeQuery<OrderRow>(DB, `
+        SELECT o.id, o.order_number, o.user_id, o.seller_id,
+               COALESCE(o.total_amount, 0) as total_amount,
+               COALESCE(o.status, 'pending') as status,
+               COALESCE(o.payment_status, 'pending') as payment_status,
+               COALESCE(o.payment_method, '') as payment_method,
+               COALESCE(o.shipping_name, '') as shipping_name,
+               COALESCE(o.shipping_phone, '') as shipping_phone,
+               COALESCE(o.shipping_address, '') as shipping_address,
+               COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
+               COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,
+               COALESCE(o.courier, o.tracking_company, '') as courier,
+               COALESCE(o.tracking_number, '') as tracking_number,
+               o.created_at, o.updated_at,
+               COALESCE(u.name, u.display_name, '') as user_name,
+               COALESCE(u.email, '') as user_email,
+               COALESCE(s.business_name, s.name, '') as seller_name
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN sellers s ON o.seller_id = s.id
+        WHERE o.order_number = ?`, [orderNumber]);
+    } catch {
+      // Fallback: no JOINs
+      orders = await executeQuery<OrderRow>(DB, `
+        SELECT o.id, o.order_number, o.user_id, o.seller_id,
+               COALESCE(o.total_amount, 0) as total_amount,
+               COALESCE(o.status, 'pending') as status,
+               'pending' as payment_status, '' as payment_method,
+               '' as shipping_name, '' as shipping_phone,
+               '' as shipping_address, '' as shipping_address_detail,
+               '' as shipping_zipcode, '' as courier, '' as tracking_number,
+               o.created_at, o.updated_at,
+               '' as user_name, '' as user_email, '' as seller_name
+        FROM orders o WHERE o.order_number = ?`, [orderNumber]);
+    }
 
     if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
 
     const order = orders[0];
-    order.items = await executeQuery<OrderItemRow>(DB, `
-      SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
-             COALESCE(oi.unit_price, oi.price, 0) as price,
-             COALESCE(p.image_url, p.thumbnail_url, oi.product_image) as image_url
-      FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ?`, [order.id]);
+    try {
+      order.items = await executeQuery<OrderItemRow>(DB, `
+        SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
+               COALESCE(oi.unit_price, oi.price, 0) as price,
+               '' as image_url
+        FROM order_items oi
+        WHERE oi.order_id = ?`, [order.id]);
+    } catch { order.items = []; }
 
     return c.json({ success: true, data: order });
   } catch (err) {
