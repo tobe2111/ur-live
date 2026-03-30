@@ -144,11 +144,23 @@ adminManagementRoutes.use('*', requireAdmin());
 adminManagementRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const sellers = await executeQuery<SellerRow>(DB, `
-      SELECT id, email, name, phone, business_name, business_number,
-             status, created_at
-      FROM sellers ORDER BY created_at DESC
-    `);
+    let sellers;
+    try {
+      sellers = await executeQuery<SellerRow>(DB, `
+        SELECT id, email, name, phone, business_name, business_number,
+               status, created_at,
+               COALESCE(commission_rate, 10) AS commission_rate,
+               COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats
+        FROM sellers ORDER BY created_at DESC
+      `);
+    } catch {
+      // fallback: commission_rate/can_manipulate_stats 컬럼 없을 수 있음
+      sellers = await executeQuery<SellerRow>(DB, `
+        SELECT id, email, name, phone, business_name, business_number,
+               status, created_at
+        FROM sellers ORDER BY created_at DESC
+      `);
+    }
     return c.json({ success: true, data: sellers });
   } catch (err) {
     console.error('[Admin] sellers error:', err);
@@ -161,7 +173,8 @@ adminManagementRoutes.get('/sellers/pending', cors(), async (c) => {
     const { DB } = c.env;
     const sellers = await executeQuery<SellerRow>(DB, `
       SELECT id, email, name, phone, business_name, business_number,
-             status, created_at
+             status, created_at,
+             COALESCE(commission_rate, 10) AS commission_rate
       FROM sellers WHERE status = 'pending' ORDER BY created_at ASC
     `);
     return c.json({ success: true, data: sellers });
