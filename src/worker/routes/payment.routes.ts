@@ -143,11 +143,11 @@ paymentsRouter.post('/confirm', async (c) => {
     // 실패해도 결제 응답에 영향 없도록 fire-and-forget
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
       for (const order of updatedOrders) {
-        if (!order.seller_id || !order.buyer_phone) continue;
+        if (!order.seller_id || !order.shipping_phone) continue;
         const { subject, message } = buildOrderConfirmMessage({
           orderId: orderNumber,
-          buyerName: order.buyer_name ?? '고객',
-          buyerPhone: order.buyer_phone,
+          buyerName: order.shipping_name ?? '고객',
+          buyerPhone: order.shipping_phone,
           productName: order.items?.[0]?.product_name ?? '상품',
           totalAmount: order.total_amount,
           sellerName: order.seller_name ?? '',
@@ -159,8 +159,8 @@ paymentsRouter.post('/confirm', async (c) => {
           aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
           senderPhone: c.env.ALIGO_SENDER_PHONE,
           sellerId: order.seller_id,
-          receiver: order.buyer_phone,
-          receiverName: order.buyer_name ?? '고객',
+          receiver: order.shipping_phone,
+          receiverName: order.shipping_name ?? '고객',
           templateCode: c.env.ALIGO_TPL_ORDER_CONFIRM ?? 'TBD',
           subject,
           message,
