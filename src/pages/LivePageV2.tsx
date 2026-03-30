@@ -1076,9 +1076,14 @@ function ReelCard({
 
       if (!clientKey) { toast.error('결제 설정을 불러올 수 없습니다'); return }
 
+      // 결제위젯 SDK (gck_ 키) — PaymentWidget API 사용
       const toss = (window as any).TossPayments(clientKey)
-      await toss.requestPayment('결제', {
-        amount,
+      const userId = getUserId()
+      // 로그인 유저는 userId 기반 customerKey, 비회원은 ANONYMOUS
+      const customerKey = userId ? `user_${userId}` : '__anonymous__'
+      const widgets = await toss.widgets({ customerKey })
+      await widgets.setAmount({ currency: 'KRW', value: amount })
+      await widgets.requestPayment({
         orderId,
         orderName,
         successUrl: `${window.location.origin}/live/${stream.id}?donation=success&orderId=${orderId}&amount=${amount}`,

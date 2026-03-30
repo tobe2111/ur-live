@@ -49,7 +49,7 @@ new_classes = ["LiveStreamDurableObject"]
 # ============================================================
 [vars]
 # ENVIRONMENT is set via Cloudflare Dashboard
-TOSS_CLIENT_KEY = "test_ck_placeholder"
+TOSS_CLIENT_KEY = "test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN"
 FRONTEND_URL = "http://localhost:5173"
 # REGION is set via Cloudflare Dashboard
 
