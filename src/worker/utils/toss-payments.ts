@@ -4,6 +4,8 @@
 // Docs: https://docs.tosspayments.com/reference
 // ============================================================
 
+import { TOSS_PAYMENT_URL } from '../../shared/constants';
+
 export interface TossCancelRequest {
   cancelReason: string;
   cancelAmount?: number;       // 부분 취소 금액 (미입력 시 전액 취소)
@@ -31,7 +33,7 @@ export interface TossApiError {
   message: string;
 }
 
-const TOSS_API_BASE = 'https://api.tosspayments.com/v1/payments';
+const TOSS_API_BASE = `${TOSS_PAYMENT_URL}/payments`;
 
 /**
  * Basic Auth 헤더 생성 (Toss 방식: secretKey + ':' → Base64)

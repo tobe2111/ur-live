@@ -1,3 +1,5 @@
+import { TOSS_PAYMENT_URL } from '../../shared/constants';
+
 // Cloudflare Worker용 환불 처리 유틸리티
 //
 // ⚠️ 참고: 실제 주문 취소는 worker/routes/order.routes.ts → tossCancelPayment() 경로로 처리됩니다.
@@ -32,7 +34,7 @@ export async function requestTossRefund(
       body.cancelAmount = cancelAmount
     }
 
-    const response = await fetch(`https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`, {
+    const response = await fetch(`${TOSS_PAYMENT_URL}/payments/${encodeURIComponent(paymentKey)}/cancel`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,

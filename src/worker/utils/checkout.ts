@@ -1,3 +1,5 @@
+import { TOSS_PAYMENT_URL } from '../../shared/constants';
+
 // Cloudflare Worker용 결제 처리 유틸리티
 //
 // ⚠️ 참고: 실제 결제 승인은 features/payments/api/payment.routes.ts → confirmTossPayment() 경로로 처리됩니다.
@@ -122,7 +124,7 @@ export async function confirmTossPayment(
   secretKey: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+    const response = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,

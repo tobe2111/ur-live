@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -148,7 +149,7 @@ donationsRoutes.post('/confirm', requireAuth(), async (c) => {
   }
 
   // 토스 결제 승인 (DB에서 검증된 금액 사용)
-  const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
