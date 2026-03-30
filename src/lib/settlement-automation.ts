@@ -97,10 +97,10 @@ async function calculateSellerSettlement(
   period: SettlementPeriod
 ): Promise<SellerSettlement | null> {
   try {
-    // 셀러 정보 조회
+    // 셀러 정보 조회 (수수료율 포함)
     const seller = await DB.prepare(`
-      SELECT id, business_name FROM sellers WHERE id = ?
-    `).bind(sellerId).first<{ id: number; business_name: string }>()
+      SELECT id, business_name, COALESCE(commission_rate, 10) AS commission_rate FROM sellers WHERE id = ?
+    `).bind(sellerId).first<{ id: number; business_name: string; commission_rate: number }>()
 
     if (!seller) {
       return null
@@ -149,7 +149,7 @@ async function calculateSellerSettlement(
 
     for (const order of orders.results as any[]) {
       const orderAmount = order.total_amount - order.shipping_fee // 상품 금액만
-      const platformFee = calculatePlatformFee(orderAmount)
+      const platformFee = calculatePlatformFee(orderAmount, seller.commission_rate / 100)
 
       settlementOrders.push({
         order_id: order.id,
