@@ -147,8 +147,8 @@ export default function AdminBannersPage() {
                 <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">순서</label>
-                <input type="number" value={formData.display_order} onChange={e => setFormData({ ...formData, display_order: parseInt(e.target.value) })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">순서 <span className="text-gray-400 font-normal">(숫자 낮을수록 앞에 표시)</span></label>
+                <input type="number" min="0" value={formData.display_order} onChange={e => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               </div>
             </div>
             <div>
@@ -157,13 +157,13 @@ export default function AdminBannersPage() {
               <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
                 <p className="text-xs font-semibold text-blue-700 mb-1.5">권장 이미지 규격</p>
                 <ul className="space-y-1 text-xs text-blue-600">
-                  <li><span className="font-medium">비율:</span> 16:9 (가로형 와이드)</li>
-                  <li><span className="font-medium">권장 크기:</span> 1920 × 1080 px</li>
-                  <li><span className="font-medium">최소 크기:</span> 1200 × 675 px</li>
+                  <li><span className="font-medium">PC 비율:</span> 21:9 (울트라와이드) — 예) 2100 × 900 px</li>
+                  <li><span className="font-medium">모바일 비율:</span> 16:9 — 예) 1920 × 1080 px</li>
+                  <li><span className="font-medium">최소 가로폭:</span> 1200 px 이상</li>
                   <li><span className="font-medium">최대 용량:</span> 2MB 이하</li>
                   <li><span className="font-medium">형식:</span> JPG, PNG, WebP</li>
                 </ul>
-                <p className="text-xs text-blue-500 mt-1.5">※ 이미지가 16:9 비율이 아닐 경우 잘림 또는 늘어남이 발생할 수 있습니다.</p>
+                <p className="text-xs text-blue-500 mt-1.5">※ 여러 배너 등록 시 5초 간격으로 자동 슬라이드됩니다.</p>
               </div>
               {formData.image_url && <img src={formData.image_url} alt="미리보기" className="mt-2 w-full max-w-sm aspect-video object-cover rounded-lg" />}
             </div>

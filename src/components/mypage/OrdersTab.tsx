@@ -78,6 +78,63 @@ const STATUS_ORDER: Record<string, number> = {
   pending: 1, paid: 1, preparing: 2, shipping: 3, delivered: 4,
 }
 
+// ─── 환불/취소 스텝퍼 ──────────────────────────────────────────────────────────
+
+const REFUND_STEPS = [
+  { key: 'requested', label: '취소요청' },
+  { key: 'processing', label: '처리중' },
+  { key: 'completed',  label: '환불완료' },
+]
+
+function getRefundStepIndex(status: string, refundStatus?: string): number {
+  if (status === 'refunded' || refundStatus === 'completed') return 3
+  if (refundStatus === 'pending') return 2
+  return 1
+}
+
+function RefundFlowStepper({ status, refundStatus }: { status: string; refundStatus?: string }) {
+  const s = status.toLowerCase()
+  if (s !== 'cancelled' && s !== 'refunded') return null
+  const currentIdx = getRefundStepIndex(s, refundStatus)
+
+  return (
+    <div className="flex items-center mb-4">
+      {REFUND_STEPS.map((step, idx) => {
+        const stepNum = idx + 1
+        const done = stepNum <= currentIdx
+        const isLast = idx === REFUND_STEPS.length - 1
+
+        return (
+          <div key={step.key} className="flex items-center flex-1 min-w-0">
+            <div className="flex flex-col items-center flex-1 min-w-0">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center mb-1 ${
+                done ? 'bg-[#ff3b30]' : 'bg-[#d1d1d6]'
+              }`}>
+                {done
+                  ? <CheckCircle className="w-3.5 h-3.5 text-white" />
+                  : <Circle className="w-3.5 h-3.5 text-white" />
+                }
+              </div>
+              <span className={`text-[10px] font-medium text-center leading-tight ${
+                done ? 'text-[#ff3b30]' : 'text-[#c7c7cc]'
+              }`}>
+                {step.label}
+              </span>
+            </div>
+            {!isLast && (
+              <div className={`h-[2px] flex-1 mx-1 rounded-full mt-[-12px] ${
+                stepNum < currentIdx ? 'bg-[#ff3b30]' : 'bg-[#d1d1d6]'
+              }`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── 구매 플로우 스텝퍼 ───────────────────────────────────────────────────────
+
 function OrderFlowStepper({ status }: { status: string }) {
   const s = status.toLowerCase()
   if (s === 'cancelled' || s === 'refunded') return null
@@ -179,8 +236,9 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                 </Badge>
               </div>
 
-              {/* 구매 플로우 스텝퍼 */}
+              {/* 구매 플로우 스텝퍼 / 환불 상태 스텝퍼 */}
               <OrderFlowStepper status={order.status} />
+              <RefundFlowStepper status={order.status} refundStatus={order.refund_status} />
 
               {/* 상품 목록 */}
               <div className="space-y-3 mb-4">

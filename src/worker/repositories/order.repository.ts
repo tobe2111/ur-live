@@ -93,7 +93,7 @@ export class OrderRepository {
    */
   async findById(orderId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name, s.slug as seller_slug 
+      `SELECT o.*, s.name as seller_name
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.id = ?`,
@@ -114,7 +114,7 @@ export class OrderRepository {
    */
   async findByOrderNumber(orderNumber: string): Promise<Order[]> {
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name, s.slug as seller_slug
+      `SELECT o.*, s.name as seller_name
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.order_number = ?
@@ -152,7 +152,7 @@ export class OrderRepository {
     const total = countRow?.count ?? 0;
 
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name, s.slug as seller_slug
+      `SELECT o.*, s.name as seller_name
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.user_id = ?

@@ -161,13 +161,13 @@ export default function PaymentSuccessPage() {
       }))
 
       const orderData = {
-        seller_id: sellerIdForOrder,
+        seller_id: String(sellerIdForOrder || ''),
         order_number: orderId!,
+        idempotency_key: orderId!,
         items: orderItems,
         shipping_address: shippingAddressObj,
         shipping_name: recipientName,
-        shipping_phone: recipientPhone,
-        idempotency_key: `payment-${orderId}`,
+        shipping_phone: recipientPhone || '',
       }
 
 
