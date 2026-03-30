@@ -244,8 +244,10 @@ ordersRouter.post('/', async (c) => {
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {
-    console.error('[ORDERS] Create error:', err);
-    return c.json({ success: false, error: '주문 생성에 실패했습니다' }, 500);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('[ORDERS] Create error:', errMsg, err);
+    // TODO: 디버깅 완료 후 errMsg 제거
+    return c.json({ success: false, error: errMsg || '주문 생성에 실패했습니다' }, 500);
   }
 });
 
