@@ -124,9 +124,15 @@ function OrderFlowStepper({ status }: { status: string }) {
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder }: OrdersTabProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'>('all')
 
-  const filteredOrders = orders.filter(order =>
-    statusFilter === 'all' || order.status.toLowerCase() === statusFilter
-  )
+  const filteredOrders = orders.filter(order => {
+    if (statusFilter === 'all') return true
+    const s = order.status.toLowerCase()
+    // '결제완료' 필터: pending과 paid 둘 다 포함
+    if (statusFilter === 'pending') return s === 'pending' || s === 'paid' || s === 'confirmed'
+    // '취소/환불' 필터: cancelled와 refunded 포함
+    if (statusFilter === 'cancelled') return s === 'cancelled' || s === 'refunded'
+    return s === statusFilter
+  })
 
   return (
     <div className="space-y-6">
@@ -238,7 +244,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                   {(order.total_amount ?? order.amount ?? 0).toLocaleString()}원
                 </span>
                 <div className="flex gap-2">
-                  {order.status === 'pending' && (
+                  {['pending', 'paid', 'confirmed', 'done'].includes(order.status.toLowerCase()) && (
                     <button
                       onClick={() => onCancelOrder(order.id, order.order_number ?? String(order.id))}
                       className="px-4 py-2 text-[13px] font-medium text-[#ff3b30] border border-[#ff3b30] rounded-full hover:bg-[#ff3b30] hover:text-white transition-colors"

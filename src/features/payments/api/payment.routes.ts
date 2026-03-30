@@ -56,6 +56,7 @@ interface OrderRow {
   user_id: number;
   order_number: string;
   total_price: number;
+  total_amount: number;
   status: string;
   payment_key: string | null;
   payment_method: string | null;
@@ -213,9 +214,9 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
 
     const orderData = order[0];
 
-    // 금액 검증
-    // ✅ BUG #11 FIX: schema column is `total_price`, not `total_amount`
-    if (orderData.total_price !== amount) {
+    // 금액 검증: total_amount (새 스키마) 또는 total_price (구 스키마) 둘 다 지원
+    const orderTotal = orderData.total_amount ?? orderData.total_price ?? 0;
+    if (orderTotal !== amount) {
       return c.json(badRequestResponse('Amount mismatch'), 400);
     }
 
@@ -229,12 +230,13 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
     const tossSecretKey = c.env.TOSS_SECRET_KEY!;
     const tossPayment = await confirmTossPayment(paymentKey, orderId, amount, tossSecretKey);
 
-    // 주문 상태 업데이트
+    // 주문 상태 업데이트 (대문자 상태로 통일 - worker cancel과 호환)
     await dbHelper.update(
       'orders',
       {
-        status: 'confirmed',
+        status: 'PAID',
         payment_key: paymentKey,
+        toss_payment_key: paymentKey,
         payment_method: tossPayment.method || 'card',
         updated_at: new Date().toISOString()
       },
