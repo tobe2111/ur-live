@@ -3,8 +3,29 @@ import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import HttpBackend from 'i18next-http-backend'
 
-const region = import.meta.env.VITE_REGION || 'KR'
-const defaultLanguage = import.meta.env.VITE_DEFAULT_LANGUAGE || 'ko'
+// ✅ Runtime region detection (single build → runtime hostname check)
+function detectDefaultLanguage(): string {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // GLOBAL 도메인이면 영어 기본
+    if (hostname.includes('world.ur-team.com') || hostname.includes('global.') || hostname.includes('localhost:5174')) {
+      return 'en'
+    }
+  }
+  return import.meta.env.VITE_DEFAULT_LANGUAGE || 'ko'
+}
+
+function detectSupportedLngs(): string[] {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    if (hostname.includes('world.ur-team.com') || hostname.includes('global.') || hostname.includes('localhost:5174')) {
+      return ['en', 'ko', 'ja', 'zh']
+    }
+  }
+  return ['ko', 'en']
+}
+
+const defaultLanguage = detectDefaultLanguage()
 
 i18n
   .use(HttpBackend) // 번역 파일 로드
@@ -29,8 +50,8 @@ i18n
       lookupLocalStorage: 'i18nextLng',
     },
     
-    // 지원 언어
-    supportedLngs: region === 'KR' ? ['ko', 'en'] : ['en', 'ko', 'ja', 'zh'],
+    // 지원 언어 (runtime detection)
+    supportedLngs: detectSupportedLngs(),
     
     // 기본 네임스페이스
     ns: ['translation'],

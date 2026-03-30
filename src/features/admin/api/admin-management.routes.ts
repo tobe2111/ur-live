@@ -370,37 +370,39 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
                COALESCE(o.shipping_phone,'') as shipping_phone,
                COALESCE(o.shipping_address,'') as shipping_address,
                COALESCE(o.shipping_address_detail,'') as shipping_address_detail,
-               COALESCE(o.shipping_zipcode,'') as shipping_zipcode,
-               COALESCE(o.courier,'') as courier,
+               COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,
+               COALESCE(o.courier, o.tracking_company, '') as courier,
                COALESCE(o.tracking_number,'') as tracking_number,
                o.created_at, o.updated_at,
-               u.name as user_name, u.email as user_email,
+               COALESCE(u.name, u.display_name, '') as user_name,
+               COALESCE(u.email, '') as user_email,
                COALESCE(s.business_name, s.name, '') as seller_name
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         LEFT JOIN sellers s ON o.seller_id = s.id
         WHERE 1=1`);
       orders = await executeQuery<OrderRow>(DB, q, params);
-    } catch {
-      // Fallback: minimal columns that are always safe
-      const { q, params } = buildWhere(`
-        SELECT o.id, o.order_number, o.user_id, o.seller_id,
-               COALESCE(o.total_amount, o.total_price, 0) as total_amount,
-               COALESCE(o.status,'pending') as status,
-               'pending' as payment_status, '' as payment_method,
-               COALESCE(o.shipping_name,'') as shipping_name,
-               COALESCE(o.shipping_phone,'') as shipping_phone,
-               COALESCE(o.shipping_address,'') as shipping_address,
-               '' as shipping_address_detail, '' as shipping_zipcode,
-               '' as courier, '' as tracking_number,
-               o.created_at, o.updated_at,
-               u.name as user_name, u.email as user_email,
-               COALESCE(s.name,'') as seller_name
-        FROM orders o
-        LEFT JOIN users u ON o.user_id = u.id
-        LEFT JOIN sellers s ON o.seller_id = s.id
-        WHERE 1=1`);
-      orders = await executeQuery<OrderRow>(DB, q, params);
+    } catch (primaryErr) {
+      console.warn('[Admin] orders primary query failed, trying fallback:', (primaryErr as Error).message);
+      try {
+        // Fallback: only core orders columns, no JOINs that might fail
+        const { q, params } = buildWhere(`
+          SELECT o.id, o.order_number, o.user_id, o.seller_id,
+                 COALESCE(o.total_amount, 0) as total_amount,
+                 COALESCE(o.status,'pending') as status,
+                 'pending' as payment_status, '' as payment_method,
+                 '' as shipping_name, '' as shipping_phone,
+                 '' as shipping_address, '' as shipping_address_detail,
+                 '' as shipping_zipcode, '' as courier, '' as tracking_number,
+                 o.created_at, o.updated_at,
+                 '' as user_name, '' as user_email, '' as seller_name
+          FROM orders o
+          WHERE 1=1`);
+        orders = await executeQuery<OrderRow>(DB, q, params);
+      } catch (fallbackErr) {
+        console.error('[Admin] orders fallback also failed:', (fallbackErr as Error).message);
+        return c.json({ success: true, data: [] });
+      }
     }
 
     for (const order of orders) {
@@ -408,8 +410,8 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
         order.items = await executeQuery<OrderItemRow>(DB, `
           SELECT oi.id, oi.product_id, oi.product_name, oi.quantity,
                  COALESCE(oi.unit_price, oi.price, 0) as price,
-                 COALESCE(p.image_url, p.thumbnail_url, oi.product_image) as image_url
-          FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
+                 '' as image_url
+          FROM order_items oi
           WHERE oi.order_id = ?`, [order.id]);
       } catch { order.items = []; }
     }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 
@@ -134,6 +134,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           {children}
         </main>
       </div>
+
+      {/* 카카오 채널 상담 플로팅 버튼 */}
+      <a
+        href="http://pf.kakao.com/_AITdn/chat"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-[35] flex items-center gap-2 px-4 py-3 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-lg hover:shadow-xl transition-all duration-200 group"
+        title="카카오 채널 상담"
+      >
+        <MessageCircle className="w-5 h-5" />
+        <span className="text-sm font-semibold hidden sm:inline">카카오 채널 상담</span>
+      </a>
     </div>
   )
 }
