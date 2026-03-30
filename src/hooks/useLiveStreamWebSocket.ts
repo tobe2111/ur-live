@@ -61,7 +61,8 @@ export function useLiveStreamWebSocket(
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const MAX_RECONNECT = 5
+  // 0 = WebSocket 첫 실패 시 즉시 polling으로 전환 (Durable Objects 없는 환경)
+  const MAX_RECONNECT = 0
 
   const clearMessages = useCallback(() => setMessages([]), [])
 
@@ -121,7 +122,6 @@ export function useLiveStreamWebSocket(
   // Polling fallback when WebSocket is unavailable
   const startPolling = useCallback(() => {
     if (pollingIntervalRef.current || !streamId) return
-    console.log('[WS] Falling back to polling for stream', streamId)
 
     // Fetch messages initially
     fetchInitialMessages()
@@ -228,7 +228,7 @@ export function useLiveStreamWebSocket(
       }
 
       ws.onerror = () => {
-        console.error('[WS] Connection error for stream', streamId)
+        // WebSocket unavailable (no Durable Objects) — silently fall back to polling
       }
     } catch (e) {
       console.error('[WS] Failed to create WebSocket:', e)
