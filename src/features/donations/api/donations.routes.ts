@@ -29,7 +29,8 @@ async function getUserIdFromToken(authorization: string | undefined, jwtSecret: 
 }
 
 // ── POST /api/donations/init ─────────────────────────────────────────────────
-// 후원 결제 시작: 스트림 ID + 금액 → 토스 결제 정보 반환
+// 후원 결제 시작: pending 레코드를 DB에 저장 후 토스 결제 정보 반환
+// confirm 단계에서 DB 저장 금액으로 검증하여 금액 조작을 방지합니다.
 donationsRoutes.post('/init', async (c) => {
   const userId = await getUserIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
   if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -80,6 +81,23 @@ donationsRoutes.post('/init', async (c) => {
   if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
 
   const orderId = `DON-${userId}-${stream.id}-${Date.now()}`;
+  const commissionAmount = Math.round(body.amount * stream.commission_rate / 100);
+  const sellerAmount = body.amount - commissionAmount;
+
+  // pending 레코드를 DB에 저장 — confirm 단계에서 이 레코드의 금액으로 검증
+  await DB.prepare(`
+    INSERT INTO donations
+      (stream_id, seller_id, donor_user_id, donor_name, amount,
+       commission_amount, seller_amount, commission_rate,
+       order_id, status, message, is_anonymous, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, datetime('now'), datetime('now'))
+  `).bind(
+    body.stream_id, stream.seller_id, userId,
+    body.is_anonymous ? '익명' : (body.donor_name ?? '익명'),
+    body.amount, commissionAmount, sellerAmount, stream.commission_rate,
+    orderId,
+    body.message ?? null, body.is_anonymous ? 1 : 0,
+  ).run();
 
   return c.json({
     success: true,
@@ -90,13 +108,12 @@ donationsRoutes.post('/init', async (c) => {
       streamId: stream.id,
       sellerName: stream.seller_name,
       clientKey: c.env.TOSS_CLIENT_KEY,
-      // 클라이언트에서 confirm 시 필요한 정보를 orderId에 포함
     },
   });
 });
 
 // ── POST /api/donations/confirm ──────────────────────────────────────────────
-// 토스 결제 완료 → 후원 기록
+// 토스 결제 완료 → init에서 저장한 pending 레코드 기반으로 금액 검증 후 완료 처리
 donationsRoutes.post('/confirm', async (c) => {
   const userId = await getUserIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
   if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -105,85 +122,64 @@ donationsRoutes.post('/confirm', async (c) => {
     paymentKey: string;
     orderId: string;
     amount: number;
-    stream_id: number;
-    message?: string;
-    donor_name?: string;
-    is_anonymous?: boolean;
   }>();
 
-  if (!body.paymentKey || !body.orderId || !body.amount || !body.stream_id) {
+  if (!body.paymentKey || !body.orderId || !body.amount) {
     return c.json({ success: false, error: '필수 항목 누락' }, 400);
   }
 
   const { DB } = c.env;
 
-  // 중복 결제 확인 (donations 테이블 없으면 무시)
-  const dup = await DB.prepare('SELECT id FROM donations WHERE order_id = ?')
-    .bind(body.orderId).first<{ id: number }>().catch(() => null);
-  if (dup) return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
+  // init 단계에서 DB에 저장한 pending 레코드 조회 (금액 조작 방지)
+  type DonationRow = {
+    id: number; stream_id: number; seller_id: number; amount: number;
+    commission_amount: number; seller_amount: number; status: string; donor_name: string;
+  };
+  const pending = await DB.prepare(
+    'SELECT id, stream_id, seller_id, amount, commission_amount, seller_amount, status, donor_name FROM donations WHERE order_id = ? AND donor_user_id = ?'
+  ).bind(body.orderId, userId).first<DonationRow>().catch(() => null);
 
-  // 스트림 + 수수료율 조회 (two-step fallback)
-  type ConfirmStreamRow = { seller_id: number; seller_name: string; commission_rate: number; };
-  let stream: ConfirmStreamRow | null = null;
-  try {
-    stream = await DB.prepare(
-      `SELECT ls.seller_id, s.name AS seller_name,
-              COALESCE(s.donation_commission_rate, 15.0) AS commission_rate
-       FROM live_streams ls JOIN sellers s ON ls.seller_id = s.id
-       WHERE ls.id = ?`
-    ).bind(body.stream_id).first<ConfirmStreamRow>();
-  } catch {
-    stream = await DB.prepare(
-      `SELECT ls.seller_id, s.name AS seller_name, 15.0 AS commission_rate
-       FROM live_streams ls JOIN sellers s ON ls.seller_id = s.id
-       WHERE ls.id = ?`
-    ).bind(body.stream_id).first<ConfirmStreamRow>().catch(() => null);
+  if (!pending) return c.json({ success: false, error: '후원 정보를 찾을 수 없습니다. 다시 시도해주세요.' }, 404);
+  if (pending.status === 'DONE') return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
+
+  // 클라이언트가 보낸 amount를 DB 저장값으로 검증 (금액 조작 방지)
+  if (pending.amount !== body.amount) {
+    console.error('[donations/confirm] Amount mismatch', { db: pending.amount, client: body.amount, orderId: body.orderId });
+    return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400);
   }
 
-  if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
-
-  // 토스 결제 승인
+  // 토스 결제 승인 (DB에서 검증된 금액 사용)
   const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
       'Content-Type': 'application/json',
+      'Idempotency-Key': body.orderId,
     },
-    body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: body.amount }),
+    body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: pending.amount }),
   });
 
   if (!tossRes.ok) {
-    const err = await tossRes.json<{ message?: string }>();
-    return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
+    const err = await tossRes.json<{ message?: string; code?: string }>();
+    if (err.code !== 'ALREADY_PROCESSED_PAYMENT') {
+      await DB.prepare('UPDATE donations SET status = ? WHERE order_id = ?')
+        .bind('FAILED', body.orderId).run();
+      return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
+    }
   }
 
-  const commissionAmount = Math.round(body.amount * stream.commission_rate / 100);
-  const sellerAmount = body.amount - commissionAmount;
-
-  // 후원 기록 저장
-  await DB.prepare(`
-    INSERT INTO donations
-      (stream_id, seller_id, donor_user_id, donor_name, amount,
-       commission_amount, seller_amount, commission_rate,
-       payment_key, order_id, status, message, is_anonymous, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DONE', ?, ?, datetime('now'), datetime('now'))
-  `).bind(
-    body.stream_id, stream.seller_id, userId,
-    body.is_anonymous ? '익명' : (body.donor_name ?? '익명'),
-    body.amount, commissionAmount, sellerAmount, stream.commission_rate,
-    body.paymentKey, body.orderId,
-    body.message ?? null, body.is_anonymous ? 1 : 0,
-  ).run();
+  // pending → DONE 상태 업데이트 (payment_key 기록)
+  await DB.prepare('UPDATE donations SET status = ?, payment_key = ?, updated_at = datetime(\'now\') WHERE order_id = ?')
+    .bind('DONE', body.paymentKey, body.orderId).run();
 
   return c.json({
     success: true,
     data: {
-      amount: body.amount,
-      seller_amount: sellerAmount,
-      commission_amount: commissionAmount,
-      seller_name: stream.seller_name,
+      amount: pending.amount,
+      seller_amount: pending.seller_amount,
+      commission_amount: pending.commission_amount,
     },
-    message: `${body.amount.toLocaleString()}원 후원이 완료되었습니다!`,
+    message: `${pending.amount.toLocaleString()}원 후원이 완료되었습니다!`,
   });
 });
 

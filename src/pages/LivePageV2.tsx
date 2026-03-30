@@ -1139,11 +1139,9 @@ function ReelCard({
     if (donation === 'success' && paymentKey && orderId && amount) {
       window.history.replaceState({}, '', window.location.pathname)
       const token = localStorage.getItem('access_token') || localStorage.getItem('token')
+      // message/is_anonymous는 init 단계에서 DB에 이미 저장됨 — 재전송 불필요
       api.post('/api/donations/confirm', {
         paymentKey, orderId, amount: Number(amount),
-        stream_id: stream.id,
-        message: donationMessage || undefined,
-        is_anonymous: donationAnonymous,
       }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
         .then(res => {
           if (res.data.success) toast.success(res.data.message || '후원이 완료되었습니다!')

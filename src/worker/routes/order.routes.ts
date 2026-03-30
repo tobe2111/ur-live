@@ -306,7 +306,7 @@ ordersRouter.get('/:id', async (c) => {
 });
 
 // POST /api/orders/refund  ← useOrder.ts에서 호출
-// 환불 요청 (구매 확정 후 반품/환불)
+// 환불 요청: Toss Cancel API 호출 후 DB 상태 CANCELLED + 재고 복구
 ordersRouter.post('/refund', async (c) => {
   try {
     const firebaseUid = String(c.get('user').id);
@@ -340,20 +340,60 @@ ordersRouter.post('/refund', async (c) => {
       }, 400);
     }
 
-    // 환불 요청 상태로 변경 (REFUND_REQUESTED 상태가 없으면 CANCELLED로 처리)
-    try {
-      await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
-        cancel_reason: `[환불요청] ${body.reason}`,
-        cancelled_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.error('[ORDERS] Refund status update failed:', e);
+    // Toss 결제 취소 API 호출 (실제 환불)
+    const payInfo = await orderRepo.getPaymentInfo(body.order_id);
+    const paymentKey = payInfo?.toss_payment_key;
+
+    if (!paymentKey) {
+      return c.json({
+        success: false,
+        error: '결제 키를 찾을 수 없습니다. 고객센터에 문의해 주세요.',
+        code: 'PAYMENT_KEY_MISSING',
+      }, 422);
     }
+
+    const tossSecretKey = c.env.TOSS_SECRET_KEY;
+    if (!tossSecretKey) {
+      return c.json({ success: false, error: 'Payment service unavailable' }, 503);
+    }
+
+    const tossResult = await tossCancelPayment(
+      paymentKey,
+      tossSecretKey,
+      `[환불요청] ${body.reason}`,
+      body.refund_amount,
+    );
+
+    if (!tossResult.success) {
+      const tossErrorMessages: Record<string, string> = {
+        ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',
+        EXCEED_CANCEL_AMOUNT: '환불 금액이 결제 금액을 초과합니다',
+        NOT_CANCELABLE_PAYMENT: '취소할 수 없는 결제입니다',
+      };
+      return c.json({
+        success: false,
+        error: tossErrorMessages[tossResult.code] ?? `환불 처리 실패: ${tossResult.message}`,
+        code: tossResult.code,
+      }, 422);
+    }
+
+    // DB 상태 업데이트 + 재고 복구
+    await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
+      cancel_reason: `[환불요청] ${body.reason}`,
+      cancelled_at: new Date().toISOString(),
+    });
+    await orderRepo.restoreStock(body.order_id);
+
+    const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
     return c.json({
       success: true,
-      message: '환불 요청이 접수되었습니다. 판매자 확인 후 처리됩니다.',
-      data: { order_id: body.order_id, status: 'CANCELLED' },
+      message: '환불이 처리되었습니다. 3~5 영업일 내 반환됩니다.',
+      data: {
+        order_id: body.order_id,
+        cancel_amount: latestCancel?.cancelAmount ?? order.total_amount,
+        cancelled_at: latestCancel?.canceledAt ?? new Date().toISOString(),
+      },
     });
   } catch (err) {
     console.error('[ORDERS] Refund error:', err);

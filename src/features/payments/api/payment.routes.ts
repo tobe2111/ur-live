@@ -220,8 +220,8 @@ paymentRoutes.post('/confirm', requireAuth(), async (c) => {
       return c.json(badRequestResponse('Amount mismatch'), 400);
     }
 
-    // 이미 결제 완료된 주문인지 확인
-    const completedStatuses = ['confirmed', 'shipped', 'delivered'];
+    // 이미 결제 완료된 주문인지 확인 (대문자 통일)
+    const completedStatuses = ['DONE', 'PAID', 'PREPARING', 'SHIPPING', 'DELIVERED', 'confirmed', 'shipped', 'delivered'];
     if (completedStatuses.includes(orderData.status)) {
       return c.json(badRequestResponse('Order already confirmed'), 400);
     }
@@ -330,13 +330,13 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
 
     const orderData = order[0];
 
-    // 이미 취소된 주문인지 확인
-    if (orderData.status === 'cancelled') {
+    // 이미 취소된 주문인지 확인 (대문자 통일)
+    if (['CANCELLED', 'cancelled'].includes(orderData.status)) {
       return c.json(badRequestResponse('Order already cancelled'), 400);
     }
 
-    // 취소 불가능한 상태인지 확인
-    if (orderData.status === 'delivered') {
+    // 취소 불가능한 상태인지 확인 (대문자 통일)
+    if (['DELIVERED', 'delivered'].includes(orderData.status)) {
       return c.json(badRequestResponse('Cannot cancel delivered order'), 400);
     }
 
@@ -349,16 +349,31 @@ paymentRoutes.post('/rollback', requireAuth(), async (c) => {
       tossSecretKey
     );
 
-    // 주문 상태 업데이트
+    // 주문 상태 업데이트 (대문자 CANCELLED로 통일)
     await dbHelper.update(
       'orders',
       {
-        status: 'cancelled',
+        status: 'CANCELLED',
         cancel_reason: cancelReason,
         updated_at: new Date().toISOString()
       },
       { id: orderData.id }
     );
+
+    // order_items 재고 복구 (reserveStock에서 차감된 stock_quantity 반환)
+    const items = await db.prepare(
+      'SELECT product_id, quantity FROM order_items WHERE order_id = ? AND status != ?'
+    ).bind(String(orderData.id), 'CANCELLED').all<{ product_id: string; quantity: number }>();
+
+    if (items.results.length > 0) {
+      for (const item of items.results) {
+        await db.prepare(
+          'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?'
+        ).bind(item.quantity, item.product_id).run();
+      }
+      await db.prepare('UPDATE order_items SET status = ? WHERE order_id = ?')
+        .bind('CANCELLED', String(orderData.id)).run();
+    }
 
     // 업데이트된 주문 조회
     // ✅ BUG #11 FIX: remove broken JOIN on non-existent orders.product_id
