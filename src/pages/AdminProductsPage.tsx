@@ -9,6 +9,7 @@ import {
   Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock,
   BarChart2, TrendingUp
 } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface Product {
   id: number
@@ -396,7 +397,7 @@ export default function AdminProductsPage() {
                         {req.status === 'PENDING' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> 대기중</span>}
                         {req.status === 'APPROVED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> 승인됨</span>}
                         {req.status === 'REJECTED' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> 거부됨</span>}
-                        <span className="text-xs text-gray-400">{new Date(req.created_at).toLocaleDateString('ko-KR')}</span>
+                        <span className="text-xs text-gray-400">{formatKSTDate(req.created_at)}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
                       <p className="text-xs text-gray-500 mt-0.5">

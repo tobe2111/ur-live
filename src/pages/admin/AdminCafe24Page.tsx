@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { formatKST } from '@/utils/date'
 import {
   Store, Link2, Unlink, RefreshCw, Loader2,
   CheckCircle, AlertCircle, Package, Clock
@@ -173,7 +174,7 @@ export default function AdminCafe24Page() {
                   </div>
                   <p className="text-sm font-medium text-gray-900">
                     {status.last_updated
-                      ? new Date(status.last_updated).toLocaleString('ko-KR')
+                      ? formatKST(status.last_updated)
                       : '-'}
                   </p>
                 </div>

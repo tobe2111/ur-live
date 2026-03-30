@@ -13,6 +13,7 @@ import {
   FileText,
   Search
 } from 'lucide-react'
+import { formatKST } from '@/utils/date'
 
 interface BusinessInfo {
   id: number
@@ -258,7 +259,7 @@ export default function SellerBusinessInfoPage() {
                   <div>
                     <p className="font-medium text-green-900">승인 완료</p>
                     <p className="text-sm text-green-700">
-                      {businessInfo.verified_at && `승인일시: ${new Date(businessInfo.verified_at).toLocaleString('ko-KR')}`}
+                      {businessInfo.verified_at && `승인일시: ${formatKST(businessInfo.verified_at)}`}
                     </p>
                   </div>
                 </>

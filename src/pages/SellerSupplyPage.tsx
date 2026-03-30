@@ -14,6 +14,7 @@ import {
   Search, CheckCircle, XCircle, Clock,
   ShoppingBag, Tag, Plus
 } from 'lucide-react'
+import { formatKSTDate } from '@/utils/date'
 
 interface SupplyProduct {
   id: number
@@ -296,7 +297,7 @@ export default function SellerSupplyPage() {
                         {req.status === 'PENDING' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> 검토중</span>}
                         {req.status === 'APPROVED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> 승인됨</span>}
                         {req.status === 'REJECTED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> 거부됨</span>}
-                        <span className="text-xs text-gray-400">{new Date(req.created_at).toLocaleDateString('ko-KR')}</span>
+                        <span className="text-xs text-gray-400">{formatKSTDate(req.created_at)}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
                       <div className="flex items-center gap-3 mt-1">

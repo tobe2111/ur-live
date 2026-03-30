@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { RefreshCw, Activity, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
+import { formatKST } from '@/utils/date'
 
 interface KVUsageData {
   timestamp: string
@@ -254,7 +255,7 @@ export default function KVMonitoringPage() {
 
           {/* Timestamp */}
           <div className="text-center text-sm text-gray-500 mt-6">
-            마지막 업데이트: {new Date(data.timestamp).toLocaleString('ko-KR')}
+            마지막 업데이트: {formatKST(data.timestamp)}
           </div>
         </>
       )}

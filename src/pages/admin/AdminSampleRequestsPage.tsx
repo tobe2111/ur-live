@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, MessageSquare
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import { formatKSTDate } from '@/utils/date'
 
 interface SampleRequest {
   id: number
@@ -155,7 +156,7 @@ export default function AdminSampleRequestsPage() {
                           {st.label}
                         </span>
                         <span className="text-xs text-gray-400">
-                          #{item.id} · {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                          #{item.id} · {formatKSTDate(item.created_at)}
                         </span>
                       </div>
 

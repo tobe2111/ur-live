@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
+import { formatKST } from '@/utils/date'
 import {
   Package, Truck, CheckCircle2, XCircle, Loader2, Eye,
   Calendar, User, Search, Filter, Download, ChevronLeft,
@@ -260,7 +261,7 @@ export default function AdminOrdersPage() {
                 return (
                   <tr key={order.order_number} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-xs font-mono text-gray-700">{order.order_number}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(order.created_at).toLocaleString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatKST(order.created_at)}</td>
                     <td className="px-4 py-3 text-xs text-gray-700">{order.seller_name}</td>
                     <td className="px-4 py-3">
                       <p className="text-xs font-medium text-gray-900">{order.shipping_name}</p>
