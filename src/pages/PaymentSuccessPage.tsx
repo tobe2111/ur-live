@@ -297,7 +297,7 @@ export default function PaymentSuccessPage() {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">결제 방법</span>
                     <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f]">
-                      {orderInfo.method || '테스트'}
+                      {orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
                     </span>
                   </div>
 
@@ -320,7 +320,7 @@ export default function PaymentSuccessPage() {
               ) : (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm lg:text-base text-blue-900 leading-relaxed">
-                    🎉 <strong>데모 모드</strong>: 실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요.
+                    주문이 정상적으로 완료되었습니다. 배송 현황은 주문 내역에서 확인하실 수 있습니다.
                   </p>
                 </div>
               )}
