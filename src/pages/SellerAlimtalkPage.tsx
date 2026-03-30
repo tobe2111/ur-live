@@ -97,6 +97,18 @@ export default function SellerAlimtalkPage() {
     } catch { /* ignore */ } finally { setLogsLoading(false) }
   }
 
+  // TossPayments V2 SDK 동적 로드
+  function loadTossPaymentsSDK(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (window.TossPayments) { resolve(); return }
+      const script = document.createElement('script')
+      script.src = 'https://js.tosspayments.com/v1/payment'
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('TossPayments SDK 로드 실패'))
+      document.head.appendChild(script)
+    })
+  }
+
   async function handleCharge() {
     if (!selectedPkgId) { toast.error('패키지를 선택해주세요'); return }
     setPaying(true)
@@ -115,9 +127,10 @@ export default function SellerAlimtalkPage() {
         return
       }
 
-      // 2. 토스페이먼츠 결제창 호출
+      // 2. TossPayments V2 SDK 동적 로드 후 결제창 호출
+      await loadTossPaymentsSDK()
       const toss = window.TossPayments(clientKey)
-      await toss.requestPayment('결제', {
+      await toss.requestPayment('카드', {
         amount,
         orderId,
         orderName,

@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { getUserId, getUserIdSync, isLoggedInSync } from '@/utils/auth'
+import { getUserId, getUserIdSync, isLoggedInSync, getUserEmail } from '@/utils/auth'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -452,7 +452,7 @@ export default function CheckoutPage() {
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
-        customerEmail: 'customer@example.com',
+        customerEmail: getUserEmail() || undefined,
         customerName: selectedAddress.recipient_name,
         customerMobilePhone: selectedAddress.phone.replace(/-/g, '')
       }
