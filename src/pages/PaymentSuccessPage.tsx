@@ -96,10 +96,17 @@ export default function PaymentSuccessPage() {
 
 
       // 2️⃣ 결제 승인 요청 (주문은 CheckoutPage에서 결제 전에 이미 생성됨)
+      // 토스 리다이렉트에서 전달된 amount를 정수로 변환 (KRW는 소수점 없음)
+      const parsedAmount = Math.round(Number(amount))
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        setError('결제 금액이 유효하지 않습니다.')
+        return
+      }
+
       const response = await api.post('/api/payments/confirm', {
         paymentKey,
         orderId,
-        amount: Number(amount),
+        amount: parsedAmount,
       })
 
       if (!response.data.success) {

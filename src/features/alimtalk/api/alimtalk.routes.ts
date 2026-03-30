@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
 
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
 
@@ -158,7 +158,7 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
   if (dup) return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
 
   // 토스 결제 승인
-  const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,

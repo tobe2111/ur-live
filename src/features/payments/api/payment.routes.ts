@@ -29,6 +29,7 @@ import {
   internalServerErrorResponse
 } from '@/worker/utils/response';
 import { QueryBuilder } from '@/worker/utils/database';
+import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
 type Bindings = {
   DB: D1Database;
@@ -111,13 +112,13 @@ async function cancelTossPayment(
   }
 
   const response = await fetch(
-    `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`,
+    `${TOSS_PAYMENT_URL}/payments/${encodeURIComponent(paymentKey)}/cancel`,
     {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': `cancel-${paymentKey}-${Date.now()}`,
+        'Idempotency-Key': `cancel-${paymentKey}`,
       },
       body: JSON.stringify(body),
     }

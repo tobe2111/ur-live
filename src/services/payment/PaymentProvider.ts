@@ -12,6 +12,8 @@
  * - PayPle (future)
  */
 
+import { TOSS_PAYMENT_URL } from '@/shared/constants';
+
 export interface PaymentConfirmRequest {
   paymentKey: string;
   orderId: string;
@@ -80,7 +82,7 @@ export class TossPaymentsProvider implements PaymentProvider {
   
   async confirmPayment(request: PaymentConfirmRequest): Promise<PaymentConfirmResponse> {
     try {
-      const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      const response = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
@@ -160,7 +162,7 @@ export class TossPaymentsProvider implements PaymentProvider {
   
   async cancelPayment(paymentKey: string, reason: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
+      const response = await fetch(`${TOSS_PAYMENT_URL}/payments/${paymentKey}/cancel`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${btoa(this.secretKey + ':')}`,
@@ -182,7 +184,7 @@ export class TossPaymentsProvider implements PaymentProvider {
   
   async getPayment(paymentKey: string): Promise<PaymentConfirmResponse> {
     try {
-      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
+      const response = await fetch(`${TOSS_PAYMENT_URL}/payments/${paymentKey}`, {
         method: 'GET',
         headers: {
           'Authorization': `Basic ${btoa(this.secretKey + ':')}`,

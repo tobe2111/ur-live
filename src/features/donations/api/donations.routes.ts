@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -148,12 +149,13 @@ donationsRoutes.post('/confirm', requireAuth(), async (c) => {
   }
 
   // 토스 결제 승인 (DB에서 검증된 금액 사용)
-  const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+  // Idempotency-Key: paymentKey 기반 — 동일 결제의 중복 승인 요청 방지
+  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key': body.orderId,
+      'Idempotency-Key': body.paymentKey,
     },
     body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: pending.amount }),
   });
@@ -163,8 +165,10 @@ donationsRoutes.post('/confirm', requireAuth(), async (c) => {
     if (err.code !== 'ALREADY_PROCESSED_PAYMENT') {
       await DB.prepare('UPDATE donations SET status = ? WHERE order_id = ?')
         .bind('FAILED', body.orderId).run();
-      return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
+      console.error('[donations/confirm] Toss error:', { code: err.code, message: err.message, orderId: body.orderId });
+      return c.json({ success: false, error: err.message ?? '결제 승인 실패', code: err.code }, 400);
     }
+    // ALREADY_PROCESSED_PAYMENT인 경우 아래에서 DONE으로 업데이트 진행
   }
 
   // pending → DONE 상태 업데이트 (payment_key 기록)
