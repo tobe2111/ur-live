@@ -28,15 +28,21 @@ paymentsRouter.use('/confirm', requireAuth());
 paymentsRouter.use('/checkout-session', requireAuth());
 
 const confirmSchema = z.object({
-  paymentKey: z.string(),
-  orderId: z.string(),      // our order_number
-  amount: z.number().positive(),
+  paymentKey: z.string().min(1),
+  orderId: z.string().min(6).max(64).regex(/^[a-zA-Z0-9\-_]+$/, 'Invalid orderId format'),
+  amount: z.number().int().positive(),
 });
 
 /**
  * POST /api/payments/confirm
- * Called after client-side Toss widget completes payment
- * Confirms with Toss API and updates order status
+ * Called after client-side Toss widget completes payment.
+ * 토스페이먼츠 결제 승인 API를 호출하여 결제를 확정합니다.
+ *
+ * 플로우:
+ * 1. orderId로 DB 주문 조회 + 소유자 검증
+ * 2. DB 저장 금액과 클라이언트 금액 비교 (금액 변조 방지)
+ * 3. 토스 결제 승인 API 호출 (Idempotency-Key = paymentKey)
+ * 4. 주문 상태 DONE 전환 + 재고 차감
  */
 paymentsRouter.post('/confirm', async (c) => {
   try {
@@ -45,7 +51,7 @@ paymentsRouter.post('/confirm', async (c) => {
     const parsed = confirmSchema.safeParse(body);
 
     if (!parsed.success) {
-      return c.json({ success: false, error: 'Invalid request' }, 400);
+      return c.json({ success: false, error: 'Invalid request', details: parsed.error.flatten() }, 400);
     }
 
     const { paymentKey, orderId: orderNumber, amount } = parsed.data;
@@ -57,16 +63,22 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
     }
 
+    // 이미 결제 완료된 주문인 경우 중복 승인 방지
+    const alreadyDone = orders.every(o => o.status === 'DONE' || o.status === 'PAID');
+    if (alreadyDone) {
+      return c.json({ success: true, data: { orders } });
+    }
+
     // Security: verify user owns these orders
     const unauthorized = orders.find(o => o.user_id !== userId);
     if (unauthorized) {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
-    // Verify total amount matches
+    // DB에 저장된 금액으로 검증 (금액 변조 방지)
     const totalAmount = orders.reduce((sum, o) => sum + o.total_amount, 0);
     if (totalAmount !== amount) {
-      console.error('[PAYMENTS] Amount mismatch:', { expected: totalAmount, received: amount });
+      console.error('[PAYMENTS] Amount mismatch:', { expected: totalAmount, received: amount, orderNumber });
       return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400);
     }
 
@@ -76,17 +88,18 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: false, error: 'Payment configuration error' }, 500);
     }
 
+    // Idempotency-Key: paymentKey 기반으로 설정 (동일 결제의 중복 승인 요청 방지)
     const tossResponse = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${btoa(tossSecretKey + ':')}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': orderNumber,  // Toss idempotency
+        'Idempotency-Key': paymentKey,
       },
       body: JSON.stringify({
         paymentKey,
         orderId: orderNumber,
-        amount,
+        amount: totalAmount,  // DB 검증된 금액 사용
       }),
     });
 
@@ -113,9 +126,21 @@ paymentsRouter.post('/confirm', async (c) => {
 
     const tossData = await tossResponse.json() as {
       paymentKey: string;
+      orderId: string;
+      totalAmount: number;
       method: string;
       approvedAt: string;
+      status: string;
     };
+
+    // 토스 응답의 금액도 한 번 더 검증
+    if (tossData.totalAmount !== totalAmount) {
+      console.error('[PAYMENTS] Toss amount mismatch after confirm:', {
+        toss: tossData.totalAmount,
+        db: totalAmount,
+        orderNumber,
+      });
+    }
 
     // Update all orders to DONE
     await orderRepo.updateStatus(orderNumber, 'DONE', {

@@ -325,6 +325,9 @@ export default function CheckoutPage() {
   /**
    * 결제 전 주문 생성: Toss redirect 전에 DB에 주문을 먼저 기록합니다.
    * 배송지 미선택 시 예외를 throw하여 TossPaymentWidget이 결제를 중단합니다.
+   *
+   * 주문 생성 시 각 셀러별 금액(상품 소계 + 배송비)을 함께 저장하여
+   * 결제 승인(confirm) 단계에서 DB 금액 기반 검증이 가능하도록 합니다.
    */
   const handleBeforePayment = async (orderId: string): Promise<void> => {
     if (!selectedAddress) {
@@ -341,6 +344,11 @@ export default function CheckoutPage() {
     }
 
     for (const group of Object.values(sellerGroups)) {
+      // 셀러 그룹별 배송비 계산
+      const groupShippingFee = (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold)
+        ? 0
+        : group.shipping_fee
+
       const response = await api.post('/api/orders', {
         // seller_id가 0(null에서 변환)이면 빈 문자열 → order route의 seller 검증 skip
         seller_id: group.seller_id ? String(group.seller_id) : '',
@@ -353,6 +361,7 @@ export default function CheckoutPage() {
         shipping_address: shippingAddress,
         shipping_name: selectedAddress.recipient_name,
         shipping_phone: selectedAddress.phone,
+        shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
       })
 

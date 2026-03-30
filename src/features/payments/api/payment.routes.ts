@@ -118,7 +118,7 @@ async function cancelTossPayment(
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': `cancel-${paymentKey}-${Date.now()}`,
+        'Idempotency-Key': `cancel-${paymentKey}`,
       },
       body: JSON.stringify(body),
     }
