@@ -59,8 +59,14 @@ export class OrderRepository {
       ],
     );
 
-    // Step 2: 자동 생성된 order id 가져오기
-    const orderId = String(orderResult.meta.last_row_id);
+    // Step 2: 실제 order id 조회 (TEXT or INTEGER 스키마 모두 호환)
+    // meta.last_row_id는 내부 rowid(정수)로, TEXT PRIMARY KEY 스키마에서는 실제 id와 다름
+    const orderRow = await this.qb.queryOne<{ id: string }>(
+      'SELECT id FROM orders WHERE idempotency_key = ?',
+      [request.idempotency_key]
+    );
+    if (!orderRow) throw new Error('Order creation failed: could not retrieve order id');
+    const orderId = String(orderRow.id);
 
     // Step 3: order_items 일괄 삽입 (id 생략 → 자동증가)
     if (items.length > 0) {
