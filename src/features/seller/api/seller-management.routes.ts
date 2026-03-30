@@ -394,16 +394,31 @@ sellerManagementRoutes.get('/business-info', async (c) => {
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const db = c.env.DB;
-    const businessInfo = await db.prepare(`
-      SELECT
-        id, business_number, business_name, ceo_name,
-        business_type, business_category,
-        postal_code, address, address_detail,
-        phone, email,
-        is_verified, verified_at, created_at
-      FROM seller_business_info
-      WHERE seller_id = ?
-    `).bind(sellerId).first();
+    let businessInfo;
+    try {
+      businessInfo = await db.prepare(`
+        SELECT
+          id, business_number, business_name, ceo_name,
+          business_type, business_category,
+          postal_code, address, address_detail,
+          phone, email,
+          is_verified, verified_at, created_at
+        FROM seller_business_info
+        WHERE seller_id = ?
+      `).bind(sellerId).first();
+    } catch {
+      // address_detail 컬럼이 없는 경우 fallback
+      businessInfo = await db.prepare(`
+        SELECT
+          id, business_number, business_name, ceo_name,
+          business_type, business_category,
+          postal_code, address, '' as address_detail,
+          phone, email,
+          is_verified, verified_at, created_at
+        FROM seller_business_info
+        WHERE seller_id = ?
+      `).bind(sellerId).first();
+    }
 
     if (!businessInfo) {
       return c.json({ success: false, error: 'Not found' }, 404);
@@ -449,76 +464,156 @@ sellerManagementRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) 
     }
 
     const db = c.env.DB;
+
+    // address_detail 컬럼이 없을 수 있으므로 확인 (마이그레이션 0127 미적용 대비)
+    let hasAddressDetail = true;
+    try {
+      await db.prepare('SELECT address_detail FROM seller_business_info LIMIT 0').all();
+    } catch {
+      hasAddressDetail = false;
+    }
+
     const existing = await db.prepare(
       'SELECT id, is_verified FROM seller_business_info WHERE seller_id = ?'
     ).bind(sellerId).first<{ id: number; is_verified: number }>();
 
     if (existing) {
       // UPDATE — 재제출 시 승인 상태 초기화
-      await db.prepare(`
-        UPDATE seller_business_info SET
-          business_number = COALESCE(?, business_number),
-          business_name   = COALESCE(?, business_name),
-          ceo_name        = COALESCE(?, ceo_name),
-          business_type   = COALESCE(?, business_type),
-          business_category = COALESCE(?, business_category),
-          postal_code     = COALESCE(?, postal_code),
-          address         = COALESCE(?, address),
-          address_detail  = COALESCE(?, address_detail),
-          phone           = COALESCE(?, phone),
-          email           = COALESCE(?, email),
-          is_verified     = 0,
-          verified_at     = NULL,
-          updated_at      = datetime('now')
-        WHERE seller_id = ?
-      `).bind(
-        body.business_number ?? null,
-        body.business_name ?? null,
-        body.ceo_name ?? null,
-        body.business_type ?? null,
-        body.business_category ?? null,
-        body.postal_code ?? null,
-        body.address ?? null,
-        body.address_detail ?? null,
-        body.phone ?? null,
-        body.email ?? null,
-        sellerId
-      ).run();
+      if (hasAddressDetail) {
+        await db.prepare(`
+          UPDATE seller_business_info SET
+            business_number = COALESCE(?, business_number),
+            business_name   = COALESCE(?, business_name),
+            ceo_name        = COALESCE(?, ceo_name),
+            business_type   = COALESCE(?, business_type),
+            business_category = COALESCE(?, business_category),
+            postal_code     = COALESCE(?, postal_code),
+            address         = COALESCE(?, address),
+            address_detail  = COALESCE(?, address_detail),
+            phone           = COALESCE(?, phone),
+            email           = COALESCE(?, email),
+            is_verified     = 0,
+            verified_at     = NULL,
+            updated_at      = datetime('now')
+          WHERE seller_id = ?
+        `).bind(
+          body.business_number ?? null,
+          body.business_name ?? null,
+          body.ceo_name ?? null,
+          body.business_type ?? null,
+          body.business_category ?? null,
+          body.postal_code ?? null,
+          body.address ?? null,
+          body.address_detail ?? null,
+          body.phone ?? null,
+          body.email ?? null,
+          sellerId
+        ).run();
+      } else {
+        await db.prepare(`
+          UPDATE seller_business_info SET
+            business_number = COALESCE(?, business_number),
+            business_name   = COALESCE(?, business_name),
+            ceo_name        = COALESCE(?, ceo_name),
+            business_type   = COALESCE(?, business_type),
+            business_category = COALESCE(?, business_category),
+            postal_code     = COALESCE(?, postal_code),
+            address         = COALESCE(?, address),
+            phone           = COALESCE(?, phone),
+            email           = COALESCE(?, email),
+            is_verified     = 0,
+            verified_at     = NULL,
+            updated_at      = datetime('now')
+          WHERE seller_id = ?
+        `).bind(
+          body.business_number ?? null,
+          body.business_name ?? null,
+          body.ceo_name ?? null,
+          body.business_type ?? null,
+          body.business_category ?? null,
+          body.postal_code ?? null,
+          body.address ?? null,
+          body.phone ?? null,
+          body.email ?? null,
+          sellerId
+        ).run();
+      }
     } else {
-      // INSERT
-      await db.prepare(`
-        INSERT INTO seller_business_info
-          (seller_id, business_number, business_name, ceo_name,
-           business_type, business_category, postal_code, address, address_detail,
-           phone, email, is_verified)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-      `).bind(
-        sellerId,
-        body.business_number ?? null,
-        body.business_name ?? null,
-        body.ceo_name ?? null,
-        body.business_type ?? null,
-        body.business_category ?? null,
-        body.postal_code ?? null,
-        body.address ?? null,
-        body.address_detail ?? null,
-        body.phone ?? null,
-        body.email ?? null
-      ).run();
+      // INSERT — NOT NULL 제약 대비: 빈 문자열 기본값
+      if (hasAddressDetail) {
+        await db.prepare(`
+          INSERT INTO seller_business_info
+            (seller_id, business_number, business_name, ceo_name,
+             business_type, business_category, postal_code, address, address_detail,
+             phone, email, is_verified)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).bind(
+          sellerId,
+          body.business_number || '',
+          body.business_name || '',
+          body.ceo_name || '',
+          body.business_type ?? null,
+          body.business_category ?? null,
+          body.postal_code ?? null,
+          body.address ?? null,
+          body.address_detail ?? null,
+          body.phone ?? null,
+          body.email ?? null
+        ).run();
+      } else {
+        await db.prepare(`
+          INSERT INTO seller_business_info
+            (seller_id, business_number, business_name, ceo_name,
+             business_type, business_category, postal_code, address,
+             phone, email, is_verified)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `).bind(
+          sellerId,
+          body.business_number || '',
+          body.business_name || '',
+          body.ceo_name || '',
+          body.business_type ?? null,
+          body.business_category ?? null,
+          body.postal_code ?? null,
+          body.address ?? null,
+          body.phone ?? null,
+          body.email ?? null
+        ).run();
+      }
     }
 
-    const saved = await db.prepare(`
-      SELECT id, business_number, business_name, ceo_name,
-             business_type, business_category, postal_code, address, address_detail,
-             phone, email, is_verified, verified_at, created_at
-      FROM seller_business_info WHERE seller_id = ?
-    `).bind(sellerId).first();
+    // 저장 확인 (address_detail 유무에 따라 쿼리 분기)
+    let saved;
+    try {
+      saved = await db.prepare(`
+        SELECT id, business_number, business_name, ceo_name,
+               business_type, business_category, postal_code, address, address_detail,
+               phone, email, is_verified, verified_at, created_at
+        FROM seller_business_info WHERE seller_id = ?
+      `).bind(sellerId).first();
+    } catch {
+      saved = await db.prepare(`
+        SELECT id, business_number, business_name, ceo_name,
+               business_type, business_category, postal_code, address,
+               '' as address_detail,
+               phone, email, is_verified, verified_at, created_at
+        FROM seller_business_info WHERE seller_id = ?
+      `).bind(sellerId).first();
+    }
 
     return c.json({ success: true, data: saved });
 
   } catch (error: unknown) {
-    console.error('Update business info error:', error);
-    return c.json({ success: false, error: 'Failed to save business info' }, 500);
+    const errMsg = (error as Error).message || 'Unknown error';
+    console.error('Update business info error:', errMsg, error);
+    // 구체적인 에러 메시지 반환 (디버깅용)
+    if (errMsg.includes('UNIQUE constraint')) {
+      return c.json({ success: false, error: '이미 등록된 사업자번호입니다.' }, 409);
+    }
+    if (errMsg.includes('NOT NULL constraint')) {
+      return c.json({ success: false, error: '필수 항목을 모두 입력해주세요 (사업자번호, 상호명, 대표자명).' }, 400);
+    }
+    return c.json({ success: false, error: `저장 실패: ${errMsg}` }, 500);
   }
 });
 
