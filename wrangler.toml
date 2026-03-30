@@ -8,6 +8,10 @@ main = "src/worker/index.ts"
 compatibility_date = "2024-09-25"
 compatibility_flags = ["nodejs_compat"]
 
+# Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록
+[build]
+command = "npm run build"
+
 # Static assets (React SPA)
 [assets]
 directory = "./dist/client"

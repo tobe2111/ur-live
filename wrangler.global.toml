@@ -5,6 +5,10 @@ compatibility_date = "2026-02-01"
 pages_build_output_dir = "./dist"
 compatibility_flags = ["nodejs_compat"]
 
+# Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록
+[build]
+command = "npm run build"
+
 # Environment Variables (Set via Cloudflare Pages Dashboard)
 # Required for Global Version:
 # Frontend:
