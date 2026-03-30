@@ -195,13 +195,25 @@ adminManagementRoutes.get('/sellers/:id', cors(), async (c) => {
     }
 
     // business info (LEFT JOIN — safe even if table missing)
-    const biz = await DB.prepare(`
-      SELECT business_number AS biz_number, business_name AS biz_name, ceo_name,
-             business_type, business_category, postal_code,
-             address, address_detail, phone AS biz_phone, email AS biz_email,
-             is_verified AS biz_is_verified, verified_at AS biz_verified_at
-      FROM seller_business_info WHERE seller_id = ?
-    `).bind(sellerId).first().catch(() => null);
+    let biz = null;
+    try {
+      biz = await DB.prepare(`
+        SELECT business_number AS biz_number, business_name AS biz_name, ceo_name,
+               business_type, business_category, postal_code,
+               address, address_detail, phone AS biz_phone, email AS biz_email,
+               is_verified AS biz_is_verified, verified_at AS biz_verified_at
+        FROM seller_business_info WHERE seller_id = ?
+      `).bind(sellerId).first();
+    } catch {
+      // address_detail 컬럼 없을 수 있음 — fallback
+      biz = await DB.prepare(`
+        SELECT business_number AS biz_number, business_name AS biz_name, ceo_name,
+               business_type, business_category, postal_code,
+               address, '' AS address_detail, phone AS biz_phone, email AS biz_email,
+               is_verified AS biz_is_verified, verified_at AS biz_verified_at
+        FROM seller_business_info WHERE seller_id = ?
+      `).bind(sellerId).first().catch(() => null);
+    }
 
     return c.json({ success: true, data: { ...seller, ...(biz || {}) } });
   } catch (err) {
