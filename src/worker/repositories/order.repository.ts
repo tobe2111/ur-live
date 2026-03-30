@@ -5,7 +5,7 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { QueryBuilder } from './query-builder';
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
-import { generateId, safeJsonParse } from '../../shared/utils';
+import { safeJsonParse } from '../../shared/utils';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
@@ -34,18 +34,17 @@ export class OrderRepository {
     subtotal: number,
     shippingFee: number
   ): Promise<Order> {
-    const orderId = generateId();
     const totalAmount = subtotal + shippingFee;
 
-    const orderStmt = {
-      sql: `INSERT INTO orders (
-        id, order_number, user_id, seller_id,
+    // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환
+    const orderResult = await this.qb.execute(
+      `INSERT INTO orders (
+        order_number, user_id, seller_id,
         subtotal, shipping_fee, discount_amount, total_amount, currency,
         status, shipping_name, shipping_phone, shipping_address, shipping_memo,
         idempotency_key, locale
-      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'KRW', 'PENDING', ?, ?, ?, ?, ?, 'ko')`,
-      params: [
-        orderId,
+      ) VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PENDING', ?, ?, ?, ?, ?, 'ko')`,
+      [
         request.order_number,
         userId,
         request.seller_id,
@@ -58,30 +57,35 @@ export class OrderRepository {
         request.shipping_memo ?? null,
         request.idempotency_key,
       ],
-    };
+    );
 
-    const itemStmts = items.map(item => ({
-      sql: `INSERT INTO order_items (
-        id, order_id, product_id, seller_id,
-        product_name, product_thumbnail, product_sku,
-        unit_price, quantity, subtotal, currency, options, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
-      params: [
-        generateId(),
-        orderId,
-        item.product_id,
-        item.seller_id,
-        item.product_name,
-        item.product_thumbnail ?? null,
-        item.product_sku ?? null,
-        item.unit_price,
-        item.quantity,
-        item.subtotal,
-        JSON.stringify(item.options ?? {}),
-      ],
-    }));
+    // Step 2: 자동 생성된 order id 가져오기
+    const orderId = String(orderResult.meta.last_row_id);
 
-    await this.qb.batch([orderStmt, ...itemStmts]);
+    // Step 3: order_items 일괄 삽입 (id 생략 → 자동증가)
+    if (items.length > 0) {
+      const itemStmts = items.map(item => ({
+        sql: `INSERT INTO order_items (
+          order_id, product_id, seller_id,
+          product_name, product_thumbnail, product_sku,
+          unit_price, quantity, subtotal, currency, options, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
+        params: [
+          orderId,
+          item.product_id,
+          item.seller_id,
+          item.product_name,
+          item.product_thumbnail ?? null,
+          item.product_sku ?? null,
+          item.unit_price,
+          item.quantity,
+          item.subtotal,
+          JSON.stringify(item.options ?? {}),
+        ],
+      }));
+
+      await this.qb.batch(itemStmts);
+    }
 
     const order = await this.findById(orderId);
     if (!order) throw new Error('Order creation failed');
