@@ -46,6 +46,7 @@ export function TossPaymentWidget({
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const hasInitialized = useRef(false)
+  const paymentMethodWidgetRef = useRef<any>(null)
 
   // 1️⃣ SDK 초기화 및 인스턴스 생성
   useEffect(() => {
@@ -147,7 +148,7 @@ export function TossPaymentWidget({
             console.log('[TossPayments] ✅ DOM 요소 발견!')
 
             // 결제 UI 렌더링
-            widgets.renderPaymentMethods(
+            paymentMethodWidgetRef.current = widgets.renderPaymentMethods(
               '#payment-method',
               { value: finalAmount },
               { variantKey: 'DEFAULT' }
@@ -176,7 +177,18 @@ export function TossPaymentWidget({
     renderPaymentWidgets()
   }, [widgets, isRendered, totalAmount, shippingFee, onPaymentError, t])
 
-  // 3️⃣ 결제 요청 함수
+  // 3️⃣ 금액 변경 시 위젯 업데이트 (배송지 변경 등)
+  useEffect(() => {
+    if (!paymentMethodWidgetRef.current || !isRendered) return
+    const finalAmount = totalAmount + shippingFee
+    try {
+      paymentMethodWidgetRef.current.updateAmount(finalAmount)
+    } catch (err) {
+      console.error('[TossPayments] ❌ 금액 업데이트 실패:', err)
+    }
+  }, [totalAmount, shippingFee, isRendered])
+
+  // 4️⃣ 결제 요청 함수
   const handlePayment = async () => {
     if (!widgets) {
       onPaymentError(t('payment.widgetNotReady') || '결제 위젯이 준비되지 않았습니다')

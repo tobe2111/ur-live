@@ -50,12 +50,11 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
 
     setProcessing(true)
     try {
-      // 1. 후원 레코드 생성
-      const res = await api.post('/api/donations', {
-        streamId,
+      // 1. 후원 결제 초기화
+      const res = await api.post('/api/donations/init', {
+        stream_id: streamId,
         amount: selectedAmount.amount,
-        message: message.trim(),
-        donorName: localStorage.getItem('user_name') || '익명',
+        message: message.trim() || undefined,
       })
 
       if (!res.data.success) {
@@ -63,21 +62,21 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
         return
       }
 
-      const { orderId, amount, clientKey } = res.data.data
+      const { orderId, amount, orderName, clientKey } = res.data.data
 
-      // 2. 토스페이먼츠 결제
+      // 2. 토스페이먼츠 결제 (인라인 모드 - 라이브 페이지를 벗어나지 않음)
       const PaymentWidget = (window as any).PaymentWidget
       if (!PaymentWidget) {
         toast.error('결제 모듈을 불러오지 못했습니다.')
         return
       }
 
-      const paymentWidget = PaymentWidget(clientKey, userId)
+      const paymentWidget = PaymentWidget(clientKey, `user_${userId}`)
 
-      // 결제 UI 렌더링을 위한 임시 요소 생성
+      // 결제 UI 렌더링을 위한 임시 전체화면 요소 생성
       const paymentContainer = document.createElement('div')
       paymentContainer.id = 'donation-payment-widget'
-      paymentContainer.style.cssText = 'position:fixed;inset:0;z-index:9999;background:white;'
+      paymentContainer.style.cssText = 'position:fixed;inset:0;z-index:9999;background:white;overflow:auto;'
       document.body.appendChild(paymentContainer)
 
       try {
@@ -87,17 +86,27 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
           { variantKey: 'DEFAULT' }
         )
 
+        // successUrl/failUrl 미지정 → 인라인 모드: 결제 완료 시 Promise resolve
         const paymentResult = await paymentWidget.requestPayment({
           orderId,
-          orderName: `라이브 후원 ${amount.toLocaleString()}원`,
-          successUrl: `${window.location.origin}/api/donations/toss-redirect?type=success`,
-          failUrl: `${window.location.origin}/api/donations/toss-redirect?type=fail`,
+          orderName,
         })
 
-        // 위젯이 successUrl로 리다이렉트하므로 여기까지 오지 않을 수 있음
-        // 인앱 결제 완료 처리
         if (paymentResult?.paymentKey) {
-          await confirmDonation(paymentResult.paymentKey, orderId, amount)
+          const confirmRes = await api.post('/api/donations/confirm', {
+            paymentKey: paymentResult.paymentKey,
+            orderId,
+            amount,
+            stream_id: streamId,
+            message: message.trim() || undefined,
+          })
+          if (confirmRes.data.success) {
+            toast.success(confirmRes.data.message || confirmRes.data.data?.message || '후원이 완료되었습니다!')
+            setShowSheet(false)
+            setMessage('')
+          } else {
+            toast.error(confirmRes.data.error || '후원 처리에 실패했습니다.')
+          }
         }
       } catch (err: any) {
         if (err?.code === 'USER_CANCEL') {
@@ -114,68 +123,6 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       console.error('[Donation] Error:', err)
     } finally {
       setProcessing(false)
-      setShowSheet(false)
-      setMessage('')
-    }
-  }
-
-  // 간편 결제 (위젯 없이 바로 confirm - 테스트/소액용)
-  async function handleSimpleDonate() {
-    if (!userId) {
-      toast.error('로그인이 필요합니다.')
-      return
-    }
-
-    setProcessing(true)
-    try {
-      // 1. 후원 레코드 생성
-      const res = await api.post('/api/donations', {
-        streamId,
-        amount: selectedAmount.amount,
-        message: message.trim(),
-        donorName: localStorage.getItem('user_name') || '익명',
-      })
-
-      if (!res.data.success) {
-        toast.error(res.data.error || '후원 생성에 실패했습니다.')
-        return
-      }
-
-      const { orderId, amount } = res.data.data
-
-      // 2. 바로 결제 확인 (테스트 모드에서는 paymentKey 없이도 처리)
-      const confirmRes = await api.post('/api/donations/confirm', {
-        paymentKey: `test_${orderId}`,
-        orderId,
-        amount,
-      })
-
-      if (confirmRes.data.success) {
-        toast.success(confirmRes.data.data?.message || '후원이 완료되었습니다!')
-        setShowSheet(false)
-        setMessage('')
-      } else {
-        toast.error(confirmRes.data.error || '후원 처리에 실패했습니다.')
-      }
-    } catch (err) {
-      toast.error('후원에 실패했습니다.')
-      console.error('[Donation] Error:', err)
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  async function confirmDonation(paymentKey: string, orderId: string, amount: number) {
-    const res = await api.post('/api/donations/confirm', {
-      paymentKey,
-      orderId,
-      amount,
-    })
-
-    if (res.data.success) {
-      toast.success(res.data.data?.message || '후원이 완료되었습니다!')
-    } else {
-      toast.error(res.data.error || '후원 처리에 실패했습니다.')
     }
   }
 
@@ -259,7 +206,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
 
               {/* 후원 버튼 */}
               <button
-                onClick={handleSimpleDonate}
+                onClick={handleDonate}
                 disabled={processing}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-pink-500 to-red-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all active:scale-[0.98] disabled:opacity-60"
               >
