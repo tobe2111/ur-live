@@ -348,28 +348,28 @@ export default function MyOrdersPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#6e6e73]">주문상태</span>
-                    <Badge 
+                    <Badge
                       className={`
                         border-0 px-3 py-1
-                        ${selectedOrder.status === 'delivered' 
-                          ? 'bg-[#34c759] text-white' 
-                          : selectedOrder.status === 'shipping'
+                        ${selectedOrder.status.toLowerCase() === 'delivered'
+                          ? 'bg-[#34c759] text-white'
+                          : selectedOrder.status.toLowerCase() === 'shipping'
                           ? 'bg-[#007aff] text-white'
-                          : selectedOrder.status === 'cancelled'
+                          : ['cancelled', 'refunded'].includes(selectedOrder.status.toLowerCase())
                           ? 'bg-[#ff3b30] text-white'
-                          : selectedOrder.status === 'preparing'
+                          : selectedOrder.status.toLowerCase() === 'preparing'
                           ? 'bg-[#ff9500] text-white'
                           : 'bg-[#8e8e93] text-white'
                         }
                       `}
                     >
-                      {selectedOrder.status === 'delivered' 
-                        ? '배송완료' 
-                        : selectedOrder.status === 'shipping'
+                      {selectedOrder.status.toLowerCase() === 'delivered'
+                        ? '배송완료'
+                        : selectedOrder.status.toLowerCase() === 'shipping'
                         ? '배송중'
-                        : selectedOrder.status === 'cancelled'
+                        : ['cancelled', 'refunded'].includes(selectedOrder.status.toLowerCase())
                         ? '취소/환불'
-                        : selectedOrder.status === 'preparing'
+                        : selectedOrder.status.toLowerCase() === 'preparing'
                         ? '상품준비중'
                         : '결제완료'
                       }
@@ -554,7 +554,7 @@ export default function MyOrdersPage() {
                 <div className="text-sm text-blue-700">
                   <p className="font-medium mb-1">취소 안내</p>
                   <p className="text-blue-600">• 결제완료 상태에서만 취소가 가능합니다.</p>
-                  <p className="text-blue-600">• 취소 후 3-5영업일 내 환불됩니다. (PG 연동 후)</p>
+                  <p className="text-blue-600">• 취소 시 토스페이먼츠를 통해 자동 환불됩니다. (3-5영업일 소요)</p>
                 </div>
               </div>
             </div>
