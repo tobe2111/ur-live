@@ -1067,13 +1067,12 @@ function ReelCard({
     }
     setDonating(true)
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token')
       const initRes = await api.post('/api/donations/init', {
         stream_id: stream.id,
         amount: donationAmount,
         message: donationMessage || undefined,
         is_anonymous: donationAnonymous,
-      }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      })
 
       if (!initRes.data.success) { toast.error(initRes.data.error); return }
       const { orderId, amount, orderName, clientKey } = initRes.data.data
@@ -1138,13 +1137,12 @@ function ReelCard({
     const amount = params.get('amount')
     if (donation === 'success' && paymentKey && orderId && amount) {
       window.history.replaceState({}, '', window.location.pathname)
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token')
       api.post('/api/donations/confirm', {
         paymentKey, orderId, amount: Number(amount),
         stream_id: stream.id,
         message: donationMessage || undefined,
         is_anonymous: donationAnonymous,
-      }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      })
         .then(res => {
           if (res.data.success) toast.success(res.data.message || '후원이 완료되었습니다!')
           else toast.error(res.data.error || '후원 처리에 실패했습니다')

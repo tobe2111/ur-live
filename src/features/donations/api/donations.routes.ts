@@ -8,31 +8,22 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { verify } from 'hono/jwt';
+import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
 donationsRoutes.use('*', cors({
-  origin: ['https://live.ur-team.com', 'https://ur-live.pages.dev', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: ['https://live.ur-team.com', 'https://world.ur-team.com', 'https://ur-live.pages.dev', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
   credentials: true,
 }));
 
-async function getUserIdFromToken(authorization: string | undefined, jwtSecret: string): Promise<string | null> {
-  if (!authorization?.startsWith('Bearer ')) return null;
-  try {
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { id?: string; user_id?: string; sub?: string };
-    return payload.id ?? payload.user_id ?? payload.sub ?? null;
-  } catch {
-    return null;
-  }
-}
-
 // ── POST /api/donations/init ─────────────────────────────────────────────────
 // 후원 결제 시작: 스트림 ID + 금액 → 토스 결제 정보 반환
-donationsRoutes.post('/init', async (c) => {
-  const userId = await getUserIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-  if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+donationsRoutes.post('/init', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const userId = user.id;
 
   const body = await c.req.json<{
     stream_id: number;
@@ -63,7 +54,7 @@ donationsRoutes.post('/init', async (c) => {
        WHERE ls.id = ?`
     ).bind(body.stream_id).first<StreamRow>();
   } catch {
-    // Fallback: live_streams table or donation_commission_rate column may not exist yet
+    // Fallback: donation_commission_rate column may not exist yet
     try {
       stream = await DB.prepare(
         `SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name, 15.0 AS commission_rate
@@ -90,16 +81,16 @@ donationsRoutes.post('/init', async (c) => {
       streamId: stream.id,
       sellerName: stream.seller_name,
       clientKey: c.env.TOSS_CLIENT_KEY,
-      // 클라이언트에서 confirm 시 필요한 정보를 orderId에 포함
     },
   });
 });
 
 // ── POST /api/donations/confirm ──────────────────────────────────────────────
 // 토스 결제 완료 → 후원 기록
-donationsRoutes.post('/confirm', async (c) => {
-  const userId = await getUserIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-  if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+donationsRoutes.post('/confirm', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const userId = user.id;
 
   const body = await c.req.json<{
     paymentKey: string;
