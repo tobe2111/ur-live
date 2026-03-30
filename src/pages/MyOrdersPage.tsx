@@ -486,7 +486,7 @@ export default function MyOrdersPage() {
               </div>
 
               {/* Actions */}
-              {selectedOrder.status === 'pending' && (
+              {['pending', 'paid', 'confirmed', 'done'].includes(selectedOrder.status.toLowerCase()) && (
                 <button
                   onClick={() => {
                     setSelectedOrder(null)

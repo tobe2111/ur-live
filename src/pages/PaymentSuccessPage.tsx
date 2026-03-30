@@ -151,27 +151,23 @@ export default function PaymentSuccessPage() {
         console.warn('[PaymentSuccess] Full address parse failed:', e)
       }
 
-      // 주문 아이템 매핑 (order.routes.ts createOrderSchema 에 맞게)
-      const sellerIdForOrder = Number(cartItems[0]?.seller_id || cartItems[0]?.sellerId || 0)
+      // 주문 아이템 매핑 (worker/order.routes.ts createOrderSchema에 맞게)
+      const sellerIdForOrder = String(cartItems[0]?.seller_id || cartItems[0]?.sellerId || '')
 
       const orderItems = cartItems.map((item: any) => ({
-        product_id: Number(item.product_id || item.productId || 0),
+        product_id: String(item.product_id || item.productId || ''),
         quantity: Number(item.quantity) || 1,
-        price: Number(item.price || item.salePrice || item.sale_price || 0),
+        options: item.option_value ? { value: item.option_value } : undefined,
       }))
-
-      // 총 금액 계산 (결제 금액 우선, 없으면 아이템 합산)
-      const totalAmount = Number(amount) || orderItems.reduce((sum: number, i: { price: number; quantity: number }) => sum + i.price * i.quantity, 0)
 
       const orderData = {
         seller_id: sellerIdForOrder,
         order_number: orderId!,
         items: orderItems,
-        total_amount: totalAmount,
-        payment_method: 'TOSS',
         shipping_address: shippingAddressObj,
         shipping_name: recipientName,
         shipping_phone: recipientPhone,
+        idempotency_key: `payment-${orderId}`,
       }
 
 
