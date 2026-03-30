@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { XCircle, Home, RotateCcw } from 'lucide-react'
-import api from '@/lib/api'
 
 export default function PaymentFailPage() {
   const navigate = useNavigate()
@@ -14,53 +13,9 @@ export default function PaymentFailPage() {
   const orderId = searchParams.get('orderId')
 
   useEffect(() => {
-    console.error('결제 실패:', { code, message, orderId })
-    
-    // 🔄 결제 실패 시 재고 예약 해제 (자동 롤백)
-    if (orderId && code !== 'PAY_PROCESS_CANCELED') {
-      // 사용자 취소가 아닌 실패인 경우 재고 예약 해제
-      const rollbackReservation = async () => {
-        try {
-          console.log('[PaymentFail] 🔄 재고 예약 해제 시작:', orderId);
-          
-          const response = await api.post('/api/payments/rollback', {
-            orderId: orderId,
-            reason: `결제 실패: ${message || code}`
-          });
-          
-          if (response.data.success) {
-            console.log('[PaymentFail] ✅ 재고 예약 해제 완료:', response.data);
-          } else {
-            console.error('[PaymentFail] ❌ 재고 예약 해제 실패:', response.data.error);
-          }
-        } catch (error: any) {
-          console.error('[PaymentFail] ❌ 재고 예약 해제 중 오류:', error.message);
-          // 롤백 실패해도 사용자에게는 결제 실패 화면만 표시
-        }
-      };
-      
-      rollbackReservation();
-    } else if (code === 'PAY_PROCESS_CANCELED') {
-      // 사용자가 직접 취소한 경우에도 예약 해제
-      const rollbackReservation = async () => {
-        try {
-          console.log('[PaymentFail] 🔄 사용자 취소로 인한 예약 해제:', orderId);
-          
-          await api.post('/api/payments/rollback', {
-            orderId: orderId,
-            reason: '사용자 취소'
-          });
-          
-          console.log('[PaymentFail] ✅ 예약 해제 완료');
-        } catch (error) {
-          console.error('[PaymentFail] ❌ 예약 해제 실패:', error);
-        }
-      };
-      
-      if (orderId) {
-        rollbackReservation();
-      }
-    }
+    console.error('[PaymentFail] 결제 실패:', { code, message, orderId })
+    // 결제 실패 시 주문은 아직 DB에 생성되지 않은 상태이므로
+    // 별도 롤백이 필요하지 않습니다. (주문 생성은 PaymentSuccessPage에서 처리)
   }, [code, message, orderId])
 
   // 에러 코드에 따른 사용자 친화적 메시지
@@ -80,6 +35,17 @@ export default function PaymentFailPage() {
       'EXCEED_MAX_DAILY_PAYMENT_COUNT': '일일 결제 한도를 초과했습니다.',
       'NOT_SUPPORTED_INSTALLMENT_PLAN_MERCHANT': '해당 가맹점은 할부를 지원하지 않습니다.',
       'UNAPPROVED_ORDER_ID': '승인되지 않은 주문번호입니다.',
+      'UNKNOWN_PAYMENT_ERROR': '결제 처리 중 알 수 없는 오류가 발생했습니다.',
+      'PROVIDER_ERROR': '결제 서비스 제공자 오류가 발생했습니다.',
+      'INVALID_CARD_NUMBER': '카드 번호가 올바르지 않습니다.',
+      'INVALID_CARD_LOST_OR_STOLEN': '분실 또는 도난 신고된 카드입니다.',
+      'EXCEED_MAX_AMOUNT': '결제 한도를 초과했습니다.',
+      'NOT_AVAILABLE_BANK': '은행 점검 시간입니다. 잠시 후 다시 시도해주세요.',
+      'INVALID_PASSWORD': '카드 비밀번호가 올바르지 않습니다.',
+      'NOT_FOUND_PAYMENT': '결제 정보를 찾을 수 없습니다.',
+      'ALREADY_APPROVED_PAYMENT': '이미 승인된 결제입니다.',
+      'DUPLICATED_ORDER_ID': '이미 처리된 주문번호입니다. 다시 주문해주세요.',
+      'FORBIDDEN_REQUEST': '허용되지 않은 요청입니다.',
     }
 
     return errorMessages[code] || message || '결제 처리 중 오류가 발생했습니다.'
@@ -95,6 +61,11 @@ export default function PaymentFailPage() {
       'NOT_ENOUGH_BALANCE': '잔액을 확인하신 후 다시 시도해주세요.',
       'EXCEED_MAX_CARD_MONTHLY_LIMIT': '다른 카드를 사용하거나, 다음 달에 다시 시도해주세요.',
       'INVALID_STOPPED_CARD': '다른 카드를 사용해주세요.',
+      'INVALID_CARD_LOST_OR_STOLEN': '카드사에 문의하거나 다른 카드를 사용해주세요.',
+      'INVALID_PASSWORD': '비밀번호를 확인하신 후 다시 시도해주세요.',
+      'NOT_AVAILABLE_BANK': '은행 점검이 끝난 후 다시 시도해주세요.',
+      'DUPLICATED_ORDER_ID': '장바구니에서 다시 결제를 시도해주세요.',
+      'ALREADY_APPROVED_PAYMENT': '마이페이지에서 주문 내역을 확인해주세요.',
     }
 
     return solutions[code] || '문제가 지속되면 고객센터로 문의해주세요.'
@@ -164,7 +135,7 @@ export default function PaymentFailPage() {
               문제가 계속되거나 궁금한 점이 있으신가요?
             </p>
             <p className="text-sm font-semibold text-[#1d1d1f] mb-1">
-              📞 고객센터: 0507-0177-0432
+              고객센터: 0507-0177-0432
             </p>
             <p className="text-xs text-[#86868b]">
               평일 09:00 - 18:00

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { generateOrderId } from '@/utils/orderIdGenerator'
+import { getUserEmail, getUserNameSync } from '@/utils/auth'
 
 // 🔥 Toss Payments V1 SDK (window.PaymentWidget 전역 함수 방식)
 declare global {
@@ -205,8 +206,8 @@ export function TossPaymentWidget({
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
-        customerEmail: `user_${userId}@example.com`,
-        customerName: `고객${userId}`
+        customerEmail: getUserEmail() || undefined,
+        customerName: getUserNameSync() || undefined
       })
 
       // successUrl로 리다이렉트됨 (onPaymentSuccess는 리다이렉트 후 호출)
