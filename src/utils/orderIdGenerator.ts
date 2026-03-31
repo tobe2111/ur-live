@@ -37,26 +37,14 @@ export function sanitizeUserId(userId: string | number): string {
 
 /**
  * Generate a unique order ID for Toss Payments
- * Format: ORDER_{timestamp}_{randomId}
- * Example: ORDER_1234567890123_aBc123XyZ456
- * 
- * @param userId - Optional user ID to include in the order ID (for debugging)
- * @returns Toss Payments compliant order ID (6-64 chars)
+ * Format: ORD-{timestamp base36}-{random}
+ * Example: ORD-lk8f3x2p-aBc12XyZ
+ * Length: ~22 chars (within 6-64 limit)
  */
-export function generateOrderId(userId?: string | number): string {
-  const timestamp = Date.now();
-  const randomId = generateRandomId(12);
-  
-  if (userId) {
-    const sanitized = sanitizeUserId(userId);
-    // Format: ORDER_{timestamp}_{sanitizedUserId}_{randomId}
-    // Length: 6 + 13 + 1 + up to 16 + 1 + 12 = max 49 chars (within 64 limit)
-    return `ORDER_${timestamp}_${sanitized}_${randomId}`;
-  }
-  
-  // Format: ORDER_{timestamp}_{randomId}
-  // Length: 6 + 13 + 1 + 12 = 32 chars (within 6-64 limit)
-  return `ORDER_${timestamp}_${randomId}`;
+export function generateOrderId(_userId?: string | number): string {
+  const timestamp = Date.now().toString(36);  // 13자리 → 8~9자리 base36
+  const randomId = generateRandomId(8);
+  return `ORD-${timestamp}-${randomId}`;
 }
 
 /**
