@@ -18,7 +18,7 @@ import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
 
-// 팀 포인트 잔액 뱃지 (상단 왼쪽)
+// 팀 포인트 잔액 뱃지 (상단 왼쪽, LIVE 뱃지 아래)
 function TeamPointsBadge() {
   const [balance, setBalance] = useState(0)
   useEffect(() => {
@@ -27,9 +27,9 @@ function TeamPointsBadge() {
       .catch(() => {})
   }, [])
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
-      <span className="text-sm">🎁</span>
-      <span className="text-xs font-bold text-white">{balance.toLocaleString()}팀</span>
+    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md">
+      <span className="text-xs">🎁</span>
+      <span className="text-[11px] font-bold text-white/90">{balance.toLocaleString()}팀</span>
     </div>
   )
 }
@@ -1275,7 +1275,7 @@ function ReelCard({
            YouTube IFrame API는 style="width:100%;height:100%"를 인라인으로 설정하므로 !important 필요 */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!aspect-video"
+        className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!min-w-full [&_iframe]:!min-h-full [&_iframe]:!w-auto [&_iframe]:!h-auto [&_iframe]:!aspect-video"
       />
 
       {/* 로딩 → 입장 버튼 → 재생 중 (3단계 상태 관리) */}
@@ -1324,9 +1324,9 @@ function ReelCard({
 
       {/* Product overlay */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
-        {/* Top bar: 팀 잔액 게이지 */}
+        {/* Top bar: 팀 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-3 left-3 z-20">
+          <div className="pointer-events-auto absolute top-12 left-3 z-20">
             <TeamPointsBadge />
           </div>
         )}

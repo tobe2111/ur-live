@@ -33,31 +33,37 @@ const CHARGE_AMOUNTS = [
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
 async function ensureTables(DB: D1Database) {
-  await DB.exec(`
-    CREATE TABLE IF NOT EXISTS user_points (
-      user_id TEXT PRIMARY KEY,
-      balance INTEGER NOT NULL DEFAULT 0,
-      total_charged INTEGER NOT NULL DEFAULT 0,
-      total_donated INTEGER NOT NULL DEFAULT 0,
-      created_at DATETIME DEFAULT (datetime('now')),
-      updated_at DATETIME DEFAULT (datetime('now'))
-    );
-    CREATE TABLE IF NOT EXISTS point_transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('charge', 'donate', 'refund')),
-      amount INTEGER NOT NULL,
-      commission_amount INTEGER NOT NULL DEFAULT 0,
-      points_amount INTEGER NOT NULL DEFAULT 0,
-      balance_after INTEGER NOT NULL DEFAULT 0,
-      description TEXT,
-      payment_key TEXT,
-      order_id TEXT,
-      stream_id INTEGER,
-      seller_id INTEGER,
-      created_at DATETIME DEFAULT (datetime('now'))
-    );
-  `).catch(() => { /* 이미 존재 */ });
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS user_points (
+        user_id TEXT PRIMARY KEY,
+        balance INTEGER NOT NULL DEFAULT 0,
+        total_charged INTEGER NOT NULL DEFAULT 0,
+        total_donated INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now')),
+        updated_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run();
+  } catch { /* 이미 존재 */ }
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS point_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('charge', 'donate', 'refund')),
+        amount INTEGER NOT NULL,
+        commission_amount INTEGER NOT NULL DEFAULT 0,
+        points_amount INTEGER NOT NULL DEFAULT 0,
+        balance_after INTEGER NOT NULL DEFAULT 0,
+        description TEXT,
+        payment_key TEXT,
+        order_id TEXT,
+        stream_id INTEGER,
+        seller_id INTEGER,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run();
+  } catch { /* 이미 존재 */ }
 }
 
 // ── GET /api/points/balance ──────────────────────────────────────────
