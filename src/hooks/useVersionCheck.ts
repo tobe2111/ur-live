@@ -43,12 +43,10 @@ export function useVersionCheck() {
       // console.log('[VersionCheck] Current:', currentVersion, 'New:', newVersion, 'Idle:', isIdle);
 
       if (currentVersion && currentVersion !== newVersion) {
-        console.log('[VersionCheck] ⚠️ New version detected:', newVersion);
         setNeedsUpdate(true);
-        
+
         // ✅ 사용자가 idle 상태일 때만 알림 표시
         if (isIdle) {
-          console.log('[VersionCheck] 📢 Showing update notification');
           setShowNotification(true);
         } else {
           // console.log('[VersionCheck] ⏸️ Notification deferred (user is active)');
@@ -56,7 +54,6 @@ export function useVersionCheck() {
       } else if (!currentVersion) {
         // First visit - store version
         localStorage.setItem(STORAGE_KEY, newVersion);
-        console.log('[VersionCheck] ✅ Version stored:', newVersion);
       }
     } catch (error) {
       console.error('[VersionCheck] Failed to check version:', error);
@@ -64,7 +61,6 @@ export function useVersionCheck() {
   };
 
   const forceUpdate = () => {
-    console.log('[VersionCheck] 🔄 Force updating...');
     // Clear all caches
     if ('caches' in window) {
       caches.keys().then(names => {
@@ -81,13 +77,11 @@ export function useVersionCheck() {
   };
 
   const dismissNotification = () => {
-    console.log('[VersionCheck] 🔕 Notification dismissed');
     setShowNotification(false);
-    
+
     // ✅ 1시간 후 다시 표시 (사용자가 계속 사용 중이라면)
     setTimeout(() => {
       if (needsUpdate) {
-        console.log('[VersionCheck] 🔔 Re-showing notification after 1 hour');
         setShowNotification(true);
       }
     }, 60 * 60 * 1000);

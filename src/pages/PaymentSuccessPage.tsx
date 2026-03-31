@@ -11,7 +11,13 @@ export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [orderInfo, setOrderInfo] = useState<any>(null)
+  const [orderInfo, setOrderInfo] = useState<{
+    orderId?: string;
+    method?: string;
+    status?: string;
+    orders?: Array<{ payment_method?: string }>;
+    payment?: { method?: string };
+  } | null>(null)
   
   // ✅ BUG #4 FIX: Use a ref for the processing flag instead of state.
   // Using state inside a useEffect closure causes a stale-closure bug:
@@ -50,8 +56,8 @@ export default function PaymentSuccessPage() {
       const auth = await getFirebaseAuth()
 
       // Firebase v10+: authStateReady() 사용 가능 시 우선 사용
-      if (typeof (auth as any).authStateReady === 'function') {
-        await (auth as any).authStateReady()
+      if (typeof (auth as unknown as Record<string, unknown>).authStateReady === 'function') {
+        await (auth as unknown as { authStateReady: () => Promise<void> }).authStateReady()
       } else {
         // Fallback: onAuthStateChanged가 처음 발화할 때까지 대기
         await new Promise<void>((resolve) => {
@@ -126,8 +132,9 @@ export default function PaymentSuccessPage() {
       } catch (cartErr) {
       }
 
-    } catch (err: any) {
-      setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료

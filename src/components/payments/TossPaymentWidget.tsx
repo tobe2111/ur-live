@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
 
@@ -37,13 +37,13 @@ export function TossPaymentWidget({
   onPaymentError
 }: TossPaymentWidgetProps) {
   const { t } = useTranslation()
-  const [widgets, setWidgets] = useState<any>(null)
+  const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null)
   const [isRendered, setIsRendered] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const hasInitialized = useRef(false)
-  const widgetsRef = useRef<any>(null)
+  const widgetsRef = useRef<TossPaymentsWidgets | null>(null)
 
   // 1️⃣ SDK 초기화 (V2 위젯)
   useEffect(() => {
@@ -74,12 +74,13 @@ export function TossPaymentWidget({
         widgetsRef.current = widgetsInstance
         setWidgets(widgetsInstance)
         hasInitialized.current = true
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (cancelled) return
         console.error('[TossPayments] 초기화 실패:', err)
-        const msg = err.message?.includes('network')
+        const errMsg = err instanceof Error ? err.message : ''
+        const msg = errMsg.includes('network')
           ? '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
-          : err.message?.includes('auth') || err.message?.includes('400')
+          : errMsg.includes('auth') || errMsg.includes('400')
             ? '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
             : t('payment.initError') || '결제 초기화 실패'
         setErrorMessage(msg)
@@ -130,7 +131,7 @@ export function TossPaymentWidget({
 
         setIsRendered(true)
         setLoadingState('ready')
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[TossPayments] 렌더링 실패:', err)
         const msg = t('payment.renderError') || 'UI 렌더링 실패'
         setErrorMessage(msg)
@@ -146,7 +147,7 @@ export function TossPaymentWidget({
   useEffect(() => {
     if (!widgets || !isRendered) return
     const finalAmount = Math.round(totalAmount + shippingFee)
-    widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: any) => {
+    widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: unknown) => {
       console.error('[TossPayments] 금액 업데이트 실패:', err)
     })
   }, [totalAmount, shippingFee, isRendered, widgets])
@@ -180,17 +181,18 @@ export function TossPaymentWidget({
       })
 
       // 리다이렉트 방식이므로 이 아래 코드는 실행되지 않음
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[TossPayments] 결제 요청 실패:', err)
       setIsProcessing(false)
+      const errObj = err as Record<string, unknown> | undefined
       // 사용자가 결제를 직접 취소한 경우 에러 표시하지 않음
-      if (err?.code === 'USER_CANCEL') return
+      if (errObj?.code === 'USER_CANCEL') return
       // INVALID_ORDER_ID: orderId 형식 오류
-      if (err?.code === 'INVALID_ORDER_ID') {
+      if (errObj?.code === 'INVALID_ORDER_ID') {
         onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
         return
       }
-      onPaymentError(err?.message || t('payment.requestError') || '결제 요청 실패')
+      onPaymentError((errObj?.message as string) || t('payment.requestError') || '결제 요청 실패')
     }
   }, [widgets, loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
 

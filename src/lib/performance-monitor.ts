@@ -17,7 +17,7 @@ export class PerformanceMonitor {
       for (const entry of list.getEntries()) {
         const lcp = entry as PerformanceEntry & { renderTime: number }
         
-        console.log(`📊 LCP for ${pageName}:`, lcp.renderTime, 'ms')
+        // LCP metric tracked via Sentry breadcrumb
 
         Sentry.addBreadcrumb({
           category: 'performance',
@@ -43,7 +43,7 @@ export class PerformanceMonitor {
       for (const entry of list.getEntries()) {
         const fid = entry as PerformanceEventTiming
         
-        console.log(`📊 FID for ${pageName}:`, fid.processingStart - fid.startTime, 'ms')
+        // FID metric tracked via Sentry breadcrumb
 
         Sentry.addBreadcrumb({
           category: 'performance',
@@ -75,8 +75,6 @@ export class PerformanceMonitor {
         }
       }
 
-      console.log(`📊 CLS for ${pageName}:`, clsValue)
-
       Sentry.addBreadcrumb({
         category: 'performance',
         message: `CLS: ${clsValue}`,
@@ -107,8 +105,6 @@ export class PerformanceMonitor {
     if (!import.meta.env.PROD) {
       return
     }
-
-    console.log(`📊 API Call: ${endpoint} - ${duration}ms (${status})`)
 
     Sentry.addBreadcrumb({
       category: 'api',
@@ -145,8 +141,6 @@ export class PerformanceMonitor {
       return
     }
 
-    console.log(`📊 Custom Metric: ${name} - ${value} ${unit}`)
-
     Sentry.addBreadcrumb({
       category: 'metric',
       message: `${name}: ${value} ${unit}`,
@@ -161,8 +155,6 @@ export class PerformanceMonitor {
     if (!import.meta.env.PROD) {
       return
     }
-
-    console.log(`📦 Bundle Size for ${pageName}:`, sizeInKB, 'KB')
 
     Sentry.addBreadcrumb({
       category: 'bundle',
@@ -193,8 +185,6 @@ export class PerformanceMonitor {
       const memory = window.performance.memory
       const usedMB = Math.round(memory.usedJSHeapSize / 1048576)
       const totalMB = Math.round(memory.totalJSHeapSize / 1048576)
-
-      console.log(`💾 Memory Usage: ${usedMB} / ${totalMB} MB`)
 
       Sentry.addBreadcrumb({
         category: 'memory',
