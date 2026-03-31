@@ -117,8 +117,10 @@ export default function PaymentSuccessPage() {
       const paymentData = response.data.data
       setOrderInfo(paymentData)
 
-      // 3️⃣ 장바구니 비우기
-      try {
+      // 3️⃣ 장바구니 비우기 (바로구매 모드에서는 스킵)
+      const isDirectPurchase = sessionStorage.getItem('directPurchase') === 'true'
+      sessionStorage.removeItem('directPurchase')
+      if (!isDirectPurchase) try {
         await api.post('/api/cart/clear')
         localStorage.removeItem('hasCartItems')
       } catch (cartErr) {
