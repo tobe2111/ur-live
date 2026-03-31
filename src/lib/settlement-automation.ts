@@ -206,8 +206,6 @@ export async function generateSettlementReport(
   DB: D1Database,
   period: SettlementPeriod
 ): Promise<SettlementReport> {
-  console.log(`[Settlement] Generating report for ${period.startDate} ~ ${period.endDate}`)
-
   // 정산 대상 셀러 목록 조회
   const sellers = await DB.prepare(`
     SELECT DISTINCT s.id
@@ -242,8 +240,6 @@ export async function generateSettlementReport(
     total_settlement: totalSettlement,
     sellers: sellerSettlements
   }
-
-  console.log(`[Settlement] Report generated: ${sellerSettlements.length} sellers, ${totalSales.toLocaleString()}원`)
 
   return report
 }
@@ -289,7 +285,7 @@ export async function saveSettlementReport(
     ).run()
   }
 
-  console.log(`[Settlement] Report saved: ID ${settlementId}`)
+  // Report saved
 }
 
 /**
@@ -346,7 +342,7 @@ export async function getSettlementReport(
  */
 export async function runMonthlySettlement(env: Env): Promise<void> {
   try {
-    console.log('[Settlement Cron] Starting monthly settlement...')
+    // Monthly settlement starting
 
     // 지난 달 정산
     const period = getLastMonthSettlementPeriod()
@@ -357,7 +353,7 @@ export async function runMonthlySettlement(env: Env): Promise<void> {
     // 저장
     await saveSettlementReport(env.DB, report)
 
-    console.log('[Settlement Cron] Monthly settlement completed successfully')
+    // Monthly settlement completed
   } catch (error) {
     console.error('[Settlement Cron] Failed:', error)
     throw error

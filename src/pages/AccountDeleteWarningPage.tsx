@@ -75,47 +75,28 @@ export default function AccountDeleteWarningPage() {
         throw new Error('사용자 ID를 찾을 수 없습니다.');
       }
 
-      console.log('[Account Delete] 탈퇴 요청 시작:', { userId });
-      console.log('[Account Delete] localStorage 확인:', {
-        seller_token: !!localStorage.getItem('seller_token'),
-        admin_token: !!localStorage.getItem('admin_token'),
-        access_token: !!localStorage.getItem('access_token'),
-        user_type: localStorage.getItem('user_type'),
-      });
-
       // ✅ API 인스턴스 사용 (자동으로 Authorization 헤더 추가됨)
       // Note: userId는 서버에서 requireAuth 미들웨어를 통해 자동으로 추출되므로
       // body에 포함하지 않아도 되지만, 호환성을 위해 유지
       const response = await api.delete('/api/account/delete');
 
-      console.log('[Account Delete] API 응답:', response.data);
-
       if (!response.data.success) {
         throw new Error(response.data.error || response.data.message || '탈퇴 처리에 실패했습니다.');
       }
 
-      console.log('[Account Delete] ✅ 탈퇴 성공:', response.data);
-
       // 로그아웃 처리
       await authLogout();
-      console.log('[Account Delete] ✅ 로그아웃 완료');
 
       // 탈퇴 완료 페이지로 이동
       navigate('/account/deleted', { replace: true });
     } catch (error: any) {
-      console.error('[Account Delete] ❌ 탈퇴 실패:', error);
-      console.error('[Account Delete] ❌ 에러 상세:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      });
-      
+      console.error('[Account Delete] 탈퇴 실패:', error);
+
       // Axios 에러 처리
       let errorMessage = '탈퇴 처리 중 오류가 발생했습니다.';
       
       if (error.response?.status === 401) {
         errorMessage = '인증이 만료되었습니다. 다시 로그인한 후 시도해주세요.';
-        console.error('[Account Delete] 401 Unauthorized - 토큰 확인 필요');
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error.response?.data?.message) {

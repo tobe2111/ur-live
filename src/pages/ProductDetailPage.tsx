@@ -266,8 +266,8 @@ export default function ProductDetailPage() {
         title: product.name,
         text: shareText,
         url: shareUrl
-      }).catch(err => {
-        console.log('Share cancelled', err)
+      }).catch(() => {
+        // Share was cancelled by user
       })
     } else {
       navigator.clipboard.writeText(shareUrl).then(() => {
