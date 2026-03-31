@@ -1064,11 +1064,10 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
 
   try {
     const seller = await DB.prepare(
-      `SELECT id, name, slug, description, logo_url, email,
-              base_shipping_fee, free_shipping_threshold,
-              country, currency, status, is_verified, created_at
-       FROM sellers WHERE id = ? AND status = 'ACTIVE'`
-    ).bind(sellerId).first<PublicSellerRow>();
+      `SELECT id, name, email, description, business_name, phone,
+              status, created_at
+       FROM sellers WHERE id = ? AND status = 'approved'`
+    ).bind(sellerId).first();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     return c.json({ success: true, data: seller });

@@ -47,6 +47,7 @@ export default function SellerBusinessInfoPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [editMode, setEditMode] = useState(false)
   const [formData, setFormData] = useState({
     business_number: '',
     business_name: '',
@@ -313,7 +314,7 @@ export default function SellerBusinessInfoPage() {
               placeholder="000-00-00000"
               maxLength={12}
               required
-              disabled={businessInfo?.is_verified}
+              disabled={businessInfo?.is_verified && !editMode}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             <p className="text-xs text-gray-500 mt-1">숫자만 입력하면 자동으로 하이픈이 추가됩니다.</p>
@@ -331,7 +332,7 @@ export default function SellerBusinessInfoPage() {
               onChange={handleChange}
               placeholder="예: (주)리스터코퍼레이션"
               required
-              disabled={businessInfo?.is_verified}
+              disabled={businessInfo?.is_verified && !editMode}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
@@ -348,7 +349,7 @@ export default function SellerBusinessInfoPage() {
               onChange={handleChange}
               placeholder="예: 홍길동"
               required
-              disabled={businessInfo?.is_verified}
+              disabled={businessInfo?.is_verified && !editMode}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
@@ -365,7 +366,7 @@ export default function SellerBusinessInfoPage() {
                 value={formData.business_type}
                 onChange={handleChange}
                 placeholder="예: 도소매업"
-                disabled={businessInfo?.is_verified}
+                disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
@@ -379,7 +380,7 @@ export default function SellerBusinessInfoPage() {
                 value={formData.business_category}
                 onChange={handleChange}
                 placeholder="예: 전자상거래업"
-                disabled={businessInfo?.is_verified}
+                disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
@@ -400,10 +401,10 @@ export default function SellerBusinessInfoPage() {
                   placeholder="우편번호"
                   required
                   readOnly
-                  disabled={businessInfo?.is_verified}
+                  disabled={businessInfo?.is_verified && !editMode}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
-                {!businessInfo?.is_verified && (
+                {(!businessInfo?.is_verified || editMode) && (
                   <Button
                     type="button"
                     onClick={openAddressSearch}
@@ -422,7 +423,7 @@ export default function SellerBusinessInfoPage() {
                 placeholder="기본 주소"
                 required
                 readOnly
-                disabled={businessInfo?.is_verified}
+                disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               <input
@@ -431,7 +432,7 @@ export default function SellerBusinessInfoPage() {
                 value={formData.address_detail}
                 onChange={handleChange}
                 placeholder="상세 주소"
-                disabled={businessInfo?.is_verified}
+                disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
@@ -451,7 +452,7 @@ export default function SellerBusinessInfoPage() {
                 placeholder="02-1234-5678"
                 maxLength={13}
                 required
-                disabled={businessInfo?.is_verified}
+                disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               <p className="text-xs text-gray-500 mt-1">숫자만 입력하면 자동으로 하이픈이 추가됩니다.</p>
@@ -467,15 +468,15 @@ export default function SellerBusinessInfoPage() {
                 onChange={handleChange}
                 placeholder="business@example.com"
                 required
-                disabled={businessInfo?.is_verified}
+                disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
-          {/* Submit Button */}
-          {!businessInfo?.is_verified && (
-            <div className="pt-4">
+          {/* Submit / Edit Request Button */}
+          {(!businessInfo?.is_verified || editMode) ? (
+            <div className="pt-4 space-y-3">
               <Button
                 type="submit"
                 disabled={submitting}
@@ -486,12 +487,52 @@ export default function SellerBusinessInfoPage() {
                     <Loader2 className="w-5 h-5 animate-spin" />
                     저장 중...
                   </span>
+                ) : editMode ? (
+                  '수정 신청하기'
                 ) : businessInfo ? (
                   '정보 수정하기'
                 ) : (
                   '사업자 정보 등록하기'
                 )}
               </Button>
+              {editMode && (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setEditMode(false)
+                    if (businessInfo) {
+                      setFormData({
+                        business_number: businessInfo.business_number || '',
+                        business_name: businessInfo.business_name || '',
+                        ceo_name: businessInfo.ceo_name || '',
+                        business_type: businessInfo.business_type || '',
+                        business_category: businessInfo.business_category || '',
+                        postal_code: businessInfo.postal_code || '',
+                        address: businessInfo.address || '',
+                        address_detail: businessInfo.address_detail || '',
+                        phone: businessInfo.phone || '',
+                        email: businessInfo.email || ''
+                      })
+                    }
+                  }}
+                  className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                >
+                  취소
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="pt-4">
+              <Button
+                type="button"
+                onClick={() => setEditMode(true)}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+              >
+                정보 수정 신청
+              </Button>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                수정 신청 시 관리자 재승인이 필요합니다.
+              </p>
             </div>
           )}
 
@@ -503,7 +544,7 @@ export default function SellerBusinessInfoPage() {
                 <p className="font-medium mb-1">안내사항</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>사업자 정보는 세금계산서 발행에 사용됩니다.</li>
-                  <li>승인 후에는 수정이 불가능합니다. 변경이 필요한 경우 고객센터로 문의해주세요.</li>
+                  <li>승인 후 수정이 필요한 경우 "정보 수정 신청" 버튼을 이용해주세요. 관리자 재승인이 필요합니다.</li>
                   <li>허위 정보 입력 시 서비스 이용이 제한될 수 있습니다.</li>
                   <li>주소는 "주소 검색" 버튼을 클릭하여 정확하게 입력해주세요.</li>
                 </ul>

@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { path: '/seller/supply',       label: '공급 상품',    icon: Truck },
   { path: '/seller/live-control', label: '라이브 스트림', icon: Play },
   { path: '/seller/settlements',  label: '정산',         icon: DollarSign },
-  { path: '/seller/alimtalk',     label: '브랜드메시지',  icon: Bell },
+  { path: '/seller/brandmessage', label: '브랜드메시지', icon: Bell },
   { path: '/seller/donations',   label: '후원 내역',    icon: Heart },
   { path: '/seller/business-info',label: '사업자 정보',   icon: Building2 },
 ]
@@ -141,11 +141,10 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         href="http://pf.kakao.com/_AITdn/chat"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-[35] flex items-center gap-2 px-4 py-3 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-lg hover:shadow-xl transition-all duration-200 group"
+        className="fixed bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
         title="카카오 채널 상담"
       >
-        <MessageCircle className="w-5 h-5" />
-        <span className="text-sm font-semibold hidden sm:inline">카카오 채널 상담</span>
+        <MessageCircle className="w-4 h-4" />
       </a>
     </div>
   )

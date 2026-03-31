@@ -363,7 +363,7 @@ function AppContent() {
                 <SellerSettlementsPage />
               </ProtectedRoute>
             } />
-            <Route path="/seller/alimtalk" element={
+            <Route path="/seller/brandmessage" element={
               <ProtectedRoute requireSeller>
                 <SellerAlimtalkPage />
               </ProtectedRoute>
