@@ -257,6 +257,27 @@ ordersRouter.post('/', async (c) => {
   }
 });
 
+// GET /api/orders/debug-schema — 임시 디버그용 (DB 스키마 확인)
+ordersRouter.get('/debug-schema', async (c) => {
+  try {
+    const db = c.env.DB;
+    const ordersSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").first<{ sql: string }>();
+    const orderItemsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='order_items'").first<{ sql: string }>();
+    const productsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='products'").first<{ sql: string }>();
+    // 최근 주문 1개의 seller_id 확인
+    const recentOrder = await db.prepare("SELECT id, seller_id, typeof(seller_id) as sid_type FROM orders ORDER BY rowid DESC LIMIT 1").first();
+    return c.json({
+      success: true,
+      orders_schema: ordersSchema?.sql,
+      order_items_schema: orderItemsSchema?.sql,
+      products_schema: productsSchema?.sql?.substring(0, 500),
+      recent_order_seller_id: recentOrder,
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // GET /api/orders
 ordersRouter.get('/', async (c) => {
   try {
