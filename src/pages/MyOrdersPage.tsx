@@ -94,7 +94,8 @@ export default function MyOrdersPage() {
       } else if (activeTab === 'orders') {
         const response = await api.get('/api/orders')
         if (response.data.success) {
-          setOrders(response.data.data || [])
+          const d = response.data.data
+          setOrders(Array.isArray(d) ? d : [])
         }
       }
     } catch (error) {

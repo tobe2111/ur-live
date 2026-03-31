@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import ImageUpload from '@/components/ImageUpload'
+import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
@@ -96,6 +97,7 @@ export default function AdminProductsPage() {
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([])
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -178,10 +180,16 @@ export default function AdminProductsPage() {
         await api.put(`/api/admin/products/${editingProduct.id}`, payload, { headers: { Authorization: `Bearer ${token}` } })
         toast.success('상품이 수정되었습니다.')
       } else {
-        await api.post('/api/admin/products', payload, { headers: { Authorization: `Bearer ${token}` } })
+        const createRes = await api.post('/api/admin/products', payload, { headers: { Authorization: `Bearer ${token}` } })
+        const productId = createRes.data.data?.id || createRes.data.data?.productId
+        if (productOptions.length > 0 && productId) {
+          try {
+            await api.post(`/api/admin/products/${productId}/options`, { options: productOptions }, { headers: { Authorization: `Bearer ${token}` } })
+          } catch { toast.error('상품은 등록되었으나 옵션 저장에 실패했습니다.') }
+        }
         toast.success('상품이 등록되었습니다.')
       }
-      setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); loadProducts()
+      setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]); loadProducts()
     } catch (err: any) {
       setError(err.response?.data?.error || '상품 저장에 실패했습니다.')
     }
@@ -525,11 +533,11 @@ export default function AdminProductsPage() {
       {/* 등록/수정 모달 */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} />
+          <div className="fixed inset-0 bg-black/50" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">{editingProduct ? '상품 수정' : '상품 등록'}</h2>
-              <button onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} className="p-1.5 rounded-lg hover:bg-gray-100">
+              <button onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} className="p-1.5 rounded-lg hover:bg-gray-100">
                 <X className="w-4 h-4 text-gray-400" />
               </button>
             </div>
@@ -627,8 +635,17 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
+              {/* 상품 옵션 */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <ProductOptionForm
+                  options={productOptions}
+                  onChange={setProductOptions}
+                  disabled={false}
+                />
+              </div>
+
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM) }} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
+                <button type="button" onClick={() => { setShowModal(false); setEditingProduct(null); setFormData(EMPTY_FORM); setProductOptions([]) }} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
                 <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">{editingProduct ? '수정' : '등록'}</button>
               </div>
             </form>

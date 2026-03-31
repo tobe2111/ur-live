@@ -70,7 +70,7 @@ export default function SellerAlimtalkPage() {
   async function loadCredits() {
     setLoading(true)
     try {
-      const res = await api.get('/api/seller/alimtalk/credits', {
+      const res = await api.get('/api/seller/brandmessage/credits', {
         headers: { Authorization: `Bearer ${getSellerToken()}` }
       })
       if (res.data.success) {
@@ -91,7 +91,7 @@ export default function SellerAlimtalkPage() {
   async function loadLogs() {
     setLogsLoading(true)
     try {
-      const res = await api.get('/api/seller/alimtalk/logs', {
+      const res = await api.get('/api/seller/brandmessage/logs', {
         headers: { Authorization: `Bearer ${getSellerToken()}` }
       })
       if (res.data.success) setLogs(res.data.data ?? [])
@@ -115,7 +115,7 @@ export default function SellerAlimtalkPage() {
     setPaying(true)
     try {
       // 1. 충전 주문 생성
-      const res = await api.post('/api/seller/alimtalk/credits/charge',
+      const res = await api.post('/api/seller/brandmessage/credits/charge',
         { package_id: selectedPkgId },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
       )
@@ -135,8 +135,8 @@ export default function SellerAlimtalkPage() {
         amount,
         orderId,
         orderName,
-        successUrl: `${window.location.origin}/seller/alimtalk?charge=success&orderId=${orderId}`,
-        failUrl: `${window.location.origin}/seller/alimtalk?charge=fail`,
+        successUrl: `${window.location.origin}/seller/brandmessage?charge=success&orderId=${orderId}`,
+        failUrl: `${window.location.origin}/seller/brandmessage?charge=fail`,
       })
     } catch (err: any) {
       if (err?.code !== 'USER_CANCEL') {
@@ -154,8 +154,8 @@ export default function SellerAlimtalkPage() {
     const amount = params.get('amount')
 
     if (charge === 'success' && paymentKey && orderId && amount) {
-      window.history.replaceState({}, '', '/seller/alimtalk')
-      api.post('/api/seller/alimtalk/credits/confirm',
+      window.history.replaceState({}, '', '/seller/brandmessage')
+      api.post('/api/seller/brandmessage/credits/confirm',
         { paymentKey, orderId, amount: Number(amount) },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
       ).then(res => {
@@ -167,7 +167,7 @@ export default function SellerAlimtalkPage() {
         }
       }).catch(() => toast.error('충전 처리에 실패했습니다.'))
     } else if (charge === 'fail') {
-      window.history.replaceState({}, '', '/seller/alimtalk')
+      window.history.replaceState({}, '', '/seller/brandmessage')
       toast.error('결제가 취소되었습니다.')
     }
   }, [])
@@ -325,7 +325,7 @@ export default function SellerAlimtalkPage() {
       {chargeModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setChargeModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85vh] overflow-y-auto p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">크레딧 충전</h3>
             <p className="text-xs text-gray-400 mb-4">건당 25원 · 카카오 친구톡(브랜드메시지)</p>
 
