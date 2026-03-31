@@ -116,7 +116,7 @@ alimtalkRoutes.post('/credits/charge', async (c) => {
     data: {
       orderId,
       amount: pkg.price,
-      orderName: `알림톡 ${pkg.label} 충전`,
+      orderName: `브랜드메시지 ${pkg.label} 충전`,
       credits: pkg.credits,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
@@ -184,12 +184,12 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
     DB.prepare(`
       INSERT INTO credit_transactions (seller_id, type, amount, price_paid, description, payment_key, created_at)
       VALUES (?, 'charge', ?, ?, ?, ?, datetime('now'))
-    `).bind(sellerId, resolvedPkg.credits, resolvedPkg.price, `알림톡 ${resolvedPkg.label} 충전`, body.paymentKey),
+    `).bind(sellerId, resolvedPkg.credits, resolvedPkg.price, `브랜드메시지 ${resolvedPkg.label} 충전`, body.paymentKey),
   ]);
 
   return c.json({
     success: true,
-    data: { credits_added: resolvedPkg.credits, description: `알림톡 ${resolvedPkg.label} 충전` },
+    data: { credits_added: resolvedPkg.credits, description: `브랜드메시지 ${resolvedPkg.label} 충전` },
     message: `${resolvedPkg.credits.toLocaleString()}건이 충전되었습니다.`,
   });
 });

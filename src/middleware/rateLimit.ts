@@ -265,7 +265,7 @@ export const RateLimitPolicies = {
   alimtalk: {
     windowMs: 60,
     maxRequests: 10,
-    message: '알림톡 발송 요청이 너무 빈번합니다. 잠시 후 다시 시도해주세요.',
+    message: '브랜드메시지 발송 요청이 너무 빈번합니다. 잠시 후 다시 시도해주세요.',
     pathPattern: /^\/api\/seller\/alimtalk\/send/
   },
 

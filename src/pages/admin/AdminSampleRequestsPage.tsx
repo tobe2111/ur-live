@@ -243,7 +243,7 @@ export default function AdminSampleRequestsPage() {
             </h3>
             <p className="text-xs text-gray-400 mb-4">
               {memoModal.action === 'approve'
-                ? '승인 시 셀러에게 알림톡이 발송됩니다'
+                ? '승인 시 셀러에게 브랜드메시지가 발송됩니다'
                 : '거부 사유를 입력해주세요'}
             </p>
             <textarea
