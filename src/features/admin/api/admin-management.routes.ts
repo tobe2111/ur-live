@@ -387,7 +387,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
     try {
       const { q, params } = buildWhere(`
         SELECT o.id, o.order_number, o.user_id, o.seller_id,
-               COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+               o.total_amount as total_amount,
                COALESCE(o.status,'pending') as status,
                COALESCE(o.payment_status,'pending') as payment_status,
                COALESCE(o.payment_method,'') as payment_method,
@@ -892,7 +892,7 @@ adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
       return c.json({ success: true, data: { rows: [], summary: { total_orders: 0, total_qty: 0, total_revenue: 0, total_supply_cost: 0 } } });
     }
 
-    let where = "sp.supply_source_id IS NOT NULL AND o.payment_status IN ('approved','APPROVED','paid','PAID')";
+    let where = "sp.supply_source_id IS NOT NULL AND o.status IN ('DONE','PAID','DELIVERED')";
     const params: (string | number)[] = [];
     if (supplyProductId) { where += ' AND sp.supply_source_id = ?'; params.push(supplyProductId); }
     if (sellerId) { where += ' AND sp.seller_id = ?'; params.push(sellerId); }
@@ -985,7 +985,7 @@ adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
   };
 
   const [sales, orders, live] = await Promise.all([
-    safe<SalesRow>(`SELECT COALESCE(SUM(COALESCE(total_amount, total_price, 0)),0) as total FROM orders WHERE DATE(created_at)=? AND COALESCE(payment_status,'pending')='approved'`, [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at)=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
     safe<CountRow>('SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
   ]);
@@ -1020,19 +1020,19 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     let overview: SettlementOverviewRow[];
     const fullOverview = await safeFull<SettlementOverviewRow>(`
       SELECT COUNT(*) as total_orders,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
+             COALESCE(SUM(o.total_amount),0) as total_sales,
+             COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
+             COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
       FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
-      WHERE COALESCE(o.payment_status,'pending')='approved' ${df}`);
+      WHERE o.status IN ('DONE','PAID','DELIVERED') ${df}`);
     if (fullOverview !== null) {
       overview = fullOverview;
     } else {
       overview = await safeFallback<SettlementOverviewRow>(`
         SELECT COUNT(*) as total_orders,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
+               COALESCE(SUM(o.total_amount),0) as total_sales,
+               COALESCE(SUM(o.total_amount*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
+               COALESCE(SUM(o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
         WHERE 1=1 ${df}`);
     }
@@ -1042,10 +1042,10 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
       SELECT s.id as seller_id, s.name as seller_name, s.business_name,
              COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
              COUNT(o.id) as order_count,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
-      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND COALESCE(o.payment_status,'pending')='approved' ${df}
+             COALESCE(SUM(o.total_amount),0) as total_sales,
+             COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
+             COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
+      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.status IN ('DONE','PAID','DELIVERED') ${df}
       GROUP BY s.id ORDER BY total_sales DESC`);
     if (fullSellers !== null) {
       sellers = fullSellers;
@@ -1054,9 +1054,9 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
         SELECT s.id as seller_id, s.name as seller_name, s.business_name,
                ${DEFAULT_COMMISSION_RATE} as commission_rate,
                COUNT(o.id) as order_count,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as commission_amount,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount
+               COALESCE(SUM(o.total_amount),0) as total_sales,
+               COALESCE(SUM(o.total_amount*${DEFAULT_COMMISSION_RATE}/100),0) as commission_amount,
+               COALESCE(SUM(o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount
         FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id
         WHERE 1=1 ${df}
         GROUP BY s.id ORDER BY total_sales DESC`);
@@ -1083,19 +1083,19 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     const buildQuery = (withNewCols: boolean) => {
       let q = withNewCols
         ? `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
-                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  o.total_amount as total_amount,
                   COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-                  COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
-                  COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
+                  o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
+                  o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
                   COALESCE(o.settlement_status,'pending') as settlement_status,
                   o.settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
-           WHERE COALESCE(o.payment_status,'pending')='approved'`
+           WHERE o.status IN ('DONE','PAID','DELIVERED')`
         : `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
-                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  o.total_amount as total_amount,
                   ${DEFAULT_COMMISSION_RATE} as commission_rate,
-                  COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
-                  COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
+                  o.total_amount*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
+                  o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
                   'pending' as settlement_status,
                   NULL as settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
@@ -1172,15 +1172,16 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
 
     let query = `
       SELECT o.order_number, s.name as seller_name, s.business_name,
-             COALESCE(o.total_amount, o.total_price, 0), COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-             ROUND(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as commission_amount,
-             ROUND(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)) as seller_amount,
-             COALESCE(o.settlement_status,'pending') as settlement_status,
+             o.total_amount,
+             COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             ROUND(o.total_amount * COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100) as commission_amount,
+             ROUND(o.total_amount * (1 - COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100)) as seller_amount,
+             COALESCE(o.settlement_status, 'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o
       LEFT JOIN sellers s ON o.seller_id = s.id
       LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.payment_status = 'approved'
+      WHERE o.status IN ('DONE', 'PAID', 'DELIVERED')
     `;
     const params: (string | number | null)[] = [];
     if (period === 'today') { query += ' AND DATE(o.created_at) = ?'; params.push(new Date().toISOString().split('T')[0]); }
