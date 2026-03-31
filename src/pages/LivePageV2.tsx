@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -480,16 +479,7 @@ function ReelCard({
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
 
-  // ── 후원 모달 상태 ──
-  const [donationModal, setDonationModal] = useState(false)
-  const [donationAmount, setDonationAmount] = useState(5000)
-  const [donationMessage, setDonationMessage] = useState('')
-  const [donationAnonymous, setDonationAnonymous] = useState(false)
-  const [donating, setDonating] = useState(false)
-  // 2단계 결제: step 1 = 금액/메시지, step 2 = 토스 위젯
-  const [donationStep, setDonationStep] = useState<1 | 2>(1)
-  const [donationOrderData, setDonationOrderData] = useState<{ orderId: string; amount: number; orderName: string } | null>(null)
-  const paymentWidgetRef = useRef<any>(null)
+  // ── 후원은 LiveDonation 컴포넌트에서 처리 (팀 포인트 방식) ──
   
   // Handle null product case
   const safeProduct = (product || {
@@ -1094,107 +1084,6 @@ function ReelCard({
   }
 
   // ============================================
-  // 후원 처리 — Step 1: init API → 위젯 초기화 → Step 2로 이동
-  // ============================================
-  async function handleDonationStep1() {
-    if (!isLoggedIn) { showAlert('로그인 후 후원하실 수 있습니다.', 'info', '로그인 필요'); return }
-    if (donationAmount < 1000 || donationAmount % 100 !== 0) {
-      toast.error('후원 금액은 최소 1,000원이며 100원 단위여야 합니다')
-      return
-    }
-    setDonating(true)
-    try {
-      const initRes = await api.post('/api/donations/init', {
-        stream_id: stream.id,
-        amount: donationAmount,
-        message: donationMessage || undefined,
-        is_anonymous: donationAnonymous,
-      })
-
-      if (!initRes.data.success) { toast.error(initRes.data.error); return }
-      const { orderId, amount, orderName, clientKey } = initRes.data.data
-      if (!clientKey) { toast.error('결제 설정을 불러올 수 없습니다'); return }
-
-      // PaymentWidget V2
-      const userId = getUserId()
-      const customerKey = userId
-        ? `user_${String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)}`
-        : 'ANONYMOUS'
-      const tossPayments = await loadTossPayments(clientKey)
-      const widget = tossPayments.widgets({ customerKey })
-      paymentWidgetRef.current = widget
-      setDonationOrderData({ orderId, amount, orderName })
-      setDonationStep(2) // useEffect가 위젯 렌더링 실행
-    } catch (err: any) {
-      toast.error(err?.message || '결제 준비 중 오류가 발생했습니다')
-    } finally { setDonating(false) }
-  }
-
-  // Step 2에서 위젯 렌더링 (DOM이 준비된 후, V2 API)
-  useEffect(() => {
-    if (donationStep !== 2 || !paymentWidgetRef.current || !donationOrderData) return
-    const widget = paymentWidgetRef.current
-    widget.setAmount({ currency: 'KRW', value: donationOrderData.amount })
-      .then(() => Promise.all([
-        widget.renderPaymentMethods({ selector: '#toss-donation-methods', variantKey: 'DEFAULT' }),
-        widget.renderAgreement({ selector: '#toss-donation-agreement', variantKey: 'AGREEMENT' }),
-      ]))
-      .catch((err: any) => {
-        console.error('[Donation] widget render error:', err)
-        toast.error('결제창 로드에 실패했습니다. 다시 시도해주세요.')
-        setDonationStep(1)
-        paymentWidgetRef.current = null
-      })
-  }, [donationStep, donationOrderData])
-
-  // Step 2: 결제 최종 요청
-  async function handleDonationConfirm() {
-    if (!paymentWidgetRef.current || !donationOrderData) return
-    setDonating(true)
-    try {
-      await paymentWidgetRef.current.requestPayment({
-        orderId: donationOrderData.orderId,
-        orderName: donationOrderData.orderName,
-        successUrl: `${window.location.origin}/live/${stream.id}?donation=success&orderId=${donationOrderData.orderId}&amount=${donationOrderData.amount}`,
-        failUrl: `${window.location.origin}/live/${stream.id}?donation=fail`,
-      })
-    } catch (err: any) {
-      if (err?.code !== 'USER_CANCEL') toast.error(err?.message || '결제 중 오류가 발생했습니다')
-    } finally { setDonating(false) }
-  }
-
-  function closeDonationModal() {
-    setDonationModal(false)
-    setDonationStep(1)
-    setDonationOrderData(null)
-    paymentWidgetRef.current = null
-  }
-
-  // 후원 결제 완료 리다이렉트 처리
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const donation = params.get('donation')
-    const paymentKey = params.get('paymentKey')
-    const orderId = params.get('orderId')
-    const amount = params.get('amount')
-    if (donation === 'success' && paymentKey && orderId && amount) {
-      window.history.replaceState({}, '', window.location.pathname)
-      // message/is_anonymous는 init 단계에서 DB에 이미 저장됨 — 재전송 불필요
-      api.post('/api/donations/confirm', {
-        paymentKey, orderId, amount: Number(amount),
-      })
-        .then(res => {
-          if (res.data.success) toast.success(res.data.message || '후원이 완료되었습니다!')
-          else toast.error(res.data.error || '후원 처리에 실패했습니다')
-        })
-        .catch(() => toast.error('후원 처리에 실패했습니다'))
-    } else if (donation === 'fail') {
-      window.history.replaceState({}, '', window.location.pathname)
-      toast.error('후원이 취소되었습니다')
-    }
-  }, [])
-
-  // ============================================
   // Send Chat Message (with throttling)
   // ============================================
   async function handleSendMessage(e: React.FormEvent) {
@@ -1541,99 +1430,7 @@ function ReelCard({
           </div>
         </>
       )}
-      {/* 후원 모달 */}
-      {donationModal && (
-        <>
-          <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm" onClick={closeDonationModal} />
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
-            <div className="p-5">
-              {/* 헤더 */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  {donationStep === 2 && (
-                    <button onClick={() => { setDonationStep(1); paymentWidgetRef.current = null; setDonationOrderData(null) }} className="mr-1 p-1 rounded-full hover:bg-gray-100">
-                      <ChevronLeft className="h-5 w-5 text-gray-500" />
-                    </button>
-                  )}
-                  <Heart className="h-5 w-5 text-pink-500 fill-pink-500" />
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {donationStep === 1 ? `${stream.streamerName || '셀러'} 후원하기` : '결제 방법 선택'}
-                  </h3>
-                </div>
-                <button onClick={closeDonationModal} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-                  <X className="h-4 w-4 text-gray-600" />
-                </button>
-              </div>
-
-              {donationStep === 1 ? (
-                <>
-                  {/* 금액 빠른 선택 */}
-                  <div className="grid grid-cols-4 gap-2 mb-3">
-                    {[1000, 3000, 5000, 10000].map(amt => (
-                      <button
-                        key={amt}
-                        onClick={() => setDonationAmount(amt)}
-                        className={`py-2 rounded-xl text-sm font-semibold transition-colors ${
-                          donationAmount === amt ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {(amt/1000)}천원
-                      </button>
-                    ))}
-                  </div>
-                  {/* 직접 입력 */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <input
-                      type="number"
-                      value={donationAmount}
-                      onChange={e => setDonationAmount(Math.max(1000, Math.floor(Number(e.target.value) / 100) * 100))}
-                      step={100} min={1000}
-                      className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-right focus:border-pink-400 focus:outline-none"
-                    />
-                    <span className="text-sm text-gray-500 shrink-0">원</span>
-                  </div>
-                  {/* 메시지 */}
-                  <input
-                    type="text"
-                    placeholder="응원 메시지 (선택)"
-                    value={donationMessage}
-                    onChange={e => setDonationMessage(e.target.value)}
-                    maxLength={50}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm mb-3 focus:border-pink-400 focus:outline-none"
-                  />
-                  {/* 익명 */}
-                  <label className="flex items-center gap-2 mb-4 cursor-pointer">
-                    <input type="checkbox" checked={donationAnonymous} onChange={e => setDonationAnonymous(e.target.checked)} className="rounded" />
-                    <span className="text-sm text-gray-600">익명으로 후원</span>
-                  </label>
-                  <button
-                    onClick={handleDonationStep1}
-                    disabled={donating || donationAmount < 1000}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-base disabled:opacity-50 active:scale-[0.98] transition-all"
-                  >
-                    {donating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5 fill-white" />}
-                    {donationAmount.toLocaleString()}원 결제 방법 선택
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* 토스 결제위젯 렌더링 영역 */}
-                  <div id="toss-donation-methods" className="mb-3" />
-                  <div id="toss-donation-agreement" className="mb-4" />
-                  <button
-                    onClick={handleDonationConfirm}
-                    disabled={donating}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-base disabled:opacity-50 active:scale-[0.98] transition-all"
-                  >
-                    {donating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5 fill-white" />}
-                    {donationOrderData?.amount.toLocaleString()}원 결제하기
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      {/* 후원은 LiveDonation 컴포넌트에서 처리 (팀 포인트 방식) */}
     </div>
   )
 }
