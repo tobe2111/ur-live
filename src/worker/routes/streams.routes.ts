@@ -294,12 +294,9 @@ streamsRouter.get('/:id/products', async (c) => {
 
         if (fallbackProduct) {
           products = [fallbackProduct as unknown as Record<string, unknown>];
-          console.log(`[Streams] Using current_product_id ${stream.current_product_id} as fallback for stream ${streamId}`);
         }
       }
     }
-
-    console.log(`[Streams] Loaded ${products.length} products for stream ${streamId}`);
 
     return c.json({
       success: true,

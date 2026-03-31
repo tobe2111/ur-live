@@ -47,8 +47,6 @@ adminRoutes.post('/login', cors(), async (c) => {
       return c.json({ success: false, error: '이메일과 비밀번호를 입력해주세요.' }, 400);
     }
     
-    console.log('[Admin Login] Attempting login for:', email);
-    
     const admins = await executeQuery<any>(
       DB,
       'SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ?',
@@ -84,8 +82,6 @@ adminRoutes.post('/login', cors(), async (c) => {
     const token = await sign(payload, JWT_SECRET);
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
-    
-    console.log('[Admin Login] ✅ Login successful for admin:', admin.id, 'role:', admin.role);
     
     return c.json({
       success: true,
@@ -171,8 +167,6 @@ adminRoutes.post('/refresh', cors(), async (c) => {
     const newAccessToken = await sign(newPayload, JWT_SECRET);
     const newRefreshPayload = { ...newPayload, exp: now + (30 * 24 * 60 * 60) };
     const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
-    
-    console.log('[Admin Refresh] ✅ Token refresh successful for admin:', admin.id);
     
     return c.json({
       success: true,

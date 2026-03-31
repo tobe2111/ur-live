@@ -171,13 +171,10 @@ cartRoutes.get('/', requireAuth(), async (c) => {
  */
 cartRoutes.post('/', requireAuth(), async (c) => {
   try {
-    console.log('[Cart] POST /api/cart - Start');
-
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
 
     const body = await c.req.json<Record<string, any>>();
-    console.log('[Cart] Request body:', JSON.stringify(body));
 
     // ── 필드명 정규화 (camelCase / snake_case 모두 수용) ──────────────────────
     const product_id: number =
@@ -262,8 +259,6 @@ cartRoutes.post('/', requireAuth(), async (c) => {
       )
       .bind(userId, product_id, quantity, snapshot, option_id, live_stream_id)
       .run();
-
-    console.log('[Cart] Insert result:', result.meta);
 
     return c.json(
       createdResponse(

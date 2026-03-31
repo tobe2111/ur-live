@@ -68,15 +68,12 @@ export function useMultiTabSync() {
 
         if (!event.oldValue && event.newValue) {
           // 로그인 감지 → 현재 페이지가 보호 경로면 reload
-          console.log('[MultiTabSync] 🟢 Firebase 로그인 감지')
-          // 이미 로그인된 상태(같은 탭 로그인은 오지 않음) → 새로고침
           window.location.reload()
           return
         }
 
         // 사용자 전환 감지
         if (event.oldValue && event.newValue) {
-          console.log('[MultiTabSync] 🔄 Firebase 사용자 변경 감지')
           window.location.reload()
           return
         }
@@ -88,12 +85,10 @@ export function useMultiTabSync() {
         if (isLoginPage()) return
 
         if (event.oldValue && !event.newValue) {
-          console.log('[MultiTabSync] 🔴 Seller 로그아웃 감지 → /seller/login')
           window.location.href = '/seller/login'
           return
         }
         if (!event.oldValue && event.newValue) {
-          console.log('[MultiTabSync] 🟢 Seller 로그인 감지 → reload')
           window.location.reload()
           return
         }
@@ -105,12 +100,10 @@ export function useMultiTabSync() {
         if (isLoginPage()) return
 
         if (event.oldValue && !event.newValue) {
-          console.log('[MultiTabSync] 🔴 Admin 로그아웃 감지 → /admin/login')
           window.location.href = '/admin/login'
           return
         }
         if (!event.oldValue && event.newValue) {
-          console.log('[MultiTabSync] 🟢 Admin 로그인 감지 → reload')
           window.location.reload()
           return
         }
@@ -132,18 +125,15 @@ export function useMultiTabSync() {
         const currentSellerToken = localStorage.getItem('seller_token')
         const currentUserType = localStorage.getItem('user_type')
         if (currentSellerToken && currentUserType === 'seller') {
-          console.log('[MultiTabSync] 🔒 Seller 세션 활성 - 다른 탭 user_type 변경 무시:', event.oldValue, '→', event.newValue)
           return
         }
 
         // ✅ 현재 탭이 admin 세션이면 동일하게 무시
         const currentAdminToken = localStorage.getItem('admin_token')
         if (currentAdminToken && currentUserType === 'admin') {
-          console.log('[MultiTabSync] 🔒 Admin 세션 활성 - 다른 탭 user_type 변경 무시:', event.oldValue, '→', event.newValue)
           return
         }
 
-        console.log('[MultiTabSync] 🔄 user_type 변경:', event.oldValue, '→', event.newValue)
         window.location.reload()
         return
       }
@@ -153,18 +143,15 @@ export function useMultiTabSync() {
         if (!debounce(event.key)) return
         if (isLoginPage()) return
 
-        console.log('[MultiTabSync] 🆕 앱 버전 변경:', event.oldValue, '→', event.newValue)
         window.location.reload()
         return
       }
     }
 
     window.addEventListener('storage', handleStorageChange)
-    console.log('[MultiTabSync] ✅ 다중 탭 동기화 활성화됨')
 
     return () => {
       window.removeEventListener('storage', handleStorageChange)
-      console.log('[MultiTabSync] 다중 탭 동기화 비활성화됨')
     }
   }, [])
 }

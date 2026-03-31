@@ -101,7 +101,6 @@ export class GoogleAuthService {
         ).run();
         
         userId = result.meta.last_row_id as number;
-        console.log('[GoogleAuthService] ✅ Created user:', userId);
       }
       
       // 사용자 정보 다시 조회하여 반환
@@ -132,7 +131,6 @@ export class GoogleAuthService {
         UPDATE users SET firebase_uid = ? WHERE id = ?
       `).bind(firebaseUID, userId).run();
       
-      console.log('[GoogleAuthService] ✅ Firebase UID updated for user:', userId);
     } catch (error) {
       console.warn('[GoogleAuthService] firebase_uid column not found, skipping update:', error);
     }

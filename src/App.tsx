@@ -123,8 +123,6 @@ function AppContent() {
       if (!firebaseToken) return
       
       try {
-        console.log('[App] 🔑 firebase_token 파라미터 감지')
-
         // URL에서 사용자 정보 미리 읽기 (삭제 전에)
         const urlUserName = urlParams.get('userName') || ''
         const urlProfileImage = urlParams.get('profileImage') || ''
@@ -132,8 +130,6 @@ function AppContent() {
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
         const userCredential = await signInWithCustomToken(firebaseToken)
         const user = userCredential.user
-        console.log('[App] ✅ Firebase Custom Token 로그인 성공:', user.uid)
-
         // ID Token 갱신 및 claims 추출
         const idToken = await user.getIdToken(true)
         const tokenResult = await user.getIdTokenResult(true)
@@ -141,9 +137,6 @@ function AppContent() {
         const claimsUserName = (tokenResult.claims?.userName as string) || urlUserName
         const rawProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
         const claimsProfileImage = rawProfileImage.replace(/^http:\/\//, 'https://')
-        console.log('[App] 🔢 Numeric user ID from claims:', numericUserId)
-        console.log('[App] 👤 User name from claims/URL:', claimsUserName)
-
         // ✅ user_name / profileImage localStorage 저장 (프로필 페이지 표시용)
         if (claimsUserName) {
           localStorage.setItem('user_name', claimsUserName)
@@ -160,7 +153,6 @@ function AppContent() {
               displayName: claimsUserName,
               ...(claimsProfileImage ? { photoURL: claimsProfileImage } : {}),
             })
-            console.log('[App] ✅ Firebase 프로필 업데이트 완료')
           } catch (e) {
             console.warn('[App] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
           }
@@ -178,8 +170,6 @@ function AppContent() {
         useAuthKR.getState().setUser(user)
         useAuthKR.getState().setAuthReady(true)  // ProtectedRoute 스피너 즉시 해제
         sessionStorage.setItem('auth_processed_uid', user.uid)  // onAuthStateChanged 중복 방지
-        console.log('[App] ✅ useAuthKR에 Firebase User 저장 완료 (isAuthReady=true)')
-
         // ✅ useAuthStore에 토큰 저장
         const { useAuthStore } = await import('@/client/stores/auth.store')
         useAuthStore.getState().setAuth(
@@ -192,8 +182,6 @@ function AppContent() {
           idToken,
           ''
         )
-        console.log('[App] ✅ useAuthStore에 accessToken 저장 완료')
-
         // URL 파라미터 제거 (auth 관련 전부)
         urlParams.delete('firebase_token')
         urlParams.delete('userName')
@@ -238,7 +226,6 @@ function AppContent() {
 
     // ✅ Seller/Admin은 Firebase 초기화 불필요 → isAuthReady를 즉시 true로
     if (!hasIncomingToken && (userType === 'seller' || userType === 'admin')) {
-      console.log(`[App] 🏪 ${userType} 세션 감지 - Firebase 초기화 스킵, isAuthReady=true`)
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
       return
@@ -247,7 +234,6 @@ function AppContent() {
     // ✅ firebase_token이 있으면 processFirebaseToken이 인증을 처리하므로
     // initializeAuth()를 호출하지 않음 (onAuthStateChanged(null) → 깜빡임 방지)
     if (hasIncomingToken) {
-      console.log('[App] 🔑 firebase_token 처리 중 - initializeAuth 스킵')
       return
     }
 
@@ -255,8 +241,6 @@ function AppContent() {
     const initAuth = async () => {
       try {
         const isKR = isKorea()
-        console.log(`[App] 🔐 Firebase Auth 초기화 (${isKR ? 'KR' : 'WORLD'})`)
-        
         if (isKR) {
           useAuthKR.getState().initializeAuth()
         } else {
