@@ -158,10 +158,12 @@ ordersRouter.post('/', async (c) => {
       }
 
       // Pre-flight 재고 체크 (낙관적 락 전 조기 실패 - UX 개선)
-      if (product.stock_quantity < reqItem.quantity) {
+      // DB 스키마: stock (구) / stock_quantity (신) 양쪽 호환
+      const currentStock = product.stock ?? product.stock_quantity ?? 0;
+      if (currentStock < reqItem.quantity) {
         return c.json({
           success: false,
-          error: `"${product.name}" 재고가 부족합니다 (남은 수량: ${product.stock_quantity})`,
+          error: `"${product.name}" 재고가 부족합니다 (남은 수량: ${currentStock})`,
         }, 400);
       }
 
@@ -218,11 +220,10 @@ ordersRouter.post('/', async (c) => {
       console.error('[ORDERS] createOrder failed, restoring stock:', createErr);
       const restoreStmts = orderItems.map(item => ({
         sql: `UPDATE products
-              SET stock_quantity = stock_quantity + ?,
-                  sold_count     = MAX(0, sold_count - ?),
-                  updated_at     = datetime('now')
+              SET stock      = stock + ?,
+                  updated_at = datetime('now')
               WHERE id = ?`,
-        params: [item.quantity, item.quantity, item.product_id],
+        params: [item.quantity, item.product_id],
       }));
       await orderRepo['qb'].batch(restoreStmts).catch(e =>
         console.error('[ORDERS] stock restore failed:', e)

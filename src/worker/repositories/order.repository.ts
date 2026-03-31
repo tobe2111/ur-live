@@ -89,16 +89,17 @@ export class OrderRepository {
         sql: `INSERT INTO order_items (
           order_id, product_id, seller_id,
           product_name, product_thumbnail, product_sku,
-          unit_price, quantity, subtotal, currency, options, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
+          price, unit_price, quantity, subtotal, currency, options, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
         params: [
           orderId,
           item.product_id,
-          item.seller_id || null,  // seller_id가 빈 문자열이면 null
+          item.seller_id || null,
           item.product_name,
           item.product_thumbnail ?? null,
           item.product_sku ?? null,
-          item.unit_price,
+          item.unit_price,       // price (NOT NULL — 구 스키마 호환)
+          item.unit_price,       // unit_price (신 스키마)
           item.quantity,
           item.subtotal,
           JSON.stringify(item.options ?? {}),
@@ -320,7 +321,7 @@ export class OrderRepository {
     if (items.length === 0) return;
 
     const statements = items.map(item => ({
-      sql: 'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+      sql: 'UPDATE products SET stock = stock + ? WHERE id = ?',
       params: [item.quantity, item.product_id],
     }));
 
@@ -353,11 +354,10 @@ export class OrderRepository {
     // Conditional UPDATE: stock_quantity >= qty 조건 포함
     const statements = items.map(item => ({
       sql: `UPDATE products
-            SET stock_quantity = stock_quantity - ?,
-                updated_at     = datetime('now')
+            SET stock = stock - ?,
+                updated_at = datetime('now')
             WHERE id = ?
-              AND stock_quantity >= ?
-              AND status = 'ACTIVE'`,
+              AND stock >= ?`,
       params: [item.quantity, item.product_id, item.quantity],
     }));
 
