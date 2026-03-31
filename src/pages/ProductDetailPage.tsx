@@ -24,6 +24,85 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
+function ProductReviews({ productId }: { productId: number | string }) {
+  const [summary, setSummary] = useState<any>(null)
+  const [reviews, setReviews] = useState<any[]>([])
+
+  useEffect(() => {
+    api.get(`/api/reviews/product/${productId}/summary`).then(r => {
+      if (r.data.success) setSummary(r.data.data)
+    }).catch(() => {})
+    api.get(`/api/reviews/product/${productId}?limit=5`).then(r => {
+      if (r.data.success) setReviews(r.data.data.reviews)
+    }).catch(() => {})
+  }, [productId])
+
+  const avgRating = summary?.avg_rating ?? 0
+  const totalCount = summary?.total_count ?? 0
+
+  return (
+    <div>
+      <h2 className="text-sm font-bold text-foreground mb-4">
+        리뷰 {totalCount > 0 && <span className="text-muted-foreground font-normal">({totalCount})</span>}
+      </h2>
+
+      {/* 평점 요약 */}
+      {totalCount > 0 ? (
+        <div className="flex items-center gap-4 mb-4">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-foreground">{avgRating}</p>
+            <div className="flex gap-0.5 mt-1">
+              {[1, 2, 3, 4, 5].map(s => (
+                <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-200'}`}>
+                  ★
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 space-y-1">
+            {[5, 4, 3, 2, 1].map(s => {
+              const count = summary?.[`star_${s}`] ?? 0
+              const pct = totalCount > 0 ? (count / totalCount) * 100 : 0
+              return (
+                <div key={s} className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-3">{s}</span>
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground py-6 text-center">아직 리뷰가 없습니다.</p>
+      )}
+
+      {/* 리뷰 목록 */}
+      {reviews.length > 0 && (
+        <div className="space-y-3 mt-3">
+          {reviews.map((r: any) => (
+            <div key={r.id} className="border border-border/50 rounded-xl p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <span key={s} className={`text-xs ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{r.user_name}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+              </div>
+              {r.content && <p className="text-xs text-foreground leading-relaxed">{r.content}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -43,6 +122,8 @@ export default function ProductDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
   const [quantity, setQuantity] = useState(1)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [isWishlisted, setIsWishlisted] = useState(false)
+  const [wishlistLoading, setWishlistLoading] = useState(false)
 
   useEffect(() => {
     const referrer = document.referrer
@@ -55,6 +136,40 @@ export default function ProductDetailPage() {
       }
     }
   }, [id])
+
+  // Check wishlist status when product loads
+  useEffect(() => {
+    if (!id || !isLoggedIn) return
+    api.get('/api/wishlists').then(r => {
+      if (r.data.success && r.data.data?.items) {
+        const found = r.data.data.items.some((item: any) => String(item.product_id) === String(id))
+        setIsWishlisted(found)
+      }
+    }).catch(() => {})
+  }, [id, isLoggedIn])
+
+  async function handleToggleWishlist() {
+    if (!isLoggedIn) {
+      showToast('로그인이 필요합니다.', 'error')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      setTimeout(() => navigate('/login'), 1000)
+      return
+    }
+    if (!id || wishlistLoading) return
+    setWishlistLoading(true)
+    try {
+      const res = await api.post('/api/wishlists/toggle', { product_id: Number(id) })
+      if (res.data.success) {
+        const nowWishlisted = res.data.data?.isWishlisted ?? res.data.action === 'added'
+        setIsWishlisted(nowWishlisted)
+        showToast(nowWishlisted ? '찜 목록에 추가되었습니다.' : '찜 목록에서 삭제되었습니다.', 'success')
+      }
+    } catch {
+      showToast('찜하기에 실패했습니다.', 'error')
+    } finally {
+      setWishlistLoading(false)
+    }
+  }
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setToast({ message, type })
@@ -112,27 +227,32 @@ export default function ProductDetailPage() {
       return
     }
 
-    console.log('[ProductDetail] 🛒 구매하기: 장바구니에 추가 후 결제 페이지 이동')
-    
-    try {
-      // 1️⃣ 먼저 장바구니에 추가
-      await api.post('/api/cart', {
-        product_id: product!.id,
-        quantity,
-        price_snapshot: product!.price,
-        options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
-      })
-      console.log('[ProductDetail] ✅ 장바구니 추가 완료')
-      
-      localStorage.setItem('hasCartItems', 'true')
-      
-      // 2️⃣ 결제 페이지로 이동
-      navigate('/checkout')
-    } catch (err: any) {
-      console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
-      const errorMessage = err instanceof Error ? err.message : (err.response?.data?.error || '구매 진행에 실패했습니다.')
-      showToast(errorMessage, 'error')
-    }
+    if (!product) return
+
+    // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
+    navigate('/checkout', {
+      state: {
+        directPurchase: [{
+          id: `direct_${product.id}_${Date.now()}`,
+          product_id: product.id,
+          product_name: product.name,
+          product_description: product.description,
+          product_price: product.price,
+          product_image: product.image_url,
+          image_url: product.image_url,
+          quantity,
+          price_snapshot: product.price,
+          price: product.price,
+          item_total: product.price * quantity,
+          seller_id: (product as any).seller_id ?? null,
+          seller_name: (product as any).seller_name ?? null,
+          shipping_fee: 3000,
+          free_shipping_threshold: 0,
+          option_id: Object.values(selectedOptions)[0] || null,
+          option_value: null,
+        }]
+      }
+    })
   }
 
   function handleShare() {
@@ -146,8 +266,8 @@ export default function ProductDetailPage() {
         title: product.name,
         text: shareText,
         url: shareUrl
-      }).catch(err => {
-        console.log('Share cancelled', err)
+      }).catch(() => {
+        // Share was cancelled by user
       })
     } else {
       navigator.clipboard.writeText(shareUrl).then(() => {
@@ -197,7 +317,11 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <MobileHeader onShare={handleShare} />
+      <MobileHeader
+        onShare={handleShare}
+        isWishlisted={isWishlisted}
+        onToggleWishlist={handleToggleWishlist}
+      />
 
       <main className="pb-20">
         {/* Product Images Carousel */}
@@ -266,6 +390,12 @@ export default function ProductDetailPage() {
           <div className="mt-3">
             <ProductNoticeSection />
           </div>
+        </div>
+
+        {/* 상품 리뷰 */}
+        <Separator />
+        <div className="px-5 py-6">
+          <ProductReviews productId={product.id} />
         </div>
 
         {/* 교환 및 반품 안내 (상세) */}

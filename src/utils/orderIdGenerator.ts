@@ -37,26 +37,22 @@ export function sanitizeUserId(userId: string | number): string {
 
 /**
  * Generate a unique order ID for Toss Payments
- * Format: ORDER_{timestamp}_{randomId}
- * Example: ORDER_1234567890123_aBc123XyZ456
- * 
- * @param userId - Optional user ID to include in the order ID (for debugging)
- * @returns Toss Payments compliant order ID (6-64 chars)
+ * Format: 숫자만 사용 (YYMMDDHHmmss + random 6자리)
+ * Example: 260331095312847291
+ * Length: 18자리
  */
-export function generateOrderId(userId?: string | number): string {
-  const timestamp = Date.now();
-  const randomId = generateRandomId(12);
-  
-  if (userId) {
-    const sanitized = sanitizeUserId(userId);
-    // Format: ORDER_{timestamp}_{sanitizedUserId}_{randomId}
-    // Length: 6 + 13 + 1 + up to 16 + 1 + 12 = max 49 chars (within 64 limit)
-    return `ORDER_${timestamp}_${sanitized}_${randomId}`;
-  }
-  
-  // Format: ORDER_{timestamp}_{randomId}
-  // Length: 6 + 13 + 1 + 12 = 32 chars (within 6-64 limit)
-  return `ORDER_${timestamp}_${randomId}`;
+export function generateOrderId(_userId?: string | number): string {
+  const now = new Date();
+  const datePart = [
+    String(now.getFullYear()).slice(2),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
+  ].join('')
+  const randomPart = String(Math.floor(100000 + Math.random() * 900000))
+  return datePart + randomPart
 }
 
 /**
@@ -77,29 +73,16 @@ export function validateOrderId(orderId: string): boolean {
 
 /**
  * Test function to verify order ID generation
+ * Returns test results for programmatic verification.
  */
 export function testOrderIdGeneration() {
-  console.log('Testing Order ID Generation:');
-  
-  // Test 1: Without user ID
-  const orderId1 = generateOrderId();
-  console.log('1. Without user ID:', orderId1, 'Valid:', validateOrderId(orderId1));
-  
-  // Test 2: With numeric user ID
-  const orderId2 = generateOrderId(123456);
-  console.log('2. With numeric user ID:', orderId2, 'Valid:', validateOrderId(orderId2));
-  
-  // Test 3: With Firebase UID (alphanumeric)
-  const orderId3 = generateOrderId('abc123XYZ789def456');
-  console.log('3. With Firebase UID:', orderId3, 'Valid:', validateOrderId(orderId3));
-  
-  // Test 4: With Korean characters (should be sanitized)
-  const orderId4 = generateOrderId('사용자123');
-  console.log('4. With Korean characters:', orderId4, 'Valid:', validateOrderId(orderId4));
-  
-  // Test 5: With special characters (should be sanitized)
-  const orderId5 = generateOrderId('user@email.com');
-  console.log('5. With special characters:', orderId5, 'Valid:', validateOrderId(orderId5));
-  
-  console.log('All tests completed!');
+  const results = [
+    { label: 'Without user ID', id: generateOrderId() },
+    { label: 'With numeric user ID', id: generateOrderId(123456) },
+    { label: 'With Firebase UID', id: generateOrderId('abc123XYZ789def456') },
+    { label: 'With Korean characters', id: generateOrderId('사용자123') },
+    { label: 'With special characters', id: generateOrderId('user@email.com') },
+  ];
+
+  return results.map(r => ({ ...r, valid: validateOrderId(r.id) }));
 }

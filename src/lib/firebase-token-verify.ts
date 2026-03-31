@@ -22,7 +22,6 @@ let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
 function getJWKS() {
   if (!jwksCache) {
     jwksCache = createRemoteJWKSet(new URL(GOOGLE_JWKS_URL));
-    console.log('[Firebase Token] ✅ JWKS cache initialized');
   }
   return jwksCache;
 }
@@ -59,10 +58,6 @@ export async function verifyFirebaseIdToken(
   projectId: string
 ): Promise<FirebaseTokenPayload> {
   try {
-    console.log('[Firebase Token] 🔍 Starting verification');
-    console.log('[Firebase Token] 📊 Token length:', token.length);
-    console.log('[Firebase Token] 🏢 Project ID:', projectId);
-
     const JWKS = getJWKS();
 
     // JWT 검증 (서명, issuer, audience, 만료 시간)
@@ -71,8 +66,6 @@ export async function verifyFirebaseIdToken(
       audience: projectId,
       algorithms: ['RS256'],
     });
-
-    console.log('[Firebase Token] ✅ JWT signature verified');
 
     // 필수 필드 검증
     if (!payload.sub) {
@@ -100,27 +93,12 @@ export async function verifyFirebaseIdToken(
       throw new Error('Token not yet valid (issued in future)');
     }
 
-    console.log('[Firebase Token] ✅ Time validation passed:', {
-      iat: payload.iat,
-      exp: payload.exp,
-      now
-    });
-
     // Custom Claims 타입 가드
     const uid = payload.sub;
     const role = typeof payload.role === 'string' ? payload.role : undefined;
     const userId = typeof payload.userId === 'number' ? payload.userId : undefined;
     const userName = typeof payload.userName === 'string' ? payload.userName : undefined;
     const email = typeof payload.email === 'string' ? payload.email : undefined;
-
-    console.log('[Firebase Token] ✅ Token verified successfully');
-    console.log('[Firebase Token] 👤 User:', {
-      uid,
-      role,
-      userId,
-      userName,
-      email: email ? 'exists' : 'none'
-    });
 
     return {
       ...payload,

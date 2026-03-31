@@ -82,13 +82,6 @@ export class OrderService {
         throw new Error('주문 생성 후 조회 실패');
       }
       
-      console.log('[OrderService] Order created:', {
-        orderId: order.id,
-        userId: data.user_id,
-        total: data.total_amount,
-        itemCount: data.items.length
-      });
-      
       return order;
     } catch (error) {
       console.error('[OrderService] createOrder failed:', error);
@@ -121,12 +114,6 @@ export class OrderService {
       if (!updatedOrder) {
         throw new Error('주문 업데이트 후 조회 실패');
       }
-      
-      console.log('[OrderService] Order status updated:', {
-        orderId,
-        oldStatus: existingOrder.status,
-        newStatus: data.status
-      });
       
       return updatedOrder;
     } catch (error) {

@@ -5,7 +5,7 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { QueryBuilder } from './query-builder';
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
-import { generateId, safeJsonParse } from '../../shared/utils';
+import { safeJsonParse } from '../../shared/utils';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
@@ -34,54 +34,80 @@ export class OrderRepository {
     subtotal: number,
     shippingFee: number
   ): Promise<Order> {
-    const orderId = generateId();
     const totalAmount = subtotal + shippingFee;
 
-    const orderStmt = {
-      sql: `INSERT INTO orders (
-        id, order_number, user_id, seller_id,
-        subtotal, shipping_fee, discount_amount, total_amount, currency,
-        status, shipping_name, shipping_phone, shipping_address, shipping_memo,
-        idempotency_key, locale
-      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'KRW', 'PENDING', ?, ?, ?, ?, ?, 'ko')`,
-      params: [
-        orderId,
-        request.order_number,
-        userId,
-        request.seller_id,
-        subtotal,
-        shippingFee,
-        totalAmount,
-        request.shipping_name,
-        request.shipping_phone,
-        JSON.stringify(request.shipping_address),
-        request.shipping_memo ?? null,
-        request.idempotency_key,
-      ],
-    };
+    // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환
+    // seller_id 처리: 빈 문자열/null → DB 스키마에 따라 분기
+    //   - NOT NULL 스키마 (001_initial.sql): seller_id 컬럼 생략하면 DEFAULT 부재로 실패
+    //   - nullable 스키마 (0128 migration): null 전달 OK
+    // 안전 전략: seller_id가 있으면 포함, 없으면 INSERT 컬럼 자체를 제외
+    const hasSellerId = !!request.seller_id;
+    const columns = [
+      'order_number', 'user_id',
+      ...(hasSellerId ? ['seller_id'] : []),
+      'subtotal', 'shipping_fee', 'discount_amount', 'total_amount', 'currency',
+      'status', 'shipping_name', 'shipping_phone', 'shipping_address', 'shipping_memo',
+      'idempotency_key', 'locale',
+    ];
+    const placeholders = columns.map(() => '?').join(', ');
+    // discount_amount = 0, currency = 'KRW', status = 'PENDING', locale = 'ko'는 값으로 직접 전달
+    const values: any[] = [
+      request.order_number,
+      userId,
+      ...(hasSellerId ? [request.seller_id] : []),
+      subtotal,
+      shippingFee,
+      0,          // discount_amount
+      totalAmount,
+      'KRW',      // currency
+      'PENDING',  // status
+      request.shipping_name,
+      request.shipping_phone,
+      JSON.stringify(request.shipping_address),
+      request.shipping_memo ?? null,
+      request.idempotency_key,
+      'ko',       // locale
+    ];
 
-    const itemStmts = items.map(item => ({
-      sql: `INSERT INTO order_items (
-        id, order_id, product_id, seller_id,
-        product_name, product_thumbnail, product_sku,
-        unit_price, quantity, subtotal, currency, options, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
-      params: [
-        generateId(),
-        orderId,
-        item.product_id,
-        item.seller_id,
-        item.product_name,
-        item.product_thumbnail ?? null,
-        item.product_sku ?? null,
-        item.unit_price,
-        item.quantity,
-        item.subtotal,
-        JSON.stringify(item.options ?? {}),
-      ],
-    }));
+    const orderResult = await this.qb.execute(
+      `INSERT INTO orders (${columns.join(', ')}) VALUES (${placeholders})`,
+      values,
+    );
 
-    await this.qb.batch([orderStmt, ...itemStmts]);
+    // Step 2: 실제 order id 조회 (TEXT or INTEGER 스키마 모두 호환)
+    // meta.last_row_id는 내부 rowid(정수)로, TEXT PRIMARY KEY 스키마에서는 실제 id와 다름
+    const orderRow = await this.qb.queryOne<{ id: string }>(
+      'SELECT id FROM orders WHERE idempotency_key = ?',
+      [request.idempotency_key]
+    );
+    if (!orderRow) throw new Error('Order creation failed: could not retrieve order id');
+    const orderId = String(orderRow.id);
+
+    // Step 3: order_items 일괄 삽입 (id 생략 → 자동증가)
+    if (items.length > 0) {
+      const itemStmts = items.map(item => ({
+        sql: `INSERT INTO order_items (
+          order_id, product_id, seller_id,
+          product_name, product_thumbnail, product_sku,
+          price, unit_price, quantity, subtotal, currency, options, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
+        params: [
+          orderId,
+          item.product_id,
+          item.seller_id || null,
+          item.product_name,
+          item.product_thumbnail ?? null,
+          item.product_sku ?? null,
+          item.unit_price,       // price (NOT NULL — 구 스키마 호환)
+          item.unit_price,       // unit_price (신 스키마)
+          item.quantity,
+          item.subtotal,
+          JSON.stringify(item.options ?? {}),
+        ],
+      }));
+
+      await this.qb.batch(itemStmts);
+    }
 
     const order = await this.findById(orderId);
     if (!order) throw new Error('Order creation failed');
@@ -102,7 +128,7 @@ export class OrderRepository {
     if (!row) return null;
 
     const items = await this.qb.queryMany<Record<string, unknown>>(
-      'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+      'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
       [orderId]
     );
 
@@ -125,7 +151,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -164,7 +190,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -295,7 +321,7 @@ export class OrderRepository {
     if (items.length === 0) return;
 
     const statements = items.map(item => ({
-      sql: 'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+      sql: 'UPDATE products SET stock = stock + ? WHERE id = ?',
       params: [item.quantity, item.product_id],
     }));
 
@@ -328,13 +354,11 @@ export class OrderRepository {
     // Conditional UPDATE: stock_quantity >= qty 조건 포함
     const statements = items.map(item => ({
       sql: `UPDATE products
-            SET stock_quantity = stock_quantity - ?,
-                sold_count     = sold_count + ?,
-                updated_at     = datetime('now')
+            SET stock = stock - ?,
+                updated_at = datetime('now')
             WHERE id = ?
-              AND stock_quantity >= ?
-              AND status = 'ACTIVE'`,
-      params: [item.quantity, item.quantity, item.product_id, item.quantity],
+              AND stock >= ?`,
+      params: [item.quantity, item.product_id, item.quantity],
     }));
 
     const results = await this.qb.batch(statements);
@@ -349,32 +373,30 @@ export class OrderRepository {
       }
     }
 
+    // sold_count 업데이트는 별도로 시도 (구 스키마에 컬럼이 없을 수 있어 에러 무시)
+    const soldCountStmts = items.map(item => ({
+      sql: `UPDATE products SET sold_count = sold_count + ? WHERE id = ?`,
+      params: [item.quantity, item.product_id],
+    }));
+    await this.qb.batch(soldCountStmts).catch(() => {
+      // sold_count 컬럼이 없는 구 스키마에서는 무시 (stock 차감은 이미 완료)
+      console.warn('[OrderRepository] sold_count update skipped (column may not exist)');
+    });
+
     return { success: true };
   }
 
   /**
-   * Reduce stock when order is confirmed
+   * Mark order items as CONFIRMED when payment is confirmed.
+   *
+   * stock_quantity is already decremented by reserveStock() at order creation time.
+   * This method only updates order_items.status — no additional stock change needed.
    */
   async reduceStock(orderId: string): Promise<void> {
-    const items = await this.qb.queryMany<{ product_id: string; quantity: number }>(
-      'SELECT product_id, quantity FROM order_items WHERE order_id = ?',
-      [orderId]
+    await this.qb.execute(
+      'UPDATE order_items SET status = ? WHERE order_id = ?',
+      ['CONFIRMED', orderId],
     );
-
-    if (items.length === 0) return;
-
-    const statements = items.map(item => ({
-      sql: 'UPDATE products SET stock_quantity = stock_quantity - ?, sold_count = sold_count + ? WHERE id = ? AND stock_quantity >= ?',
-      params: [item.quantity, item.quantity, item.product_id, item.quantity],
-    }));
-
-    // Update order items status
-    statements.push({
-      sql: 'UPDATE order_items SET status = ? WHERE order_id = ?',
-      params: ['CONFIRMED', orderId],
-    });
-
-    await this.qb.batch(statements);
   }
 
   /**

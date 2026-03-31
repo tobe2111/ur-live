@@ -22,7 +22,6 @@ export interface SecurityEvent {
 export async function sendDiscordAlert(event: SecurityEvent, webhookUrl?: string): Promise<void> {
   // Webhook URL이 없으면 콘솔 로그만 출력
   if (!webhookUrl) {
-    console.log('[Discord Alert - Mock]', event);
     return;
   }
 
@@ -86,7 +85,7 @@ export async function sendDiscordAlert(event: SecurityEvent, webhookUrl?: string
       })
     });
 
-    console.log('[Discord Alert] Sent:', event.type);
+    // Alert sent
   } catch (error) {
     console.error('[Discord Alert Error]', error);
     // 알림 전송 실패해도 서비스에 영향 주지 않음

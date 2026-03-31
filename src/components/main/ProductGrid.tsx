@@ -154,11 +154,9 @@ export default function ProductGrid() {
     try {
       // Ur 특가 섹션은 featured seller 상품만 표시
       const response = await api.get('/api/products?limit=6&sort=popular&featured=true')
-      console.log('[ProductGrid] API Response:', response.data)
-      
+
       // API는 { success: true, data: [...], pagination: {...} } 형식으로 응답
       if (response.data.success && Array.isArray(response.data.data)) {
-        console.log('[ProductGrid] Loaded products:', response.data.data.length)
         setProducts(response.data.data)
       } else {
         console.error('[ProductGrid] Invalid response format:', response.data)

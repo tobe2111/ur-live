@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
+import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -12,10 +13,26 @@ import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
 import { createLogger } from '@/utils/logger'
 import { useAuthStore } from '@/shared/stores'
-import { DonationEffect } from '@/components/LiveDonation'
+import LiveDonation, { DonationEffect } from '@/components/LiveDonation'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
+
+// 팀 포인트 잔액 뱃지 (상단 왼쪽, LIVE 뱃지 아래)
+function TeamPointsBadge() {
+  const [balance, setBalance] = useState(0)
+  useEffect(() => {
+    api.get('/api/points/balance')
+      .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
+      .catch(() => {})
+  }, [])
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md">
+      <span className="text-xs">🎁</span>
+      <span className="text-[11px] font-bold text-white/90">{balance.toLocaleString()}팀</span>
+    </div>
+  )
+}
 
 // Axios-like error shape for catch blocks
 interface ApiError {
@@ -163,7 +180,12 @@ function KakaoTalkIcon({ className }: { className?: string }) {
 }
 
 // TopNav Component
-function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string } }) {
+function TopNav({ viewers, sellerLinks, onSubscribe }: {
+  viewers: number
+  sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
+  onSubscribe?: (platform: string) => void
+}) {
+  const hasLinks = sellerLinks?.youtube || sellerLinks?.instagram || sellerLinks?.kakao
   return (
     <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
       <div className="flex items-center gap-2">
@@ -179,41 +201,48 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
         </div>
       </div>
 
-      <div className="flex items-center gap-3 h-[34px]">
-        {sellerLinks?.youtube && (
-          <a
-            href={sellerLinks.youtube}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="YouTube"
-          >
-            <YouTubeIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-        {sellerLinks?.instagram && (
-          <a
-            href={sellerLinks.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="Instagram"
-          >
-            <InstagramIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-        {sellerLinks?.kakao && (
-          <a
-            href={sellerLinks.kakao}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="KakaoTalk"
-          >
-            <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-      </div>
+      {/* 우측 상단: SNS 링크 + 구독 */}
+      {hasLinks && (
+        <div className="flex items-center gap-2">
+          {sellerLinks?.youtube && (
+            <a
+              href={sellerLinks.youtube}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => onSubscribe?.('유튜브')}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600/80 backdrop-blur-sm hover:bg-red-600 transition-all active:scale-95"
+              aria-label="YouTube 구독"
+            >
+              <YouTubeIcon className="h-4 w-4 text-white" />
+              <span className="text-[10px] font-bold text-white">구독</span>
+            </a>
+          )}
+          {sellerLinks?.instagram && (
+            <a
+              href={sellerLinks.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => onSubscribe?.('인스타그램')}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/80 to-pink-500/80 backdrop-blur-sm hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
+              aria-label="Instagram"
+            >
+              <InstagramIcon className="h-4 w-4 text-white" />
+            </a>
+          )}
+          {sellerLinks?.kakao && (
+            <a
+              href={sellerLinks.kakao}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => onSubscribe?.('카카오톡')}
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-400/80 backdrop-blur-sm hover:bg-yellow-400 transition-all active:scale-95"
+              aria-label="KakaoTalk"
+            >
+              <KakaoTalkIcon className="h-4 w-4 text-gray-900" />
+            </a>
+          )}
+        </div>
+      )}
     </header>
   )
 }
@@ -966,24 +995,32 @@ function ReelCard({
         return;
       }
 
-      const cartData = {
-        product_id: currentProduct.id,
-        quantity: 1,
-        price_snapshot: currentProduct.price,
-        live_stream_id: stream.id,
-      }
-      
-      log.debug('[Checkout] Adding current product to cart:', cartData)
-      
-      await api.post('/api/cart', cartData)
-      localStorage.setItem('hasCartItems', 'true')
-      
-      // 🎯 장바구니 아이템 추가 이벤트 발생
-      window.dispatchEvent(new CustomEvent('cartItemAdded'))
-      
-      // ✅ 결제 페이지로 바로 이동
-      log.debug('[Checkout] Navigating to checkout')
-      navigate('/checkout')
+      // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
+      log.debug('[Checkout] Direct purchase - navigating to checkout with product:', currentProduct.id)
+      navigate('/checkout', {
+        state: {
+          directPurchase: [{
+            id: `live_${currentProduct.id}_${Date.now()}`,
+            product_id: currentProduct.id,
+            product_name: currentProduct.name,
+            product_description: currentProduct.description ?? null,
+            product_price: currentProduct.price,
+            product_image: currentProduct.image_url,
+            image_url: currentProduct.image_url,
+            quantity: 1,
+            price_snapshot: currentProduct.price,
+            price: currentProduct.price,
+            item_total: currentProduct.price,
+            seller_id: currentProduct.seller_id ?? null,
+            seller_name: (currentProduct as any).seller_name ?? null,
+            shipping_fee: 3000,
+            free_shipping_threshold: 0,
+            option_id: null,
+            option_value: null,
+            live_stream_id: stream.id,
+          }]
+        }
+      })
       
     } catch (error: unknown) {
       console.error('Failed to add product to cart:', error)
@@ -1078,10 +1115,13 @@ function ReelCard({
       const { orderId, amount, orderName, clientKey } = initRes.data.data
       if (!clientKey) { toast.error('결제 설정을 불러올 수 없습니다'); return }
 
-      // PaymentWidget v1 (gck_ 키)
+      // PaymentWidget V2
       const userId = getUserId()
-      const customerKey = userId ? `user_${userId}` : (window as any).PaymentWidget?.ANONYMOUS ?? '__anonymous__'
-      const widget = (window as any).PaymentWidget(clientKey, customerKey)
+      const customerKey = userId
+        ? `user_${String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)}`
+        : 'ANONYMOUS'
+      const tossPayments = await loadTossPayments(clientKey)
+      const widget = tossPayments.widgets({ customerKey })
       paymentWidgetRef.current = widget
       setDonationOrderData({ orderId, amount, orderName })
       setDonationStep(2) // useEffect가 위젯 렌더링 실행
@@ -1090,19 +1130,21 @@ function ReelCard({
     } finally { setDonating(false) }
   }
 
-  // Step 2에서 위젯 렌더링 (DOM이 준비된 후)
+  // Step 2에서 위젯 렌더링 (DOM이 준비된 후, V2 API)
   useEffect(() => {
     if (donationStep !== 2 || !paymentWidgetRef.current || !donationOrderData) return
     const widget = paymentWidgetRef.current
-    Promise.all([
-      widget.renderPaymentMethods('#toss-donation-methods', { value: donationOrderData.amount, currency: 'KRW' }),
-      widget.renderAgreement('#toss-donation-agreement'),
-    ]).catch((err: any) => {
-      console.error('[Donation] widget render error:', err)
-      toast.error('결제창 로드에 실패했습니다. 다시 시도해주세요.')
-      setDonationStep(1)
-      paymentWidgetRef.current = null
-    })
+    widget.setAmount({ currency: 'KRW', value: donationOrderData.amount })
+      .then(() => Promise.all([
+        widget.renderPaymentMethods({ selector: '#toss-donation-methods', variantKey: 'DEFAULT' }),
+        widget.renderAgreement({ selector: '#toss-donation-agreement', variantKey: 'AGREEMENT' }),
+      ]))
+      .catch((err: any) => {
+        console.error('[Donation] widget render error:', err)
+        toast.error('결제창 로드에 실패했습니다. 다시 시도해주세요.')
+        setDonationStep(1)
+        paymentWidgetRef.current = null
+      })
   }, [donationStep, donationOrderData])
 
   // Step 2: 결제 최종 요청
@@ -1137,11 +1179,9 @@ function ReelCard({
     const amount = params.get('amount')
     if (donation === 'success' && paymentKey && orderId && amount) {
       window.history.replaceState({}, '', window.location.pathname)
+      // message/is_anonymous는 init 단계에서 DB에 이미 저장됨 — 재전송 불필요
       api.post('/api/donations/confirm', {
         paymentKey, orderId, amount: Number(amount),
-        stream_id: stream.id,
-        message: donationMessage || undefined,
-        is_anonymous: donationAnonymous,
       })
         .then(res => {
           if (res.data.success) toast.success(res.data.message || '후원이 완료되었습니다!')
@@ -1247,7 +1287,7 @@ function ReelCard({
            YouTube IFrame API는 style="width:100%;height:100%"를 인라인으로 설정하므로 !important 필요 */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!aspect-video"
+        className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!min-w-full [&_iframe]:!min-h-full [&_iframe]:!w-auto [&_iframe]:!h-auto [&_iframe]:!aspect-video"
       />
 
       {/* 로딩 → 입장 버튼 → 재생 중 (3단계 상태 관리) */}
@@ -1296,6 +1336,13 @@ function ReelCard({
 
       {/* Product overlay */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
+        {/* Top bar: 팀 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
+        {!isSeller && (
+          <div className="pointer-events-auto absolute top-12 left-3 z-20">
+            <TeamPointsBadge />
+          </div>
+        )}
+
         {/* Bottom gradient */}
         <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
@@ -1340,15 +1387,9 @@ function ReelCard({
                 <Share2 className="h-5 w-5 text-white/90" />
               </button>
 
-              {/* 후원하기 버튼 */}
-              {!isSeller && (
-                <button
-                  onClick={() => setDonationModal(true)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-all"
-                >
-                  <Heart className="h-3.5 w-3.5 fill-white" />
-                  후원
-                </button>
+              {/* 후원하기 버튼 (팀 포인트) */}
+              {!isSeller && stream?.id && (
+                <LiveDonation streamId={stream.id} />
               )}
             </div>
           </div>
@@ -2011,12 +2052,23 @@ export default function LivePageV2() {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-black">
-      <TopNav 
+      <TopNav
         viewers={viewerCount}
         sellerLinks={{
           youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
           instagram: reels[activeIndex]?.stream?.seller_instagram || undefined,
           kakao: reels[activeIndex]?.stream?.seller_kakao || undefined,
+        }}
+        onSubscribe={(platform) => {
+          const userName = localStorage.getItem('user_name') || '시청자'
+          setChatMessages(prev => [...prev, {
+            id: `sub-${Date.now()}`,
+            user_id: 'system',
+            user_name: '시스템',
+            message: `🎉 ${userName}님이 ${platform}를 구독하셨습니다!`,
+            created_at: new Date().toISOString(),
+            is_system: true,
+          }])
         }}
       />
       

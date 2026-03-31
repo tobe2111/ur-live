@@ -170,12 +170,10 @@ function CartPageContent() {
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('userId')
       localStorage.removeItem('userEmail')
-      console.log('[CartPage] ✅ JWT 파라미터 정리 완료')
     }
-    
+
     // ✅ ProtectedRoute가 /cart를 이미 보호함 → 여기서 requireLogin 불필요 (중복 리다이렉트 방지)
     // React Query가 자동으로 데이터 로딩
-    console.log('[CartPage] 🔄 장바구니 데이터 새로고침')
     refetch()
   }, [])
   

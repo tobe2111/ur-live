@@ -19,6 +19,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { AuthUser } from '@/worker/middleware/auth';
+import { ALLOWED_ORIGINS } from '@/shared/constants';
 
 type Bindings = {
   DB: D1Database;
@@ -31,9 +32,33 @@ type Variables = {
 
 export const wishlistRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
+wishlistRoutes.use('*', cors({
+  origin: [...ALLOWED_ORIGINS],
+  credentials: true,
+}));
+
+// ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
+async function ensureTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS wishlists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        product_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT (datetime('now')),
+        UNIQUE(user_id, product_id)
+      )
+    `).run();
+  } catch { /* 이미 존재 */ }
+  try {
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlists(user_id)`).run();
+  } catch { /* 이미 존재 */ }
+}
+
 // ── GET /api/wishlists  (인증 기반 내 위시리스트 - useWishlist hook) ───────────
-wishlistRoutes.get('/', cors(), requireAuth(), async (c) => {
+wishlistRoutes.get('/', requireAuth(), async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
   try {
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -61,8 +86,9 @@ wishlistRoutes.get('/', cors(), requireAuth(), async (c) => {
 });
 
 // ── POST /api/wishlists/toggle  (useToggleWishlist hook) ──────────────────────
-wishlistRoutes.post('/toggle', cors(), requireAuth(), async (c) => {
+wishlistRoutes.post('/toggle', requireAuth(), async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
   try {
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -89,8 +115,9 @@ wishlistRoutes.post('/toggle', cors(), requireAuth(), async (c) => {
 });
 
 // ── DELETE /api/wishlists  (useClearWishlist hook - 전체 비우기) ──────────────
-wishlistRoutes.delete('/', cors(), requireAuth(), async (c) => {
+wishlistRoutes.delete('/', requireAuth(), async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
   try {
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
@@ -103,8 +130,9 @@ wishlistRoutes.delete('/', cors(), requireAuth(), async (c) => {
 });
 
 // 찜하기 추가
-wishlistRoutes.post('/', cors(), requireAuth(), async (c) => {
+wishlistRoutes.post('/', requireAuth(), async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
 
   try {
     const authUser = getCurrentUser(c);
@@ -148,8 +176,9 @@ wishlistRoutes.post('/', cors(), requireAuth(), async (c) => {
 });
 
 // 찜하기 삭제 (wishlist ID)
-wishlistRoutes.delete('/:id', cors(), requireAuth(), async (c) => {
+wishlistRoutes.delete('/:id', requireAuth(), async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
 
   try {
     const id = c.req.param('id');
@@ -175,8 +204,9 @@ wishlistRoutes.delete('/:id', cors(), requireAuth(), async (c) => {
 });
 
 // 찜하기 삭제 (상품 ID)
-wishlistRoutes.delete('/product/:productId', cors(), requireAuth(), async (c) => {
+wishlistRoutes.delete('/product/:productId', requireAuth(), async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
 
   try {
     const productId = c.req.param('productId');
@@ -200,8 +230,9 @@ wishlistRoutes.delete('/product/:productId', cors(), requireAuth(), async (c) =>
 });
 
 // 사용자별 위시리스트 조회
-wishlistRoutes.get('/:userId', cors(), async (c) => {
+wishlistRoutes.get('/:userId', async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
 
   try {
     const userId = c.req.param('userId');
@@ -237,8 +268,9 @@ wishlistRoutes.get('/:userId', cors(), async (c) => {
 });
 
 // 찜 여부 확인
-wishlistRoutes.get('/check/:userId/:productId', cors(), async (c) => {
+wishlistRoutes.get('/check/:userId/:productId', async (c) => {
   const { DB } = c.env;
+  await ensureTable(DB);
 
   try {
     const userId = c.req.param('userId');

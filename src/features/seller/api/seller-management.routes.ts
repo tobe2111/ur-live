@@ -962,6 +962,23 @@ sellerManagementRoutes.get('/settlements/stats', async (c) => {
   }
 });
 
+// ── GET /api/seller/settlements/summary ─────────────────────────────────────
+// 셀러 정산 요약: 미정산 금액, 마지막 정산, 누적 정산
+sellerManagementRoutes.get('/settlements/summary', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 401);
+
+  try {
+    const { getSellerSettlementSummary } = await import('@/lib/settlement-automation');
+    const summary = await getSellerSettlementSummary(db, sellerId);
+    return c.json({ success: true, data: summary });
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ── GET /api/seller/dashboard/stats ─────────────────────────────────────────
 // 셀러 대시보드 요약 통계 (SellerDashboardPage에서 호출)
 sellerManagementRoutes.get('/dashboard/stats', async (c) => {
@@ -1239,7 +1256,7 @@ sellerManagementRoutes.post('/alimtalk', async (c) => {
       ).bind(sellerId, kakao_channel_id, channel_name, sender_key || null, phone_number).run();
     }
 
-    return c.json({ success: true, message: '알림톡 계정이 등록되었습니다. 관리자 승인 후 활성화됩니다.' });
+    return c.json({ success: true, message: '브랜드메시지 계정이 등록되었습니다. 관리자 승인 후 활성화됩니다.' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -1285,7 +1302,7 @@ sellerManagementRoutes.post('/alimtalk/test', async (c) => {
       `SELECT id, sender_key, status FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
     ).bind(sellerId).first<{ id: number; sender_key: string; status: string }>();
 
-    if (!account) return c.json({ success: false, error: '알림톡 계정이 없습니다.' }, 400);
+    if (!account) return c.json({ success: false, error: '브랜드메시지 계정이 없습니다.' }, 400);
     if (account.status !== 'active') return c.json({ success: false, error: '계정이 활성 상태가 아닙니다. 관리자 승인을 기다려주세요.' }, 400);
 
     // 테스트 발송은 Aligo API 키가 설정되어 있어야 함
@@ -1304,7 +1321,7 @@ sellerManagementRoutes.post('/alimtalk/test', async (c) => {
         senderKey: account.sender_key || '',
         templateCode: 'test',
         to: phone,
-        message: '[테스트] 알림톡 발송 테스트입니다. ur-live에서 발송되었습니다.',
+        message: '[테스트] 브랜드메시지 발송 테스트입니다. ur-live에서 발송되었습니다.',
       }
     );
 

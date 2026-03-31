@@ -135,7 +135,7 @@ export default function AdminAlimtalkPricingPage() {
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">알림톡 데이터를 불러오는 중...</p>
+          <p className="text-sm text-gray-500">브랜드메시지 데이터를 불러오는 중...</p>
         </div>
       </div>
     )

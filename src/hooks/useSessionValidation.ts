@@ -33,23 +33,17 @@ export function useSessionValidation() {
     
     const validateJwtSession = async () => {
       // 중복 호출 방지
-      if (isValidating) {
-        console.log('[SessionValidation] ⏸️ 이미 검증 중, 스킵')
-        return
-      }
-      
-      // 1. 로그인 처리 중이거나 인증 초기화 전에는 검증 스킵
-      if (isProcessingLogin || !isAuthReady) {
-        console.log('[SessionValidation] ⏳ 인증 초기화 대기 중, JWT 세션 검증 스킵')
-        return
-      }
+      if (isValidating) return
 
-      // 2. JWT 토큰이 없으면 검증 불필요
+      // 1. 로그인 처리 중이거나 인증 초기화 전에는 검증 스킵
+      if (isProcessingLogin || !isAuthReady) return
+
+      // 2. JWT 토큰이 없거나, 현재 유저 타입이 일반 유저(카카오 로그인)면 검증 스킵
+      // 카카오 로그인 유저는 Firebase 인증을 사용하므로 JWT 검증 불필요
       const accessToken = getAccessToken()
-      if (!accessToken) {
-        console.log('[SessionValidation] ℹ️ JWT 액세스 토큰 없음, 검증 스킵')
-        return
-      }
+      const userType = getUserType()
+      if (!accessToken) return
+      if (userType === 'user' || !userType) return  // 일반 유저는 Firebase 기반이므로 스킵
 
       isValidating = true
       
@@ -57,9 +51,7 @@ export function useSessionValidation() {
         // 3. JWT 토큰 검증 (백엔드 /api/auth/validate 엔드포인트)
         const response = await api.get('/api/auth/validate')
         
-        if (response.data.valid) {
-          console.log('[SessionValidation] ✅ JWT 토큰 유효:', response.data.user)
-        }
+        // JWT token validated successfully
       } catch (error: any) {
         console.error('[SessionValidation] ❌ JWT 검증 실패:', error)
 
@@ -95,10 +87,7 @@ export function useSessionValidation() {
 
     // 6. ✅ interval은 한 번만 생성 (의존성 없음)
     // 인증 준비 완료 후에만 검증 시작
-    if (!isAuthReady) {
-      console.log('[SessionValidation] ⏸️ 인증 초기화 대기 중')
-      return
-    }
+    if (!isAuthReady) return
 
     // 7. 10분마다 JWT 세션 검증 실행 (5분 → 10분으로 변경하여 429 방지)
     const interval = setInterval(validateJwtSession, 10 * 60 * 1000)

@@ -1,17 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
 
-// 🔥 Toss Payments V1 SDK (window.PaymentWidget 전역 함수 방식)
-declare global {
-  interface Window {
-    PaymentWidget: (clientKey: string, customerKey: string) => any
-  }
-}
-
 interface TossPaymentWidgetProps {
   userId: string
+  clientKey: string
   cartItems: Array<{
     id: string | number
     product_id: string | number
@@ -25,198 +20,181 @@ interface TossPaymentWidgetProps {
   }>
   totalAmount: number
   shippingFee: number
+  /** Called before requestPayment — use this to create the order in the DB */
+  onBeforePayment?: (orderId: string) => Promise<void>
   onPaymentSuccess: (orderId: string, paymentKey: string, amount: number) => void
   onPaymentError: (error: string) => void
 }
 
-const TOSS_CLIENT_KEY = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
-
 export function TossPaymentWidget({
   userId,
+  clientKey,
   cartItems,
   totalAmount,
   shippingFee,
+  onBeforePayment,
   onPaymentSuccess,
   onPaymentError
 }: TossPaymentWidgetProps) {
   const { t } = useTranslation()
-  const [widgets, setWidgets] = useState<any>(null)
+  const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null)
   const [isRendered, setIsRendered] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const hasInitialized = useRef(false)
+  const widgetsRef = useRef<TossPaymentsWidgets | null>(null)
 
-  // 1️⃣ SDK 초기화 및 인스턴스 생성
+  // 1️⃣ SDK 초기화 (V2 위젯)
   useEffect(() => {
     if (!userId || cartItems.length === 0 || hasInitialized.current) {
       return
     }
 
-    async function fetchPaymentWidgets() {
+    let cancelled = false
+
+    async function initWidgets() {
       try {
-        console.log('[TossPayments] 초기화 시작')
+        const sanitizedUserId = String(userId)
+          .replace(/[^a-zA-Z0-9\-_=.@]/g, '')
+          .substring(0, 44)
 
-        // ✅ Wait for SDK to load with retry mechanism
-        let retries = 0
-        const maxRetries = 30 // 3 seconds
-        
-        while (typeof window.PaymentWidget === 'undefined' && retries < maxRetries) {
-          console.log(`[TossPayments] SDK 로딩 대기 중... (${retries + 1}/${maxRetries})`)
-          await new Promise(resolve => setTimeout(resolve, 100))
-          retries++
-        }
-
-        if (typeof window.PaymentWidget === 'undefined') {
-          throw new Error('TossPayments SDK failed to load after 3 seconds')
-        }
-
-        // ✅ Sanitize userId to meet TossPayments requirements
-        // CustomerKey format: 영문 대소문자, 숫자, 특수문자('-', '_', '=', '.', '@')로 2~50자
-        // Remove any invalid characters and ensure proper format
-        
-        // Ensure userId is a string
-        const userIdString = String(userId || '')
-        
-        if (!userIdString) {
-          throw new Error('userId is required but was empty')
-        }
-        
-        const sanitizedUserId = userIdString
-          .replace(/[^a-zA-Z0-9\-_=.@]/g, '') // Remove invalid characters
-          .substring(0, 44) // Ensure we have room for 'user_' prefix (max 50 chars total)
-        
         if (sanitizedUserId.length < 2) {
-          throw new Error(`userId "${userIdString}" is too short after sanitization`)
+          throw new Error('userId is too short after sanitization')
         }
-        
-        const customerKey = `user_${sanitizedUserId}`
-        
-        console.log('[TossPayments] CustomerKey:', customerKey, 'Length:', customerKey.length)
-        
-        const widgetsInstance = window.PaymentWidget(TOSS_CLIENT_KEY, customerKey)
-        console.log('[TossPayments] ✅ 인스턴스 생성 완료')
 
+        // customerKey: 비회원 결제가 아닌 경우 고객 식별 키 사용
+        const customerKey = `user_${sanitizedUserId}`
+
+        const tossPayments = await loadTossPayments(clientKey)
+        const widgetsInstance = tossPayments.widgets({ customerKey })
+
+        if (cancelled) return
+
+        widgetsRef.current = widgetsInstance
         setWidgets(widgetsInstance)
         hasInitialized.current = true
-      } catch (err: any) {
-        console.error('[TossPayments] ❌ 초기화 실패:', err)
-        
-        // Enhanced error handling
-        let userFriendlyError = t('payment.initError') || '결제 초기화 실패'
-        
-        if (err.message?.includes('network') || err.message?.includes('ERR_NETWORK')) {
-          userFriendlyError = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
-        } else if (err.message?.includes('400') || err.message?.includes('auth')) {
-          userFriendlyError = '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
-        } else if (err.message?.includes('SDK failed to load')) {
-          userFriendlyError = '결제 시스템을 불러오지 못했습니다. 페이지를 새로고침해주세요.'
-        } else if (err.message?.includes('CustomerKey')) {
-          userFriendlyError = '사용자 인증 정보가 올바르지 않습니다. 다시 로그인해주세요.'
-        }
-        
-        setErrorMessage(userFriendlyError)
+      } catch (err: unknown) {
+        if (cancelled) return
+        console.error('[TossPayments] 초기화 실패:', err)
+        const errMsg = err instanceof Error ? err.message : ''
+        const msg = errMsg.includes('network')
+          ? '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
+          : errMsg.includes('auth') || errMsg.includes('400')
+            ? '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
+            : t('payment.initError') || '결제 초기화 실패'
+        setErrorMessage(msg)
         setLoadingState('error')
-        onPaymentError(userFriendlyError)
+        onPaymentError(msg)
       }
     }
 
-    fetchPaymentWidgets()
-  }, [userId, cartItems, onPaymentError, t])
+    initWidgets()
 
-  // 2️⃣ 결제 UI 렌더링
+    return () => {
+      cancelled = true
+    }
+  }, [userId, clientKey, cartItems, onPaymentError, t])
+
+  // 언마운트 시 위젯 DOM 정리
+  useEffect(() => {
+    return () => {
+      widgetsRef.current = null
+      hasInitialized.current = false
+    }
+  }, [])
+
+  // 2️⃣ 결제 UI 렌더링 (V2: setAmount → renderPaymentMethods → renderAgreement)
   useEffect(() => {
     if (!widgets || isRendered) {
       return
     }
 
-    async function renderPaymentWidgets() {
+    async function renderWidgets() {
       try {
-        console.log('[TossPayments] UI 렌더링 시작')
-
         const finalAmount = totalAmount + shippingFee
 
-        // DOM 요소 확인 (최대 2초 대기)
-        let attempts = 0
-        const checkElement = setInterval(() => {
-          const paymentMethodEl = document.getElementById('payment-method')
-          const agreementEl = document.getElementById('agreement')
+        // 결제 금액 설정 (KRW, 정수)
+        await widgets.setAmount({ currency: 'KRW', value: Math.round(finalAmount) })
 
-          if (paymentMethodEl && agreementEl) {
-            clearInterval(checkElement)
-            console.log('[TossPayments] ✅ DOM 요소 발견!')
+        // 결제 수단 UI 렌더링
+        await widgets.renderPaymentMethods({
+          selector: '#payment-method',
+          variantKey: 'DEFAULT'
+        })
 
-            // 결제 UI 렌더링
-            widgets.renderPaymentMethods(
-              '#payment-method',
-              { value: finalAmount },
-              { variantKey: 'DEFAULT' }
-            )
+        // 이용약관 동의 UI 렌더링
+        await widgets.renderAgreement({
+          selector: '#agreement',
+          variantKey: 'AGREEMENT'
+        })
 
-            widgets.renderAgreement('#agreement', { variantKey: 'AGREEMENT' })
-
-            console.log('[TossPayments] ✅ UI 렌더링 완료')
-            setIsRendered(true)
-            setLoadingState('ready')
-          }
-
-          attempts++
-          if (attempts > 20) {
-            clearInterval(checkElement)
-            console.error('[TossPayments] ❌ DOM 요소를 찾을 수 없음')
-            onPaymentError(t('payment.renderError') || 'UI 렌더링 실패')
-          }
-        }, 100)
-      } catch (err) {
-        console.error('[TossPayments] ❌ 렌더링 실패:', err)
-        onPaymentError(t('payment.renderError') || 'UI 렌더링 실패')
+        setIsRendered(true)
+        setLoadingState('ready')
+      } catch (err: unknown) {
+        console.error('[TossPayments] 렌더링 실패:', err)
+        const msg = t('payment.renderError') || 'UI 렌더링 실패'
+        setErrorMessage(msg)
+        setLoadingState('error')
+        onPaymentError(msg)
       }
     }
 
-    renderPaymentWidgets()
+    renderWidgets()
   }, [widgets, isRendered, totalAmount, shippingFee, onPaymentError, t])
 
-  // 3️⃣ 결제 요청 함수
-  const handlePayment = async () => {
-    if (!widgets) {
-      onPaymentError(t('payment.widgetNotReady') || '결제 위젯이 준비되지 않았습니다')
-      return
-    }
+  // 3️⃣ 금액 변경 시 위젯 금액 업데이트
+  useEffect(() => {
+    if (!widgets || !isRendered) return
+    const finalAmount = Math.round(totalAmount + shippingFee)
+    widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: unknown) => {
+      console.error('[TossPayments] 금액 업데이트 실패:', err)
+    })
+  }, [totalAmount, shippingFee, isRendered, widgets])
 
-    if (isProcessing) {
-      return
-    }
+  // 4️⃣ 결제 요청
+  const handlePayment = useCallback(async () => {
+    if (!widgets || loadingState !== 'ready' || isProcessing) return
 
     try {
       setIsProcessing(true)
-      console.log('[TossPayments] 결제 요청 시작')
 
-      // ✅ Generate Toss Payments compliant orderId
       const orderId = generateOrderId(userId)
-      console.log('[TossPayments] ✅ Generated orderId:', orderId, 'Length:', orderId.length)
-      
+
       const orderName = cartItems.length === 1
         ? cartItems[0].product_name
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
 
-      const finalAmount = totalAmount + shippingFee
+      // 결제 전 주문 생성 (DB에 먼저 저장 → Toss 리다이렉트 전 주문 보장)
+      if (onBeforePayment) {
+        await onBeforePayment(orderId)
+      }
 
+      // Toss 위젯 결제 요청 (리다이렉트 방식)
       await widgets.requestPayment({
         orderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
         customerEmail: getUserEmail() || undefined,
-        customerName: getUserNameSync() || undefined
+        customerName: getUserNameSync() || undefined,
       })
 
-      // successUrl로 리다이렉트됨 (onPaymentSuccess는 리다이렉트 후 호출)
-    } catch (err: any) {
-      console.error('[TossPayments] ❌ 결제 요청 실패:', err)
+      // 리다이렉트 방식이므로 이 아래 코드는 실행되지 않음
+    } catch (err: unknown) {
+      console.error('[TossPayments] 결제 요청 실패:', err)
       setIsProcessing(false)
-      onPaymentError(err?.message || t('payment.requestError') || '결제 요청 실패')
+      const errObj = err as Record<string, unknown> | undefined
+      // 사용자가 결제를 직접 취소한 경우 에러 표시하지 않음
+      if (errObj?.code === 'USER_CANCEL') return
+      // INVALID_ORDER_ID: orderId 형식 오류
+      if (errObj?.code === 'INVALID_ORDER_ID') {
+        onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
+        return
+      }
+      onPaymentError((errObj?.message as string) || t('payment.requestError') || '결제 요청 실패')
     }
-  }
+  }, [widgets, loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
 
   return (
     <div className="space-y-6">
@@ -254,7 +232,6 @@ export function TossPaymentWidget({
         )}
       </button>
 
-      {/* Error state UI */}
       {loadingState === 'error' && errorMessage && (
         <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-start gap-3">
@@ -265,8 +242,8 @@ export function TossPaymentWidget({
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-red-800">{errorMessage}</p>
-              <button 
-                onClick={() => window.location.reload()} 
+              <button
+                onClick={() => window.location.reload()}
                 className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium underline"
               >
                 페이지 새로고침

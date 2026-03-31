@@ -4,6 +4,8 @@
 // Docs: https://docs.tosspayments.com/reference
 // ============================================================
 
+import { TOSS_PAYMENT_URL } from '../../shared/constants';
+
 export interface TossCancelRequest {
   cancelReason: string;
   cancelAmount?: number;       // 부분 취소 금액 (미입력 시 전액 취소)
@@ -31,7 +33,7 @@ export interface TossApiError {
   message: string;
 }
 
-const TOSS_API_BASE = 'https://api.tosspayments.com/v1/payments';
+const TOSS_API_BASE = `${TOSS_PAYMENT_URL}/payments`;
 
 /**
  * Basic Auth 헤더 생성 (Toss 방식: secretKey + ':' → Base64)
@@ -99,11 +101,115 @@ export async function tossCancelPayment(
 }
 
 /**
- * Toss 취소 결과에서 첫 번째 cancel 항목을 반환합니다.
+ * Toss 취소 결과에서 가장 최근 cancel 항목을 반환합니다.
  */
 export function getLatestCancel(
   response: TossPaymentCancelResponse,
 ): TossPaymentCancelResponse['cancels'][0] | undefined {
   // Toss는 가장 최근 취소를 배열 마지막에 반환
   return response.cancels[response.cancels.length - 1];
+}
+
+// ============================================================
+// 결제 조회 API
+// ============================================================
+
+export interface TossPaymentInfo {
+  paymentKey: string;
+  orderId: string;
+  orderName: string;
+  status: string;
+  totalAmount: number;
+  method: string;
+  approvedAt: string;
+  requestedAt: string;
+  receipt?: { url: string };
+  cancels?: TossPaymentCancelResponse['cancels'];
+}
+
+/**
+ * Toss Payments 결제 조회 API — paymentKey로 결제 상태 확인
+ * 결제 승인 후 상태를 검증하거나 영수증 URL을 조회할 때 사용합니다.
+ *
+ * @param paymentKey - Toss paymentKey
+ * @param secretKey  - TOSS_SECRET_KEY
+ */
+export async function tossGetPayment(
+  paymentKey: string,
+  secretKey: string,
+): Promise<{ success: true; data: TossPaymentInfo } | { success: false; code: string; message: string }> {
+  const url = `${TOSS_API_BASE}/${encodeURIComponent(paymentKey)}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': makeTossAuthHeader(secretKey),
+      },
+    });
+  } catch (networkErr) {
+    return {
+      success: false,
+      code: 'NETWORK_ERROR',
+      message: networkErr instanceof Error ? networkErr.message : 'Network error',
+    };
+  }
+
+  if (res.ok) {
+    const data = await res.json() as TossPaymentInfo;
+    return { success: true, data };
+  }
+
+  let errBody: TossApiError = { code: 'UNKNOWN', message: 'Unknown Toss error' };
+  try {
+    errBody = await res.json() as TossApiError;
+  } catch {
+    // JSON 파싱 실패 시 기본값 유지
+  }
+
+  return { success: false, code: errBody.code, message: errBody.message };
+}
+
+/**
+ * Toss Payments 결제 조회 API — orderId로 결제 상태 확인
+ *
+ * @param orderId   - 주문번호 (우리 시스템의 order_number)
+ * @param secretKey - TOSS_SECRET_KEY
+ */
+export async function tossGetPaymentByOrderId(
+  orderId: string,
+  secretKey: string,
+): Promise<{ success: true; data: TossPaymentInfo } | { success: false; code: string; message: string }> {
+  const url = `${TOSS_API_BASE}/orders/${encodeURIComponent(orderId)}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': makeTossAuthHeader(secretKey),
+      },
+    });
+  } catch (networkErr) {
+    return {
+      success: false,
+      code: 'NETWORK_ERROR',
+      message: networkErr instanceof Error ? networkErr.message : 'Network error',
+    };
+  }
+
+  if (res.ok) {
+    const data = await res.json() as TossPaymentInfo;
+    return { success: true, data };
+  }
+
+  let errBody: TossApiError = { code: 'UNKNOWN', message: 'Unknown Toss error' };
+  try {
+    errBody = await res.json() as TossApiError;
+  } catch {
+    // JSON 파싱 실패 시 기본값 유지
+  }
+
+  return { success: false, code: errBody.code, message: errBody.message };
 }

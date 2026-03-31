@@ -387,7 +387,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
     try {
       const { q, params } = buildWhere(`
         SELECT o.id, o.order_number, o.user_id, o.seller_id,
-               COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+               o.total_amount as total_amount,
                COALESCE(o.status,'pending') as status,
                COALESCE(o.payment_status,'pending') as payment_status,
                COALESCE(o.payment_method,'') as payment_method,
@@ -892,7 +892,7 @@ adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
       return c.json({ success: true, data: { rows: [], summary: { total_orders: 0, total_qty: 0, total_revenue: 0, total_supply_cost: 0 } } });
     }
 
-    let where = "sp.supply_source_id IS NOT NULL AND o.payment_status IN ('approved','APPROVED','paid','PAID')";
+    let where = "sp.supply_source_id IS NOT NULL AND o.status IN ('DONE','PAID','DELIVERED')";
     const params: (string | number)[] = [];
     if (supplyProductId) { where += ' AND sp.supply_source_id = ?'; params.push(supplyProductId); }
     if (sellerId) { where += ' AND sp.seller_id = ?'; params.push(sellerId); }
@@ -985,7 +985,7 @@ adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
   };
 
   const [sales, orders, live] = await Promise.all([
-    safe<SalesRow>(`SELECT COALESCE(SUM(COALESCE(total_amount, total_price, 0)),0) as total FROM orders WHERE DATE(created_at)=? AND COALESCE(payment_status,'pending')='approved'`, [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at)=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
     safe<CountRow>('SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
   ]);
@@ -1020,19 +1020,19 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     let overview: SettlementOverviewRow[];
     const fullOverview = await safeFull<SettlementOverviewRow>(`
       SELECT COUNT(*) as total_orders,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
+             COALESCE(SUM(o.total_amount),0) as total_sales,
+             COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
+             COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
       FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
-      WHERE COALESCE(o.payment_status,'pending')='approved' ${df}`);
+      WHERE o.status IN ('DONE','PAID','DELIVERED') ${df}`);
     if (fullOverview !== null) {
       overview = fullOverview;
     } else {
       overview = await safeFallback<SettlementOverviewRow>(`
         SELECT COUNT(*) as total_orders,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
+               COALESCE(SUM(o.total_amount),0) as total_sales,
+               COALESCE(SUM(o.total_amount*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
+               COALESCE(SUM(o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
         WHERE 1=1 ${df}`);
     }
@@ -1047,7 +1047,7 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
              COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount,
              COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as pending_amount,
              COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as settled_amount
-      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND COALESCE(o.payment_status,'pending')='approved' ${df}
+      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.status IN ('DONE','PAID','DELIVERED') ${df}
       GROUP BY s.id ORDER BY total_sales DESC`);
     if (fullSellers !== null) {
       sellers = fullSellers;
@@ -1087,19 +1087,19 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     const buildQuery = (withNewCols: boolean) => {
       let q = withNewCols
         ? `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
-                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  o.total_amount as total_amount,
                   COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-                  COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
-                  COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
+                  o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
+                  o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
                   COALESCE(o.settlement_status,'pending') as settlement_status,
                   o.settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
-           WHERE COALESCE(o.payment_status,'pending')='approved'`
+           WHERE o.status IN ('DONE','PAID','DELIVERED')`
         : `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
-                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  o.total_amount as total_amount,
                   ${DEFAULT_COMMISSION_RATE} as commission_rate,
-                  COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
-                  COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
+                  o.total_amount*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
+                  o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
                   'pending' as settlement_status,
                   NULL as settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
@@ -1166,6 +1166,48 @@ adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
   }
 });
 
+// ─── 정산 자동 실행 (Auto-settlement execution) ──────────────────────────────
+
+adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({}));
+    const { calculateAutoSettlement, executeSettlement } = await import('@/lib/settlement-automation');
+
+    // Preview mode: if dry_run query param is set, only calculate without executing
+    const dryRun = c.req.query('dry_run') === 'true';
+
+    if (dryRun) {
+      const preview = await calculateAutoSettlement(
+        DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
+      );
+      const totalSales = preview.reduce((s, r) => s + r.total_sales, 0);
+      const totalCommission = preview.reduce((s, r) => s + r.commission_amount, 0);
+      const totalSettlement = preview.reduce((s, r) => s + r.settlement_amount, 0);
+      const totalOrders = preview.reduce((s, r) => s + r.total_orders, 0);
+      return c.json({
+        success: true,
+        data: {
+          dry_run: true,
+          sellers: preview,
+          total_orders: totalOrders,
+          total_sales: totalSales,
+          total_commission: totalCommission,
+          total_settlement: totalSettlement,
+        },
+      });
+    }
+
+    const result = await executeSettlement(
+      DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
+    );
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ─── 정산 CSV 내보내기 ────────────────────────────────────────────────────────
 
 adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
@@ -1176,15 +1218,16 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
 
     let query = `
       SELECT o.order_number, s.name as seller_name, s.business_name,
-             COALESCE(o.total_amount, o.total_price, 0), COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-             ROUND(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as commission_amount,
-             ROUND(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)) as seller_amount,
-             COALESCE(o.settlement_status,'pending') as settlement_status,
+             o.total_amount,
+             COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             ROUND(o.total_amount * COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100) as commission_amount,
+             ROUND(o.total_amount * (1 - COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100)) as seller_amount,
+             COALESCE(o.settlement_status, 'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o
       LEFT JOIN sellers s ON o.seller_id = s.id
       LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.payment_status = 'approved'
+      WHERE o.status IN ('DONE', 'PAID', 'DELIVERED')
     `;
     const params: (string | number | null)[] = [];
     if (period === 'today') { query += ' AND DATE(o.created_at) = ?'; params.push(new Date().toISOString().split('T')[0]); }
@@ -1221,6 +1264,114 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
         'Content-Disposition': `attachment; filename="settlement_${period}_${Date.now()}.csv"`,
       },
     });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ─── 어드민 주문 상태 변경 ─────────────────────────────────────────────────────
+
+// PATCH /orders/:orderNumber/status — 주문 상태 변경
+adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+    const { status, cancel_reason } = await c.req.json<{ status: string; cancel_reason?: string }>();
+
+    const validStatuses = ['PENDING', 'PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'FAILED', 'REFUNDED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: `유효하지 않은 상태: ${status}` }, 400);
+    }
+
+    const orders = await executeQuery<{ id: number; status: string }>(
+      DB, 'SELECT id, status FROM orders WHERE order_number = ?', [orderNumber]
+    );
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    const updates: string[] = ['status = ?', 'updated_at = datetime(\'now\')'];
+    const params: (string | null)[] = [status];
+
+    if (status === 'CANCELLED' && cancel_reason) {
+      updates.push('cancel_reason = ?', 'cancelled_at = datetime(\'now\')');
+      params.push(cancel_reason);
+    }
+    if (status === 'DELIVERED') {
+      updates.push('delivered_at = datetime(\'now\')');
+    }
+
+    params.push(orderNumber);
+    await executeQuery(DB, `UPDATE orders SET ${updates.join(', ')} WHERE order_number = ?`, params);
+
+    // 취소 시 재고 복구
+    if (status === 'CANCELLED') {
+      const items = await executeQuery<{ product_id: number; quantity: number }>(
+        DB, 'SELECT product_id, quantity FROM order_items WHERE order_id = ?', [String(orders[0].id)]
+      );
+      for (const item of items) {
+        await executeQuery(DB, 'UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
+    return c.json({ success: true, data: { orderNumber, status } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /orders/:orderNumber/tracking — 운송장 등록
+adminManagementRoutes.put('/orders/:orderNumber/tracking', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+    const { tracking_number, shipping_company } = await c.req.json<{
+      tracking_number: string;
+      shipping_company: string;
+    }>();
+
+    if (!tracking_number || !shipping_company) {
+      return c.json({ success: false, error: '운송장 번호와 택배사를 입력해주세요' }, 400);
+    }
+
+    const orders = await executeQuery<{ id: number }>(
+      DB, 'SELECT id FROM orders WHERE order_number = ?', [orderNumber]
+    );
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    await executeQuery(DB,
+      `UPDATE orders SET tracking_number = ?, shipping_company = ?, status = 'SHIPPING',
+       shipped_at = datetime('now'), updated_at = datetime('now')
+       WHERE order_number = ?`,
+      [tracking_number, shipping_company, orderNumber]
+    );
+
+    return c.json({ success: true, data: { orderNumber, tracking_number, shipping_company, status: 'SHIPPING' } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PATCH /orders/bulk-status — 일괄 상태 변경
+adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const { order_numbers, status } = await c.req.json<{ order_numbers: string[]; status: string }>();
+
+    if (!order_numbers?.length || order_numbers.length > 100) {
+      return c.json({ success: false, error: '1~100개 주문을 선택해주세요' }, 400);
+    }
+
+    const validStatuses = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: `일괄 변경 가능 상태: ${validStatuses.join(', ')}` }, 400);
+    }
+
+    const placeholders = order_numbers.map(() => '?').join(',');
+    await executeQuery(DB,
+      `UPDATE orders SET status = ?, updated_at = datetime('now') WHERE order_number IN (${placeholders})`,
+      [status, ...order_numbers]
+    );
+
+    return c.json({ success: true, data: { updated: order_numbers.length, status } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }

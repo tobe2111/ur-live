@@ -51,8 +51,6 @@ export default function KakaoCallbackPage() {
       }
 
       try {
-        console.log('[KakaoCallback] 🔄 카카오 콜백 처리 시작')
-
         // 1. 백엔드로 code 전송 → Firebase Custom Token 수신
         const response = await api.post('/api/auth/kakao/callback', {
           code,
@@ -64,11 +62,9 @@ export default function KakaoCallbackPage() {
         }
 
         const { customToken, user } = response.data.data
-        console.log('[KakaoCallback] ✅ Custom Token 수신:', { userId: user.id, userName: user.name })
 
         // 2. Firebase Custom Token으로 로그인
         const userCredential = await signInWithCustomToken(customToken)
-        console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
 
         // ✅ 중복 처리 방지: signInWithCustomToken 직후 즉시 설정
         // (이후 getIdToken/updateProfile 중 onAuthStateChanged가 fired되어도 fast path 처리)
@@ -76,7 +72,6 @@ export default function KakaoCallbackPage() {
 
         // 3. ID Token 갱신 (Custom Claims 로드)
         const idToken = await userCredential.user.getIdToken(false)  // ✅ 캐시 사용 (이미 최신)
-        console.log('[KakaoCallback] ✅ ID Token 갱신 완료')
 
         // 3.5 ✅ Firebase User 프로필 업데이트 (displayName + photoURL)
         try {
@@ -85,7 +80,6 @@ export default function KakaoCallbackPage() {
             displayName: user.name,
             ...(user.profile_image ? { photoURL: user.profile_image } : {}),
           });
-          console.log('[KakaoCallback] ✅ Firebase User 프로필 업데이트:', user.name);
         } catch (e) {
           console.warn('[KakaoCallback] ⚠️ 프로필 업데이트 실패 (무시):', e);
         }
@@ -119,8 +113,6 @@ export default function KakaoCallbackPage() {
           idToken,
           '' // refreshToken은 Firebase에서 자동 관리
         )
-        console.log('[KakaoCallback] ✅ Store 업데이트 완료 (accessToken 설정됨)')
-
         // 6. returnUrl 결정 (state > localStorage > '/')
         let returnUrl = '/'
         if (state && state !== '/login' && state.startsWith('/')) {
@@ -130,7 +122,6 @@ export default function KakaoCallbackPage() {
           if (stored && stored !== '/login') returnUrl = stored
         }
         localStorage.removeItem('loginReturnUrl')
-        console.log('[KakaoCallback] 🔀 이동:', returnUrl)
 
         // 7. 임시 장바구니 복원 (비동기, 비차단)
         const tempCartItem = getTempCartItem()

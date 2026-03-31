@@ -11,7 +11,13 @@ export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [orderInfo, setOrderInfo] = useState<any>(null)
+  const [orderInfo, setOrderInfo] = useState<{
+    orderId?: string;
+    method?: string;
+    status?: string;
+    orders?: Array<{ payment_method?: string }>;
+    payment?: { method?: string };
+  } | null>(null)
   
   // ✅ BUG #4 FIX: Use a ref for the processing flag instead of state.
   // Using state inside a useEffect closure causes a stale-closure bug:
@@ -50,8 +56,8 @@ export default function PaymentSuccessPage() {
       const auth = await getFirebaseAuth()
 
       // Firebase v10+: authStateReady() 사용 가능 시 우선 사용
-      if (typeof (auth as any).authStateReady === 'function') {
-        await (auth as any).authStateReady()
+      if (typeof (auth as unknown as Record<string, unknown>).authStateReady === 'function') {
+        await (auth as unknown as { authStateReady: () => Promise<void> }).authStateReady()
       } else {
         // Fallback: onAuthStateChanged가 처음 발화할 때까지 대기
         await new Promise<void>((resolve) => {
@@ -95,101 +101,19 @@ export default function PaymentSuccessPage() {
       }
 
 
-      // 2️⃣ 장바구니 조회 (주문 데이터 생성을 위해 필수)
-      const cartResponse = await api.get('/api/cart')
-      // ✅ FIX: API response shape is { success, data: { items: [...], summary: {...} } }
-      // NOT { data: [] } — must extract .items array
-      const cartResData = cartResponse.data?.data
-      let cartItems: any[] = []
-      if (cartResData?.items && Array.isArray(cartResData.items)) {
-        cartItems = cartResData.items
-      } else if (Array.isArray(cartResData)) {
-        cartItems = cartResData
-      }
-      
-      // 💾 장바구니가 비어있으면 localStorage 백업에서 복원
-      if (cartItems.length === 0) {
-        const cartBackup = localStorage.getItem('checkoutCartBackup')
-        
-        if (cartBackup) {
-          try {
-            cartItems = JSON.parse(cartBackup)
-          } catch (e) {
-            console.warn('[PaymentSuccess] Cart backup parse failed:', e)
-          }
-        }
-        
-        // 여전히 비어있으면 에러
-        if (cartItems.length === 0) {
-          setError('주문 정보를 찾을 수 없습니다. 다시 시도해주세요.')
-          return
-        }
-      }
-
-      // 3️⃣ 주문 데이터 생성 (결제 승인 전에 필수!)
-      
-      // localStorage에서 배송지 정보 가져오기
-      const shippingAddressRaw = localStorage.getItem('checkoutShippingAddress') || ''
-      const shippingAddressDetail = localStorage.getItem('checkoutShippingAddressDetail') || ''
-      const recipientName = localStorage.getItem('checkoutRecipientName') || ''
-      const recipientPhone = localStorage.getItem('checkoutRecipientPhone') || ''
-      
-      // ✅ Full address JSON saved by CheckoutPage (includes postal_code)
-      let shippingAddressObj: any = {
-        postal_code: '',
-        address1: shippingAddressRaw,
-        address2: shippingAddressDetail,
-        country: 'KR',
-        recipient_name: recipientName,
-      }
-      try {
-        const savedFull = localStorage.getItem('checkoutShippingAddressFull')
-        if (savedFull) {
-          shippingAddressObj = JSON.parse(savedFull)
-        }
-      } catch (e) {
-        console.warn('[PaymentSuccess] Full address parse failed:', e)
-      }
-
-      // 주문 아이템 매핑 (worker/order.routes.ts createOrderSchema에 맞게)
-      const sellerIdForOrder = String(cartItems[0]?.seller_id || cartItems[0]?.sellerId || '')
-
-      const orderItems = cartItems.map((item: any) => ({
-        product_id: String(item.product_id || item.productId || ''),
-        quantity: Number(item.quantity) || 1,
-        options: item.option_value ? { value: item.option_value } : undefined,
-      }))
-
-      const orderData = {
-        seller_id: String(sellerIdForOrder || ''),
-        order_number: orderId!,
-        idempotency_key: orderId!,
-        items: orderItems,
-        shipping_address: shippingAddressObj,
-        shipping_name: recipientName,
-        shipping_phone: recipientPhone || '',
-      }
-
-
-      // DB에 주문 생성
-      const orderCreateResponse = await api.post('/api/orders', orderData)
-
-      if (!orderCreateResponse.data.success) {
-        setError('주문 생성에 실패했습니다.')
+      // 2️⃣ 결제 승인 요청 (주문은 CheckoutPage에서 결제 전에 이미 생성됨)
+      // 토스 리다이렉트에서 전달된 amount를 정수로 변환 (KRW는 소수점 없음)
+      const parsedAmount = Math.round(Number(amount))
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        setError('결제 금액이 유효하지 않습니다.')
         return
       }
 
-
-      // 4️⃣ 결제 승인 요청 (주문 생성 후!)
-      
-      const confirmData = {
+      const response = await api.post('/api/payments/confirm', {
         paymentKey,
         orderId,
-        amount: Number(amount) // ✅ 명시적으로 Number 타입으로 변환
-      }
-      
-      const response = await api.post('/api/payments/confirm', confirmData)
-
+        amount: parsedAmount,
+      })
 
       if (!response.data.success) {
         setError(response.data.error || '결제 승인에 실패했습니다.')
@@ -198,28 +122,19 @@ export default function PaymentSuccessPage() {
 
       const paymentData = response.data.data
       setOrderInfo(paymentData)
-      
-      // 5️⃣ 장바구니 비우기 및 백업 삭제
-      try {
-        if (cartItems.length > 0) {
-          // ✅ BUG #5 FIX: Server defines POST /api/cart/clear, not DELETE.
-          // Using api.delete('/api/cart/clear') returns 404/405.
-          await api.post('/api/cart/clear')
-        }
+
+      // 3️⃣ 장바구니 비우기 (바로구매 모드에서는 스킵)
+      const isDirectPurchase = sessionStorage.getItem('directPurchase') === 'true'
+      sessionStorage.removeItem('directPurchase')
+      if (!isDirectPurchase) try {
+        await api.post('/api/cart/clear')
         localStorage.removeItem('hasCartItems')
-        localStorage.removeItem('checkoutCartBackup')  // 백업 삭제
       } catch (cartErr) {
       }
 
-      // 6️⃣ 배송지 정보 localStorage 정리
-      localStorage.removeItem('checkoutShippingAddress')
-      localStorage.removeItem('checkoutShippingAddressDetail')
-      localStorage.removeItem('checkoutShippingAddressFull')
-      localStorage.removeItem('checkoutRecipientName')
-      localStorage.removeItem('checkoutRecipientPhone')
-
-    } catch (err: any) {
-      setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료
@@ -284,20 +199,20 @@ export default function PaymentSuccessPage() {
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-[#007aff]" />
                   주문 정보
                 </h2>
-                
+
                 <div className="space-y-2.5 sm:space-y-3">
-                  {/* 주문번호 - 모바일에서 세로 배치, 데스크톱에서 가로 배치 */}
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">주문번호</span>
-                    <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#007aff] font-mono tracking-tight">
+                  {/* 주문번호 */}
+                  <div className="flex justify-between items-start gap-3">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">주문번호</span>
+                    <span className="text-xs sm:text-sm font-semibold text-[#007aff] font-mono break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">결제 방법</span>
+
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">결제 방법</span>
                     <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f]">
-                      {orderInfo.method || '테스트'}
+                      {orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
                     </span>
                   </div>
 
@@ -320,7 +235,7 @@ export default function PaymentSuccessPage() {
               ) : (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm lg:text-base text-blue-900 leading-relaxed">
-                    🎉 <strong>데모 모드</strong>: 실제 결제가 진행되지 않았습니다. 테스트 목적으로만 사용하세요.
+                    주문이 정상적으로 완료되었습니다. 배송 현황은 주문 내역에서 확인하실 수 있습니다.
                   </p>
                 </div>
               )}

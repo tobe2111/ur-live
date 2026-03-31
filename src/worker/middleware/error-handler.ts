@@ -130,7 +130,7 @@ async function sendToSentry(
       body: envelope,
     });
 
-    console.log('[Error Handler] Sent to Sentry:', errorResponse.error);
+    // Error sent to Sentry
   } catch (err) {
     console.error('[Error Handler] Failed to send to Sentry:', err);
   }
@@ -174,7 +174,7 @@ async function sendToDiscord(
       body: JSON.stringify({ embeds: [embed] }),
     });
 
-    console.log('[Error Handler] Sent to Discord:', errorResponse.error);
+    // Error sent to Discord
   } catch (err) {
     console.error('[Error Handler] Failed to send to Discord:', err);
   }

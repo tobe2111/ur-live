@@ -46,6 +46,12 @@ export default function PaymentFailPage() {
       'ALREADY_APPROVED_PAYMENT': '이미 승인된 결제입니다.',
       'DUPLICATED_ORDER_ID': '이미 처리된 주문번호입니다. 다시 주문해주세요.',
       'FORBIDDEN_REQUEST': '허용되지 않은 요청입니다.',
+      'REJECT_TOSSPAY_INVALID_ACCOUNT': '토스머니 충전에 실패했습니다.',
+      'EXCEED_MAX_AUTH_COUNT': '인증 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.',
+      'NOT_AVAILABLE_PAYMENT': '결제가 불가능한 시간대입니다.',
+      'INVALID_REJECT_CARD': '카드 승인이 거절되었습니다. 카드사에 문의해주세요.',
+      'BELOW_MINIMUM_AMOUNT': '최소 결제 금액 미만입니다.',
+      'INVALID_CARD_COMPANY': '유효하지 않은 카드사입니다.',
     }
 
     return errorMessages[code] || message || '결제 처리 중 오류가 발생했습니다.'

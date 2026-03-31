@@ -37,8 +37,6 @@ googleRoutes.post('/register', cors(), async (c) => {
       return c.json({ success: false, error: 'Firebase ID token is required' }, 400);
     }
     
-    console.log('[Google Auth] Verifying Firebase ID token...');
-    
     // 1. Firebase ID Token 검증 (projectId 필요)
     const projectId = c.env.FIREBASE_PROJECT_ID;
     if (!projectId) {
@@ -50,8 +48,6 @@ googleRoutes.post('/register', cors(), async (c) => {
     if (!tokenPayload || !tokenPayload.sub) {
       return c.json({ success: false, error: 'Invalid Firebase ID token' }, 401);
     }
-    
-    console.log('[Google Auth] Token verified for user:', tokenPayload.email);
     
     // 2. Google 사용자 정보 추출
     const googleService = new GoogleAuthService(DB);
@@ -79,8 +75,6 @@ googleRoutes.post('/register', cors(), async (c) => {
     
     // 5. Firebase UID 저장
     await googleService.updateFirebaseUID(user.id, firebaseUID);
-    
-    console.log('[Google Auth] ✅ Login successful for user:', user.id);
     
     return c.json({
       success: true,

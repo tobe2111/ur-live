@@ -68,12 +68,10 @@ export default function LoginPage() {
   // ✅ 로그인 상태 확인 및 리다이렉트
   useEffect(() => {
     if (!isAuthReady) {
-      console.log('[LoginPage] ⏳ Auth 초기화 대기 중...')
       return
     }
 
     if (isLoggedIn && !hasRedirected.current) {
-      console.log('[LoginPage] ✅ 이미 로그인됨 - returnUrl로 리다이렉트:', returnUrlRef.current)
       hasRedirected.current = true
       navigate(returnUrlRef.current!, { replace: true })
     }
@@ -84,7 +82,6 @@ export default function LoginPage() {
     const urlParam = searchParams.get('returnUrl')
     if (urlParam) {
       sessionStorage.setItem('returnUrl', urlParam)
-      console.log('[LoginPage] 🎯 returnUrl 저장:', urlParam)
     }
 
     if (!isKR) return // GLOBAL에서는 Kakao SDK 불필요
@@ -135,9 +132,6 @@ export default function LoginPage() {
 
       const REDIRECT_URI = 'https://live.ur-team.com/auth/kakao/sync/callback'
 
-      console.log('[Kakao Login] 🔑 REST API Key:', KAKAO_REST_API_KEY.substring(0, 10) + '...')
-      console.log('[Kakao Login] 🔗 Redirect URI:', REDIRECT_URI)
-
       // returnUrl을 state로 전달
       const currentReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
@@ -157,20 +151,12 @@ export default function LoginPage() {
   // ✅ Kakao accessToken → Firebase customToken 처리
   async function processKakaoLogin(accessToken: string) {
     try {
-      console.log('[Kakao Login] 🔥 Firebase Custom Token 요청 시작')
-
       const response = await api.post('/api/auth/kakao/firebase', {
         accessToken: accessToken
       })
 
       if (response.data.success) {
         const { customToken, user: kakaoUser } = response.data
-
-        console.log('[Kakao Login] ✅ Firebase Custom Token 받기 완료:', {
-          userId: kakaoUser.id,
-          userName: kakaoUser.name,
-          hasCustomToken: !!customToken
-        })
 
         // ✅ Lazy load Firebase Auth
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
@@ -213,7 +199,6 @@ export default function LoginPage() {
         const savedReturnUrl = sessionStorage.getItem('returnUrl') || '/'
         sessionStorage.removeItem('returnUrl')
 
-        console.log('[Kakao Login] ✅ Firebase 로그인 성공:', kakaoUser.name, '→', savedReturnUrl)
         navigate(savedReturnUrl, { replace: true })
       } else {
         throw new Error(response.data.error || t('auth.loginError'))
@@ -242,8 +227,6 @@ export default function LoginPage() {
 
       // ✅ role에 따라 리다이렉트 경로 결정
       const { userRole } = isKR ? useAuthKR.getState() : useAuthWorld.getState()
-      console.log('[Email Login] ✅ 로그인 성공 - Role:', userRole)
-
       sessionStorage.removeItem('returnUrl')
 
       // role별 리다이렉트
@@ -312,8 +295,6 @@ export default function LoginPage() {
         photoURL: result.user.photoURL
       })
 
-      console.log('[Google Login] ✅ 성공:', result.user.email)
-
       sessionStorage.removeItem('returnUrl')
       navigate(returnUrl, { replace: true })
 
@@ -321,7 +302,6 @@ export default function LoginPage() {
       console.error('[Google Login] ❌ 실패:', error)
       if (error?.code === 'auth/popup-closed-by-user') {
         // 사용자가 팝업을 닫은 경우 — 에러 표시하지 않음
-        console.log('[Google Login] 사용자가 팝업을 닫았습니다')
       } else {
         setError(t('auth.googleLoginError'))
       }
@@ -374,7 +354,6 @@ export default function LoginPage() {
               /* Kakao Login Button (KR) */
               <button
                 onClick={() => {
-                  console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨!')
                   handleKakaoLogin()
                 }}
                 disabled={loading || !kakaoReady}

@@ -52,12 +52,10 @@ export async function getFirebaseAuth(): Promise<Auth> {
       // ✅ 무조건 browserLocalPersistence 설정 (세션 유지 핵심)
       try {
         await setPersistence(authInstance, browserLocalPersistence);
-        console.log('[Firebase Auth] ✅ Persistence set to browserLocalPersistence (세션 유지)');
       } catch (persistErr) {
         console.error('[Firebase Auth] ❌ Persistence 설정 실패:', persistErr);
       }
 
-      console.log('[Firebase Auth] ✅ Lazy loaded successfully');
       return authInstance;
     } catch (error) {
       authInitPromise = null; // 실패 시 재시도 허용
@@ -81,10 +79,7 @@ export async function signInWithCustomToken(token: string): Promise<UserCredenti
     
     // Set persistence to LOCAL to keep user logged in across browser sessions
     await setPersistence(auth, browserLocalPersistence);
-    console.log('[Firebase Auth] ✅ Persistence set to LOCAL');
-    
     const credential = await signInFn(auth, token);
-    console.log('[Firebase Auth] ✅ Sign in successful:', credential.user.uid);
     
     // Force token refresh in background
     credential.user.getIdToken(true).catch((err) => {
@@ -111,10 +106,7 @@ export async function signInWithEmailAndPassword(email: string, password: string
     
     // Set persistence to LOCAL to keep user logged in across browser sessions
     await setPersistence(auth, browserLocalPersistence);
-    console.log('[Firebase Auth] ✅ Persistence set to LOCAL');
-    
     const credential = await signInFn(auth, email, password);
-    console.log('[Firebase Auth] ✅ Email sign in successful:', credential.user.uid);
     return credential;
   } catch (error) {
     console.error('[Firebase Auth] ❌ Email sign in failed:', error);
@@ -134,7 +126,6 @@ export async function createUserWithEmailAndPassword(email: string, password: st
     const { createUserWithEmailAndPassword: createFn } = await import('firebase/auth');
     
     const credential = await createFn(auth, email, password);
-    console.log('[Firebase Auth] ✅ User created successfully:', credential.user.uid);
     return credential;
   } catch (error) {
     console.error('[Firebase Auth] ❌ User creation failed:', error);
@@ -153,15 +144,12 @@ export async function signInWithGoogle(): Promise<UserCredential> {
     
     // Set persistence to LOCAL to keep user logged in across browser sessions
     await setPersistence(auth, browserLocalPersistence);
-    console.log('[Firebase Auth] ✅ Persistence set to LOCAL');
-    
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
     
     const credential = await signInWithPopup(auth, provider);
     
-    console.log('[Firebase Auth] ✅ Google sign in successful:', credential.user.uid);
     return credential;
   } catch (error) {
     console.error('[Firebase Auth] ❌ Google sign in failed:', error);
@@ -180,7 +168,6 @@ export async function signOut(): Promise<void> {
     await signOutFn(auth);
     authInstance = null;     // Reset instance after sign out
     authInitPromise = null;  // Allow re-initialization
-    console.log('[Firebase Auth] ✅ Sign out successful');
   } catch (error) {
     console.error('[Firebase Auth] ❌ Sign out failed:', error);
     throw error;
@@ -197,7 +184,6 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     const { sendPasswordResetEmail: sendResetFn } = await import('firebase/auth');
     
     await sendResetFn(auth, email);
-    console.log('[Firebase Auth] ✅ Password reset email sent:', email);
   } catch (error) {
     console.error('[Firebase Auth] ❌ Password reset email failed:', error);
     throw error;

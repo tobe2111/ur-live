@@ -26,12 +26,6 @@ export function isSellerAuthenticated(): boolean {
   const token = getSellerToken()
   const userType = localStorage.getItem('user_type')
   
-  console.log('[SellerAuth] 🔍 Checking:', {
-    hasToken: !!token,
-    userType,
-    result: !!token && userType === 'seller'
-  })
-  
   return !!token && userType === 'seller'
 }
 
@@ -40,8 +34,6 @@ export function getSellerId(): string | null {
 }
 
 export function redirectToLogin(navigate: any) {
-  console.log('[SellerAuth] ❌ Not authenticated, redirecting to login')
-  
   // ✅ Clear only seller session (preserves User and Admin sessions)
   clearAuthData('seller')
   
@@ -49,11 +41,8 @@ export function redirectToLogin(navigate: any) {
 }
 
 export function logoutSeller(navigate: any) {
-  console.log('[SellerAuth] 🚪 Logging out seller...')
-  
   // ✅ Clear only seller session (preserves User and Admin sessions)
   clearAuthData('seller')
-  
-  console.log('[SellerAuth] ✅ Seller logged out (User/Admin sessions preserved)')
+
   navigate('/seller/login', { replace: true })
 }

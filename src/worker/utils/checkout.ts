@@ -1,3 +1,5 @@
+import { TOSS_PAYMENT_URL } from '../../shared/constants';
+
 // Cloudflare Worker용 결제 처리 유틸리티
 //
 // ⚠️ 참고: 실제 결제 승인은 features/payments/api/payment.routes.ts → confirmTossPayment() 경로로 처리됩니다.
@@ -106,7 +108,7 @@ export async function rollbackOrder(
       .bind('CANCELLED', orderId)
       .run()
 
-    console.log(`✅ 주문 롤백 완료: ${orderId}`)
+    // Order rollback completed
   } catch (error) {
     console.error(`❌ 주문 롤백 실패: ${orderId}`, error)
   }
@@ -122,7 +124,7 @@ export async function confirmTossPayment(
   secretKey: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+    const response = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${btoa(secretKey + ':')}`,
@@ -137,7 +139,7 @@ export async function confirmTossPayment(
       return { success: false, error: errBody.message || `Toss API error: ${response.status}` }
     }
 
-    console.log(`✅ Toss 결제 승인: ${orderId}, ${amount}원`)
+    // Toss payment confirmed
     return { success: true }
   } catch (error) {
     console.error('❌ Toss 결제 승인 실패:', error)
@@ -200,7 +202,7 @@ export async function processCheckout(
       ),
     ])
 
-    console.log(`✅ 주문 처리 완료: ${orderId}`)
+    // Checkout completed
     return { success: true, orderId }
   } catch (error) {
     // 에러 발생 시 롤백

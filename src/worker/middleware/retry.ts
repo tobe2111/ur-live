@@ -99,7 +99,6 @@ export async function retryWithBackoff<T>(
 
   for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
     try {
-      console.log(`[Retry] Attempt ${attempt + 1}/${opts.maxRetries + 1}`);
 
       // Execute function with timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -109,7 +108,6 @@ export async function retryWithBackoff<T>(
       const data = await Promise.race([fn(), timeoutPromise]);
 
       const totalDurationMs = Date.now() - startTime;
-      console.log(`[Retry] ✅ Success on attempt ${attempt + 1}, duration: ${totalDurationMs}ms`);
 
       return {
         success: true,
@@ -123,14 +121,12 @@ export async function retryWithBackoff<T>(
 
       // Check if error is retryable
       if (!isRetryableError(error, opts)) {
-        console.log('[Retry] Non-retryable error, aborting');
         break;
       }
 
       // Don't delay after last attempt
       if (attempt < opts.maxRetries) {
         const delayMs = calculateDelay(attempt, opts);
-        console.log(`[Retry] Waiting ${delayMs}ms before next attempt...`);
         await sleep(delayMs);
       }
     }
@@ -229,7 +225,6 @@ export async function withCircuitBreaker<T>(
 
   // Check if circuit should reset
   if (state.state === 'open' && Date.now() - state.lastFailureTime > resetTimeoutMs) {
-    console.log(`[CircuitBreaker:${name}] Transitioning to half-open`);
     state.state = 'half-open';
   }
 
@@ -243,9 +238,6 @@ export async function withCircuitBreaker<T>(
     const result = await fn();
 
     // Success - reset circuit breaker
-    if (state.state === 'half-open') {
-      console.log(`[CircuitBreaker:${name}] ✅ Half-open success, closing circuit`);
-    }
     state = { failures: 0, lastFailureTime: 0, state: 'closed' };
     circuitBreakers.set(name, state);
 

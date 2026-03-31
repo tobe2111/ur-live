@@ -108,19 +108,11 @@ export default function SellerLiveBroadcastPage() {
       setLoadError(null)
 
       // Load all data in parallel for faster loading
-      console.log('[LiveBroadcast] Loading data...')
       const [channelsRes, productsRes, streamsRes] = await Promise.allSettled([
         api.get('/api/seller/youtube/channels'),
         api.get('/api/seller/products'),
         api.get('/api/seller/streams'),
       ])
-
-      console.log('[LiveBroadcast] Channels result:', channelsRes.status,
-        channelsRes.status === 'fulfilled' ? channelsRes.value.data : (channelsRes as any).reason?.response?.data)
-      console.log('[LiveBroadcast] Products result:', productsRes.status,
-        productsRes.status === 'fulfilled' ? productsRes.value.data : (productsRes as any).reason?.message)
-      console.log('[LiveBroadcast] Streams result:', streamsRes.status,
-        streamsRes.status === 'fulfilled' ? streamsRes.value.data : (streamsRes as any).reason?.message)
 
       if (channelsRes.status === 'fulfilled' && channelsRes.value.data?.success) {
         setChannels(channelsRes.value.data.data || [])
@@ -172,8 +164,6 @@ export default function SellerLiveBroadcastPage() {
       return
     }
 
-    console.log('[LiveBroadcast] Creating stream:', { title: title.trim(), products: selectedProducts })
-
     try {
       setCreating(true)
 
@@ -185,7 +175,6 @@ export default function SellerLiveBroadcastPage() {
       }
 
       const response = await api.post('/api/seller/youtube/live/create', payload)
-      console.log('[LiveBroadcast] Create response:', response.data)
 
       if (response.data?.success) {
         setNewStream(response.data.data)

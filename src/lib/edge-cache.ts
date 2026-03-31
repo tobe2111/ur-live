@@ -127,9 +127,6 @@ export function edgeCache(options: CacheOptions) {
     let response = await cache.match(cacheKey);
 
     if (response) {
-      // 캐시 히트
-      console.log(`[Cache HIT] ${cacheKey}`);
-      
       // X-Cache 헤더 추가
       const newHeaders = new Headers(response.headers);
       newHeaders.set('X-Cache', 'HIT');
@@ -143,7 +140,6 @@ export function edgeCache(options: CacheOptions) {
     }
 
     // 2. 캐시 미스 - 실제 응답 생성
-    console.log(`[Cache MISS] ${cacheKey}`);
     await next();
 
     // 3. 응답 캐싱
@@ -185,7 +181,7 @@ export async function purgeCache(cacheKeys: string[]): Promise<void> {
     cacheKeys.map(key => cache.delete(key))
   );
   
-  console.log(`[Cache PURGE] Purged ${cacheKeys.length} keys`);
+  // Cache keys purged
 }
 
 /**

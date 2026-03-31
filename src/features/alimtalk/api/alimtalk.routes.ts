@@ -13,7 +13,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
-import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { ALLOWED_ORIGINS, TOSS_PAYMENT_URL } from '@/shared/constants';
 
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
 
@@ -116,7 +116,7 @@ alimtalkRoutes.post('/credits/charge', async (c) => {
     data: {
       orderId,
       amount: pkg.price,
-      orderName: `알림톡 ${pkg.label} 충전`,
+      orderName: `브랜드메시지 ${pkg.label} 충전`,
       credits: pkg.credits,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
@@ -158,7 +158,7 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
   if (dup) return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
 
   // 토스 결제 승인
-  const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
@@ -184,12 +184,12 @@ alimtalkRoutes.post('/credits/confirm', async (c) => {
     DB.prepare(`
       INSERT INTO credit_transactions (seller_id, type, amount, price_paid, description, payment_key, created_at)
       VALUES (?, 'charge', ?, ?, ?, ?, datetime('now'))
-    `).bind(sellerId, resolvedPkg.credits, resolvedPkg.price, `알림톡 ${resolvedPkg.label} 충전`, body.paymentKey),
+    `).bind(sellerId, resolvedPkg.credits, resolvedPkg.price, `브랜드메시지 ${resolvedPkg.label} 충전`, body.paymentKey),
   ]);
 
   return c.json({
     success: true,
-    data: { credits_added: resolvedPkg.credits, description: `알림톡 ${resolvedPkg.label} 충전` },
+    data: { credits_added: resolvedPkg.credits, description: `브랜드메시지 ${resolvedPkg.label} 충전` },
     message: `${resolvedPkg.credits.toLocaleString()}건이 충전되었습니다.`,
   });
 });

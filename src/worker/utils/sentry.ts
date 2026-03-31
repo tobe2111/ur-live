@@ -88,14 +88,13 @@ class SentryClient {
     }
   ): Promise<void> {
     if (!this.config.enabled || !this.endpoint) {
-      console.log('[Sentry] Disabled or invalid DSN, skipping error report');
       return;
     }
 
     try {
       const event = this.buildEvent(error, context);
       await this.sendEvent(event);
-      console.log('[Sentry] ✅ Error sent to Sentry:', error.message);
+      // Error sent to Sentry
     } catch (sentryError) {
       console.error('[Sentry] ❌ Failed to send error:', sentryError);
     }
@@ -132,7 +131,7 @@ class SentryClient {
       };
 
       await this.sendEvent(event);
-      console.log('[Sentry] ✅ Message sent to Sentry:', message);
+      // Message sent to Sentry
     } catch (sentryError) {
       console.error('[Sentry] ❌ Failed to send message:', sentryError);
     }

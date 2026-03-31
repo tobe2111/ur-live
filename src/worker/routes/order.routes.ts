@@ -30,7 +30,7 @@ ordersRouter.use('*', requireAuth());
  * users 테이블에서 firebase_uid로 정수 id를 조회
  * 없으면 Firebase UID 자체를 fallback으로 사용 (새 스키마 호환)
  */
-async function getUserDbId(db: any, firebaseUid: string): Promise<string> {
+async function getUserDbId(db: D1Database, firebaseUid: string): Promise<string> {
   try {
     const row = await (db
       .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
@@ -128,12 +128,17 @@ ordersRouter.post('/', async (c) => {
     const products = await productRepo.findByIds(productIds);
 
     if (products.length !== productIds.length) {
-      return c.json({ success: false, error: '일부 상품을 찾을 수 없습니다' }, 400);
+      const missingIds = productIds.filter(id => !products.find(p => p.id === id));
+      return c.json({ success: false, error: `일부 상품을 찾을 수 없습니다 (ID: ${missingIds.join(', ')})` }, 400);
     }
 
-    // Verify all products belong to the specified seller (skip if seller_id is empty)
-    if (request.seller_id) {
-      const wrongSeller = products.find(p => p.seller_id !== request.seller_id);
+    // seller_id가 빈 문자열이면 null로 치환 (FK 위반 방지)
+    // 상품에 seller_id가 없는 경우 (null) 주문 생성 시 seller_id도 null 허용
+    const effectiveSellerId = request.seller_id || null;
+
+    // Verify all products belong to the specified seller (skip if seller_id is empty/null)
+    if (effectiveSellerId) {
+      const wrongSeller = products.find(p => p.seller_id !== effectiveSellerId);
       if (wrongSeller) {
         return c.json({
           success: false,
@@ -153,10 +158,12 @@ ordersRouter.post('/', async (c) => {
       }
 
       // Pre-flight 재고 체크 (낙관적 락 전 조기 실패 - UX 개선)
-      if (product.stock_quantity < reqItem.quantity) {
+      // DB 스키마: stock (구) / stock_quantity (신) 양쪽 호환
+      const currentStock = product.stock ?? product.stock_quantity ?? 0;
+      if (currentStock < reqItem.quantity) {
         return c.json({
           success: false,
-          error: `"${product.name}" 재고가 부족합니다 (남은 수량: ${product.stock_quantity})`,
+          error: `"${product.name}" 재고가 부족합니다 (남은 수량: ${currentStock})`,
         }, 400);
       }
 
@@ -204,6 +211,7 @@ ordersRouter.post('/', async (c) => {
     }
 
     // Create order (재고 차감 완료 후 주문 생성)
+    // Note: repository 내부에서 seller_id 빈 문자열 → null 변환 처리
     let order;
     try {
       order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
@@ -212,11 +220,10 @@ ordersRouter.post('/', async (c) => {
       console.error('[ORDERS] createOrder failed, restoring stock:', createErr);
       const restoreStmts = orderItems.map(item => ({
         sql: `UPDATE products
-              SET stock_quantity = stock_quantity + ?,
-                  sold_count     = MAX(0, sold_count - ?),
-                  updated_at     = datetime('now')
+              SET stock      = stock + ?,
+                  updated_at = datetime('now')
               WHERE id = ?`,
-        params: [item.quantity, item.quantity, item.product_id],
+        params: [item.quantity, item.product_id],
       }));
       await orderRepo['qb'].batch(restoreStmts).catch(e =>
         console.error('[ORDERS] stock restore failed:', e)
@@ -244,8 +251,48 @@ ordersRouter.post('/', async (c) => {
     return c.json({ success: true, data: order }, 201);
 
   } catch (err) {
-    console.error('[ORDERS] Create error:', err);
-    return c.json({ success: false, error: '주문 생성에 실패했습니다' }, 500);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('[ORDERS] Create error:', errMsg, err);
+    // TODO: 디버깅 완료 후 errMsg 제거
+    return c.json({ success: false, error: errMsg || '주문 생성에 실패했습니다' }, 500);
+  }
+});
+
+// POST /api/orders/debug-update-stream — 임시: 스트림 SNS 링크 업데이트
+ordersRouter.post('/debug-update-stream', async (c) => {
+  try {
+    const db = c.env.DB;
+    const { stream_id, seller_youtube, seller_instagram, seller_kakao } = await c.req.json();
+    await db.prepare(
+      'UPDATE live_streams SET seller_youtube = ?, seller_instagram = ? WHERE id = ?'
+    ).bind(seller_youtube || null, seller_instagram || null, stream_id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/orders/debug-schema — 임시 디버그용 (DB 스키마 확인)
+ordersRouter.get('/debug-schema', async (c) => {
+  try {
+    const db = c.env.DB;
+    const ordersSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").first<{ sql: string }>();
+    const orderItemsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='order_items'").first<{ sql: string }>();
+    const productsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='products'").first<{ sql: string }>();
+    const donationsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='donations'").first<{ sql: string }>();
+    const liveStreamsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='live_streams'").first<{ sql: string }>();
+    const recentOrder = await db.prepare("SELECT id, seller_id, typeof(seller_id) as sid_type FROM orders ORDER BY rowid DESC LIMIT 1").first();
+    return c.json({
+      success: true,
+      orders_schema: ordersSchema?.sql,
+      order_items_schema: orderItemsSchema?.sql,
+      products_schema: productsSchema?.sql?.substring(0, 500),
+      donations_schema: donationsSchema?.sql,
+      live_streams_schema: liveStreamsSchema?.sql?.substring(0, 500),
+      recent_order_seller_id: recentOrder,
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -306,7 +353,7 @@ ordersRouter.get('/:id', async (c) => {
 });
 
 // POST /api/orders/refund  ← useOrder.ts에서 호출
-// 환불 요청 (구매 확정 후 반품/환불)
+// 환불 요청: Toss Cancel API 호출 후 DB 상태 CANCELLED + 재고 복구
 ordersRouter.post('/refund', async (c) => {
   try {
     const firebaseUid = String(c.get('user').id);
@@ -340,20 +387,60 @@ ordersRouter.post('/refund', async (c) => {
       }, 400);
     }
 
-    // 환불 요청 상태로 변경 (REFUND_REQUESTED 상태가 없으면 CANCELLED로 처리)
-    try {
-      await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
-        cancel_reason: `[환불요청] ${body.reason}`,
-        cancelled_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.error('[ORDERS] Refund status update failed:', e);
+    // Toss 결제 취소 API 호출 (실제 환불)
+    const payInfo = await orderRepo.getPaymentInfo(body.order_id);
+    const paymentKey = payInfo?.toss_payment_key;
+
+    if (!paymentKey) {
+      return c.json({
+        success: false,
+        error: '결제 키를 찾을 수 없습니다. 고객센터에 문의해 주세요.',
+        code: 'PAYMENT_KEY_MISSING',
+      }, 422);
     }
+
+    const tossSecretKey = c.env.TOSS_SECRET_KEY;
+    if (!tossSecretKey) {
+      return c.json({ success: false, error: 'Payment service unavailable' }, 503);
+    }
+
+    const tossResult = await tossCancelPayment(
+      paymentKey,
+      tossSecretKey,
+      `[환불요청] ${body.reason}`,
+      body.refund_amount,
+    );
+
+    if (!tossResult.success) {
+      const tossErrorMessages: Record<string, string> = {
+        ALREADY_CANCELED_PAYMENT: '이미 취소된 결제입니다',
+        EXCEED_CANCEL_AMOUNT: '환불 금액이 결제 금액을 초과합니다',
+        NOT_CANCELABLE_PAYMENT: '취소할 수 없는 결제입니다',
+      };
+      return c.json({
+        success: false,
+        error: tossErrorMessages[tossResult.code] ?? `환불 처리 실패: ${tossResult.message}`,
+        code: tossResult.code,
+      }, 422);
+    }
+
+    // DB 상태 업데이트 + 재고 복구
+    await orderRepo.updateStatusById(body.order_id, 'CANCELLED', {
+      cancel_reason: `[환불요청] ${body.reason}`,
+      cancelled_at: new Date().toISOString(),
+    });
+    await orderRepo.restoreStock(body.order_id);
+
+    const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
     return c.json({
       success: true,
-      message: '환불 요청이 접수되었습니다. 판매자 확인 후 처리됩니다.',
-      data: { order_id: body.order_id, status: 'CANCELLED' },
+      message: '환불이 처리되었습니다. 3~5 영업일 내 반환됩니다.',
+      data: {
+        order_id: body.order_id,
+        cancel_amount: latestCancel?.cancelAmount ?? order.total_amount,
+        cancelled_at: latestCancel?.canceledAt ?? new Date().toISOString(),
+      },
     });
   } catch (err) {
     console.error('[ORDERS] Refund error:', err);

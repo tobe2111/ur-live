@@ -1,11 +1,10 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, AlertCircle, Package, MapPin, Plus, ChevronRight } from 'lucide-react'
-import { getUserId, getUserIdSync, isLoggedInSync, getUserEmail } from '@/utils/auth'
-import { generateOrderId } from '@/utils/orderIdGenerator'
+import { getUserIdSync } from '@/utils/auth'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -22,19 +21,12 @@ const StripeCheckout = lazy(() =>
   import('@/components/payments/StripeCheckout').then(m => ({ default: m.StripeCheckout }))
 )
 
-// 🚨 중요: 결제위젯 SDK는 HTML에서 로드됨 (index.html 참고)
-// window.PaymentWidget 전역 함수 사용 (V1 공식 샘플 방식)
 declare global {
   interface Window {
-    PaymentWidget: (clientKey: string, customerKey: string) => any
-    daum: any
+    daum: { Postcode: new (options: Record<string, unknown>) => void }
   }
 }
 
-// 토스페이먼츠 클라이언트 키 (결제위젯 연동 키)
-// ✅ widgets() 메서드 사용을 위해 test_gck_ 키 필수
-// MID 매칭은 토스 개발자센터 > 결제 UI 설정에서 관리
-// https://docs.tosspayments.com/reference/widget-sdk
 const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY || 'test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN'
 
 import { CartItem } from '@/types/cart'
@@ -65,21 +57,19 @@ export default function CheckoutPage() {
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
-  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false)  // 개인정보 수집 동의
+
+  // 바로구매 모드: navigate state로 전달된 상품만 결제
+  const directPurchaseItems = (location.state as { directPurchase?: CartItem[] } | null)?.directPurchase
+  const isDirectPurchase = !!directPurchaseItems?.length
   const [tokenRefreshing, setTokenRefreshing] = useState(false)  // 토큰 갱신 중 플래그
   
-  // 토스페이먼츠 위젯 상태
-  const [widgets, setWidgets] = useState<any>(null)
-  const [paymentMethodWidget, setPaymentMethodWidget] = useState<any>(null)  // V1: renderPaymentMethods 반환값
-  const [ready, setReady] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
@@ -170,26 +160,6 @@ export default function CheckoutPage() {
     }
   }, [isAuthReady, user])
 
-  /* ====================================================================
-   * 🔥 LEGACY: Toss Payment 관련 로직 제거됨
-   * TossPaymentWidget 컴포넌트로 이동됨 (Region 기반 lazy loading)
-   * ==================================================================== */
-  
-  // 🎯 Step 3: 금액 변경 시 업데이트 (V1 - 동기 메서드)
-  useEffect(() => {
-    if (paymentMethodWidget == null || !ready) {
-      return
-    }
-
-    try {
-      // V1 공식: paymentMethodWidget.updateAmount() 사용
-      paymentMethodWidget.updateAmount(totalAmount)
-    } catch (err) {
-      console.error('[TossPayments] ❌ Step 3 실패:', err)
-      // 금액 업데이트 실패는 치명적이지 않으므로 계속 진행
-    }
-  }, [totalAmount, paymentMethodWidget, ready])
-
   // 초기 데이터 로드 (URL 파라미터 처리 완료 후에만 실행)
   useEffect(() => {
     // ⏳ URL 파라미터 처리가 완료될 때까지 대기
@@ -218,38 +188,40 @@ export default function CheckoutPage() {
 
     const loadData = async () => {
       try {
-        // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
-        const cartResponse = await api.get('/api/cart')
-        
-        // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
-        let cartItemsData: CartItem[] = []
-        if (cartResponse.data?.success) {
-          const resData = cartResponse.data.data
-          if (resData?.items && Array.isArray(resData.items)) {
-            // 현재 구조: data.items
-            cartItemsData = resData.items
-          } else if (Array.isArray(resData)) {
-            // 이전 구조 호환: data가 배열
-            cartItemsData = resData
-          }
-        } else if (Array.isArray(cartResponse.data)) {
-          cartItemsData = cartResponse.data
-        }
-        
-        if (cartItemsData.length > 0) {
-          setCartItems(cartItemsData)
+        // 바로구매 모드: navigate state에서 상품 정보 사용 (장바구니 API 미호출)
+        if (isDirectPurchase && directPurchaseItems) {
+          setCartItems(directPurchaseItems)
         } else {
-          setError('장바구니가 비어있습니다.')
-          setTimeout(() => navigate('/cart'), 2000)
+          // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
+          const cartResponse = await api.get('/api/cart')
+
+          // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
+          let cartItemsData: CartItem[] = []
+          if (cartResponse.data?.success) {
+            const resData = cartResponse.data.data
+            if (resData?.items && Array.isArray(resData.items)) {
+              cartItemsData = resData.items
+            } else if (Array.isArray(resData)) {
+              cartItemsData = resData
+            }
+          } else if (Array.isArray(cartResponse.data)) {
+            cartItemsData = cartResponse.data
+          }
+
+          if (cartItemsData.length > 0) {
+            setCartItems(cartItemsData)
+          } else {
+            setError('장바구니가 비어있습니다.')
+            setTimeout(() => navigate('/cart'), 2000)
+          }
         }
 
-        // 배송지 조회 (requireAuth 미들웨어가 userId 자동 추출)
+        // 배송지 조회
         const addressResponse = await api.get('/api/shipping-addresses')
         if (addressResponse.data.success) {
           const addressList = addressResponse.data.data
           setAddresses(addressList)
 
-          // 기본 배송지 자동 선택
           const defaultAddr = addressList.find((addr: ShippingAddress) => addr.is_default === 1)
           if (defaultAddr) {
             setSelectedAddress(defaultAddr)
@@ -296,7 +268,7 @@ export default function CheckoutPage() {
       if (!container) return
 
       new window.daum.Postcode({
-        oncomplete: (data: any) => {
+        oncomplete: (data: { zonecode: string; roadAddress: string; jibunAddress: string }) => {
           setNewAddress({
             ...newAddress,
             postal_code: data.zonecode,
@@ -357,140 +329,59 @@ export default function CheckoutPage() {
     }
   }
 
-  // 🎯 결제하기 버튼 클릭
-  const handlePayment = async (e?: React.MouseEvent | React.TouchEvent) => {
-    // 이벤트 전파 방지 (모바일 터치 이벤트 중복 방지)
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-
-    // 중복 실행 방지
-    if (isProcessing) {
-      return
-    }
-
-    // 위젯 준비 확인
-    if (!widgets || !ready) {
-      console.error('[Payment] ❌ 위젯 미준비:', { widgets: !!widgets, ready })
-      showErrorToast('결제 시스템을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
-      return
-    }
-
-    // 배송지 선택 확인
+  /**
+   * 결제 전 주문 생성: Toss redirect 전에 DB에 주문을 먼저 기록합니다.
+   * 배송지 미선택 시 예외를 throw하여 TossPaymentWidget이 결제를 중단합니다.
+   *
+   * 주문 생성 시 각 셀러별 금액(상품 소계 + 배송비)을 함께 저장하여
+   * 결제 승인(confirm) 단계에서 DB 금액 기반 검증이 가능하도록 합니다.
+   */
+  const handleBeforePayment = async (orderId: string): Promise<void> => {
     if (!selectedAddress) {
-      toast.error('배송지를 선택해주세요.')
-      setShowAddressModal(true)  // 자동으로 배송지 선택 모달 열기
-      return
+      setShowAddressModal(true)
+      throw new Error('배송지를 선택해주세요')
     }
 
-    // 개인정보 수집 동의 확인
-    if (!agreedToPrivacy) {
-      toast.error('개인정보 수집 및 이용에 동의해주세요.')
-      return
+    // 바로구매 모드 플래그 저장 (PaymentSuccessPage에서 장바구니 비우기 스킵용)
+    if (isDirectPurchase) {
+      sessionStorage.setItem('directPurchase', 'true')
+    } else {
+      sessionStorage.removeItem('directPurchase')
     }
 
-    // ✅ 약관 동의 자동 체크 (결제하기 버튼 클릭 시)
-    try {
-      const agreementCheckbox = document.querySelector('#agreement input[type="checkbox"]') as HTMLInputElement
-      if (agreementCheckbox && !agreementCheckbox.checked) {
-        agreementCheckbox.checked = true
-        // 체크박스 변경 이벤트 트리거 (Toss Payments 위젯에 알림)
-        agreementCheckbox.dispatchEvent(new Event('change', { bubbles: true }))
-      }
-    } catch (err) {
-      console.warn('[Payment] 약관 체크박스 자동 체크 실패:', err)
+    const shippingAddress = {
+      postal_code: selectedAddress.postal_code,
+      address1: selectedAddress.address,
+      address2: selectedAddress.address_detail || '',
+      country: 'KR',
+      recipient_name: selectedAddress.recipient_name,
     }
 
-    // 처리 중 플래그 설정
-    setIsProcessing(true)
+    for (const group of Object.values(sellerGroups)) {
+      // 셀러 그룹별 배송비 계산
+      const groupShippingFee = (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold)
+        ? 0
+        : group.shipping_fee
 
-    try {
-      // 배송지 정보를 localStorage에 저장 (PaymentSuccessPage에서 사용)
-      // ✅ BUG #23 FIX: CheckoutPage was storing `checkoutShippingAddress` (street)
-      // and `checkoutRecipientName/Phone`, but PaymentSuccessPage also tried to read
-      // `checkoutShippingAddressDetail` (apartment/floor/unit) which was NEVER
-      // written here.  The detail field was silently discarded, causing the full
-      // shipping address to be incomplete in the order record.
-      localStorage.setItem('checkoutShippingAddress', selectedAddress.address)
-      localStorage.setItem('checkoutShippingAddressDetail', selectedAddress.address_detail || '')
-      localStorage.setItem('checkoutRecipientName', selectedAddress.recipient_name)
-      localStorage.setItem('checkoutRecipientPhone', selectedAddress.phone)
-      // ✅ Store full shipping address as JSON for order creation in PaymentSuccessPage
-      localStorage.setItem('checkoutShippingAddressFull', JSON.stringify({
-        postal_code: selectedAddress.postal_code || '',
-        address1: selectedAddress.address || '',
-        address2: selectedAddress.address_detail || '',
-        country: 'KR',
-        recipient_name: selectedAddress.recipient_name || '',
-      }))
+      const response = await api.post('/api/orders', {
+        // seller_id가 0(null에서 변환)이면 빈 문자열 → order route의 seller 검증 skip
+        seller_id: group.seller_id ? String(group.seller_id) : '',
+        order_number: orderId,
+        items: group.items.map(item => ({
+          product_id: String(item.product_id),
+          quantity: item.quantity,
+          ...(item.option_value ? { options: { value: item.option_value } } : {}),
+        })),
+        shipping_address: shippingAddress,
+        shipping_name: selectedAddress.recipient_name,
+        shipping_phone: selectedAddress.phone,
+        shipping_fee: groupShippingFee,
+        idempotency_key: `${orderId}_${group.seller_id}`,
+      })
 
-      // 💾 장바구니 데이터를 localStorage에 백업 (결제 승인 시 사용)
-      const cartBackup = cartItems.map(item => ({
-        product_id: item.product_id,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        price_snapshot: item.price_snapshot,
-        seller_id: item.seller_id || null,
-        option_value: item.option_value || null
-      }))
-      localStorage.setItem('checkoutCartBackup', JSON.stringify(cartBackup))
-
-      // ✅ 주문 번호 생성 (Toss Payments 규격 준수)
-      const orderId = generateOrderId(userId || undefined)
-      
-      // 주문명 생성
-      const firstItem = cartItems[0]
-      const orderName = cartItems.length > 1 
-        ? `${firstItem.product_name} 외 ${cartItems.length - 1}건`
-        : firstItem.product_name
-
-      // 결제 요청 옵션 (Version 1 - 모바일/PC 자동 감지)
-      // ✅ V1은 자동으로 환경을 감지하여 최적화된 UI 제공 (flowMode 불필요)
-      const requestOptions: any = {
-        orderId,
-        orderName,
-        successUrl: `${window.location.origin}/payment/success`,
-        failUrl: `${window.location.origin}/payment/fail`,
-        customerEmail: getUserEmail() || undefined,
-        customerName: selectedAddress.recipient_name,
-        customerMobilePhone: selectedAddress.phone.replace(/-/g, '')
+      if (!response.data.success) {
+        throw new Error(response.data.error || '주문 생성에 실패했습니다')
       }
-
-      // 결제 요청
-      // ⚠️ V1에서 successUrl/failUrl을 설정하면 리다이렉트 방식으로 작동
-      // 모바일: 카드사 앱으로 이동 후 successUrl/failUrl로 리다이렉트
-      // PC: iframe 내에서 처리 후 successUrl/failUrl로 리다이렉트
-      // await를 사용하지 않음 (리다이렉트 방식이므로 Promise 반환 안됨)
-      widgets.requestPayment(requestOptions)
-    } catch (err: any) {
-      console.error('[Payment] ❌ 결제 요청 실패:', err)
-      
-      // 약관 미동의 에러
-      if (err.code === 'NEED_AGREEMENT' || err.message?.includes('약관') || err.message?.includes('동의')) {
-        toast.error('필수 약관에 동의해주세요.')
-        return
-      }
-      // Intent URL 에러 (카드사 앱 실행 실패)
-      if (err.message && err.message.includes('intent://')) {
-        showErrorToast('카드사 앱을 실행할 수 없습니다. 다른 결제 수단을 이용해주세요.')
-      }
-      // 팝업 차단 에러
-      else if (err.code === 'POPUP_BLOCKED') {
-        showErrorToast('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.')
-      } 
-      // 사용자 취소는 조용히 처리
-      else if (err.code === 'USER_CANCEL') {
-      }
-      // 그 외 에러
-      else {
-        showErrorToast('결제 요청에 실패했습니다. 다시 시도해주세요.')
-      }
-    } finally {
-      // 2초 후 플래그 해제 (중복 클릭 방지)
-      setTimeout(() => {
-        setIsProcessing(false)
-      }, 2000)
     }
   }
 
@@ -704,9 +595,11 @@ export default function CheckoutPage() {
                 }>
                   <TossPaymentWidget
                     userId={userId || ''}
+                    clientKey={clientKey}
                     cartItems={cartItems}
                     totalAmount={subtotal}
                     shippingFee={totalShippingFee}
+                    onBeforePayment={handleBeforePayment}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
                       navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
                     }}

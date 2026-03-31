@@ -27,10 +27,8 @@ export function useSmartStock(
   // 시청자 수 기반 모드 전환
   useEffect(() => {
     if (viewerCount < 100 && mode !== 'firebase') {
-      console.log('[SmartStock] Switching to Firebase (real-time)')
       setMode('firebase')
     } else if (viewerCount >= 100 && mode !== 'polling') {
-      console.log('[SmartStock] Switching to polling (capacity exceeded)')
       setMode('polling')
     }
   }, [viewerCount])
