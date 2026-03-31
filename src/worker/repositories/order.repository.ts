@@ -37,28 +37,41 @@ export class OrderRepository {
     const totalAmount = subtotal + shippingFee;
 
     // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환
-    // seller_id가 빈 문자열이면 null로 변환 (FK 위반 및 타입 불일치 방지)
-    const safeSellerId = request.seller_id || null;
+    // seller_id 처리: 빈 문자열/null → DB 스키마에 따라 분기
+    //   - NOT NULL 스키마 (001_initial.sql): seller_id 컬럼 생략하면 DEFAULT 부재로 실패
+    //   - nullable 스키마 (0128 migration): null 전달 OK
+    // 안전 전략: seller_id가 있으면 포함, 없으면 INSERT 컬럼 자체를 제외
+    const hasSellerId = !!request.seller_id;
+    const columns = [
+      'order_number', 'user_id',
+      ...(hasSellerId ? ['seller_id'] : []),
+      'subtotal', 'shipping_fee', 'discount_amount', 'total_amount', 'currency',
+      'status', 'shipping_name', 'shipping_phone', 'shipping_address', 'shipping_memo',
+      'idempotency_key', 'locale',
+    ];
+    const placeholders = columns.map(() => '?').join(', ');
+    // discount_amount = 0, currency = 'KRW', status = 'PENDING', locale = 'ko'는 값으로 직접 전달
+    const values: any[] = [
+      request.order_number,
+      userId,
+      ...(hasSellerId ? [request.seller_id] : []),
+      subtotal,
+      shippingFee,
+      0,          // discount_amount
+      totalAmount,
+      'KRW',      // currency
+      'PENDING',  // status
+      request.shipping_name,
+      request.shipping_phone,
+      JSON.stringify(request.shipping_address),
+      request.shipping_memo ?? null,
+      request.idempotency_key,
+      'ko',       // locale
+    ];
+
     const orderResult = await this.qb.execute(
-      `INSERT INTO orders (
-        order_number, user_id, seller_id,
-        subtotal, shipping_fee, discount_amount, total_amount, currency,
-        status, shipping_name, shipping_phone, shipping_address, shipping_memo,
-        idempotency_key, locale
-      ) VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PENDING', ?, ?, ?, ?, ?, 'ko')`,
-      [
-        request.order_number,
-        userId,
-        safeSellerId,
-        subtotal,
-        shippingFee,
-        totalAmount,
-        request.shipping_name,
-        request.shipping_phone,
-        JSON.stringify(request.shipping_address),
-        request.shipping_memo ?? null,
-        request.idempotency_key,
-      ],
+      `INSERT INTO orders (${columns.join(', ')}) VALUES (${placeholders})`,
+      values,
     );
 
     // Step 2: 실제 order id 조회 (TEXT or INTEGER 스키마 모두 호환)
