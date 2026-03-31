@@ -37,26 +37,22 @@ export function sanitizeUserId(userId: string | number): string {
 
 /**
  * Generate a unique order ID for Toss Payments
- * Format: ORDER_{timestamp}_{randomId}
- * Example: ORDER_1234567890123_aBc123XyZ456
- * 
- * @param userId - Optional user ID to include in the order ID (for debugging)
- * @returns Toss Payments compliant order ID (6-64 chars)
+ * Format: 숫자만 사용 (YYMMDDHHmmss + random 6자리)
+ * Example: 260331095312847291
+ * Length: 18자리
  */
-export function generateOrderId(userId?: string | number): string {
-  const timestamp = Date.now();
-  const randomId = generateRandomId(12);
-  
-  if (userId) {
-    const sanitized = sanitizeUserId(userId);
-    // Format: ORDER_{timestamp}_{sanitizedUserId}_{randomId}
-    // Length: 6 + 13 + 1 + up to 16 + 1 + 12 = max 49 chars (within 64 limit)
-    return `ORDER_${timestamp}_${sanitized}_${randomId}`;
-  }
-  
-  // Format: ORDER_{timestamp}_{randomId}
-  // Length: 6 + 13 + 1 + 12 = 32 chars (within 6-64 limit)
-  return `ORDER_${timestamp}_${randomId}`;
+export function generateOrderId(_userId?: string | number): string {
+  const now = new Date();
+  const datePart = [
+    String(now.getFullYear()).slice(2),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
+  ].join('')
+  const randomPart = String(Math.floor(100000 + Math.random() * 900000))
+  return datePart + randomPart
 }
 
 /**
