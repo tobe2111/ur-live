@@ -112,27 +112,32 @@ export default function ProductDetailPage() {
       return
     }
 
-    console.log('[ProductDetail] 🛒 구매하기: 장바구니에 추가 후 결제 페이지 이동')
-    
-    try {
-      // 1️⃣ 먼저 장바구니에 추가
-      await api.post('/api/cart', {
-        product_id: product!.id,
-        quantity,
-        price_snapshot: product!.price,
-        options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
-      })
-      console.log('[ProductDetail] ✅ 장바구니 추가 완료')
-      
-      localStorage.setItem('hasCartItems', 'true')
-      
-      // 2️⃣ 결제 페이지로 이동
-      navigate('/checkout')
-    } catch (err: any) {
-      console.error('[ProductDetail] ❌ 장바구니 추가 실패:', err)
-      const errorMessage = err instanceof Error ? err.message : (err.response?.data?.error || '구매 진행에 실패했습니다.')
-      showToast(errorMessage, 'error')
-    }
+    if (!product) return
+
+    // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
+    navigate('/checkout', {
+      state: {
+        directPurchase: [{
+          id: `direct_${product.id}_${Date.now()}`,
+          product_id: product.id,
+          product_name: product.name,
+          product_description: product.description,
+          product_price: product.price,
+          product_image: product.image_url,
+          image_url: product.image_url,
+          quantity,
+          price_snapshot: product.price,
+          price: product.price,
+          item_total: product.price * quantity,
+          seller_id: (product as any).seller_id ?? null,
+          seller_name: (product as any).seller_name ?? null,
+          shipping_fee: 3000,
+          free_shipping_threshold: 0,
+          option_id: Object.values(selectedOptions)[0] || null,
+          option_value: null,
+        }]
+      }
+    })
   }
 
   function handleShare() {

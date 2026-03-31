@@ -967,24 +967,32 @@ function ReelCard({
         return;
       }
 
-      const cartData = {
-        product_id: currentProduct.id,
-        quantity: 1,
-        price_snapshot: currentProduct.price,
-        live_stream_id: stream.id,
-      }
-      
-      log.debug('[Checkout] Adding current product to cart:', cartData)
-      
-      await api.post('/api/cart', cartData)
-      localStorage.setItem('hasCartItems', 'true')
-      
-      // 🎯 장바구니 아이템 추가 이벤트 발생
-      window.dispatchEvent(new CustomEvent('cartItemAdded'))
-      
-      // ✅ 결제 페이지로 바로 이동
-      log.debug('[Checkout] Navigating to checkout')
-      navigate('/checkout')
+      // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
+      log.debug('[Checkout] Direct purchase - navigating to checkout with product:', currentProduct.id)
+      navigate('/checkout', {
+        state: {
+          directPurchase: [{
+            id: `live_${currentProduct.id}_${Date.now()}`,
+            product_id: currentProduct.id,
+            product_name: currentProduct.name,
+            product_description: currentProduct.description ?? null,
+            product_price: currentProduct.price,
+            product_image: currentProduct.image_url,
+            image_url: currentProduct.image_url,
+            quantity: 1,
+            price_snapshot: currentProduct.price,
+            price: currentProduct.price,
+            item_total: currentProduct.price,
+            seller_id: currentProduct.seller_id ?? null,
+            seller_name: (currentProduct as any).seller_name ?? null,
+            shipping_fee: 3000,
+            free_shipping_threshold: 0,
+            option_id: null,
+            option_value: null,
+            live_stream_id: stream.id,
+          }]
+        }
+      })
       
     } catch (error: unknown) {
       console.error('Failed to add product to cart:', error)

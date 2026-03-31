@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -57,12 +57,17 @@ export default function CheckoutPage() {
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
+
+  // 바로구매 모드: navigate state로 전달된 상품만 결제
+  const directPurchaseItems = (location.state as any)?.directPurchase as CartItem[] | undefined
+  const isDirectPurchase = !!directPurchaseItems?.length
   const [tokenRefreshing, setTokenRefreshing] = useState(false)  // 토큰 갱신 중 플래그
   
   // 배송지 관련 상태
@@ -183,38 +188,40 @@ export default function CheckoutPage() {
 
     const loadData = async () => {
       try {
-        // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
-        const cartResponse = await api.get('/api/cart')
-        
-        // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
-        let cartItemsData: CartItem[] = []
-        if (cartResponse.data?.success) {
-          const resData = cartResponse.data.data
-          if (resData?.items && Array.isArray(resData.items)) {
-            // 현재 구조: data.items
-            cartItemsData = resData.items
-          } else if (Array.isArray(resData)) {
-            // 이전 구조 호환: data가 배열
-            cartItemsData = resData
-          }
-        } else if (Array.isArray(cartResponse.data)) {
-          cartItemsData = cartResponse.data
-        }
-        
-        if (cartItemsData.length > 0) {
-          setCartItems(cartItemsData)
+        // 바로구매 모드: navigate state에서 상품 정보 사용 (장바구니 API 미호출)
+        if (isDirectPurchase && directPurchaseItems) {
+          setCartItems(directPurchaseItems)
         } else {
-          setError('장바구니가 비어있습니다.')
-          setTimeout(() => navigate('/cart'), 2000)
+          // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
+          const cartResponse = await api.get('/api/cart')
+
+          // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
+          let cartItemsData: CartItem[] = []
+          if (cartResponse.data?.success) {
+            const resData = cartResponse.data.data
+            if (resData?.items && Array.isArray(resData.items)) {
+              cartItemsData = resData.items
+            } else if (Array.isArray(resData)) {
+              cartItemsData = resData
+            }
+          } else if (Array.isArray(cartResponse.data)) {
+            cartItemsData = cartResponse.data
+          }
+
+          if (cartItemsData.length > 0) {
+            setCartItems(cartItemsData)
+          } else {
+            setError('장바구니가 비어있습니다.')
+            setTimeout(() => navigate('/cart'), 2000)
+          }
         }
 
-        // 배송지 조회 (requireAuth 미들웨어가 userId 자동 추출)
+        // 배송지 조회
         const addressResponse = await api.get('/api/shipping-addresses')
         if (addressResponse.data.success) {
           const addressList = addressResponse.data.data
           setAddresses(addressList)
 
-          // 기본 배송지 자동 선택
           const defaultAddr = addressList.find((addr: ShippingAddress) => addr.is_default === 1)
           if (defaultAddr) {
             setSelectedAddress(defaultAddr)
@@ -333,6 +340,13 @@ export default function CheckoutPage() {
     if (!selectedAddress) {
       setShowAddressModal(true)
       throw new Error('배송지를 선택해주세요')
+    }
+
+    // 바로구매 모드 플래그 저장 (PaymentSuccessPage에서 장바구니 비우기 스킵용)
+    if (isDirectPurchase) {
+      sessionStorage.setItem('directPurchase', 'true')
+    } else {
+      sessionStorage.removeItem('directPurchase')
     }
 
     const shippingAddress = {
