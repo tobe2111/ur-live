@@ -265,13 +265,16 @@ ordersRouter.get('/debug-schema', async (c) => {
     const ordersSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").first<{ sql: string }>();
     const orderItemsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='order_items'").first<{ sql: string }>();
     const productsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='products'").first<{ sql: string }>();
-    // 최근 주문 1개의 seller_id 확인
+    const donationsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='donations'").first<{ sql: string }>();
+    const liveStreamsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='live_streams'").first<{ sql: string }>();
     const recentOrder = await db.prepare("SELECT id, seller_id, typeof(seller_id) as sid_type FROM orders ORDER BY rowid DESC LIMIT 1").first();
     return c.json({
       success: true,
       orders_schema: ordersSchema?.sql,
       order_items_schema: orderItemsSchema?.sql,
       products_schema: productsSchema?.sql?.substring(0, 500),
+      donations_schema: donationsSchema?.sql,
+      live_streams_schema: liveStreamsSchema?.sql?.substring(0, 500),
       recent_order_seller_id: recentOrder,
     });
   } catch (err) {
