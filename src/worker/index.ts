@@ -413,6 +413,10 @@ app.route('/api/reviews', reviewsRoutes);
 import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
 app.route('/api/seller-tiers', sellerTiersRoutes);
 
+// ── 바코드 + 재고 관리 ──
+import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
+app.route('/api/inventory', inventoryRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
