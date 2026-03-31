@@ -254,8 +254,6 @@ api.interceptors.response.use(
 
       // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
       try {
-        console.log('[API] 🔄 Firebase User 401 - 토큰 강제 갱신 시도...');
-        
         let newToken: string | null = null;
 
         // ✅ 1차: useAuthKR/useAuthWorld.getIdToken(true) — Firebase User 객체 직접 사용
@@ -268,7 +266,6 @@ api.interceptors.response.use(
           const authStoreWithToken = authStore as typeof authStore & { getIdToken?: (forceRefresh?: boolean) => Promise<string | null> };
           if (authStoreWithToken.user && typeof authStoreWithToken.getIdToken === 'function') {
             newToken = await authStoreWithToken.getIdToken(true); // force refresh
-            console.log('[API] ✅ useAuthKR.getIdToken(true) 성공');
           }
         } catch (e) {
           console.warn('[API] useAuthKR.getIdToken 실패:', e);
@@ -294,7 +291,6 @@ api.interceptors.response.use(
             }
             
             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-            console.log('[API] 🔁 새 토큰으로 요청 재시도');
             return api(originalRequest);
           } else {
             console.error('[API] ⚠️ 토큰이 변경되지 않음 - 세션 만료로 간주');

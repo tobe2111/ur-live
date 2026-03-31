@@ -33,19 +33,12 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
 
       setAuth: (user, accessToken, refreshToken) => {
-        console.log('[AuthStore] 🔐 setAuth 호출됨:', {
-          userId: user.id,
-          hasAccessToken: !!accessToken,
-          tokenLength: accessToken?.length || 0,
-          tokenPreview: accessToken?.substring(0, 20) + '...'
-        });
         set({
           user,
           accessToken,
           refreshToken,
           isAuthenticated: true,
         });
-        console.log('[AuthStore] ✅ Auth 저장 완료 - localStorage 확인:', localStorage.getItem('auth-storage'));
       },
 
       clearAuth: () => set({

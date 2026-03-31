@@ -116,7 +116,6 @@ export async function upsertUser(
       throw new AuthError('Failed to upsert user', 500, 'UPSERT_FAILED');
     }
     
-    console.log('[Auth] ⚡ User upserted successfully (optimized):', user.id);
     return user;
     
   } catch (error) {
@@ -244,8 +243,6 @@ export async function processKakaoLogin(
   
   // 2. 사용자 정보 추출
   const { kakaoId, nickname, email, profileImage } = extractKakaoUserInfo(userData);
-  
-  console.log('[Auth] Processing login for Kakao user:', kakaoId);
   
   // 3. DB에 UPSERT
   const user = await upsertUser(DB, kakaoId, nickname, email, profileImage);

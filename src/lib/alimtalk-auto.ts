@@ -206,7 +206,7 @@ ${productList}
         order_id: orderId
       })
 
-      console.log(`Order confirmation sent for order ${orderId}`)
+      // Order confirmation sent
       return { success: true }
     } else {
       // 실패 기록
@@ -295,7 +295,7 @@ export async function sendShippingNotification(
         order_id: orderId
       })
 
-      console.log(`Shipping notification sent for order ${orderId}`)
+      // Shipping notification sent
       return { success: true }
     } else {
       await saveAlimtalkMessage(env.DB, {
@@ -365,7 +365,7 @@ export async function sendDeliveryCompleted(env: Env, orderId: number) {
         order_id: orderId
       })
 
-      console.log(`Delivery completion notification sent for order ${orderId}`)
+      // Delivery completion notification sent
       return { success: true }
     } else {
       await saveAlimtalkMessage(env.DB, {

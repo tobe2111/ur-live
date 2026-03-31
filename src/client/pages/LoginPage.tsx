@@ -39,7 +39,6 @@ export function LoginPage() {
     }
     
     if (firebaseToken && userName) {
-      console.log('[LoginPage] ✅ Received Firebase token from Kakao OAuth');
       const returnUrl = searchParams.get('returnUrl') || '/';
       navigate(returnUrl, { replace: true });
     }
@@ -48,13 +47,8 @@ export function LoginPage() {
   const handleKakaoLogin = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[LoginPage] 🚀 카카오 로그인 버튼 클릭됨! Event:', e.type);
-    console.log('[LoginPage] 🔑 API Key:', KAKAO_REST_API_KEY ? '✅ 있음' : '❌ 없음');
-    console.log('[LoginPage] 🎯 Target:', e.currentTarget);
-    alert('카카오 로그인 버튼이 정상적으로 클릭되었습니다!');
-    
+
     if (!KAKAO_REST_API_KEY) {
-      console.error('[LoginPage] ❌ 카카오 REST API Key 없음');
       setError('카카오 로그인 설정이 올바르지 않습니다.');
       return;
     }
@@ -68,7 +62,6 @@ export function LoginPage() {
       `&response_type=code` +
       `&state=${state}`;
     
-    console.log('[LoginPage] 🔗 Redirecting to:', kakaoAuthUrl);
     window.location.href = kakaoAuthUrl;
   };
 

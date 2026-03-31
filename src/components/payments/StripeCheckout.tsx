@@ -68,7 +68,6 @@ function CheckoutForm({
 
     try {
       setIsProcessing(true)
-      console.log('[Stripe] 결제 요청 시작')
 
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -83,7 +82,6 @@ function CheckoutForm({
         onPaymentError(error.message || t('payment.requestError') || '결제 요청 실패')
         setIsProcessing(false)
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('[Stripe] ✅ 결제 성공:', paymentIntent.id)
         const orderId = `order_${Date.now()}_${userId}`
         onPaymentSuccess(orderId, paymentIntent.id, totalAmount + shippingFee)
       }

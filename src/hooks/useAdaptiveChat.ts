@@ -63,8 +63,6 @@ export function useAdaptiveChat(
    */
   useEffect(() => {
     if (mode === 'polling' && firebaseChat.isConnected && !firebaseChat.error) {
-      console.log('[AdaptiveChat] ✅ Firebase recovered, switching back')
-      
       // 5분 후 Firebase로 복원 시도
       const timer = setTimeout(() => {
         setMode('firebase')
@@ -77,8 +75,6 @@ export function useAdaptiveChat(
   
   // 현재 활성화된 채팅 선택
   const activeChat = mode === 'firebase' ? firebaseChat : pollingChat
-  
-  console.log('[AdaptiveChat] Mode:', mode, 'Connected:', activeChat.isConnected)
   
   return {
     ...activeChat,

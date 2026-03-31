@@ -25,8 +25,6 @@ export class MockPaymentProvider implements PaymentProvider {
    * Returns a mock widget URL that can be used for testing
    */
   async initialize(request: PaymentRequest): Promise<{ widgetUrl?: string; data?: any }> {
-    console.log('[MockPayment] Initializing payment:', request);
-
     // Simulate API delay
     await this.delay(500);
 
@@ -48,8 +46,6 @@ export class MockPaymentProvider implements PaymentProvider {
    * Always succeeds for testing purposes
    */
   async approve(paymentKey: string, orderId: string, amount: number): Promise<PaymentResponse> {
-    console.log('[MockPayment] Approving payment:', { paymentKey, orderId, amount });
-
     // Simulate API delay
     await this.delay(1000);
 
@@ -70,8 +66,6 @@ export class MockPaymentProvider implements PaymentProvider {
    * Always succeeds for testing purposes
    */
   async cancel(request: CancelRequest): Promise<CancelResponse> {
-    console.log('[MockPayment] Canceling payment:', request);
-
     // Simulate API delay
     await this.delay(800);
 
@@ -88,7 +82,6 @@ export class MockPaymentProvider implements PaymentProvider {
    * Verify mock payment (always returns true)
    */
   async verify(data: any): Promise<boolean> {
-    console.log('[MockPayment] Verifying payment:', data);
     return true;
   }
 

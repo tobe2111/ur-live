@@ -41,7 +41,7 @@ export async function sendDiscordAlert(
   context?: RequestContext
 ): Promise<void> {
   if (!webhookUrl) {
-    console.log('[Discord] Webhook URL not configured, skipping alert');
+    // Webhook URL not configured
     return;
   }
 
@@ -117,7 +117,7 @@ export async function sendDiscordAlert(
     if (!response.ok) {
       console.error('[Discord] Webhook failed:', response.status, await response.text());
     } else {
-      console.log('[Discord] Error alert sent successfully');
+      // Error alert sent
     }
   } catch (webhookError) {
     // Webhook 실패는 조용히 로깅만

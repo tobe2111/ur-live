@@ -19,7 +19,6 @@ export function useLiveStreamActions(streamId: string): LiveStreamActions {
     try {
       setIsAddingToCart(true)
       await addToCart.mutateAsync({ productId, quantity, streamId })
-      console.log('✅ 장바구니 추가 성공')
     } catch (error) {
       console.error('❌ 장바구니 추가 실패:', error)
       throw error
@@ -32,7 +31,6 @@ export function useLiveStreamActions(streamId: string): LiveStreamActions {
     try {
       setIsChangingProduct(true)
       await changeProduct.mutateAsync({ streamId, productId })
-      console.log('✅ 상품 변경 성공')
     } catch (error) {
       console.error('❌ 상품 변경 실패:', error)
       throw error

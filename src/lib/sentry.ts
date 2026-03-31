@@ -68,9 +68,9 @@ export function initSentry() {
       },
     })
 
-    console.log('✅ Sentry 초기화 완료')
+    // Sentry initialized
   } else {
-    console.log('ℹ️  Sentry는 프로덕션 환경에서만 활성화됩니다')
+    // Sentry only active in production
   }
 }
 
@@ -101,7 +101,7 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   if (import.meta.env.PROD) {
     Sentry.captureMessage(message, level)
   } else {
-    console.log(`📝 Message (${level}):`, message)
+    // Dev message suppressed
   }
 }
 

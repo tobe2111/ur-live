@@ -303,7 +303,7 @@ export async function sendBulkAlimtalk(
 ): Promise<SendAlimtalkResult> {
   const { accountId, templateId, recipients, variables } = request
 
-  console.log(`[Alimtalk] Starting bulk send: ${recipients.length} recipients`)
+  // Starting bulk send
 
   try {
     // 1. 계정 정보 조회
@@ -374,7 +374,7 @@ export async function sendBulkAlimtalk(
 
     // 6. 포인트 선차감 (전체 금액)
     await deductBalance(env.DB, accountId, totalCost)
-    console.log(`[Alimtalk] Deducted ${totalCost} points from account ${accountId}`)
+    // Points deducted
 
     // 7. 개별 발송 (순차 처리)
     const results: AlimtalkMessageResult[] = []
@@ -413,7 +413,7 @@ export async function sendBulkAlimtalk(
     // 8. 통계 업데이트
     await updateAccountStats(env.DB, accountId, successCount, failedCount)
 
-    console.log(`[Alimtalk] Completed: ${successCount} sent, ${failedCount} failed, ${refundedAmount} refunded`)
+    // Bulk send completed
 
     return {
       success: true,
