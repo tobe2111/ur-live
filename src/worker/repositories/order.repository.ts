@@ -128,7 +128,7 @@ export class OrderRepository {
     if (!row) return null;
 
     const items = await this.qb.queryMany<Record<string, unknown>>(
-      'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+      'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
       [orderId]
     );
 
@@ -151,7 +151,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -190,7 +190,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
