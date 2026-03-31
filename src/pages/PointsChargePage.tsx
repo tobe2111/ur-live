@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
-import { ArrowLeft, Zap, Loader2, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -21,13 +21,13 @@ export default function PointsChargePage() {
   const [selected, setSelected] = useState<ChargeOption | null>(null)
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+  const [showWidget, setShowWidget] = useState(false)
+  const widgetsRef = useRef<unknown>(null)
+  const orderRef = useRef<{ orderId: string; orderName: string } | null>(null)
   const userId = getUserIdSync()
 
   useEffect(() => {
-    if (!userId) {
-      navigate('/login')
-      return
-    }
+    if (!userId) { navigate('/login'); return }
     Promise.all([
       api.get('/api/points/balance').then(r => {
         if (r.data.success) setBalance(r.data.data.balance)
@@ -35,65 +35,82 @@ export default function PointsChargePage() {
       api.get('/api/points/charge-options').then(r => {
         if (r.data.success) {
           setOptions(r.data.data)
-          setSelected(r.data.data[1]) // 10,000원 기본 선택
+          setSelected(r.data.data[1])
         }
       }),
     ]).finally(() => setLoading(false))
   }, [userId, navigate])
+
+  // 위젯 영역이 DOM에 렌더링된 후 토스 위젯을 마운트
+  useEffect(() => {
+    if (!showWidget || !widgetsRef.current) return
+    const widgets = widgetsRef.current as { renderPaymentMethods: Function; renderAgreement: Function; setAmount: Function }
+
+    // DOM이 확실히 존재하도록 약간 대기
+    const timer = setTimeout(async () => {
+      try {
+        await widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'DEFAULT' })
+        await widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' })
+        setProcessing(false)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : '결제창 로드에 실패했습니다.'
+        toast.error(msg)
+        setShowWidget(false)
+        setProcessing(false)
+      }
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [showWidget])
 
   async function handleCharge() {
     if (!selected || !userId) return
     setProcessing(true)
 
     try {
-      // 1. 충전 init
       const initRes = await api.post('/api/points/charge/init', { amount: selected.amount })
       if (!initRes.data.success) {
         toast.error(initRes.data.error || '충전 시작에 실패했습니다.')
+        setProcessing(false)
         return
       }
 
       const { orderId, amount, orderName, clientKey: serverClientKey } = initRes.data.data
 
-      // 2. 토스 결제
       const tossPayments = await loadTossPayments(serverClientKey || clientKey)
       const sanitizedUserId = String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)
       const widgets = tossPayments.widgets({ customerKey: `user_${sanitizedUserId}` })
 
       await widgets.setAmount({ currency: 'KRW', value: amount })
-      await widgets.renderPaymentMethods({ selector: '#charge-payment-method', variantKey: 'DEFAULT' })
-      await widgets.renderAgreement({ selector: '#charge-agreement', variantKey: 'AGREEMENT' })
 
-      setProcessing(false) // 위젯 렌더링 완료
-
-      // 결제 요청은 버튼 클릭으로 처리 (아래 handleConfirmPayment)
-      ;(window as any).__chargeWidgets = widgets
-      ;(window as any).__chargeOrderId = orderId
-      ;(window as any).__chargeOrderName = orderName
-    } catch (err: any) {
-      toast.error(err.message || '결제 준비에 실패했습니다.')
+      widgetsRef.current = widgets
+      orderRef.current = { orderId, orderName }
+      setShowWidget(true) // DOM 렌더링 → useEffect에서 위젯 마운트
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '결제 준비에 실패했습니다.'
+      toast.error(msg)
       setProcessing(false)
     }
   }
 
   async function handleConfirmPayment() {
-    const widgets = (window as any).__chargeWidgets
-    const orderId = (window as any).__chargeOrderId
-    const orderName = (window as any).__chargeOrderName
-    if (!widgets) return
+    const widgets = widgetsRef.current as { requestPayment: Function } | null
+    if (!widgets || !orderRef.current) return
 
     setProcessing(true)
     try {
       await widgets.requestPayment({
-        orderId,
-        orderName,
+        orderId: orderRef.current.orderId,
+        orderName: orderRef.current.orderName,
         successUrl: `${window.location.origin}/points/charge/success`,
         failUrl: `${window.location.origin}/points/charge/fail`,
       })
-    } catch (err: any) {
+    } catch (err: unknown) {
       setProcessing(false)
-      if (err?.code === 'USER_CANCEL') return
-      toast.error(err?.message || '결제 요청에 실패했습니다.')
+      const code = (err as Record<string, string>)?.code
+      if (code === 'USER_CANCEL') return
+      const msg = err instanceof Error ? err.message : '결제 요청에 실패했습니다.'
+      toast.error(msg)
     }
   }
 
@@ -128,41 +145,58 @@ export default function PointsChargePage() {
         </div>
 
         {/* 충전 금액 선택 */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">충전 금액 선택</h2>
-          <div className="space-y-2">
-            {options.map(opt => (
-              <button
-                key={opt.amount}
-                onClick={() => { setSelected(opt); (window as any).__chargeWidgets = null }}
-                className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 transition-all ${
-                  selected?.amount === opt.amount
-                    ? 'border-pink-500 bg-pink-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <span className="text-sm font-bold text-gray-900">{opt.amount.toLocaleString()}원</span>
-                <span className="text-sm font-bold text-pink-600">{opt.points.toLocaleString()}팀</span>
-              </button>
-            ))}
+        {!showWidget && (
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">충전 금액 선택</h2>
+            <div className="space-y-2">
+              {options.map(opt => (
+                <button
+                  key={opt.amount}
+                  onClick={() => setSelected(opt)}
+                  className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 transition-all ${
+                    selected?.amount === opt.amount
+                      ? 'border-pink-500 bg-pink-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-sm font-bold text-gray-900">{opt.amount.toLocaleString()}원</span>
+                  <span className="text-sm font-bold text-pink-600">{opt.points.toLocaleString()}팀</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">충전 시 15% 수수료가 차감됩니다.</p>
           </div>
-          <p className="text-xs text-gray-400 mt-2">충전 시 15% 수수료가 차감됩니다.</p>
-        </div>
+        )}
 
-        {/* 결제 위젯 영역 */}
-        {(window as any).__chargeWidgets ? (
+        {/* 결제 위젯 영역 - showWidget일 때 항상 DOM에 존재 */}
+        {showWidget && (
           <>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 flex justify-between items-center">
+              <span className="text-sm text-gray-600">충전 금액</span>
+              <span className="text-sm font-bold text-pink-600">{selected?.amount.toLocaleString()}원 → {selected?.points.toLocaleString()}팀</span>
+            </div>
             <div id="charge-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
             <div id="charge-agreement" className="min-h-[80px] bg-white rounded-xl border border-gray-200 p-2" />
-            <button
-              onClick={handleConfirmPayment}
-              disabled={processing}
-              className="w-full py-4 bg-gradient-to-r from-pink-500 to-red-500 text-white text-lg font-bold rounded-xl shadow-lg disabled:opacity-60"
-            >
-              {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${selected?.amount.toLocaleString()}원 결제하기`}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowWidget(false); widgetsRef.current = null; orderRef.current = null }}
+                className="flex-1 py-4 bg-gray-100 text-gray-700 text-sm font-bold rounded-xl"
+              >
+                뒤로
+              </button>
+              <button
+                onClick={handleConfirmPayment}
+                disabled={processing}
+                className="flex-[2] py-4 bg-gradient-to-r from-pink-500 to-red-500 text-white text-lg font-bold rounded-xl shadow-lg disabled:opacity-60"
+              >
+                {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${selected?.amount.toLocaleString()}원 결제하기`}
+              </button>
+            </div>
           </>
-        ) : (
+        )}
+
+        {/* 충전 버튼 (위젯 표시 전) */}
+        {!showWidget && (
           <button
             onClick={handleCharge}
             disabled={!selected || processing}
