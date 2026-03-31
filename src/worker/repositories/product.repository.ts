@@ -19,7 +19,7 @@ export class ProductRepository {
       `SELECT p.*, s.name as seller_name, s.slug as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
-       WHERE p.id = ? AND p.status != 'DELETED'`,
+       WHERE p.id = ? AND p.is_active = 1`,
       [id]
     );
     return row ? this.mapProduct(row) : null;
@@ -36,7 +36,7 @@ export class ProductRepository {
     const { seller_id, category_id, status, search, page = 1, limit = 20 } = params;
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ["p.status != 'DELETED'"];
+    const conditions: string[] = ["p.is_active = 1"];
     const queryParams: unknown[] = [];
 
     if (seller_id) {

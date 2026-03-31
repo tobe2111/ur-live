@@ -96,7 +96,7 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
 
     const products = await qb.queryMany<any>(
       `SELECT id, name, description, price, original_price, discount_rate,
-              image_url, stock_quantity, category, seller_id, is_active,
+              image_url, stock, category, seller_id, is_active,
               created_at, updated_at
        FROM products
        WHERE seller_id = ? AND is_active = 1
