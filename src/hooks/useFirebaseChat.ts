@@ -84,14 +84,6 @@ export function useFirebaseChat(
         throw new Error('Message cannot be empty')
       }
 
-      console.log('[useFirebaseChat] 📤 Sending message to Firebase:', {
-        liveId,
-        userId,
-        userName,
-        userType,
-        messagePreview: message.substring(0, 50)
-      })
-
       // Lazy load Firebase Database using new API
       const { getFirebaseDatabase } = await import('@/lib/firebase-config')
       const { ref, push, set } = await import('firebase/database')
@@ -113,8 +105,7 @@ export function useFirebaseChat(
       }
 
       await set(newMessageRef, messageData)
-      console.log('[useFirebaseChat] ✅ Message sent successfully to Firebase')
-      
+
     } catch (err) {
       console.error('[useFirebaseChat] ❌ 메시지 전송 오류:', err)
       throw err
@@ -133,8 +124,6 @@ export function useFirebaseChat(
    */
   useEffect(() => {
     if (!enabled) return
-
-    console.log(`[useFirebaseChat] 🔥 Connecting to Firebase chat for stream ${liveId}`)
 
     // Lazy load Firebase Database
     const loadFirebaseDatabase = async () => {
@@ -160,8 +149,6 @@ export function useFirebaseChat(
         const unsubscribe = onValue(
           chatQuery,
           (snapshot) => {
-            console.log('[useFirebaseChat] 📩 Firebase data received')
-            
             if (snapshot.exists()) {
               const data = snapshot.val()
               const messagesArray: ChatMessage[] = Object.keys(data).map(key => ({
