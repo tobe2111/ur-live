@@ -409,6 +409,10 @@ app.route('/api/points', pointsRoutes);
 import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 app.route('/api/reviews', reviewsRoutes);
 
+// ── 셀러 등급 ──
+import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
+app.route('/api/seller-tiers', sellerTiersRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
