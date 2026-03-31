@@ -258,6 +258,20 @@ ordersRouter.post('/', async (c) => {
   }
 });
 
+// POST /api/orders/debug-update-stream — 임시: 스트림 SNS 링크 업데이트
+ordersRouter.post('/debug-update-stream', async (c) => {
+  try {
+    const db = c.env.DB;
+    const { stream_id, seller_youtube, seller_instagram, seller_kakao } = await c.req.json();
+    await db.prepare(
+      'UPDATE live_streams SET seller_youtube = ?, seller_instagram = ? WHERE id = ?'
+    ).bind(seller_youtube || null, seller_instagram || null, stream_id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // GET /api/orders/debug-schema — 임시 디버그용 (DB 스키마 확인)
 ordersRouter.get('/debug-schema', async (c) => {
   try {

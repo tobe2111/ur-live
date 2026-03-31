@@ -180,7 +180,11 @@ function KakaoTalkIcon({ className }: { className?: string }) {
 }
 
 // TopNav Component
-function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string } }) {
+function TopNav({ viewers, sellerLinks, onSubscribe }: {
+  viewers: number
+  sellerLinks?: { youtube?: string; instagram?: string; kakao?: string }
+  onSubscribe?: (platform: string) => void
+}) {
   const hasLinks = sellerLinks?.youtube || sellerLinks?.instagram || sellerLinks?.kakao
   return (
     <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
@@ -201,24 +205,24 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
       {hasLinks && (
         <div className="flex items-center gap-2">
           {sellerLinks?.youtube && (
-            <>
-              <a
-                href={sellerLinks.youtube}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600/80 backdrop-blur-sm hover:bg-red-600 transition-all active:scale-95"
-                aria-label="YouTube 구독"
-              >
-                <YouTubeIcon className="h-4 w-4 text-white" />
-                <span className="text-[10px] font-bold text-white">구독</span>
-              </a>
-            </>
+            <a
+              href={sellerLinks.youtube}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => onSubscribe?.('유튜브')}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600/80 backdrop-blur-sm hover:bg-red-600 transition-all active:scale-95"
+              aria-label="YouTube 구독"
+            >
+              <YouTubeIcon className="h-4 w-4 text-white" />
+              <span className="text-[10px] font-bold text-white">구독</span>
+            </a>
           )}
           {sellerLinks?.instagram && (
             <a
               href={sellerLinks.instagram}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onSubscribe?.('인스타그램')}
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/80 to-pink-500/80 backdrop-blur-sm hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
               aria-label="Instagram"
             >
@@ -230,6 +234,7 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
               href={sellerLinks.kakao}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => onSubscribe?.('카카오톡')}
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-400/80 backdrop-blur-sm hover:bg-yellow-400 transition-all active:scale-95"
               aria-label="KakaoTalk"
             >
@@ -2047,12 +2052,23 @@ export default function LivePageV2() {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-black">
-      <TopNav 
+      <TopNav
         viewers={viewerCount}
         sellerLinks={{
           youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
           instagram: reels[activeIndex]?.stream?.seller_instagram || undefined,
           kakao: reels[activeIndex]?.stream?.seller_kakao || undefined,
+        }}
+        onSubscribe={(platform) => {
+          const userName = localStorage.getItem('user_name') || '시청자'
+          setChatMessages(prev => [...prev, {
+            id: `sub-${Date.now()}`,
+            user_id: 'system',
+            user_name: '시스템',
+            message: `🎉 ${userName}님이 ${platform}를 구독하셨습니다!`,
+            created_at: new Date().toISOString(),
+            is_system: true,
+          }])
         }}
       />
       
