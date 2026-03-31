@@ -192,18 +192,18 @@ export default function PaymentSuccessPage() {
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-[#007aff]" />
                   주문 정보
                 </h2>
-                
+
                 <div className="space-y-2.5 sm:space-y-3">
-                  {/* 주문번호 - 모바일에서 세로 배치, 데스크톱에서 가로 배치 */}
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">주문번호</span>
-                    <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#007aff] font-mono tracking-tight">
+                  {/* 주문번호 */}
+                  <div className="flex justify-between items-start gap-3">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">주문번호</span>
+                    <span className="text-xs sm:text-sm font-semibold text-[#007aff] font-mono break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">결제 방법</span>
+
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">결제 방법</span>
                     <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f]">
                       {orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
                     </span>
