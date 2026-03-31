@@ -40,7 +40,6 @@ export default function UserProfilePage() {
     // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
     const currentUser = authStore.getState().user
     if ((firebaseToken || userNameParam) && currentUser) {
-      console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
       if (userNameParam) localStorage.setItem('user_name', userNameParam)
       if (profileImageParam) localStorage.setItem('user_profile_image', profileImageParam)
       navigate('/user/profile', { replace: true })
@@ -54,19 +53,13 @@ export default function UserProfilePage() {
 
       if (userNameParam) {
         localStorage.setItem('user_name', userNameParam)
-        console.log('[UserProfilePage] ✅ user_name 저장:', userNameParam)
       }
       if (profileImageParam) {
         localStorage.setItem('user_profile_image', profileImageParam)
-        console.log('[UserProfilePage] ✅ user_profile_image 저장')
       }
-
-      console.log('[UserProfilePage] 🔑 firebase_token 발견 - 1회만 처리')
 
       loginWithFirebaseToken(firebaseToken)
         .then(async () => {
-          console.log('[UserProfilePage] ✅ 로그인 완료 - Auth State 동기화됨')
-
           try {
             const { isKorea } = await import('@/shared/config/region')
             const { useAuthKR } = await import('@/shared/stores/useAuthKR')
@@ -83,7 +76,6 @@ export default function UserProfilePage() {
               } else {
                 useAuthWorld.getState().setUser({ ...firebaseUser } as any)
               }
-              console.log('[UserProfilePage] ✅ Firebase 프로필 업데이트 완료')
             }
           } catch (e) {
             console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
@@ -109,11 +101,6 @@ export default function UserProfilePage() {
       const image = user.photoURL || getUserProfileImage() || undefined
       setProfileImage(image)
       
-      console.log('[UserProfilePage] ✅ 사용자 정보:', {
-        uid: user.uid,
-        displayName: user.displayName,
-        userName: name
-      })
     }
   }, [user])
 
@@ -148,17 +135,13 @@ export default function UserProfilePage() {
     }
     
     // 토큰 없고 처리 중도 아니면 로그인 페이지로
-    console.log('[UserProfilePage] 🚫 로그인 필요 - /login으로 리다이렉트')
     return <Navigate to="/login" replace />
   }
 
   // ✅ 로그아웃 핸들러
   const handleLogout = async () => {
-    console.log('[UserProfilePage] 로그아웃 시작')
-    
     try {
       await logout()
-      console.log('[UserProfilePage] ✅ 로그아웃 완료')
       navigate('/', { replace: true })
     } catch (error) {
       console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)

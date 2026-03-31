@@ -24,6 +24,85 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
+function ProductReviews({ productId }: { productId: number | string }) {
+  const [summary, setSummary] = useState<any>(null)
+  const [reviews, setReviews] = useState<any[]>([])
+
+  useEffect(() => {
+    api.get(`/api/reviews/product/${productId}/summary`).then(r => {
+      if (r.data.success) setSummary(r.data.data)
+    }).catch(() => {})
+    api.get(`/api/reviews/product/${productId}?limit=5`).then(r => {
+      if (r.data.success) setReviews(r.data.data.reviews)
+    }).catch(() => {})
+  }, [productId])
+
+  const avgRating = summary?.avg_rating ?? 0
+  const totalCount = summary?.total_count ?? 0
+
+  return (
+    <div>
+      <h2 className="text-sm font-bold text-foreground mb-4">
+        리뷰 {totalCount > 0 && <span className="text-muted-foreground font-normal">({totalCount})</span>}
+      </h2>
+
+      {/* 평점 요약 */}
+      {totalCount > 0 ? (
+        <div className="flex items-center gap-4 mb-4">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-foreground">{avgRating}</p>
+            <div className="flex gap-0.5 mt-1">
+              {[1, 2, 3, 4, 5].map(s => (
+                <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-200'}`}>
+                  ★
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 space-y-1">
+            {[5, 4, 3, 2, 1].map(s => {
+              const count = summary?.[`star_${s}`] ?? 0
+              const pct = totalCount > 0 ? (count / totalCount) * 100 : 0
+              return (
+                <div key={s} className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground w-3">{s}</span>
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground py-6 text-center">아직 리뷰가 없습니다.</p>
+      )}
+
+      {/* 리뷰 목록 */}
+      {reviews.length > 0 && (
+        <div className="space-y-3 mt-3">
+          {reviews.map((r: any) => (
+            <div key={r.id} className="border border-border/50 rounded-xl p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <span key={s} className={`text-xs ${s <= r.rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{r.user_name}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
+              </div>
+              {r.content && <p className="text-xs text-foreground leading-relaxed">{r.content}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -271,6 +350,12 @@ export default function ProductDetailPage() {
           <div className="mt-3">
             <ProductNoticeSection />
           </div>
+        </div>
+
+        {/* 상품 리뷰 */}
+        <Separator />
+        <div className="px-5 py-6">
+          <ProductReviews productId={product.id} />
         </div>
 
         {/* 교환 및 반품 안내 (상세) */}

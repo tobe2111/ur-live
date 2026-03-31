@@ -107,8 +107,6 @@ function validateAligoResponse(result: AligoApiResponse, operation: string): voi
 export async function getAligoToken(
   env: AligoEnv
 ): Promise<AligoTokenResponse> {
-  console.log('[Aligo] 토큰 생성 시작')
-
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/token/create/30/s/', {
     method: 'POST',
     headers: {
@@ -126,8 +124,6 @@ export async function getAligoToken(
   const token = result.token as string
   const urtime = result.urtime as number
 
-  console.log('[Aligo] ✅ 토큰 생성 성공:', token.substring(0, 20) + '...')
-
   return { token, urtime }
 }
 
@@ -143,8 +139,6 @@ export async function requestKakaoChannelAuth(
   env: AligoEnv,
   data: KakaoChannelData
 ): Promise<{ success: boolean; authNumber?: string }> {
-  console.log('[Aligo] 카카오 채널 인증 요청:', data.channelId)
-
   const { token } = await getAligoToken(env)
 
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/plus/request/', {
@@ -163,8 +157,6 @@ export async function requestKakaoChannelAuth(
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Channel Auth Request')
 
-  console.log('[Aligo] ✅ 카카오 채널 인증 요청 성공')
-
   return {
     success: true,
     authNumber: result.authnum as string | undefined
@@ -179,8 +171,6 @@ export async function registerKakaoChannel(
   env: AligoEnv,
   data: KakaoChannelData
 ): Promise<{ success: boolean; senderKey: string }> {
-  console.log('[Aligo] 카카오 채널 등록:', data.channelId)
-
   const { token } = await getAligoToken(env)
 
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/plus/add/', {
@@ -199,8 +189,6 @@ export async function registerKakaoChannel(
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Channel Register')
 
-  console.log('[Aligo] ✅ 카카오 채널 등록 성공, senderKey:', result.senderkey)
-
   return {
     success: true,
     senderKey: result.senderkey as string
@@ -213,8 +201,6 @@ export async function registerKakaoChannel(
 export async function getKakaoChannels(
   env: AligoEnv
 ): Promise<Array<{ plusid: string; senderkey: string; name: string }>> {
-  console.log('[Aligo] 카카오 채널 목록 조회')
-
   const { token } = await getAligoToken(env)
 
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/plus/list/', {
@@ -231,8 +217,6 @@ export async function getKakaoChannels(
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Channel List')
 
-  console.log('[Aligo] ✅ 채널 목록 조회 성공:', result.list?.length || 0, '개')
-
   return (result.list || []) as Array<{ plusid: string; senderkey: string; name: string }>
 }
 
@@ -248,8 +232,6 @@ export async function registerTemplate(
   senderKey: string,
   data: TemplateData
 ): Promise<{ success: boolean; templateCode: string }> {
-  console.log('[Aligo] 템플릿 등록:', data.templateCode)
-
   const { token } = await getAligoToken(env)
 
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/template/add/', {
@@ -270,8 +252,6 @@ export async function registerTemplate(
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Template Register')
 
-  console.log('[Aligo] ✅ 템플릿 등록 성공:', result.tpl_code)
-
   return {
     success: true,
     templateCode: result.tpl_code as string
@@ -285,8 +265,6 @@ export async function getTemplates(
   env: AligoEnv,
   senderKey: string
 ): Promise<AligoListItem[]> {
-  console.log('[Aligo] 템플릿 목록 조회')
-
   const { token } = await getAligoToken(env)
 
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/template/list/', {
@@ -304,8 +282,6 @@ export async function getTemplates(
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Template List')
 
-  console.log('[Aligo] ✅ 템플릿 목록 조회 성공:', result.list?.length || 0, '개')
-
   return result.list || []
 }
 
@@ -320,8 +296,6 @@ export async function sendAlimtalk(
   env: AligoEnv,
   data: AlimtalkMessage
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  console.log('[Aligo] 알림톡 발송:', data.to)
-
   try {
     const { token } = await getAligoToken(env)
 
@@ -355,8 +329,6 @@ export async function sendAlimtalk(
       }
     }
 
-    console.log('[Aligo] ✅ 알림톡 발송 성공, messageId:', result.msg_id)
-
     return {
       success: true,
       messageId: result.msg_id
@@ -377,8 +349,6 @@ export async function getAlimtalkResult(
   env: AligoEnv,
   messageId: string
 ): Promise<{ success: boolean; status: string; detail?: AligoListItem }> {
-  console.log('[Aligo] 알림톡 발송 결과 조회:', messageId)
-
   const { token } = await getAligoToken(env)
 
   const response = await fetch('https://smartsms.aligo.in/admin/api/akv10/history/detail/', {
@@ -395,8 +365,6 @@ export async function getAlimtalkResult(
 
   const result: AligoApiResponse = await response.json()
   validateAligoResponse(result, 'Message Result')
-
-  console.log('[Aligo] ✅ 발송 결과 조회 성공')
 
   return {
     success: true,

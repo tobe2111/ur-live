@@ -51,8 +51,6 @@ export class GoogleAuthService {
    * DB에 Google 사용자 저장 또는 업데이트
    */
   async upsertUser(googleUser: GoogleUser): Promise<User> {
-    console.log('[GoogleAuthService] Upserting user to DB...');
-    
     try {
       // 기존 사용자 확인
       const existingUser = await this.db.prepare(`
@@ -83,7 +81,6 @@ export class GoogleAuthService {
           userId
         ).run();
         
-        console.log('[GoogleAuthService] ✅ Updated user:', userId);
       } else {
         // 새 사용자 생성
         const result = await this.db.prepare(`
@@ -104,7 +101,6 @@ export class GoogleAuthService {
         ).run();
         
         userId = result.meta.last_row_id as number;
-        console.log('[GoogleAuthService] ✅ Created user:', userId);
       }
       
       // 사용자 정보 다시 조회하여 반환
@@ -135,7 +131,6 @@ export class GoogleAuthService {
         UPDATE users SET firebase_uid = ? WHERE id = ?
       `).bind(firebaseUID, userId).run();
       
-      console.log('[GoogleAuthService] ✅ Firebase UID updated for user:', userId);
     } catch (error) {
       console.warn('[GoogleAuthService] firebase_uid column not found, skipping update:', error);
     }

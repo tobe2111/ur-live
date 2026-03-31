@@ -27,16 +27,8 @@ export class FirebaseAuthService {
     uid: string, 
     claims: FirebaseCustomClaims
   ): Promise<string> {
-    console.log('[FirebaseAuthService] Creating custom token for UID:', uid);
-    console.log('[FirebaseAuthService] Custom claims:', {
-      role: claims.role,
-      userId: claims.userId,
-      userName: claims.userName
-    });
-    
     try {
       const customToken = await this.firebase.createCustomToken(uid, claims as unknown as Record<string, unknown>);
-      console.log('[FirebaseAuthService] ✅ Custom token created');
       return customToken;
     } catch (error) {
       console.error('[FirebaseAuthService] Failed to create custom token:', error);

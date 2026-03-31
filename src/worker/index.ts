@@ -337,9 +337,12 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 //    (authMiddleware 사용, 멀티셀러 지원, 아이덤포턴시)
 app.route('/api/orders', ordersRouter);
 
-// ✅ featureOrdersRoutes가 ordersRouter에 없는 추가 엔드포인트 처리
-//    GET / 와 GET /:id 는 ordersRouter가 먼저 처리하므로 featureOrdersRoutes의 동일 엔드포인트는 도달하지 않음
-//    → 실제로는 ordersRouter가 모든 주요 경로 처리. feature는 fallback용으로만 유지.
+// ✅ featureOrdersRoutes: ordersRouter에 없는 고유 엔드포인트 담당
+//    - GET /:id/tracking (배송 추적)
+//    - POST /:id/confirm (구매 확정 - MyOrdersPage에서 사용)
+//    - POST /internal/auto-confirm (14일 자동 구매확정 크론)
+//    - POST /internal/sync-deliveries (배송 동기화 크론)
+//    ⚠️ GET /, GET /:id, POST / 는 ordersRouter가 먼저 처리하므로 여기서는 도달 안 됨
 app.route('/api/orders', featureOrdersRoutes);
 
 // ✅ paymentsRouter: POST /confirm, POST /checkout-session (worker-native)
@@ -401,6 +404,10 @@ app.route('/api/seller', sellerDonationsRoutes);
 // ── 팀 포인트 ──
 import { pointsRoutes } from '../features/points/api/points.routes';
 app.route('/api/points', pointsRoutes);
+
+// ── 상품 리뷰 ──
+import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
+app.route('/api/reviews', reviewsRoutes);
 
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments

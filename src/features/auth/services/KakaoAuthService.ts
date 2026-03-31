@@ -34,10 +34,6 @@ export class KakaoAuthService {
    * Authorization Code를 Access Token으로 교환
    */
   async exchangeCode(code: string, redirectUri: string): Promise<string> {
-    console.log('[KakaoAuthService] Exchanging code for token...');
-    console.log('  - REDIRECT_URI:', redirectUri);
-    console.log('  - CODE_PREFIX:', code.substring(0, 20));
-    
     const response = await fetch(`${this.KAKAO_AUTH_URL}/oauth/token`, {
       method: 'POST',
       headers: {
@@ -63,7 +59,6 @@ export class KakaoAuthService {
       throw new Error('No access token in response');
     }
     
-    console.log('[KakaoAuthService] ✅ Access token obtained');
     return data.access_token;
   }
   
@@ -71,8 +66,6 @@ export class KakaoAuthService {
    * Access Token으로 사용자 정보 조회
    */
   async getUserInfo(accessToken: string): Promise<KakaoUser> {
-    console.log('[KakaoAuthService] Fetching user info...');
-    
     // property_keys를 명시적으로 요청하여 닉네임/프로필 이미지가 반드시 포함되도록 함
     const response = await fetch(`${this.KAKAO_API_URL}/v2/user/me`, {
       method: 'POST',
@@ -106,12 +99,6 @@ export class KakaoAuthService {
                     .replace(/^http:\/\//, 'https://'),
     };
     
-    console.log('[KakaoAuthService] ✅ User info obtained:', {
-      kakaoId: kakaoUser.kakaoId,
-      name: kakaoUser.name,
-      hasEmail: !!kakaoUser.email
-    });
-    
     return kakaoUser;
   }
   
@@ -119,8 +106,6 @@ export class KakaoAuthService {
    * 서비스 약관 동의 내역 조회 (카카오싱크 전용)
    */
   async getServiceTerms(accessToken: string): Promise<string[]> {
-    console.log('[KakaoAuthService] Fetching service terms...');
-    
     try {
       const response = await fetch(`${this.KAKAO_API_URL}/v2/user/service_terms`, {
         headers: {
@@ -135,8 +120,6 @@ export class KakaoAuthService {
       
       const data: KakaoServiceTermsResponse = await response.json();
       const tags = data.allowed_service_terms?.map(t => t.tag) || [];
-      
-      console.log('[KakaoAuthService] ✅ Service terms obtained:', tags);
       return tags;
       
     } catch (error) {
@@ -149,8 +132,6 @@ export class KakaoAuthService {
    * DB에 사용자 저장 또는 업데이트 (Upsert)
    */
   async upsertUser(kakaoUser: KakaoUser): Promise<User> {
-    console.log('[KakaoAuthService] Upserting user to DB...');
-    
     try {
       // 기존 사용자 확인
       const existingUser = await this.db.prepare(`
@@ -179,7 +160,6 @@ export class KakaoAuthService {
           userId
         ).run();
         
-        console.log('[KakaoAuthService] ✅ Updated user:', userId);
       } else {
         // 새 사용자 생성
         const result = await this.db.prepare(`
@@ -200,7 +180,6 @@ export class KakaoAuthService {
         ).run();
         
         userId = result.meta.last_row_id as number;
-        console.log('[KakaoAuthService] ✅ Created user:', userId);
       }
       
       // 사용자 정보 다시 조회하여 반환
@@ -231,7 +210,6 @@ export class KakaoAuthService {
         UPDATE users SET firebase_uid = ? WHERE id = ?
       `).bind(firebaseUID, userId).run();
       
-      console.log('[KakaoAuthService] ✅ Firebase UID updated for user:', userId);
     } catch (error) {
       // firebase_uid 컬럼이 없을 수 있으므로 경고만 출력
       console.warn('[KakaoAuthService] firebase_uid column not found, skipping update:', error);

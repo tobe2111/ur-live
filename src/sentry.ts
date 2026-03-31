@@ -7,7 +7,6 @@ export function initSentry() {
   
   // DSN이 없으면 콘솔 로그만 남기기 (Mock 모드)
   if (!dsn) {
-    console.log('🔍 Sentry Mock Mode: DSN not configured')
     return
   }
 
@@ -54,26 +53,22 @@ export function initSentry() {
           errorMessage.includes('Failed to fetch') ||
           errorMessage.includes('NetworkError')
         ) {
-          console.log('🔇 Sentry: Network error ignored')
           return null
         }
         
         // 취소된 요청 무시
         if (errorMessage.includes('AbortError') || errorMessage.includes('cancelled')) {
-          console.log('🔇 Sentry: Cancelled request ignored')
           return null
         }
         
         // 브라우저 확장 프로그램 에러 무시
         if (errorMessage.includes('extension') || errorMessage.includes('chrome://')) {
-          console.log('🔇 Sentry: Browser extension error ignored')
           return null
         }
       }
       
       // 2. 스크립트 로딩 에러 무시 (ad blockers 등)
       if (event.request?.url?.includes('ad')) {
-        console.log('🔇 Sentry: Ad-related error ignored')
         return null
       }
       
@@ -81,7 +76,6 @@ export function initSentry() {
     },
   })
 
-  console.log('✅ Sentry initialized successfully')
 }
 
 // 커스텀 에러 로깅
@@ -104,7 +98,6 @@ export function setUser(user: { id: string; email?: string; name?: string }) {
   const dsn = import.meta.env.VITE_SENTRY_DSN
   
   if (!dsn) {
-    console.log('👤 Set User (Mock):', user)
     return
   }
 
@@ -120,7 +113,6 @@ export function clearUser() {
   const dsn = import.meta.env.VITE_SENTRY_DSN
   
   if (!dsn) {
-    console.log('👤 Clear User (Mock)')
     return
   }
 
@@ -132,7 +124,6 @@ export function logEvent(message: string, data?: Record<string, any>) {
   const dsn = import.meta.env.VITE_SENTRY_DSN
   
   if (!dsn) {
-    console.log('📊 Event (Mock):', message, data)
     return
   }
 

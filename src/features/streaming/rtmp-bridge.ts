@@ -107,8 +107,6 @@ export class RTMPBridge extends DurableObject {
     // 1. Spawn FFmpeg process on external service (AWS Lambda, GCP Cloud Run, etc.)
     // 2. Or use WebRTC → Janus/Mediasoup → RTMP pipeline
     
-    console.log(`[FFmpeg] Starting bridge for stream ${session.streamId}`)
-    console.log(`[FFmpeg] RTMP: ${session.rtmpUrl}?${session.rtmpKey}`)
 
     // Conceptual FFmpeg command:
     // ffmpeg -f webm -i pipe:0 -c:v libx264 -preset veryfast -b:v 5000k -c:a aac -b:a 128k -f flv rtmp://...
@@ -120,14 +118,12 @@ export class RTMPBridge extends DurableObject {
   async pushToRTMP(session: StreamSession, data: ArrayBuffer) {
     // Forward binary data to FFmpeg stdin
     // This would write to the FFmpeg process pipe
-    console.log(`[RTMP] Pushing ${data.byteLength} bytes`)
   }
 
   /**
    * Stop FFmpeg bridge
    */
   stopFFmpegBridge(session: StreamSession) {
-    console.log(`[FFmpeg] Stopping bridge for stream ${session.streamId}`)
     // Kill FFmpeg process
   }
 

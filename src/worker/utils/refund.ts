@@ -48,7 +48,6 @@ export async function requestTossRefund(
       return { success: false, error: errBody.message || `Toss API error: ${response.status}` }
     }
 
-    console.log(`✅ Toss 환불 요청 성공: ${paymentKey}`)
     return { success: true }
   } catch (error) {
     console.error('❌ Toss 환불 요청 실패:', error)
@@ -80,7 +79,6 @@ export async function restoreStock(
       )
     )
 
-    console.log(`✅ 재고 복구 완료: ${orderId}`)
   }
 }
 
@@ -100,7 +98,6 @@ export async function recordRefundHistory(
     .bind(orderId, amount, reason)
     .run()
 
-  console.log(`✅ 환불 내역 기록: ${orderId}`)
 }
 
 /**
@@ -157,7 +154,6 @@ export async function processRefund(
     const orderAmount = order.total_amount ?? order.amount ?? 0
     await recordRefundHistory(db, orderId, refundAmount || orderAmount, reason)
 
-    console.log(`✅ 환불 처리 완료: ${orderId}`)
     return { success: true, refundId: orderId }
   } catch (error) {
     console.error('❌ 환불 처리 실패:', error)
