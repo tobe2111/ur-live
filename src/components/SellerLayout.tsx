@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { path: '/seller/supply',       label: '공급 상품',    icon: Truck },
   { path: '/seller/live-control', label: '라이브 스트림', icon: Play },
   { path: '/seller/settlements',  label: '정산',         icon: DollarSign },
-  { path: '/seller/alimtalk',     label: '알림톡',       icon: Bell },
+  { path: '/seller/alimtalk',     label: '브랜드메시지',  icon: Bell },
   { path: '/seller/donations',   label: '후원 내역',    icon: Heart },
   { path: '/seller/business-info',label: '사업자 정보',   icon: Building2 },
 ]

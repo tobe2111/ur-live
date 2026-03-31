@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { path: '/admin/products',      label: '상품 관리',   icon: Package },
   { path: '/admin/banners',       label: '배너 관리',   icon: Image },
   { path: '/admin/settlement',    label: '정산',        icon: DollarSign },
-  { path: '/admin/alimtalk',      label: '알림톡',      icon: Bell },
+  { path: '/admin/alimtalk',      label: '브랜드메시지', icon: Bell },
   { path: '/admin/kv-monitoring', label: 'KV 모니터링', icon: Monitor },
   { path: '/admin/sample-requests', label: '샘플 신청', icon: ClipboardList },
   { path: '/admin/cafe24',       label: 'Cafe24 연동', icon: Store },
