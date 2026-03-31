@@ -46,7 +46,17 @@ const confirmSchema = z.object({
  */
 paymentsRouter.post('/confirm', async (c) => {
   try {
-    const userId = c.get('user').id;
+    const firebaseUid = String(c.get('user').id);
+    // Firebase UID → DB user_id 변환 (order.routes.ts와 동일한 방식)
+    let userId = firebaseUid;
+    try {
+      const row = await c.env.DB.prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
+        .bind(firebaseUid).first<{ id: string | number }>();
+      if (row?.id != null) userId = String(row.id);
+    } catch {
+      // firebase_uid 컬럼 없는 스키마 → Firebase UID 직접 사용
+    }
+
     const body = await c.req.json();
     const parsed = confirmSchema.safeParse(body);
 
@@ -69,9 +79,10 @@ paymentsRouter.post('/confirm', async (c) => {
       return c.json({ success: true, data: { orders } });
     }
 
-    // Security: verify user owns these orders
-    const unauthorized = orders.find(o => o.user_id !== userId);
+    // Security: verify user owns these orders (타입 안전 비교: DB는 INTEGER, auth는 STRING)
+    const unauthorized = orders.find(o => String(o.user_id) !== String(userId));
     if (unauthorized) {
+      console.error('[PAYMENTS] User mismatch:', { authUserId: userId, orderUserId: unauthorized.user_id });
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 

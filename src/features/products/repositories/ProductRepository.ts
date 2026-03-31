@@ -13,7 +13,7 @@ export class ProductRepository {
    */
   async findById(id: number): Promise<Product | null> {
     const result = await this.db.prepare(`
-      SELECT * FROM products WHERE id = ? AND status != 'deleted'
+      SELECT * FROM products WHERE id = ? AND is_active = 1
     `).bind(id).first<Product>();
     
     return result || null;
@@ -23,7 +23,7 @@ export class ProductRepository {
    * 필터 조건으로 상품 목록 조회
    */
   async findAll(filter: ProductFilter, offset: number = 0, limit: number = 20): Promise<Product[]> {
-    let query = `SELECT * FROM products WHERE status != 'deleted'`;
+    let query = `SELECT * FROM products WHERE is_active = 1`;
     const params: any[] = [];
     
     if (filter.sellerId) {
@@ -72,7 +72,7 @@ export class ProductRepository {
    * 전체 개수 조회 (페이지네이션용)
    */
   async count(filter: ProductFilter): Promise<number> {
-    let query = `SELECT COUNT(*) as count FROM products WHERE status != 'deleted'`;
+    let query = `SELECT COUNT(*) as count FROM products WHERE is_active = 1`;
     const params: any[] = [];
     
     if (filter.sellerId) {
@@ -112,15 +112,15 @@ export class ProductRepository {
     
     const result = await this.db.prepare(`
       INSERT INTO products (
-        seller_id, name, description, price, stock_quantity, 
-        category, images, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))
+        seller_id, name, description, price, stock,
+        category, images, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
     `).bind(
       data.seller_id,
       data.name,
       data.description || null,
       data.price,
-      data.stock_quantity,
+      data.stock_quantity ?? data.stock,
       data.category || null,
       imagesJson
     ).run();
@@ -157,9 +157,9 @@ export class ProductRepository {
       params.push(data.price);
     }
     
-    if (data.stock_quantity !== undefined) {
-      updates.push('stock_quantity = ?');
-      params.push(data.stock_quantity);
+    if (data.stock_quantity !== undefined || data.stock !== undefined) {
+      updates.push('stock = ?');
+      params.push(data.stock_quantity ?? data.stock);
     }
     
     if (data.category !== undefined) {
@@ -202,7 +202,7 @@ export class ProductRepository {
    */
   async delete(id: number): Promise<void> {
     await this.db.prepare(`
-      UPDATE products SET status = 'deleted', updated_at = datetime('now') WHERE id = ?
+      UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?
     `).bind(id).run();
   }
   
@@ -221,7 +221,7 @@ export class ProductRepository {
       FROM products p
       JOIN products_fts fts ON p.id = fts.product_id
       WHERE products_fts MATCH ?
-      AND p.status != 'deleted'
+      AND p.is_active = 1
     `;
     
     const params: any[] = [query];
