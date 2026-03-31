@@ -52,20 +52,6 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         disabled={isOutOfStock}
       />
 
-      {/* 상품 이미지 */}
-      <div className="relative w-20 h-20 shrink-0">
-        <img
-          src={item.image_url || '/placeholder.png'}
-          alt={item.product_name}
-          className={`w-20 h-20 object-cover rounded-md ${isOutOfStock ? 'opacity-40' : ''}`}
-        />
-        {isOutOfStock && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/40">
-            <span className="text-[11px] font-bold text-white">품절</span>
-          </div>
-        )}
-      </div>
-
       {/* 상품 정보 */}
       <div className="flex-1 min-w-0">
         <h3 className={`font-medium mb-1 truncate text-[18px] ${isOutOfStock ? 'text-gray-400' : 'text-gray-900'}`}>
