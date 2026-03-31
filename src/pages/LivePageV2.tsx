@@ -17,7 +17,7 @@ import '@/utils/console-suppressor'
 
 // Extracted components and utilities
 import type { YTPlayer, YTPlayerEvent, Stream, Product, ReelData } from '@/components/live/LiveTypes'
-import { isApiError, usernames, chatTexts, getRandomItem, formatViewers } from '@/components/live/LiveUtils'
+import { isApiError, usernames, chatTexts, getRandomItem, formatViewers, maskUserName } from '@/components/live/LiveUtils'
 import { TopNav } from '@/components/live/TopNav'
 import { LiveChat } from '@/components/live/LiveChatFeed'
 import { ProductListSheet } from '@/components/live/ProductListSheet'
@@ -377,24 +377,6 @@ function ReelCard({
 
     loadInitialProduct()
   }, [stream.id])
-
-  // ============================================
-  // Mask Username Helper
-  // ============================================
-  function maskUserName(name: string): string {
-    if (!name || name.length === 0) return '익명'
-    if (name === '익명' || name === 'Anonymous') return name
-    
-    if (name.length === 1) {
-      return name + '*'
-    } else if (name.length === 2) {
-      return name[0] + '*'
-    } else if (name.length === 3) {
-      return name[0] + '*' + name[2]
-    } else {
-      return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
-    }
-  }
 
   // ============================================
   // Kakao Login Handler
