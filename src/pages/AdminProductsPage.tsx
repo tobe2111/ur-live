@@ -7,8 +7,9 @@ import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
   Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock,
-  BarChart2, TrendingUp
+  BarChart2, TrendingUp, Download
 } from 'lucide-react'
+import { downloadAdminTemplate } from '@/utils/product-template'
 import { formatKSTDate } from '@/utils/date'
 
 interface Product {
@@ -247,12 +248,20 @@ export default function AdminProductsPage() {
       title="상품 관리"
       headerRight={
         activeTab === 'products' ? (
-          <button
-            onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="w-3.5 h-3.5" /> 상품 등록
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={downloadAdminTemplate}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 text-xs font-semibold rounded-lg hover:bg-green-100"
+            >
+              <Download className="w-3.5 h-3.5" /> 대량등록 양식
+            </button>
+            <button
+              onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-3.5 h-3.5" /> 상품 등록
+            </button>
+          </div>
         ) : undefined
       }
     >
