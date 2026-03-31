@@ -398,6 +398,10 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 app.route('/api/donations', donationsRoutes);
 app.route('/api/seller', sellerDonationsRoutes);
 
+// ── 팀 포인트 ──
+import { pointsRoutes } from '../features/points/api/points.routes';
+app.route('/api/points', pointsRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);

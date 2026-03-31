@@ -34,6 +34,8 @@ const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
+const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
+const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
@@ -515,6 +517,11 @@ function AppContent() {
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
+
+            {/* 팀 포인트 충전 */}
+            <Route path="/points/charge" element={<PointsChargePage />} />
+            <Route path="/points/charge/success" element={<PointsChargeSuccessPage />} />
+            <Route path="/points/charge/fail" element={<PaymentFailPage />} />
             <Route path="/fail" element={<PaymentFailPage />} />
             
             {/* Terms Pages */}
