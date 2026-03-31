@@ -70,7 +70,7 @@ export default function SellerAlimtalkPage() {
   async function loadCredits() {
     setLoading(true)
     try {
-      const res = await api.get('/api/seller/brandmessage/credits', {
+      const res = await api.get('/api/seller/alimtalk/credits', {
         headers: { Authorization: `Bearer ${getSellerToken()}` }
       })
       if (res.data.success) {
@@ -91,7 +91,7 @@ export default function SellerAlimtalkPage() {
   async function loadLogs() {
     setLogsLoading(true)
     try {
-      const res = await api.get('/api/seller/brandmessage/logs', {
+      const res = await api.get('/api/seller/alimtalk/logs', {
         headers: { Authorization: `Bearer ${getSellerToken()}` }
       })
       if (res.data.success) setLogs(res.data.data ?? [])
@@ -115,7 +115,7 @@ export default function SellerAlimtalkPage() {
     setPaying(true)
     try {
       // 1. 충전 주문 생성
-      const res = await api.post('/api/seller/brandmessage/credits/charge',
+      const res = await api.post('/api/seller/alimtalk/credits/charge',
         { package_id: selectedPkgId },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
       )
@@ -155,7 +155,7 @@ export default function SellerAlimtalkPage() {
 
     if (charge === 'success' && paymentKey && orderId && amount) {
       window.history.replaceState({}, '', '/seller/brandmessage')
-      api.post('/api/seller/brandmessage/credits/confirm',
+      api.post('/api/seller/alimtalk/credits/confirm',
         { paymentKey, orderId, amount: Number(amount) },
         { headers: { Authorization: `Bearer ${getSellerToken()}` } }
       ).then(res => {
