@@ -181,6 +181,7 @@ function KakaoTalkIcon({ className }: { className?: string }) {
 
 // TopNav Component
 function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { youtube?: string; instagram?: string; kakao?: string } }) {
+  const hasLinks = sellerLinks?.youtube || sellerLinks?.instagram || sellerLinks?.kakao
   return (
     <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
       <div className="flex items-center gap-2">
@@ -196,41 +197,47 @@ function TopNav({ viewers, sellerLinks }: { viewers: number; sellerLinks?: { you
         </div>
       </div>
 
-      <div className="flex items-center gap-3 h-[34px]">
-        {sellerLinks?.youtube && (
-          <a
-            href={sellerLinks.youtube}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="YouTube"
-          >
-            <YouTubeIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-        {sellerLinks?.instagram && (
-          <a
-            href={sellerLinks.instagram}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="Instagram"
-          >
-            <InstagramIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-        {sellerLinks?.kakao && (
-          <a
-            href={sellerLinks.kakao}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-50 hover:opacity-80 transition-opacity flex items-center justify-center"
-            aria-label="KakaoTalk"
-          >
-            <KakaoTalkIcon className="h-[18px] w-[18px] text-white" />
-          </a>
-        )}
-      </div>
+      {/* 우측 상단: SNS 링크 + 구독 */}
+      {hasLinks && (
+        <div className="flex items-center gap-2">
+          {sellerLinks?.youtube && (
+            <>
+              <a
+                href={sellerLinks.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-600/80 backdrop-blur-sm hover:bg-red-600 transition-all active:scale-95"
+                aria-label="YouTube 구독"
+              >
+                <YouTubeIcon className="h-4 w-4 text-white" />
+                <span className="text-[10px] font-bold text-white">구독</span>
+              </a>
+            </>
+          )}
+          {sellerLinks?.instagram && (
+            <a
+              href={sellerLinks.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/80 to-pink-500/80 backdrop-blur-sm hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
+              aria-label="Instagram"
+            >
+              <InstagramIcon className="h-4 w-4 text-white" />
+            </a>
+          )}
+          {sellerLinks?.kakao && (
+            <a
+              href={sellerLinks.kakao}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-400/80 backdrop-blur-sm hover:bg-yellow-400 transition-all active:scale-95"
+              aria-label="KakaoTalk"
+            >
+              <KakaoTalkIcon className="h-4 w-4 text-gray-900" />
+            </a>
+          )}
+        </div>
+      )}
     </header>
   )
 }
