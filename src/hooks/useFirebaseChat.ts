@@ -168,10 +168,7 @@ export function useFirebaseChat(
               setMessages(messagesArray)
               setIsConnected(true)
               setError(null)
-              
-              console.log(`[useFirebaseChat] ✅ Loaded ${messagesArray.length} messages`)
             } else {
-              console.log('[useFirebaseChat] ℹ️ No messages yet')
               setMessages([])
               setIsConnected(true)
               setError(null)
@@ -197,8 +194,6 @@ export function useFirebaseChat(
 
     // 정리 함수
     return () => {
-      console.log(`[useFirebaseChat] 🧹 Cleaning up Firebase listener for stream ${liveId}`)
-      
       if (unsubscribeRef.current) {
         unsubscribeRef.current()
         unsubscribeRef.current = null

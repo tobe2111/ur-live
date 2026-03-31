@@ -174,10 +174,19 @@ export function validateEnv(env: CloudflareBindings): void {
  * @param env - Cloudflare 환경 객체
  */
 export function logEnvStatus(env: CloudflareBindings): void {
-  console.log('[ENV] Environment check:');
-  console.log('  DB:', env.DB ? '✅ Connected' : '❌ Missing');
-  console.log('  SESSION_KV:', env.SESSION_KV ? '✅ Connected' : '❌ Missing');
-  console.log('  CACHE_KV:', env.CACHE_KV ? '✅ Connected' : '❌ Missing');
-  console.log('  TOSS_SECRET_KEY:', env.TOSS_SECRET_KEY ? '✅ Set' : '❌ Missing');
-  console.log('  TOSS_CLIENT_KEY:', env.TOSS_CLIENT_KEY ? '✅ Set' : '❌ Missing');
+  const status = {
+    DB: !!env.DB,
+    SESSION_KV: !!env.SESSION_KV,
+    CACHE_KV: !!env.CACHE_KV,
+    TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
+    TOSS_CLIENT_KEY: !!env.TOSS_CLIENT_KEY,
+  };
+
+  const missing = Object.entries(status)
+    .filter(([, ok]) => !ok)
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    console.error('[ENV] Missing bindings:', missing.join(', '));
+  }
 }

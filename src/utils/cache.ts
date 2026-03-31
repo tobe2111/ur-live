@@ -29,18 +29,14 @@ export async function getCached<T>(
     const cached = await kv.get(key, 'json') as CachedData<T> | null;
     
     if (!cached) {
-      console.log(`[Cache MISS] ${key}`);
       return null; // 캐시 미스
     }
-    
+
     // TTL 체크
     const age = Date.now() - cached.timestamp;
     if (age > ttlSeconds * 1000) {
-      console.log(`[Cache EXPIRED] ${key} (age: ${Math.round(age / 1000)}s)`);
       return null; // 캐시 만료
     }
-    
-    console.log(`[Cache HIT] ${key} (age: ${Math.round(age / 1000)}s)`);
     return cached.data;
   } catch (error) {
     console.error(`[Cache] Get error for key "${key}":`, error);
@@ -73,8 +69,6 @@ export async function setCached<T>(
       JSON.stringify(cachedData),
       { expirationTtl: ttlSeconds }
     );
-    
-    console.log(`[Cache SET] ${key} (TTL: ${ttlSeconds}s)`);
   } catch (error) {
     console.error(`[Cache] Set error for key "${key}":`, error);
   }
@@ -92,7 +86,6 @@ export async function invalidateCache(
 ): Promise<void> {
   try {
     await kv.delete(key);
-    console.log(`[Cache INVALIDATE] ${key}`);
   } catch (error) {
     console.error(`[Cache] Delete error for key "${key}":`, error);
   }
@@ -110,7 +103,6 @@ export async function invalidateCaches(
 ): Promise<void> {
   try {
     await Promise.all(keys.map(key => kv.delete(key)));
-    console.log(`[Cache INVALIDATE] ${keys.length} keys:`, keys);
   } catch (error) {
     console.error(`[Cache] Bulk delete error:`, error);
   }
