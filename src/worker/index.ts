@@ -402,6 +402,10 @@ app.route('/api/seller', sellerDonationsRoutes);
 import { pointsRoutes } from '../features/points/api/points.routes';
 app.route('/api/points', pointsRoutes);
 
+// ── 상품 리뷰 ──
+import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
+app.route('/api/reviews', reviewsRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
