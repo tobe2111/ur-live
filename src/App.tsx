@@ -49,6 +49,7 @@ const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
 const SellerProductsPage = lazy(() => import('./pages/SellerProductsPage'))
+const SellerInventoryPage = lazy(() => import('./pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('./pages/SellerProductNewPage'))
 const SellerProductEditPage = lazy(() => import('./pages/SellerProductEditPage'))
 const SellerLiveControlPage = lazy(() => import('./pages/SellerLiveControlPage'))
@@ -320,6 +321,11 @@ function AppContent() {
             <Route path="/seller/products" element={
               <ProtectedRoute requireSeller>
                 <SellerProductsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/inventory" element={
+              <ProtectedRoute requireSeller>
+                <SellerInventoryPage />
               </ProtectedRoute>
             } />
             <Route path="/seller/products/new" element={
