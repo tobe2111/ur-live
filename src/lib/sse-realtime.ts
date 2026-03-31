@@ -33,7 +33,6 @@ export function createSSEResponse(): Response {
     },
     cancel() {
       // 연결 종료 시 정리
-      console.log('[SSE] Connection closed')
     }
   })
 
@@ -86,7 +85,6 @@ export async function handleLiveStreamSSE(
 
   const stream = new ReadableStream({
     async start(controller) {
-      console.log(`[SSE] Client connected to stream ${streamId}`)
 
       // 초기 데이터 전송
       try {
@@ -150,7 +148,6 @@ export async function handleLiveStreamSSE(
     },
     
     cancel() {
-      console.log(`[SSE] Client disconnected from stream ${streamId}`)
       if (intervalId) {
         clearInterval(intervalId)
       }
@@ -182,7 +179,6 @@ export async function handleChatSSE(
 
   const stream = new ReadableStream({
     async start(controller) {
-      console.log(`[SSE Chat] Client connected to stream ${streamId}`)
 
       // 최근 메시지 전송
       try {
@@ -256,7 +252,6 @@ export async function handleChatSSE(
     },
     
     cancel() {
-      console.log(`[SSE Chat] Client disconnected from stream ${streamId}`)
       if (intervalId) {
         clearInterval(intervalId)
       }
@@ -286,7 +281,6 @@ export async function handleOrderNotificationSSE(
 
   const stream = new ReadableStream({
     async start(controller) {
-      console.log(`[SSE Orders] Seller ${sellerId} connected`)
 
       // 최근 주문 조회
       try {
@@ -342,7 +336,6 @@ export async function handleOrderNotificationSSE(
     },
     
     cancel() {
-      console.log(`[SSE Orders] Seller ${sellerId} disconnected`)
       if (intervalId) {
         clearInterval(intervalId)
       }
@@ -371,7 +364,6 @@ export async function handleStockAlertSSE(
 
   const stream = new ReadableStream({
     async start(controller) {
-      console.log(`[SSE Stock] Seller ${sellerId} connected`)
 
       // 재고 부족 상품 체크 (60초마다)
       intervalId = setInterval(async () => {
@@ -407,7 +399,6 @@ export async function handleStockAlertSSE(
     },
     
     cancel() {
-      console.log(`[SSE Stock] Seller ${sellerId} disconnected`)
       if (intervalId) {
         clearInterval(intervalId)
       }
