@@ -178,7 +178,6 @@ export default function WebStreaming({
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      console.log('[WebSocket] Connected')
       ws.send(JSON.stringify({ type: 'seller_join', streamId }))
     }
 
@@ -189,7 +188,6 @@ export default function WebStreaming({
         setCurrentProductIndex(data.productIndex)
       } else if (data.type === 'chat_message') {
         // Handle incoming chat
-        console.log('[Chat]', data.message)
       }
     }
 

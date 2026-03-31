@@ -16,6 +16,41 @@ import { ArrowLeft } from 'lucide-react'
  * - firebase_token 처리는 여기서만
  * - RouteGuard와 협력해 무한 루프 방지
  */
+function TeamPointsCard() {
+  const navigate = useNavigate()
+  const [balance, setBalance] = useState(0)
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/points/balance')
+        .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    })
+  }, [])
+  return (
+    <div className="px-5 py-3">
+      <div
+        onClick={() => navigate('/points/charge')}
+        className="flex items-center justify-between bg-gradient-to-r from-pink-50 to-orange-50 rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-pink-100"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🎁</span>
+          <div>
+            <p className="text-[11px] text-gray-500 font-medium">내 팀 잔액</p>
+            <p className="text-lg font-bold text-gray-900">
+              {loading ? '...' : `${balance.toLocaleString()}팀`}
+            </p>
+          </div>
+        </div>
+        <button className="px-3 py-1.5 text-xs font-bold text-pink-600 bg-white rounded-lg border border-pink-200">
+          충전
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -166,6 +201,9 @@ export default function UserProfilePage() {
 
       {/* User Info Section */}
       <UserInfo userName={userName} profileImage={profileImage} />
+
+      {/* 팀 포인트 잔액 */}
+      <TeamPointsCard />
 
       {/* Menu List Section */}
       <MenuList />

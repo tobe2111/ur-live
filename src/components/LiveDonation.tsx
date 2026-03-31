@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Heart, X, Loader2, Zap, Plus } from 'lucide-react'
+import { Heart, X, Loader2, Zap, Plus, Gift } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -102,13 +102,16 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
 
   return (
     <>
-      {/* 후원 버튼 */}
+      {/* 선물하기 버튼 */}
       <button
         onClick={() => setShowSheet(true)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 backdrop-blur-sm transition-all active:scale-90"
-        aria-label="후원하기"
+        className="flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90"
+        aria-label="선물하기"
       >
-        <Heart className="h-5 w-5 text-pink-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 backdrop-blur-sm">
+          <Gift className="h-5 w-5 text-pink-400" />
+        </div>
+        <span className="text-[9px] font-medium text-white/80">선물하기</span>
       </button>
 
       {/* 후원 바텀시트 */}
@@ -189,10 +192,13 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
 
               {/* 잔액 부족 안내 */}
               {isInsufficient && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-center">
                   <p className="text-xs text-amber-800">
-                    팀이 부족합니다. <button onClick={() => navigate('/points/charge')} className="font-bold underline">충전하기</button>
+                    팀이 부족합니다.
                   </p>
+                  <button onClick={() => navigate('/points/charge')} className="mt-1 text-xs font-bold text-amber-900 underline">
+                    충전하기
+                  </button>
                 </div>
               )}
 

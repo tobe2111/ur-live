@@ -38,9 +38,12 @@ export function useSessionValidation() {
       // 1. 로그인 처리 중이거나 인증 초기화 전에는 검증 스킵
       if (isProcessingLogin || !isAuthReady) return
 
-      // 2. JWT 토큰이 없으면 검증 불필요
+      // 2. JWT 토큰이 없거나, 현재 유저 타입이 일반 유저(카카오 로그인)면 검증 스킵
+      // 카카오 로그인 유저는 Firebase 인증을 사용하므로 JWT 검증 불필요
       const accessToken = getAccessToken()
+      const userType = getUserType()
       if (!accessToken) return
+      if (userType === 'user' || !userType) return  // 일반 유저는 Firebase 기반이므로 스킵
 
       isValidating = true
       

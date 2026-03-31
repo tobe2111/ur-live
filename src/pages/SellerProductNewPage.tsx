@@ -49,12 +49,10 @@ export default function SellerProductNewPage() {
     const sessionToken = localStorage.getItem('seller_token')
     
     if (!sessionToken) {
-      console.log('[SellerProductNewPage] ❌ No seller_token, redirecting to login')
       navigate('/seller/login')
       return
     }
-    
-    console.log('[SellerProductNewPage] ✅ seller_token found, loading page')
+
     loadLiveStreams()
   }, [])
 

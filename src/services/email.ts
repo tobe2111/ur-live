@@ -41,8 +41,6 @@ export async function sendEmail(
   }
   
   try {
-    console.log('[Email] Sending email:', { to, subject, from: fromAddress })
-    
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -64,7 +62,6 @@ export async function sendEmail(
       return { success: false, error: data.message || 'Failed to send email' }
     }
     
-    console.log('[Email] Sent successfully:', { to, subject, id: data.id })
     return { success: true }
     
   } catch (error) {

@@ -69,7 +69,6 @@ export default function LiveControlPanel({
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      console.log('[WebSocket] Connected to control panel')
       ws.send(JSON.stringify({
         type: 'control_join',
         streamId,
@@ -108,7 +107,6 @@ export default function LiveControlPanel({
     }
 
     ws.onclose = () => {
-      console.log('[WebSocket] Disconnected, reconnecting...')
       setTimeout(connectWebSocket, 3000)
     }
 

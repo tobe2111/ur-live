@@ -47,12 +47,9 @@ export function useSmartChat(
    * 시청자 수 기반 모드 자동 전환
    */
   useEffect(() => {
-    console.log('[SmartChat] Viewer count:', viewerCount)
-    
     if (viewerCount < 80) {
       // 안전 범위: Firebase 사용
       if (mode !== 'firebase') {
-        console.log('[SmartChat] 🟢 Switching to Firebase (viewers < 80)')
         setMode('firebase')
         setCapacityWarning(false)
       }

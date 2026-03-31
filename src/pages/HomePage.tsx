@@ -98,9 +98,7 @@ export default function HomePage() {
     const legacyParams = ['login', 'session', 'userId', 'userName', 'access_token', 'refresh_token']
     
     if (legacyParams.some(param => searchParams.has(param))) {
-      console.log('[HomePage] 🧹 레거시 URL 파라미터 정리 중...')
       window.history.replaceState({}, '', window.location.pathname)
-      console.log('[HomePage] ✅ URL 파라미터 정리 완료')
     }
     
     // 3개 API 병렬 호출 (waterfall 제거)
@@ -122,9 +120,6 @@ export default function HomePage() {
           name: userName,
           email: ''
         })
-        console.log('[HomePage] User info loaded:', { userName, userId })
-      } else {
-        console.log('[HomePage] No user info found')
       }
     } catch (error) {
       console.error('[HomePage] Failed to load user info:', error)
