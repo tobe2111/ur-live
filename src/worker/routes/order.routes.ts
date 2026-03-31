@@ -30,7 +30,7 @@ ordersRouter.use('*', requireAuth());
  * users 테이블에서 firebase_uid로 정수 id를 조회
  * 없으면 Firebase UID 자체를 fallback으로 사용 (새 스키마 호환)
  */
-async function getUserDbId(db: any, firebaseUid: string): Promise<string> {
+async function getUserDbId(db: D1Database, firebaseUid: string): Promise<string> {
   try {
     const row = await (db
       .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')

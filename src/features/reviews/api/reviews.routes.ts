@@ -68,9 +68,9 @@ reviewsRoutes.get('/product/:productId', async (c) => {
   return c.json({
     success: true,
     data: {
-      reviews: (results ?? []).map((r: any) => ({
+      reviews: (results ?? []).map((r) => ({
         ...r,
-        images: JSON.parse(r.images || '[]'),
+        images: JSON.parse((r as Record<string, unknown>).images as string || '[]'),
       })),
       total: total?.cnt ?? 0,
       page,
@@ -169,7 +169,7 @@ reviewsRoutes.put('/:id', requireAuth(), async (c) => {
   if (review.user_id !== user.id) return c.json({ success: false, error: '본인의 리뷰만 수정할 수 있습니다' }, 403);
 
   const updates: string[] = ['updated_at = datetime(\'now\')'];
-  const params: any[] = [];
+  const params: (string | number)[] = [];
 
   if (body.rating && body.rating >= 1 && body.rating <= 5) { updates.push('rating = ?'); params.push(body.rating); }
   if (body.content !== undefined) { updates.push('content = ?'); params.push(body.content); }
@@ -220,9 +220,9 @@ reviewsRoutes.get('/my', requireAuth(), async (c) => {
 
   return c.json({
     success: true,
-    data: (results ?? []).map((r: any) => ({
+    data: (results ?? []).map((r) => ({
       ...r,
-      images: JSON.parse(r.images || '[]'),
+      images: JSON.parse((r as Record<string, unknown>).images as string || '[]'),
     })),
   });
 });

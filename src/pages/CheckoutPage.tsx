@@ -23,7 +23,7 @@ const StripeCheckout = lazy(() =>
 
 declare global {
   interface Window {
-    daum: any
+    daum: { Postcode: new (options: Record<string, unknown>) => void }
   }
 }
 
@@ -66,7 +66,7 @@ export default function CheckoutPage() {
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
 
   // 바로구매 모드: navigate state로 전달된 상품만 결제
-  const directPurchaseItems = (location.state as any)?.directPurchase as CartItem[] | undefined
+  const directPurchaseItems = (location.state as { directPurchase?: CartItem[] } | null)?.directPurchase
   const isDirectPurchase = !!directPurchaseItems?.length
   const [tokenRefreshing, setTokenRefreshing] = useState(false)  // 토큰 갱신 중 플래그
   
@@ -268,7 +268,7 @@ export default function CheckoutPage() {
       if (!container) return
 
       new window.daum.Postcode({
-        oncomplete: (data: any) => {
+        oncomplete: (data: { zonecode: string; roadAddress: string; jibunAddress: string }) => {
           setNewAddress({
             ...newAddress,
             postal_code: data.zonecode,

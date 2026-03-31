@@ -51,8 +51,6 @@ export default function KakaoCallbackPage() {
       }
 
       try {
-        console.log('[KakaoCallback] 🔄 카카오 콜백 처리 시작')
-
         // 1. 백엔드로 code 전송 → Firebase Custom Token 수신
         const response = await api.post('/api/auth/kakao/callback', {
           code,
@@ -64,11 +62,9 @@ export default function KakaoCallbackPage() {
         }
 
         const { customToken, user } = response.data.data
-        console.log('[KakaoCallback] ✅ Custom Token 수신:', { userId: user.id, userName: user.name })
 
         // 2. Firebase Custom Token으로 로그인
         const userCredential = await signInWithCustomToken(customToken)
-        console.log('[KakaoCallback] ✅ Firebase 로그인 성공:', userCredential.user.uid)
 
         // ✅ 중복 처리 방지: signInWithCustomToken 직후 즉시 설정
         // (이후 getIdToken/updateProfile 중 onAuthStateChanged가 fired되어도 fast path 처리)

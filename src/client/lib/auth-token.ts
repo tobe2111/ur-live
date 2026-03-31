@@ -45,12 +45,10 @@ export async function getIdToken(forceRefresh = false): Promise<string | null> {
   try {
     // Feature Flag: Use backend token endpoint?
     if (featureFlags.backendToken) {
-      console.log('[AuthToken] Using backend token endpoint (feature flag enabled)');
       return await getTokenFromBackend(forceRefresh);
     }
 
     // Default: Use client-side Firebase token (Phase 2.2 implementation)
-    console.log('[AuthToken] Using client-side Firebase token (default)');
     return await useAuthKR.getState().getIdToken(forceRefresh);
 
   } catch (err) {
@@ -102,8 +100,6 @@ async function getTokenFromBackend(forceRefresh = false): Promise<string | null>
       return await useAuthKR.getState().getIdToken(forceRefresh);
     }
 
-    console.log('[AuthToken] Backend token received, expires at:', new Date(data.data.expiresAt));
-    
     // Update cache with backend token
     const { setTokenCache } = useAuthKR.getState();
     setTokenCache({
@@ -160,36 +156,28 @@ export async function getTokenInfo(token: string): Promise<TokenInfoResponse | n
  */
 if (typeof window !== 'undefined') {
   (window as any).__testBackendToken = async () => {
-    console.log('🧪 Testing backend token endpoint...');
-    
     const { user } = useAuthKR.getState();
     if (!user) {
-      console.error('❌ No user logged in');
+      console.error('No user logged in');
       return;
     }
 
-    console.log('📝 User UID:', user.uid);
-    
     // Test with feature flag enabled
     const originalFlag = featureFlags.backendToken;
     featureFlags.backendToken = true;
-    
+
     const token = await getIdToken(true);
-    
+
     if (token) {
-      console.log('✅ Backend token received:', token.substring(0, 20) + '...');
-      
       const info = await getTokenInfo(token);
       if (info) {
-        console.log('✅ Token info:', info);
+        // DevTools test completed successfully
       }
     } else {
-      console.error('❌ Failed to get backend token');
+      console.error('Failed to get backend token');
     }
-    
+
     // Restore original flag
     featureFlags.backendToken = originalFlag;
   };
-  
-  console.log('[AuthToken] Test helper available: window.__testBackendToken()');
 }

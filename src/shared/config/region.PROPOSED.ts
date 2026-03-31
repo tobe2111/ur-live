@@ -254,9 +254,12 @@ export async function getAuthProvider(provider: 'kakao' | 'google') {
  * Region 정보 출력 (디버깅용)
  */
 export function logRegionInfo() {
+  // Only log in development
+  if (typeof window !== 'undefined' && !(import.meta as any).env?.DEV) return
+
   const config = getRegionConfig()
-  
-  console.group('🌍 Region Configuration')
+
+  console.group('Region Configuration')
   console.log('Region:', config.code)
   console.log('Name:', config.name)
   console.log('Language:', config.language)
