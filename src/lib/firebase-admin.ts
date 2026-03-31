@@ -55,7 +55,6 @@ export class FirebaseAdmin {
       throw new Error(`Firebase set failed: ${response.statusText}`)
     }
 
-    console.log(`✅ Firebase: Set data at ${path}`)
   }
 
   /**
@@ -78,7 +77,6 @@ export class FirebaseAdmin {
       throw new Error(`Firebase update failed: ${response.statusText}`)
     }
 
-    console.log(`✅ Firebase: Updated data at ${path}`)
   }
 
   /**
@@ -112,7 +110,6 @@ export class FirebaseAdmin {
       throw new Error(`Firebase delete failed: ${response.statusText}`)
     }
 
-    console.log(`✅ Firebase: Deleted data at ${path}`)
   }
 
   /**
@@ -132,7 +129,6 @@ export class FirebaseAdmin {
         ...data,
         updated_at: Date.now(),
       })
-      console.log(`✅ Firebase: Stream ${streamId} updated`, data)
     } catch (error) {
       console.error(`❌ Firebase: Failed to update stream ${streamId}`, error)
       // Firebase 실패해도 D1은 정상 작동하므로 에러 던지지 않음
@@ -156,7 +152,6 @@ export class FirebaseAdmin {
         ...additionalData,
         updated_at: Date.now(),
       })
-      console.log(`✅ Firebase: Product ${productId} stock updated to ${stock}`)
     } catch (error) {
       console.error(`❌ Firebase: Failed to update product ${productId}`, error)
     }
@@ -171,7 +166,6 @@ export class FirebaseAdmin {
       await this.updateStreamStatus(streamId, {
         current_product_id: newProductId,
       })
-      console.log(`✅ Firebase: Stream ${streamId} current product changed to ${newProductId}`)
     } catch (error) {
       console.error(`❌ Firebase: Failed to change product for stream ${streamId}`, error)
     }
@@ -192,7 +186,6 @@ export class FirebaseAdmin {
         isSystem: true,
       })
       
-      console.log(`✅ Firebase: Low stock alert sent for stream ${streamId}`)
     } catch (error) {
       console.error(`❌ Firebase: Failed to send low stock alert`, error)
     }
@@ -213,7 +206,6 @@ export class FirebaseAdmin {
         isSystem: true,
       })
       
-      console.log(`✅ Firebase: Sold out alert sent for stream ${streamId}`)
     } catch (error) {
       console.error(`❌ Firebase: Failed to send sold out alert`, error)
     }
@@ -227,9 +219,6 @@ export class FirebaseAdmin {
    */
   async createCustomToken(uid: string, claims?: Record<string, unknown>): Promise<string> {
     try {
-      console.log(`[Firebase Custom Token] Creating for UID: ${uid}`)
-      console.log(`[Firebase Custom Token] Claims:`, JSON.stringify(claims))
-      
       // Enhanced credential checking
       if (!this.privateKey || !this.clientEmail || !this.projectId) {
         const missingCreds = []
@@ -239,9 +228,6 @@ export class FirebaseAdmin {
         throw new Error(`Firebase credentials not configured: missing ${missingCreds.join(', ')}`)
       }
       
-      console.log(`[Firebase Custom Token] Using project: ${this.projectId}`)
-      console.log(`[Firebase Custom Token] Using service account: ${this.clientEmail}`)
-
       // JWT Header
       const header = {
         alg: 'RS256',
@@ -279,12 +265,10 @@ export class FirebaseAdmin {
         return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
       }
 
-      console.log('[Firebase Custom Token] Encoding header and payload...')
       const headerEncoded = base64url(header)
       const payloadEncoded = base64url(payload)
       const signatureInput = `${headerEncoded}.${payloadEncoded}`
 
-      console.log('[Firebase Custom Token] Parsing private key...')
       // Sign with RS256
       const privateKeyPem = this.privateKey.replace(/\\n/g, '\n')
       
@@ -296,10 +280,8 @@ export class FirebaseAdmin {
         throw new Error('Invalid private key format: missing PEM footer')
       }
       
-      console.log('[Firebase Custom Token] Converting PEM to DER...')
       const privateKeyDer = await this.pemToDer(privateKeyPem)
       
-      console.log('[Firebase Custom Token] Importing crypto key...')
       const cryptoKey = await crypto.subtle.importKey(
         'pkcs8',
         privateKeyDer,
@@ -311,7 +293,6 @@ export class FirebaseAdmin {
         ['sign']
       )
 
-      console.log('[Firebase Custom Token] Signing token...')
       const signature = await crypto.subtle.sign(
         'RSASSA-PKCS1-v1_5',
         cryptoKey,
@@ -324,15 +305,10 @@ export class FirebaseAdmin {
 
       const customToken = `${signatureInput}.${signatureEncoded}`
       
-      console.log('[Firebase Custom Token] ✅ Token created successfully')
       return customToken
 
     } catch (error) {
       console.error('[Firebase Custom Token] ❌ Failed to create token:', error)
-      console.error('[Firebase Custom Token] Error name:', (error as Error).name)
-      console.error('[Firebase Custom Token] Error message:', (error as Error).message)
-      console.error('[Firebase Custom Token] Error stack:', (error as Error).stack)
-      
       // Re-throw with more context
       throw new Error(`Failed to create Firebase custom token: ${(error as Error).message}`)
     }
@@ -346,9 +322,6 @@ export class FirebaseAdmin {
    */
   async setCustomUserClaims(uid: string, claims: Record<string, unknown>): Promise<void> {
     try {
-      console.log(`[Firebase Claims] Setting custom claims for UID: ${uid}`)
-      console.log(`[Firebase Claims] Claims:`, JSON.stringify(claims))
-
       // Firebase Identity Toolkit REST API로 custom attributes 설정
       const accessToken = await this.getAccessToken()
       const url = `https://identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:update`
@@ -373,7 +346,6 @@ export class FirebaseAdmin {
         return
       }
 
-      console.log(`[Firebase Claims] ✅ Custom claims set permanently for UID: ${uid}`)
     } catch (error) {
       console.error(`[Firebase Claims] ❌ Error setting custom claims:`, error)
       // 실패해도 로그인 흐름을 중단하지 않음
@@ -454,7 +426,6 @@ export class FirebaseAdmin {
     this.accessToken = tokenData.access_token
     this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000)
 
-    console.log(`[Firebase Admin] ✅ Access token obtained (expires in ${tokenData.expires_in}s)`)
     return this.accessToken!
   }
 

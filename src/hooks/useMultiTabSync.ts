@@ -60,11 +60,8 @@ export function useMultiTabSync() {
         if (!debounce(event.key)) return
         if (isLoginPage()) return // 로그인 페이지에서는 무시
 
-        console.log('[MultiTabSync] 🔥 Firebase Auth 변경:', event.key)
-
         if (event.oldValue && !event.newValue) {
           // 로그아웃 감지 → 홈으로
-          console.log('[MultiTabSync] 🔴 Firebase 로그아웃 → /')
           window.location.href = '/'
           return
         }

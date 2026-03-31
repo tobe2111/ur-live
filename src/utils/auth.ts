@@ -48,8 +48,6 @@ const LEGACY_KEYS = {
  * @param type - 삭제할 세션 타입 ('seller' | 'admin' | 'user')
  */
 export function clearAuthData(type: 'seller' | 'admin' | 'user') {
-  console.log(`[Auth] Clearing ${type} auth data (selective removal)`)
-  
   const keysToRemove: string[] = []
   
   if (type === 'seller') {
@@ -98,8 +96,6 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
     localStorage.removeItem(key)
   })
   
-  console.log(`[Auth] Removed ${keysToRemove.length} keys:`, keysToRemove)
-  
   // ✅ 보호된 키 (삭제하지 않음)
   // User 세션: firebase_token, user_id, user_name, hasCartItems (seller/admin 삭제 시)
   // Seller 세션: seller_token, seller_id, seller_name (user/admin 삭제 시)
@@ -130,7 +126,6 @@ export async function isLoggedIn(): Promise<boolean> {
     if (userType === 'seller') {
       const sellerToken = localStorage.getItem('seller_token')
       if (sellerToken) {
-        console.log('[Auth] isLoggedIn: seller JWT found ✅')
         return true
       }
     }
@@ -138,7 +133,6 @@ export async function isLoggedIn(): Promise<boolean> {
     if (userType === 'admin') {
       const adminToken = localStorage.getItem('admin_token')
       if (adminToken) {
-        console.log('[Auth] isLoggedIn: admin JWT found ✅')
         return true
       }
     }
@@ -146,11 +140,9 @@ export async function isLoggedIn(): Promise<boolean> {
     // 2️⃣ Check Firebase Auth (buyers with Kakao/Email login)
     const auth = await getFirebaseAuth()
     if (auth.currentUser) {
-      console.log('[Auth] isLoggedIn: Firebase user found ✅')
       return true
     }
-    
-    console.log('[Auth] isLoggedIn: no authentication found ❌')
+
     return false
   } catch (error) {
     console.error('[Auth] isLoggedIn 체크 실패:', error)
@@ -234,11 +226,8 @@ export async function getUserId(): Promise<string | null> {
     const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
                    localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
     if (userId) {
-      console.log('[Auth] getUserId: localStorage found (user_type=user):', userId)
       return userId
     }
-  } else {
-    console.log(`[Auth] getUserId: Skipping localStorage (user_type=${userType}, not 'user')`)
   }
   
   // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)
@@ -252,20 +241,17 @@ export async function getUserId(): Promise<string | null> {
         try {
           const parsed = JSON.parse(claims)
           if (parsed.userId) {
-            console.log('[Auth] getUserId: Firebase Custom Claims userId found:', parsed.userId)
             return parsed.userId.toString()
           }
         } catch (_) {}
       }
       // ✅ Fallback: use Firebase UID (email login users without custom claims)
-      console.log('[Auth] getUserId: Fallback to Firebase UID:', user.uid)
       return user.uid
     }
   } catch (error) {
     console.warn('[Auth] getUserId - Firebase claims 조회 실패:', error)
   }
 
-  console.log('[Auth] getUserId: no ID found')
   return null
 }
 
@@ -292,13 +278,11 @@ export async function getUserName(): Promise<string | null> {
       
       // Custom Claims에서 userName 추출
       if (claims.userName && typeof claims.userName === 'string') {
-        console.log('[Auth] getUserName: Firebase Custom Claims userName found:', claims.userName)
         return claims.userName
       }
       
       // 2️⃣ Firebase displayName (Google 로그인 등)
       if (user.displayName) {
-        console.log('[Auth] getUserName: Firebase displayName found:', user.displayName)
         return user.displayName
       }
     }
@@ -315,14 +299,10 @@ export async function getUserName(): Promise<string | null> {
                       localStorage.getItem(LEGACY_KEYS.USER_NAME_ALT)
     
     if (localName) {
-      console.log('[Auth] getUserName: localStorage found (user_type=user):', localName)
       return localName
     }
-  } else {
-    console.log(`[Auth] getUserName: Skipping localStorage (user_type=${userType}, not 'user')`)
   }
-  
-  console.log('[Auth] getUserName: no name found')
+
   return null
 }
 
@@ -341,14 +321,10 @@ export function getUserEmail(): string | null {
                   localStorage.getItem(LEGACY_KEYS.USER_EMAIL_ALT)
     
     if (email) {
-      console.log('[Auth] getUserEmail: localStorage found (user_type=user):', email)
       return email
     }
-  } else {
-    console.log(`[Auth] getUserEmail: Skipping localStorage (user_type=${userType}, not 'user')`)
   }
-  
-  console.log('[Auth] getUserEmail: no email found')
+
   return null
 }
 
@@ -446,7 +422,6 @@ export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise
   if (type) {
     // ✅ Selective logout: Use clearAuthData
     clearAuthData(type)
-    console.log(`[Auth] 🚪 ${type} 로그아웃 완료 (다른 세션 보호됨)`)
     return
   }
   
@@ -477,7 +452,6 @@ export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise
     console.error('[Auth] Firebase signOut 실패:', e)
   }
   
-  console.log('[Auth] 🚪 전체 로그아웃 완료 (모든 세션 삭제)')
 }
 
 /**
@@ -523,11 +497,5 @@ export function saveFirebaseTokens(
     localStorage.removeItem(key)
   })
   
-  console.log('[Auth Firebase] ✅ Firebase 토큰 및 사용자 정보 저장 완료:', {
-    userId: userId.toString(),
-    userName,
-    userType,
-    hasFirebaseToken: !!firebaseToken
-  })
 }
 

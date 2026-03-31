@@ -51,8 +51,6 @@ export class GoogleAuthService {
    * DB에 Google 사용자 저장 또는 업데이트
    */
   async upsertUser(googleUser: GoogleUser): Promise<User> {
-    console.log('[GoogleAuthService] Upserting user to DB...');
-    
     try {
       // 기존 사용자 확인
       const existingUser = await this.db.prepare(`
@@ -83,7 +81,6 @@ export class GoogleAuthService {
           userId
         ).run();
         
-        console.log('[GoogleAuthService] ✅ Updated user:', userId);
       } else {
         // 새 사용자 생성
         const result = await this.db.prepare(`
