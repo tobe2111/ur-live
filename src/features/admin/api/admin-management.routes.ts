@@ -1162,6 +1162,48 @@ adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
   }
 });
 
+// ─── 정산 자동 실행 (Auto-settlement execution) ──────────────────────────────
+
+adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({}));
+    const { calculateAutoSettlement, executeSettlement } = await import('@/lib/settlement-automation');
+
+    // Preview mode: if dry_run query param is set, only calculate without executing
+    const dryRun = c.req.query('dry_run') === 'true';
+
+    if (dryRun) {
+      const preview = await calculateAutoSettlement(
+        DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
+      );
+      const totalSales = preview.reduce((s, r) => s + r.total_sales, 0);
+      const totalCommission = preview.reduce((s, r) => s + r.commission_amount, 0);
+      const totalSettlement = preview.reduce((s, r) => s + r.settlement_amount, 0);
+      const totalOrders = preview.reduce((s, r) => s + r.total_orders, 0);
+      return c.json({
+        success: true,
+        data: {
+          dry_run: true,
+          sellers: preview,
+          total_orders: totalOrders,
+          total_sales: totalSales,
+          total_commission: totalCommission,
+          total_settlement: totalSettlement,
+        },
+      });
+    }
+
+    const result = await executeSettlement(
+      DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
+    );
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ─── 정산 CSV 내보내기 ────────────────────────────────────────────────────────
 
 adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
