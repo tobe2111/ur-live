@@ -13,10 +13,26 @@ import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
 import { createLogger } from '@/utils/logger'
 import { useAuthStore } from '@/shared/stores'
-import { DonationEffect } from '@/components/LiveDonation'
+import LiveDonation, { DonationEffect } from '@/components/LiveDonation'
 import '@/utils/console-suppressor'
 
 const log = createLogger('LivePageV2')
+
+// 팀 포인트 잔액 뱃지 (상단 왼쪽)
+function TeamPointsBadge() {
+  const [balance, setBalance] = useState(0)
+  useEffect(() => {
+    api.get('/api/points/balance')
+      .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
+      .catch(() => {})
+  }, [])
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
+      <span className="text-sm">🎁</span>
+      <span className="text-xs font-bold text-white">{balance.toLocaleString()}팀</span>
+    </div>
+  )
+}
 
 // Axios-like error shape for catch blocks
 interface ApiError {
@@ -1308,6 +1324,13 @@ function ReelCard({
 
       {/* Product overlay */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
+        {/* Top bar: 팀 잔액 게이지 */}
+        {!isSeller && (
+          <div className="pointer-events-auto absolute top-3 left-3 z-20">
+            <TeamPointsBadge />
+          </div>
+        )}
+
         {/* Bottom gradient */}
         <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
@@ -1352,15 +1375,9 @@ function ReelCard({
                 <Share2 className="h-5 w-5 text-white/90" />
               </button>
 
-              {/* 후원하기 버튼 */}
-              {!isSeller && (
-                <button
-                  onClick={() => setDonationModal(true)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-all"
-                >
-                  <Heart className="h-3.5 w-3.5 fill-white" />
-                  후원
-                </button>
+              {/* 후원하기 버튼 (팀 포인트) */}
+              {!isSeller && stream?.id && (
+                <LiveDonation streamId={stream.id} />
               )}
             </div>
           </div>
