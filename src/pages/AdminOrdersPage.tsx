@@ -44,13 +44,30 @@ interface Order {
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  pending:   { label: '주문 접수', color: 'text-amber-700',   bg: 'bg-amber-50' },
-  confirmed: { label: '주문 확인', color: 'text-blue-700',    bg: 'bg-blue-50' },
-  shipped:   { label: '배송 중',   color: 'text-purple-700',  bg: 'bg-purple-50' },
-  delivered: { label: '배송 완료', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  cancelled: { label: '취소',      color: 'text-red-700',     bg: 'bg-red-50' },
-  refunded:  { label: '환불',      color: 'text-gray-600',    bg: 'bg-gray-100' },
+  PENDING:    { label: '주문 접수',  color: 'text-amber-700',   bg: 'bg-amber-50' },
+  PAID:       { label: '결제 완료',  color: 'text-blue-700',    bg: 'bg-blue-50' },
+  DONE:       { label: '결제 완료',  color: 'text-blue-700',    bg: 'bg-blue-50' },
+  PREPARING:  { label: '상품 준비',  color: 'text-indigo-700',  bg: 'bg-indigo-50' },
+  SHIPPING:   { label: '배송 중',    color: 'text-purple-700',  bg: 'bg-purple-50' },
+  DELIVERED:  { label: '배송 완료',  color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  CANCELLED:  { label: '취소',       color: 'text-red-700',     bg: 'bg-red-50' },
+  REFUNDED:   { label: '환불',       color: 'text-gray-600',    bg: 'bg-gray-100' },
+  FAILED:     { label: '결제 실패',  color: 'text-red-700',     bg: 'bg-red-50' },
 }
+
+const NEXT_STATUS: Record<string, string> = {
+  PENDING: 'DONE', DONE: 'PREPARING', PAID: 'PREPARING',
+  PREPARING: 'SHIPPING', SHIPPING: 'DELIVERED',
+}
+
+const COURIER_OPTIONS = [
+  { value: 'CJ대한통운', label: 'CJ대한통운' },
+  { value: '한진택배', label: '한진택배' },
+  { value: '롯데택배', label: '롯데택배' },
+  { value: '우체국택배', label: '우체국택배' },
+  { value: '로젠택배', label: '로젠택배' },
+  { value: '경동택배', label: '경동택배' },
+]
 
 const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: '결제 완료', color: 'text-emerald-700', bg: 'bg-emerald-50' },
@@ -131,6 +148,36 @@ export default function AdminOrdersPage() {
       const response = await api.get(`/api/admin/orders/${orderNumber}`, { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) { setSelectedOrder(response.data.data); setShowDetail(true) }
     } catch { toast.error('주문 상세 정보를 불러올 수 없습니다.') }
+  }
+
+  // 주문 상태 변경
+  async function updateOrderStatus(orderNumber: string, newStatus: string, cancelReason?: string) {
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.patch(`/api/admin/orders/${orderNumber}/status`, { status: newStatus, cancel_reason: cancelReason }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(`주문 상태가 ${STATUS_STYLES[newStatus]?.label || newStatus}(으)로 변경되었습니다.`)
+      loadOrders()
+      if (selectedOrder?.order_number === orderNumber) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus })
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || '상태 변경에 실패했습니다.')
+    }
+  }
+
+  // 운송장 등록
+  async function updateTracking(orderNumber: string, trackingNumber: string, shippingCompany: string) {
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      await api.put(`/api/admin/orders/${orderNumber}/tracking`, { tracking_number: trackingNumber, shipping_company: shippingCompany }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success('운송장이 등록되었습니다.')
+      loadOrders()
+      if (selectedOrder) {
+        setSelectedOrder({ ...selectedOrder, tracking_number: trackingNumber, courier: shippingCompany, status: 'SHIPPING' })
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || '운송장 등록에 실패했습니다.')
+    }
   }
 
   async function exportOrders() {
@@ -368,6 +415,55 @@ export default function AdminOrdersPage() {
                 <span className="text-sm font-medium text-gray-700">총 결제 금액</span>
                 <span className="text-lg font-bold text-blue-600">₩{selectedOrder.total_amount.toLocaleString()}</span>
               </div>
+
+              {/* 주문 상태 변경 */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">주문 처리</h4>
+                <div className="flex flex-wrap gap-2">
+                  {NEXT_STATUS[selectedOrder.status] && (
+                    <button
+                      onClick={() => updateOrderStatus(selectedOrder.order_number, NEXT_STATUS[selectedOrder.status])}
+                      className="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
+                      {STATUS_STYLES[NEXT_STATUS[selectedOrder.status]]?.label || NEXT_STATUS[selectedOrder.status]}(으)로 변경
+                    </button>
+                  )}
+                  {!['CANCELLED', 'REFUNDED', 'DELIVERED'].includes(selectedOrder.status) && (
+                    <button
+                      onClick={() => {
+                        const reason = prompt('취소 사유를 입력해주세요:')
+                        if (reason) updateOrderStatus(selectedOrder.order_number, 'CANCELLED', reason)
+                      }}
+                      className="px-4 py-2 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                    >
+                      주문 취소
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 운송장 등록 */}
+              {['DONE', 'PAID', 'PREPARING'].includes(selectedOrder.status) && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">운송장 등록</h4>
+                  <form onSubmit={e => {
+                    e.preventDefault()
+                    const form = e.target as HTMLFormElement
+                    const company = (form.elements.namedItem('courier') as HTMLSelectElement).value
+                    const number = (form.elements.namedItem('tracking') as HTMLInputElement).value
+                    if (company && number) updateTracking(selectedOrder.order_number, number, company)
+                  }} className="flex gap-2">
+                    <select name="courier" defaultValue={selectedOrder.courier || ''} className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-shrink-0">
+                      <option value="">택배사 선택</option>
+                      {COURIER_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
+                    <button type="submit" className="px-4 py-2 text-xs font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 flex-shrink-0">
+                      <Truck className="w-3.5 h-3.5 inline mr-1" />등록
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         </div>

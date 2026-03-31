@@ -1223,6 +1223,114 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
   }
 });
 
+// ─── 어드민 주문 상태 변경 ─────────────────────────────────────────────────────
+
+// PATCH /orders/:orderNumber/status — 주문 상태 변경
+adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+    const { status, cancel_reason } = await c.req.json<{ status: string; cancel_reason?: string }>();
+
+    const validStatuses = ['PENDING', 'PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'FAILED', 'REFUNDED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: `유효하지 않은 상태: ${status}` }, 400);
+    }
+
+    const orders = await executeQuery<{ id: number; status: string }>(
+      DB, 'SELECT id, status FROM orders WHERE order_number = ?', [orderNumber]
+    );
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    const updates: string[] = ['status = ?', 'updated_at = datetime(\'now\')'];
+    const params: (string | null)[] = [status];
+
+    if (status === 'CANCELLED' && cancel_reason) {
+      updates.push('cancel_reason = ?', 'cancelled_at = datetime(\'now\')');
+      params.push(cancel_reason);
+    }
+    if (status === 'DELIVERED') {
+      updates.push('delivered_at = datetime(\'now\')');
+    }
+
+    params.push(orderNumber);
+    await executeQuery(DB, `UPDATE orders SET ${updates.join(', ')} WHERE order_number = ?`, params);
+
+    // 취소 시 재고 복구
+    if (status === 'CANCELLED') {
+      const items = await executeQuery<{ product_id: number; quantity: number }>(
+        DB, 'SELECT product_id, quantity FROM order_items WHERE order_id = ?', [String(orders[0].id)]
+      );
+      for (const item of items) {
+        await executeQuery(DB, 'UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
+    return c.json({ success: true, data: { orderNumber, status } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /orders/:orderNumber/tracking — 운송장 등록
+adminManagementRoutes.put('/orders/:orderNumber/tracking', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+    const { tracking_number, shipping_company } = await c.req.json<{
+      tracking_number: string;
+      shipping_company: string;
+    }>();
+
+    if (!tracking_number || !shipping_company) {
+      return c.json({ success: false, error: '운송장 번호와 택배사를 입력해주세요' }, 400);
+    }
+
+    const orders = await executeQuery<{ id: number }>(
+      DB, 'SELECT id FROM orders WHERE order_number = ?', [orderNumber]
+    );
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    await executeQuery(DB,
+      `UPDATE orders SET tracking_number = ?, shipping_company = ?, status = 'SHIPPING',
+       shipped_at = datetime('now'), updated_at = datetime('now')
+       WHERE order_number = ?`,
+      [tracking_number, shipping_company, orderNumber]
+    );
+
+    return c.json({ success: true, data: { orderNumber, tracking_number, shipping_company, status: 'SHIPPING' } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PATCH /orders/bulk-status — 일괄 상태 변경
+adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const { order_numbers, status } = await c.req.json<{ order_numbers: string[]; status: string }>();
+
+    if (!order_numbers?.length || order_numbers.length > 100) {
+      return c.json({ success: false, error: '1~100개 주문을 선택해주세요' }, 400);
+    }
+
+    const validStatuses = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: `일괄 변경 가능 상태: ${validStatuses.join(', ')}` }, 400);
+    }
+
+    const placeholders = order_numbers.map(() => '?').join(',');
+    await executeQuery(DB,
+      `UPDATE orders SET status = ?, updated_at = datetime('now') WHERE order_number IN (${placeholders})`,
+      [status, ...order_numbers]
+    );
+
+    return c.json({ success: true, data: { updated: order_numbers.length, status } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ─── 라이브 스트림 관리 ──────────────────────────────────────────────────────
 
 adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
