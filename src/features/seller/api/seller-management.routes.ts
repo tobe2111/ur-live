@@ -962,6 +962,23 @@ sellerManagementRoutes.get('/settlements/stats', async (c) => {
   }
 });
 
+// ── GET /api/seller/settlements/summary ─────────────────────────────────────
+// 셀러 정산 요약: 미정산 금액, 마지막 정산, 누적 정산
+sellerManagementRoutes.get('/settlements/summary', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 401);
+
+  try {
+    const { getSellerSettlementSummary } = await import('@/lib/settlement-automation');
+    const summary = await getSellerSettlementSummary(db, sellerId);
+    return c.json({ success: true, data: summary });
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ── GET /api/seller/dashboard/stats ─────────────────────────────────────────
 // 셀러 대시보드 요약 통계 (SellerDashboardPage에서 호출)
 sellerManagementRoutes.get('/dashboard/stats', async (c) => {

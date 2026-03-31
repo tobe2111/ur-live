@@ -122,6 +122,8 @@ export default function ProductDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: number }>({})
   const [quantity, setQuantity] = useState(1)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [isWishlisted, setIsWishlisted] = useState(false)
+  const [wishlistLoading, setWishlistLoading] = useState(false)
 
   useEffect(() => {
     const referrer = document.referrer
@@ -134,6 +136,40 @@ export default function ProductDetailPage() {
       }
     }
   }, [id])
+
+  // Check wishlist status when product loads
+  useEffect(() => {
+    if (!id || !isLoggedIn) return
+    api.get('/api/wishlists').then(r => {
+      if (r.data.success && r.data.data?.items) {
+        const found = r.data.data.items.some((item: any) => String(item.product_id) === String(id))
+        setIsWishlisted(found)
+      }
+    }).catch(() => {})
+  }, [id, isLoggedIn])
+
+  async function handleToggleWishlist() {
+    if (!isLoggedIn) {
+      showToast('로그인이 필요합니다.', 'error')
+      localStorage.setItem('loginReturnUrl', window.location.pathname)
+      setTimeout(() => navigate('/login'), 1000)
+      return
+    }
+    if (!id || wishlistLoading) return
+    setWishlistLoading(true)
+    try {
+      const res = await api.post('/api/wishlists/toggle', { product_id: Number(id) })
+      if (res.data.success) {
+        const nowWishlisted = res.data.data?.isWishlisted ?? res.data.action === 'added'
+        setIsWishlisted(nowWishlisted)
+        showToast(nowWishlisted ? '찜 목록에 추가되었습니다.' : '찜 목록에서 삭제되었습니다.', 'success')
+      }
+    } catch {
+      showToast('찜하기에 실패했습니다.', 'error')
+    } finally {
+      setWishlistLoading(false)
+    }
+  }
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setToast({ message, type })
@@ -281,7 +317,11 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <MobileHeader onShare={handleShare} />
+      <MobileHeader
+        onShare={handleShare}
+        isWishlisted={isWishlisted}
+        onToggleWishlist={handleToggleWishlist}
+      />
 
       <main className="pb-20">
         {/* Product Images Carousel */}
