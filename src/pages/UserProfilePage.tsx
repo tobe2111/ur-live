@@ -8,7 +8,6 @@ import { getUserProfileImage } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { Footer } from '@/components/my-page/footer'
-import BottomNav from '@/components/main/BottomNav'
 import { ArrowLeft } from 'lucide-react'
 
 /**
@@ -184,7 +183,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col max-w-screen-sm mx-auto">
       {/* Header with Back Button */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
@@ -236,11 +235,6 @@ export default function UserProfilePage() {
       {/* Footer Section */}
       <Footer />
       
-      {/* Bottom Navigation Spacer */}
-      <div className="h-20" aria-hidden="true"></div>
-      
-      {/* Bottom Navigation */}
-      <BottomNav />
     </div>
   )
 }

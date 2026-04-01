@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import BottomNav from '@/components/main/BottomNav'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -261,11 +262,16 @@ function AppContent() {
 
   // 🔄 다중 탭 동기화
   useMultiTabSync()
-  
+
+  const location = useLocation()
+  const hideBottomNav = ['/live/', '/checkout', '/payment/', '/points/', '/seller/', '/admin/', '/login', '/register', '/auth/', '/embed/']
+    .some(path => location.pathname.startsWith(path))
+
   return (
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
+          <div className={!hideBottomNav ? 'pb-14' : ''}>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
@@ -535,8 +541,10 @@ function AppContent() {
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </div>
         </Suspense>
       </FrameWrapper>
+      {!hideBottomNav && <BottomNav />}
       <ToastContainer />
     </>
   )
