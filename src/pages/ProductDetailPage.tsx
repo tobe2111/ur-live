@@ -24,6 +24,26 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
+function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <>
+      <div className="border-t border-gray-100">
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left"
+        >
+          <span className="text-sm font-semibold text-gray-900">{title}</span>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {open && <div className="px-5 pb-5">{children}</div>}
+      </div>
+    </>
+  )
+}
+
 function ProductReviews({ productId }: { productId: number | string }) {
   const [summary, setSummary] = useState<any>(null)
   const [reviews, setReviews] = useState<any[]>([])
@@ -332,19 +352,20 @@ export default function ProductDetailPage() {
         <Separator />
 
         {/* Product Info */}
-        <ProductHeader name={product.name} price={displayPrice} />
+        <ProductHeader
+          name={product.name}
+          price={displayPrice}
+          originalPrice={product.original_price || undefined}
+          discountRate={product.discount_rate || undefined}
+        />
 
         {/* Product Description */}
         {product.description && (
-          <>
-            <Separator />
-            <div className="px-5 py-6">
-              <h2 className="text-sm font-bold text-foreground">상품 설명</h2>
-              <p className="mt-3 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {product.description}
-              </p>
-            </div>
-          </>
+          <div className="px-5 py-3">
+            <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+              {product.description}
+            </p>
+          </div>
         )}
 
         {/* Product Details - Vertical Images */}
@@ -369,94 +390,49 @@ export default function ProductDetailPage() {
           </>
         )}
 
-        {/* Product Info Section */}
-        <Separator />
-        <div className="px-5 py-6">
-          <h2 className="text-sm font-bold text-foreground">상품 정보</h2>
-          <div className="mt-3">
-            <ProductInfoGrid items={[
-              { label: '판매자', value: product.seller_name ?? '-' },
-              { label: '재고', value: `${product.stock ?? product.stock_quantity ?? 0}개` },
-              ...(product.sold_count !== undefined && product.sold_count > 0 ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
-              ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
-            ]} />
-          </div>
-        </div>
+        {/* 상품 정보 — 아코디언 */}
+        <AccordionSection title="상품 정보">
+          <ProductInfoGrid items={[
+            { label: '재고', value: `${product.stock ?? product.stock_quantity ?? 0}개` },
+            ...(product.sold_count !== undefined && product.sold_count > 0 ? [{ label: '판매량', value: `${product.sold_count}개` }] : []),
+            ...(product.category ? [{ label: '카테고리', value: product.category }] : []),
+          ]} />
+        </AccordionSection>
 
         {/* 안내 정보 */}
-        <Separator />
-        <div className="px-5 py-6">
-          <h2 className="text-sm font-bold text-foreground">안내 정보</h2>
-          <div className="mt-3">
-            <ProductNoticeSection />
-          </div>
-        </div>
+        <AccordionSection title="안내 정보">
+          <ProductNoticeSection />
+        </AccordionSection>
 
         {/* 상품 리뷰 */}
-        <Separator />
-        <div className="px-5 py-6">
+        <AccordionSection title={`리뷰`} defaultOpen={true}>
           <ProductReviews productId={product.id} />
-        </div>
+        </AccordionSection>
 
-        {/* 교환 및 반품 안내 (상세) */}
-        <Separator />
-        <div className="px-5 py-6">
+        {/* 교환 및 반품 */}
+        <AccordionSection title="교환 및 반품 안내">
           <ReturnPolicySection />
-        </div>
+        </AccordionSection>
 
         {/* 배송안내 */}
-        <Separator />
-        <div className="px-5 py-6">
-          <h2 className="text-sm font-bold text-foreground mb-4">배송안내</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-xs font-semibold text-foreground mb-2">배송 업체</h3>
-              <p className="text-[11px] text-muted-foreground">OO배송물류 (1544-7772)</p>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-semibold text-foreground mb-2">배송 지역</h3>
-              <p className="text-[11px] text-muted-foreground">대한민국 전 지역</p>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-semibold text-foreground mb-2">배송 비용</h3>
-              <p className="text-[11px] text-muted-foreground">3,000원 / 구매 금액 50,000원 이상 시 무료 배송/도서산간 지역 별도 추가 금액 발생</p>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-semibold text-foreground mb-2">배송 기간</h3>
-              <p className="text-[11px] text-muted-foreground">주말·공휴일 제외 2-5일</p>
-            </div>
-
-            <div className="pt-3 border-t border-border/50">
-              <h3 className="text-xs font-semibold text-foreground mb-2">유의 사항</h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <span className="text-[11px] text-muted-foreground">•</span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
-                    주문 폭주 및 공휴 사정으로 인하여 지연 및 품절이 발생될 수 있습니다.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-[11px] text-muted-foreground">•</span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed flex-1">
-                    기본 배송기간 이상 소요되는 상품이거나, 품절 상품은 개별 연락을 드립니다.
-                  </p>
-                </div>
-              </div>
-            </div>
+        <AccordionSection title="배송 안내">
+          <div className="space-y-2.5 text-xs text-gray-500">
+            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송업체</span><span>택배사 (추후 안내)</span></div>
+            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송지역</span><span>대한민국 전 지역</span></div>
+            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송비용</span><span>3,000원 / 50,000원 이상 무료</span></div>
+            <div className="flex"><span className="w-16 shrink-0 text-gray-400">배송기간</span><span>주말·공휴일 제외 2-5일</span></div>
           </div>
-        </div>
+        </AccordionSection>
       </main>
 
       {/* Floating Cart / Purchase Bar */}
       <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-gray-100 animate-pulse" />}>
-        <FloatingActionBar 
+        <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
           disabled={product.stock === 0 && product.stock_quantity === 0}
+          isWishlisted={isWishlisted}
+          onToggleWishlist={handleToggleWishlist}
         />
       </Suspense>
 
