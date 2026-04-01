@@ -10,7 +10,7 @@ export function TopNav({ viewers, sellerLinks, onSubscribe }: {
 }) {
   const hasLinks = sellerLinks?.youtube || sellerLinks?.instagram || sellerLinks?.kakao
   return (
-    <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
+    <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-safe pb-2">
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 rounded-lg bg-red-500/90 backdrop-blur-sm px-2.5 py-1.5 shadow-lg shadow-red-500/30">
           <span className="h-2 w-2 rounded-full bg-white animate-blink-live" />
