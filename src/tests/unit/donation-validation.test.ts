@@ -13,11 +13,11 @@ const COMMISSION_RATE = 0.15; // 15% charging commission
 const MIN_POINTS_DONATION = 100; // minimum points donation (100 team)
 
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250팀' },
-  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500팀' },
-  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500팀' },
-  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500팀' },
-  { amount: 100000, points: 85000,  label: '100,000원 → 85,000팀' },
+  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250딜' },
+  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500딜' },
+  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500딜' },
+  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500딜' },
+  { amount: 100000, points: 85000,  label: '100,000원 → 85,000딜' },
 ];
 
 // ── Constants (mirrored from donations.routes.ts) ────────────────
@@ -31,12 +31,12 @@ function isPointsDonationValid(
   balance: number,
 ): { valid: boolean; error?: string } {
   if (!streamId || !amount || amount < MIN_POINTS_DONATION) {
-    return { valid: false, error: '후원 금액은 최소 100팀입니다' };
+    return { valid: false, error: '후원 금액은 최소 100딜입니다' };
   }
   if (balance < amount) {
     return {
       valid: false,
-      error: `팀이 부족합니다. (보유: ${balance}팀, 필요: ${amount}팀)`,
+      error: `딜이 부족합니다. (보유: ${balance}딜, 필요: ${amount}딜)`,
     };
   }
   return { valid: true };
@@ -95,7 +95,7 @@ describe('Donation validation', () => {
     it('rejects when balance < amount', () => {
       const result = isPointsDonationValid(1, 500, 400);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('팀이 부족합니다');
+      expect(result.error).toContain('딜이 부족합니다');
     });
 
     it('accepts when balance == amount', () => {
@@ -171,7 +171,7 @@ describe('Donation validation', () => {
       for (const { amount, points, label } of CHARGE_AMOUNTS) {
         expect(label).toContain(amount.toLocaleString());
         expect(label).toContain(points.toLocaleString());
-        expect(label).toContain('팀');
+        expect(label).toContain('딜');
       }
     });
   });

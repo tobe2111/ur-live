@@ -1,10 +1,10 @@
 /**
- * 팀 포인트 시스템 API
+ * 딜 포인트 시스템 API
  *
  * GET  /api/points/balance       - 잔액 조회
  * POST /api/points/charge/init   - 충전 결제 시작
  * POST /api/points/charge/confirm - 충전 결제 확인 (토스 승인)
- * POST /api/points/donate        - 팀 후원 (포인트 차감)
+ * POST /api/points/donate        - 딜 후원 (포인트 차감)
  * GET  /api/points/history       - 거래 내역
  */
 
@@ -24,11 +24,11 @@ pointsRoutes.use('*', cors({
 const COMMISSION_RATE = 0.15; // 15% 수수료
 
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250팀' },
-  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500팀' },
-  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500팀' },
-  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500팀' },
-  { amount: 100000, points: 85000,  label: '100,000원 → 85,000팀' },
+  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250딜' },
+  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500딜' },
+  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500딜' },
+  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500딜' },
+  { amount: 100000, points: 85000,  label: '100,000원 → 85,000딜' },
 ];
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
@@ -110,7 +110,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
     VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
   `).bind(
     user.id, amount, Math.round(amount * COMMISSION_RATE), pkg.points,
-    `팀 ${pkg.points.toLocaleString()}개 충전`, orderId
+    `딜 ${pkg.points.toLocaleString()}개 충전`, orderId
   ).run();
 
   return c.json({
@@ -120,7 +120,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
       amount,
       points: pkg.points,
       commission: Math.round(amount * COMMISSION_RATE),
-      orderName: `팀 ${pkg.points.toLocaleString()}개 충전`,
+      orderName: `딜 ${pkg.points.toLocaleString()}개 충전`,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
   });
@@ -197,12 +197,12 @@ pointsRoutes.post('/charge/confirm', requireAuth(), async (c) => {
       points_added: pointsToAdd,
       balance: updated?.balance ?? pointsToAdd,
     },
-    message: `${pointsToAdd.toLocaleString()}팀이 충전되었습니다!`,
+    message: `${pointsToAdd.toLocaleString()}딜이 충전되었습니다!`,
   });
 });
 
 // ── POST /api/points/donate ──────────────────────────────────────────
-// 팀 포인트로 후원 (결제 없이 즉시 차감)
+// 딜 포인트로 후원 (결제 없이 즉시 차감)
 pointsRoutes.post('/donate', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
@@ -214,7 +214,7 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
   }>();
 
   if (!stream_id || !amount || amount < 100) {
-    return c.json({ success: false, error: '후원 금액은 최소 100팀입니다' }, 400);
+    return c.json({ success: false, error: '후원 금액은 최소 100딜입니다' }, 400);
   }
 
   const { DB } = c.env;
@@ -227,7 +227,7 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
   if (!wallet || wallet.balance < amount) {
     return c.json({
       success: false,
-      error: `팀이 부족합니다. (보유: ${wallet?.balance ?? 0}팀, 필요: ${amount}팀)`,
+      error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${amount}딜)`,
       code: 'INSUFFICIENT_POINTS',
     }, 400);
   }
@@ -276,7 +276,7 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
       balance: newBalance,
       seller_name: stream.seller_name,
     },
-    message: `${amount.toLocaleString()}팀을 후원했습니다!`,
+    message: `${amount.toLocaleString()}딜을 후원했습니다!`,
   });
 });
 

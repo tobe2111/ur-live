@@ -81,10 +81,10 @@ export default function PointsChargeSuccessPage() {
         <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl p-5 my-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap className="w-5 h-5 text-pink-500" />
-            <span className="text-sm text-gray-600">충전된 팀</span>
+            <span className="text-sm text-gray-600">충전된 딜</span>
           </div>
-          <p className="text-3xl font-bold text-pink-600">+{result?.points_added.toLocaleString()}팀</p>
-          <p className="text-sm text-gray-500 mt-2">현재 잔액: {result?.balance.toLocaleString()}팀</p>
+          <p className="text-3xl font-bold text-pink-600">+{result?.points_added.toLocaleString()}딜</p>
+          <p className="text-sm text-gray-500 mt-2">현재 잔액: {result?.balance.toLocaleString()}딜</p>
         </div>
         <div className="flex gap-3">
           <button

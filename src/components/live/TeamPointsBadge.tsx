@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { getAccessToken } from '@/utils/auth'
 
-// 팀 포인트 잔액 뱃지 (상단 왼쪽, LIVE 뱃지 아래)
+// 딜 포인트 잔액 뱃지 (상단 왼쪽, LIVE 뱃지 아래)
 export function TeamPointsBadge() {
   const [balance, setBalance] = useState(0)
   useEffect(() => {
@@ -16,7 +16,7 @@ export function TeamPointsBadge() {
   return (
     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md">
       <span className="text-xs">🎁</span>
-      <span className="text-[11px] font-bold text-white/90">{balance.toLocaleString()}팀</span>
+      <span className="text-[11px] font-bold text-white/90">{balance.toLocaleString()}딜</span>
     </div>
   )
 }
