@@ -161,10 +161,16 @@ app.use('*', async (c, next) => {
     "frame-ancestors 'none';"
   );
   const url = new URL(c.req.url);
+  // /embed/ 경로는 외부 사이트에서 iframe으로 임베드 가능하도록 허용
+  if (url.pathname.startsWith('/embed/')) {
+    c.header('Content-Security-Policy', c.res.headers.get('Content-Security-Policy')?.replace("frame-ancestors 'none'", "frame-ancestors *") || '');
+    // X-Frame-Options 설정 안 함 (iframe 허용)
+  } else {
+    c.header('X-Frame-Options', 'SAMEORIGIN');
+  }
   if (url.hostname !== 'localhost' && url.protocol === 'https:') {
     c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
-  c.header('X-Frame-Options', 'SAMEORIGIN');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-XSS-Protection', '1; mode=block');
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
