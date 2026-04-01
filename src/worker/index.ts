@@ -423,6 +423,10 @@ app.route('/api/seller-tiers', sellerTiersRoutes);
 import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 app.route('/api/inventory', inventoryRoutes);
 
+// ── 홈페이지 섹션 관리 ──
+import { sectionsRoutes } from '../features/sections/api/sections.routes';
+app.route('/api/sections', sectionsRoutes);
+
 // ── 반품/환불 ──
 import { returnsRoutes } from '../features/returns/api/returns.routes';
 app.route('/api/returns', returnsRoutes);
