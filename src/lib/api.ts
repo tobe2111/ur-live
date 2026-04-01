@@ -194,7 +194,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     } else {
-      console.error('[API] ❌ 토큰 없음! 401 에러 예상');
+      // 비로그인 상태 — 공개 API는 토큰 없이 진행, 인증 필요 API는 조용히 실패
+      const publicPrefixes = ['/api/products', '/api/streams', '/api/reviews', '/api/sections', '/api/seller-tiers', '/api/banners', '/api/search'];
+      const isPublic = publicPrefixes.some(p => config.url?.startsWith(p));
+      if (!isPublic) {
+        console.warn('[API] 토큰 없음 - 인증 필요 API 호출 스킵 가능');
+      }
     }
 
     return config;
