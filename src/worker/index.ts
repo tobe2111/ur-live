@@ -427,6 +427,10 @@ app.route('/api/inventory', inventoryRoutes);
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
 app.route('/api/sections', sectionsRoutes);
 
+// ── 상품 대량등록 ──
+import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
+app.route('/api/bulk-upload', bulkUploadRoutes);
+
 // ── 반품/환불 ──
 import { returnsRoutes } from '../features/returns/api/returns.routes';
 app.route('/api/returns', returnsRoutes);
