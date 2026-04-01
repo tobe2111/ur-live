@@ -266,7 +266,7 @@ function AppContent() {
   const location = useLocation()
   const fullScreenPrefixes = ['/live/', '/checkout', '/payment/', '/points/', '/seller/', '/admin/', '/login', '/register', '/auth/', '/embed/', '/introduce']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname.startsWith(p))
-  const hideBottomNav = fullScreen
+  const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
 
   return (
     <>
