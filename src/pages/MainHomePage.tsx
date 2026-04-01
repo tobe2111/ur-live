@@ -4,7 +4,6 @@ import HeroBanner from '@/components/main/HeroBanner'
 import QuickAccess from '@/components/main/QuickAccess'
 import ProductGrid from '@/components/main/ProductGrid'
 import LiveNow from '@/components/main/LiveNow'
-import BottomNav from '@/components/main/BottomNav'
 import SiteFooter from '@/components/main/SiteFooter'
 
 export default function MainHomePage() {
@@ -20,7 +19,6 @@ export default function MainHomePage() {
         <LiveNow />
         <SiteFooter />
       </main>
-      <BottomNav />
     </div>
   )
 }
