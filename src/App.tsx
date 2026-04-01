@@ -264,8 +264,8 @@ function AppContent() {
   useMultiTabSync()
 
   const location = useLocation()
-  const { isFullScreenPath } = require('@/layouts/AppLayout')
-  const fullScreen = isFullScreenPath(location.pathname)
+  const fullScreenPrefixes = ['/live/', '/checkout', '/payment/', '/points/', '/seller/', '/admin/', '/login', '/register', '/auth/', '/embed/', '/introduce']
+  const fullScreen = fullScreenPrefixes.some(p => location.pathname.startsWith(p))
   const hideBottomNav = fullScreen
 
   return (
