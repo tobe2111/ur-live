@@ -264,15 +264,15 @@ function AppContent() {
   useMultiTabSync()
 
   const location = useLocation()
-  const fullScreenPages = ['/live/', '/checkout', '/payment/', '/points/', '/seller/', '/admin/', '/login', '/register', '/auth/', '/embed/']
-    .some(path => location.pathname.startsWith(path))
-  const hideBottomNav = fullScreenPages
+  const { isFullScreenPath } = require('@/layouts/AppLayout')
+  const fullScreen = isFullScreenPath(location.pathname)
+  const hideBottomNav = fullScreen
 
   return (
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
-          <div className={fullScreenPages ? 'min-h-dvh' : 'max-w-screen-sm mx-auto bg-white min-h-dvh flex flex-col'}>
+          <div className={fullScreen ? 'min-h-dvh' : 'max-w-screen-sm mx-auto bg-white min-h-dvh pb-14'}>
           <div className="flex-1">
           <Routes>
             {/* Public 페이지들 */}

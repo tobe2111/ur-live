@@ -207,7 +207,7 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#fbfbfd]">
+    <div className="bg-[#fbfbfd]">
       {/* Header */}
       <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
         <div className="w-full px-4 sm:px-6">

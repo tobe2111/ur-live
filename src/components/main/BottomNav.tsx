@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Home, Search, Play, ShoppingCart, User } from 'lucide-react'
+import { BOTTOM_NAV_MAX_WIDTH } from '@/layouts/AppLayout'
 
 const navItems = [
   { icon: Home, label: '홈', path: '/' },
@@ -15,11 +16,14 @@ export default function BottomNav() {
   const location = useLocation()
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-screen-sm bg-white border-t border-gray-200 z-[9999]">
-      <div
-        className="flex items-center h-12"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
+    <nav
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full bg-white border-t border-gray-200 z-[9999]"
+      style={{
+        maxWidth: BOTTOM_NAV_MAX_WIDTH,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <div className="flex items-center h-12">
         {navItems.map(({ icon: Icon, label, path, highlight }) => {
           const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (

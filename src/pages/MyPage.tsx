@@ -46,7 +46,7 @@ export default function MyPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#FFFFFF]">
+    <div className="bg-[#FFFFFF]">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="w-full px-4 sm:px-6">
