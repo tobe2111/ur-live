@@ -32,6 +32,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
+const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
@@ -504,6 +505,9 @@ function AppContent() {
             
             {/* Payment 페이지들 */}
             <Route path="/payment/demo" element={<PaymentDemoPage />} />
+
+            {/* 임베드 위젯 (외부 서비스용) */}
+            <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
