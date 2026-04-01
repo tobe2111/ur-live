@@ -1,10 +1,9 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Menu, Search, Bell, User } from 'lucide-react'
+import React from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Search, ShoppingBag, User } from 'lucide-react'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
-import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function TopNav() {
   const navigate = useNavigate()
@@ -12,129 +11,43 @@ export default function TopNav() {
   const worldUser = useAuthWorld(state => state.user)
   const user = isKorea() ? krUser : worldUser
   const isLoggedIn = !!user
-  const [menuOpen, setMenuOpen] = useState(false)
-
-  const handleProfileClick = () => {
-    if (isLoggedIn) {
-      navigate('/user/profile')
-    } else {
-      // 로그인되지 않은 경우 로그인 페이지로
-      navigate('/login?returnUrl=/user/profile')
-    }
-  }
-
-  const handleSearchClick = () => {
-    navigate('/search')
-  }
-
-  const handleNotificationClick = () => {
-    if (isLoggedIn) {
-      navigate('/mypage/notifications')
-    } else {
-      navigate('/login?returnUrl=/')
-    }
-  }
 
   return (
-    <>
-      <header className="sticky top-0 z-50 w-full bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Open menu"
-              className="p-1 text-foreground"
-            >
-              <Menu className="h-6 w-6" strokeWidth={1.5} />
-            </button>
-
-            <h1 className="text-xl font-extrabold tracking-tighter text-foreground uppercase">
-              UR <span className="text-accent-foreground" style={{ color: '#ef4444' }}>LIVE</span>
-            </h1>
-
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher />
-              <button 
-                onClick={handleSearchClick}
-                aria-label="Search" 
-                className="p-1 text-foreground hover:text-gray-600 transition-colors"
-              >
-                <Search className="h-5 w-5" strokeWidth={1.5} />
-              </button>
-              <button 
-                onClick={handleNotificationClick}
-                aria-label="Notifications" 
-                className="relative p-1 text-foreground hover:text-gray-600 transition-colors"
-              >
-                <Bell className="h-5 w-5" strokeWidth={1.5} />
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" />
-              </button>
-              <button 
-                onClick={handleProfileClick}
-                aria-label="Profile" 
-                className="p-1 text-foreground hover:text-gray-600 transition-colors"
-              >
-                <User className="h-5 w-5" strokeWidth={1.5} />
-              </button>
-            </div>
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
+      <div className="flex items-center justify-between h-12 px-4">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-1.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-red-500">
+            <span className="text-white text-[10px] font-extrabold">UR</span>
           </div>
-        </div>
-      </header>
+          <span className="text-[15px] font-extrabold text-gray-900">유어라이브</span>
+        </Link>
 
-      {/* Slide-out menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-[60]">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMenuOpen(false)}
-          />
-          <nav className="absolute left-0 top-0 h-full w-72 bg-background p-6 shadow-lg animate-slide-in-left">
-            <button
-              onClick={() => setMenuOpen(false)}
-              className="mb-8 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close menu"
-            >
-              닫기
-            </button>
-            <ul className="flex flex-col gap-5">
-              {[
-                { label: 'Home', path: '/' },
-                { label: 'Shop', path: '/browse' },
-                { label: 'Live', path: '/live/1' },
-                { label: 'My Page', path: '/user/profile' },
-                { label: 'Cart', path: '/cart' },
-                { label: 'Orders', path: '/my-orders' }
-              ].map((item) => (
-                <li key={item.label}>
-                  <button
-                    onClick={() => {
-                      navigate(item.path)
-                      setMenuOpen(false)
-                    }}
-                    className="text-base font-semibold text-foreground hover:text-red-500 transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
+        {/* Right actions */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/search')} className="p-1">
+            <Search className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => navigate('/cart')} className="p-1 relative">
+            <ShoppingBag className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+            {localStorage.getItem('hasCartItems') && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+          </button>
+          <button
+            onClick={() => navigate(isLoggedIn ? '/user/profile' : '/login')}
+            className="p-1"
+          >
+            {isLoggedIn ? (
+              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
+                <span className="text-[9px] font-bold text-white">{user?.name?.charAt(0) || 'U'}</span>
+              </div>
+            ) : (
+              <User className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+            )}
+          </button>
         </div>
-      )}
-
-      <style>{`
-        @keyframes slide-in-left {
-          from {
-            transform: translateX(-100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        .animate-slide-in-left {
-          animation: slide-in-left 0.3s ease-out;
-        }
-      `}</style>
-    </>
+      </div>
+    </header>
   )
 }

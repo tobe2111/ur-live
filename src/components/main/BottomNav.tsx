@@ -1,59 +1,38 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Search, ShoppingBag, ShoppingCart, User } from 'lucide-react'
+import { Home, Search, Play, ShoppingCart, User } from 'lucide-react'
 
 const navItems = [
-  { icon: Home, label: 'Home', path: '/' },
-  { icon: Search, label: 'Search', path: '/search' },
-  { icon: ShoppingBag, label: 'Shop', path: '/browse' },
-  { icon: ShoppingCart, label: 'Cart', path: '/cart' },
-  { icon: User, label: 'My', path: '/user/profile' },
+  { icon: Home, label: '홈', path: '/' },
+  { icon: Search, label: '검색', path: '/search' },
+  { icon: Play, label: '라이브', path: '/live/20' },
+  { icon: ShoppingCart, label: '장바구니', path: '/cart' },
+  { icon: User, label: '마이', path: '/user/profile' },
 ]
 
 export default function BottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [active, setActive] = useState(location.pathname)
-
-  const handleNavClick = (path: string) => {
-    setActive(path)
-    navigate(path)
-  }
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]" 
-      style={{
-        width: '100vw',
-        paddingLeft: 'max(0px, env(safe-area-inset-left))',
-        paddingRight: 'max(0px, env(safe-area-inset-right))',
-      }}
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100"
+      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
     >
-      <div className="flex items-center w-full py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex items-center w-full py-1.5">
         {navItems.map(({ icon: Icon, label, path }) => {
-          const isActive = active === path || (path !== '/' && active.startsWith(path))
+          const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (
             <button
               key={label}
-              onClick={() => handleNavClick(path)}
-              className="flex flex-col items-center gap-0.5 py-1 group flex-1"
-              aria-label={label}
+              onClick={() => navigate(path)}
+              className="flex flex-col items-center gap-0.5 flex-1"
             >
               <Icon
-                className={`h-5 w-5 transition-colors ${
-                  isActive
-                    ? 'text-gray-900'
-                    : 'text-gray-500 group-hover:text-gray-900'
-                }`}
+                className={`h-5 w-5 ${isActive ? 'text-gray-900' : 'text-gray-400'}`}
                 strokeWidth={isActive ? 2 : 1.5}
               />
-              <span
-                className={`text-[10px] transition-colors ${
-                  isActive
-                    ? 'font-bold text-gray-900'
-                    : 'font-medium text-gray-500 group-hover:text-gray-900'
-                }`}
-              >
+              <span className={`text-[10px] ${isActive ? 'font-bold text-gray-900' : 'text-gray-400'}`}>
                 {label}
               </span>
             </button>
