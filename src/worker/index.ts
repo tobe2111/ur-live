@@ -417,6 +417,10 @@ app.route('/api/seller-tiers', sellerTiersRoutes);
 import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
 app.route('/api/inventory', inventoryRoutes);
 
+// ── 반품/환불 ──
+import { returnsRoutes } from '../features/returns/api/returns.routes';
+app.route('/api/returns', returnsRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
