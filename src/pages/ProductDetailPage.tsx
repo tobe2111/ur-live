@@ -374,15 +374,14 @@ export default function ProductDetailPage() {
             <Separator />
             <div className="px-0">
               <h2 className="text-sm font-bold text-foreground px-5 py-4">상세 이미지</h2>
-              <div className="flex flex-col gap-0">
+              <div className="flex flex-col">
                 {detailImages.map((src, idx) => (
-                  <ProgressiveImage
+                  <img
                     key={idx}
                     src={src}
                     alt={`Product detail ${idx + 1}`}
-                    className="h-auto w-full block"
-                    width={800}
-                    priority={idx === 0}
+                    className="w-full h-auto block"
+                    loading={idx === 0 ? 'eager' : 'lazy'}
                   />
                 ))}
               </div>
