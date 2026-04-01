@@ -15,47 +15,32 @@ export default function BottomNav() {
   const location = useLocation()
 
   return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      width: '100%',
-      zIndex: 9999,
-      backgroundColor: '#fff',
-      borderTop: '1px solid #f0f0f0',
-      paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '8px 0' }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t border-gray-100">
+      <div
+        className="mx-auto flex items-center"
+        style={{
+          maxWidth: 'inherit',
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+          paddingTop: '0.5rem',
+        }}
+      >
         {navItems.map(({ icon: Icon, label, path }) => {
           const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (
             <button
               key={label}
               onClick={() => navigate(path)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-              }}
+              className="flex-1 flex flex-col items-center gap-0.5"
+              style={{ whiteSpace: 'nowrap' }}
             >
               <Icon
                 size={22}
                 color={isActive ? '#111' : '#aaa'}
                 strokeWidth={isActive ? 2.2 : 1.5}
               />
-              <span style={{
-                fontSize: '10px',
-                fontWeight: isActive ? 700 : 400,
-                color: isActive ? '#111' : '#aaa',
-                whiteSpace: 'nowrap',
-              }}>
+              <span
+                className={`text-[10px] ${isActive ? 'font-bold text-gray-900' : 'text-gray-400'}`}
+              >
                 {label}
               </span>
             </button>
