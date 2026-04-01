@@ -20,8 +20,6 @@ export default function MainHomePage() {
         <LiveNow />
         <SiteFooter />
       </main>
-      {/* Bottom Navigation Spacer */}
-      <div className="h-20" aria-hidden="true"></div>
       <BottomNav />
     </div>
   )
