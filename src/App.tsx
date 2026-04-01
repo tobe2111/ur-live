@@ -65,6 +65,7 @@ const SellerAlimtalkPage = lazy(() => import('./pages/SellerAlimtalkPage'))
 const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
 const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
+const SellerLivePage = lazy(() => import('./pages/SellerLivePage'))
 const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 
 // User 페이지들
@@ -347,6 +348,11 @@ function AppContent() {
             <Route path="/seller/products/:id/edit" element={
               <ProtectedRoute requireSeller>
                 <SellerProductEditPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live" element={
+              <ProtectedRoute requireSeller>
+                <SellerLivePage />
               </ProtectedRoute>
             } />
             <Route path="/seller/live-control" element={
