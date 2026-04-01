@@ -756,7 +756,7 @@ function ReelCard({
            YouTube IFrame API는 style="width:100%;height:100%"를 인라인으로 설정하므로 !important 필요 */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!min-w-full [&_iframe]:!min-h-full [&_iframe]:!w-auto [&_iframe]:!h-auto [&_iframe]:!aspect-video"
+        className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[177.78vh] [&_iframe]:!h-[56.25vw] [&_iframe]:!min-w-full [&_iframe]:!min-h-full"
       />
 
       {/* 로딩 → 입장 버튼 → 재생 중 (3단계 상태 관리) */}
