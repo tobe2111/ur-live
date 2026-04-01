@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
+import { createSessionCookie } from '../../../worker/utils/session';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 
 type Bindings = {
@@ -19,6 +20,7 @@ type Bindings = {
   FIREBASE_PRIVATE_KEY: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_DATABASE_URL: string;
+  JWT_SECRET: string;
 };
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
@@ -67,6 +69,20 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       });
 
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
+
+      // Set httpOnly session cookie on the redirect response
+      try {
+        const sessionCookie = await createSessionCookie(
+          user.id,
+          user.name,
+          user.email,
+          user.profile_image,
+          c.env.JWT_SECRET,
+        );
+        c.header('Set-Cookie', sessionCookie);
+      } catch (e) {
+        console.error('[Kakao Sync] Session cookie creation failed:', e);
+      }
 
       const stateUrl = new URL(state, 'https://dummy.com');
       stateUrl.searchParams.set('firebase_token', customToken);
@@ -139,10 +155,25 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
 
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
-    return c.json({
+    // Set httpOnly session cookie for user auth (new flow)
+    let sessionCookieHeader: string | undefined;
+    try {
+      sessionCookieHeader = await createSessionCookie(
+        user.id,
+        user.name,
+        user.email,
+        user.profile_image,
+        c.env.JWT_SECRET,
+      );
+    } catch (e) {
+      console.error('[Kakao Callback] Session cookie creation failed:', e);
+    }
+
+    const responseBody = {
       success: true,
       data: {
         customToken,
+        session_ready: !!sessionCookieHeader,
         user: {
           id: user.id,
           name: user.name,
@@ -152,7 +183,12 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
         }
       },
       message: 'Login successful'
-    });
+    };
+
+    if (sessionCookieHeader) {
+      c.header('Set-Cookie', sessionCookieHeader);
+    }
+    return c.json(responseBody);
 
   } catch (error) {
     console.error('[Kakao Callback] Error:', error);

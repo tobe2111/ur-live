@@ -11,6 +11,7 @@
 import { Context, Next } from 'hono';
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
+import { parseSessionCookie } from '../utils/session';
 
 /**
  * JWT payload type (both seller/admin JWT and Firebase token)
