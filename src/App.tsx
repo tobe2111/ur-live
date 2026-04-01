@@ -32,6 +32,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
+const LiveListPage = lazy(() => import('./pages/LiveListPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
 const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
@@ -264,8 +265,8 @@ function AppContent() {
   useMultiTabSync()
 
   const location = useLocation()
-  const fullScreenPrefixes = ['/live/', '/checkout', '/payment/', '/points/', '/seller/', '/admin/', '/login', '/register', '/auth/', '/embed/', '/introduce']
-  const fullScreen = fullScreenPrefixes.some(p => location.pathname.startsWith(p))
+  const fullScreenPrefixes = ['/live', '/checkout', '/payment', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce']
+  const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
 
   return (
@@ -280,6 +281,7 @@ function AppContent() {
             <Route path="/" element={<MainHomePage />} />
             <Route path="/shortform" element={<ShortFormPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             {/* Redirect old single product URL to plural */}
