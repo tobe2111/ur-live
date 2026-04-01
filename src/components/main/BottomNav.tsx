@@ -15,7 +15,7 @@ export default function BottomNav() {
   const location = useLocation()
 
   return (
-    <nav className="sticky bottom-0 w-full bg-white border-t border-gray-200 z-50 shrink-0">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-screen-sm bg-white border-t border-gray-200 z-[9999]">
       <div
         className="flex items-center h-12"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
