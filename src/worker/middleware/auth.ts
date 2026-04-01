@@ -271,9 +271,38 @@ async function verifyFirebaseToken(
 
 /**
  * Authentication middleware - requires any valid authentication
+ *
+ * Priority:
+ * 1. httpOnly session cookie (ur_session) — user login via Kakao
+ * 2. Bearer JWT (seller/admin)
+ * 3. Bearer Firebase ID token (user — legacy fallback)
  */
 export function requireAuth() {
   return async (c: Context, next: Next) => {
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('[Auth] JWT_SECRET is not configured');
+      return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
+    }
+
+    // ── 1. Try httpOnly session cookie (user login) ─────────────────────
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
+      if (sessionUser) {
+        const user: AuthUser = {
+          id: sessionUser.userId,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          type: 'user',
+          role: sessionUser.role,
+        };
+        c.set('user', user);
+        return next();
+      }
+    }
+
+    // ── 2. Try Bearer token (seller/admin JWT or Firebase) ──────────────
     const authHeader = c.req.header('Authorization');
     const token = extractToken(authHeader || null);
 
@@ -282,11 +311,6 @@ export function requireAuth() {
     }
 
     // Try JWT first (seller/admin)
-    const jwtSecret = c.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('[Auth] JWT_SECRET is not configured');
-      return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
-    }
     const jwtPayload = await verifyJWT(token, jwtSecret);
 
     if (jwtPayload) {
@@ -324,7 +348,7 @@ export function requireAuth() {
       return next();
     }
 
-    console.error('[Auth] Both JWT and Firebase verification failed');
+    console.error('[Auth] Session cookie, JWT, and Firebase verification all failed');
 
     // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
     return c.json(unauthorizedResponse('Token verification failed'), 401);
@@ -397,18 +421,37 @@ export function requireSellerOrAdmin() {
  */
 export function optionalAuth() {
   return async (c: Context, next: Next) => {
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) return next(); // optional auth — skip if misconfigured
+
+    // ── 1. Try httpOnly session cookie (user login) ─────────────────────
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
+      if (sessionUser) {
+        const user: AuthUser = {
+          id: sessionUser.userId,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          type: 'user',
+          role: sessionUser.role,
+        };
+        c.set('user', user);
+        return next();
+      }
+    }
+
+    // ── 2. Try Bearer token ─────────────────────────────────────────────
     const authHeader = c.req.header('Authorization');
     const token = extractToken(authHeader || null);
-    
+
     if (!token) {
       return next();
     }
-    
+
     // Try JWT
-    const jwtSecret = c.env.JWT_SECRET;
-    if (!jwtSecret) return next(); // optional auth — skip if misconfigured
     const jwtPayload = await verifyJWT(token, jwtSecret);
-    
+
     if (jwtPayload) {
       const user: AuthUser = {
         id: (jwtPayload.userId || jwtPayload.sub) as string,
@@ -436,7 +479,6 @@ export function optionalAuth() {
 
       c.set('user', user);
     }
-
 
     return next();
   };
