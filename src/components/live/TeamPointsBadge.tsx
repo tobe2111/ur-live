@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import api from '@/lib/api'
+import { getAccessToken } from '@/utils/auth'
 
 // 팀 포인트 잔액 뱃지 (상단 왼쪽, LIVE 뱃지 아래)
 export function TeamPointsBadge() {
   const [balance, setBalance] = useState(0)
   useEffect(() => {
+    // 로그인 상태에서만 잔액 조회 (비로그인 시 401 방지)
+    const token = getAccessToken()
+    if (!token) return
     api.get('/api/points/balance')
       .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
       .catch(() => {})
