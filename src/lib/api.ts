@@ -61,6 +61,7 @@ function captureError(error: Error, context?: Record<string, any>) {
 const api = axios.create({
   baseURL: '/',
   timeout: 15000,
+  withCredentials: true, // Send httpOnly cookies (ur_session) with every request
   headers: {
     'Content-Type': 'application/json',
   },
@@ -78,6 +79,8 @@ const PUBLIC_API_PATHS = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/kakao',
+  '/api/auth/me',
+  '/api/auth/logout',
   '/api/auth/firebase/sync',
   '/api/auth/firebase/register',
   '/api/seller/login',
@@ -146,7 +149,21 @@ api.interceptors.request.use(
       // fallthrough to Firebase
     }
 
-    // ── Firebase User API ─────────────────────────────────────────────────
+    // ── Session Cookie User API (preferred for user login) ──────────────
+    // If user is logged in via session cookie (ur_session), the cookie is
+    // sent automatically (withCredentials: true). No Bearer token needed.
+    // The server-side requireAuth() checks the cookie first.
+    const userType = localStorage.getItem('user_type');
+    if (userType === 'user') {
+      // Check if we have session-based auth (set during Kakao callback with session_ready)
+      const hasSessionAuth = localStorage.getItem('user_id') && !_firebaseTokenCache;
+      if (hasSessionAuth) {
+        // Let the cookie handle auth — no Bearer token required
+        return config;
+      }
+    }
+
+    // ── Firebase User API (legacy fallback) ──────────────────────────────
     // ✅ 우선순위 1: useAuthKR/useAuthWorld.getIdToken() → 항상 유효한 토큰 보장
     try {
       const { isKorea } = await import('@/config/region');

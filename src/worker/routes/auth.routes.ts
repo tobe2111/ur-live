@@ -16,6 +16,7 @@ import { generateId } from '../../shared/utils';
 import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/constants';
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword } from '../../lib/password';
+import { parseSessionCookie, clearSessionCookie } from '../utils/session';
 
 const authRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -172,14 +173,45 @@ authRouter.post('/login', async (c) => {
   }
 });
 
-// GET /api/auth/me
-authRouter.get('/me', authMiddleware, async (c) => {
-  const { id } = c.get('user');
+// GET /api/auth/me — session cookie (preferred) or Bearer token (fallback)
+authRouter.get('/me', async (c) => {
+  // 1. Try session cookie first (user login via httpOnly cookie)
+  const cookieHeader = c.req.header('Cookie');
+  const sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
+
+  if (sessionUser) {
+    return c.json({
+      success: true,
+      data: {
+        id: sessionUser.userId,
+        name: sessionUser.name,
+        email: sessionUser.email,
+        profileImage: sessionUser.profileImage || null,
+        role: sessionUser.role || 'user',
+      },
+    });
+  }
+
+  // 2. Fallback to Bearer token (existing authMiddleware logic)
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+
+  // Delegate to existing authMiddleware inline
+  const fakeNext = async () => {};
+  await authMiddleware(c, fakeNext);
+
+  const authedUser = c.get('user') as { id: string; email: string; role: string } | undefined;
+  if (!authedUser) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+
   const qb = new QueryBuilder(c.env.DB);
   const user = await qb.queryOne<{
     id: string; email: string; name: string; role: string;
     phone: string | null; avatar_url: string | null;
-  }>('SELECT id, email, name, role, phone, avatar_url FROM users WHERE id = ? AND status = \'ACTIVE\'', [id]);
+  }>('SELECT id, email, name, role, phone, avatar_url FROM users WHERE id = ? AND status = \'ACTIVE\'', [authedUser.id]);
 
   if (!user) {
     return c.json({ success: false, error: 'User not found' }, 404);
@@ -238,6 +270,12 @@ authRouter.post('/change-password', authMiddleware, async (c) => {
 authRouter.get('/validate', authMiddleware, async (c) => {
   const user = c.get('user');
   return c.json({ success: true, data: { valid: true, user } });
+});
+
+// POST /api/auth/logout — clear session cookie (user logout)
+authRouter.post('/logout', async (c) => {
+  c.header('Set-Cookie', clearSessionCookie());
+  return c.json({ success: true, message: 'Logged out' });
 });
 
 export { authRouter };

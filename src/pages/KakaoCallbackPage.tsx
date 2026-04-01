@@ -61,58 +61,84 @@ export default function KakaoCallbackPage() {
           throw new Error(response.data.error || '로그인에 실패했습니다.')
         }
 
-        const { customToken, user } = response.data.data
+        const { customToken, session_ready, user } = response.data.data
 
-        // 2. Firebase Custom Token으로 로그인
-        const userCredential = await signInWithCustomToken(customToken)
+        // ── Session cookie flow (preferred): skip Firebase entirely ──────
+        if (session_ready) {
+          // Cookie was set by the server response (Set-Cookie header).
+          // Use the user data from the response directly (cookie might not be
+          // available for /api/auth/me yet in the same request cycle).
 
-        // ✅ 중복 처리 방지: signInWithCustomToken 직후 즉시 설정
-        // (이후 getIdToken/updateProfile 중 onAuthStateChanged가 fired되어도 fast path 처리)
-        sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
+          // localStorage + Zustand 업데이트 (동기, 즉시)
+          localStorage.setItem('user_type', 'user')
+          localStorage.setItem('user_name', user.name)
+          localStorage.setItem('user_id', String(user.id))
+          if (user.email) localStorage.setItem('user_email', user.email)
+          if (user.profile_image) {
+            localStorage.setItem('user_profile_image', user.profile_image)
+          } else {
+            localStorage.removeItem('user_profile_image')
+          }
 
-        // 3. ID Token 갱신 (Custom Claims 로드)
-        const idToken = await userCredential.user.getIdToken(false)  // ✅ 캐시 사용 (이미 최신)
+          // Zustand AuthStore 업데이트
+          const { useAuthStore } = await import('@/client/stores/auth.store')
+          useAuthStore.getState().setAuth(
+            { id: String(user.id), email: user.email || '', name: user.name, role: 'user' },
+            '', // no Bearer token needed — cookie handles auth
+            ''
+          )
 
-        // 3.5 ✅ Firebase User 프로필 업데이트 (displayName + photoURL)
-        try {
-          const { updateProfile } = await import('firebase/auth');
-          await updateProfile(userCredential.user, {
-            displayName: user.name,
-            ...(user.profile_image ? { photoURL: user.profile_image } : {}),
-          });
-        } catch (e) {
-          console.warn('[KakaoCallback] ⚠️ 프로필 업데이트 실패 (무시):', e);
-        }
-
-        // 4. localStorage 설정
-        localStorage.setItem('user_type', 'user')
-        localStorage.setItem('user_name', user.name)
-        localStorage.setItem('user_id', String(user.id))
-        if (user.email) localStorage.setItem('user_email', user.email)
-        // ✅ 카카오 프로필 이미지 저장
-        if (user.profile_image) {
-          localStorage.setItem('user_profile_image', user.profile_image)
+          // Mark auth as ready
+          const authStore = getAuthStore()
+          authStore.setAuthReady(true)
         } else {
-          localStorage.removeItem('user_profile_image')
-        }
+          // ── Legacy Firebase flow (fallback) ─────────────────────────────
+          // 2. Firebase Custom Token으로 로그인
+          // ⚠️ auth_processing 플래그: useMultiTabSync의 reload를 차단
+          sessionStorage.setItem('auth_processing', 'true')
+          const userCredential = await signInWithCustomToken(customToken)
 
-        // 5. Zustand Store 업데이트 (ID Token 포함)
-        const authStore = getAuthStore()
-        authStore.setUser(userCredential.user)
-        authStore.setAuthReady(true)
-        
-        // ✅ API 요청용 accessToken 저장 (Firebase ID Token)
-        const { useAuthStore } = await import('@/client/stores/auth.store')
-        useAuthStore.getState().setAuth(
-          {
-            id: userCredential.user.uid,
-            email: user.email || '',
-            name: user.name,
-            role: 'user',
-          },
-          idToken,
-          '' // refreshToken은 Firebase에서 자동 관리
-        )
+          // ✅ 중복 처리 방지
+          sessionStorage.setItem('auth_processed_uid', userCredential.user.uid);
+
+          // 3. ID Token + 프로필 업데이트 병렬 실행 (순차→병렬로 1-2초 단축)
+          const [idToken] = await Promise.all([
+            userCredential.user.getIdToken(false),
+            // 프로필 업데이트 (실패해도 로그인에 영향 없음)
+            import('firebase/auth').then(({ updateProfile }) =>
+              updateProfile(userCredential.user, {
+                displayName: user.name,
+                ...(user.profile_image ? { photoURL: user.profile_image } : {}),
+              })
+            ).catch(() => {}),
+          ]);
+
+          // 4. localStorage + Zustand 업데이트 (동기, 즉시)
+          localStorage.setItem('user_type', 'user')
+          localStorage.setItem('user_name', user.name)
+          localStorage.setItem('user_id', String(user.id))
+          if (user.email) localStorage.setItem('user_email', user.email)
+          if (user.profile_image) {
+            localStorage.setItem('user_profile_image', user.profile_image)
+          } else {
+            localStorage.removeItem('user_profile_image')
+          }
+
+          // 5. Zustand Store + AuthStore 동시 업데이트
+          const authStore = getAuthStore()
+          authStore.setUser(userCredential.user)
+          authStore.setAuthReady(true)
+
+          const { useAuthStore } = await import('@/client/stores/auth.store')
+          useAuthStore.getState().setAuth(
+            { id: userCredential.user.uid, email: user.email || '', name: user.name, role: 'user' },
+            idToken,
+            ''
+          )
+
+          // 8. auth_processing 플래그 해제 (1초 후 — Zustand persist 완료 대기)
+          setTimeout(() => sessionStorage.removeItem('auth_processing'), 1000)
+        }
         // 6. returnUrl 결정 (state > localStorage > '/')
         let returnUrl = '/'
         if (state && state !== '/login' && state.startsWith('/')) {
@@ -143,7 +169,7 @@ export default function KakaoCallbackPage() {
           }, 300)
         }
 
-        // 8. replace: true → 뒤로가기 시 콜백 페이지 재방문 방지
+        // 9. replace: true → 뒤로가기 시 콜백 페이지 재방문 방지
         navigate(returnUrl, { replace: true })
       } catch (err: any) {
         console.error('[KakaoCallback] ❌ 처리 실패:', err)
