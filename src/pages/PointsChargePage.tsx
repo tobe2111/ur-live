@@ -130,7 +130,7 @@ export default function PointsChargePage() {
           <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-[18px] font-bold">팀 충전</h1>
+          <h1 className="text-[18px] font-bold">딜 충전</h1>
         </div>
       </div>
 
@@ -139,9 +139,9 @@ export default function PointsChargePage() {
         <div className="bg-gradient-to-r from-pink-500 to-red-500 rounded-2xl p-5 text-white">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-5 h-5" />
-            <span className="text-sm font-medium opacity-80">내 팀 잔액</span>
+            <span className="text-sm font-medium opacity-80">내 딜 잔액</span>
           </div>
-          <p className="text-3xl font-bold">{balance.toLocaleString()}팀</p>
+          <p className="text-3xl font-bold">{balance.toLocaleString()}딜</p>
         </div>
 
         {/* 충전 금액 선택 */}
@@ -160,7 +160,7 @@ export default function PointsChargePage() {
                   }`}
                 >
                   <span className="text-sm font-bold text-gray-900">{opt.amount.toLocaleString()}원</span>
-                  <span className="text-sm font-bold text-pink-600">{opt.points.toLocaleString()}팀</span>
+                  <span className="text-sm font-bold text-pink-600">{opt.points.toLocaleString()}딜</span>
                 </button>
               ))}
             </div>
@@ -173,7 +173,7 @@ export default function PointsChargePage() {
           <>
             <div className="bg-gray-50 rounded-xl px-4 py-3 flex justify-between items-center">
               <span className="text-sm text-gray-600">충전 금액</span>
-              <span className="text-sm font-bold text-pink-600">{selected?.amount.toLocaleString()}원 → {selected?.points.toLocaleString()}팀</span>
+              <span className="text-sm font-bold text-pink-600">{selected?.amount.toLocaleString()}원 → {selected?.points.toLocaleString()}딜</span>
             </div>
             <div id="charge-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
             <div id="charge-agreement" className="min-h-[80px] bg-white rounded-xl border border-gray-200 p-2" />
@@ -207,7 +207,7 @@ export default function PointsChargePage() {
                 <Loader2 className="w-5 h-5 animate-spin" /> 결제 준비 중...
               </span>
             ) : (
-              `${selected?.points.toLocaleString()}팀 충전하기`
+              `${selected?.points.toLocaleString()}딜 충전하기`
             )}
           </button>
         )}

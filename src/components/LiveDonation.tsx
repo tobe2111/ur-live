@@ -1,8 +1,8 @@
 /**
- * LiveDonation — 라이브 팀 후원 UI
+ * LiveDonation — 라이브 딜 후원 UI
  *
  * 1. 후원 버튼 (하트 아이콘)
- * 2. 팀 잔액 표시 + 금액 선택
+ * 2. 딜 잔액 표시 + 금액 선택
  * 3. 포인트 차감으로 즉시 후원 (결제 없음)
  * 4. 잔액 부족 시 충전 안내
  */
@@ -27,12 +27,12 @@ interface LiveDonationProps {
 }
 
 const DONATION_AMOUNTS = [
-  { amount: 100,   label: '100팀',    emoji: '💛' },
-  { amount: 500,   label: '500팀',    emoji: '🧡' },
-  { amount: 1000,  label: '1,000팀',  emoji: '❤️' },
-  { amount: 3000,  label: '3,000팀',  emoji: '💎' },
-  { amount: 5000,  label: '5,000팀',  emoji: '👑' },
-  { amount: 10000, label: '10,000팀', emoji: '🌟' },
+  { amount: 100,   label: '100딜',    emoji: '💛' },
+  { amount: 500,   label: '500딜',    emoji: '🧡' },
+  { amount: 1000,  label: '1,000딜',  emoji: '❤️' },
+  { amount: 3000,  label: '3,000딜',  emoji: '💎' },
+  { amount: 5000,  label: '5,000딜',  emoji: '👑' },
+  { amount: 10000, label: '10,000딜', emoji: '🌟' },
 ]
 
 export default function LiveDonation({ streamId }: LiveDonationProps) {
@@ -66,7 +66,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
     }
 
     if (balance !== null && balance < selectedAmount.amount) {
-      toast.error(`팀이 부족합니다. 충전 후 이용해주세요.`)
+      toast.error(`딜이 부족합니다. 충전 후 이용해주세요.`)
       return
     }
 
@@ -79,7 +79,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       })
 
       if (res.data.success) {
-        toast.success(res.data.message || `${selectedAmount.amount.toLocaleString()}팀을 후원했습니다!`)
+        toast.success(res.data.message || `${selectedAmount.amount.toLocaleString()}딜을 후원했습니다!`)
         setBalance(res.data.data.balance)
         setShowSheet(false)
         setMessage('')
@@ -127,7 +127,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">팀 후원</h3>
+                  <h3 className="text-lg font-bold text-gray-900">딜 후원</h3>
                   <p className="text-xs text-gray-400 mt-0.5">셀러에게 응원을 보내세요!</p>
                 </div>
                 <button
@@ -142,14 +142,14 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-pink-500" />
-                  <span className="text-sm font-medium text-gray-700">내 팀</span>
+                  <span className="text-sm font-medium text-gray-700">내 딜</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {loadingBalance ? (
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                   ) : (
                     <span className="text-lg font-bold text-pink-600">
-                      {(balance ?? 0).toLocaleString()}팀
+                      {(balance ?? 0).toLocaleString()}딜
                     </span>
                   )}
                   <button
@@ -194,7 +194,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               {isInsufficient && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-center">
                   <p className="text-xs text-amber-800">
-                    팀이 부족합니다.
+                    딜이 부족합니다.
                   </p>
                   <button onClick={() => navigate('/points/charge')} className="mt-1 text-xs font-bold text-amber-900 underline">
                     충전하기
@@ -213,7 +213,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 ) : (
                   <Heart className="w-5 h-5" />
                 )}
-                {processing ? '후원 중...' : `${selectedAmount.amount.toLocaleString()}팀 후원하기`}
+                {processing ? '후원 중...' : `${selectedAmount.amount.toLocaleString()}딜 후원하기`}
               </button>
             </div>
           </div>
@@ -240,7 +240,7 @@ export function DonationEffect({ donations }: { donations: DonationEffect[] }) {
             <Heart className="w-5 h-5 text-yellow-300 fill-yellow-300 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-bold truncate">
-                {d.donorName}님이 {d.amount.toLocaleString()}팀 후원!
+                {d.donorName}님이 {d.amount.toLocaleString()}딜 후원!
               </p>
               {d.message && (
                 <p className="text-xs text-white/80 truncate mt-0.5">{d.message}</p>

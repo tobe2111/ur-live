@@ -37,9 +37,9 @@ function TeamPointsCard() {
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>
-            <p className="text-[11px] text-gray-500 font-medium">내 팀 잔액</p>
+            <p className="text-[11px] text-gray-500 font-medium">내 딜 잔액</p>
             <p className="text-lg font-bold text-gray-900">
-              {loading ? '...' : `${balance.toLocaleString()}팀`}
+              {loading ? '...' : `${balance.toLocaleString()}딜`}
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ export default function UserProfilePage() {
       {/* User Info Section */}
       <UserInfo userName={userName} profileImage={profileImage} />
 
-      {/* 팀 포인트 잔액 */}
+      {/* 딜 포인트 잔액 */}
       <TeamPointsCard />
 
       {/* Menu List Section */}

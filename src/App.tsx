@@ -512,7 +512,7 @@ function AppContent() {
             <Route path="/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
 
-            {/* 팀 포인트 충전 */}
+            {/* 딜 포인트 충전 */}
             <Route path="/points/charge" element={<PointsChargePage />} />
             <Route path="/points/charge/success" element={<PointsChargeSuccessPage />} />
             <Route path="/points/charge/fail" element={<PaymentFailPage />} />

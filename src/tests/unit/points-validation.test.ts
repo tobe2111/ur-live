@@ -13,11 +13,11 @@ import { describe, it, expect } from 'vitest';
 const COMMISSION_RATE = 0.15; // 15%
 
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250팀' },
-  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500팀' },
-  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500팀' },
-  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500팀' },
-  { amount: 100000, points: 85000,  label: '100,000원 → 85,000팀' },
+  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250딜' },
+  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500딜' },
+  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500딜' },
+  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500딜' },
+  { amount: 100000, points: 85000,  label: '100,000원 → 85,000딜' },
 ];
 
 const MIN_DONATION_AMOUNT = 100;

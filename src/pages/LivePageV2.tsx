@@ -77,7 +77,7 @@ function ReelCard({
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
 
-  // ── 후원은 LiveDonation 컴포넌트에서 처리 (팀 포인트 방식) ──
+  // ── 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) ──
   
   // Handle null product case
   const safeProduct = (product || {
@@ -805,7 +805,7 @@ function ReelCard({
 
       {/* Product overlay */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
-        {/* Top bar: 팀 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
+        {/* Top bar: 딜 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
         {!isSeller && (
           <div className="pointer-events-auto absolute top-12 left-3 z-20">
             <TeamPointsBadge />
@@ -856,7 +856,7 @@ function ReelCard({
                 <Share2 className="h-5 w-5 text-white/90" />
               </button>
 
-              {/* 후원하기 버튼 (팀 포인트) */}
+              {/* 후원하기 버튼 (딜 포인트) */}
               {!isSeller && stream?.id && (
                 <LiveDonation streamId={stream.id} />
               )}
@@ -1010,7 +1010,7 @@ function ReelCard({
           </div>
         </>
       )}
-      {/* 후원은 LiveDonation 컴포넌트에서 처리 (팀 포인트 방식) */}
+      {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
     </div>
   )
 }

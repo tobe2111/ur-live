@@ -407,7 +407,7 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 app.route('/api/donations', donationsRoutes);
 app.route('/api/seller', sellerDonationsRoutes);
 
-// ── 팀 포인트 ──
+// ── 딜 포인트 ──
 import { pointsRoutes } from '../features/points/api/points.routes';
 app.route('/api/points', pointsRoutes);
 
