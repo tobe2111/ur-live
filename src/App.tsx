@@ -271,7 +271,7 @@ function AppContent() {
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
-          <div className={!hideBottomNav ? 'pb-14' : ''}>
+          <div className={`max-w-screen-sm mx-auto bg-white min-h-screen ${!hideBottomNav ? 'pb-14' : ''}`}>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
