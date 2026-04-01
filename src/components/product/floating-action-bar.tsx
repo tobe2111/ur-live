@@ -16,7 +16,7 @@ export function FloatingActionBar({
   onToggleWishlist,
 }: FloatingActionBarProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 mx-auto w-full max-w-md bg-white border-t border-gray-100 px-4 pb-safe pt-2">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 w-full max-w-screen-sm bg-white border-t border-gray-100 px-4 pb-safe pt-2">
       <div className="flex items-center gap-2">
         {/* 찜 버튼 */}
         {onToggleWishlist && (

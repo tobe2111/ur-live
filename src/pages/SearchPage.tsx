@@ -97,7 +97,7 @@ export default function SearchPage() {
   const showResults = !loading && !error && query && hasResults
 
   return (
-    <div className="mx-auto min-h-screen max-w-screen-sm bg-[#f5f5f7]">
+    <div className="bg-[#f5f5f7]">
       {/* Header */}
       <SearchHeader
         query={query}

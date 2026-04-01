@@ -79,7 +79,7 @@ export default function CartPage() {
   // 비로그인 상태: 장바구니 페이지는 보여주되 로그인 유도 UI 표시
   if (!loggedIn) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col bg-gray-50">
+      <div className="flex flex-col bg-gray-50">
         <div className="flex items-center justify-between border-b bg-white px-4 py-4">
           <button onClick={() => navigate(-1)} className="text-gray-600">
             <X className="h-6 w-6" />
@@ -393,7 +393,7 @@ function CartPageContent() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-gray-50">
+    <div className="flex flex-col bg-gray-50">
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader
         itemCount={cartItems.length}

@@ -143,7 +143,7 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background max-w-screen-sm mx-auto">
+    <div className="bg-background">
       <TopNav />
 
       <main className="px-4 py-4">
