@@ -20,6 +20,7 @@ export default function MainHomePage() {
         <LiveNow />
         <SiteFooter />
       </main>
+      <div className="h-14" aria-hidden="true" />
       <BottomNav />
     </div>
   )
