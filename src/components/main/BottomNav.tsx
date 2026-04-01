@@ -17,7 +17,10 @@ export default function BottomNav() {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100"
-      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      style={{
+        width: '100vw',
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      }}
     >
       <div className="flex items-center w-full py-2.5">
         {navItems.map(({ icon: Icon, label, path }) => {
