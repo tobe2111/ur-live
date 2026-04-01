@@ -19,7 +19,7 @@ export default function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
     >
-      <div className="flex items-center w-full py-1.5">
+      <div className="flex items-center w-full py-2.5">
         {navItems.map(({ icon: Icon, label, path }) => {
           const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (

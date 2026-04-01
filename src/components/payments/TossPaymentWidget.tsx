@@ -114,6 +114,16 @@ export function TossPaymentWidget({
       try {
         const finalAmount = totalAmount + shippingFee
 
+        // DOM 요소가 존재할 때까지 대기 (최대 3초)
+        let attempts = 0
+        while (!document.getElementById('payment-method') && attempts < 30) {
+          await new Promise(r => setTimeout(r, 100))
+          attempts++
+        }
+        if (!document.getElementById('payment-method')) {
+          throw new Error('결제 UI 영역을 찾을 수 없습니다. 페이지를 새로고침해주세요.')
+        }
+
         // 결제 금액 설정 (KRW, 정수)
         await widgets.setAmount({ currency: 'KRW', value: Math.round(finalAmount) })
 
