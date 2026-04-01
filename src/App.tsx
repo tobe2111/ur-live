@@ -271,7 +271,8 @@ function AppContent() {
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
-          <div className={`max-w-screen-sm mx-auto bg-white min-h-screen ${!hideBottomNav ? 'pb-14' : ''}`}>
+          <div className="max-w-screen-sm mx-auto bg-white min-h-dvh flex flex-col">
+          <div className="flex-1">
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
@@ -542,9 +543,10 @@ function AppContent() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           </div>
+          {!hideBottomNav && <BottomNav />}
+          </div>
         </Suspense>
       </FrameWrapper>
-      {!hideBottomNav && <BottomNav />}
       <ToastContainer />
     </>
   )

@@ -15,14 +15,11 @@ export default function BottomNav() {
   const location = useLocation()
 
   return (
-    <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full bg-white border-t border-gray-200 z-[9999]"
-      style={{
-        maxWidth: '640px',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      <div className="flex items-center h-12">
+    <nav className="sticky bottom-0 w-full bg-white border-t border-gray-200 z-50 shrink-0">
+      <div
+        className="flex items-center h-12"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
         {navItems.map(({ icon: Icon, label, path, highlight }) => {
           const isActive = location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
           return (
