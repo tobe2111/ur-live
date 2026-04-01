@@ -16,11 +16,15 @@ export default function TopNav() {
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
       <div className="flex items-center justify-between h-12 px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-1.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-red-500">
-            <span className="text-white text-[10px] font-extrabold">UR</span>
-          </div>
-          <span className="text-[15px] font-extrabold text-gray-900">유어라이브</span>
+        <Link to="/" className="flex items-center gap-1">
+          {/* 로고 이미지가 있으면 사용, 없으면 텍스트 */}
+          <img
+            src="/logo.png"
+            alt="유어딜"
+            className="h-7"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
+          />
+          <span className="text-[15px] font-extrabold text-gray-900 hidden">유어딜</span>
         </Link>
 
         {/* Right actions */}

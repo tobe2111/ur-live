@@ -9,7 +9,7 @@ import SiteFooter from '@/components/main/SiteFooter'
 
 export default function MainHomePage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background max-w-screen-sm mx-auto relative">
       <TopNav />
       <main>
         <HeroBanner />

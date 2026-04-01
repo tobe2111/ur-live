@@ -64,6 +64,8 @@ export default function KakaoCallbackPage() {
         const { customToken, user } = response.data.data
 
         // 2. Firebase Custom Token으로 로그인
+        // ⚠️ auth_processing 플래그: useMultiTabSync의 reload를 차단
+        sessionStorage.setItem('auth_processing', 'true')
         const userCredential = await signInWithCustomToken(customToken)
 
         // ✅ 중복 처리 방지: signInWithCustomToken 직후 즉시 설정
@@ -143,7 +145,10 @@ export default function KakaoCallbackPage() {
           }, 300)
         }
 
-        // 8. replace: true → 뒤로가기 시 콜백 페이지 재방문 방지
+        // 8. auth_processing 플래그 해제 (1초 후 — Zustand persist 완료 대기)
+        setTimeout(() => sessionStorage.removeItem('auth_processing'), 1000)
+
+        // 9. replace: true → 뒤로가기 시 콜백 페이지 재방문 방지
         navigate(returnUrl, { replace: true })
       } catch (err: any) {
         console.error('[KakaoCallback] ❌ 처리 실패:', err)
