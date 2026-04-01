@@ -212,7 +212,6 @@ export default function CheckoutPage() {
             setCartItems(cartItemsData)
           } else {
             setError('장바구니가 비어있습니다.')
-            setTimeout(() => navigate('/cart'), 2000)
           }
         }
 
