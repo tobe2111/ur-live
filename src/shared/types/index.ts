@@ -178,6 +178,9 @@ export interface Order {
   // Joined
   items?: OrderItem[];
   seller?: Seller;
+  seller_name?: string;
+  seller_phone?: string;
+  seller_kakao_chat_url?: string;
 }
 
 export interface OrderItem {

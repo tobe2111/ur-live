@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, MapPin, Truck, ChevronRight, CheckCircle, Circle } from 'lucide-react'
+import { Package, MapPin, Truck, ChevronRight, CheckCircle, Circle, MessageCircle, Phone as PhoneIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { toast } from '@/hooks/useToast'
 import type { Order } from '@/types/order'
 
 interface OrdersTabProps {
@@ -178,6 +179,18 @@ function OrderFlowStepper({ status }: { status: string }) {
 
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
 
+function handleSellerContact(order: Order) {
+  const kakao = order.seller_kakao_chat_url as string | undefined
+  const phone = order.seller_phone as string | undefined
+  if (kakao) {
+    window.open(kakao, '_blank', 'noopener,noreferrer')
+  } else if (phone) {
+    toast.info(`판매자 연락처: ${phone}`)
+  } else {
+    toast.info('판매자 연락처가 등록되지 않았습니다')
+  }
+}
+
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder }: OrdersTabProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'>('all')
 
@@ -293,6 +306,28 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                       <ChevronRight className="h-3.5 w-3.5" />
                     </a>
                   </div>
+                )}
+              </div>
+
+              {/* 판매자 문의 + 배송 조회 */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => handleSellerContact(order)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#6e6e73] bg-[#f5f5f7] rounded-xl hover:bg-[#e5e5ea] transition-colors"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  판매자 문의
+                </button>
+                {order.tracking_number && (
+                  <a
+                    href={getTrackingUrl(order.courier, order.tracking_number)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#007aff] bg-[#f0f4ff] rounded-xl hover:bg-[#e0e8ff] transition-colors"
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    배송 조회
+                  </a>
                 )}
               </div>
 

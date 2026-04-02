@@ -306,6 +306,28 @@ adminManagementRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
   }
 });
 
+// ── DELETE /sellers/:id — 판매자 정지 (soft delete) ──────────────────────────
+adminManagementRoutes.delete('/sellers/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
+    if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    if (rows[0].status === 'suspended') return c.json({ success: false, error: '이미 정지된 판매자입니다' }, 400);
+    // Soft-delete: mark as suspended and deactivate
+    try {
+      await executeRun(DB, `UPDATE sellers SET is_active = 0, status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    } catch {
+      // is_active column might not exist
+      await executeRun(DB, `UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    }
+    await writeAuditLog(c, { action: 'suspend_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'suspended', is_active: 0 } });
+    return c.json({ success: true, message: '판매자가 정지되었습니다', data: { id: sellerId, status: 'suspended' } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 adminManagementRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
   try {
     const { DB } = c.env;
@@ -1585,6 +1607,110 @@ adminManagementRoutes.get('/donations/stats', cors(), async (c) => {
     });
   } catch {
     return c.json({ success: true, data: { total_donations: 0, total_amount: 0, pending_settlements: 0, pending_settlement_amount: 0, total_commission: 0 } });
+  }
+});
+
+// ─── 사이드 배너 관리 (PC Side Banner, Cookat 스타일) ─────────────────────────
+
+// Auto-create side_banners table if it doesn't exist
+async function ensureSideBannersTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS side_banners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        image_url TEXT NOT NULL,
+        link_url TEXT,
+        is_active INTEGER DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run();
+  } catch {
+    // Table might already exist, ignore errors
+  }
+}
+
+// GET /api/admin/side-banners — 사이드 배너 목록
+adminManagementRoutes.get('/side-banners', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    await ensureSideBannersTable(DB);
+    const { results } = await DB.prepare(
+      `SELECT id, title, image_url, link_url, is_active, sort_order, created_at
+       FROM side_banners ORDER BY sort_order ASC, created_at DESC`
+    ).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// POST /api/admin/side-banners — 사이드 배너 생성
+adminManagementRoutes.post('/side-banners', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    await ensureSideBannersTable(DB);
+    const body = await c.req.json<{ title: string; image_url: string; link_url?: string; is_active?: boolean; sort_order?: number }>();
+    if (!body.title || !body.image_url) {
+      return c.json({ success: false, error: '제목과 이미지 URL은 필수입니다.' }, 400);
+    }
+    const result = await DB.prepare(
+      `INSERT INTO side_banners (title, image_url, link_url, is_active, sort_order)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(
+      body.title,
+      body.image_url,
+      body.link_url || null,
+      body.is_active !== undefined ? (body.is_active ? 1 : 0) : 1,
+      body.sort_order ?? 0
+    ).run();
+    return c.json({ success: true, data: { id: result.meta.last_row_id, title: body.title } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /api/admin/side-banners/:id — 사이드 배너 수정
+adminManagementRoutes.put('/side-banners/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+  try {
+    await ensureSideBannersTable(DB);
+    const existing = await DB.prepare('SELECT id FROM side_banners WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ success: false, error: '사이드 배너를 찾을 수 없습니다' }, 404);
+
+    const body = await c.req.json<{ title?: string; image_url?: string; link_url?: string; is_active?: boolean; sort_order?: number }>();
+    const fields: string[] = [];
+    const values: (string | number | null)[] = [];
+    if (body.title !== undefined)     { fields.push('title = ?');     values.push(body.title); }
+    if (body.image_url !== undefined) { fields.push('image_url = ?'); values.push(body.image_url); }
+    if (body.link_url !== undefined)  { fields.push('link_url = ?');  values.push(body.link_url || null); }
+    if (body.is_active !== undefined) { fields.push('is_active = ?'); values.push(body.is_active ? 1 : 0); }
+    if (body.sort_order !== undefined){ fields.push('sort_order = ?');values.push(body.sort_order); }
+    if (fields.length === 0) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
+    values.push(parseInt(id));
+    await DB.prepare(
+      `UPDATE side_banners SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+    return c.json({ success: true, data: { id } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// DELETE /api/admin/side-banners/:id — 사이드 배너 삭제
+adminManagementRoutes.delete('/side-banners/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+  try {
+    await ensureSideBannersTable(DB);
+    const existing = await DB.prepare('SELECT id FROM side_banners WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ success: false, error: '사이드 배너를 찾을 수 없습니다' }, 404);
+    await DB.prepare('DELETE FROM side_banners WHERE id = ?').bind(id).run();
+    return c.json({ success: true, data: { id } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 

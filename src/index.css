@@ -218,6 +218,32 @@
   animation: donation-pop 5s cubic-bezier(0.28, 0.11, 0.32, 1) forwards;
 }
 
+@keyframes donation-center-alert {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  25% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+.animate-donation-center-alert {
+  animation: donation-center-alert 3s cubic-bezier(0.28, 0.11, 0.32, 1) forwards;
+}
+
 /* Apple frosted glass effect */
 .apple-glass {
   background: rgba(255, 255, 255, 0.72);

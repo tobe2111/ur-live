@@ -6,6 +6,7 @@ import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import BottomNav from '@/components/main/BottomNav'
+import SideBanner from '@/components/SideBanner'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -553,6 +554,7 @@ function AppContent() {
           </Routes>
           </div>
           {!hideBottomNav && <BottomNav />}
+          {!fullScreen && <SideBanner />}
           {!hideBottomNav && (
             <a
               href="http://pf.kakao.com/_AITdn/chat"

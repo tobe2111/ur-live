@@ -39,6 +39,7 @@ export interface UseLiveStreamWebSocketReturn {
     userType: 'viewer' | 'streamer' | 'system'
   ) => Promise<void>
   clearMessages: () => void
+  addLocalMessage: (msg: ChatMessage) => void
 
   // Stream (useFirebaseStream 동일 인터페이스)
   streamData: StreamData | null
@@ -65,6 +66,10 @@ export function useLiveStreamWebSocket(
   const MAX_RECONNECT = 0
 
   const clearMessages = useCallback(() => setMessages([]), [])
+
+  const addLocalMessage = useCallback((msg: ChatMessage) => {
+    setMessages(prev => [...prev, msg])
+  }, [])
 
   const sendMessage = useCallback(
     async (
@@ -263,6 +268,7 @@ export function useLiveStreamWebSocket(
     error,
     sendMessage,
     clearMessages,
+    addLocalMessage,
     streamData,
     lastDonation,
   }

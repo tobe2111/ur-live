@@ -91,6 +91,20 @@ const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string 
   failed:  { label: '결제 실패', color: 'text-red-700',     bg: 'bg-red-50' },
 }
 
+function parseShippingAddress(address: string, zipcode?: string, detail?: string): { postal_code: string; address1: string; address2: string } {
+  if (!address) return { postal_code: zipcode || '', address1: '', address2: detail || '' }
+  try {
+    const parsed = JSON.parse(address)
+    return {
+      postal_code: parsed.postal_code || parsed.zipcode || zipcode || '',
+      address1: parsed.address1 || parsed.address || '',
+      address2: parsed.address2 || parsed.detail || detail || '',
+    }
+  } catch {
+    return { postal_code: zipcode || '', address1: address, address2: detail || '' }
+  }
+}
+
 export default function AdminOrdersPage() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
@@ -405,12 +419,18 @@ export default function AdminOrdersPage() {
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">배송 정보</h4>
-                <div className="space-y-2 text-sm">
-                  <div><p className="text-xs text-gray-400">받는 사람</p><p className="font-medium text-gray-900">{selectedOrder.shipping_name}</p></div>
-                  <div><p className="text-xs text-gray-400">연락처</p><p className="font-medium text-gray-900">{selectedOrder.shipping_phone}</p></div>
-                  <div><p className="text-xs text-gray-400">주소</p><p className="font-medium text-gray-900">[{selectedOrder.shipping_zipcode}] {selectedOrder.shipping_address} {selectedOrder.shipping_address_detail}</p></div>
-                  {selectedOrder.tracking_number && <div><p className="text-xs text-gray-400">운송장</p><p className="font-medium text-gray-900">{selectedOrder.courier} {selectedOrder.tracking_number}</p></div>}
-                </div>
+                {(() => {
+                  const addr = parseShippingAddress(selectedOrder.shipping_address, selectedOrder.shipping_zipcode, selectedOrder.shipping_address_detail)
+                  return (
+                    <div className="space-y-2 text-sm">
+                      <div><p className="text-xs text-gray-400">받는 사람</p><p className="font-medium text-gray-900">{selectedOrder.shipping_name}</p></div>
+                      <div><p className="text-xs text-gray-400">연락처</p><p className="font-medium text-gray-900">{selectedOrder.shipping_phone}</p></div>
+                      {addr.postal_code && <div><p className="text-xs text-gray-400">우편번호</p><p className="font-medium text-gray-900">{addr.postal_code}</p></div>}
+                      <div><p className="text-xs text-gray-400">주소</p><p className="font-medium text-gray-900">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p></div>
+                      {selectedOrder.tracking_number && <div><p className="text-xs text-gray-400">운송장</p><p className="font-medium text-gray-900">{selectedOrder.courier} {selectedOrder.tracking_number}</p></div>}
+                    </div>
+                  )
+                })()}
               </div>
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <div>
