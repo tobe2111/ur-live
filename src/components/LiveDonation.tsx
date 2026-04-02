@@ -43,6 +43,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
   const [processing, setProcessing] = useState(false)
   const [balance, setBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
+  const [centerAlert, setCenterAlert] = useState<{ emoji: string; donorName: string; amount: number } | null>(null)
 
   const userId = getUserId()
 
@@ -82,6 +83,21 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
         toast.success(res.data.message || `${selectedAmount.amount.toLocaleString()}딜을 후원했습니다!`)
         setBalance(res.data.data.balance)
         setShowSheet(false)
+
+        // Show center-screen donation alert
+        const donorName = localStorage.getItem('user_name') || '후원자'
+        setCenterAlert({
+          emoji: selectedAmount.emoji,
+          donorName,
+          amount: selectedAmount.amount,
+        })
+        setTimeout(() => setCenterAlert(null), 3000)
+
+        // Dispatch custom event for chat system message
+        window.dispatchEvent(new CustomEvent('donationAlert', {
+          detail: { donorName, amount: selectedAmount.amount, message: message.trim() || '' }
+        }))
+
         setMessage('')
       } else {
         if (res.data.code === 'INSUFFICIENT_POINTS') {
@@ -113,6 +129,18 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
         </div>
         <span className="text-[9px] font-medium text-white/80">선물하기</span>
       </button>
+
+      {/* 후원 센터 알림 애니메이션 */}
+      {centerAlert && (
+        <div className="fixed inset-0 z-[100] pointer-events-none">
+          <div className="animate-donation-center-alert fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-pink-500/90 to-red-500/90 backdrop-blur-xl rounded-3xl px-8 py-6 shadow-2xl border border-white/20 text-center">
+            <div className="text-5xl mb-2">{centerAlert.emoji}</div>
+            <p className="text-white text-lg font-bold whitespace-nowrap">
+              {centerAlert.donorName}님이 {centerAlert.amount.toLocaleString()}딜 후원!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 후원 바텀시트 */}
       {showSheet && (

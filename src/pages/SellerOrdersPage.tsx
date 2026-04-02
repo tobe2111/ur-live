@@ -53,6 +53,20 @@ interface Order {
   items?: OrderItem[]
 }
 
+function parseShippingAddress(address: string, detail?: string): { postal_code: string; address1: string; address2: string } {
+  if (!address) return { postal_code: '', address1: '', address2: detail || '' }
+  try {
+    const parsed = JSON.parse(address)
+    return {
+      postal_code: parsed.postal_code || parsed.zipcode || '',
+      address1: parsed.address1 || parsed.address || '',
+      address2: parsed.address2 || parsed.detail || detail || '',
+    }
+  } catch {
+    return { postal_code: '', address1: address, address2: detail || '' }
+  }
+}
+
 export default function SellerOrdersPage() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
@@ -687,18 +701,27 @@ export default function SellerOrdersPage() {
                 {/* Shipping Info */}
                 <div className="border-b pb-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">배송 정보</h3>
+                  {(() => {
+                    const addr = parseShippingAddress(selectedOrder.shipping_address)
+                    return (
                   <div className="space-y-2 text-sm">
                     <div>
-                      <p className="text-gray-500 mb-1">수령인</p>
+                      <p className="text-gray-500 mb-1">받는 사람</p>
                       <p className="font-medium">{selectedOrder.shipping_name}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-1">연락처</p>
                       <p className="font-medium">{selectedOrder.shipping_phone}</p>
                     </div>
+                    {addr.postal_code && (
                     <div>
-                      <p className="text-gray-500 mb-1">배송지 주소</p>
-                      <p className="font-medium">{selectedOrder.shipping_address}</p>
+                      <p className="text-gray-500 mb-1">우편번호</p>
+                      <p className="font-medium">{addr.postal_code}</p>
+                    </div>
+                    )}
+                    <div>
+                      <p className="text-gray-500 mb-1">주소</p>
+                      <p className="font-medium">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p>
                     </div>
                     {selectedOrder.courier && selectedOrder.tracking_number && (
                       <>
@@ -713,6 +736,8 @@ export default function SellerOrdersPage() {
                       </>
                     )}
                   </div>
+                    )
+                  })()}
                 </div>
 
                 {/* Order Items */}

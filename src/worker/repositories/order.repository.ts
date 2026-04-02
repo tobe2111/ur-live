@@ -119,7 +119,7 @@ export class OrderRepository {
    */
   async findById(orderId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name
+      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.id = ?`,
@@ -140,7 +140,7 @@ export class OrderRepository {
    */
   async findByOrderNumber(orderNumber: string): Promise<Order[]> {
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name
+      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.order_number = ?
@@ -178,7 +178,7 @@ export class OrderRepository {
     const total = countRow?.count ?? 0;
 
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name
+      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.user_id = ?
@@ -482,6 +482,9 @@ export class OrderRepository {
       paid_at: row['paid_at'] ? String(row['paid_at']) : undefined,
       shipped_at: row['shipped_at'] ? String(row['shipped_at']) : undefined,
       delivered_at: row['delivered_at'] ? String(row['delivered_at']) : undefined,
+      seller_name: row['seller_name'] ? String(row['seller_name']) : undefined,
+      seller_phone: row['seller_phone'] ? String(row['seller_phone']) : undefined,
+      seller_kakao_chat_url: row['seller_kakao_chat_url'] ? String(row['seller_kakao_chat_url']) : undefined,
       created_at: String(row['created_at'] ?? ''),
       updated_at: String(row['updated_at'] ?? ''),
       items: items.map(item => ({

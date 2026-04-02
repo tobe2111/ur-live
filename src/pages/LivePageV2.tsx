@@ -94,6 +94,7 @@ function ReelCard({
     isConnected: chatConnected,
     error: chatError,
     sendMessage: sendChatMessage,
+    addLocalMessage,
     streamData: wsStreamData,
     lastDonation,
   } = useLiveStreamWebSocket(stream.id, true)
@@ -114,6 +115,27 @@ function ReelCard({
     }, 5000)
     return () => clearTimeout(timer)
   }, [lastDonation])
+
+  // Listen for donationAlert custom events and add system chat message
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (!detail) return
+      const msg = detail.message
+        ? `🎉 ${detail.donorName}님이 ${detail.amount.toLocaleString()}딜 후원! "${detail.message}"`
+        : `🎉 ${detail.donorName}님이 ${detail.amount.toLocaleString()}딜 후원!`
+      addLocalMessage({
+        id: `donation-alert-${Date.now()}`,
+        userId: 0,
+        userName: '시스템',
+        userType: 'system',
+        message: msg,
+        timestamp: Date.now(),
+      })
+    }
+    window.addEventListener('donationAlert', handler)
+    return () => window.removeEventListener('donationAlert', handler)
+  }, [addLocalMessage])
 
   // YouTube Player Integration
   useEffect(() => {
@@ -808,7 +830,7 @@ function ReelCard({
         {/* Top bar: 딜 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
         {!isSeller && (
           <div className="pointer-events-auto absolute top-12 left-3 z-20">
-            <TeamPointsBadge />
+            <TeamPointsBadge streamId={stream.id} />
           </div>
         )}
 
