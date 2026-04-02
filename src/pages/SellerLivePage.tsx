@@ -7,7 +7,8 @@ import SellerLayout from '@/components/SellerLayout'
 import {
   Play, Radio, Clock, Loader2, Eye, ChevronDown, ChevronUp,
   Youtube, Instagram, Link as LinkIcon, Settings, Video,
-  Users, Zap, Square, CalendarClock, History, Plus, Copy
+  Users, Zap, Square, CalendarClock, History, Plus, Copy,
+  CheckCircle2, ExternalLink, Image as ImageIcon
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -104,13 +105,16 @@ function StartTab({ token }: { token: string | null }) {
     sellerYoutube: '',
   })
   const [products, setProducts] = useState<Product[]>([])
+  const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
+  const [productTab, setProductTab] = useState<'my' | 'supply'>('my')
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [productsLoading, setProductsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showObsGuide, setShowObsGuide] = useState(false)
   const [youtubeConnected, setYoutubeConnected] = useState(false)
+  const [youtubeChannelName, setYoutubeChannelName] = useState('')
   const [streamKey, setStreamKey] = useState('')
+  const [broadcastPlatform, setBroadcastPlatform] = useState<'prism' | 'obs' | 'youtube'>('prism')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -121,7 +125,8 @@ function StartTab({ token }: { token: string | null }) {
     Promise.allSettled([
       api.get('/api/seller/products?limit=100', { headers }),
       api.get('/api/seller/youtube/channels', { headers }),
-    ]).then(([prodRes, ytRes]) => {
+      api.get('/api/seller/supply?status=approved', { headers }),
+    ]).then(([prodRes, ytRes, supplyRes]) => {
       if (prodRes.status === 'fulfilled' && prodRes.value.data?.success) {
         setProducts(prodRes.value.data.data || [])
       }
@@ -129,10 +134,22 @@ function StartTab({ token }: { token: string | null }) {
         const channels = ytRes.value.data.data || []
         if (channels.length > 0) {
           setYoutubeConnected(true)
+          setYoutubeChannelName(channels[0].channel_name || channels[0].title || localStorage.getItem('youtube_channel_name') || '')
           if (channels[0].default_rtmp_key) {
             setStreamKey(channels[0].default_rtmp_key)
           }
         }
+      }
+      // Check localStorage fallback for youtube channel
+      if (!youtubeConnected) {
+        const savedName = localStorage.getItem('youtube_channel_name')
+        if (savedName) {
+          setYoutubeConnected(true)
+          setYoutubeChannelName(savedName)
+        }
+      }
+      if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
+        setSupplyProducts(supplyRes.value.data.data || [])
       }
     }).finally(() => setProductsLoading(false))
   }, [token])
@@ -247,9 +264,18 @@ function StartTab({ token }: { token: string | null }) {
         <label className="block text-sm font-semibold text-gray-800 mb-3">YouTube 연동 설정</label>
         {youtubeConnected ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-              <Youtube className="w-4 h-4" />
-              YouTube 계정 연동됨
+            <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-green-700">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>YouTube 연동됨{youtubeChannelName ? `: @${youtubeChannelName}` : ''}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/seller/settings/youtube')}
+                className="text-xs text-green-600 hover:text-green-800 font-medium"
+              >
+                변경
+              </button>
             </div>
             {streamKey && (
               <div>
@@ -277,7 +303,21 @@ function StartTab({ token }: { token: string | null }) {
           </div>
         ) : (
           <div>
-            <p className="text-sm text-gray-500 mb-3">YouTube 연동이 안 되어 있습니다. 수동으로 URL을 입력하세요.</p>
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+              <Youtube className="w-4 h-4 text-red-500" />
+              YouTube 계정을 연동해주세요
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/api/seller/youtube/connect'
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors mb-3"
+            >
+              <Youtube className="w-4 h-4" />
+              YouTube 계정 연동하기
+            </button>
+            <p className="text-xs text-gray-400 mb-2">또는 수동으로 URL을 입력하세요</p>
             <input
               type="url"
               name="youtubeUrl"
@@ -298,16 +338,53 @@ function StartTab({ token }: { token: string | null }) {
             <span className="ml-2 text-blue-600 font-normal">{selectedProductIds.size}개 선택됨</span>
           )}
         </label>
+
+        {/* Product source tabs */}
+        <div className="flex items-center gap-1 mb-3 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setProductTab('my')}
+            className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              productTab === 'my'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            내 상품
+          </button>
+          <button
+            type="button"
+            onClick={() => setProductTab('supply')}
+            className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              productTab === 'supply'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            공급 상품
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/seller/products/new')}
+            className="ml-auto flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            새 상품 등록
+          </button>
+        </div>
+
         {productsLoading ? (
           <div className="flex items-center justify-center py-6 text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             <span className="text-sm">상품 불러오는 중...</span>
           </div>
-        ) : products.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">등록된 상품이 없습니다</p>
+        ) : (productTab === 'my' ? products : supplyProducts).length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">
+            {productTab === 'my' ? '등록된 상품이 없습니다' : '승인된 공급 상품이 없습니다'}
+          </p>
         ) : (
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {products.map(p => (
+            {(productTab === 'my' ? products : supplyProducts).map(p => (
               <label
                 key={p.id}
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
@@ -322,6 +399,13 @@ function StartTab({ token }: { token: string | null }) {
                   onChange={() => toggleProduct(p.id)}
                   className="rounded border-gray-300 text-blue-600"
                 />
+                {p.image_url ? (
+                  <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <ImageIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
                   <p className="text-xs text-gray-400">{p.price.toLocaleString()}원</p>
@@ -395,30 +479,42 @@ function StartTab({ token }: { token: string | null }) {
         </div>
       </div>
 
-      {/* OBS/프리즘 가이드 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowObsGuide(!showObsGuide)}
-          className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-gray-500" />
-            OBS / 프리즘 라이브 설정 가이드
-          </span>
-          {showObsGuide ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-        </button>
-        {showObsGuide && (
-          <div className="px-5 pb-5 space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio 설정</h4>
-              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                <li>OBS Studio 실행</li>
-                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS'}</li>
-                <li>스트림 키 입력</li>
-                <li>&quot;방송 시작&quot; 클릭</li>
-              </ol>
-            </div>
+      {/* 송출 플랫폼 선택 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <label className="block text-sm font-semibold text-gray-800 mb-3">어떤 방식으로 방송하시나요?</label>
+        <div className="space-y-2">
+          {([
+            { key: 'prism' as const, label: '프리즘 라이브', desc: '추천 - 무료, 동시송출', color: 'text-purple-600' },
+            { key: 'obs' as const, label: 'OBS Studio', desc: '고급 설정 가능', color: 'text-blue-600' },
+            { key: 'youtube' as const, label: 'YouTube 스튜디오에서 직접', desc: '별도 소프트웨어 불필요', color: 'text-red-600' },
+          ]).map(opt => (
+            <label
+              key={opt.key}
+              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                broadcastPlatform === opt.key
+                  ? 'border-blue-600 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                name="broadcastPlatform"
+                value={opt.key}
+                checked={broadcastPlatform === opt.key}
+                onChange={() => setBroadcastPlatform(opt.key)}
+                className="text-blue-600"
+              />
+              <div>
+                <p className={`text-sm font-medium ${broadcastPlatform === opt.key ? opt.color : 'text-gray-700'}`}>{opt.label}</p>
+                <p className="text-xs text-gray-400">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {/* Platform-specific guide */}
+        <div className="mt-4">
+          {broadcastPlatform === 'prism' && (
             <div className="p-4 bg-purple-50 rounded-lg">
               <h4 className="text-sm font-semibold text-purple-900 mb-2">프리즘 라이브 스튜디오 (추천)</h4>
               <ol className="text-xs text-purple-800 space-y-1 list-decimal list-inside">
@@ -432,8 +528,32 @@ function StartTab({ token }: { token: string | null }) {
                 <strong>장점:</strong> 스마트폰으로도 가능, 동시 송출, 화면 꾸미기/자막 내장, 완전 무료
               </p>
             </div>
-          </div>
-        )}
+          )}
+          {broadcastPlatform === 'obs' && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio 설정</h4>
+              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                <li>OBS Studio 실행</li>
+                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS'}</li>
+                <li>스트림 키 입력</li>
+                <li>&quot;방송 시작&quot; 클릭</li>
+              </ol>
+            </div>
+          )}
+          {broadcastPlatform === 'youtube' && (
+            <div className="p-4 bg-red-50 rounded-lg">
+              <h4 className="text-sm font-semibold text-red-900 mb-2">YouTube 스튜디오</h4>
+              <ol className="text-xs text-red-800 space-y-1 list-decimal list-inside">
+                <li>YouTube 스튜디오 접속</li>
+                <li>상단 &quot;만들기&quot; 버튼 클릭 &gt; &quot;실시간 스트리밍&quot; 선택</li>
+                <li>방송 제목/설명 입력 후 바로 시작</li>
+              </ol>
+              <p className="mt-2 text-xs text-red-700">
+                <strong>참고:</strong> 별도 소프트웨어 설치 없이 웹캠만으로 방송 가능
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Submit Button */}
