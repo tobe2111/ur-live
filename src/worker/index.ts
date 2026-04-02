@@ -174,7 +174,7 @@ app.use('*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-XSS-Protection', '1; mode=block');
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(self), usb=()');
+  c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self), payment=(self), usb=()');
 });
 
 // ============================================================
