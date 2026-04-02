@@ -16,8 +16,12 @@ import {
   Loader2,
   Image as ImageIcon,
   DollarSign,
-  Box
+  Box,
+  Download,
+  Upload
 } from 'lucide-react'
+import { downloadSellerTemplate } from '@/utils/product-template'
+import BulkUploadModal from '@/components/BulkUploadModal'
 
 interface Product {
   id: number
@@ -37,6 +41,7 @@ export default function SellerProductsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
 
   useEffect(() => {
     loadProducts()
@@ -140,13 +145,31 @@ export default function SellerProductsPage() {
               판매 상품을 등록하고 관리할 수 있습니다.
             </p>
           </div>
-          <Button
-            onClick={() => navigate('/seller/products/new')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 flex items-center gap-2 justify-center text-sm sm:text-base w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>상품 등록</span>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              onClick={downloadSellerTemplate}
+              variant="outline"
+              className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
+            >
+              <Download className="w-4 h-4" />
+              <span>양식 다운로드</span>
+            </Button>
+            <Button
+              onClick={() => setShowBulkUpload(true)}
+              variant="outline"
+              className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
+            >
+              <Upload className="w-4 h-4" />
+              <span>대량등록</span>
+            </Button>
+            <Button
+              onClick={() => navigate('/seller/products/new')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 flex items-center gap-2 justify-center text-sm flex-1 sm:flex-none"
+            >
+              <Plus className="w-4 h-4" />
+              <span>상품 등록</span>
+            </Button>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -423,6 +446,12 @@ export default function SellerProductsPage() {
           </div>
         )}
       </div>
+      <BulkUploadModal
+        open={showBulkUpload}
+        onClose={() => setShowBulkUpload(false)}
+        tokenKey="seller_token"
+        onSuccess={loadProducts}
+      />
     </SellerLayout>
   )
 }

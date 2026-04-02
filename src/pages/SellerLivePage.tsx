@@ -115,6 +115,14 @@ function StartTab({ token }: { token: string | null }) {
   const [youtubeChannelName, setYoutubeChannelName] = useState('')
   const [streamKey, setStreamKey] = useState('')
   const [broadcastPlatform, setBroadcastPlatform] = useState<'prism' | 'obs' | 'youtube'>('prism')
+  const [createdStream, setCreatedStream] = useState<{
+    id: number
+    streamKey: string
+    rtmpUrl: string
+    title: string
+    youtubeVideoId?: string
+  } | null>(null)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -125,7 +133,7 @@ function StartTab({ token }: { token: string | null }) {
     Promise.allSettled([
       api.get('/api/seller/products?limit=100', { headers }),
       api.get('/api/seller/youtube/channels', { headers }),
-      api.get('/api/seller/supply?status=approved', { headers }),
+      api.get('/api/supply?status=approved', { headers }),
     ]).then(([prodRes, ytRes, supplyRes]) => {
       if (prodRes.status === 'fulfilled' && prodRes.value.data?.success) {
         setProducts(prodRes.value.data.data || [])
@@ -188,6 +196,9 @@ function StartTab({ token }: { token: string | null }) {
 
       if (response.data.success) {
         const streamId = response.data.data?.id
+        const responseStreamKey = response.data.data?.stream_key || response.data.data?.streamKey || streamKey || ''
+        const responseRtmpUrl = response.data.data?.rtmp_url || response.data.data?.rtmpUrl || 'rtmp://a.rtmp.youtube.com/live2'
+        const youtubeVideoId = response.data.data?.youtube_video_id || response.data.data?.youtubeVideoId || ''
         // Link selected products
         if (streamId && selectedProductIds.size > 0) {
           await Promise.allSettled(
@@ -200,6 +211,16 @@ function StartTab({ token }: { token: string | null }) {
           )
         }
         toast.success(isScheduled ? '방송이 예약되었습니다!' : '라이브가 시작되었습니다!')
+
+        // Show the broadcast ready section
+        setCreatedStream({
+          id: streamId,
+          streamKey: responseStreamKey,
+          rtmpUrl: responseRtmpUrl,
+          title: formData.title,
+          youtubeVideoId,
+        })
+
         setFormData({ title: '', description: '', youtubeUrl: '', scheduledAt: '', sellerInstagram: '', sellerYoutube: '' })
         setSelectedProductIds(new Set())
       } else {
@@ -210,6 +231,165 @@ function StartTab({ token }: { token: string | null }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function copyToClipboard(text: string, field: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(field)
+      toast.success('복사되었습니다!')
+      setTimeout(() => setCopiedField(null), 2000)
+    } catch {
+      toast.error('복사에 실패했습니다.')
+    }
+  }
+
+  // Show broadcast ready section after successful creation
+  if (createdStream) {
+    return (
+      <div className="space-y-5">
+        {/* Success header */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+          <CheckCircle2 className="w-10 h-10 text-green-600 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-green-800 mb-1">방송 준비 완료!</h3>
+          <p className="text-sm text-green-700">&quot;{createdStream.title}&quot; 방송이 생성되었습니다.</p>
+        </div>
+
+        {/* Stream Key & RTMP URL */}
+        <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
+          <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <Settings className="w-4 h-4 text-blue-600" />
+            스트림 정보
+          </h4>
+
+          {createdStream.streamKey && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">스트림 키</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={createdStream.streamKey}
+                  readOnly
+                  className="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(createdStream.streamKey, 'streamKey')}
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    copiedField === 'streamKey'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {copiedField === 'streamKey' ? (
+                    <><CheckCircle2 className="w-4 h-4" /> 복사됨</>
+                  ) : (
+                    <><Copy className="w-4 h-4" /> 복사</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">RTMP URL</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={createdStream.rtmpUrl}
+                readOnly
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50 select-all"
+              />
+              <button
+                type="button"
+                onClick={() => copyToClipboard(createdStream.rtmpUrl, 'rtmpUrl')}
+                className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  copiedField === 'rtmpUrl'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {copiedField === 'rtmpUrl' ? (
+                  <><CheckCircle2 className="w-4 h-4" /> 복사됨</>
+                ) : (
+                  <><Copy className="w-4 h-4" /> 복사</>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {createdStream.youtubeVideoId && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">YouTube 영상 ID</label>
+              <p className="px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50">{createdStream.youtubeVideoId}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Platform-specific next steps */}
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h4 className="text-sm font-semibold text-gray-800 mb-3">다음 단계</h4>
+          {broadcastPlatform === 'prism' && (
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h5 className="text-sm font-semibold text-purple-900 mb-2">프리즘 라이브 스튜디오</h5>
+              <ol className="text-xs text-purple-800 space-y-1.5 list-decimal list-inside">
+                <li>프리즘 라이브 앱을 실행하세요</li>
+                <li>{'외부 플랫폼 연동 > YouTube를 선택하세요'}</li>
+                <li>위의 <strong>스트림 키</strong>를 복사하여 붙여넣으세요</li>
+                <li>필요시 TikTok, Facebook 등 동시 송출을 추가하세요</li>
+                <li>&quot;방송 시작&quot; 버튼을 클릭하세요</li>
+              </ol>
+            </div>
+          )}
+          {broadcastPlatform === 'obs' && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h5 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio</h5>
+              <ol className="text-xs text-blue-800 space-y-1.5 list-decimal list-inside">
+                <li>OBS Studio를 실행하세요</li>
+                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS를 선택하세요'}</li>
+                <li>위의 <strong>RTMP URL</strong>과 <strong>스트림 키</strong>를 입력하세요</li>
+                <li>&quot;방송 시작&quot; 버튼을 클릭하세요</li>
+              </ol>
+            </div>
+          )}
+          {broadcastPlatform === 'youtube' && (
+            <div className="p-4 bg-red-50 rounded-lg">
+              <h5 className="text-sm font-semibold text-red-900 mb-2">YouTube 스튜디오</h5>
+              <ol className="text-xs text-red-800 space-y-1.5 list-decimal list-inside">
+                <li>
+                  <a href="https://studio.youtube.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                    YouTube 스튜디오
+                  </a>에 접속하세요
+                </li>
+                <li>상단 &quot;만들기&quot; 버튼 &gt; &quot;실시간 스트리밍&quot;을 선택하세요</li>
+                <li>방송 제목과 설명을 입력하고 시작하세요</li>
+              </ol>
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-3">
+          <a
+            href={`/live/${createdStream.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4" />
+            라이브 보기
+          </a>
+          <button
+            type="button"
+            onClick={() => setCreatedStream(null)}
+            className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            새 방송 만들기
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -271,7 +451,7 @@ function StartTab({ token }: { token: string | null }) {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/seller/settings/youtube')}
+                onClick={() => navigate('/seller/live-broadcast')}
                 className="text-xs text-green-600 hover:text-green-800 font-medium"
               >
                 변경

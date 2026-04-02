@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
-import { Package, AlertTriangle, Plus, Minus, BarChart3, QrCode, Search, ArrowUpDown } from 'lucide-react'
+import { Package, AlertTriangle, Plus, Minus, BarChart3, QrCode, Search, ArrowUpDown, Camera, X } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
 
 interface Product {
@@ -45,6 +45,81 @@ export default function SellerInventoryPage() {
   const [quantity, setQuantity] = useState(0)
   const [reason, setReason] = useState('')
   const [scanInput, setScanInput] = useState('')
+  const [showCamera, setShowCamera] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const scanningRef = useRef(false)
+
+  const stopCamera = useCallback(() => {
+    scanningRef.current = false
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
+    }
+    setShowCamera(false)
+  }, [])
+
+  const startCamera = useCallback(async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+      streamRef.current = mediaStream
+      setShowCamera(true)
+
+      // Wait for video element to mount
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream
+          videoRef.current.play()
+
+          // Try BarcodeDetector if available
+          if ('BarcodeDetector' in window) {
+            scanningRef.current = true
+            const detector = new (window as any).BarcodeDetector({
+              formats: ['ean_13', 'qr_code', 'code_128']
+            })
+            const scanLoop = async () => {
+              if (!scanningRef.current || !videoRef.current) return
+              try {
+                const barcodes = await detector.detect(videoRef.current)
+                if (barcodes.length > 0) {
+                  const value = barcodes[0].rawValue
+                  setScanInput(value)
+                  stopCamera()
+                  // Auto-trigger scan
+                  try {
+                    const token = localStorage.getItem('seller_token')
+                    const res = await api.get(`/api/inventory/barcode/scan/${value.trim()}`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    })
+                    if (res.data.success) {
+                      const p = res.data.data.product
+                      setSelectedProduct(p as Product)
+                      setHistory(res.data.data.recent_movements || [])
+                      setShowModal(true)
+                      setScanInput('')
+                    } else {
+                      toast.error(res.data.error)
+                    }
+                  } catch {
+                    toast.error('상품을 찾을 수 없습니다.')
+                  }
+                  return
+                }
+              } catch { /* detection failed, retry */ }
+              if (scanningRef.current) {
+                requestAnimationFrame(scanLoop)
+              }
+            }
+            scanLoop()
+          }
+        }
+      }, 100)
+    } catch {
+      toast.error('카메라를 사용할 수 없습니다.')
+    }
+  }, [stopCamera])
 
   useEffect(() => {
     loadData()
@@ -185,6 +260,14 @@ export default function SellerInventoryPage() {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
+          <button
+            type="button"
+            onClick={startCamera}
+            className="px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            title="카메라로 바코드 스캔"
+          >
+            <Camera className="w-4 h-4" />
+          </button>
           <button onClick={handleScan} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
             조회
           </button>
@@ -348,6 +431,72 @@ export default function SellerInventoryPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 카메라 스캔 모달 */}
+      {showCamera && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/70" onClick={stopCamera} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Camera className="w-4 h-4 text-blue-600" />
+                바코드 스캔
+              </h3>
+              <button onClick={stopCamera} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="relative bg-black">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full aspect-[4/3] object-cover"
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-64 h-24 border-2 border-blue-400 rounded-lg opacity-70" />
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              {!('BarcodeDetector' in window) && (
+                <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                  이 브라우저는 자동 바코드 인식을 지원하지 않습니다. 카메라로 바코드를 확인한 후 아래에 직접 입력해주세요.
+                </p>
+              )}
+              {'BarcodeDetector' in window && (
+                <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                  바코드를 카메라에 비춰주세요. 자동으로 인식됩니다.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="바코드 번호 직접 입력"
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim()
+                      if (val) {
+                        setScanInput(val)
+                        stopCamera()
+                        handleScan()
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    stopCamera()
+                  }}
+                  className="px-4 py-2.5 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>

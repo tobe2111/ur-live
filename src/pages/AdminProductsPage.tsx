@@ -8,9 +8,10 @@ import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
   Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock,
-  BarChart2, TrendingUp, Download
+  BarChart2, TrendingUp, Download, Upload
 } from 'lucide-react'
 import { downloadAdminTemplate } from '@/utils/product-template'
+import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatKSTDate } from '@/utils/date'
 
 interface Product {
@@ -98,6 +99,7 @@ export default function AdminProductsPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -261,7 +263,13 @@ export default function AdminProductsPage() {
               onClick={downloadAdminTemplate}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 text-xs font-semibold rounded-lg hover:bg-green-100"
             >
-              <Download className="w-3.5 h-3.5" /> 대량등록 양식
+              <Download className="w-3.5 h-3.5" /> 양식 다운로드
+            </button>
+            <button
+              onClick={() => setShowBulkUpload(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold rounded-lg hover:bg-orange-100"
+            >
+              <Upload className="w-3.5 h-3.5" /> 대량등록
             </button>
             <button
               onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
@@ -652,6 +660,12 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+      <BulkUploadModal
+        open={showBulkUpload}
+        onClose={() => setShowBulkUpload(false)}
+        tokenKey="admin_token"
+        onSuccess={loadProducts}
+      />
     </AdminLayout>
   )
 }
