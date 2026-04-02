@@ -158,7 +158,17 @@ function StartTab({ token }: { token: string | null }) {
       }
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
         const supplyData = supplyRes.value.data.data
-        setSupplyProducts(Array.isArray(supplyData) ? supplyData : supplyData?.products || [])
+        const items = Array.isArray(supplyData) ? supplyData : supplyData?.items || supplyData?.products || []
+        // 승인된 공급 상품만 표시
+        const approved = items.filter((p: Record<string, unknown>) =>
+          p.request_status === 'approved' || !p.request_status
+        ).map((p: Record<string, unknown>) => ({
+          id: p.id as number,
+          name: p.name as string,
+          price: (p.retail_price || p.price) as number,
+          image_url: p.image_url as string | undefined,
+        }))
+        setSupplyProducts(approved)
       }
     }).finally(() => setProductsLoading(false))
   }, [token])
