@@ -157,7 +157,8 @@ function StartTab({ token }: { token: string | null }) {
         }
       }
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
-        setSupplyProducts(supplyRes.value.data.data || [])
+        const supplyData = supplyRes.value.data.data
+        setSupplyProducts(Array.isArray(supplyData) ? supplyData : supplyData?.products || [])
       }
     }).finally(() => setProductsLoading(false))
   }, [token])
