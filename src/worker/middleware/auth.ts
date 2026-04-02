@@ -285,7 +285,46 @@ export function requireAuth() {
       return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
     }
 
-    // ── 1. Try httpOnly session cookie (user login) ─────────────────────
+    // ── 1. Try Bearer token FIRST (seller/admin JWT or Firebase) ───────
+    // Bearer 토큰이 있으면 우선 사용 (어드민/셀러는 Bearer 토큰 필수)
+    const authHeader = c.req.header('Authorization');
+    const token = extractToken(authHeader || null);
+
+    if (token) {
+      // Try JWT first (seller/admin)
+      const jwtPayload = await verifyJWT(token, jwtSecret);
+
+      if (jwtPayload) {
+        const user: AuthUser = {
+          id: (jwtPayload.userId || jwtPayload.sub) as string,
+          email: jwtPayload.email as string,
+          name: jwtPayload.name,
+          type: (jwtPayload.type || 'user') as UserType,
+          role: jwtPayload.role,
+        };
+
+        c.set('user', user);
+        return next();
+      }
+
+      // Try Firebase token (users)
+      const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
+      if (firebaseProjectId) {
+        const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
+        if (firebasePayload) {
+          const user: AuthUser = {
+            id: (firebasePayload.sub || firebasePayload.user_id) as string,
+            email: firebasePayload.email as string,
+            name: firebasePayload.name,
+            type: 'user',
+          };
+          c.set('user', user);
+          return next();
+        }
+      }
+    }
+
+    // ── 2. Try httpOnly session cookie (user login only) ───────────────
     const cookieHeader = c.req.header('Cookie');
     if (cookieHeader) {
       const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
@@ -302,56 +341,8 @@ export function requireAuth() {
       }
     }
 
-    // ── 2. Try Bearer token (seller/admin JWT or Firebase) ──────────────
-    const authHeader = c.req.header('Authorization');
-    const token = extractToken(authHeader || null);
-
-    if (!token) {
-      return c.json(unauthorizedResponse('Authentication required'), 401);
-    }
-
-    // Try JWT first (seller/admin)
-    const jwtPayload = await verifyJWT(token, jwtSecret);
-
-    if (jwtPayload) {
-      const user: AuthUser = {
-        id: (jwtPayload.userId || jwtPayload.sub) as string,
-        email: jwtPayload.email as string,
-        name: jwtPayload.name,
-        type: (jwtPayload.type || 'user') as UserType,
-        role: jwtPayload.role,
-      };
-
-      c.set('user', user);
-      return next();
-    }
-
-    // Try Firebase token (users)
-    const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
-
-    if (!firebaseProjectId) {
-      console.error('[Auth] FIREBASE_PROJECT_ID not configured');
-      return c.json(unauthorizedResponse('Authentication service not available'), 401);
-    }
-
-    const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
-
-    if (firebasePayload) {
-      const user: AuthUser = {
-        id: (firebasePayload.sub || firebasePayload.user_id) as string,
-        email: firebasePayload.email as string,
-        name: firebasePayload.name,
-        type: 'user',
-      };
-
-      c.set('user', user);
-      return next();
-    }
-
-    console.error('[Auth] Session cookie, JWT, and Firebase verification all failed');
-
-    // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
-    return c.json(unauthorizedResponse('Token verification failed'), 401);
+    // ── 3. No valid auth found ─────────────────────────────────────────
+    return c.json(unauthorizedResponse('Authentication required'), 401);
   };
 }
 

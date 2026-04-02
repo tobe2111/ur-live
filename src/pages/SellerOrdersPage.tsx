@@ -803,13 +803,27 @@ export default function SellerOrdersPage() {
                         >
                           <option value="">택배사 선택</option>
                           <option value="CJ대한통운">CJ대한통운</option>
+                          <option value="로젠택배">로젠택배</option>
+                          <option value="옐로우캡">옐로우캡</option>
                           <option value="우체국택배">우체국택배</option>
                           <option value="한진택배">한진택배</option>
-                          <option value="로젠택배">로젠택배</option>
                           <option value="롯데택배">롯데택배</option>
-                          <option value="GS택배">GS택배</option>
-                          <option value="쿠팡로켓배송">쿠팡로켓배송</option>
-                          <option value="홈픽">홈픽</option>
+                          <option value="드림택배">드림택배</option>
+                          <option value="KGB택배">KGB택배</option>
+                          <option value="대신택배">대신택배</option>
+                          <option value="일양로지스">일양로지스</option>
+                          <option value="경동택배">경동택배</option>
+                          <option value="천일택배">천일택배</option>
+                          <option value="합동택배">합동택배</option>
+                          <option value="CVSnet편의점택배">CVSnet편의점택배</option>
+                          <option value="우편발송">우편발송</option>
+                          <option value="GTX로지스">GTX로지스</option>
+                          <option value="건영택배">건영택배</option>
+                          <option value="EMS">EMS</option>
+                          <option value="DHL">DHL</option>
+                          <option value="FedEx">FedEx</option>
+                          <option value="UPS">UPS</option>
+                          <option value="USPS">USPS</option>
                         </select>
                       </div>
                       <div>

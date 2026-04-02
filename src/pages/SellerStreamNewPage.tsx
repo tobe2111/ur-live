@@ -58,7 +58,7 @@ export default function SellerStreamNewPage() {
 
       if (mode === 'youtube-auto') {
         // YouTube 자동 생성
-        const response = await api.post('/api/seller/youtube/create-live', {
+        const response = await api.post('/api/seller/youtube/live/create', {
           title: formData.title,
           description: formData.description,
           scheduled_at: formData.scheduledAt || null,

@@ -62,11 +62,27 @@ const NEXT_STATUS: Record<string, string> = {
 
 const COURIER_OPTIONS = [
   { value: 'CJ대한통운', label: 'CJ대한통운' },
+  { value: '로젠택배', label: '로젠택배' },
+  { value: '옐로우캡', label: '옐로우캡' },
+  { value: '우체국택배', label: '우체국택배' },
   { value: '한진택배', label: '한진택배' },
   { value: '롯데택배', label: '롯데택배' },
-  { value: '우체국택배', label: '우체국택배' },
-  { value: '로젠택배', label: '로젠택배' },
+  { value: '드림택배', label: '드림택배' },
+  { value: 'KGB택배', label: 'KGB택배' },
+  { value: '대신택배', label: '대신택배' },
+  { value: '일양로지스', label: '일양로지스' },
   { value: '경동택배', label: '경동택배' },
+  { value: '천일택배', label: '천일택배' },
+  { value: '합동택배', label: '합동택배' },
+  { value: 'CVSnet편의점택배', label: 'CVSnet편의점택배' },
+  { value: '우편발송', label: '우편발송' },
+  { value: 'GTX로지스', label: 'GTX로지스' },
+  { value: '건영택배', label: '건영택배' },
+  { value: 'EMS', label: 'EMS' },
+  { value: 'DHL', label: 'DHL' },
+  { value: 'FedEx', label: 'FedEx' },
+  { value: 'UPS', label: 'UPS' },
+  { value: 'USPS', label: 'USPS' },
 ]
 
 const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string }> = {
@@ -345,6 +361,8 @@ export default function AdminOrdersPage() {
               </button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let p = currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i
+                if (p < 1) p = 1
+                if (p > totalPages) return null
                 return (
                   <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
                 )

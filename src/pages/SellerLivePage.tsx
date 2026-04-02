@@ -125,6 +125,14 @@ function StartTab({ token }: { token: string | null }) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const navigate = useNavigate()
 
+  // Load SNS links from localStorage on mount
+  useEffect(() => {
+    const savedInstagram = localStorage.getItem('seller_sns_instagram')
+    const savedYoutube = localStorage.getItem('seller_sns_youtube')
+    if (savedInstagram) setFormData(prev => ({ ...prev, sellerInstagram: savedInstagram }))
+    if (savedYoutube) setFormData(prev => ({ ...prev, sellerYoutube: savedYoutube }))
+  }, [])
+
   useEffect(() => {
     if (!token) return
     setProductsLoading(true)
@@ -158,13 +166,27 @@ function StartTab({ token }: { token: string | null }) {
       }
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
         const supplyData = supplyRes.value.data.data
-        setSupplyProducts(Array.isArray(supplyData) ? supplyData : supplyData?.products || [])
+        const items = Array.isArray(supplyData) ? supplyData : supplyData?.items || supplyData?.products || []
+        // 승인된 공급 상품만 표시
+        const approved = items.filter((p: Record<string, unknown>) =>
+          p.request_status === 'approved' || !p.request_status
+        ).map((p: Record<string, unknown>) => ({
+          id: p.id as number,
+          name: p.name as string,
+          price: (p.retail_price || p.price) as number,
+          image_url: p.image_url as string | undefined,
+        }))
+        setSupplyProducts(approved)
       }
     }).finally(() => setProductsLoading(false))
   }, [token])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // Auto-save SNS links to localStorage
+    if (name === 'sellerInstagram') localStorage.setItem('seller_sns_instagram', value)
+    if (name === 'sellerYoutube') localStorage.setItem('seller_sns_youtube', value)
   }
 
   function toggleProduct(id: number) {
@@ -186,7 +208,7 @@ function StartTab({ token }: { token: string | null }) {
       const response = await api.post('/api/seller/streams', {
         title: formData.title,
         description: formData.description,
-        youtube_url: formData.youtubeUrl || null,
+        youtube_url: formData.youtubeUrl || '',
         scheduled_at: isScheduled ? formData.scheduledAt : null,
         status: isScheduled ? 'scheduled' : 'live',
         seller_instagram: formData.sellerInstagram || null,

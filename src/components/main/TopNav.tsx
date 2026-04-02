@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, ShoppingBag, User } from 'lucide-react'
+import { Search, ShoppingCart, User } from 'lucide-react'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -37,10 +37,20 @@ export default function TopNav() {
             <Search className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
           </button>
           <button onClick={() => navigate('/cart')} className="p-1 relative">
-            <ShoppingBag className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
-            {localStorage.getItem('hasCartItems') && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
-            )}
+            <ShoppingCart className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+            {(() => {
+              const cartData = localStorage.getItem('cart')
+              let count = 0
+              try {
+                const parsed = cartData ? JSON.parse(cartData) : []
+                count = Array.isArray(parsed) ? parsed.length : 0
+              } catch { /* ignore */ }
+              return count > 0 ? (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-0.5">
+                  {count > 99 ? '99+' : count}
+                </span>
+              ) : null
+            })()}
           </button>
           <button
             onClick={() => navigate(isLoggedIn ? '/user/profile' : '/login')}
