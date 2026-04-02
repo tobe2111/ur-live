@@ -85,9 +85,7 @@ sellerStreamsRoutes.get('/', async (c) => {
     let query = `
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE seller_id = ?
@@ -155,9 +153,7 @@ sellerStreamsRoutes.get('/:id', async (c) => {
     const stream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ? AND seller_id = ?
@@ -213,14 +209,13 @@ sellerStreamsRoutes.post('/', async (c) => {
 
     const result = await db.prepare(`
       INSERT INTO live_streams (
-        seller_id, title, description, thumbnail_url, youtube_video_id,
+        seller_id, title, description, youtube_video_id,
         status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'scheduled', datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, 'scheduled', datetime('now'), datetime('now'))
     `).bind(
       sellerId,
       title,
       description || null,
-      thumbnail || null,
       youtube_video_id || ''
     ).run();
 
@@ -232,9 +227,7 @@ sellerStreamsRoutes.post('/', async (c) => {
     const newStream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ?
@@ -297,10 +290,6 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       updates.push('description = ?');
       values.push(body.description);
     }
-    if (body.thumbnail !== undefined) {
-      updates.push('thumbnail_url = ?');
-      values.push(body.thumbnail);
-    }
     if (body.youtube_video_id !== undefined) {
       updates.push('youtube_video_id = ?');
       values.push(body.youtube_video_id);
@@ -337,9 +326,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     const updatedStream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ?

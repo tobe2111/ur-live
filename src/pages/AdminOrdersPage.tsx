@@ -362,6 +362,7 @@ export default function AdminOrdersPage() {
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let p = currentPage <= 3 ? i + 1 : currentPage >= totalPages - 2 ? totalPages - 4 + i : currentPage - 2 + i
                 if (p < 1) p = 1
+                if (p > totalPages) return null
                 return (
                   <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
                 )

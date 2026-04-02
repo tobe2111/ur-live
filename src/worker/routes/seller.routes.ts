@@ -140,9 +140,7 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
 
     const rows = await db
       .prepare(
-        `SELECT ls.id, ls.title, ls.status, ls.thumbnail_url,
-                COALESCE(ls.current_viewers, 0) AS viewer_count,
-                ls.scheduled_at, ls.started_at,
+        `SELECT ls.id, ls.title, ls.status,
                 ls.youtube_video_id, ls.created_at
          FROM live_streams ls
          WHERE ls.seller_id = ? ${statusWhere}

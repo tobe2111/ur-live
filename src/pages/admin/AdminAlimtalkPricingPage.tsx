@@ -221,8 +221,7 @@ export default function AdminAlimtalkPricingPage() {
         <div className="p-5 space-y-3">
           {packages.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              등록된 패키지가 없습니다<br />
-              <span className="text-xs">D1 콘솔에서 migration 0123을 실행해주세요</span>
+              등록된 패키지가 없습니다. 새 패키지를 추가해주세요.
             </p>
           ) : packages.map(pkg => (
             <div key={pkg.id} className={`border border-gray-100 rounded-xl p-4 ${pkg.is_active === 0 ? 'opacity-60' : ''}`}>

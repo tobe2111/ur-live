@@ -100,15 +100,24 @@ export default function SellerSettlementsPage() {
   }
 
   async function requestSettlement() {
-    if (!confirm('이번 달 정산을 신청하시겠습니까?')) return
+    const pendingAmount = stats?.pending_amount || 0
+    if (pendingAmount <= 0) {
+      toast.error('정산 가능한 금액이 없습니다.')
+      return
+    }
+    if (!confirm(`₩${pendingAmount.toLocaleString()} 정산을 신청하시겠습니까?`)) return
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
+      // Retrieve seller bank info from localStorage or profile
+      const sellerBankName = localStorage.getItem('seller_bank_name') || ''
+      const sellerAccountNumber = localStorage.getItem('seller_account_number') || ''
+      const sellerAccountHolder = localStorage.getItem('seller_account_holder') || localStorage.getItem('seller_name') || ''
       const response = await api.post('/api/seller/settlements/request', {
-        amount: stats?.pending_amount || 0,
-        bank_name: '',
-        account_number: '',
-        account_holder: '',
+        amount: pendingAmount,
+        bank_name: sellerBankName,
+        account_number: sellerAccountNumber,
+        account_holder: sellerAccountHolder,
       }, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
