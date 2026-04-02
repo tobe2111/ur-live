@@ -84,7 +84,7 @@ export default function SellerProductsPage() {
       const sessionToken = localStorage.getItem('seller_token')
       
 
-      const response = await api.patch(
+      const response = await api.put(
         `/api/seller/products/${productId}`,
         { is_active: !currentStatus },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }

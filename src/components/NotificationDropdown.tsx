@@ -42,10 +42,10 @@ export default function NotificationDropdown({ userId }: NotificationDropdownPro
   // On mount: only fetch unread count (lightweight, not full list)
   useEffect(() => {
     if (userId) {
-      api.get(`/api/notifications?userId=${userId}&limit=1`)
+      api.get('/api/notifications/unread-count')
         .then(res => {
           if (res.data.success) {
-            setUnreadCount(res.data.data.unread_count ?? 0)
+            setUnreadCount(res.data.count ?? 0)
           }
         })
         .catch(() => {})
@@ -55,11 +55,17 @@ export default function NotificationDropdown({ userId }: NotificationDropdownPro
   const loadNotifications = async () => {
     try {
       setLoading(true)
-      const response = await api.get(`/api/notifications?userId=${userId}&limit=20`)
-      
-      if (response.data.success) {
-        setNotifications(response.data.data.notifications || [])
-        setUnreadCount(response.data.data.unread_count || 0)
+      const [notifResponse, countResponse] = await Promise.all([
+        api.get('/api/notifications?limit=20'),
+        api.get('/api/notifications/unread-count')
+      ])
+
+      if (notifResponse.data.success) {
+        const data = notifResponse.data.data
+        setNotifications(Array.isArray(data) ? data : data.notifications || [])
+      }
+      if (countResponse.data.success) {
+        setUnreadCount(countResponse.data.count ?? 0)
       }
     } catch (error) {
       console.error('Failed to load notifications:', error)
@@ -70,7 +76,7 @@ export default function NotificationDropdown({ userId }: NotificationDropdownPro
 
   const markAsRead = async (notificationId: number) => {
     try {
-      await api.patch(`/api/notifications/${notificationId}/read`, { userId })
+      await api.put(`/api/notifications/${notificationId}/read`, { userId })
       
       // Update local state
       setNotifications(prev =>
@@ -84,7 +90,7 @@ export default function NotificationDropdown({ userId }: NotificationDropdownPro
 
   const markAllAsRead = async () => {
     try {
-      await api.patch('/api/notifications/read-all', { userId })
+      await api.put('/api/notifications/read-all', { userId })
       
       // Update local state
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))

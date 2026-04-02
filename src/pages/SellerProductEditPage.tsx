@@ -174,7 +174,7 @@ export default function SellerProductEditPage() {
         category: formData.category
       }
 
-      const response = await api.patch(`/api/seller/products/${id}`, payload, {
+      const response = await api.put(`/api/seller/products/${id}`, payload, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 
