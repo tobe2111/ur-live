@@ -111,7 +111,6 @@ function StartTab({ token }: { token: string | null }) {
   const [loading, setLoading] = useState(false)
   const [productsLoading, setProductsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showObsGuide, setShowObsGuide] = useState(false)
   const [youtubeConnected, setYoutubeConnected] = useState(false)
   const [youtubeChannelName, setYoutubeChannelName] = useState('')
   const [streamKey, setStreamKey] = useState('')
@@ -480,30 +479,42 @@ function StartTab({ token }: { token: string | null }) {
         </div>
       </div>
 
-      {/* OBS/프리즘 가이드 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowObsGuide(!showObsGuide)}
-          className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-gray-500" />
-            OBS / 프리즘 라이브 설정 가이드
-          </span>
-          {showObsGuide ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-        </button>
-        {showObsGuide && (
-          <div className="px-5 pb-5 space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio 설정</h4>
-              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                <li>OBS Studio 실행</li>
-                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS'}</li>
-                <li>스트림 키 입력</li>
-                <li>&quot;방송 시작&quot; 클릭</li>
-              </ol>
-            </div>
+      {/* 송출 플랫폼 선택 */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <label className="block text-sm font-semibold text-gray-800 mb-3">어떤 방식으로 방송하시나요?</label>
+        <div className="space-y-2">
+          {([
+            { key: 'prism' as const, label: '프리즘 라이브', desc: '추천 - 무료, 동시송출', color: 'text-purple-600' },
+            { key: 'obs' as const, label: 'OBS Studio', desc: '고급 설정 가능', color: 'text-blue-600' },
+            { key: 'youtube' as const, label: 'YouTube 스튜디오에서 직접', desc: '별도 소프트웨어 불필요', color: 'text-red-600' },
+          ]).map(opt => (
+            <label
+              key={opt.key}
+              className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                broadcastPlatform === opt.key
+                  ? 'border-blue-600 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                name="broadcastPlatform"
+                value={opt.key}
+                checked={broadcastPlatform === opt.key}
+                onChange={() => setBroadcastPlatform(opt.key)}
+                className="text-blue-600"
+              />
+              <div>
+                <p className={`text-sm font-medium ${broadcastPlatform === opt.key ? opt.color : 'text-gray-700'}`}>{opt.label}</p>
+                <p className="text-xs text-gray-400">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {/* Platform-specific guide */}
+        <div className="mt-4">
+          {broadcastPlatform === 'prism' && (
             <div className="p-4 bg-purple-50 rounded-lg">
               <h4 className="text-sm font-semibold text-purple-900 mb-2">프리즘 라이브 스튜디오 (추천)</h4>
               <ol className="text-xs text-purple-800 space-y-1 list-decimal list-inside">
@@ -517,8 +528,32 @@ function StartTab({ token }: { token: string | null }) {
                 <strong>장점:</strong> 스마트폰으로도 가능, 동시 송출, 화면 꾸미기/자막 내장, 완전 무료
               </p>
             </div>
-          </div>
-        )}
+          )}
+          {broadcastPlatform === 'obs' && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio 설정</h4>
+              <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                <li>OBS Studio 실행</li>
+                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS'}</li>
+                <li>스트림 키 입력</li>
+                <li>&quot;방송 시작&quot; 클릭</li>
+              </ol>
+            </div>
+          )}
+          {broadcastPlatform === 'youtube' && (
+            <div className="p-4 bg-red-50 rounded-lg">
+              <h4 className="text-sm font-semibold text-red-900 mb-2">YouTube 스튜디오</h4>
+              <ol className="text-xs text-red-800 space-y-1 list-decimal list-inside">
+                <li>YouTube 스튜디오 접속</li>
+                <li>상단 &quot;만들기&quot; 버튼 클릭 &gt; &quot;실시간 스트리밍&quot; 선택</li>
+                <li>방송 제목/설명 입력 후 바로 시작</li>
+              </ol>
+              <p className="mt-2 text-xs text-red-700">
+                <strong>참고:</strong> 별도 소프트웨어 설치 없이 웹캠만으로 방송 가능
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Submit Button */}
