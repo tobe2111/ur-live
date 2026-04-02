@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, MapPin, Truck, ChevronRight, CheckCircle, Circle } from 'lucide-react'
+import { Package, MapPin, Truck, ChevronRight, CheckCircle, Circle, MessageCircle, Phone as PhoneIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { toast } from '@/hooks/useToast'
 import type { Order } from '@/types/order'
 
 interface OrdersTabProps {
@@ -177,6 +178,18 @@ function OrderFlowStepper({ status }: { status: string }) {
 }
 
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
+
+function handleSellerContact(order: Order) {
+  const kakao = order.seller_kakao_chat_url as string | undefined
+  const phone = order.seller_phone as string | undefined
+  if (kakao) {
+    window.open(kakao, '_blank', 'noopener,noreferrer')
+  } else if (phone) {
+    toast.info(`판매자 연락처: ${phone}`)
+  } else {
+    toast.info('판매자 연락처가 등록되지 않았습니다')
+  }
+}
 
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder }: OrdersTabProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'>('all')

@@ -95,7 +95,7 @@ export default function MyOrdersPage() {
         const response = await api.get('/api/orders')
         if (response.data.success) {
           const d = response.data.data
-          setOrders(Array.isArray(d) ? d : [])
+          setOrders(Array.isArray(d) ? d : (d?.items || d?.orders || []))
         }
       }
     } catch (error) {

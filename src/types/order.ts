@@ -90,6 +90,9 @@ export interface Order {
   created_at: string
   updated_at?: string
   items?: OrderItem[]
+  seller_name?: string
+  seller_phone?: string
+  seller_kakao_chat_url?: string
   [key: string]: unknown              // 추가 필드 허용 (API 확장 대비)
 }
 
