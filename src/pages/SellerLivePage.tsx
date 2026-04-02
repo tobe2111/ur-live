@@ -133,7 +133,7 @@ function StartTab({ token }: { token: string | null }) {
     Promise.allSettled([
       api.get('/api/seller/products?limit=100', { headers }),
       api.get('/api/seller/youtube/channels', { headers }),
-      api.get('/api/supply?status=approved', { headers }),
+      api.get('/api/supply/products', { headers }),
     ]).then(([prodRes, ytRes, supplyRes]) => {
       if (prodRes.status === 'fulfilled' && prodRes.value.data?.success) {
         setProducts(prodRes.value.data.data || [])
