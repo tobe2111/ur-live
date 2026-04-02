@@ -5,7 +5,8 @@ import {
   Package, ShoppingBag, Play, DollarSign,
   TrendingUp, Clock,
   ChevronRight, RefreshCw, ArrowUpRight,
-  AlertCircle, CheckCircle2, Truck, XCircle
+  AlertCircle, CheckCircle2, Truck, XCircle,
+  AlertTriangle, CreditCard, ArchiveRestore
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -95,6 +96,9 @@ export default function SellerPage() {
   const lastMaxIdRef = useRef<number>(0)
   const newOrderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Stock alerts
+  const [stockAlertCount, setStockAlertCount] = useState(0)
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSellerAuthenticated()) {
@@ -150,9 +154,10 @@ export default function SellerPage() {
       const token = getSellerToken()
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
-      const [dashRes, streamsRes] = await Promise.allSettled([
+      const [dashRes, streamsRes, stockRes] = await Promise.allSettled([
         api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
-        api.get('/api/seller/streams', { headers })
+        api.get('/api/seller/streams', { headers }),
+        api.get('/api/inventory/stock/alerts', { headers })
       ])
 
       if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
@@ -179,6 +184,11 @@ export default function SellerPage() {
           activeStreams: s.filter(x => x.status === 'live').length,
           totalViewers:  s.reduce((sum, x) => sum + (x.viewer_count || 0), 0),
         }))
+      }
+
+      if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
+        const alerts = stockRes.value.data.data || []
+        setStockAlertCount(Array.isArray(alerts) ? alerts.length : 0)
       }
     } catch {
       // silent fail
@@ -392,76 +402,53 @@ export default function SellerPage() {
             {/* ── Right panel (col-span-1) ── */}
             <div className="space-y-4">
 
-              {/* Active streams */}
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-gray-900">라이브 스트림</h2>
-                  <Link
-                    to="/seller/streams/new"
-                    className="text-xs text-blue-600 font-medium hover:underline"
-                  >
-                    + 새 라이브
-                  </Link>
+              {/* 오늘의 매출 요약 */}
+              <div className="bg-white rounded-xl shadow-sm p-5">
+                <h2 className="text-sm font-semibold text-gray-900 mb-4">오늘의 매출 요약</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">오늘 주문 수</span>
+                    <span className="text-sm font-bold text-gray-900">{(stats.totalOrders || 0).toLocaleString()}건</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">오늘 매출액</span>
+                    <span className="text-sm font-bold text-gray-900">{fmtPrice(stats.totalRevenue)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">미처리 주문 수</span>
+                    <span className="text-sm font-bold text-amber-600">{(stats.pendingOrders || 0).toLocaleString()}건</span>
+                  </div>
                 </div>
-                {streams.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <Play className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                    <p className="text-xs text-gray-400">라이브가 없어요</p>
-                    <button
-                      onClick={() => navigate('/seller/streams/new')}
-                      className="mt-3 text-xs text-blue-600 font-medium hover:underline"
-                    >
-                      첫 라이브 만들기
-                    </button>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-50">
-                    {streams.slice(0, 4).map(s => (
-                      <div key={s.id} className="px-5 py-3 flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                          s.status === 'live' ? 'bg-red-500 animate-pulse' :
-                          s.status === 'scheduled' ? 'bg-amber-400' : 'bg-gray-300'
-                        }`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-800 truncate">{s.title}</p>
-                          <p className="text-xs text-gray-400">
-                            {s.status === 'live' ? `시청자 ${(s.viewer_count || 0).toLocaleString()}명` :
-                             s.status === 'scheduled' ? '예정' : '종료'}
-                          </p>
-                        </div>
-                        <Link
-                          to={`/seller/streams/${s.id}`}
-                          className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {/* Quick actions */}
-              <div className="bg-white rounded-xl shadow-sm p-5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">퀵액션</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: '라이브 방송', icon: Play, path: '/seller/live-broadcast', color: 'text-red-500 bg-red-50' },
-                    { label: '상품 추가',   icon: Package, path: '/seller/products/new', color: 'text-blue-600 bg-blue-50' },
-                    { label: '주문 처리',   icon: ShoppingBag, path: '/seller/orders', color: 'text-amber-600 bg-amber-50' },
-                    { label: '정산 확인',   icon: TrendingUp, path: '/seller/settlements', color: 'text-emerald-600 bg-emerald-50' },
-                  ].map(({ label, icon: Icon, path, color }) => (
-                    <button
-                      key={path}
-                      onClick={() => navigate(path)}
-                      className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-                    >
-                      <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-medium text-gray-700">{label}</span>
-                    </button>
-                  ))}
+              {/* 알림 */}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">알림</h2>
+                <div className="grid grid-cols-3 gap-3">
+                  <Link
+                    to="/seller/products"
+                    className="bg-amber-50 rounded-xl p-3 text-center hover:bg-amber-100 transition-colors block"
+                  >
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mx-auto mb-1.5" />
+                    <p className="text-lg font-bold text-gray-900">{stockAlertCount}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">재고 부족</p>
+                  </Link>
+                  <Link
+                    to="/seller/orders"
+                    className="bg-blue-50 rounded-xl p-3 text-center hover:bg-blue-100 transition-colors block"
+                  >
+                    <ShoppingBag className="w-5 h-5 text-blue-600 mx-auto mb-1.5" />
+                    <p className="text-lg font-bold text-gray-900">{(stats.pendingOrders || 0)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">미처리 주문</p>
+                  </Link>
+                  <Link
+                    to="/seller/settlements"
+                    className="bg-green-50 rounded-xl p-3 text-center hover:bg-green-100 transition-colors block"
+                  >
+                    <CreditCard className="w-5 h-5 text-green-600 mx-auto mb-1.5" />
+                    <p className="text-lg font-bold text-gray-900">{fmtShort(stats.totalRevenue)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">정산 예정</p>
+                  </Link>
                 </div>
               </div>
             </div>

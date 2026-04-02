@@ -7,7 +7,8 @@ import SellerLayout from '@/components/SellerLayout'
 import {
   Play, Radio, Clock, Loader2, Eye, ChevronDown, ChevronUp,
   Youtube, Instagram, Link as LinkIcon, Settings, Video,
-  Users, Zap, Square, CalendarClock, History, Plus, Copy
+  Users, Zap, Square, CalendarClock, History, Plus, Copy,
+  CheckCircle2, ExternalLink, Image as ImageIcon
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────
@@ -104,13 +105,17 @@ function StartTab({ token }: { token: string | null }) {
     sellerYoutube: '',
   })
   const [products, setProducts] = useState<Product[]>([])
+  const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
+  const [productTab, setProductTab] = useState<'my' | 'supply'>('my')
   const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(false)
   const [productsLoading, setProductsLoading] = useState(true)
   const [error, setError] = useState('')
   const [showObsGuide, setShowObsGuide] = useState(false)
   const [youtubeConnected, setYoutubeConnected] = useState(false)
+  const [youtubeChannelName, setYoutubeChannelName] = useState('')
   const [streamKey, setStreamKey] = useState('')
+  const [broadcastPlatform, setBroadcastPlatform] = useState<'prism' | 'obs' | 'youtube'>('prism')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -121,7 +126,8 @@ function StartTab({ token }: { token: string | null }) {
     Promise.allSettled([
       api.get('/api/seller/products?limit=100', { headers }),
       api.get('/api/seller/youtube/channels', { headers }),
-    ]).then(([prodRes, ytRes]) => {
+      api.get('/api/seller/supply?status=approved', { headers }),
+    ]).then(([prodRes, ytRes, supplyRes]) => {
       if (prodRes.status === 'fulfilled' && prodRes.value.data?.success) {
         setProducts(prodRes.value.data.data || [])
       }
@@ -129,10 +135,22 @@ function StartTab({ token }: { token: string | null }) {
         const channels = ytRes.value.data.data || []
         if (channels.length > 0) {
           setYoutubeConnected(true)
+          setYoutubeChannelName(channels[0].channel_name || channels[0].title || localStorage.getItem('youtube_channel_name') || '')
           if (channels[0].default_rtmp_key) {
             setStreamKey(channels[0].default_rtmp_key)
           }
         }
+      }
+      // Check localStorage fallback for youtube channel
+      if (!youtubeConnected) {
+        const savedName = localStorage.getItem('youtube_channel_name')
+        if (savedName) {
+          setYoutubeConnected(true)
+          setYoutubeChannelName(savedName)
+        }
+      }
+      if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
+        setSupplyProducts(supplyRes.value.data.data || [])
       }
     }).finally(() => setProductsLoading(false))
   }, [token])
@@ -247,9 +265,18 @@ function StartTab({ token }: { token: string | null }) {
         <label className="block text-sm font-semibold text-gray-800 mb-3">YouTube 연동 설정</label>
         {youtubeConnected ? (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-              <Youtube className="w-4 h-4" />
-              YouTube 계정 연동됨
+            <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-green-700">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>YouTube 연동됨{youtubeChannelName ? `: @${youtubeChannelName}` : ''}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/seller/settings/youtube')}
+                className="text-xs text-green-600 hover:text-green-800 font-medium"
+              >
+                변경
+              </button>
             </div>
             {streamKey && (
               <div>
@@ -277,7 +304,21 @@ function StartTab({ token }: { token: string | null }) {
           </div>
         ) : (
           <div>
-            <p className="text-sm text-gray-500 mb-3">YouTube 연동이 안 되어 있습니다. 수동으로 URL을 입력하세요.</p>
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+              <Youtube className="w-4 h-4 text-red-500" />
+              YouTube 계정을 연동해주세요
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/api/seller/youtube/connect'
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors mb-3"
+            >
+              <Youtube className="w-4 h-4" />
+              YouTube 계정 연동하기
+            </button>
+            <p className="text-xs text-gray-400 mb-2">또는 수동으로 URL을 입력하세요</p>
             <input
               type="url"
               name="youtubeUrl"
@@ -298,16 +339,53 @@ function StartTab({ token }: { token: string | null }) {
             <span className="ml-2 text-blue-600 font-normal">{selectedProductIds.size}개 선택됨</span>
           )}
         </label>
+
+        {/* Product source tabs */}
+        <div className="flex items-center gap-1 mb-3 border-b border-gray-100">
+          <button
+            type="button"
+            onClick={() => setProductTab('my')}
+            className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              productTab === 'my'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            내 상품
+          </button>
+          <button
+            type="button"
+            onClick={() => setProductTab('supply')}
+            className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              productTab === 'supply'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            공급 상품
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/seller/products/new')}
+            className="ml-auto flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            새 상품 등록
+          </button>
+        </div>
+
         {productsLoading ? (
           <div className="flex items-center justify-center py-6 text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             <span className="text-sm">상품 불러오는 중...</span>
           </div>
-        ) : products.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">등록된 상품이 없습니다</p>
+        ) : (productTab === 'my' ? products : supplyProducts).length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">
+            {productTab === 'my' ? '등록된 상품이 없습니다' : '승인된 공급 상품이 없습니다'}
+          </p>
         ) : (
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {products.map(p => (
+            {(productTab === 'my' ? products : supplyProducts).map(p => (
               <label
                 key={p.id}
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
@@ -322,6 +400,13 @@ function StartTab({ token }: { token: string | null }) {
                   onChange={() => toggleProduct(p.id)}
                   className="rounded border-gray-300 text-blue-600"
                 />
+                {p.image_url ? (
+                  <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <ImageIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
                   <p className="text-xs text-gray-400">{p.price.toLocaleString()}원</p>
