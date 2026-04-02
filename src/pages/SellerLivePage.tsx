@@ -115,6 +115,14 @@ function StartTab({ token }: { token: string | null }) {
   const [youtubeChannelName, setYoutubeChannelName] = useState('')
   const [streamKey, setStreamKey] = useState('')
   const [broadcastPlatform, setBroadcastPlatform] = useState<'prism' | 'obs' | 'youtube'>('prism')
+  const [createdStream, setCreatedStream] = useState<{
+    id: number
+    streamKey: string
+    rtmpUrl: string
+    title: string
+    youtubeVideoId?: string
+  } | null>(null)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -188,6 +196,9 @@ function StartTab({ token }: { token: string | null }) {
 
       if (response.data.success) {
         const streamId = response.data.data?.id
+        const responseStreamKey = response.data.data?.stream_key || response.data.data?.streamKey || streamKey || ''
+        const responseRtmpUrl = response.data.data?.rtmp_url || response.data.data?.rtmpUrl || 'rtmp://a.rtmp.youtube.com/live2'
+        const youtubeVideoId = response.data.data?.youtube_video_id || response.data.data?.youtubeVideoId || ''
         // Link selected products
         if (streamId && selectedProductIds.size > 0) {
           await Promise.allSettled(
@@ -200,6 +211,16 @@ function StartTab({ token }: { token: string | null }) {
           )
         }
         toast.success(isScheduled ? '방송이 예약되었습니다!' : '라이브가 시작되었습니다!')
+
+        // Show the broadcast ready section
+        setCreatedStream({
+          id: streamId,
+          streamKey: responseStreamKey,
+          rtmpUrl: responseRtmpUrl,
+          title: formData.title,
+          youtubeVideoId,
+        })
+
         setFormData({ title: '', description: '', youtubeUrl: '', scheduledAt: '', sellerInstagram: '', sellerYoutube: '' })
         setSelectedProductIds(new Set())
       } else {

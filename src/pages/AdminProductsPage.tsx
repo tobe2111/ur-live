@@ -8,9 +8,10 @@ import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
   Loader2, Image as ImageIcon, Star, X, Truck, CheckCircle, XCircle, Clock,
-  BarChart2, TrendingUp, Download
+  BarChart2, TrendingUp, Download, Upload
 } from 'lucide-react'
 import { downloadAdminTemplate } from '@/utils/product-template'
+import BulkUploadModal from '@/components/BulkUploadModal'
 import { formatKSTDate } from '@/utils/date'
 
 interface Product {
@@ -98,6 +99,7 @@ export default function AdminProductsPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
