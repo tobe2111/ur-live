@@ -125,7 +125,7 @@ function StartTab({ token }: { token: string | null }) {
     Promise.allSettled([
       api.get('/api/seller/products?limit=100', { headers }),
       api.get('/api/seller/youtube/channels', { headers }),
-      api.get('/api/seller/supply?status=approved', { headers }),
+      api.get('/api/supply?status=approved', { headers }),
     ]).then(([prodRes, ytRes, supplyRes]) => {
       if (prodRes.status === 'fulfilled' && prodRes.value.data?.success) {
         setProducts(prodRes.value.data.data || [])
@@ -271,7 +271,7 @@ function StartTab({ token }: { token: string | null }) {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/seller/settings/youtube')}
+                onClick={() => navigate('/seller/live-broadcast')}
                 className="text-xs text-green-600 hover:text-green-800 font-medium"
               >
                 변경

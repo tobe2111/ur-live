@@ -78,7 +78,7 @@ export default function SellerPublicPage() {
       setSeller(sellerRes.data.data)
 
       // Load seller's live streams
-      const streamsRes = await api.get(`/api/seller/${sellerId}/streams`)
+      const streamsRes = await api.get(`/api/sellers/${sellerId}/streams`)
       if (streamsRes.data.success) {
         setStreams(streamsRes.data.data)
       }
