@@ -1395,12 +1395,44 @@ adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
 export default adminManagementRoutes;
 
 // ─── Alimtalk 관리 ────────────────────────────────────────────────────────────
-// alimtalk_packages 테이블 기반 실제 구현 (migration 0123 필요)
+
+// Auto-create alimtalk_packages table if it doesn't exist
+async function ensureAlimtalkPackagesTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS alimtalk_packages (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        label      TEXT    NOT NULL,
+        credits    INTEGER NOT NULL,
+        price      INTEGER NOT NULL,
+        is_active  INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run();
+    // Seed default data if empty
+    const count = await DB.prepare('SELECT COUNT(*) as c FROM alimtalk_packages').first<{ c: number }>();
+    if (!count || count.c === 0) {
+      await DB.prepare(`
+        INSERT INTO alimtalk_packages (label, credits, price, is_active, sort_order) VALUES
+          ('100건',   100,   900,   1, 1),
+          ('500건',   500,   4500,  1, 2),
+          ('1,000건', 1000,  9000,  1, 3),
+          ('3,000건', 3000,  27000, 1, 4),
+          ('5,000건', 5000,  45000, 1, 5)
+      `).run();
+    }
+  } catch {
+    // Table might already exist, ignore errors
+  }
+}
 
 // GET /alimtalk/pricing — 패키지 목록
 adminManagementRoutes.get('/alimtalk/pricing', cors(), async (c) => {
   const { DB } = c.env;
   try {
+    await ensureAlimtalkPackagesTable(DB);
     const { results } = await DB.prepare(
       `SELECT id, label, credits, price, is_active, sort_order, created_at, updated_at
        FROM alimtalk_packages ORDER BY sort_order ASC`

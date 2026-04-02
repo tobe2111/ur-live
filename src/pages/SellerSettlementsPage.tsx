@@ -104,7 +104,12 @@ export default function SellerSettlementsPage() {
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
-      const response = await api.post('/api/seller/settlements/request', {}, {
+      const response = await api.post('/api/seller/settlements/request', {
+        amount: stats?.pending_amount || 0,
+        bank_name: '',
+        account_number: '',
+        account_holder: '',
+      }, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

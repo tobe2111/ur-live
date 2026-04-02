@@ -221,7 +221,7 @@ sellerStreamsRoutes.post('/', async (c) => {
       title,
       description || null,
       thumbnail || null,
-      youtube_video_id || null
+      youtube_video_id || ''
     ).run();
 
     if (!result.success) {

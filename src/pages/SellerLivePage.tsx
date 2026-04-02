@@ -125,6 +125,14 @@ function StartTab({ token }: { token: string | null }) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const navigate = useNavigate()
 
+  // Load SNS links from localStorage on mount
+  useEffect(() => {
+    const savedInstagram = localStorage.getItem('seller_sns_instagram')
+    const savedYoutube = localStorage.getItem('seller_sns_youtube')
+    if (savedInstagram) setFormData(prev => ({ ...prev, sellerInstagram: savedInstagram }))
+    if (savedYoutube) setFormData(prev => ({ ...prev, sellerYoutube: savedYoutube }))
+  }, [])
+
   useEffect(() => {
     if (!token) return
     setProductsLoading(true)
@@ -174,7 +182,11 @@ function StartTab({ token }: { token: string | null }) {
   }, [token])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // Auto-save SNS links to localStorage
+    if (name === 'sellerInstagram') localStorage.setItem('seller_sns_instagram', value)
+    if (name === 'sellerYoutube') localStorage.setItem('seller_sns_youtube', value)
   }
 
   function toggleProduct(id: number) {
@@ -196,7 +208,7 @@ function StartTab({ token }: { token: string | null }) {
       const response = await api.post('/api/seller/streams', {
         title: formData.title,
         description: formData.description,
-        youtube_url: formData.youtubeUrl || null,
+        youtube_url: formData.youtubeUrl || '',
         scheduled_at: isScheduled ? formData.scheduledAt : null,
         status: isScheduled ? 'scheduled' : 'live',
         seller_instagram: formData.sellerInstagram || null,
