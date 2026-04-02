@@ -309,6 +309,28 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
                 )}
               </div>
 
+              {/* 판매자 문의 + 배송 조회 */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => handleSellerContact(order)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#6e6e73] bg-[#f5f5f7] rounded-xl hover:bg-[#e5e5ea] transition-colors"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  판매자 문의
+                </button>
+                {order.tracking_number && (
+                  <a
+                    href={getTrackingUrl(order.courier, order.tracking_number)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#007aff] bg-[#f0f4ff] rounded-xl hover:bg-[#e0e8ff] transition-colors"
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    배송 조회
+                  </a>
+                )}
+              </div>
+
               {/* 금액 + 액션 */}
               <div className="flex items-center justify-between">
                 <span className="text-[19px] font-bold text-[#1d1d1f]">

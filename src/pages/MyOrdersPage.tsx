@@ -493,6 +493,24 @@ export default function MyOrdersPage() {
                 </div>
               </div>
 
+              {/* 판매자 문의 */}
+              <button
+                onClick={() => {
+                  const kakao = selectedOrder.seller_kakao_chat_url as string | undefined
+                  const phone = selectedOrder.seller_phone as string | undefined
+                  if (kakao) {
+                    window.open(kakao, '_blank', 'noopener,noreferrer')
+                  } else if (phone) {
+                    toast.info(`판매자 연락처: ${phone}`)
+                  } else {
+                    toast.info('판매자 연락처가 등록되지 않았습니다')
+                  }
+                }}
+                className="w-full py-3 text-[15px] font-medium text-[#007aff] border border-[#007aff] rounded-xl hover:bg-[#007aff] hover:text-white transition-colors"
+              >
+                판매자 문의
+              </button>
+
               {/* Actions */}
               {['pending', 'paid', 'confirmed', 'done'].includes(selectedOrder.status.toLowerCase()) && (
                 <button
