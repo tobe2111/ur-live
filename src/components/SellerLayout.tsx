@@ -2,20 +2,20 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 
 const NAV_ITEMS = [
+  { path: '/seller/live',          label: '라이브 방송',   icon: Radio, highlight: true },
   { path: '/seller',              label: '대시보드',     icon: LayoutDashboard, exact: true },
   { path: '/seller/orders',       label: '주문 관리',    icon: ShoppingBag },
+  { path: '/seller/settlements',  label: '매출·정산',    icon: DollarSign },
   { path: '/seller/products',     label: '상품 관리',    icon: Package },
   { path: '/seller/inventory',    label: '재고 관리',    icon: BarChart3 },
   { path: '/seller/supply',       label: '공급 상품',    icon: Truck },
-  { path: '/seller/live-control', label: '라이브 스트림', icon: Play },
-  { path: '/seller/settlements',  label: '정산',         icon: DollarSign },
-  { path: '/seller/brandmessage', label: '브랜드메시지', icon: Bell },
   { path: '/seller/donations',   label: '후원 내역',    icon: Heart },
+  { path: '/seller/alimtalk',     label: '브랜드메시지',  icon: Bell },
   { path: '/seller/business-info',label: '사업자 정보',   icon: Building2 },
 ]
 
@@ -54,7 +54,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, exact }) => {
+        {NAV_ITEMS.map(({ path, label, icon: Icon, exact, highlight }) => {
           const active = isActive(path, exact)
           return (
             <Link
@@ -64,11 +64,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? 'bg-blue-600 text-white'
+                  : highlight && !active
+                  ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${highlight && !active ? 'text-red-500' : ''}`} />
               {label}
+              {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
               {label === '주문 관리' && pendingOrders > 0 && (
                 <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                   active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
