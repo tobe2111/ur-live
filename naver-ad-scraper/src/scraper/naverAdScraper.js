@@ -1,167 +1,201 @@
-import * as cheerio from 'cheerio';
 import {
   NAVER_SEARCH_URL,
   DEFAULT_DELAY,
   MAX_PAGES_PER_KEYWORD,
   MAX_URLS_PER_KEYWORD,
 } from '../utils/constants.js';
-import { sleep, randomDelay, resolveNaverAdUrl, log } from '../utils/helpers.js';
+import { sleep, randomDelay, log } from '../utils/helpers.js';
 
 /**
- * 네이버 검색광고(파워링크) 스크레이퍼
+ * 네이버 파워링크 광고 스크레이퍼 (개선판)
  *
- * 동작 방식:
- *  1. 키워드로 네이버 검색
- *  2. 파워링크(검색광고) 영역에서 광고주 정보 추출
- *  3. 실제 광고주 URL 반환
+ * 핵심 변경:
+ *  - Cheerio 정적 파싱 제거 → Playwright page.evaluate()로 실제 DOM 직접 접근
+ *  - nclk.naver.com 리다이렉트 URL은 page.goto()로 클릭 흉내내어 최종 URL 확보
+ *  - 광고 판별: 'data-cr-gdid' 속성 또는 '광고' 텍스트 배지 기준
  */
 export class NaverAdScraper {
   constructor(pageSession) {
     this.session = pageSession;
   }
 
-  /**
-   * 키워드로 네이버 검색 후 파워링크 광고 추출
-   * @param {string} keyword
-   * @returns {Promise<AdResult[]>}
-   */
   async scrapeKeyword(keyword) {
     const results = [];
     const seen = new Set();
 
-    for (let page = 1; page <= MAX_PAGES_PER_KEYWORD; page++) {
+    for (let pageNum = 1; pageNum <= MAX_PAGES_PER_KEYWORD; pageNum++) {
       try {
-        const pageResults = await this._scrapePage(keyword, page);
-
+        const pageResults = await this._scrapePage(keyword, pageNum);
         for (const r of pageResults) {
-          const key = r.advertiserUrl || r.displayUrl;
+          const key = r.advertiserUrl;
           if (key && !seen.has(key)) {
             seen.add(key);
             results.push(r);
           }
         }
-
         if (results.length >= MAX_URLS_PER_KEYWORD) break;
-        if (pageResults.length === 0) break;  // 더 이상 광고 없음
-
-        // 페이지 간 딜레이
+        if (pageResults.length === 0) break;
         await sleep(randomDelay(...DEFAULT_DELAY.betweenPages));
       } catch (err) {
-        log('warn', `키워드 "${keyword}" ${page}페이지 스크래핑 실패`, err.message);
+        log('warn', `"${keyword}" ${pageNum}p 실패`, err.message);
         break;
       }
     }
 
-    log('info', `키워드 "${keyword}": 광고주 ${results.length}개 발견`);
+    log('info', `"${keyword}": 광고주 ${results.length}개`);
     return results.slice(0, MAX_URLS_PER_KEYWORD);
   }
 
-  async _scrapePage(keyword, page) {
-    const url = `${NAVER_SEARCH_URL}?query=${encodeURIComponent(keyword)}&start=${(page - 1) * 10 + 1}`;
-    log('debug', `네이버 검색: ${keyword} (${page}페이지)`);
+  async _scrapePage(keyword, pageNum) {
+    const searchUrl = `${NAVER_SEARCH_URL}?query=${encodeURIComponent(keyword)}&start=${(pageNum - 1) * 10 + 1}`;
+    log('debug', `검색: "${keyword}" ${pageNum}p`);
 
-    const pageObj = await this.session.open(url);
+    const page = await this.session.open(searchUrl);
 
-    // 봇 감지 확인
-    const title = await pageObj.title();
-    if (title.includes('차단') || title.includes('blocked') || title.includes('robot')) {
-      log('warn', '봇 차단 감지. 대기 중...');
+    const title = await page.title();
+    if (/차단|blocked|robot/i.test(title)) {
       await sleep(randomDelay(...DEFAULT_DELAY.afterBlock));
-      throw new Error('봇 차단');
+      throw new Error('봇 차단 감지');
     }
 
-    // 인간처럼 스크롤
-    await this._humanScroll(pageObj);
+    // 광고 로딩 대기 (파워링크는 별도 XHR로 로드될 수 있음)
+    await page.waitForTimeout(2000);
+    await this._humanScroll(page);
 
-    const html = await pageObj.content();
-    return this._parseAds(html, url);
+    // ── 핵심: Playwright evaluate()로 실제 DOM에서 광고 추출 ──────
+    const rawAds = await page.evaluate(() => {
+      const ads = [];
+
+      // 방법 1: data-cr-gdid 속성 (네이버 광고 고유 식별자)
+      // 파워링크 광고 아이템에는 이 속성이 붙음
+      const byCrGdid = document.querySelectorAll('[data-cr-gdid]');
+      byCrGdid.forEach(el => {
+        const linkEl = el.querySelector('a.lnk_tit, a[class*="tit"], a[class*="link"]') || el.querySelector('a');
+        const urlEl  = el.querySelector('[class*="url"], [class*="dsc_url"]');
+        const dscEl  = el.querySelector('[class*="dsc"], [class*="desc"]');
+        if (!linkEl) return;
+
+        ads.push({
+          title:      linkEl.textContent.trim(),
+          nclkUrl:    linkEl.href,          // nclk.naver.com/... 형태
+          displayUrl: urlEl?.textContent.trim() || '',
+          description:dscEl?.textContent.trim() || '',
+          gdid:       el.dataset.crGdid,
+        });
+      });
+
+      if (ads.length > 0) return ads;
+
+      // 방법 2: 광고 배지('광고' 텍스트)를 포함한 부모 컨테이너
+      const adBadges = Array.from(document.querySelectorAll('*')).filter(
+        el => el.childElementCount === 0 && el.textContent.trim() === '광고'
+      );
+      adBadges.forEach(badge => {
+        // 광고 배지의 조상 컨테이너 탐색 (최대 5레벨)
+        let container = badge.parentElement;
+        for (let i = 0; i < 5; i++) {
+          if (!container) break;
+          const linkEl = container.querySelector('a[href*="nclk.naver.com"], a[href*="lavad.naver.com"]');
+          if (linkEl) {
+            const urlEl = container.querySelector('[class*="url"]');
+            const dscEl = container.querySelector('[class*="dsc"], [class*="desc"]');
+            ads.push({
+              title:      linkEl.textContent.trim(),
+              nclkUrl:    linkEl.href,
+              displayUrl: urlEl?.textContent.trim() || '',
+              description:dscEl?.textContent.trim() || '',
+              gdid:       null,
+            });
+            break;
+          }
+          container = container.parentElement;
+        }
+      });
+
+      return ads;
+    });
+
+    if (rawAds.length === 0) {
+      log('debug', `"${keyword}" ${pageNum}p: 광고 없음`);
+      return [];
+    }
+
+    // nclk URL → 실제 광고주 URL 확보
+    const resolved = await this._resolveNclkUrls(page, rawAds);
+    const ts = new Date().toISOString();
+    return resolved.map(ad => ({
+      ...ad,
+      adType: 'powerlink',
+      foundAt: searchUrl,
+      scrapedAt: ts,
+    }));
   }
 
   /**
-   * HTML에서 파워링크 광고 파싱
-   * 네이버의 DOM 구조에 맞춰 여러 셀렉터 시도
+   * nclk.naver.com 리다이렉트 URL → 실제 광고주 최종 URL
+   *
+   * 방법: 별도 탭에서 goto() → 리다이렉트를 따라가 최종 URL 캡처
+   * (URL 파라미터 파싱은 신뢰할 수 없음 - 서버사이드 리다이렉트이기 때문)
    */
-  _parseAds(html, pageUrl) {
-    const $ = cheerio.load(html);
+  async _resolveNclkUrls(basePage, rawAds) {
     const results = [];
+    const context = basePage.context();
 
-    // 방법 1: 파워링크 상단/하단 광고 영역 (일반 검색)
-    const adContainers = [
-      '#powerlink_top_area .bx',
-      '#powerlink_bottom_area .bx',
-      '.ad_area .bx',
-      '[data-type="ad"] .bx',
-      // 최신 네이버 DOM
-      '.api_subject_bx[data-cr-gdid]',
-      'li[data-cr-gdid]',
-    ];
+    for (const ad of rawAds) {
+      if (!ad.nclkUrl) continue;
 
-    for (const selector of adContainers) {
-      $(selector).each((_, el) => {
-        const ad = this._parseAdElement($, el, pageUrl);
-        if (ad) results.push(ad);
-      });
-      if (results.length > 0) break;
-    }
-
-    // 방법 2: data 속성 기반 파싱 (네이버 동적 렌더링 결과)
-    if (results.length === 0) {
-      $('a[href*="lavad.naver.com"], a[href*="nclk.naver.com"]').each((_, el) => {
-        const href = $(el).attr('href');
-        const advertiserUrl = resolveNaverAdUrl(href);
-        if (advertiserUrl && !advertiserUrl.includes('naver.com')) {
-          const title = $(el).text().trim() || $(el).attr('title');
-          results.push({
-            keyword: '',
-            title,
-            advertiserUrl,
-            displayUrl: advertiserUrl,
-            description: '',
-            adType: 'powerlink',
-            foundAt: pageUrl,
-            scrapedAt: new Date().toISOString(),
-          });
+      // nclk가 아닌 URL은 그대로 사용
+      if (!ad.nclkUrl.includes('nclk.naver.com') && !ad.nclkUrl.includes('lavad.naver.com')) {
+        const domain = this._extractDomain(ad.nclkUrl);
+        if (domain && !domain.includes('naver.com')) {
+          results.push({ ...ad, advertiserUrl: ad.nclkUrl, domain });
         }
-      });
+        continue;
+      }
+
+      // 별도 탭으로 nclk URL 방문 → 리다이렉트 따라가기
+      let tab;
+      try {
+        tab = await context.newPage();
+
+        // 불필요한 리소스 차단 (빠른 리다이렉트 추적)
+        await tab.route('**/*', route => {
+          const type = route.request().resourceType();
+          ['image', 'media', 'font', 'stylesheet'].includes(type)
+            ? route.abort()
+            : route.continue();
+        });
+
+        const response = await tab.goto(ad.nclkUrl, {
+          waitUntil: 'commit',  // 리다이렉트 시작 시점에 URL 캡처
+          timeout: 8000,
+        });
+
+        const finalUrl = tab.url();
+        const domain = this._extractDomain(finalUrl);
+
+        // 최종 URL이 네이버가 아닌 외부 사이트인지 확인
+        if (domain && !domain.includes('naver.com') && finalUrl.startsWith('http')) {
+          results.push({ ...ad, advertiserUrl: finalUrl, domain });
+          log('debug', `광고주 URL 확보: ${domain}`);
+        }
+      } catch (err) {
+        log('debug', `URL 확보 실패: ${ad.nclkUrl.slice(0, 60)}`, err.message);
+      } finally {
+        if (tab) await tab.close().catch(() => {});
+      }
+
+      await sleep(randomDelay(500, 1500));
     }
 
     return results;
   }
 
-  _parseAdElement($, el, pageUrl) {
-    try {
-      const $el = $(el);
-
-      // 제목 링크 추출
-      const titleEl = $el.find('.title_area a, .ad_tit a, .lnk_tit').first();
-      const title = titleEl.text().trim();
-      let href = titleEl.attr('href') || $el.find('a').first().attr('href');
-
-      if (!href) return null;
-
-      // 네이버 광고 추적 URL → 실제 URL
-      const advertiserUrl = resolveNaverAdUrl(href);
-      if (!advertiserUrl || advertiserUrl.includes('naver.com')) return null;
-
-      const displayUrl = $el.find('.url_area, .ad_url, .dsc_url').text().trim();
-      const description = $el.find('.dsc_area, .ad_dsc, .dsc_txt_wrap').text().trim();
-
-      return {
-        title,
-        advertiserUrl,
-        displayUrl: displayUrl || advertiserUrl,
-        description,
-        adType: 'powerlink',
-        foundAt: pageUrl,
-        scrapedAt: new Date().toISOString(),
-      };
-    } catch {
-      return null;
-    }
+  _extractDomain(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
   }
 
   async _humanScroll(page) {
-    // 사람처럼 스크롤 (봇 감지 우회)
     await page.evaluate(async () => {
       for (let i = 0; i < 3; i++) {
         window.scrollBy(0, Math.floor(Math.random() * 300 + 200));
@@ -170,14 +204,3 @@ export class NaverAdScraper {
     });
   }
 }
-
-/**
- * @typedef {Object} AdResult
- * @property {string} title - 광고 제목
- * @property {string} advertiserUrl - 광고주 실제 URL
- * @property {string} displayUrl - 표시 URL
- * @property {string} description - 광고 설명
- * @property {string} adType - 광고 유형
- * @property {string} foundAt - 발견된 검색 URL
- * @property {string} scrapedAt - 수집 시각
- */

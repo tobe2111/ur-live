@@ -38,9 +38,11 @@ CREATE TABLE IF NOT EXISTS crawl_results (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   advertiser_id   INTEGER REFERENCES advertisers(id),
   domain          TEXT NOT NULL,
+  instagram       TEXT,
+  biz_reg_no      TEXT,
   company_name    TEXT,
   emails          TEXT,   -- JSON array
-  phone           TEXT,
+  phones          TEXT,   -- JSON array (복수 전화번호)
   kakao_channel   TEXT,
   naver_talk      TEXT,
   crawled_at      TEXT NOT NULL,
@@ -57,6 +59,8 @@ CREATE TABLE IF NOT EXISTS emails (
   domain        TEXT,
   company_name  TEXT,
   phone         TEXT,
+  instagram     TEXT,
+  biz_reg_no    TEXT,
   keyword       TEXT,
   advertiser_url TEXT,
   crawled_at    TEXT NOT NULL,
@@ -150,21 +154,24 @@ export class AdDatabase {
 
   // ── 크롤링 결과 ───────────────────────────────────────────────
   saveCrawlResult(advertiserId, sessionId, keyword, crawlResult) {
-    // crawl_results 저장
+    const phone = (crawlResult.phones || [])[0] || crawlResult.phone || '';
+
     this.db.prepare(`
-      INSERT INTO crawl_results (advertiser_id, domain, company_name, emails, phone, kakao_channel, naver_talk, crawled_at, status, error)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO crawl_results (advertiser_id, domain, company_name, emails, phones, kakao_channel, naver_talk, instagram, biz_reg_no, crawled_at, status, error)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(advertiser_id) DO UPDATE SET
-        emails = excluded.emails, status = excluded.status,
-        crawled_at = excluded.crawled_at, error = excluded.error
+        emails = excluded.emails, phones = excluded.phones,
+        status = excluded.status, crawled_at = excluded.crawled_at, error = excluded.error
     `).run(
       advertiserId,
       crawlResult.domain,
       crawlResult.companyName,
       JSON.stringify(crawlResult.emails),
-      crawlResult.phone,
+      JSON.stringify(crawlResult.phones || []),
       crawlResult.kakaoChannel,
       crawlResult.naverTalk,
+      crawlResult.instagram || '',
+      crawlResult.bizRegNo || '',
       crawlResult.crawledAt,
       crawlResult.status,
       crawlResult.error
@@ -172,14 +179,15 @@ export class AdDatabase {
 
     // 이메일 개별 저장
     const insertEmail = this.db.prepare(`
-      INSERT OR IGNORE INTO emails (session_id, email, domain, company_name, phone, keyword, advertiser_url, crawled_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO emails (session_id, email, domain, company_name, phone, instagram, biz_reg_no, keyword, advertiser_url, crawled_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertMany = this.db.transaction((emails) => {
       for (const email of emails) {
         insertEmail.run(
           sessionId, email,
-          crawlResult.domain, crawlResult.companyName, crawlResult.phone,
+          crawlResult.domain, crawlResult.companyName, phone,
+          crawlResult.instagram || '', crawlResult.bizRegNo || '',
           keyword, crawlResult.url, crawlResult.crawledAt
         );
       }
