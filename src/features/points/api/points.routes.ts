@@ -13,6 +13,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { TOSS_PAYMENT_URL, ALLOWED_ORIGINS } from '@/shared/constants';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -268,6 +269,9 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
     stream_id, stream.seller_id, user.id, '후원자',
     amount, amount, donationOrderId, message ?? ''
   ).run();
+
+  // 10. 후원 받음 → 셀러 알림
+  createDashboardNotification(DB, 'seller', String(stream.seller_id), 'donation_received', '후원 받음', `${amount}딜 후원`, '/seller/donations').catch(() => {});
 
   return c.json({
     success: true,

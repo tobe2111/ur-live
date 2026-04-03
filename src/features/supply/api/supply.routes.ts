@@ -11,6 +11,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 const supplyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -183,6 +184,9 @@ supplyRoutes.post('/sample-requests', async (c) => {
       INSERT INTO sample_requests (seller_id, product_id, status, seller_memo, created_at, updated_at)
       VALUES (?, ?, 'PENDING', ?, datetime('now'), datetime('now'))
     `).bind(sellerId, body.product_id, body.seller_memo || null).run();
+
+    // 3. 공급 상품 샘플 신청 → 어드민 알림
+    createDashboardNotification(DB, 'admin', null, 'sample_request', '샘플 신청', `셀러 #${sellerId}`, '/admin/sample-requests').catch(() => {});
 
     return c.json({
       success: true,
