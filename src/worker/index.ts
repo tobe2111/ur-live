@@ -427,6 +427,10 @@ app.route('/api/inventory', inventoryRoutes);
 import { sectionsRoutes } from '../features/sections/api/sections.routes';
 app.route('/api/sections', sectionsRoutes);
 
+// ── YouTube 구독자 늘리기 ──
+import { youtubeGrowthRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
+app.route('/api/youtube-growth', youtubeGrowthRoutes);
+
 // ── 상품 대량등록 ──
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
 app.route('/api/bulk-upload', bulkUploadRoutes);

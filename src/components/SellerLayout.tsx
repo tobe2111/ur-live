@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: '/seller/inventory',    label: '재고 관리',    icon: BarChart3 },
   { path: '/seller/supply',       label: '공급 상품',    icon: Truck },
   { path: '/seller/donations',   label: '후원 내역',    icon: Heart },
+  { path: '/seller/youtube-growth',label: '구독자 늘리기', icon: TrendingUp },
   { path: '/seller/alimtalk',     label: '브랜드메시지',  icon: Bell },
   { path: '/seller/business-info',label: '사업자 정보',   icon: Building2 },
 ]
