@@ -271,10 +271,12 @@ ordersRouter.post('/', async (c) => {
 ordersRouter.post('/debug-update-stream', async (c) => {
   try {
     const db = c.env.DB;
-    const { stream_id, seller_youtube, seller_instagram, seller_kakao } = await c.req.json();
+    const { stream_id, seller_youtube, seller_instagram, seller_tiktok } = await c.req.json();
+    // seller_tiktok 컬럼 없으면 추가
+    try { await db.prepare('ALTER TABLE live_streams ADD COLUMN seller_tiktok TEXT').run(); } catch { /* exists */ }
     await db.prepare(
-      'UPDATE live_streams SET seller_youtube = ?, seller_instagram = ? WHERE id = ?'
-    ).bind(seller_youtube || null, seller_instagram || null, stream_id).run();
+      'UPDATE live_streams SET seller_youtube = ?, seller_instagram = ?, seller_tiktok = ? WHERE id = ?'
+    ).bind(seller_youtube || null, seller_instagram || null, seller_tiktok || null, stream_id).run();
     return c.json({ success: true });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
