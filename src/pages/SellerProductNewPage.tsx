@@ -188,6 +188,7 @@ export default function SellerProductNewPage() {
               <Package className="w-5 h-5" />
               <p>{error}</p>
             </div>
+            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
           </div>
         )}
 

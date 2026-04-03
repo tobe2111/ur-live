@@ -291,9 +291,10 @@ export default function ProductDetailPage() {
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="text-center">
           <p className="text-sm text-muted-foreground">{error?.message || '상품을 찾을 수 없습니다.'}</p>
-          <button 
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+          <button
             onClick={() => navigate('/')}
-            className="mt-4 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
+            className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
           >
             홈으로 돌아가기
           </button>
