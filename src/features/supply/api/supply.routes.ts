@@ -341,6 +341,9 @@ supplyRoutes.post('/register', async (c) => {
       slug,
     ).run();
 
+    // 공급 상품 등록 → 어드민 알림
+    createDashboardNotification(DB, 'admin', null, 'supply_registered', '공급 상품 등록', `셀러 #${sellerId}`, '/admin/products').catch(() => {});
+
     return c.json({
       success: true,
       data: { id: result.meta.last_row_id, name: request.name, seller_price: body.seller_price },

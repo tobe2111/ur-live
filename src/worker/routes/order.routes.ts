@@ -247,6 +247,19 @@ ordersRouter.post('/', async (c) => {
       '/admin/orders'
     ).catch(() => {});
 
+    // 셀러에게도 알림 (seller_id가 있는 경우)
+    if (order.seller_id) {
+      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'new_order', '새 주문', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+    }
+
+    // 재고 부족 체크
+    for (const item of orderItems) {
+      const product = products.find(p => p.id === item.product_id);
+      if (product && ((product.stock ?? product.stock_quantity ?? 0) - item.quantity) <= 5) {
+        createDashboardNotification(c.env.DB, 'seller', String(product.seller_id || ''), 'low_stock', '재고 부족', `${product.name}: ${(product.stock ?? product.stock_quantity ?? 0) - item.quantity}개 남음`, '/seller/inventory').catch(() => {});
+      }
+    }
+
     // 자동 알림톡 발송 (주문 확인) - 비동기로 처리, 실패해도 주문 생성에 영향 없음
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
       import('../../lib/alimtalk-auto').then(({ sendOrderConfirmation }) => {
@@ -555,6 +568,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
       // 재고 복구
       await orderRepo.restoreStock(orderId);
 
+      // 주문 취소 알림
+      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});
+      if (order.seller_id) {
+        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+      }
+
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
       console.info('[ORDERS] Cancel success (paid):', {
@@ -582,6 +601,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
       cancelled_at: new Date().toISOString(),
       cancel_reason: reason,
     });
+
+    // 주문 취소 알림
+    createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});
+    if (order.seller_id) {
+      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+    }
 
     console.info('[ORDERS] Cancel success (unpaid):', { orderId, status: order.status });
 
