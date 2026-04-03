@@ -1,3 +1,12 @@
+/**
+ * PRIMARY Order Repository — used by worker/routes/order.routes.ts
+ *
+ * Handles: order creation, stock management, payment confirmation, webhooks
+ * Uses QueryBuilder pattern with batch operations.
+ *
+ * ⚠️ DO NOT confuse with features/orders/repositories/OrderRepository.ts
+ * which handles: tracking, purchase confirmation, cron jobs
+ */
 // ============================================================
 // Order Repository
 // ============================================================

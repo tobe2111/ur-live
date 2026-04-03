@@ -78,8 +78,6 @@ export class ChunkErrorBoundary extends Component<Props, State> {
       return;
     }
 
-    console.log('[ChunkErrorBoundary] Chunk loading failed, reloading page...');
-
     // 재시도 기록
     localStorage.setItem(ChunkErrorBoundary.RETRY_KEY, '1');
 

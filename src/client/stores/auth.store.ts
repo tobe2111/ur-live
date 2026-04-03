@@ -1,3 +1,13 @@
+/**
+ * Generic Auth Store — JWT-based, used by Worker API flows
+ *
+ * Used by: Multi-seller Worker API (registration/login via /api/auth)
+ * Manages: accessToken, refreshToken, user object
+ *
+ * Unlike useAuthKR/useAuthWorld (Firebase-based), this store handles
+ * the new JWT authentication flow for the Worker API.
+ * Tokens are NOT persisted to localStorage to avoid stale 401s.
+ */
 // ============================================================
 // Auth Store - Zustand
 // ============================================================

@@ -30,15 +30,6 @@ export {
   useAuthWorldReady,
 } from './useAuthWorld';
 
-export {
-  useAuthUI,
-  useLoginModalOpen,
-  useSignupModalOpen,
-  useResetPasswordModalOpen,
-  useGlobalLoading,
-  useErrorMessage,
-} from './useAuthUI';
-
 // ---- JWT Worker API auth store ----
 export { useAuthStore } from '../../client/stores/auth.store';
 

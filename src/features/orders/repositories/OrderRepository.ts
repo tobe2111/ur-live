@@ -1,5 +1,10 @@
 /**
- * Order Repository
+ * SECONDARY Order Repository — used by features/orders/api/orders.routes.ts
+ *
+ * Handles: delivery tracking, purchase confirmation, auto-confirm cron, delivery sync
+ * These endpoints are NOT in the primary order.routes.ts
+ *
+ * ⚠️ The primary repository is at worker/repositories/order.repository.ts
  */
 
 import type { Order, OrderItem, OrderFilter, OrderCreateInput } from '../types';

@@ -312,8 +312,8 @@ function AppContent() {
                 <SellerLoginPage />
               </PublicRoute>
             } />
-            <Route path="/seller/register" element={<SellerRegisterPage />} />
-            <Route path="/seller/signup" element={<SellerRegisterPage />} />
+            <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
+            <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             
             {/* Seller Protected 페이지들 */}
             <Route path="/seller" element={
@@ -374,7 +374,7 @@ function AppContent() {
             } />
             <Route path="/seller/profile" element={
               <ProtectedRoute requireSeller>
-                <SellerProfileEditPage />
+                <ErrorBoundary><SellerProfileEditPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/settlements" element={
@@ -394,7 +394,7 @@ function AppContent() {
             } />
             <Route path="/seller/donations" element={
               <ProtectedRoute requireSeller>
-                <SellerDonationsPage />
+                <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/live-broadcast" element={
@@ -428,7 +428,7 @@ function AppContent() {
             } />
             <Route path="/admin/settlement" element={
               <ProtectedRoute requireAdmin>
-                <AdminSettlementPage />
+                <ErrorBoundary><AdminSettlementPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/banners" element={
@@ -438,7 +438,7 @@ function AppContent() {
             } />
             <Route path="/admin/orders" element={
               <ProtectedRoute requireAdmin>
-                <AdminOrdersPage />
+                <ErrorBoundary><AdminOrdersPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/products" element={
@@ -453,22 +453,22 @@ function AppContent() {
             } />
             <Route path="/admin/kv-monitoring" element={
               <ProtectedRoute requireAdmin>
-                <KVMonitoringPage />
+                <ErrorBoundary><KVMonitoringPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/sample-requests" element={
               <ProtectedRoute requireAdmin>
-                <AdminSampleRequestsPage />
+                <ErrorBoundary><AdminSampleRequestsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/cafe24" element={
               <ProtectedRoute requireAdmin>
-                <AdminCafe24Page />
+                <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/cafe24/callback" element={
               <ProtectedRoute requireAdmin>
-                <AdminCafe24Page />
+                <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
               </ProtectedRoute>
             } />
             
@@ -527,7 +527,7 @@ function AppContent() {
             <Route path="/account/deleted" element={<AccountDeletedPage />} />
             
             {/* Payment 페이지들 */}
-            <Route path="/payment/demo" element={<PaymentDemoPage />} />
+            <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />
 
             {/* 임베드 위젯 (외부 서비스용) */}
             <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
