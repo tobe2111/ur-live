@@ -10,6 +10,7 @@ dist/
 !playwright.config.js
 !postcss.config.js
 !scripts/**/*.js
+!naver-ad-scraper/**/*.js
 
 # Wrangler local state
 .wrangler/
