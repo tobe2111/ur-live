@@ -392,7 +392,7 @@ app.route('/api/banners', bannerRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);
-app.route('/api/admin/scraper', scraperProxy);  // adminApp 밖 — 자체 Bearer-only 검증
+app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);
