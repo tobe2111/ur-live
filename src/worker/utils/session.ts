@@ -19,6 +19,7 @@ export interface SessionUser {
   email: string;
   profileImage?: string;
   role?: string;
+  isDbId?: boolean;  // true면 userId가 DB users.id (숫자 변환 불필요)
 }
 
 /**
@@ -36,6 +37,7 @@ export async function createSessionCookie(
     sub: String(userId),
     name,
     email,
+    isDbId: true,  // 세션 쿠키의 userId는 항상 DB users.id
     iat: now,
     exp: now + MAX_AGE_SECONDS,
   };
@@ -83,6 +85,7 @@ export async function parseSessionCookie(
       email: (payload.email as string) || '',
       profileImage: (payload.profileImage as string) || undefined,
       role: 'user',
+      isDbId: !!payload.isDbId,
     };
   } catch {
     return null;
