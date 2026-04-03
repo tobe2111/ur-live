@@ -27,8 +27,6 @@ export async function createNotification(
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).bind(userId, type, title, message, linkUrl || null).run()
     
-    console.log(`[Notification] Created for user ${userId}: ${type} - ${title}`)
-    
     return {
       success: true,
       id: result.meta.last_row_id as number

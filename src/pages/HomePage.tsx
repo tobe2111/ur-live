@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Play, Users, Search, ShoppingCart, User, Home, Grid3X3, Radio, Heart, Clock, ChevronRight, ShoppingBag } from 'lucide-react'
+import { Play, Users, Search, ShoppingCart, User, Clock, ChevronRight, ShoppingBag } from 'lucide-react'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { LazyImage } from '@/components/LazyImage'
 import { getUserName, getUserId, getUserIdSync, logout } from '@/utils/auth'
@@ -438,36 +438,7 @@ export default function HomePage() {
         )}
       </footer>
 
-      {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 z-50">
-        <div className="flex items-center justify-around h-14">
-          <Link to="/" className="flex flex-col items-center gap-0.5 text-[#FF6B35]">
-            <Home className="h-5 w-5" />
-            <span className="text-[10px] font-semibold">홈</span>
-          </Link>
-          <Link to="/browse" className="flex flex-col items-center gap-0.5 text-gray-400">
-            <Grid3X3 className="h-5 w-5" />
-            <span className="text-[10px]">카테고리</span>
-          </Link>
-          <Link to="/browse" className="flex flex-col items-center gap-0.5 text-gray-400">
-            <Radio className="h-5 w-5" />
-            <span className="text-[10px]">라이브</span>
-          </Link>
-          <Link to="/cart" className="flex flex-col items-center gap-0.5 text-gray-400">
-            <ShoppingCart className="h-5 w-5" />
-            <span className="text-[10px]">장바구니</span>
-          </Link>
-          <Link
-            to={user ? '/user/profile' : '/login'}
-            className="flex flex-col items-center gap-0.5 text-gray-400"
-          >
-            <User className="h-5 w-5" />
-            <span className="text-[10px]">마이</span>
-          </Link>
-        </div>
-        {/* Safe area padding for iOS */}
-        <div className="h-[env(safe-area-inset-bottom)]" />
-      </nav>
+      {/* BottomNav is rendered globally in App.tsx — removed duplicate here */}
     </div>
   )
 }

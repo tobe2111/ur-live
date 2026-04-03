@@ -72,7 +72,6 @@ export default function MyOrdersPage() {
   async function loadData() {
     // ✅ BUG #25 FIX: Guard against concurrent calls
     if (isLoadingRef.current) {
-      console.log('[MyOrdersPage] loadData skipped — already in progress')
       return
     }
     isLoadingRef.current = true

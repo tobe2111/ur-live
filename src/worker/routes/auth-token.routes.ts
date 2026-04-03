@@ -70,15 +70,27 @@ authTokenRoutes.post('/id-token', async (c) => {
     }
 
     // Verify user exists in database
-    const userQuery = await db
-      .prepare('SELECT id, email, name, user_type FROM users WHERE firebase_uid = ? LIMIT 1')
-      .bind(uid)
-      .first<{
-        id: number;
-        email: string;
-        name: string | null;
-        user_type: string;
-      }>();
+    // Session cookie users pass a numeric DB ID; Firebase users pass a string UID
+    const numericUid = parseInt(uid, 10);
+    const userQuery = Number.isFinite(numericUid)
+      ? await db
+          .prepare('SELECT id, email, name, user_type FROM users WHERE id = ? OR firebase_uid = ? LIMIT 1')
+          .bind(numericUid, uid)
+          .first<{
+            id: number;
+            email: string;
+            name: string | null;
+            user_type: string;
+          }>()
+      : await db
+          .prepare('SELECT id, email, name, user_type FROM users WHERE firebase_uid = ? LIMIT 1')
+          .bind(uid)
+          .first<{
+            id: number;
+            email: string;
+            name: string | null;
+            user_type: string;
+          }>();
 
     if (!userQuery) {
       return c.json({

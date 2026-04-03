@@ -58,7 +58,6 @@ export async function sendEmail(params: EmailParams): Promise<{ success: boolean
       }
     }
 
-    console.log('[Email] Successfully sent to:', to)
     return { success: true }
     
   } catch (error) {
