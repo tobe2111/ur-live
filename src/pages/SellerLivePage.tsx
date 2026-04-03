@@ -150,7 +150,7 @@ function StartTab({ token }: { token: string | null }) {
         const channels = ytRes.value.data.data || []
         if (channels.length > 0) {
           setYoutubeConnected(true)
-          setYoutubeChannelName(channels[0].channel_name || channels[0].title || localStorage.getItem('youtube_channel_name') || '')
+          setYoutubeChannelName(channels[0].channel_title || channels[0].channel_name || channels[0].title || localStorage.getItem('youtube_channel_name') || '')
           if (channels[0].default_rtmp_key) {
             setStreamKey(channels[0].default_rtmp_key)
           }
@@ -167,10 +167,11 @@ function StartTab({ token }: { token: string | null }) {
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
         const supplyData = supplyRes.value.data.data
         const items = Array.isArray(supplyData) ? supplyData : supplyData?.items || supplyData?.products || []
-        // 승인된 공급 상품만 표시
-        const approved = items.filter((p: Record<string, unknown>) =>
-          p.request_status === 'approved' || !p.request_status
-        ).map((p: Record<string, unknown>) => ({
+        // 승인된 공급 상품 표시 (대소문자 모두 매칭)
+        const approved = items.filter((p: Record<string, unknown>) => {
+          const status = String(p.request_status || '').toUpperCase()
+          return status === 'APPROVED' || !p.request_status
+        }).map((p: Record<string, unknown>) => ({
           id: p.id as number,
           name: p.name as string,
           price: (p.retail_price || p.price) as number,
