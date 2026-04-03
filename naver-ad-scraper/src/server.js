@@ -1,3 +1,14 @@
+// .env 로드 (CHROMIUM_PATH 등)
+import { config } from 'node:process';
+try {
+  const { readFileSync } = await import('fs');
+  const env = readFileSync(new URL('../../.env', import.meta.url), 'utf8');
+  env.split('\n').forEach(line => {
+    const [k, ...v] = line.split('=');
+    if (k && v.length) process.env[k.trim()] = v.join('=').trim();
+  });
+} catch {}
+
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';

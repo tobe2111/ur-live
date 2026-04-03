@@ -1,4 +1,4 @@
-import { dns } from 'node:dns/promises';
+// dns import는 validator.js에서 처리 (이 파일에서는 미사용)
 import {
   NAVER_SEARCH_URL,
   DEFAULT_DELAY,
