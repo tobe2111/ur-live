@@ -79,15 +79,22 @@ export default function AdminAdScraperPage() {
 
   async function checkServer() {
     try {
+      const token = getToken()
       const res = await fetch(`${API}/api/status`, {
         headers: authHeaders(),
         signal: AbortSignal.timeout(5000),
       })
-      if (!res.ok) { setServerOk(false); return }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as Record<string, string>
+        console.error('[Scraper] auth fail', res.status, body, 'token present:', !!token, 'token prefix:', token.slice(0, 20))
+        setServerOk(false)
+        return
+      }
       const data = await res.json() as { running: boolean }
       setServerOk(true)
       if (data.running) { setRunning(true); connectSSE() }
-    } catch {
+    } catch (e) {
+      console.error('[Scraper] checkServer error:', e)
       setServerOk(false)
     }
   }
