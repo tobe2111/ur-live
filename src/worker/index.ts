@@ -338,17 +338,22 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 // Order & Payment Routes
 // ============================================================
 
-// ✅ ordersRouter (worker-native) 가 먼저 처리:
-//    POST /, GET /, GET /:id, POST /:id/cancel
-//    (authMiddleware 사용, 멀티셀러 지원, 아이덤포턴시)
+// -------------------------------------------------------
+// Order routing: TWO repositories, ONE path prefix.
+//
+// ordersRouter  → worker/repositories/order.repository.ts (PRIMARY)
+//   POST /, GET /, GET /:id, POST /:id/cancel
+//   Uses authMiddleware, multi-seller support, idempotency.
+//
+// featureOrdersRoutes → features/orders/repositories/OrderRepository.ts (SECONDARY)
+//   GET /:id/tracking, POST /:id/confirm,
+//   POST /internal/auto-confirm, POST /internal/sync-deliveries
+//   These endpoints do NOT overlap with ordersRouter.
+//
+// ⚠️ Both are mounted on /api/orders — ordersRouter is registered
+//    first so its routes take priority for any overlapping paths.
+// -------------------------------------------------------
 app.route('/api/orders', ordersRouter);
-
-// ✅ featureOrdersRoutes: ordersRouter에 없는 고유 엔드포인트 담당
-//    - GET /:id/tracking (배송 추적)
-//    - POST /:id/confirm (구매 확정 - MyOrdersPage에서 사용)
-//    - POST /internal/auto-confirm (14일 자동 구매확정 크론)
-//    - POST /internal/sync-deliveries (배송 동기화 크론)
-//    ⚠️ GET /, GET /:id, POST / 는 ordersRouter가 먼저 처리하므로 여기서는 도달 안 됨
 app.route('/api/orders', featureOrdersRoutes);
 
 // ✅ paymentsRouter: POST /confirm, POST /checkout-session (worker-native)

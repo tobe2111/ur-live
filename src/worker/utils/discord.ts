@@ -44,7 +44,7 @@ export async function sendDiscordAlert(
     if (!response.ok) {
       console.error('❌ Discord 알림 전송 실패:', response.statusText)
     } else {
-      console.log('✅ Discord 알림 전송 성공')
+      // Discord notification sent successfully
     }
   } catch (error) {
     console.error('❌ Discord 알림 전송 오류:', error)

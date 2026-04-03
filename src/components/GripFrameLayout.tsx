@@ -36,13 +36,6 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
   const location = useLocation()
   const isIntroducePage = location.pathname === '/introduce'
   
-  // 디버깅
-  console.log('🔍 GripFrameLayout Debug:', {
-    pathname: location.pathname,
-    isIntroducePage,
-    children: children ? 'exists' : 'null'
-  })
-  
   return (
     <>
       {/* Desktop Only: New minimalist design */}

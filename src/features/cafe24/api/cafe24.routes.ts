@@ -196,8 +196,6 @@ cafe24Routes.post('/webhook', async (c) => {
       eventType === 'product_update' ||
       eventType === 'product_delete'
     ) {
-      console.log(`[Cafe24 Webhook] ${eventType}:`, JSON.stringify(body).slice(0, 200));
-
       // Re-sync all products (simple approach)
       const accessToken = await getValidAccessToken(
         DB,

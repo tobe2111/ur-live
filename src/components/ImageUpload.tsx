@@ -57,12 +57,6 @@ export default function ImageUpload({
 
       const compressedFile = await imageCompression(file, options)
       
-      console.log('압축 완료:', {
-        원본: `${(file.size / 1024).toFixed(2)}KB`,
-        압축: `${(compressedFile.size / 1024).toFixed(2)}KB`,
-        압축률: `${((1 - compressedFile.size / file.size) * 100).toFixed(1)}%`
-      })
-
       // Base64로 변환
       const reader = new FileReader()
       reader.onload = async (e) => {

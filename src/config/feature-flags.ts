@@ -104,7 +104,6 @@ export function updateFeatureFlag<K extends keyof FeatureFlags>(
     const stored = loadFeatureFlagsFromStorage();
     const updated = { ...stored, [flag]: value };
     localStorage.setItem('feature_flags', JSON.stringify(updated));
-    console.log(`[FeatureFlags] Updated ${flag} = ${value}`);
   } catch (err) {
     console.warn('[FeatureFlags] Failed to save to localStorage:', err);
   }
@@ -116,7 +115,6 @@ export function updateFeatureFlag<K extends keyof FeatureFlags>(
 export function resetFeatureFlags(): void {
   Object.assign(featureFlags, defaultFlags);
   localStorage.removeItem('feature_flags');
-  console.log('[FeatureFlags] Reset to defaults');
 }
 
 /**

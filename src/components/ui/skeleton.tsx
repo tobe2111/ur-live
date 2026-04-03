@@ -111,7 +111,7 @@ export function ProductDetailSkeleton() {
       </div>
 
       {/* Floating Action Bar Skeleton */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-screen-sm bg-background border-t border-border p-4">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-screen-sm bg-background border-t border-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="flex gap-2">
           <Skeleton className="w-12 h-12" variant="rounded" />
           <Skeleton className="flex-1 h-12" variant="rounded" />

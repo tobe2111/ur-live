@@ -55,7 +55,6 @@ export default function SellerLiveControlPage() {
 
     if (wsStreamData.current_product_id !== currentProductId) {
       setCurrentProductId(wsStreamData.current_product_id)
-      console.log(`[WS] Current product updated to ${wsStreamData.current_product_id}`)
     }
   }, [wsStreamData?.current_product_id, selectedStream?.id])
 
