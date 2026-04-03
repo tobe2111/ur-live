@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import * as jwt from '@tsndr/cloudflare-worker-jwt';
-import type { Env } from '../../worker/types/env';
+import { verify } from 'hono/jwt';
+import type { Env } from '../../../worker/types/env';
 
 /**
  * 네이버 광고 스크래퍼 프록시 라우트
@@ -19,7 +19,7 @@ const scraperProxy = new Hono<{ Bindings: Env }>();
 const DEFAULT_SCRAPER_URL = 'http://localhost:3456';
 
 scraperProxy.all('/*', async (c) => {
-  // ── Auth: Bearer 토큰만 허용 (세션 쿠키 fallback 없음) ──────────────────
+  // ── Auth: Bearer 토큰만 허용 (hono/jwt — 서명과 동일 라이브러리) ─────
   const jwtSecret = c.env.JWT_SECRET;
   if (!jwtSecret) {
     return c.json({ error: 'Auth service misconfigured' }, 503);
@@ -32,15 +32,15 @@ scraperProxy.all('/*', async (c) => {
     return c.json({ error: 'Authentication required' }, 401);
   }
 
-  const isValid = await jwt.verify(token, jwtSecret).catch(() => false);
-  if (!isValid) {
+  let payload: Record<string, unknown>;
+  try {
+    payload = await verify(token, jwtSecret) as Record<string, unknown>;
+  } catch {
     return c.json({ error: 'Invalid or expired token' }, 401);
   }
 
-  const decoded = jwt.decode(token);
-  const payload = decoded.payload as Record<string, unknown>;
-  if (payload?.type !== 'admin') {
-    return c.json({ error: 'Admin access required' }, 403);
+  if (payload.type !== 'admin') {
+    return c.json({ error: 'Admin access required', got: payload.type }, 403);
   }
 
   // ── Proxy ──────────────────────────────────────────────────────────────
