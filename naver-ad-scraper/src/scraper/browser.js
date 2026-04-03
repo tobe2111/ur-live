@@ -19,6 +19,8 @@ export class BrowserPool {
       const proxy = this.proxyList[i % this.proxyList.length];
       const browser = await chromium.launch({
         headless: this.headless,
+        // 환경에 이미 설치된 Chromium 우선 사용 (별도 다운로드 불필요)
+        executablePath: process.env.CHROMIUM_PATH || undefined,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
