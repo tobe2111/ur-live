@@ -10,6 +10,15 @@ import AdminLayout from '@/components/AdminLayout'
 // localhost 직접 접근 제거 — Worker가 중간 다리 역할
 const API = '/api/admin/scraper'
 
+function getToken() {
+  return localStorage.getItem('admin_token') || localStorage.getItem('access_token') || ''
+}
+
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = getToken()
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }
+}
+
 interface Session {
   id: number
   name: string
@@ -59,7 +68,7 @@ export default function AdminAdScraperPage() {
   const [emails, setEmails] = useState<EmailRow[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
 
-  const esRef = useRef<EventSource | null>(null)
+  const sseAbortRef = useRef<AbortController | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { checkServer() }, [])
@@ -70,7 +79,11 @@ export default function AdminAdScraperPage() {
 
   async function checkServer() {
     try {
-      const res = await fetch(`${API}/api/status`, { signal: AbortSignal.timeout(5000) })
+      const res = await fetch(`${API}/api/status`, {
+        headers: authHeaders(),
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) { setServerOk(false); return }
       const data = await res.json() as { running: boolean }
       setServerOk(true)
       if (data.running) { setRunning(true); connectSSE() }
@@ -84,34 +97,67 @@ export default function AdminAdScraperPage() {
     setLogs(prev => [...prev.slice(-200), { time, msg, type }])
   }
 
-  function connectSSE() {
-    if (esRef.current) esRef.current.close()
-    const es = new EventSource(`${API}/events`)
-    esRef.current = es
+  function handleSSEEvent(type: string, data: string) {
+    try {
+      const d = data ? JSON.parse(data) : {}
+      if (type === 'connected') {
+        addLog('스크래퍼 서버 연결됨')
+      } else if (type === 'start') {
+        addLog(`수집 시작: ${d.keywords?.join(', ')}`)
+        setRunning(true); setProgress(0)
+      } else if (type === 'progress') {
+        setProgress(d.pct ?? 0)
+        setPhase(d.phase === 'scrape' ? '광고 수집 중' : '이메일 크롤링 중')
+        setCurrentItem(d.item ?? '')
+        if ((d.found ?? 0) > 0) addLog(`${d.item?.split('/').slice(-1)[0]} → ${d.found}개`, 'found')
+      } else if (type === 'done') {
+        addLog(`✓ 완료!  광고주 ${d.stats?.totalAdvertisers}개 | 이메일 ${d.stats?.uniqueEmails}개`, 'done')
+        setRunning(false); setProgress(100)
+        loadSessions()
+        if (d.sessionId) loadEmails(d.sessionId)
+      } else if (type === 'stopped') {
+        addLog('수집 중단됨', 'error'); setRunning(false)
+      } else if (type === 'error') {
+        addLog('오류: ' + (d.message ?? data), 'error')
+      }
+    } catch {}
+  }
 
-    es.addEventListener('connected', () => addLog('스크래퍼 서버 연결됨'))
-    es.addEventListener('start', (e) => {
-      const d = JSON.parse(e.data)
-      addLog(`수집 시작: ${d.keywords?.join(', ')}`)
-      setRunning(true); setProgress(0)
-    })
-    es.addEventListener('progress', (e) => {
-      const d = JSON.parse(e.data)
-      setProgress(d.pct ?? 0)
-      setPhase(d.phase === 'scrape' ? '광고 수집 중' : '이메일 크롤링 중')
-      setCurrentItem(d.item ?? '')
-      if ((d.found ?? 0) > 0) addLog(`${d.item?.split('/').slice(-1)[0]} → ${d.found}개`, 'found')
-    })
-    es.addEventListener('done', (e) => {
-      const d = JSON.parse(e.data)
-      addLog(`✓ 완료!  광고주 ${d.stats?.totalAdvertisers}개 | 이메일 ${d.stats?.uniqueEmails}개`, 'done')
-      setRunning(false); setProgress(100)
-      loadSessions()
-      if (d.sessionId) loadEmails(d.sessionId)
-    })
-    es.addEventListener('stopped', () => { addLog('수집 중단됨', 'error'); setRunning(false) })
-    es.addEventListener('error', (e) => {
-      if ((e as MessageEvent).data) addLog('오류: ' + JSON.parse((e as MessageEvent).data).message, 'error')
+  function connectSSE() {
+    if (sseAbortRef.current) sseAbortRef.current.abort()
+    const controller = new AbortController()
+    sseAbortRef.current = controller
+
+    fetch(`${API}/events`, {
+      headers: authHeaders(),
+      signal: controller.signal,
+    }).then(async (res) => {
+      if (!res.ok || !res.body) { addLog('SSE 연결 실패', 'error'); return }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      let evtType = 'message'
+      let evtData = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            evtType = line.slice(6).trim()
+          } else if (line.startsWith('data:')) {
+            evtData = line.slice(5).trim()
+          } else if (line === '' && evtData) {
+            handleSSEEvent(evtType, evtData)
+            evtType = 'message'; evtData = ''
+          }
+        }
+      }
+    }).catch((err) => {
+      if (err.name !== 'AbortError') addLog('SSE 연결 끊김', 'error')
     })
   }
 
@@ -121,27 +167,27 @@ export default function AdminAdScraperPage() {
     connectSSE()
     const res = await fetch(`${API}/api/scrape`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ keywords, sessionName: sessionName || undefined, concurrency }),
     }).then(r => r.json()) as { error?: string }
     if (res.error) { addLog(res.error, 'error'); setRunning(false) }
   }
 
   async function stopScrape() {
-    await fetch(`${API}/api/stop`, { method: 'POST' })
+    await fetch(`${API}/api/stop`, { method: 'POST', headers: authHeaders() })
   }
 
   async function loadSessions() {
     try {
-      const data = await fetch(`${API}/api/sessions`).then(r => r.json()) as Session[]
-      setSessions(data)
+      const data = await fetch(`${API}/api/sessions`, { headers: authHeaders() }).then(r => r.json())
+      setSessions(Array.isArray(data) ? data : [])
     } catch {}
   }
 
   async function loadEmails(sessionId: number) {
     setSelectedSession(sessionId)
     try {
-      const data = await fetch(`${API}/api/emails?sessionId=${sessionId}`).then(r => r.json()) as {
+      const data = await fetch(`${API}/api/emails?sessionId=${sessionId}`, { headers: authHeaders() }).then(r => r.json()) as {
         emails: EmailRow[]
         stats: Stats
       }
@@ -150,11 +196,21 @@ export default function AdminAdScraperPage() {
     } catch {}
   }
 
-  function exportCsv(type: 'emails' | 'all' = 'emails') {
+  async function exportCsv(type: 'emails' | 'all' = 'emails') {
     const params = new URLSearchParams()
     if (selectedSession) params.set('sessionId', String(selectedSession))
     params.set('type', type)
-    window.open(`${API}/api/export?${params}`, '_blank')
+    try {
+      const res = await fetch(`${API}/api/export?${params}`, { headers: authHeaders() })
+      if (!res.ok) { addLog('CSV 다운로드 실패', 'error'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = type === 'all' ? 'contacts_all.csv' : 'emails.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch { addLog('CSV 다운로드 오류', 'error') }
   }
 
   return (
