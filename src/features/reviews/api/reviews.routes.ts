@@ -14,6 +14,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 const reviewsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -148,6 +149,12 @@ reviewsRoutes.post('/', requireAuth(), async (c) => {
     body.product_id, user.id, body.order_id ?? null,
     body.rating, body.content ?? '', JSON.stringify(body.images ?? [])
   ).run();
+
+  // 리뷰 등록 → 셀러 알림
+  const productInfo = await DB.prepare('SELECT seller_id, name FROM products WHERE id = ?').bind(body.product_id).first<{seller_id: number|null, name: string}>();
+  if (productInfo?.seller_id) {
+    createDashboardNotification(DB, 'seller', String(productInfo.seller_id), 'new_review', '새 리뷰', `${productInfo.name}: ★${body.rating}`, '/seller/products').catch(() => {});
+  }
 
   return c.json({ success: true, message: '리뷰가 등록되었습니다' }, 201);
 });

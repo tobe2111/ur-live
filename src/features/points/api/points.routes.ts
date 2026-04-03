@@ -273,6 +273,9 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
   // 10. 후원 받음 → 셀러 알림
   createDashboardNotification(DB, 'seller', String(stream.seller_id), 'donation_received', '후원 받음', `${amount}딜 후원`, '/seller/donations').catch(() => {});
 
+  // 후원 발생 → 어드민 알림
+  createDashboardNotification(DB, 'admin', null, 'donation_received', '후원 발생', `${amount}딜 후원`, '/admin/settlement').catch(() => {});
+
   return c.json({
     success: true,
     data: {
