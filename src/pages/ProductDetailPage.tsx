@@ -146,6 +146,12 @@ export default function ProductDetailPage() {
   const [wishlistLoading, setWishlistLoading] = useState(false)
 
   useEffect(() => {
+    if (product) {
+      document.title = product.name + ' - 유어딜'
+    }
+  }, [product])
+
+  useEffect(() => {
     const referrer = document.referrer
     if (referrer && !referrer.includes('/login') && !referrer.includes('/auth/kakao')) {
       try {

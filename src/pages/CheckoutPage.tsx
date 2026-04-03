@@ -133,6 +133,8 @@ export default function CheckoutPage() {
 
   const totalAmount = subtotal + totalShippingFee
 
+  useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
+
   // ✅ BUG #18 FIX: There were TWO separate useEffect blocks both cleaning URL
   // params on `searchParams` change.  The first (lines 143-162) fired replaceState
   // but never called setUrlParamsProcessed(true), meaning the data-load effect

@@ -98,6 +98,8 @@ export default function LiveListPage() {
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [loading, setLoading] = useState(true)
 
+  useEffect(() => { document.title = '라이브 - 유어딜' }, [])
+
   useEffect(() => {
     const fetchAll = async () => {
       try {

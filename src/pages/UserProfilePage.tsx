@@ -63,6 +63,8 @@ export default function UserProfilePage() {
   const [isProcessingToken, setIsProcessingToken] = useState(false)
   const hasProcessedToken = useRef(false)
 
+  useEffect(() => { document.title = '마이페이지 - 유어딜' }, [])
+
   // ✅ firebase_token 한 번만 처리
   // 의존성에서 searchParams, user 제거 → 무한 루프 방지
   // searchParams는 마운트 시 읽고, user 변화는 hasProcessedToken으로 제어

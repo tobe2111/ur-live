@@ -158,6 +158,8 @@ function CartPageContent() {
     setModal({ isOpen: false, message: '' })
   }
 
+  useEffect(() => { document.title = '장바구니 - 유어딜' }, [])
+
   useEffect(() => {
     // 🧹 JWT/레거시 토큰 URL 파라미터 자동 정리
     const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName', 'firebase_token']

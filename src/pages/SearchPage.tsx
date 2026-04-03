@@ -38,6 +38,8 @@ export default function SearchPage() {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
 
+  useEffect(() => { document.title = '검색 - 유어딜' }, [])
+
   useEffect(() => {
     if (isError) {
       setError('검색 중 오류가 발생했습니다')
