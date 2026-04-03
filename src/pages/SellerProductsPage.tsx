@@ -38,10 +38,12 @@ interface Product {
 export default function SellerProductsPage() {
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
+  const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [activeTab, setActiveTab] = useState<'my' | 'supply'>('my')
 
   useEffect(() => {
     loadProducts()
@@ -60,12 +62,24 @@ export default function SellerProductsPage() {
         return
       }
 
-      const response = await api.get('/api/seller/products', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        setProducts(response.data.data)
+      const headers = { 'Authorization': `Bearer ${sessionToken}` }
+      const [prodRes, supplyRes] = await Promise.allSettled([
+        api.get('/api/seller/products', { headers }),
+        api.get('/api/supply/products', { headers }),
+      ])
+      if (prodRes.status === 'fulfilled' && prodRes.value.data.success) {
+        setProducts(prodRes.value.data.data || [])
+      }
+      if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
+        const d = supplyRes.value.data.data
+        const items = Array.isArray(d) ? d : d?.items || []
+        setSupplyProducts(items.filter((p: Record<string, unknown>) =>
+          String(p.request_status || '').toUpperCase() === 'APPROVED'
+        ).map((p: Record<string, unknown>) => ({
+          id: p.id, name: p.name, description: p.description || '',
+          price: p.retail_price || p.price, stock: p.stock || 0,
+          image_url: p.image_url || '', is_active: 1, category: p.category || '',
+        } as unknown as Product)))
       }
     } catch (error: any) {
       console.error('Failed to load products:', error)
@@ -182,6 +196,26 @@ export default function SellerProductsPage() {
           </div>
         )}
 
+        {/* 탭: 내 상품 / 공급 상품 */}
+        <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveTab('my')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            내 상품 ({products.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('supply')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'supply' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            공급 상품 ({supplyProducts.length})
+          </button>
+        </div>
+
         {/* Loading */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -190,7 +224,7 @@ export default function SellerProductsPage() {
         ) : (
           /* Products List */
           <div>
-            {products.length === 0 ? (
+            {(activeTab === 'my' ? products : supplyProducts).length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm border text-center py-12 sm:py-20">
                 <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-sm sm:text-base text-gray-600 mb-4">등록된 상품이 없습니다.</p>
@@ -219,7 +253,7 @@ export default function SellerProductsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {products.map((product) => (
+                      {(activeTab === 'my' ? products : supplyProducts).map((product) => (
                         <tr key={product.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
@@ -301,7 +335,7 @@ export default function SellerProductsPage() {
 
                 {/* Mobile Card View - Shown on mobile/tablet */}
                 <div className="lg:hidden space-y-3 sm:space-y-4">
-                  {products.map((product) => (
+                  {(activeTab === 'my' ? products : supplyProducts).map((product) => (
                     <div key={product.id} className="bg-white rounded-lg shadow-sm border p-3 sm:p-4">
                       <div className="flex gap-3 sm:gap-4">
                         {/* Product Image */}
