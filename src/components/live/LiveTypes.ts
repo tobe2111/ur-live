@@ -55,6 +55,7 @@ export interface Stream {
   products?: Product[]
   seller_youtube?: string
   seller_instagram?: string
+  seller_tiktok?: string
   seller_kakao?: string
   current_product_id?: number | null
   seller_id?: number
@@ -73,6 +74,7 @@ export interface Product {
   rating: number
   sold: number
   stock?: number // 🔥 Firebase 실시간 재고
+  seller_id?: number
   colors?: { name: string; hex: string }[]
   sizes?: string[]
 }

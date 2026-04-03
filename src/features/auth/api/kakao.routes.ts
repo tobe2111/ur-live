@@ -75,8 +75,8 @@ kakaoRoutes.get('/sync/callback', async (c) => {
         const sessionCookie = await createSessionCookie(
           user.id,
           user.name,
-          user.email,
-          user.profile_image,
+          user.email || '',
+          user.profile_image || undefined,
           c.env.JWT_SECRET,
         );
         c.header('Set-Cookie', sessionCookie);
@@ -161,8 +161,8 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
       sessionCookieHeader = await createSessionCookie(
         user.id,
         user.name,
-        user.email,
-        user.profile_image,
+        user.email || '',
+        user.profile_image || undefined,
         c.env.JWT_SECRET,
       );
     } catch (e) {

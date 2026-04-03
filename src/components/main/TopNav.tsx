@@ -61,7 +61,7 @@ export default function TopNav() {
                 {localStorage.getItem('user_profile_image') ? (
                   <img src={localStorage.getItem('user_profile_image')!} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-[9px] font-bold text-white">{user?.name?.charAt(0) || 'U'}</span>
+                  <span className="text-[9px] font-bold text-white">{(user as any)?.name?.charAt(0) || 'U'}</span>
                 )}
               </div>
             ) : (

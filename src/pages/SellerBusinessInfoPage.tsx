@@ -35,7 +35,7 @@ interface BusinessInfo {
 // Daum Postcode 타입 정의
 declare global {
   interface Window {
-    daum: any
+    daum: { Postcode: new (options: Record<string, unknown>) => { embed: (el: HTMLElement | null) => void; open: () => void } }
   }
 }
 

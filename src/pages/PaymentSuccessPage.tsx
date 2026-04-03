@@ -92,7 +92,7 @@ export default function PaymentSuccessPage() {
       // 🎯 데모 모드 감지: userId가 없으면 데모 결제로 간주
       if (!userId) {
         setOrderInfo({
-          orderId: orderId,
+          orderId: orderId ?? undefined,
           method: '테스트',
           status: 'demo'
         })
