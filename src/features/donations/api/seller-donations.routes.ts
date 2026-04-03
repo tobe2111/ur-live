@@ -38,11 +38,11 @@ sellerDonationsRoutes.get('/donations/summary', async (c) => {
   const { DB } = c.env;
   try {
     const [total, settled, available] = await Promise.all([
-      // 전체 후원 수령액
+      // 전체 후원 수령액 (handle both schema versions: seller_amount or credit_amount, status or payment_status)
       DB.prepare(
-        `SELECT COALESCE(SUM(seller_amount), 0) AS total FROM donations
-         WHERE seller_id = ? AND status = 'DONE'`
-      ).bind(sellerId).first<{ total: number }>(),
+        `SELECT COALESCE(SUM(COALESCE(seller_amount, credit_amount, 0)), 0) AS total FROM donations
+         WHERE seller_id = ? AND (status = 'DONE' OR payment_status = 'completed')`
+      ).bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 })),
       // 정산 완료 금액
       DB.prepare(
         `SELECT COALESCE(SUM(settlement_amount), 0) AS total FROM donation_settlements
@@ -50,10 +50,10 @@ sellerDonationsRoutes.get('/donations/summary', async (c) => {
       ).bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 })),
       // 정산 가능 금액 (10일 경과 + 아직 정산 신청 안 한 것)
       DB.prepare(`
-        SELECT COALESCE(SUM(d.seller_amount), 0) AS total
+        SELECT COALESCE(SUM(COALESCE(d.seller_amount, d.credit_amount, 0)), 0) AS total
         FROM donations d
         WHERE d.seller_id = ?
-          AND d.status = 'DONE'
+          AND (d.status = 'DONE' OR d.payment_status = 'completed')
           AND DATE(d.created_at) <= DATE('now', '-10 days')
           AND d.id NOT IN (
             SELECT value FROM json_each(
@@ -92,17 +92,19 @@ sellerDonationsRoutes.get('/donations', async (c) => {
   try {
     const [rows, countRow] = await Promise.all([
       DB.prepare(`
-        SELECT d.id, d.stream_id, ls.title AS stream_title,
-               d.donor_name, d.amount, d.seller_amount, d.commission_amount, d.commission_rate,
-               d.message, d.is_anonymous, d.status, d.created_at,
+        SELECT d.id, COALESCE(d.stream_id, d.live_stream_id) AS stream_id, ls.title AS stream_title,
+               d.donor_name, d.amount, COALESCE(d.seller_amount, d.credit_amount, 0) AS seller_amount,
+               COALESCE(d.commission_amount, 0) AS commission_amount, COALESCE(d.commission_rate, 0) AS commission_rate,
+               d.message, COALESCE(d.is_anonymous, 0) AS is_anonymous,
+               COALESCE(d.status, d.payment_status) AS status, d.created_at,
                CASE WHEN DATE(d.created_at) <= DATE('now', '-10 days') THEN 1 ELSE 0 END AS can_settle
         FROM donations d
-        LEFT JOIN live_streams ls ON d.stream_id = ls.id
-        WHERE d.seller_id = ? AND d.status = 'DONE'
+        LEFT JOIN live_streams ls ON COALESCE(d.stream_id, d.live_stream_id) = ls.id
+        WHERE d.seller_id = ? AND (d.status = 'DONE' OR d.payment_status = 'completed')
         ORDER BY d.created_at DESC LIMIT ? OFFSET ?
       `).bind(sellerId, limit, offset).all(),
       DB.prepare(
-        `SELECT COUNT(*) AS total FROM donations WHERE seller_id = ? AND status = 'DONE'`
+        `SELECT COUNT(*) AS total FROM donations WHERE seller_id = ? AND (status = 'DONE' OR payment_status = 'completed')`
       ).bind(sellerId).first<{ total: number }>(),
     ]);
 
@@ -129,10 +131,11 @@ sellerDonationsRoutes.post('/donations/settlements', async (c) => {
   try {
     // 정산 가능한 후원 조회 (10일 경과, 아직 정산 신청 안 된 것)
     const { results: eligible } = await DB.prepare(`
-      SELECT d.id, d.seller_amount, d.commission_amount, d.amount
+      SELECT d.id, COALESCE(d.seller_amount, d.credit_amount, 0) AS seller_amount,
+             COALESCE(d.commission_amount, 0) AS commission_amount, d.amount
       FROM donations d
       WHERE d.seller_id = ?
-        AND d.status = 'DONE'
+        AND (d.status = 'DONE' OR d.payment_status = 'completed')
         AND DATE(d.created_at) <= DATE('now', '-10 days')
     `).bind(sellerId).all<{ id: number; seller_amount: number; commission_amount: number; amount: number }>();
 

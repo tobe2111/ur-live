@@ -107,7 +107,7 @@ function StartTab({ token }: { token: string | null }) {
   const [products, setProducts] = useState<Product[]>([])
   const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
   const [productTab, setProductTab] = useState<'my' | 'supply'>('my')
-  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set())
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
   const [productsLoading, setProductsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -192,8 +192,21 @@ function StartTab({ token }: { token: string | null }) {
 
   function toggleProduct(id: number) {
     setSelectedProductIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (prev.includes(id)) {
+        return prev.filter(pid => pid !== id)
+      }
+      return [...prev, id]
+    })
+  }
+
+  function moveProduct(id: number, direction: 'up' | 'down') {
+    setSelectedProductIds(prev => {
+      const idx = prev.indexOf(id)
+      if (idx === -1) return prev
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[swapIdx]] = [next[swapIdx], next[idx]]
       return next
     })
   }
@@ -224,9 +237,9 @@ function StartTab({ token }: { token: string | null }) {
         const responseRtmpUrl = response.data.data?.rtmp_url || response.data.data?.rtmpUrl || 'rtmp://a.rtmp.youtube.com/live2'
         const youtubeVideoId = response.data.data?.youtube_video_id || response.data.data?.youtubeVideoId || ''
         // Link selected products
-        if (streamId && selectedProductIds.size > 0) {
+        if (streamId && selectedProductIds.length > 0) {
           await Promise.allSettled(
-            Array.from(selectedProductIds).map(pid =>
+            selectedProductIds.map(pid =>
               api.post(`/api/seller/products/${pid}/link-to-stream`,
                 { stream_id: streamId },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -246,7 +259,7 @@ function StartTab({ token }: { token: string | null }) {
         })
 
         setFormData({ title: '', description: '', youtubeUrl: '', scheduledAt: '', sellerInstagram: '', sellerYoutube: '' })
-        setSelectedProductIds(new Set())
+        setSelectedProductIds([])
       } else {
         setError(response.data.error || '생성 실패')
       }
@@ -538,8 +551,8 @@ function StartTab({ token }: { token: string | null }) {
       <div className="bg-white rounded-xl shadow-sm p-5">
         <label className="block text-sm font-semibold text-gray-800 mb-3">
           판매 상품 선택
-          {selectedProductIds.size > 0 && (
-            <span className="ml-2 text-blue-600 font-normal">{selectedProductIds.size}개 선택됨</span>
+          {selectedProductIds.length > 0 && (
+            <span className="ml-2 text-blue-600 font-normal">{selectedProductIds.length}개 선택됨</span>
           )}
         </label>
 
@@ -592,14 +605,14 @@ function StartTab({ token }: { token: string | null }) {
               <label
                 key={p.id}
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border transition-colors ${
-                  selectedProductIds.has(p.id)
+                  selectedProductIds.includes(p.id)
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 <input
                   type="checkbox"
-                  checked={selectedProductIds.has(p.id)}
+                  checked={selectedProductIds.includes(p.id)}
                   onChange={() => toggleProduct(p.id)}
                   className="rounded border-gray-300 text-blue-600"
                 />
@@ -614,6 +627,28 @@ function StartTab({ token }: { token: string | null }) {
                   <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
                   <p className="text-xs text-gray-400">{p.price.toLocaleString()}원</p>
                 </div>
+                {selectedProductIds.includes(p.id) && (
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveProduct(p.id, 'up'); }}
+                      disabled={selectedProductIds.indexOf(p.id) === 0}
+                      className="p-0.5 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="위로 이동"
+                    >
+                      <ChevronUp className="w-4 h-4 text-blue-600" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveProduct(p.id, 'down'); }}
+                      disabled={selectedProductIds.indexOf(p.id) === selectedProductIds.length - 1}
+                      className="p-0.5 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="아래로 이동"
+                    >
+                      <ChevronDown className="w-4 h-4 text-blue-600" />
+                    </button>
+                  </div>
+                )}
               </label>
             ))}
           </div>

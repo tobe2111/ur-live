@@ -5,6 +5,7 @@ import {
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
+import DashboardNotificationBell from './DashboardNotificationBell'
 
 const NAV_ITEMS = [
   { path: '/admin',               label: '대시보드',    icon: LayoutDashboard, exact: true },
@@ -122,7 +123,10 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             </button>
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
-          {headerRight && <div className="flex items-center gap-2">{headerRight}</div>}
+          <div className="flex items-center gap-2">
+            <DashboardNotificationBell tokenKey="admin_token" />
+            {headerRight}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 space-y-5">

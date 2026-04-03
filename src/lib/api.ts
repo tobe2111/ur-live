@@ -152,15 +152,12 @@ api.interceptors.request.use(
     // ── Session Cookie User API (preferred for user login) ──────────────
     // If user is logged in via session cookie (ur_session), the cookie is
     // sent automatically (withCredentials: true). No Bearer token needed.
-    // The server-side requireAuth() checks the cookie first.
+    // The server-side requireAuth() checks Bearer token first, then cookie.
+    // Session cookie users (카카오 로그인) don't need Bearer token — cookie handles it.
     const userType = localStorage.getItem('user_type');
-    if (userType === 'user') {
-      // Check if we have session-based auth (set during Kakao callback with session_ready)
-      const hasSessionAuth = localStorage.getItem('user_id') && !_firebaseTokenCache;
-      if (hasSessionAuth) {
-        // Let the cookie handle auth — no Bearer token required
-        return config;
-      }
+    if (userType === 'user' && localStorage.getItem('user_id')) {
+      // 세션 쿠키 유저 → 토큰 탐색 건너뛰기 (즉시 요청)
+      return config;
     }
 
     // ── Firebase User API (legacy fallback) ──────────────────────────────
