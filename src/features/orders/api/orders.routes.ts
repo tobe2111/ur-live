@@ -79,8 +79,12 @@ async function fetchDeliveryTracker(
 /**
  * Helper: map Firebase UID → DB integer user id
  */
-async function getUserDbIdFromFirebaseUid(db: D1Database, firebaseUid: string): Promise<number | null> {
-  const row = await db.prepare('SELECT id FROM users WHERE firebase_uid = ?').bind(firebaseUid).first<{ id: number }>();
+async function getUserDbIdFromFirebaseUid(db: D1Database, idOrUid: string): Promise<number | null> {
+  // 숫자 ID면 바로 사용 (세션 쿠키 유저)
+  const numId = parseInt(idOrUid);
+  if (!isNaN(numId) && String(numId) === idOrUid) return numId;
+  // Firebase UID로 조회
+  const row = await db.prepare('SELECT id FROM users WHERE firebase_uid = ?').bind(idOrUid).first<{ id: number }>();
   return row?.id ?? null;
 }
 
