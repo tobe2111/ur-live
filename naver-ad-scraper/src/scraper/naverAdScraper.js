@@ -62,6 +62,9 @@ export class NaverAdScraper {
     await page.waitForTimeout(2000);
     await this._humanScroll(page);
 
+    // ★ "더보기" 버튼 클릭 → 숨겨진 파워링크 광고 추가 로드
+    await this._clickMoreButtons(page);
+
     // ── 핵심: Playwright evaluate()로 실제 DOM에서 광고 추출 ──────
     const rawAds = await page.evaluate(() => {
       const ads = [];
@@ -193,6 +196,55 @@ export class NaverAdScraper {
 
   _extractDomain(url) {
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
+  }
+
+  /**
+   * 파워링크 "더보기" 버튼 클릭
+   *
+   * 네이버 파워링크는 기본적으로 3~5개만 표시하고
+   * "더보기" 버튼 클릭 시 추가 광고를 XHR로 불러옴
+   * Playwright로 실제 클릭 → 동적 로드된 광고까지 수집
+   */
+  async _clickMoreButtons(page) {
+    // "더보기" 버튼 셀렉터 후보 (네이버 DOM 변경에 대비해 여러 개)
+    const moreButtonSelectors = [
+      // 텍스트 기반 (가장 안정적)
+      'button:has-text("더보기")',
+      'a:has-text("더보기")',
+      // 클래스 기반
+      '[class*="more_btn"]',
+      '[class*="btn_more"]',
+      '[class*="more-btn"]',
+      // 파워링크 특화
+      '#powerlink_top_area [class*="more"]',
+      '#powerlink_bottom_area [class*="more"]',
+    ];
+
+    let clicked = false;
+    for (const selector of moreButtonSelectors) {
+      try {
+        const buttons = await page.$$(selector);
+        for (const btn of buttons) {
+          const isVisible = await btn.isVisible();
+          if (!isVisible) continue;
+
+          await btn.scrollIntoViewIfNeeded();
+          await sleep(randomDelay(500, 1000));
+          await btn.click();
+          await page.waitForTimeout(1500);  // XHR 로드 대기
+          clicked = true;
+          log('debug', `"더보기" 클릭 성공: ${selector}`);
+        }
+      } catch {
+        // 해당 셀렉터 없으면 다음 시도
+      }
+    }
+
+    // 더보기 클릭 후 추가 스크롤로 lazy load 트리거
+    if (clicked) {
+      await this._humanScroll(page);
+      await page.waitForTimeout(1000);
+    }
   }
 
   async _humanScroll(page) {
