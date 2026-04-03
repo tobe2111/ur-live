@@ -90,6 +90,7 @@ export interface Product {
   compare_at_price?: number;
   currency: string;
   stock_quantity: number;
+  stock?: number; // legacy alias for stock_quantity
   sku?: string;
   thumbnail_url?: string;
   images: string[];

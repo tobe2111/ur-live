@@ -133,6 +133,7 @@ interface SettlementRecordRow {
 interface IdRow {
   id: number;
   status?: string;
+  commission_rate?: number;
 }
 
 export const adminManagementRoutes = new Hono<{ Bindings: Env }>();
@@ -1203,7 +1204,7 @@ adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
 adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({}));
+    const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({} as { period_start?: string; period_end?: string }));
     const { calculateAutoSettlement, executeSettlement } = await import('@/lib/settlement-automation');
 
     // Preview mode: if dry_run query param is set, only calculate without executing

@@ -23,7 +23,7 @@ const StripeCheckout = lazy(() =>
 
 declare global {
   interface Window {
-    daum: { Postcode: new (options: Record<string, unknown>) => void }
+    daum: { Postcode: new (options: Record<string, unknown>) => { embed: (el: HTMLElement | null) => void; open: () => void } }
   }
 }
 

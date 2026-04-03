@@ -13,8 +13,8 @@ export default function SideBanner() {
 
   useEffect(() => {
     fetch('/api/side-banners')
-      .then((res) => res.json())
-      .then((data: { success: boolean; data: SideBannerItem[] }) => {
+      .then((res) => res.json() as Promise<{ success: boolean; data: SideBannerItem[] }>)
+      .then((data) => {
         if (data.success && Array.isArray(data.data)) {
           setBanners(data.data)
         }

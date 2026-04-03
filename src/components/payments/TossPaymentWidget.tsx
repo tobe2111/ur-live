@@ -111,6 +111,7 @@ export function TossPaymentWidget({
     }
 
     async function renderWidgets() {
+      if (!widgets) return
       try {
         const finalAmount = totalAmount + shippingFee
 

@@ -487,7 +487,7 @@ export default function AdminOrdersPage() {
                   <form onSubmit={e => {
                     e.preventDefault()
                     const form = e.target as HTMLFormElement
-                    const company = (form.elements.namedItem('courier') as HTMLSelectElement).value
+                    const company = (form.elements.namedItem('courier') as unknown as HTMLSelectElement).value
                     const number = (form.elements.namedItem('tracking') as HTMLInputElement).value
                     if (company && number) updateTracking(selectedOrder.order_number, number, company)
                   }} className="flex gap-2">
