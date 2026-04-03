@@ -75,9 +75,15 @@ shippingAddressRoutes.use('*', cors({
 /**
  * 사용자 DB ID 가져오기 (Helper)
  */
-async function getUserDbId(db: D1Database, firebaseUid: string): Promise<number | null> {
+async function getUserDbId(db: D1Database, idOrUid: string): Promise<number | null> {
+  // 1. 숫자 ID면 바로 사용 (세션 쿠키 유저)
+  const numId = parseInt(idOrUid);
+  if (!isNaN(numId) && String(numId) === idOrUid) {
+    return numId;
+  }
+  // 2. Firebase UID로 조회
   const dbHelper = createDbHelper(db);
-  const user = await dbHelper.findOne<{ id: number }>('users', { firebase_uid: firebaseUid });
+  const user = await dbHelper.findOne<{ id: number }>('users', { firebase_uid: idOrUid });
   return user?.id || null;
 }
 
