@@ -151,7 +151,7 @@ sectionsRoutes.put('/:id', requireAuth(), async (c) => {
   if (layout !== undefined) { updates.push('layout = ?'); params.push(layout); }
   if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
 
-  params.push(sectionId);
+  params.push(sectionId!);
   await DB.prepare(`UPDATE homepage_sections SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
   return c.json({ success: true, message: '섹션이 수정되었습니다' });

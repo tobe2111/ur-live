@@ -38,6 +38,7 @@ export interface ProductCreateInput {
   description?: string;
   price: number;
   stock_quantity: number;
+  stock?: number; // legacy alias
   category?: string;
   images?: string[];
 }
@@ -47,6 +48,7 @@ export interface ProductUpdateInput {
   description?: string;
   price?: number;
   stock_quantity?: number;
+  stock?: number; // legacy alias
   category?: string;
   images?: string[];
   status?: 'active' | 'inactive';

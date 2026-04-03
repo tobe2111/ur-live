@@ -182,7 +182,7 @@ reviewsRoutes.put('/:id', requireAuth(), async (c) => {
   if (body.content !== undefined) { updates.push('content = ?'); params.push(body.content); }
   if (body.images) { updates.push('images = ?'); params.push(JSON.stringify(body.images)); }
 
-  params.push(reviewId);
+  params.push(reviewId!);
   await DB.prepare(`UPDATE product_reviews SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
   return c.json({ success: true, message: '리뷰가 수정되었습니다' });

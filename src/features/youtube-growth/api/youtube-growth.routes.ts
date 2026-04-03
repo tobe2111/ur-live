@@ -126,7 +126,7 @@ youtubeGrowthRoutes.put('/:id', requireAuth(), async (c) => {
   if (admin_memo !== undefined) { updates.push('admin_memo = ?'); params.push(admin_memo); }
   if (status === 'completed') updates.push("completed_at = datetime('now')");
 
-  params.push(id);
+  params.push(id!);
   await DB.prepare(`UPDATE youtube_growth_requests SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
   // Notify the seller about status change

@@ -427,7 +427,7 @@ export async function calculateAutoSettlement(
     ORDER BY total_sales DESC
   `).bind(...params).all()
 
-  return (rows.results as SellerSettlementCalc[]) || []
+  return (rows.results as unknown as SellerSettlementCalc[]) || []
 }
 
 /**
