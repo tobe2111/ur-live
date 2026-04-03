@@ -14,12 +14,17 @@ import { captureError, captureMessage } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 
 // 🔥 Region-based lazy loading for payment components
-const TossPaymentWidget = lazy(() => 
+const TossPaymentWidget = lazy(() =>
   import('@/components/payments/TossPaymentWidget').then(m => ({ default: m.TossPaymentWidget }))
 )
-const StripeCheckout = lazy(() => 
+const StripeCheckout = lazy(() =>
   import('@/components/payments/StripeCheckout').then(m => ({ default: m.StripeCheckout }))
 )
+
+// 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
+if (typeof window !== 'undefined') {
+  import('@tosspayments/tosspayments-sdk').catch(() => {})
+}
 
 declare global {
   interface Window {
@@ -127,6 +132,8 @@ export default function CheckoutPage() {
   }, 0)
 
   const totalAmount = subtotal + totalShippingFee
+
+  useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
 
   // ✅ BUG #18 FIX: There were TWO separate useEffect blocks both cleaning URL
   // params on `searchParams` change.  The first (lines 143-162) fired replaceState
@@ -422,12 +429,15 @@ export default function CheckoutPage() {
             <AlertCircle className="w-5 h-5 text-red-600" />
             <p className="text-red-800">{error}</p>
           </div>
-          <Button 
-            onClick={() => navigate('/cart')} 
-            className="mt-4"
-          >
-            장바구니로 돌아가기
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+            <Button
+              onClick={() => navigate('/cart')}
+              variant="outline"
+            >
+              장바구니로 돌아가기
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -853,6 +863,7 @@ export default function CheckoutPage() {
             <div className="flex gap-2">
               <input
                 type="text"
+                inputMode="numeric"
                 value={newAddress.postal_code}
                 readOnly
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"

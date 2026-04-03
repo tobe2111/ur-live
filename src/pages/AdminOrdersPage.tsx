@@ -261,7 +261,10 @@ export default function AdminOrdersPage() {
       }
     >
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          {error}
+          <button onClick={() => window.location.reload()} className="mt-3 block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+        </div>
       )}
 
       {/* 통계 카드 */}

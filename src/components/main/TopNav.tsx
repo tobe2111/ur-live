@@ -33,10 +33,10 @@ export default function TopNav() {
 
         {/* Right actions */}
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/search')} className="p-1">
+          <button onClick={() => navigate('/search')} className="p-1" aria-label="검색">
             <Search className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
           </button>
-          <button onClick={() => navigate('/cart')} className="p-1 relative">
+          <button onClick={() => navigate('/cart')} className="p-1 relative" aria-label="장바구니">
             <ShoppingCart className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
             {(() => {
               const cartData = localStorage.getItem('cart')
@@ -55,6 +55,7 @@ export default function TopNav() {
           <button
             onClick={() => navigate(isLoggedIn ? '/user/profile' : '/login')}
             className="p-1"
+            aria-label={isLoggedIn ? '마이페이지' : '로그인'}
           >
             {isLoggedIn ? (
               <div className="h-7 w-7 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">

@@ -166,7 +166,7 @@ export default function SellerProductsPage() {
               className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
             >
               <Download className="w-4 h-4" />
-              <span>양식 다운로드</span>
+              <span>대량등록 양식 다운로드</span>
             </Button>
             <Button
               onClick={() => setShowBulkUpload(true)}
@@ -193,6 +193,7 @@ export default function SellerProductsPage() {
               <Trash2 className="w-5 h-5" />
               <p>{error}</p>
             </div>
+            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
           </div>
         )}
 

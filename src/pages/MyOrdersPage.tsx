@@ -59,6 +59,8 @@ export default function MyOrdersPage() {
   // both read `activeTab` from the closure at the same point in time.
   const isLoadingRef = useRef(false)
 
+  useEffect(() => { document.title = '주문내역 - 유어딜' }, [])
+
   useEffect(() => {
     // Redirect to login if not logged in (통합 인증 체크)
     if (!isLoggedInSync() || !userId) {

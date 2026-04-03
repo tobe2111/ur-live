@@ -328,6 +328,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
       LEFT JOIN orders o ON oi.order_id = o.id
       WHERE p.seller_id = ?
         AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
+        AND COALESCE(p.is_supply_product, 0) = 0
     `;
     const params: unknown[] = [sellerId];
 

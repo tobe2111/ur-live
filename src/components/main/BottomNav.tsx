@@ -30,6 +30,7 @@ export default function BottomNav() {
                   key={label}
                   onClick={() => navigate(path)}
                   className="flex-1 flex flex-col items-center justify-center h-full"
+                  aria-label={label}
                 >
                   <Icon
                     size={20}
