@@ -25,6 +25,7 @@ import type { Env } from '@/worker/types/env';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 interface SellerRow {
   id: number;
