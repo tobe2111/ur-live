@@ -94,7 +94,10 @@ cartRoutes.get('/', requireAuth(), async (c) => {
 
     const db = c.env.DB;
     const userId = await getUserDbId(db, String(user.id));
-    if (!userId) return c.json(notFoundResponse('User'), 404);
+    if (!userId) {
+      // New user with no DB record yet — return empty cart instead of 404
+      return c.json(successResponse({ items: [], summary: { total_items: 0, total_amount: 0 } }));
+    }
 
     const rows = await db
       .prepare(

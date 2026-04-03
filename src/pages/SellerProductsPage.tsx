@@ -100,7 +100,7 @@ export default function SellerProductsPage() {
 
       const response = await api.put(
         `/api/seller/products/${productId}`,
-        { is_active: !currentStatus },
+        { is_active: !currentStatus, status: !currentStatus ? 'ACTIVE' : 'PAUSED' },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
