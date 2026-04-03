@@ -29,6 +29,7 @@ import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
 import { adminManagementRoutes, adminBannersRoutes } from '../features/admin/api/index';
+import { scraperProxy } from '../features/admin/api/scraper-proxy.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
@@ -391,6 +392,7 @@ app.route('/api/banners', bannerRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);
+adminApp.route('/scraper', scraperProxy);
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);
