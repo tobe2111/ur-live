@@ -14,12 +14,17 @@ import { captureError, captureMessage } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 
 // 🔥 Region-based lazy loading for payment components
-const TossPaymentWidget = lazy(() => 
+const TossPaymentWidget = lazy(() =>
   import('@/components/payments/TossPaymentWidget').then(m => ({ default: m.TossPaymentWidget }))
 )
-const StripeCheckout = lazy(() => 
+const StripeCheckout = lazy(() =>
   import('@/components/payments/StripeCheckout').then(m => ({ default: m.StripeCheckout }))
 )
+
+// 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
+if (typeof window !== 'undefined') {
+  import('@tosspayments/tosspayments-sdk').catch(() => {})
+}
 
 declare global {
   interface Window {

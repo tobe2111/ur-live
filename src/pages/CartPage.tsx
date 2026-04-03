@@ -372,6 +372,8 @@ function CartPageContent() {
       return
     }
 
+    // 토스 SDK 프리로드 (체크아웃 진입 전)
+    import('@tosspayments/tosspayments-sdk').catch(() => {})
     const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
     navigate('/checkout', { 
       state: { 
