@@ -16,6 +16,7 @@ import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
+import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -237,6 +238,14 @@ ordersRouter.post('/', async (c) => {
       sellerId: order.seller_id,
       total: order.total_amount,
     });
+
+    // Dashboard notification: notify admin about new order
+    createDashboardNotification(
+      c.env.DB, 'admin', null, 'new_order',
+      '새 주문',
+      `주문번호: ${order.order_number}`,
+      '/admin/orders'
+    ).catch(() => {});
 
     // 자동 알림톡 발송 (주문 확인) - 비동기로 처리, 실패해도 주문 생성에 영향 없음
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {

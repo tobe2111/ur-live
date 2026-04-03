@@ -5,6 +5,7 @@ import {
   Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
+import DashboardNotificationBell from './DashboardNotificationBell'
 
 const NAV_ITEMS = [
   { path: '/seller/live',          label: '라이브 방송',   icon: Radio, highlight: true },
@@ -132,7 +133,10 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             </button>
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
-          {headerRight && <div className="flex items-center gap-2">{headerRight}</div>}
+          <div className="flex items-center gap-2">
+            <DashboardNotificationBell tokenKey="seller_token" />
+            {headerRight}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 space-y-5">

@@ -431,6 +431,10 @@ app.route('/api/sections', sectionsRoutes);
 import { youtubeGrowthRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
 app.route('/api/youtube-growth', youtubeGrowthRoutes);
 
+// ── 대시보드 알림 ──
+import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
+app.route('/api/dashboard-notifications', dashboardNotificationsRoutes);
+
 // ── 상품 대량등록 ──
 import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
 app.route('/api/bulk-upload', bulkUploadRoutes);

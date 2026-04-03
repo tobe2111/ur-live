@@ -12,6 +12,7 @@ import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 const youtubeGrowthRoutes = new Hono<{ Bindings: Env }>();
 youtubeGrowthRoutes.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }));
@@ -61,6 +62,14 @@ youtubeGrowthRoutes.post('/request', requireAuth(), async (c) => {
 
   await DB.prepare(`INSERT INTO youtube_growth_requests (seller_id, channel_url, current_subscribers, target_subscribers)
     VALUES (?, ?, ?, ?)`).bind(seller.id, channel_url, current_subscribers || 0, target_subscribers || 1000).run();
+
+  // Notify admins
+  createDashboardNotification(
+    DB, 'admin', null, 'youtube_growth_request',
+    'YouTube 구독자 늘리기 신청',
+    `셀러 #${seller.id} - ${channel_url}`,
+    '/admin/youtube-growth'
+  ).catch(() => {});
 
   return c.json({ success: true, message: '구독자 늘리기 신청이 완료되었습니다. 관리자 확인 후 처리됩니다.' }, 201);
 });
@@ -119,6 +128,18 @@ youtubeGrowthRoutes.put('/:id', requireAuth(), async (c) => {
 
   params.push(id);
   await DB.prepare(`UPDATE youtube_growth_requests SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+  // Notify the seller about status change
+  const request = await DB.prepare('SELECT seller_id FROM youtube_growth_requests WHERE id = ?').bind(id).first<{ seller_id: number }>();
+  if (request) {
+    const statusLabels: Record<string, string> = { processing: '처리 중', completed: '완료', rejected: '거절' };
+    createDashboardNotification(
+      DB, 'seller', String(request.seller_id), 'youtube_growth_update',
+      'YouTube 구독자 늘리기 상태 변경',
+      `상태: ${statusLabels[status] || status}`,
+      '/seller/youtube-growth'
+    ).catch(() => {});
+  }
 
   return c.json({ success: true, message: '상태가 변경되었습니다' });
 });
