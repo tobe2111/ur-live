@@ -252,7 +252,7 @@ export class AdDatabase {
         e.id, e.email, e.domain, e.company_name, e.phone, e.instagram,
         e.biz_reg_no, e.keyword, e.advertiser_url, e.crawled_at,
         a.title as ad_title, a.description as ad_description, a.ad_type,
-        cr.phones, cr.kakao_channel, cr.naver_talk, cr.representative, cr.address,
+        cr.phones, cr.kakao_channel, cr.naver_talk,
         cr.status as crawl_status
       FROM emails e
       LEFT JOIN advertisers a ON a.session_id = e.session_id AND a.advertiser_url = e.advertiser_url
@@ -281,7 +281,7 @@ export class AdDatabase {
       SELECT
         cr.domain, cr.company_name, cr.emails, cr.phones,
         cr.kakao_channel, cr.naver_talk, cr.instagram, cr.biz_reg_no,
-        cr.representative, cr.address, cr.status, cr.crawled_at,
+        cr.status, cr.crawled_at,
         a.keyword, a.title as ad_title, a.advertiser_url,
         a.description as ad_description
       FROM crawl_results cr
