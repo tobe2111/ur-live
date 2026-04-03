@@ -4,7 +4,11 @@ import { AdDatabase } from '../storage/database.js';
 import { log } from '../utils/helpers.js';
 
 /**
- * 수집 결과 CSV/JSON 내보내기
+ * 수집 결과 내보내기
+ *
+ * 두 가지 시트/파일:
+ *  1. 이메일 목록 (이메일 있는 것만, 한 행 = 이메일 1개)
+ *  2. 전체 광고주 (이메일 없어도 전화/카카오 있으면 포함)
  */
 export class Exporter {
   constructor(dbPath) {
@@ -12,48 +16,108 @@ export class Exporter {
   }
 
   /**
-   * 세션 이메일 결과를 CSV로 내보내기
-   * @param {number|null} sessionId - null이면 전체
-   * @param {string} outputPath - 출력 파일 경로
-   * @param {string} format - 'csv' | 'json'
+   * @param {number|null} sessionId
+   * @param {string} outputPath
+   * @param {'csv'|'json'|'all'} format
+   *   'all' → 이메일CSV + 전체연락처CSV 두 파일 생성
    */
   export(sessionId, outputPath, format = 'csv') {
+    if (format === 'all') {
+      this._exportEmailsCsv(sessionId, outputPath.replace('.csv', '_이메일.csv'));
+      this._exportAllContactsCsv(sessionId, outputPath.replace('.csv', '_전체연락처.csv'));
+    } else if (format === 'json') {
+      this._exportJson(sessionId, outputPath);
+    } else {
+      this._exportEmailsCsv(sessionId, outputPath);
+    }
+  }
+
+  /** 이메일 있는 행만 CSV */
+  _exportEmailsCsv(sessionId, path) {
     const rows = sessionId
       ? this.db.getEmailsBySession(sessionId)
       : this.db.getAllEmails();
 
     if (rows.length === 0) {
-      log('warn', '내보낼 데이터가 없습니다.');
+      log('warn', '이메일 데이터 없음');
       return;
     }
 
-    if (format === 'csv') {
-      this._exportCsv(rows, outputPath);
-    } else {
-      this._exportJson(rows, outputPath);
+    const data = rows.map(r => {
+      let phones = r.phone || '';
+      try { const arr = JSON.parse(r.phones || '[]'); if (arr.length) phones = arr.join(' / '); } catch {}
+
+      return {
+        '이메일':          r.email,
+        '회사명':          r.company_name || '',
+        '대표자':          r.representative || '',
+        '전화번호':        phones,
+        '카카오채널':      r.kakao_channel || '',
+        '네이버톡톡':      r.naver_talk || '',
+        '인스타그램':      r.instagram || '',
+        '사업자번호':      r.biz_reg_no || '',
+        '주소':            r.address || '',
+        '도메인':          r.domain || '',
+        '광고 키워드':     r.keyword || '',
+        '광고 제목':       r.ad_title || '',
+        '광고주 URL':      r.advertiser_url || '',
+        '수집일시':        r.crawled_at || '',
+      };
+    });
+
+    // BOM 포함 UTF-8 → 엑셀에서 한글 깨짐 없음
+    const csv = '\uFEFF' + stringify(data, { header: true });
+    writeFileSync(path, csv, 'utf8');
+    log('info', `이메일 CSV: ${path} (${rows.length}개)`);
+  }
+
+  /** 이메일 없어도 연락처 있는 모든 광고주 CSV */
+  _exportAllContactsCsv(sessionId, path) {
+    const rows = sessionId
+      ? this.db.getAllContactsBySession(sessionId)
+      : [];
+
+    if (rows.length === 0) {
+      log('warn', '전체 연락처 데이터 없음');
+      return;
     }
 
-    log('info', `내보내기 완료: ${outputPath} (${rows.length}개)`);
+    const data = rows.map(r => {
+      let emails = '';
+      try { emails = JSON.parse(r.emails || '[]').join(' / '); } catch {}
+      let phones = '';
+      try { phones = JSON.parse(r.phones || '[]').join(' / '); } catch {}
+
+      return {
+        '이메일':          emails,
+        '회사명':          r.company_name || '',
+        '대표자':          r.representative || '',
+        '전화번호':        phones,
+        '카카오채널':      r.kakao_channel || '',
+        '네이버톡톡':      r.naver_talk || '',
+        '인스타그램':      r.instagram || '',
+        '사업자번호':      r.biz_reg_no || '',
+        '주소':            r.address || '',
+        '도메인':          r.domain || '',
+        '광고 키워드':     r.keyword || '',
+        '광고 제목':       r.ad_title || '',
+        '광고주 URL':      r.advertiser_url || '',
+        '수집 상태':       r.status || '',
+        '수집일시':        r.crawled_at || '',
+      };
+    });
+
+    const csv = '\uFEFF' + stringify(data, { header: true });
+    writeFileSync(path, csv, 'utf8');
+    log('info', `전체 연락처 CSV: ${path} (${rows.length}개)`);
   }
 
-  _exportCsv(rows, outputPath) {
-    const data = rows.map(r => ({
-      '이메일': r.email,
-      '도메인': r.domain,
-      '회사명': r.company_name || '',
-      '전화번호': r.phone || '',
-      '키워드': r.keyword,
-      '광고주 URL': r.advertiser_url,
-      '수집일시': r.crawled_at,
-      '세션': r.session_name || '',
-    }));
-
-    const csv = stringify(data, { header: true, bom: true });  // BOM: 엑셀 한글 깨짐 방지
-    writeFileSync(outputPath, csv, 'utf8');
-  }
-
-  _exportJson(rows, outputPath) {
-    writeFileSync(outputPath, JSON.stringify(rows, null, 2), 'utf8');
+  _exportJson(sessionId, path) {
+    const rows = sessionId
+      ? this.db.getAllContactsBySession(sessionId)
+      : this.db.getAllEmails();
+    writeFileSync(path, JSON.stringify(rows, null, 2), 'utf8');
+    log('info', `JSON 내보내기: ${path} (${rows.length}개)`);
   }
 
   printStats(sessionId) {
@@ -67,7 +131,5 @@ export class Exporter {
     console.log('────────────────────────────────\n');
   }
 
-  close() {
-    this.db.close();
-  }
+  close() { this.db.close(); }
 }

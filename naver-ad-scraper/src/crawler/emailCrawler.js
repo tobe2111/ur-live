@@ -1,27 +1,22 @@
 import * as cheerio from 'cheerio';
-import {
-  CONTACT_PAGE_PATHS,
-  DEFAULT_DELAY,
-  REQUEST_TIMEOUT,
-} from '../utils/constants.js';
-import {
-  extractEmails,
-  normalizeUrl,
-  extractDomain,
-  sleep,
-  randomDelay,
-  log,
-} from '../utils/helpers.js';
+import { CONTACT_PAGE_PATHS, DEFAULT_DELAY, REQUEST_TIMEOUT } from '../utils/constants.js';
+import { extractEmails, extractDomain, sleep, randomDelay, log } from '../utils/helpers.js';
+import { filterValidEmails, isValidBizRegNo } from '../utils/validator.js';
 
 /**
- * 광고주 웹사이트 이메일/연락처 크롤러 (개선판)
+ * 광고주 웹사이트 연락처 크롤러 (최종판)
  *
- * 이메일 추출 한계와 현실:
- *  - 광고주의 ~40%는 이메일을 공개하지 않음 (카카오채널/채팅으로 대체)
- *  - 일부는 이미지로 이메일 표시 → 추출 불가
- *  - 일부는 JS로 이메일 난독화 → innerText로 보완
+ * 수집 항목:
+ *  이메일, 전화번호(복수), 카카오채널, 네이버톡톡, 인스타그램,
+ *  사업자등록번호, 대표자명, 회사명, 주소
  *
- * 수집 항목: 이메일, 전화번호, 카카오채널, 네이버톡톡, 인스타그램, 사업자등록번호
+ * 이메일 추출 전략 (신뢰도 순):
+ *  1. 풋터 집중 파싱 (전자상거래법 의무 고지 - 가장 신뢰도 높음)
+ *  2. 개인정보처리방침 페이지 (개인정보관리책임자 이메일 법적 의무)
+ *  3. mailto: 링크
+ *  4. @ 기호 포함 행 스캔 (난독화 이메일 포함)
+ *  5. JSON-LD 구조화 데이터
+ *  6. 문의/연락처 페이지
  */
 export class EmailCrawler {
   constructor(pageSession) {
@@ -38,7 +33,9 @@ export class EmailCrawler {
       kakaoChannel: '',
       naverTalk: '',
       instagram: '',
-      bizRegNo: '',      // 사업자등록번호 (추가)
+      bizRegNo: '',
+      representative: '',  // 대표자명
+      address: '',         // 주소
       companyName: '',
       crawledAt: new Date().toISOString(),
       status: 'pending',
@@ -46,22 +43,23 @@ export class EmailCrawler {
     };
 
     try {
-      // 메인 페이지 수집
+      // 1. 메인 페이지
       await this._crawlPage(url, result);
 
-      // 이메일 없으면 문의/연락처 페이지도 탐색
+      // 2. 이메일 없으면 추가 페이지 탐색
       if (result.emails.length === 0) {
-        await this._crawlContactPages(url, result);
+        await this._crawlSecondaryPages(url, result);
       }
 
-      result.emails = [...new Set(result.emails)];
+      // 3. DNS MX 검증으로 가짜 이메일 제거
+      result.emails = await filterValidEmails([...new Set(result.emails)]);
       result.phones = [...new Set(result.phones)];
 
-      // 이메일이 없어도 전화번호·카카오채널이 있으면 'contact_found'
-      const hasAnyContact = result.emails.length > 0 || result.phones.length > 0
+      const hasContact = result.emails.length > 0 || result.phones.length > 0
         || result.kakaoChannel || result.naverTalk;
+
       result.status = result.emails.length > 0 ? 'found'
-        : hasAnyContact ? 'contact_found'
+        : hasContact ? 'contact_found'
         : 'not_found';
 
       log('debug', `[${result.domain}] 이메일:${result.emails.length} 전화:${result.phones.length} 카카오:${result.kakaoChannel ? '✓' : '-'}`);
@@ -78,202 +76,206 @@ export class EmailCrawler {
     let page;
     try {
       page = await this.session.open(url, { timeout: REQUEST_TIMEOUT, blockResources: true });
-    } catch {
-      return;
-    }
+    } catch { return; }
 
-    // 동적 렌더링 대기 (React/Vue SPA 대응)
+    // JS 렌더링 대기
     await page.waitForTimeout(2000);
 
-    // ── Playwright evaluate()로 DOM 직접 접근 ──────────────────
     const extracted = await page.evaluate(() => {
+      const emailPat = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+      const phonePat = /(?:0\d{1,2})[\s\-.]?\d{3,4}[\s\-.]?\d{4}/g;
       const emails = new Set();
       const phones = new Set();
-      let kakaoChannel = '';
-      let naverTalk = '';
-      let instagram = '';
-      let bizRegNo = '';
-      let companyName = '';
+      let kakaoChannel = '', naverTalk = '', instagram = '';
+      let bizRegNo = '', representative = '', address = '', companyName = '';
 
-      const emailPattern = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-      const phonePattern = /(?:0\d{1,2})[\s\-.]?\d{3,4}[\s\-.]?\d{4}/g;
-
-      // ★ 전략 1 (최고 신뢰도): 푸터 영역 집중 파싱
-      // 한국 전자상거래법상 사업자 정보는 반드시 하단에 표시해야 함
-      // → 회사명, 사업자등록번호, 대표자, 고객센터 이메일이 여기에 있음
-      const footerCandidates = [
-        ...document.querySelectorAll('footer, [class*="footer"], [id*="footer"]'),
-        ...document.querySelectorAll('[class*="company-info"], [class*="companyInfo"]'),
-        ...document.querySelectorAll('[class*="bottom"], [id*="bottom"]'),
-        ...document.querySelectorAll('[class*="법적고지"], [class*="사업자"]'),
+      // ★ 전략 1: 풋터 집중 (전자상거래법 의무 고지)
+      // 상호, 사업자번호, 대표자, 주소, CS 이메일이 여기 있음
+      const footerEls = [
+        ...document.querySelectorAll('footer, #footer, .footer, [class*="footer"], [id*="footer"]'),
+        ...document.querySelectorAll('[class*="company"], [class*="bottom-info"], [class*="bottomInfo"]'),
+        ...document.querySelectorAll('[class*="corp-info"], [class*="corpInfo"], [class*="bizInfo"]'),
+        ...document.querySelectorAll('[class*="법적고지"], [class*="사업자정보"]'),
       ];
-      for (const el of footerCandidates) {
+
+      for (const el of footerEls) {
         const text = el.innerText || '';
-        (text.match(emailPattern) || []).forEach(e => emails.add(e.toLowerCase()));
-        (text.match(phonePattern) || []).forEach(p => phones.add(p.replace(/\s/g, '')));
+
+        // 이메일
+        (text.match(emailPat) || []).forEach(e => emails.add(e.toLowerCase()));
+
+        // 전화번호
+        (text.match(phonePat) || []).forEach(p => phones.add(p.replace(/\s/g, '')));
+
+        // 사업자등록번호
         if (!bizRegNo) {
-          const bizMatch = text.match(/사업자\s*(?:등록\s*)?번호\s*[:\s]*([\d]{3}[-\s]?[\d]{2}[-\s]?[\d]{5})/);
-          if (bizMatch) bizRegNo = bizMatch[1].replace(/[\s-]/g, '');
+          const m = text.match(/사업자\s*(?:등록\s*)?번호\s*[:\s]*([\d]{3}[\s\-]?[\d]{2}[\s\-]?[\d]{5})/);
+          if (m) bizRegNo = m[1].replace(/[\s\-]/g, '');
         }
+
+        // 대표자
+        if (!representative) {
+          const m = text.match(/대표(?:자|이사)\s*[:\s]*([가-힣a-zA-Z]{2,10})/);
+          if (m) representative = m[1].trim();
+        }
+
+        // 주소
+        if (!address) {
+          const m = text.match(/(?:주소|소재지)\s*[:\s]*([^\n]{5,60})/);
+          if (m) address = m[1].trim();
+        }
+
+        // 상호
         if (!companyName) {
-          const coMatch = text.match(/(?:상호|회사명|법인명)\s*[:\s]*([^\n,]{2,30})/);
-          if (coMatch) companyName = coMatch[1].trim();
+          const m = text.match(/(?:상호|회사명|법인명|업체명)\s*[:\s]*([^\n,]{2,30})/);
+          if (m) companyName = m[1].trim();
         }
       }
 
-      // ★ 전략 2: mailto: 링크 (클릭 가능한 이메일 - 신뢰도 높음)
+      // ★ 전략 2: mailto: 링크
       document.querySelectorAll('a[href^="mailto:"]').forEach(el => {
-        const email = el.href.replace('mailto:', '').split('?')[0].trim().toLowerCase();
-        if (email.includes('@')) emails.add(email);
+        const e = el.href.replace('mailto:', '').split('?')[0].trim().toLowerCase();
+        if (e.includes('@')) emails.add(e);
       });
 
-      // 전략 3: body 전체 텍스트 (innerText → JS 렌더링 결과 포함)
-      const bodyText = document.body.innerText || '';
-      (bodyText.match(emailPattern) || []).forEach(e => emails.add(e.toLowerCase()));
-      (bodyText.match(phonePattern) || []).forEach(p => phones.add(p.replace(/\s/g, '')));
+      // ★ 전략 3: @ 기호 포함 행 스캔 (난독화 이메일 포함)
+      // "admin @ company.com", "(at)", "[앳]" 등 처리
+      const bodyText = (document.body.innerText || '')
+        .replace(/\（앳\）|\[앳\]|\(at\)|\（at\）/gi, '@')
+        .replace(/\s@\s/g, '@');
 
-      // 전략 4: JSON-LD 구조화 데이터
+      bodyText.split('\n').filter(l => l.includes('@')).forEach(line => {
+        (line.match(emailPat) || []).forEach(e => emails.add(e.toLowerCase()));
+      });
+
+      // 전화번호 (body 전체)
+      (bodyText.match(phonePat) || []).forEach(p => phones.add(p.replace(/\s/g, '')));
+
+      // ★ 전략 4: JSON-LD 구조화 데이터
       document.querySelectorAll('script[type="application/ld+json"]').forEach(el => {
         try {
           const json = JSON.stringify(JSON.parse(el.textContent));
-          (json.match(emailPattern) || []).forEach(e => emails.add(e.toLowerCase()));
+          (json.match(emailPat) || []).forEach(e => emails.add(e.toLowerCase()));
+          const phoneMatch = json.match(/"telephone"\s*:\s*"([^"]+)"/);
+          if (phoneMatch) phones.add(phoneMatch[1]);
+          const addressMatch = json.match(/"streetAddress"\s*:\s*"([^"]+)"/);
+          if (addressMatch && !address) address = addressMatch[1];
+          const repMatch = json.match(/"name"\s*:\s*"([^"]+)".*?"founder"/s);
+          if (repMatch && !representative) representative = repMatch[1];
         } catch {}
       });
 
-      // ★ 전략 4-b: @ 기호 주변 컨텍스트에서 이메일 추출
-      // 일반 정규식으로 놓친 케이스 보완
-      // 예) "이메일 : admin @company.com" (공백 포함)
-      //     "cs（앳）company.co.kr" (앳 한글 표기) → 아래에서 치환
-      const atBlocks = bodyText
-        .replace(/\（앳\）|\[앳\]|\(at\)|\[at\]/gi, '@')   // 한글/영어 앳 표기 치환
-        .replace(/\s@\s/g, '@')                              // "user @ domain" → "user@domain"
-        .split('\n')
-        .filter(line => line.includes('@'));
-
-      for (const line of atBlocks) {
-        (line.match(emailPattern) || []).forEach(e => emails.add(e.toLowerCase()));
-      }
-
-      // 전략 5: 카카오채널 / 네이버톡톡 / 인스타그램
-      document.querySelectorAll('a').forEach(el => {
+      // ★ 전략 5: 소셜/채널 링크
+      document.querySelectorAll('a[href]').forEach(el => {
         const href = el.href || '';
         if (!kakaoChannel && (href.includes('pf.kakao.com') || href.includes('kakao.com/o/'))) kakaoChannel = href;
         if (!naverTalk && href.includes('talk.naver.com')) naverTalk = href;
-        if (!instagram && href.includes('instagram.com/')) instagram = href;
+        if (!instagram && /instagram\.com\/[^?#]+/.test(href)) instagram = href.split('?')[0];
       });
 
-      // 회사명 보완
+      // 회사명 보완 (메타 → 타이틀)
       if (!companyName) {
         companyName = (
           document.querySelector('meta[property="og:site_name"]')?.content ||
           document.querySelector('meta[name="application-name"]')?.content ||
           document.title.split(/[-|·\/]/)[0].trim()
-        ).substring(0, 100);
+        ).substring(0, 60);
       }
 
       return {
         emails: [...emails],
         phones: [...phones],
-        kakaoChannel,
-        naverTalk,
-        instagram,
-        bizRegNo,
-        companyName,
+        kakaoChannel, naverTalk, instagram,
+        bizRegNo, representative, address, companyName,
       };
     });
 
-    // 결과 병합
-    extracted.emails.forEach(e => {
-      if (!this._isJunkEmail(e)) result.emails.push(e);
-    });
-    extracted.phones.forEach(p => result.phones.push(p));
-    if (!result.kakaoChannel) result.kakaoChannel = extracted.kakaoChannel;
-    if (!result.naverTalk) result.naverTalk = extracted.naverTalk;
-    if (!result.instagram) result.instagram = extracted.instagram;
-    if (!result.bizRegNo) result.bizRegNo = extracted.bizRegNo;
-    if (!result.companyName) result.companyName = extracted.companyName;
+    this._mergeExtracted(result, extracted);
 
-    // 이미지 이메일은 alt 텍스트에서 시도
-    const htmlContent = await page.content();
-    const $ = cheerio.load(htmlContent);
+    // img alt에 이메일 있는 경우 (이미지로 표시한 이메일)
+    const html = await page.content();
+    const $ = cheerio.load(html);
     $('img[alt*="@"]').each((_, el) => {
-      const alt = $(el).attr('alt') || '';
-      extractEmails(alt).forEach(e => {
-        if (!this._isJunkEmail(e)) result.emails.push(e);
+      extractEmails($(el).attr('alt') || '').forEach(e => {
+        if (!this._isJunk(e)) result.emails.push(e);
       });
     });
 
     await sleep(randomDelay(...DEFAULT_DELAY.betweenRequests));
   }
 
-  async _crawlContactPages(baseUrl, result) {
+  /**
+   * 개인정보처리방침 + 문의 페이지 추가 탐색
+   * 개인정보보호법 → 개인정보관리책임자 이메일 법적 의무 표시
+   */
+  async _crawlSecondaryPages(baseUrl, result) {
     const origin = new URL(baseUrl).origin;
 
-    // 메인 페이지에서 문의/연락처 링크 먼저 추출
-    const contactLinks = await this._findContactLinks(baseUrl, origin);
+    // 메인 페이지에서 링크 수집
+    const foundLinks = await this._extractContactLinks(baseUrl, origin);
 
-    // ★ 개인정보처리방침·이용약관 페이지 우선 탐색
-    // 전자상거래법/개인정보보호법 의무 고지 → 개인정보관리책임자 이메일 반드시 포함
-    const legalPaths = [
+    // 탐색 우선순위: 법적 의무 페이지 → 일반 문의 페이지
+    const priorities = [
+      // 개인정보처리방침 (개인정보관리책임자 이메일 반드시 포함)
       '/privacy', '/privacy-policy', '/개인정보처리방침', '/개인정보보호방침',
-      '/policy/privacy', '/terms', '/이용약관',
+      '/policy/privacy', '/terms/privacy',
+      // 이용약관 (간혹 이메일 포함)
+      '/terms', '/이용약관',
+      // 문의/연락처
+      ...CONTACT_PAGE_PATHS,
     ];
 
-    // 고정 경로 + 법적 페이지 + 메인 페이지에서 발견된 링크
     const candidates = [
-      ...legalPaths.map(p => origin + p),   // 법적 고지 페이지 최우선
-      ...CONTACT_PAGE_PATHS.map(p => origin + p),
-      ...contactLinks,
+      ...priorities.map(p => origin + p),
+      ...foundLinks,
     ];
 
     const tried = new Set([baseUrl]);
-    let found = false;
-
-    for (const url of candidates.slice(0, 6)) {
-      if (tried.has(url) || found) continue;
+    for (const url of candidates.slice(0, 8)) {
+      if (tried.has(url) || result.emails.length > 0) break;
       tried.add(url);
       try {
-        const beforeCount = result.emails.length;
         await this._crawlPage(url, result);
-        if (result.emails.length > beforeCount) {
-          found = true;
-          break;
-        }
         await sleep(randomDelay(...DEFAULT_DELAY.betweenRequests));
       } catch {}
     }
   }
 
-  async _findContactLinks(url, origin) {
+  async _extractContactLinks(url, origin) {
     try {
       const page = await this.session.open(url, { timeout: REQUEST_TIMEOUT });
       return await page.evaluate((origin, keywords) => {
         const links = new Set();
         document.querySelectorAll('a[href]').forEach(el => {
           const href = el.href || '';
-          const text = (el.textContent + (el.title || '') + (el.getAttribute('aria-label') || '')).toLowerCase();
-          const isContact = keywords.some(k => text.includes(k));
-          if (isContact && href.startsWith(origin) && href !== origin) {
-            links.add(href.split('?')[0]);  // 쿼리스트링 제거
+          const text = (el.textContent + (el.title || '')).toLowerCase();
+          if (keywords.some(k => text.includes(k)) && href.startsWith(origin)) {
+            links.add(href.split('?')[0]);
           }
         });
         return [...links];
-      }, origin, ['문의', '연락', 'contact', 'about', '회사소개', '고객센터', 'support', '소개', '오시는길', 'cs']);
-    } catch {
-      return [];
-    }
+      }, origin, ['문의', '연락', 'contact', 'about', '고객센터', '소개', 'cs', '서비스센터']);
+    } catch { return []; }
   }
 
-  /**
-   * 쓰레기 이메일 필터링
-   * (Cloudflare, 이미지 CDN, 코드 예시 등)
-   */
-  _isJunkEmail(email) {
+  _mergeExtracted(result, ex) {
+    ex.emails.forEach(e => { if (!this._isJunk(e)) result.emails.push(e); });
+    ex.phones.forEach(p => result.phones.push(p));
+    if (!result.kakaoChannel) result.kakaoChannel = ex.kakaoChannel;
+    if (!result.naverTalk) result.naverTalk = ex.naverTalk;
+    if (!result.instagram) result.instagram = ex.instagram;
+    if (!result.bizRegNo && ex.bizRegNo) result.bizRegNo = ex.bizRegNo;
+    if (!result.representative) result.representative = ex.representative;
+    if (!result.address) result.address = ex.address;
+    if (!result.companyName) result.companyName = ex.companyName;
+  }
+
+  _isJunk(email) {
     const JUNK = [
-      'example.com', 'test.com', 'dummy', 'noreply', 'no-reply', 'donotreply',
-      'sentry.io', 'w3.org', 'schema.org', 'localhost', '.png', '.jpg', '.gif',
-      'cloudflare', 'amazonaws', 'googlemail', 'facebook.com',
-      'wixpress.com', 'cafe24.com',
+      'example.com', 'test.com', 'dummy', 'noreply', 'no-reply',
+      'sentry.io', 'w3.org', 'schema.org', 'localhost',
+      'cloudflare', 'amazonaws', 'facebook.com',
+      'wixpress.com', 'cafe24.com', 'imweb.me', 'modoo.at',
     ];
     return JUNK.some(j => email.includes(j));
   }

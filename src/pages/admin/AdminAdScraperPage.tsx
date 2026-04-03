@@ -194,9 +194,11 @@ export default function AdminAdScraperPage() {
     } catch {}
   }
 
-  function exportCsv() {
-    const qs = selectedSession ? `?sessionId=${selectedSession}` : ''
-    window.open(`${serverUrl}/api/export${qs}`, '_blank')
+  function exportCsv(type: 'emails' | 'all' = 'emails') {
+    const params = new URLSearchParams()
+    if (selectedSession) params.set('sessionId', String(selectedSession))
+    params.set('type', type)
+    window.open(`${serverUrl}/api/export?${params}`, '_blank')
   }
 
   function saveServerUrl(url: string) {
@@ -432,13 +434,24 @@ export default function AdminAdScraperPage() {
                 )}
               </div>
               {emails.length > 0 && (
-                <button
-                  onClick={exportCsv}
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  CSV 다운로드
-                </button>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => exportCsv('emails')}
+                    className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                    title="이메일 있는 광고주만"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    이메일 CSV
+                  </button>
+                  <button
+                    onClick={() => exportCsv('all')}
+                    className="flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50"
+                    title="이메일 없어도 전화/카카오 있으면 포함"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    전체 연락처 CSV
+                  </button>
+                </div>
               )}
             </div>
 

@@ -135,22 +135,44 @@ async function handleRequest(req, res) {
   // ── GET /api/export?sessionId=1 → CSV 다운로드 ────────────────
   if (method === 'GET' && path === '/api/export') {
     const sessionId = parseInt(url.searchParams.get('sessionId') || '0') || null;
-    const tmpPath = join(process.cwd(), 'data', `export_${Date.now()}.csv`);
+    // type=emails (이메일만) | type=all (전체 연락처, 이메일 없어도 포함)
+    const exportType = url.searchParams.get('type') || 'emails';
+    const ts = Date.now();
+    const tmpBase = join(process.cwd(), 'data', `export_${ts}`);
+    const tmpPath = `${tmpBase}.csv`;
 
     const exporter = new Exporter(DB_PATH);
-    exporter.export(sessionId, tmpPath, 'csv');
-    exporter.close();
 
-    try {
-      const csv = readFileSync(tmpPath);
-      res.writeHead(200, {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="naver_ads_emails.csv"`,
-      });
-      return res.end(csv);
-    } catch {
-      res.writeHead(404);
-      return res.end('데이터 없음');
+    if (exportType === 'all') {
+      // 전체 연락처 CSV (이메일 없어도 전화/카카오 있는 광고주 포함)
+      exporter.export(sessionId, `${tmpBase}_all.csv`, 'all');
+      exporter.close();
+      try {
+        // 두 파일을 ZIP으로 묶어 전송 (없으면 전체연락처만 전송)
+        const allCsv = readFileSync(`${tmpBase}_all_전체연락처.csv`);
+        res.writeHead(200, {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="naver_ads_all_contacts.csv"',
+        });
+        return res.end(allCsv);
+      } catch {
+        res.writeHead(404);
+        return res.end('데이터 없음');
+      }
+    } else {
+      exporter.export(sessionId, tmpPath, 'csv');
+      exporter.close();
+      try {
+        const csv = readFileSync(tmpPath);
+        res.writeHead(200, {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="naver_ads_emails.csv"',
+        });
+        return res.end(csv);
+      } catch {
+        res.writeHead(404);
+        return res.end('데이터 없음');
+      }
     }
   }
 

@@ -225,6 +225,14 @@ export class AdDatabase {
     ).run(id);
   }
 
+  // 파이프라인 모드에서 advertiser_id 기준으로 큐 완료 처리
+  markQueueDoneByAdvertiser(advertiserId) {
+    this.db.prepare(
+      `UPDATE queue SET status = 'done', updated_at = datetime('now', 'localtime')
+       WHERE json_extract(payload, '$.advertiserId') = ?`
+    ).run(advertiserId);
+  }
+
   markQueueError(id, error) {
     this.db.prepare(
       `UPDATE queue SET status = 'error', error = ?, attempts = attempts + 1, updated_at = datetime('now', 'localtime') WHERE id = ?`
@@ -240,9 +248,15 @@ export class AdDatabase {
   // ── 조회 ─────────────────────────────────────────────────────
   getEmailsBySession(sessionId) {
     return this.db.prepare(`
-      SELECT e.*, a.title, a.description, a.ad_type
+      SELECT
+        e.id, e.email, e.domain, e.company_name, e.phone, e.instagram,
+        e.biz_reg_no, e.keyword, e.advertiser_url, e.crawled_at,
+        a.title as ad_title, a.description as ad_description, a.ad_type,
+        cr.phones, cr.kakao_channel, cr.naver_talk, cr.representative, cr.address,
+        cr.status as crawl_status
       FROM emails e
       LEFT JOIN advertisers a ON a.session_id = e.session_id AND a.advertiser_url = e.advertiser_url
+      LEFT JOIN crawl_results cr ON cr.advertiser_id = a.id
       WHERE e.session_id = ?
       ORDER BY e.id
     `).all(sessionId);
@@ -250,11 +264,31 @@ export class AdDatabase {
 
   getAllEmails() {
     return this.db.prepare(`
-      SELECT e.*, s.name as session_name
+      SELECT
+        e.*, s.name as session_name,
+        cr.phones, cr.kakao_channel, cr.naver_talk, cr.representative, cr.address
       FROM emails e
       JOIN sessions s ON s.id = e.session_id
+      LEFT JOIN advertisers a ON a.session_id = e.session_id AND a.advertiser_url = e.advertiser_url
+      LEFT JOIN crawl_results cr ON cr.advertiser_id = a.id
       ORDER BY e.id
     `).all();
+  }
+
+  // 이메일 없이 전화/카카오만 있는 광고주도 포함한 전체 수집 결과
+  getAllContactsBySession(sessionId) {
+    return this.db.prepare(`
+      SELECT
+        cr.domain, cr.company_name, cr.emails, cr.phones,
+        cr.kakao_channel, cr.naver_talk, cr.instagram, cr.biz_reg_no,
+        cr.representative, cr.address, cr.status, cr.crawled_at,
+        a.keyword, a.title as ad_title, a.advertiser_url,
+        a.description as ad_description
+      FROM crawl_results cr
+      JOIN advertisers a ON a.id = cr.advertiser_id
+      WHERE a.session_id = ?
+      ORDER BY cr.id
+    `).all(sessionId);
   }
 
   getStats(sessionId) {
