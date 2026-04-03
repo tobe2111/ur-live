@@ -5,7 +5,7 @@ import { Home, Search, Play, ShoppingCart, User } from 'lucide-react'
 const navItems = [
   { icon: Home, label: '홈', path: '/' },
   { icon: Search, label: '검색', path: '/search' },
-  { icon: Play, label: '라이브', path: '/live/20', highlight: true },
+  { icon: Play, label: '라이브', path: '/live', highlight: true },
   { icon: ShoppingCart, label: '장바구니', path: '/cart' },
   { icon: User, label: '마이', path: '/user/profile' },
 ]
