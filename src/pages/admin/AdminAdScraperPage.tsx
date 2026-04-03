@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Search, Play, Square, Download, RefreshCw,
   ChevronRight, Loader2, CheckCircle2, AlertCircle,
-  Mail, Building2, Phone, Tag, Settings, X,
+  Mail, Building2, Phone, Tag,
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 
-// 스크래퍼 서버 URL (별도 Node.js 서버)
-const DEFAULT_SERVER = 'http://localhost:3456'
+// Worker 프록시 경로 (브라우저 → Worker → 스크래퍼 서버)
+// localhost 직접 접근 제거 — Worker가 중간 다리 역할
+const API = '/api/admin/scraper'
 
 interface Session {
   id: number
@@ -42,25 +43,17 @@ interface LogEntry {
 }
 
 export default function AdminAdScraperPage() {
-  const [serverUrl, setServerUrl] = useState(
-    () => localStorage.getItem('scraper_server_url') || DEFAULT_SERVER
-  )
-  const [showSettings, setShowSettings] = useState(false)
   const [serverOk, setServerOk] = useState<boolean | null>(null)
-
-  // 폼
   const [keywords, setKeywords] = useState('')
   const [sessionName, setSessionName] = useState('')
   const [concurrency, setConcurrency] = useState('3')
 
-  // 상태
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [phase, setPhase] = useState('')
   const [currentItem, setCurrentItem] = useState('')
   const [logs, setLogs] = useState<LogEntry[]>([])
 
-  // 데이터
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedSession, setSelectedSession] = useState<number | null>(null)
   const [emails, setEmails] = useState<EmailRow[]>([])
@@ -69,30 +62,18 @@ export default function AdminAdScraperPage() {
   const esRef = useRef<EventSource | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
-  // 서버 연결 확인
-  useEffect(() => {
-    checkServer()
-  }, [serverUrl])
-
-  // 세션 목록 초기 로드
-  useEffect(() => {
-    if (serverOk) loadSessions()
-  }, [serverOk])
-
-  // 로그 자동 스크롤
+  useEffect(() => { checkServer() }, [])
+  useEffect(() => { if (serverOk) loadSessions() }, [serverOk])
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [logs])
 
   async function checkServer() {
     try {
-      const res = await fetch(`${serverUrl}/api/status`, { signal: AbortSignal.timeout(3000) })
+      const res = await fetch(`${API}/api/status`, { signal: AbortSignal.timeout(5000) })
       const data = await res.json() as { running: boolean }
       setServerOk(true)
-      if (data.running) {
-        setRunning(true)
-        connectSSE()
-      }
+      if (data.running) { setRunning(true); connectSSE() }
     } catch {
       setServerOk(false)
     }
@@ -103,81 +84,56 @@ export default function AdminAdScraperPage() {
     setLogs(prev => [...prev.slice(-200), { time, msg, type }])
   }
 
-  // ── SSE 연결 ────────────────────────────────────────────────────
   function connectSSE() {
     if (esRef.current) esRef.current.close()
-    const es = new EventSource(`${serverUrl}/events`)
+    const es = new EventSource(`${API}/events`)
     esRef.current = es
 
     es.addEventListener('connected', () => addLog('스크래퍼 서버 연결됨'))
-
     es.addEventListener('start', (e) => {
       const d = JSON.parse(e.data)
       addLog(`수집 시작: ${d.keywords?.join(', ')}`)
-      setRunning(true)
-      setProgress(0)
+      setRunning(true); setProgress(0)
     })
-
     es.addEventListener('progress', (e) => {
       const d = JSON.parse(e.data)
       setProgress(d.pct ?? 0)
       setPhase(d.phase === 'scrape' ? '광고 수집 중' : '이메일 크롤링 중')
       setCurrentItem(d.item ?? '')
-      if ((d.found ?? 0) > 0) {
-        addLog(`${d.item?.split('/').slice(-1)[0]} → ${d.found}개 발견`, 'found')
-      }
+      if ((d.found ?? 0) > 0) addLog(`${d.item?.split('/').slice(-1)[0]} → ${d.found}개`, 'found')
     })
-
     es.addEventListener('done', (e) => {
       const d = JSON.parse(e.data)
       addLog(`✓ 완료!  광고주 ${d.stats?.totalAdvertisers}개 | 이메일 ${d.stats?.uniqueEmails}개`, 'done')
-      setRunning(false)
-      setProgress(100)
+      setRunning(false); setProgress(100)
       loadSessions()
       if (d.sessionId) loadEmails(d.sessionId)
     })
-
-    es.addEventListener('stopped', () => {
-      addLog('수집 중단됨', 'error')
-      setRunning(false)
-    })
-
+    es.addEventListener('stopped', () => { addLog('수집 중단됨', 'error'); setRunning(false) })
     es.addEventListener('error', (e) => {
-      if ((e as MessageEvent).data) {
-        addLog('오류: ' + JSON.parse((e as MessageEvent).data).message, 'error')
-      }
+      if ((e as MessageEvent).data) addLog('오류: ' + JSON.parse((e as MessageEvent).data).message, 'error')
     })
-
-    return () => es.close()
   }
 
-  // ── 수집 시작 ────────────────────────────────────────────────────
   async function startScrape() {
     if (!keywords.trim()) return
-    setLogs([])
-    setProgress(0)
-
+    setLogs([]); setProgress(0)
     connectSSE()
-
-    const res = await fetch(`${serverUrl}/api/scrape`, {
+    const res = await fetch(`${API}/api/scrape`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keywords, sessionName: sessionName || undefined, concurrency }),
     }).then(r => r.json()) as { error?: string }
-
-    if (res.error) {
-      addLog(res.error, 'error')
-      setRunning(false)
-    }
+    if (res.error) { addLog(res.error, 'error'); setRunning(false) }
   }
 
   async function stopScrape() {
-    await fetch(`${serverUrl}/api/stop`, { method: 'POST' })
+    await fetch(`${API}/api/stop`, { method: 'POST' })
   }
 
   async function loadSessions() {
     try {
-      const data = await fetch(`${serverUrl}/api/sessions`).then(r => r.json()) as Session[]
+      const data = await fetch(`${API}/api/sessions`).then(r => r.json()) as Session[]
       setSessions(data)
     } catch {}
   }
@@ -185,7 +141,7 @@ export default function AdminAdScraperPage() {
   async function loadEmails(sessionId: number) {
     setSelectedSession(sessionId)
     try {
-      const data = await fetch(`${serverUrl}/api/emails?sessionId=${sessionId}`).then(r => r.json()) as {
+      const data = await fetch(`${API}/api/emails?sessionId=${sessionId}`).then(r => r.json()) as {
         emails: EmailRow[]
         stats: Stats
       }
@@ -198,66 +154,32 @@ export default function AdminAdScraperPage() {
     const params = new URLSearchParams()
     if (selectedSession) params.set('sessionId', String(selectedSession))
     params.set('type', type)
-    window.open(`${serverUrl}/api/export?${params}`, '_blank')
+    window.open(`${API}/api/export?${params}`, '_blank')
   }
 
-  function saveServerUrl(url: string) {
-    setServerUrl(url)
-    localStorage.setItem('scraper_server_url', url)
-    setShowSettings(false)
-    setServerOk(null)
-  }
-
-  // ── 렌더 ─────────────────────────────────────────────────────────
   return (
     <AdminLayout title="네이버 광고주 이메일 수집">
 
-      {/* 서버 상태 배너 */}
+      {/* 연결 실패 배너 */}
       {serverOk === false && (
         <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>
-            스크래퍼 서버에 연결할 수 없습니다.{' '}
-            <code className="rounded bg-amber-100 px-1">{serverUrl}</code>에서 서버를 실행하세요.
-          </span>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="ml-auto text-xs underline underline-offset-2"
-          >
-            서버 주소 변경
-          </button>
+          <span>스크래퍼 서버에 연결할 수 없습니다. 세션을 새로 시작하거나 관리자에게 문의하세요.</span>
+          <button onClick={checkServer} className="ml-auto text-xs underline underline-offset-2">재연결</button>
         </div>
       )}
 
       <div className="flex gap-5">
 
-        {/* ── 왼쪽: 입력 + 진행 ─────────────────────────────────── */}
+        {/* ── 왼쪽 패널 ─────────────────────────────────────────── */}
         <div className="w-72 shrink-0 space-y-4">
 
-          {/* 수집 설정 카드 */}
+          {/* 수집 설정 */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-700">수집 설정</h2>
-              <button
-                onClick={() => setShowSettings(s => !s)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
-            </div>
-
-            {showSettings && (
-              <ServerSettingsForm
-                current={serverUrl}
-                onSave={saveServerUrl}
-                onCancel={() => setShowSettings(false)}
-              />
-            )}
+            <h2 className="mb-3 text-sm font-semibold text-gray-700">수집 설정</h2>
 
             <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                검색 키워드
-              </label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">검색 키워드</label>
               <textarea
                 value={keywords}
                 onChange={e => setKeywords(e.target.value)}
@@ -293,64 +215,44 @@ export default function AdminAdScraperPage() {
             </div>
 
             {running ? (
-              <button
-                onClick={stopScrape}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 active:scale-95"
-              >
-                <Square className="h-4 w-4" />
-                수집 중단
+              <button onClick={stopScrape}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 active:scale-95">
+                <Square className="h-4 w-4" /> 수집 중단
               </button>
             ) : (
-              <button
-                onClick={startScrape}
+              <button onClick={startScrape}
                 disabled={!serverOk || !keywords.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
-              >
-                <Play className="h-4 w-4" />
-                수집 시작
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-600 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300">
+                <Play className="h-4 w-4" /> 수집 시작
               </button>
             )}
           </div>
 
-          {/* 진행상황 카드 */}
+          {/* 진행상황 */}
           {(running || progress > 0) && (
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-700">진행상황</h2>
-                {running && <Loader2 className="h-4 w-4 animate-spin text-green-500" />}
-                {!running && progress === 100 && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                {running
+                  ? <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                  : <CheckCircle2 className="h-4 w-4 text-green-500" />}
               </div>
-
-              {/* 진행바 */}
               <div className="mb-1 h-2 overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-green-500 transition-all duration-500"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="h-full rounded-full bg-green-500 transition-all duration-500"
+                  style={{ width: `${progress}%` }} />
               </div>
-              <div className="mb-2 flex items-center justify-between text-xs text-gray-400">
+              <div className="mb-2 flex justify-between text-xs text-gray-400">
                 <span>{phase || '준비 중'}</span>
                 <span>{progress}%</span>
               </div>
-
-              {currentItem && (
-                <p className="mb-2 truncate text-xs text-gray-500">{currentItem}</p>
-              )}
-
-              {/* 로그 콘솔 */}
-              <div
-                ref={logRef}
-                className="h-36 overflow-y-auto rounded-lg bg-gray-900 p-2 font-mono text-[10px] leading-relaxed"
-              >
-                {logs.length === 0 && (
-                  <span className="text-gray-500">로그 대기 중...</span>
-                )}
+              {currentItem && <p className="mb-2 truncate text-xs text-gray-500">{currentItem}</p>}
+              <div ref={logRef}
+                className="h-36 overflow-y-auto rounded-lg bg-gray-900 p-2 font-mono text-[10px] leading-relaxed">
+                {logs.length === 0 && <span className="text-gray-500">로그 대기 중...</span>}
                 {logs.map((l, i) => (
                   <div key={i} className={{
-                    info: 'text-gray-400',
-                    found: 'text-green-400',
-                    error: 'text-red-400',
-                    done: 'text-yellow-300 font-bold',
+                    info: 'text-gray-400', found: 'text-green-400',
+                    error: 'text-red-400', done: 'font-bold text-yellow-300',
                   }[l.type]}>
                     [{l.time}] {l.msg}
                   </div>
@@ -367,51 +269,46 @@ export default function AdminAdScraperPage() {
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
             </div>
-            {sessions.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-4">수집 기록이 없습니다</p>
-            ) : (
-              <div className="space-y-1.5">
-                {sessions.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => loadEmails(s.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
-                      selectedSession === s.id
-                        ? 'border-blue-300 bg-blue-50'
-                        : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-800">{s.name}</p>
-                      <p className="text-gray-400">{s.created_at.slice(0, 16)}</p>
-                    </div>
-                    <div className="ml-2 flex items-center gap-1 shrink-0">
-                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                        s.status === 'done'    ? 'bg-emerald-100 text-emerald-700' :
-                        s.status === 'running' ? 'bg-blue-100 text-blue-700' :
-                                                 'bg-red-100 text-red-600'
+            {sessions.length === 0
+              ? <p className="py-4 text-center text-xs text-gray-400">수집 기록이 없습니다</p>
+              : (
+                <div className="space-y-1.5">
+                  {sessions.map(s => (
+                    <button key={s.id} onClick={() => loadEmails(s.id)}
+                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                        selectedSession === s.id ? 'border-blue-300 bg-blue-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                       }`}>
-                        {s.status === 'done' ? '완료' : s.status === 'running' ? '진행중' : '오류'}
-                      </span>
-                      <ChevronRight className="h-3 w-3 text-gray-400" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-gray-800">{s.name}</p>
+                        <p className="text-gray-400">{s.created_at.slice(0, 16)}</p>
+                      </div>
+                      <div className="ml-2 flex shrink-0 items-center gap-1">
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                          s.status === 'done'    ? 'bg-emerald-100 text-emerald-700' :
+                          s.status === 'running' ? 'bg-blue-100 text-blue-700' :
+                                                   'bg-red-100 text-red-600'
+                        }`}>
+                          {s.status === 'done' ? '완료' : s.status === 'running' ? '진행중' : '오류'}
+                        </span>
+                        <ChevronRight className="h-3 w-3 text-gray-400" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
           </div>
         </div>
 
         {/* ── 오른쪽: 결과 ──────────────────────────────────────── */}
         <div className="min-w-0 flex-1">
 
-          {/* 통계 카드 */}
+          {/* 통계 */}
           {stats && (
             <div className="mb-4 grid grid-cols-3 gap-3">
               {[
-                { label: '총 광고주', value: stats.totalAdvertisers, color: 'text-blue-600' },
-                { label: '이메일 보유', value: stats.withEmail, color: 'text-emerald-600' },
-                { label: '고유 이메일', value: stats.uniqueEmails, color: 'text-violet-600' },
+                { label: '총 광고주',   value: stats.totalAdvertisers, color: 'text-blue-600' },
+                { label: '이메일 보유', value: stats.withEmail,        color: 'text-emerald-600' },
+                { label: '고유 이메일', value: stats.uniqueEmails,     color: 'text-violet-600' },
               ].map(({ label, value, color }) => (
                 <div key={label} className="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
                   <p className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</p>
@@ -421,7 +318,7 @@ export default function AdminAdScraperPage() {
             </div>
           )}
 
-          {/* 결과 테이블 */}
+          {/* 이메일 테이블 */}
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
               <div className="flex items-center gap-2">
@@ -435,21 +332,15 @@ export default function AdminAdScraperPage() {
               </div>
               {emails.length > 0 && (
                 <div className="flex gap-1.5">
-                  <button
-                    onClick={() => exportCsv('emails')}
+                  <button onClick={() => exportCsv('emails')}
                     className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:border-gray-300 hover:bg-gray-50"
-                    title="이메일 있는 광고주만"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    이메일 CSV
+                    title="이메일 있는 광고주만">
+                    <Download className="h-3.5 w-3.5" /> 이메일 CSV
                   </button>
-                  <button
-                    onClick={() => exportCsv('all')}
+                  <button onClick={() => exportCsv('all')}
                     className="flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50"
-                    title="이메일 없어도 전화/카카오 있으면 포함"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    전체 연락처 CSV
+                    title="이메일 없어도 전화/카카오 있으면 포함">
+                    <Download className="h-3.5 w-3.5" /> 전체 연락처 CSV
                   </button>
                 </div>
               )}
@@ -459,9 +350,7 @@ export default function AdminAdScraperPage() {
               <div className="flex flex-col items-center justify-center gap-2 py-16 text-gray-400">
                 <Search className="h-8 w-8 opacity-30" />
                 <p className="text-sm">
-                  {selectedSession
-                    ? '이 세션에서 수집된 이메일이 없습니다'
-                    : '왼쪽에서 수집을 시작하거나 세션을 선택하세요'}
+                  {selectedSession ? '이 세션에서 수집된 이메일이 없습니다' : '왼쪽에서 수집을 시작하거나 세션을 선택하세요'}
                 </p>
               </div>
             ) : (
@@ -494,8 +383,7 @@ export default function AdminAdScraperPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                            <Tag className="h-3 w-3" />
-                            {row.keyword}
+                            <Tag className="h-3 w-3" />{row.keyword}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -505,18 +393,12 @@ export default function AdminAdScraperPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-400">
-                          <a
-                            href={row.advertiser_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="hover:text-blue-500 hover:underline"
-                          >
+                          <a href={row.advertiser_url} target="_blank" rel="noreferrer"
+                            className="hover:text-blue-500 hover:underline">
                             {row.domain}
                           </a>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-400">
-                          {row.crawled_at?.slice(0, 16)}
-                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-400">{row.crawled_at?.slice(0, 16)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -527,41 +409,5 @@ export default function AdminAdScraperPage() {
         </div>
       </div>
     </AdminLayout>
-  )
-}
-
-// ── 서버 설정 인라인 폼 ──────────────────────────────────────────
-function ServerSettingsForm({
-  current,
-  onSave,
-  onCancel,
-}: {
-  current: string
-  onSave: (url: string) => void
-  onCancel: () => void
-}) {
-  const [val, setVal] = useState(current)
-  return (
-    <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs font-medium text-gray-600">스크래퍼 서버 주소</p>
-        <button onClick={onCancel}><X className="h-3.5 w-3.5 text-gray-400" /></button>
-      </div>
-      <input
-        value={val}
-        onChange={e => setVal(e.target.value)}
-        className="mb-2 w-full rounded border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-blue-400"
-        placeholder="http://localhost:3456"
-      />
-      <button
-        onClick={() => onSave(val)}
-        className="w-full rounded bg-blue-500 py-1.5 text-xs font-semibold text-white hover:bg-blue-600"
-      >
-        저장
-      </button>
-      <p className="mt-1.5 text-[10px] text-gray-400">
-        스크래퍼 서버: <code>cd naver-ad-scraper && npm start</code>
-      </p>
-    </div>
   )
 }

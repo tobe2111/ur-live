@@ -55,6 +55,7 @@ new_classes = ["LiveStreamDurableObject"]
 # ENVIRONMENT is set via Cloudflare Dashboard
 TOSS_CLIENT_KEY = "test_gck_P9BRQmyarYPA5lOO6OXaVJ07KzLN"
 FRONTEND_URL = "http://localhost:5173"
+SCRAPER_URL = "http://localhost:3456"
 # REGION is set via Cloudflare Dashboard
 
 # ============================================================
