@@ -5,11 +5,10 @@ import type { Env } from '../../worker/types/env';
 /**
  * 네이버 광고 스크래퍼 프록시 라우트
  *
- * 브라우저 → Cloudflare Worker (/api/admin/scraper/*) → 스크래퍼 서버
+ * 브라우저 → Cloudflare Worker (/api/scraper/*) → 스크래퍼 서버
  *
- * adminApp 미들웨어 체인 밖에 등록해 Bearer 토큰만 검증함.
- * (adminApp의 requireAdmin은 session 쿠키 fallback 때문에 type='user'로
- *  인식되어 403을 반환하는 문제가 있음)
+ * /api/admin 경로와 완전 분리 — adminApp의 requireAdmin() 미들웨어가
+ * /api/admin/* 전체에 적용되므로 /api/scraper로 등록해야 충돌 없음
  *
  * 환경변수:
  *   SCRAPER_URL = http://localhost:3456  (개발)
@@ -47,8 +46,8 @@ scraperProxy.all('/*', async (c) => {
   // ── Proxy ──────────────────────────────────────────────────────────────
   const scraperUrl = (c.env as any).SCRAPER_URL || DEFAULT_SCRAPER_URL;
 
-  // /api/admin/scraper/api/status → scraperUrl + /api/status
-  const subPath = c.req.path.replace(/^\/api\/admin\/scraper/, '');
+  // /api/scraper/api/status → scraperUrl + /api/status
+  const subPath = c.req.path.replace(/^\/api\/scraper/, '');
   const targetUrl = `${scraperUrl}${subPath || '/'}`;
 
   // query string 전달

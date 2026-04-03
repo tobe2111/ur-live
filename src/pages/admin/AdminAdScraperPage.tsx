@@ -7,8 +7,8 @@ import {
 import AdminLayout from '@/components/AdminLayout'
 
 // Worker 프록시 경로 (브라우저 → Worker → 스크래퍼 서버)
-// localhost 직접 접근 제거 — Worker가 중간 다리 역할
-const API = '/api/admin/scraper'
+// /api/admin 경로 대신 /api/scraper 사용 — adminApp 미들웨어 충돌 회피
+const API = '/api/scraper'
 
 function getToken() {
   return localStorage.getItem('admin_token') || localStorage.getItem('access_token') || ''
