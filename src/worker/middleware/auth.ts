@@ -46,6 +46,7 @@ export interface AuthUser {
   name?: string;
   type: UserType;
   role?: string;
+  isDbId?: boolean;  // true면 id가 DB users.id (세션 쿠키)
 }
 
 /**
@@ -335,6 +336,7 @@ export function requireAuth() {
           name: sessionUser.name,
           type: 'user',
           role: sessionUser.role,
+          isDbId: sessionUser.isDbId,
         };
         c.set('user', user);
         return next();
@@ -426,6 +428,7 @@ export function optionalAuth() {
           name: sessionUser.name,
           type: 'user',
           role: sessionUser.role,
+          isDbId: sessionUser.isDbId,
         };
         c.set('user', user);
         return next();

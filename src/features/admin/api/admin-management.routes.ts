@@ -25,6 +25,7 @@ import type { Env } from '@/worker/types/env';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 interface SellerRow {
   id: number;
@@ -285,6 +286,8 @@ adminManagementRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'approved' } });
+    // 8. 셀러 승인 → 셀러 알림
+    createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved', '셀러 승인 완료', '판매를 시작할 수 있습니다', '/seller').catch(() => {});
     return c.json({ success: true, data: { id: sellerId, status: 'approved' } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -849,12 +852,12 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
 
     // 알림톡 발송용: 셀러 전화번호 + 상품명 조회
     const reqInfo = await DB.prepare(`
-      SELECT s.phone AS seller_phone, s.name AS seller_name, p.name AS product_name
+      SELECT sr.seller_id, s.phone AS seller_phone, s.name AS seller_name, p.name AS product_name
       FROM sample_requests sr
       JOIN sellers s ON sr.seller_id = s.id
       JOIN products p ON sr.product_id = p.id
       WHERE sr.id = ?
-    `).bind(reqId).first<{ seller_phone: string | null; seller_name: string; product_name: string }>()
+    `).bind(reqId).first<{ seller_id: number; seller_phone: string | null; seller_name: string; product_name: string }>()
       .catch(() => null);
 
     await DB.prepare(`
@@ -883,6 +886,13 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
         subject_1: subject,
         message_1: message,
       }).catch(e => console.warn('[Alimtalk] 샘플 승인 알림 실패:', e));
+    }
+
+    // 4. 공급 상품 승인/거부 → 셀러 알림
+    if (reqInfo?.seller_id) {
+      const notifType = body.action === 'approve' ? 'supply_approved' : 'supply_rejected';
+      const notifTitle = body.action === 'approve' ? '공급 상품 승인' : '공급 상품 거부';
+      createDashboardNotification(DB, 'seller', String(reqInfo.seller_id), notifType, notifTitle, `상품: ${reqInfo.product_name}`, '/seller/supply').catch(() => {});
     }
 
     return c.json({
@@ -1224,6 +1234,11 @@ adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
       DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
     );
 
+    // 2. 정산 완료 → 셀러 알림
+    for (const seller of result.sellers) {
+      createDashboardNotification(DB, 'seller', String(seller.seller_id), 'settlement_completed', '정산 완료', `정산 금액: ${seller.settlement_amount}원`, '/seller/settlements').catch(() => {});
+    }
+
     return c.json({ success: true, data: result });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -1323,6 +1338,15 @@ adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => 
 
     params.push(orderNumber);
     await executeQuery(DB, `UPDATE orders SET ${updates.join(', ')} WHERE order_number = ?`, params);
+
+    // 11. 배송 완료 → 어드민 + 셀러 알림
+    if (status === 'DELIVERED') {
+      createDashboardNotification(DB, 'admin', null, 'order_delivered', '배송 완료', `주문: ${orderNumber}`, '/admin/orders').catch(() => {});
+      const orderForNotif = await executeQuery<{ seller_id: number | null }>(DB, 'SELECT seller_id FROM orders WHERE order_number = ?', [orderNumber]);
+      if (orderForNotif.length > 0 && orderForNotif[0].seller_id) {
+        createDashboardNotification(DB, 'seller', String(orderForNotif[0].seller_id), 'order_delivered', '배송 완료', `주문: ${orderNumber}`, '/seller/orders').catch(() => {});
+      }
+    }
 
     // 취소 시 재고 복구
     if (status === 'CANCELLED') {

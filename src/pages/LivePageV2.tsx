@@ -1456,18 +1456,7 @@ export default function LivePageV2() {
         sellerLinks={{
           youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
           instagram: reels[activeIndex]?.stream?.seller_instagram || undefined,
-          kakao: reels[activeIndex]?.stream?.seller_kakao || undefined,
-        }}
-        onSubscribe={(platform) => {
-          const userName = localStorage.getItem('user_name') || '시청자'
-          setChatMessages(prev => [...prev, {
-            id: `sub-${Date.now()}`,
-            user_id: 'system',
-            user_name: '시스템',
-            message: `🎉 ${userName}님이 ${platform}를 구독하셨습니다!`,
-            created_at: new Date().toISOString(),
-            is_system: true,
-          }])
+          tiktok: reels[activeIndex]?.stream?.seller_tiktok || undefined,
         }}
       />
       

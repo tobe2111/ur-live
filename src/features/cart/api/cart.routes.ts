@@ -54,11 +54,15 @@ cartRoutes.use(
 // ─── Helper: users 테이블에서 DB user_id 조회 ────────────────────────────────
 async function getUserDbId(
   db: D1Database,
-  firebaseUid: string
+  idOrUid: string
 ): Promise<number | null> {
+  // 숫자 ID면 바로 사용 (세션 쿠키 유저)
+  const numId = parseInt(idOrUid);
+  if (!isNaN(numId) && String(numId) === idOrUid) return numId;
+  // Firebase UID로 조회
   const row = await db
     .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
-    .bind(firebaseUid)
+    .bind(idOrUid)
     .first<{ id: number }>();
   return row?.id ?? null;
 }

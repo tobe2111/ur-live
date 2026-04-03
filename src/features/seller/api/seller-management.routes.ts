@@ -17,6 +17,7 @@ import { hashPassword } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { ApiError } from '@/shared/types/common';
 import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 type Bindings = {
   DB: D1Database;
@@ -254,6 +255,9 @@ sellerManagementRoutes.post('/register', async (c) => {
     if (!result.success) {
       throw new Error('Failed to create seller account');
     }
+
+    // 7. 셀러 가입 신청 → 어드민 알림
+    createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(() => {});
 
     return c.json({
       success: true,
@@ -928,6 +932,8 @@ sellerManagementRoutes.post('/settlements/request', async (c) => {
     `).bind(sellerId, amount, bank_name || null, account_number || null, account_holder || null).run()
       .catch(() => null);
     if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
+    // 1. 정산 신청 → 어드민 알림
+    createDashboardNotification(db, 'admin', null, 'settlement_request', '정산 신청', `셀러 #${sellerId}`, '/admin/settlement').catch(() => {});
     return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);

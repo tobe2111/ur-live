@@ -46,15 +46,18 @@ const confirmSchema = z.object({
  */
 paymentsRouter.post('/confirm', async (c) => {
   try {
-    const firebaseUid = String(c.get('user').id);
-    // Firebase UID → DB user_id 변환 (order.routes.ts와 동일한 방식)
-    let userId = firebaseUid;
-    try {
-      const row = await c.env.DB.prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
-        .bind(firebaseUid).first<{ id: string | number }>();
-      if (row?.id != null) userId = String(row.id);
-    } catch {
-      // firebase_uid 컬럼 없는 스키마 → Firebase UID 직접 사용
+    const rawId = String(c.get('user').id);
+    // 숫자 ID면 바로 사용 (세션 쿠키), 아니면 firebase_uid로 DB 조회
+    let userId = rawId;
+    const numId = parseInt(rawId);
+    if (isNaN(numId) || String(numId) !== rawId) {
+      try {
+        const row = await c.env.DB.prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
+          .bind(rawId).first<{ id: string | number }>();
+        if (row?.id != null) userId = String(row.id);
+      } catch {
+        // firebase_uid 컬럼 없는 스키마 → 그대로 사용
+      }
     }
 
     const body = await c.req.json();

@@ -20,6 +20,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
 import { ALLOWED_ORIGINS } from '@/shared/constants';
 import { tossCancelPayment } from '@/worker/utils/toss-payments';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -152,6 +153,12 @@ returnsRoutes.post('/request', requireAuth(), async (c) => {
     body.detail_reason ?? null,
     refundAmount
   ).run();
+
+  // 5. 반품 신청 → 어드민 + 셀러 알림
+  createDashboardNotification(DB, 'admin', null, 'return_request', '반품 신청', `주문: ${order.order_number}`, '/admin/orders').catch(() => {});
+  if (order.seller_id) {
+    createDashboardNotification(DB, 'seller', String(order.seller_id), 'return_request', '반품 신청 접수', `주문: ${order.order_number}`, '/seller/orders').catch(() => {});
+  }
 
   return c.json({
     success: true,
