@@ -113,36 +113,28 @@ api.interceptors.request.use(
 
     // ── Seller API (/api/seller/*, /api/youtube/*) ─────────────────────────
     if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/')) {
-      const userType = localStorage.getItem('user_type');
-      if (userType === 'seller') {
-        const token = localStorage.getItem('seller_token');
-        if (!token) throw new Error('Seller token missing - please login again');
+      const token = localStorage.getItem('seller_token');
+      if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
         return config;
       }
-      // user_type이 seller가 아니면 Firebase fallthrough
+      // seller_token 없으면 Firebase fallthrough (공개 셀러 API 등)
     }
 
     // ── Admin API (/api/admin/*) ───────────────────────────────────────────
     if (url.startsWith('/api/admin/')) {
-      const userType = localStorage.getItem('user_type');
-      if (userType !== 'admin') throw new Error('Admin access required');
       const token = localStorage.getItem('admin_token');
       if (!token) throw new Error('Admin token missing - please login again');
       config.headers['Authorization'] = `Bearer ${token}`;
       return config;
     }
 
-    // ── Notifications: user_type에 따라 분기 ─────────────────────────────
+    // ── Notifications: 토큰 존재 여부로 분기 ─────────────────────────────
     if (url.startsWith('/api/notifications')) {
-      const userType = localStorage.getItem('user_type');
-      if (userType === 'seller') {
-        const t = localStorage.getItem('seller_token');
-        if (t) { config.headers['Authorization'] = `Bearer ${t}`; return config; }
-      } else if (userType === 'admin') {
-        const t = localStorage.getItem('admin_token');
-        if (t) { config.headers['Authorization'] = `Bearer ${t}`; return config; }
-      }
+      const sellerToken = localStorage.getItem('seller_token');
+      const adminToken = localStorage.getItem('admin_token');
+      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
       // fallthrough to Firebase
     }
 

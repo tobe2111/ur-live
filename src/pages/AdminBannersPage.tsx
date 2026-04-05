@@ -38,7 +38,7 @@ export default function AdminBannersPage() {
   }
 
   useEffect(() => {
-    if (localStorage.getItem('user_type') !== 'admin') {
+    if (!localStorage.getItem('admin_token')) {
       navigate('/admin/login'); return
     }
     loadBanners()

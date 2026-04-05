@@ -51,34 +51,31 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
   const keysToRemove: string[] = []
   
   if (type === 'seller') {
-    // Seller 전용 키 (user_id, user_name은 User 전용이므로 제거 안 함)
+    // Seller 전용 키만 삭제 (user_type 제거하지 않음 — 다른 세션 보호)
     keysToRemove.push(
       'seller_token',
       'seller_refresh_token',
       'seller_id',
       'seller_name',
       'seller_email',
-      'user_type',
       'access_token',  // 레거시 호환
       'refresh_token'  // 레거시 호환
     )
   } else if (type === 'admin') {
-    // Admin 전용 키 (user_id, user_name은 User 전용이므로 제거 안 함)
+    // Admin 전용 키만 삭제 (user_type 제거하지 않음 — 다른 세션 보호)
     keysToRemove.push(
       'admin_token',
       'admin_refresh_token',
       'admin_id',
       'admin_name',
       'admin_email',
-      'user_type',
       'access_token',  // 레거시 호환
       'refresh_token'  // 레거시 호환
     )
   } else {
-    // User 전용 키
+    // User 전용 키 (user_type은 seller/admin 세션이 없을 때만 삭제)
     keysToRemove.push(
       'firebase_token',
-      'user_type',
       'user_id',
       'user_name',
       'user_email',
@@ -89,6 +86,12 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'loginReturnUrl',
       'lastLoginUid'
     )
+    // seller/admin 세션이 남아있으면 user_type 유지
+    const hasSellerSession = !!localStorage.getItem('seller_token')
+    const hasAdminSession = !!localStorage.getItem('admin_token')
+    if (!hasSellerSession && !hasAdminSession) {
+      keysToRemove.push('user_type')
+    }
   }
   
   // 선택적 삭제
