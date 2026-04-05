@@ -54,7 +54,7 @@ export default function AdminAlimtalkPricingPage() {
   useEffect(() => {
     const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
     const userType = localStorage.getItem('user_type')
-    if (!sessionToken || userType !== 'admin') { navigate('/admin/login'); return }
+    if (!sessionToken) { navigate('/admin/login'); return }
     loadAllData()
   }, [])
 

@@ -128,7 +128,7 @@ export default function AdminOrdersPage() {
     setLoading(true); setError('')
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
-      if (!token || localStorage.getItem('user_type') !== 'admin') { navigate('/admin/login'); return }
+      if (!token) { navigate('/admin/login'); return }
       const response = await api.get('/api/admin/orders', { headers: { Authorization: `Bearer ${token}` } })
       if (response.data.success) setOrders(response.data.data)
     } catch (err: any) {

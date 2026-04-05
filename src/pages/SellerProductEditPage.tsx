@@ -64,9 +64,8 @@ export default function SellerProductEditPage() {
   useEffect(() => {
     // Check authentication
     const sessionToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    
-    if (!sessionToken || userType !== 'seller') {
+
+    if (!sessionToken) {
       navigate('/seller/login')
       return
     }

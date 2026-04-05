@@ -53,8 +53,7 @@ export default function AdminSettlementPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
-    const userType = localStorage.getItem('user_type')
-    if (!token || userType !== 'admin') { navigate('/admin/login'); return }
+    if (!token) { navigate('/admin/login'); return }
     loadData()
   }, [navigate, period, selectedSeller, statusFilter])
 

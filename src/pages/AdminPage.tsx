@@ -85,8 +85,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
-    const userType = localStorage.getItem('user_type')
-    if (!token || userType !== 'admin') {
+    if (!token) {
       navigate('/admin/login', { replace: true })
       return
     }
