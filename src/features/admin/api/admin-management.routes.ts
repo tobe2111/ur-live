@@ -1771,3 +1771,161 @@ adminManagementRoutes.patch('/donations/settlements/:id', cors(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// ══════════════════════════════════════════════════════════════════
+// 딜 충전 모니터링 API
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/admin/deals/stats - 딜 충전 통계 요약
+adminManagementRoutes.get('/deals/stats', async (c) => {
+  const { DB } = c.env;
+  try {
+    const totals = await DB.prepare(`
+      SELECT
+        COUNT(*) as total_transactions,
+        COALESCE(SUM(amount), 0) as total_charged_amount,
+        COALESCE(SUM(commission_amount), 0) as total_commission,
+        COALESCE(SUM(points_amount), 0) as total_points_issued,
+        COUNT(DISTINCT user_id) as unique_users
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+    `).first();
+
+    const today = await DB.prepare(`
+      SELECT
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as amount,
+        COALESCE(SUM(commission_amount), 0) as commission
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+        AND created_at >= date('now')
+    `).first();
+
+    const thisMonth = await DB.prepare(`
+      SELECT
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as amount,
+        COALESCE(SUM(commission_amount), 0) as commission
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+        AND created_at >= date('now', 'start of month')
+    `).first();
+
+    const donations = await DB.prepare(`
+      SELECT
+        COUNT(*) as total_donations,
+        COALESCE(SUM(amount), 0) as total_donated
+      FROM point_transactions
+      WHERE type = 'donate'
+    `).first();
+
+    return c.json({
+      success: true,
+      data: {
+        totals: totals ?? {},
+        today: today ?? {},
+        thisMonth: thisMonth ?? {},
+        donations: donations ?? {},
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/admin/deals/charges - 딜 충전 내역 (페이지네이션)
+adminManagementRoutes.get('/deals/charges', async (c) => {
+  const { DB } = c.env;
+  const page = Math.max(1, Number(c.req.query('page')) || 1);
+  const limit = Math.min(100, Math.max(10, Number(c.req.query('limit')) || 20));
+  const offset = (page - 1) * limit;
+  const search = c.req.query('search') || '';
+
+  try {
+    let whereClause = "WHERE pt.type = 'charge' AND pt.payment_key IS NOT NULL";
+    const binds: any[] = [];
+
+    if (search) {
+      whereClause += ' AND (pt.user_id LIKE ? OR pt.order_id LIKE ?)';
+      binds.push(`%${search}%`, `%${search}%`);
+    }
+
+    const countResult = await DB.prepare(
+      `SELECT COUNT(*) as total FROM point_transactions pt ${whereClause}`
+    ).bind(...binds).first<{ total: number }>();
+
+    const { results } = await DB.prepare(`
+      SELECT
+        pt.id, pt.user_id, pt.amount, pt.commission_amount,
+        pt.points_amount, pt.balance_after, pt.description,
+        pt.payment_key, pt.order_id, pt.created_at,
+        up.balance as current_balance,
+        up.total_charged as user_total_charged,
+        up.total_donated as user_total_donated
+      FROM point_transactions pt
+      LEFT JOIN user_points up ON pt.user_id = up.user_id
+      ${whereClause}
+      ORDER BY pt.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...binds, limit, offset).all();
+
+    return c.json({
+      success: true,
+      data: results ?? [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total ?? 0,
+        totalPages: Math.ceil((countResult?.total ?? 0) / limit),
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/admin/deals/users - 딜 사용자별 요약
+adminManagementRoutes.get('/deals/users', async (c) => {
+  const { DB } = c.env;
+  const page = Math.max(1, Number(c.req.query('page')) || 1);
+  const limit = Math.min(100, Math.max(10, Number(c.req.query('limit')) || 20));
+  const offset = (page - 1) * limit;
+  const sort = c.req.query('sort') || 'total_charged';
+  const allowedSorts = ['total_charged', 'total_donated', 'balance', 'last_charged'];
+  const sortCol = allowedSorts.includes(sort) ? sort : 'total_charged';
+
+  try {
+    const countResult = await DB.prepare(
+      'SELECT COUNT(*) as total FROM user_points WHERE total_charged > 0'
+    ).first<{ total: number }>();
+
+    const { results } = await DB.prepare(`
+      SELECT
+        up.user_id,
+        up.balance,
+        up.total_charged,
+        up.total_donated,
+        up.created_at as first_charge_date,
+        up.updated_at as last_activity,
+        (SELECT COUNT(*) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as charge_count,
+        (SELECT MAX(created_at) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as last_charged
+      FROM user_points up
+      WHERE up.total_charged > 0
+      ORDER BY ${sortCol} DESC
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all();
+
+    return c.json({
+      success: true,
+      data: results ?? [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total ?? 0,
+        totalPages: Math.ceil((countResult?.total ?? 0) / limit),
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});

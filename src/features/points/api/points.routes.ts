@@ -192,6 +192,14 @@ pointsRoutes.post('/charge/confirm', requireAuth(), async (c) => {
     'UPDATE point_transactions SET payment_key = ?, balance_after = ? WHERE id = ?'
   ).bind(paymentKey, updated?.balance ?? pointsToAdd, pending.id).run();
 
+  // 딜 충전 → 어드민 알림
+  createDashboardNotification(
+    DB, 'admin', null, 'deal_charged',
+    '딜 충전',
+    `${amount.toLocaleString()}원 → ${pointsToAdd.toLocaleString()}딜 충전`,
+    '/admin/deals'
+  ).catch(() => {});
+
   return c.json({
     success: true,
     data: {
