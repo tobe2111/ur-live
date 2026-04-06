@@ -29,19 +29,29 @@ liveSseRoutes.get('/:liveId/sse', (c) => {
 })
 
 // ── Initial chat messages: GET /api/live/:liveId/chat/messages ───────────────
+// ?replay=true 파라미터: 다시보기 시 전체 채팅 로드 (타임라인 동기화용)
 liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
   const { liveId } = c.req.param()
+  const isReplay = c.req.query('replay') === 'true'
 
   try {
-    const messages = await c.env.DB.prepare(`
-      SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
-      FROM chat_messages
-      WHERE live_stream_id = ? AND is_deleted = 0
-      ORDER BY id DESC
-      LIMIT 50
-    `).bind(liveId).all()
+    const query = isReplay
+      ? `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
+         FROM chat_messages
+         WHERE live_stream_id = ? AND is_deleted = 0
+         ORDER BY id ASC`
+      : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
+         FROM chat_messages
+         WHERE live_stream_id = ? AND is_deleted = 0
+         ORDER BY id DESC
+         LIMIT 50`
 
-    return c.json({ success: true, data: messages.results.reverse() })
+    const messages = await c.env.DB.prepare(query).bind(liveId).all()
+
+    return c.json({
+      success: true,
+      data: isReplay ? messages.results : messages.results.reverse(),
+    })
   } catch (err) {
     console.error('[Chat] Failed to fetch messages:', err)
     return c.json({ success: true, data: [] })

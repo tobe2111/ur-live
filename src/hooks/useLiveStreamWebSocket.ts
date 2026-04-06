@@ -50,7 +50,8 @@ export interface UseLiveStreamWebSocketReturn {
 
 export function useLiveStreamWebSocket(
   streamId: number | null,
-  enabled: boolean = true
+  enabled: boolean = true,
+  replay: boolean = false,
 ): UseLiveStreamWebSocketReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streamData, setStreamData] = useState<StreamData | null>(null)
@@ -103,7 +104,8 @@ export function useLiveStreamWebSocket(
   const fetchInitialMessages = useCallback(async () => {
     if (!streamId) return
     try {
-      const res = await fetch(`/api/live/${streamId}/chat/messages`)
+      const replayParam = replay ? '?replay=true' : ''
+      const res = await fetch(`/api/live/${streamId}/chat/messages${replayParam}`)
       if (!res.ok) return
       const json = await res.json() as any
       if (json.success && Array.isArray(json.data)) {
@@ -122,7 +124,7 @@ export function useLiveStreamWebSocket(
     } catch (e) {
       console.error('[WS] Initial messages fetch failed:', e)
     }
-  }, [streamId])
+  }, [streamId, replay])
 
   // Polling fallback when WebSocket is unavailable
   const startPolling = useCallback(() => {
