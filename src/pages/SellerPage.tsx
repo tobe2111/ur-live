@@ -12,7 +12,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer
 } from 'recharts'
-import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -451,6 +451,49 @@ export default function SellerPage() {
                   </Link>
                 </div>
               </div>
+
+              {/* 내 공개 페이지 */}
+              {getSellerId() && (
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-3">내 공개 페이지</h2>
+                  <p className="text-xs text-gray-500 mb-3">
+                    고객에게 공유할 수 있는 나만의 셀러 페이지입니다.
+                  </p>
+                  <div className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between mb-3">
+                    <span className="text-xs text-gray-600 font-mono truncate">
+                      {window.location.origin}/s/{getSellerId()}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/s/${getSellerId()}`)
+                        const el = document.getElementById('copy-toast')
+                        if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000) }
+                      }}
+                      className="text-xs text-blue-600 font-medium hover:underline shrink-0 ml-2"
+                    >
+                      복사
+                    </button>
+                  </div>
+                  <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">링크가 복사되었습니다!</p>
+                  <div className="flex gap-2">
+                    <a
+                      href={`/s/${getSellerId()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                      페이지 보기
+                    </a>
+                    <Link
+                      to="/seller/profile"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      프로필 편집
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
