@@ -8,7 +8,6 @@ import { TrendingUp, Youtube, Loader2, CheckCircle, Clock, XCircle } from 'lucid
 interface GrowthRequest {
   id: number
   channel_url: string
-  current_subscribers: number
   target_subscribers: number
   status: string
   admin_memo: string | null
@@ -29,8 +28,7 @@ export default function SellerYoutubeGrowthPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [channelUrl, setChannelUrl] = useState('')
-  const [currentSubs, setCurrentSubs] = useState(0)
-  const [targetSubs, setTargetSubs] = useState(1000)
+  const [growthCount, setGrowthCount] = useState(1000)
 
   const token = localStorage.getItem('seller_token')
 
@@ -55,13 +53,12 @@ export default function SellerYoutubeGrowthPage() {
     try {
       const res = await api.post('/api/youtube-growth/request', {
         channel_url: channelUrl,
-        current_subscribers: currentSubs,
-        target_subscribers: targetSubs,
+        growth_count: growthCount,
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (res.data.success) {
         toast.success(res.data.message)
         setChannelUrl('')
-        setCurrentSubs(0)
+        setGrowthCount(1000)
         loadRequests()
       } else {
         toast.error(res.data.error)
@@ -109,26 +106,18 @@ export default function SellerYoutubeGrowthPage() {
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">현재 구독자 수</label>
-                  <input
-                    type="number"
-                    value={currentSubs || ''}
-                    onChange={e => setCurrentSubs(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">목표 구독자 수</label>
-                  <input
-                    type="number"
-                    value={targetSubs}
-                    onChange={e => setTargetSubs(parseInt(e.target.value) || 1000)}
-                    min={1000}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">늘릴 구독자 수 *</label>
+                <input
+                  type="number"
+                  value={growthCount}
+                  onChange={e => setGrowthCount(parseInt(e.target.value) || 100)}
+                  min={100}
+                  placeholder="1000"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">최소 100명부터 신청 가능합니다.</p>
               </div>
               <button
                 type="submit"
@@ -163,7 +152,7 @@ export default function SellerYoutubeGrowthPage() {
                     </div>
                     <p className="text-sm text-gray-900 truncate">{req.channel_url}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      현재 {req.current_subscribers.toLocaleString()}명 → 목표 {req.target_subscribers.toLocaleString()}명
+                      구독자 +{(req.target_subscribers || 0).toLocaleString()}명 신청
                     </p>
                     {req.admin_memo && (
                       <p className="text-xs text-blue-600 mt-2 bg-blue-50 px-2 py-1 rounded">{req.admin_memo}</p>

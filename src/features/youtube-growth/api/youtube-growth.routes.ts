@@ -41,13 +41,17 @@ youtubeGrowthRoutes.post('/request', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
-  const { channel_url, current_subscribers, target_subscribers } = await c.req.json<{
+  const { channel_url, growth_count, current_subscribers, target_subscribers } = await c.req.json<{
     channel_url: string;
+    growth_count?: number;
     current_subscribers?: number;
     target_subscribers?: number;
   }>();
 
   if (!channel_url) return c.json({ success: false, error: 'YouTube 채널 URL을 입력해주세요' }, 400);
+
+  const count = growth_count || target_subscribers || 1000;
+  if (count < 100) return c.json({ success: false, error: '최소 100명부터 신청 가능합니다' }, 400);
 
   // 셀러 ID 조회
   const seller = await DB.prepare('SELECT id FROM sellers WHERE id = ? OR username = ?')
@@ -61,7 +65,7 @@ youtubeGrowthRoutes.post('/request', requireAuth(), async (c) => {
   if (existing) return c.json({ success: false, error: '이미 진행 중인 신청이 있습니다' }, 409);
 
   await DB.prepare(`INSERT INTO youtube_growth_requests (seller_id, channel_url, current_subscribers, target_subscribers)
-    VALUES (?, ?, ?, ?)`).bind(seller.id, channel_url, current_subscribers || 0, target_subscribers || 1000).run();
+    VALUES (?, ?, 0, ?)`).bind(seller.id, channel_url, count).run();
 
   // Notify admins
   createDashboardNotification(

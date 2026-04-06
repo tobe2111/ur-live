@@ -165,6 +165,10 @@ export default function PointsChargePage() {
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-2">충전 시 15% 수수료가 차감됩니다.</p>
+            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+              <p className="text-xs text-amber-700 font-medium">충전된 딜은 환불이 불가합니다.</p>
+              <p className="text-xs text-amber-600 mt-0.5">충전 전 금액을 확인해주세요. 딜은 라이브 방송 후원에만 사용됩니다.</p>
+            </div>
           </div>
         )}
 
@@ -177,6 +181,7 @@ export default function PointsChargePage() {
             </div>
             <div id="charge-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
             <div id="charge-agreement" className="min-h-[80px] bg-white rounded-xl border border-gray-200 p-2" />
+            <p className="text-xs text-center text-amber-600 font-medium">결제 완료 시 충전된 딜은 환불이 불가합니다.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowWidget(false); widgetsRef.current = null; orderRef.current = null }}
