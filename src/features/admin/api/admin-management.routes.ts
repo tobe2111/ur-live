@@ -1846,12 +1846,12 @@ adminManagementRoutes.get('/deals/charges', async (c) => {
     const binds: any[] = [];
 
     if (search) {
-      whereClause += ' AND (pt.user_id LIKE ? OR pt.order_id LIKE ?)';
-      binds.push(`%${search}%`, `%${search}%`);
+      whereClause += ' AND (pt.user_id LIKE ? OR pt.order_id LIKE ? OR u.name LIKE ? OR u.email LIKE ?)';
+      binds.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     const countResult = await DB.prepare(
-      `SELECT COUNT(*) as total FROM point_transactions pt ${whereClause}`
+      `SELECT COUNT(*) as total FROM point_transactions pt LEFT JOIN users u ON CAST(pt.user_id AS TEXT) = CAST(u.id AS TEXT) ${whereClause}`
     ).bind(...binds).first<{ total: number }>();
 
     const { results } = await DB.prepare(`
@@ -1861,9 +1861,13 @@ adminManagementRoutes.get('/deals/charges', async (c) => {
         pt.payment_key, pt.order_id, pt.created_at,
         up.balance as current_balance,
         up.total_charged as user_total_charged,
-        up.total_donated as user_total_donated
+        up.total_donated as user_total_donated,
+        u.name as user_name,
+        u.email as user_email,
+        u.profile_image as user_profile_image
       FROM point_transactions pt
       LEFT JOIN user_points up ON pt.user_id = up.user_id
+      LEFT JOIN users u ON CAST(pt.user_id AS TEXT) = CAST(u.id AS TEXT)
       ${whereClause}
       ORDER BY pt.created_at DESC
       LIMIT ? OFFSET ?
@@ -1908,8 +1912,12 @@ adminManagementRoutes.get('/deals/users', async (c) => {
         up.created_at as first_charge_date,
         up.updated_at as last_activity,
         (SELECT COUNT(*) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as charge_count,
-        (SELECT MAX(created_at) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as last_charged
+        (SELECT MAX(created_at) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as last_charged,
+        u.name as user_name,
+        u.email as user_email,
+        u.profile_image as user_profile_image
       FROM user_points up
+      LEFT JOIN users u ON CAST(up.user_id AS TEXT) = CAST(u.id AS TEXT)
       WHERE up.total_charged > 0
       ORDER BY ${sortCol} DESC
       LIMIT ? OFFSET ?

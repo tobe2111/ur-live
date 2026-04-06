@@ -103,7 +103,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
-  const orderId = `TEAM-${user.id}-${Date.now()}`;
+  const orderId = `DEAL-${user.id}-${Date.now()}`;
 
   // pending 트랜잭션 기록
   await DB.prepare(`
@@ -268,7 +268,7 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
   ).run();
 
   // donations 테이블에도 기록 (기존 호환)
-  const donationOrderId = `TEAM-DON-${user.id}-${stream_id}-${Date.now()}`;
+  const donationOrderId = `DEAL-DON-${user.id}-${stream_id}-${Date.now()}`;
   await DB.prepare(`
     INSERT INTO donations (live_stream_id, seller_id, donor_user_id, donor_name, amount,
       commission_amount, credit_amount, commission_rate, order_id, payment_status, message)
