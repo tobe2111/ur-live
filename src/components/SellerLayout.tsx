@@ -1,24 +1,26 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
 const NAV_ITEMS = [
-  { path: '/seller/live',          label: '라이브 방송',   icon: Radio, highlight: true },
-  { path: '/seller',              label: '대시보드',     icon: LayoutDashboard, exact: true },
-  { path: '/seller/orders',       label: '주문 관리',    icon: ShoppingBag },
-  { path: '/seller/settlements',  label: '매출·정산',    icon: DollarSign },
-  { path: '/seller/products',     label: '상품 관리',    icon: Package },
-  { path: '/seller/inventory',    label: '재고 관리',    icon: BarChart3 },
-  { path: '/seller/supply',       label: '공급 상품',    icon: Truck },
-  { path: '/seller/donations',   label: '후원 내역',    icon: Heart },
-  { path: '/seller/youtube-growth',label: '구독자 늘리기', icon: TrendingUp },
-  { path: '/seller/alimtalk',     label: '브랜드메시지',  icon: Bell },
-  { path: '/seller/business-info',label: '사업자 정보',   icon: Building2 },
+  { path: '/seller/live',          labelKey: 'seller.live',          icon: Radio, highlight: true },
+  { path: '/seller',              labelKey: 'seller.dashboard',     icon: LayoutDashboard, exact: true },
+  { path: '/seller/orders',       labelKey: 'seller.orders',        icon: ShoppingBag },
+  { path: '/seller/settlements',  labelKey: 'seller.revenue',       icon: DollarSign },
+  { path: '/seller/products',     labelKey: 'seller.products',      icon: Package },
+  { path: '/seller/inventory',    labelKey: 'seller.inventory',     icon: BarChart3 },
+  { path: '/seller/supply',       labelKey: 'seller.supply',        icon: Truck },
+  { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
+  { path: '/seller/donations',   labelKey: 'seller.donations',     icon: Heart },
+  { path: '/seller/youtube-growth',labelKey: 'seller.youtubeGrowth', icon: TrendingUp },
+  { path: '/seller/alimtalk',     labelKey: 'seller.brandMessage',  icon: Bell },
+  { path: '/seller/business-info',labelKey: 'seller.businessInfo',  icon: Building2 },
 ]
 
 interface SellerLayoutProps {
@@ -29,11 +31,30 @@ interface SellerLayoutProps {
 }
 
 export default function SellerLayout({ title, children, headerRight, pendingOrders = 0 }: SellerLayoutProps) {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
 
-  const sellerName = localStorage.getItem('seller_name') || '셀러'
+  const sellerName = localStorage.getItem('seller_name') || 'Seller'
+
+  const languages = [
+    { code: 'ko', label: '한국어', flag: '🇰🇷' },
+    { code: 'en', label: 'English', flag: '🇺🇸' },
+    { code: 'ja', label: '日本語', flag: '🇯🇵' },
+    { code: 'zh', label: '中文', flag: '🇨🇳' },
+    { code: 'es', label: 'Español', flag: '🇪🇸' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  ]
+
+  const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
+
+  function changeLang(code: string) {
+    i18n.changeLanguage(code)
+    localStorage.setItem('i18nextLng', code)
+    setLangOpen(false)
+  }
 
   function isActive(path: string, exact?: boolean) {
     return exact ? location.pathname === path : location.pathname.startsWith(path)
@@ -48,7 +69,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             {sellerName.charAt(0)}
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-gray-400">워크스페이스</p>
+            <p className="text-xs text-gray-400">{t('seller.workspace')}</p>
             <p className="text-sm font-semibold text-gray-800 truncate">{sellerName}</p>
           </div>
         </div>
@@ -56,8 +77,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, exact, highlight }) => {
+        {NAV_ITEMS.map(({ path, labelKey, icon: Icon, exact, highlight }) => {
           const active = isActive(path, exact)
+          const label = t(labelKey)
           return (
             <Link
               key={path}
@@ -74,7 +96,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               <Icon className={`w-4 h-4 flex-shrink-0 ${highlight && !active ? 'text-red-500' : ''}`} />
               {label}
               {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
-              {label === '주문 관리' && pendingOrders > 0 && (
+              {labelKey === 'seller.orders' && pendingOrders > 0 && (
                 <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                   active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
                 }`}>
@@ -93,14 +115,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
         >
           <Settings className="w-4 h-4" />
-          설정
+          {t('seller.settings')}
         </Link>
         <button
           onClick={() => logoutSeller(navigate)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          로그아웃
+          {t('common.logout')}
         </button>
       </div>
     </aside>
@@ -134,6 +156,36 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* Language Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setLangOpen(!langOpen)}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="text-xs font-medium hidden sm:inline">{currentLang.flag} {currentLang.label}</span>
+                <span className="text-xs sm:hidden">{currentLang.flag}</span>
+              </button>
+              {langOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setLangOpen(false)} />
+                  <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                    {languages.map(lang => (
+                      <button
+                        key={lang.code}
+                        onClick={() => changeLang(lang.code)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 ${
+                          i18n.language === lang.code ? 'font-semibold text-blue-600 bg-blue-50' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>{lang.flag}</span>
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <DashboardNotificationBell tokenKey="seller_token" />
             {headerRight}
           </div>
@@ -150,7 +202,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
-        title="카카오 채널 상담"
+        title={t('seller.kakaoChat')}
       >
         <MessageCircle className="w-4 h-4" />
       </a>

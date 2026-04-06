@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import {
   Package, ShoppingBag, Play, DollarSign,
@@ -63,18 +64,19 @@ interface LiveStream {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  PENDING:   { label: '결제대기', color: '#D97706', bg: '#FEF3C7', icon: <Clock className="w-3 h-3" /> },
-  DONE:      { label: '결제완료', color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
-  PAID:      { label: '결제완료', color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
-  PREPARING: { label: '준비중',   color: '#7C3AED', bg: '#EDE9FE', icon: <Package className="w-3 h-3" /> },
-  SHIPPING:  { label: '배송중',   color: '#0891B2', bg: '#CFFAFE', icon: <Truck className="w-3 h-3" /> },
-  DELIVERED: { label: '배송완료', color: '#059669', bg: '#D1FAE5', icon: <CheckCircle2 className="w-3 h-3" /> },
-  CANCELLED: { label: '취소',     color: '#DC2626', bg: '#FEE2E2', icon: <XCircle className="w-3 h-3" /> },
+const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
+  PENDING:   { labelKey: 'seller.statusPending',   color: '#D97706', bg: '#FEF3C7', icon: <Clock className="w-3 h-3" /> },
+  DONE:      { labelKey: 'seller.statusDone',      color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
+  PAID:      { labelKey: 'seller.statusDone',      color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
+  PREPARING: { labelKey: 'seller.statusPreparing', color: '#7C3AED', bg: '#EDE9FE', icon: <Package className="w-3 h-3" /> },
+  SHIPPING:  { labelKey: 'seller.statusShipping',  color: '#0891B2', bg: '#CFFAFE', icon: <Truck className="w-3 h-3" /> },
+  DELIVERED: { labelKey: 'seller.statusDelivered', color: '#059669', bg: '#D1FAE5', icon: <CheckCircle2 className="w-3 h-3" /> },
+  CANCELLED: { labelKey: 'seller.statusCancelled', color: '#DC2626', bg: '#FEE2E2', icon: <XCircle className="w-3 h-3" /> },
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function SellerPage() {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
 
   // Stats
@@ -208,20 +210,20 @@ export default function SellerPage() {
   }
   function timeAgo(date: Date) {
     const s = Math.floor((Date.now() - date.getTime()) / 1000)
-    if (s < 60) return `${s}초 전`
-    if (s < 3600) return `${Math.floor(s / 60)}분 전`
-    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+    if (s < 60) return t('seller.secondsAgo', { count: s })
+    if (s < 3600) return t('seller.minutesAgo', { count: Math.floor(s / 60) })
+    return date.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
   }
   // ── Loading ─────────────────────────────────────────────────────────────────
-  const sellerName = localStorage.getItem('seller_name') || '셀러'
+  const sellerName = localStorage.getItem('seller_name') || 'Seller'
 
   if (loading) {
     return (
-      <SellerLayout title="대시보드">
+      <SellerLayout title={t('seller.dashboard')}>
         <div className="flex items-center justify-center py-32">
           <div className="text-center">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">대시보드 불러오는 중...</p>
+            <p className="text-sm text-gray-500">{t('seller.loadingDashboard')}</p>
           </div>
         </div>
       </SellerLayout>
@@ -240,7 +242,7 @@ export default function SellerPage() {
               period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {p === '7d' ? '7일' : p === '30d' ? '30일' : '90일'}
+            {p === '7d' ? t('seller.last7days') : p === '30d' ? t('seller.last30days') : t('seller.last90days')}
           </button>
         ))}
       </div>
@@ -249,35 +251,35 @@ export default function SellerPage() {
         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
       >
         <Play className="w-3.5 h-3.5" />
-        라이브 시작
+        {t('seller.startLive')}
       </button>
     </div>
   )
 
   return (
-    <SellerLayout title="대시보드" headerRight={headerRight} pendingOrders={stats.pendingOrders}>
+    <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
 
           {/* ── Stats row ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {
-                label: '총 매출', value: fmtPrice(stats.totalRevenue),
-                sub: stats.avgOrderValue > 0 ? `평균 ${fmtPrice(stats.avgOrderValue)}/건` : undefined,
+                label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
+                sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
                 icon: <TrendingUp className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50'
               },
               {
-                label: '총 주문', value: `${(stats.totalOrders || 0).toLocaleString()}건`,
-                sub: stats.completedOrders > 0 ? `완료 ${stats.completedOrders.toLocaleString()}건` : undefined,
+                label: t('seller.totalOrders'), value: `${(stats.totalOrders || 0).toLocaleString()}`,
+                sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
                 icon: <ShoppingBag className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50'
               },
               {
-                label: '대기 주문', value: `${(stats.pendingOrders || 0).toLocaleString()}건`,
-                sub: '처리 필요',
+                label: t('seller.pendingOrders'), value: `${(stats.pendingOrders || 0).toLocaleString()}`,
+                sub: t('seller.needsAction'),
                 icon: <AlertCircle className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50'
               },
               {
-                label: '활성 라이브', value: `${stats.activeStreams || 0}개`,
-                sub: stats.totalViewers > 0 ? `시청자 ${stats.totalViewers.toLocaleString()}명` : '방송 없음',
+                label: t('seller.activeStreams'), value: `${stats.activeStreams || 0}`,
+                sub: stats.totalViewers > 0 ? t('seller.viewerCount', { count: stats.totalViewers }) : t('seller.noStreams'),
                 icon: <Play className="w-5 h-5" />, color: 'text-red-500', bg: 'bg-red-50'
               },
             ].map(card => (
@@ -301,21 +303,21 @@ export default function SellerPage() {
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-gray-900">실시간 주문</h2>
+                  <h2 className="text-sm font-semibold text-gray-900">{t('seller.realtimeOrders')}</h2>
                   {newOrderIds.size > 0 && (
                     <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse">
                       <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                      새 주문 {newOrderIds.size}건
+                      {t('seller.newOrders', { count: newOrderIds.size })}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{timeAgo(lastUpdated)} 업데이트</span>
+                  <span className="text-xs text-gray-400">{t('seller.lastUpdated', { time: timeAgo(lastUpdated) })}</span>
                   <button
                     onClick={() => pollOrders(true)}
                     disabled={ordersRefreshing}
                     className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                    title="새로고침"
+                    title={t('seller.refresh')}
                   >
                     <RefreshCw className={`w-3.5 h-3.5 text-gray-400 ${ordersRefreshing ? 'animate-spin' : ''}`} />
                   </button>
@@ -323,7 +325,7 @@ export default function SellerPage() {
                     to="/seller/orders"
                     className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:underline"
                   >
-                    전체보기 <ArrowUpRight className="w-3 h-3" />
+                    {t('seller.viewAll')} <ArrowUpRight className="w-3 h-3" />
                   </Link>
                 </div>
               </div>
@@ -331,24 +333,25 @@ export default function SellerPage() {
               {recentOrders.length === 0 ? (
                 <div className="py-16 text-center">
                   <ShoppingBag className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">아직 주문이 없어요</p>
+                  <p className="text-sm text-gray-400">{t('seller.noOrders')}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[540px]">
                     <thead>
                       <tr className="bg-gray-50">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">주문번호</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">구매자</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">금액</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">상태</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">주문시각</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderNumber')}</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">{t('seller.buyer')}</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">{t('seller.amount')}</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">{t('seller.status')}</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500">{t('seller.orderTime')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {recentOrders.map(order => {
                         const isNew = newOrderIds.has(order.id)
-                        const sc = STATUS_CONFIG[order.status] || { label: order.status, color: '#6B7280', bg: '#F3F4F6', icon: null }
+                        const scBase = STATUS_CONFIG_BASE[order.status] || { labelKey: '', color: '#6B7280', bg: '#F3F4F6', icon: null }
+                        const sc = { ...scBase, label: scBase.labelKey ? t(scBase.labelKey) : order.status }
                         return (
                           <tr
                             key={order.id}
@@ -385,7 +388,7 @@ export default function SellerPage() {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right text-xs text-gray-400">
-                              {new Date(order.created_at).toLocaleString('ko-KR', {
+                              {new Date(order.created_at).toLocaleString(i18n.language, {
                                 month: 'numeric', day: 'numeric',
                                 hour: '2-digit', minute: '2-digit'
                               })}
@@ -404,26 +407,26 @@ export default function SellerPage() {
 
               {/* 오늘의 매출 요약 */}
               <div className="bg-white rounded-xl shadow-sm p-5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-4">오늘의 매출 요약</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.todaySummary')}</h2>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">오늘 주문 수</span>
-                    <span className="text-sm font-bold text-gray-900">{(stats.totalOrders || 0).toLocaleString()}건</span>
+                    <span className="text-sm text-gray-500">{t('seller.todayOrders')}</span>
+                    <span className="text-sm font-bold text-gray-900">{(stats.totalOrders || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">오늘 매출액</span>
+                    <span className="text-sm text-gray-500">{t('seller.todaySales')}</span>
                     <span className="text-sm font-bold text-gray-900">{fmtPrice(stats.totalRevenue)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">미처리 주문 수</span>
-                    <span className="text-sm font-bold text-amber-600">{(stats.pendingOrders || 0).toLocaleString()}건</span>
+                    <span className="text-sm text-gray-500">{t('seller.unprocessedOrders')}</span>
+                    <span className="text-sm font-bold text-amber-600">{(stats.pendingOrders || 0).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* 알림 */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">알림</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.alerts')}</h2>
                 <div className="grid grid-cols-3 gap-3">
                   <Link
                     to="/seller/products"
@@ -431,7 +434,7 @@ export default function SellerPage() {
                   >
                     <AlertTriangle className="w-5 h-5 text-amber-600 mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-gray-900">{stockAlertCount}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">재고 부족</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.lowStock')}</p>
                   </Link>
                   <Link
                     to="/seller/orders"
@@ -439,7 +442,7 @@ export default function SellerPage() {
                   >
                     <ShoppingBag className="w-5 h-5 text-blue-600 mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-gray-900">{(stats.pendingOrders || 0)}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">미처리 주문</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.pendingOrdersAlert')}</p>
                   </Link>
                   <Link
                     to="/seller/settlements"
@@ -447,49 +450,61 @@ export default function SellerPage() {
                   >
                     <CreditCard className="w-5 h-5 text-green-600 mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-gray-900">{fmtShort(stats.totalRevenue)}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">정산 예정</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t('seller.expectedSettlement')}</p>
                   </Link>
                 </div>
               </div>
 
-              {/* 내 공개 페이지 */}
+              {/* 내 공개 페이지 미리보기 */}
               {getSellerId() && (
                 <div className="bg-white rounded-xl shadow-sm p-5">
-                  <h2 className="text-sm font-semibold text-gray-900 mb-3">내 공개 페이지</h2>
-                  <p className="text-xs text-gray-500 mb-3">
-                    고객에게 공유할 수 있는 나만의 셀러 페이지입니다.
-                  </p>
-                  <div className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-600 font-mono truncate">
-                      {window.location.origin}/s/{getSellerId()}
-                    </span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/s/${getSellerId()}`)
-                        const el = document.getElementById('copy-toast')
-                        if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000) }
-                      }}
-                      className="text-xs text-blue-600 font-medium hover:underline shrink-0 ml-2"
-                    >
-                      복사
-                    </button>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-gray-900">{t('seller.myPublicPage')}</h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/s/${getSellerId()}`)
+                          const el = document.getElementById('copy-toast')
+                          if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000) }
+                        }}
+                        className="text-xs text-blue-600 font-medium hover:underline"
+                      >
+                        {t('seller.copyLink')}
+                      </button>
+                      <a
+                        href={`/s/${getSellerId()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-0.5"
+                      >
+                        {t('seller.newTab')} <ArrowUpRight className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
-                  <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">링크가 복사되었습니다!</p>
-                  <div className="flex gap-2">
-                    <a
-                      href={`/s/${getSellerId()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                      페이지 보기
-                    </a>
+                  <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">{t('seller.linkCopied')}</p>
+
+                  {/* 모바일 프레임 미리보기 */}
+                  <div className="flex justify-center">
+                    <div className="relative w-[220px] h-[420px] rounded-[24px] border-[3px] border-gray-800 bg-gray-800 shadow-xl overflow-hidden">
+                      {/* 노치 */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-800 rounded-b-xl z-10" />
+                      {/* iframe */}
+                      <iframe
+                        src={`/s/${getSellerId()}`}
+                        title={t('seller.myPublicPage')}
+                        className="w-[375px] h-[720px] border-0 origin-top-left bg-white"
+                        style={{ transform: 'scale(0.587)', transformOrigin: 'top left' }}
+                        sandbox="allow-same-origin allow-scripts allow-popups"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-4">
                     <Link
                       to="/seller/profile"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      프로필 편집
+                      {t('seller.editProfile')}
                     </Link>
                   </div>
                 </div>
@@ -503,9 +518,9 @@ export default function SellerPage() {
               {/* Sales chart */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900">일별 매출 추이</h2>
+                  <h2 className="text-sm font-semibold text-gray-900">{t('seller.dailySalesTrend')}</h2>
                   <span className="text-xs text-gray-400">
-                    {period === '7d' ? '최근 7일' : period === '30d' ? '최근 30일' : '최근 90일'}
+                    {period === '7d' ? t('seller.last7days') : period === '30d' ? t('seller.last30days') : t('seller.last90days')}
                   </span>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
@@ -528,12 +543,12 @@ export default function SellerPage() {
                       contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
                       // @ts-ignore
                     formatter={(v: number, name: string) =>
-                        name === '매출' ? [fmtPrice(v), name] : [`${v}건`, name]
+                        name === t('seller.sales') ? [fmtPrice(v), name] : [`${v}`, name]
                       }
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} name="매출" dot={false} activeDot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={2} name="주문" dot={false} activeDot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} name={t('seller.sales')} dot={false} activeDot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={2} name={t('seller.order')} dot={false} activeDot={{ r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -542,8 +557,8 @@ export default function SellerPage() {
               {topProducts.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-semibold text-gray-900">인기 상품 Top 5</h2>
-                    <Link to="/seller/products" className="text-xs text-blue-600 hover:underline">전체</Link>
+                    <h2 className="text-sm font-semibold text-gray-900">{t('seller.topProducts')}</h2>
+                    <Link to="/seller/products" className="text-xs text-blue-600 hover:underline">{t('seller.all')}</Link>
                   </div>
                   <div className="space-y-3">
                     {topProducts.slice(0, 5).map((p, i) => (
@@ -551,10 +566,10 @@ export default function SellerPage() {
                         <span className="w-5 text-xs font-bold text-gray-400 text-center">{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-gray-800 truncate">{p.product_name}</p>
-                          <p className="text-xs text-gray-400">{p.order_count}건</p>
+                          <p className="text-xs text-gray-400">{p.order_count}</p>
                         </div>
                         <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                          {fmtShort(p.total_revenue)}원
+                          {fmtPrice(p.total_revenue)}
                         </span>
                       </div>
                     ))}
