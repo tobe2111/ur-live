@@ -49,7 +49,7 @@ export function LiveChat({
   return (
     <div
       ref={scrollRef}
-      className="flex flex-col gap-1 overflow-y-auto max-h-52 cursor-pointer no-scrollbar"
+      className="flex flex-col gap-1 overflow-y-auto max-h-32 cursor-pointer no-scrollbar"
       onClick={onChatClick}
       onScroll={handleScroll}
     >
