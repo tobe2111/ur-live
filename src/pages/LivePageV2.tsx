@@ -98,7 +98,7 @@ function ReelCard({
     addLocalMessage,
     streamData: wsStreamData,
     lastDonation,
-  } = useLiveStreamWebSocket(stream.id, true)
+  } = useLiveStreamWebSocket(stream.id, true, stream.status === 'ended')
 
   // Handle incoming donation events from WebSocket
   useEffect(() => {
