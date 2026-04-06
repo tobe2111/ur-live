@@ -4,11 +4,8 @@ import type { ChatMessage } from '@/hooks/useFirebaseChat'
 interface LiveChatProps {
   messages: ChatMessage[]
   onChatClick: () => void
-  /** For timeline sync: current video time in seconds from stream start */
   currentVideoTime?: number
-  /** Stream start timestamp (ms) for calculating message offsets */
   streamStartTime?: number
-  /** Whether to enable timeline sync mode (for ended/replay streams) */
   timelineSync?: boolean
 }
 
@@ -21,29 +18,40 @@ export function LiveChat({
 }: LiveChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [visibleMessages, setVisibleMessages] = useState<ChatMessage[]>([])
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
 
   // Timeline sync: filter messages based on current video time
   useEffect(() => {
     if (timelineSync && streamStartTime && currentVideoTime !== undefined) {
       const currentAbsoluteTime = streamStartTime + currentVideoTime * 1000
       const filtered = messages.filter(msg => msg.timestamp <= currentAbsoluteTime)
-      setVisibleMessages(filtered.slice(-8))
+      setVisibleMessages(filtered)
     } else {
-      setVisibleMessages(messages.slice(-8))
+      setVisibleMessages(messages)
     }
   }, [messages, currentVideoTime, streamStartTime, timelineSync])
 
+  // Auto-scroll to bottom on new messages (unless user is scrolling up)
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !isUserScrolling) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [visibleMessages])
+  }, [visibleMessages, isUserScrolling])
+
+  // Detect user scroll
+  const handleScroll = () => {
+    if (!scrollRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    // If user scrolled up more than 50px from bottom, they're browsing history
+    setIsUserScrolling(scrollHeight - scrollTop - clientHeight > 50)
+  }
 
   return (
     <div
       ref={scrollRef}
-      className="flex flex-col gap-1 overflow-y-auto max-h-40 cursor-pointer no-scrollbar"
+      className="flex flex-col gap-1 overflow-y-auto max-h-52 cursor-pointer no-scrollbar"
       onClick={onChatClick}
+      onScroll={handleScroll}
     >
       {visibleMessages.map((msg) => {
         const isSystemMessage = msg.userName === 'System' ||
@@ -53,7 +61,7 @@ export function LiveChat({
 
         const isSellerMessage = msg.isSeller || msg.userType === 'streamer'
 
-        // Seller messages get a special highlighted style
+        // Seller messages: highlighted with gradient background
         if (isSellerMessage) {
           return (
             <div
