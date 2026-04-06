@@ -1513,7 +1513,7 @@ export default function LivePageV2() {
   }
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-black">
+    <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
       <TopNav
         viewers={viewerCount}
         sellerLinks={{
@@ -1631,11 +1631,12 @@ export default function LivePageV2() {
       
       <div
         ref={containerRef}
-        className={`h-dvh w-full no-scrollbar ${
-          isDirectLink 
+        className={`h-dvh w-full no-scrollbar scrollbar-hide ${
+          isDirectLink
             ? 'overflow-hidden' // Direct link: No scroll, single stream only
             : 'overflow-y-scroll snap-y snap-mandatory' // Homepage: Scrollable reels
         }`}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {reels.map((reel, index) => (
           <div
