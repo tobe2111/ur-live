@@ -32,6 +32,9 @@ interface ChargeRecord {
   current_balance: number
   user_total_charged: number
   user_total_donated: number
+  user_name: string | null
+  user_email: string | null
+  user_profile_image: string | null
 }
 
 interface UserSummary {
@@ -43,6 +46,9 @@ interface UserSummary {
   last_activity: string
   charge_count: number
   last_charged: string
+  user_name: string | null
+  user_email: string | null
+  user_profile_image: string | null
 }
 
 type Tab = 'charges' | 'users'
@@ -129,11 +135,6 @@ export default function AdminDealMonitorPage() {
     setSearchInput('')
   }
 
-  function shortId(uid: string) {
-    if (!uid) return '-'
-    return uid.length > 12 ? uid.slice(0, 6) + '...' + uid.slice(-4) : uid
-  }
-
   const s = stats
 
   return (
@@ -199,7 +200,7 @@ export default function AdminDealMonitorPage() {
                   type="text"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
-                  placeholder="유저ID / 주문번호"
+                  placeholder="이름 / 이메일 / 주문번호"
                   className="pl-9 pr-3 py-2 text-sm border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -233,7 +234,7 @@ export default function AdminDealMonitorPage() {
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">일시</th>
-                  <th className="px-4 py-3 text-left font-medium">유저ID</th>
+                  <th className="px-4 py-3 text-left font-medium">유저</th>
                   <th className="px-4 py-3 text-right font-medium">결제액</th>
                   <th className="px-4 py-3 text-right font-medium">수수료</th>
                   <th className="px-4 py-3 text-right font-medium">충전 딜</th>
@@ -247,7 +248,21 @@ export default function AdminDealMonitorPage() {
                 ) : charges.map(c => (
                   <tr key={c.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatKST(c.created_at)}</td>
-                    <td className="px-4 py-3 font-mono text-xs" title={c.user_id}>{shortId(c.user_id)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {c.user_profile_image ? (
+                          <img src={c.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                            {(c.user_name || '?').charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{c.user_name || `유저#${c.user_id}`}</p>
+                          {c.user_email && <p className="text-xs text-gray-400 truncate">{c.user_email}</p>}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right font-medium">{fmt(c.amount)}원</td>
                     <td className="px-4 py-3 text-right text-gray-500">{fmt(c.commission_amount)}원</td>
                     <td className="px-4 py-3 text-right text-pink-600 font-medium">{fmt(c.points_amount)}딜</td>
@@ -261,7 +276,7 @@ export default function AdminDealMonitorPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">유저ID</th>
+                  <th className="px-4 py-3 text-left font-medium">유저</th>
                   <th className="px-4 py-3 text-right font-medium">충전 횟수</th>
                   <th className="px-4 py-3 text-right font-medium">총 충전액</th>
                   <th className="px-4 py-3 text-right font-medium">총 후원액</th>
@@ -275,7 +290,21 @@ export default function AdminDealMonitorPage() {
                   <tr><td colSpan={7} className="text-center py-12 text-gray-400">충전 유저가 없습니다</td></tr>
                 ) : users.map(u => (
                   <tr key={u.user_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs" title={u.user_id}>{shortId(u.user_id)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {u.user_profile_image ? (
+                          <img src={u.user_profile_image} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                            {(u.user_name || '?').charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{u.user_name || `유저#${u.user_id}`}</p>
+                          {u.user_email && <p className="text-xs text-gray-400 truncate">{u.user_email}</p>}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right">{fmt(u.charge_count)}회</td>
                     <td className="px-4 py-3 text-right font-medium">{fmt(u.total_charged)}딜</td>
                     <td className="px-4 py-3 text-right text-amber-600">{fmt(u.total_donated)}딜</td>
