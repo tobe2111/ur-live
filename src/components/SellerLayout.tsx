@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { path: '/seller/products',     labelKey: 'seller.products',      icon: Package },
   { path: '/seller/inventory',    labelKey: 'seller.inventory',     icon: BarChart3 },
   { path: '/seller/supply',       labelKey: 'seller.supply',        icon: Truck },
+  { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
   { path: '/seller/donations',   labelKey: 'seller.donations',     icon: Heart },
   { path: '/seller/youtube-growth',labelKey: 'seller.youtubeGrowth', icon: TrendingUp },
   { path: '/seller/alimtalk',     labelKey: 'seller.brandMessage',  icon: Bell },

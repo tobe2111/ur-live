@@ -17,6 +17,8 @@ export interface YTPlayer {
   unMute(): void
   setVolume(volume: number): void
   destroy(): void
+  getCurrentTime(): number
+  getDuration(): number
 }
 
 export interface YTPlayerEvent {
@@ -60,6 +62,7 @@ export interface Stream {
   current_product_id?: number | null
   seller_id?: number
   current_product?: Product | null
+  created_at?: string
 }
 
 export interface Product {

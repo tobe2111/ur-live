@@ -67,6 +67,7 @@ const SellerYoutubeGrowthPage = lazy(() => import('./pages/SellerYoutubeGrowthPa
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('./pages/SellerYoutubeGrowthSuccessPage'))
 const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
+const SellerLiveAnalyticsPage = lazy(() => import('./pages/SellerLiveAnalyticsPage'))
 const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
 const SellerLivePage = lazy(() => import('./pages/SellerLivePage'))
 const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
@@ -409,6 +410,16 @@ function AppContent() {
             <Route path="/seller/live-broadcast" element={
               <ProtectedRoute requireSeller>
                 <SellerLiveBroadcastPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live-analytics" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveAnalyticsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live-analytics/:streamId" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveAnalyticsPage />
               </ProtectedRoute>
             } />
             <Route path="/seller/supply" element={

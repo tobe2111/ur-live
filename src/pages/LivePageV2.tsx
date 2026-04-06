@@ -48,7 +48,8 @@ function ReelCard({
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
-  
+  const [currentVideoTime, setCurrentVideoTime] = useState(0)
+
   // Cart & Purchase state
   const [addingToCart, setAddingToCart] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
@@ -276,6 +277,19 @@ function ReelCard({
     }
   }, [stream.youtube_video_id, stream.id])  // isActive removed from dependencies
 
+  // Poll current video time for chat timeline sync
+  useEffect(() => {
+    if (!playerReady || !isActive) return
+    const interval = setInterval(() => {
+      try {
+        if (playerRef.current?.getCurrentTime) {
+          setCurrentVideoTime(playerRef.current.getCurrentTime())
+        }
+      } catch { /* ignore */ }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [playerReady, isActive])
+
   // Cleanup: Pause video when component unmounts or becomes inactive
   useEffect(() => {
     return () => {
@@ -287,6 +301,38 @@ function ReelCard({
           // Ignore errors
         }
       }
+    }
+  }, [isActive, stream.id])
+
+  // View tracking: record view when user watches this stream
+  useEffect(() => {
+    if (!isActive || !stream.id) return
+    const sessionId = `view-${stream.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    let watchSeconds = 0
+    const heartbeatInterval = setInterval(() => {
+      watchSeconds += 30
+      fetch(`/api/live/${stream.id}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
+      }).catch(() => {})
+    }, 30000)
+
+    // Initial join
+    fetch(`/api/live/${stream.id}/view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
+    }).catch(() => {})
+
+    return () => {
+      clearInterval(heartbeatInterval)
+      // Leave
+      fetch(`/api/live/${stream.id}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
+      }).catch(() => {})
     }
   }, [isActive, stream.id])
 
@@ -849,7 +895,13 @@ function ReelCard({
           <div className="flex items-end gap-3 mb-2.5">
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
-              <LiveChat messages={chatMessages} onChatClick={() => setChatModalOpen(true)} />
+              <LiveChat
+                messages={chatMessages}
+                onChatClick={() => setChatModalOpen(true)}
+                currentVideoTime={currentVideoTime}
+                streamStartTime={stream.created_at ? new Date(stream.created_at).getTime() : undefined}
+                timelineSync={stream.status === 'ended'}
+              />
             </div>
 
             {/* Chat + Donate + Share buttons - right side */}
@@ -997,33 +1049,92 @@ function ReelCard({
             className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
             onClick={() => setChatModalOpen(false)}
           />
-          
-          {/* Chat Input Sheet */}
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">메시지 보내기</h3>
-                <button
-                  onClick={() => setChatModalOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
-                >
-                  <X className="h-4 w-4 text-gray-800" />
-                </button>
-              </div>
-              
+
+          {/* Chat Sheet with messages + input */}
+          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up max-h-[70vh] flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between shrink-0">
+              <h3 className="text-lg font-bold text-gray-900">채팅</h3>
+              <button
+                onClick={() => setChatModalOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
+              >
+                <X className="h-4 w-4 text-gray-800" />
+              </button>
+            </div>
+
+            {/* Chat messages list */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-[200px] max-h-[45vh]">
+              {chatMessages.slice(-50).map((msg) => {
+                const isSeller = msg.isSeller || msg.userType === 'streamer'
+                const isSystem = msg.userType === 'system' || msg.userName === '시스템'
+
+                if (isSeller) {
+                  return (
+                    <div key={msg.id} className="rounded-xl px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[9px] font-bold bg-white/20 px-1.5 py-0.5 rounded-full">🎙 셀러</span>
+                        <span className="text-[11px] font-bold">{msg.userName}</span>
+                        <span className="text-[9px] text-white/60 ml-auto">
+                          {new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[13px] leading-[1.4]">{msg.message}</p>
+                    </div>
+                  )
+                }
+
+                if (isSystem) {
+                  return (
+                    <div key={msg.id} className="text-center">
+                      <span className="text-[11px] text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full font-medium">
+                        {msg.message}
+                      </span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={msg.id} className="flex gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[12px] font-bold text-gray-800">{msg.userName}</span>
+                        <span className="text-[9px] text-gray-400">
+                          {new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[13px] text-gray-600 leading-[1.4]">{msg.message}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Input */}
+            <div className="p-4 border-t shrink-0">
+              {isSeller && (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🎙 셀러로 채팅</span>
+                </div>
+              )}
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <input
                   type="text"
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="메시지를 입력하세요..."
-                  className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-red-500 focus:outline-none"
+                  placeholder={isSeller ? "셀러 메시지를 입력하세요..." : "메시지를 입력하세요..."}
+                  className={`flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none ${
+                    isSeller
+                      ? 'border-indigo-300 focus:border-indigo-500 bg-indigo-50/50'
+                      : 'border-gray-300 focus:border-red-500'
+                  }`}
                   disabled={sendingMessage}
                 />
                 <button
                   type="submit"
                   disabled={!chatMessage.trim() || sendingMessage}
-                  className="flex items-center justify-center rounded-xl bg-red-500 px-6 py-3 text-white font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`flex items-center justify-center rounded-xl px-6 py-3 text-white font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isSeller ? 'bg-indigo-500' : 'bg-red-500'
+                  }`}
                 >
                   <Send className="h-5 w-5" />
                 </button>
