@@ -452,42 +452,54 @@ export default function SellerPage() {
                 </div>
               </div>
 
-              {/* 내 공개 페이지 */}
+              {/* 내 공개 페이지 미리보기 */}
               {getSellerId() && (
                 <div className="bg-white rounded-xl shadow-sm p-5">
-                  <h2 className="text-sm font-semibold text-gray-900 mb-3">내 공개 페이지</h2>
-                  <p className="text-xs text-gray-500 mb-3">
-                    고객에게 공유할 수 있는 나만의 셀러 페이지입니다.
-                  </p>
-                  <div className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-600 font-mono truncate">
-                      {window.location.origin}/s/{getSellerId()}
-                    </span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/s/${getSellerId()}`)
-                        const el = document.getElementById('copy-toast')
-                        if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000) }
-                      }}
-                      className="text-xs text-blue-600 font-medium hover:underline shrink-0 ml-2"
-                    >
-                      복사
-                    </button>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-gray-900">내 공개 페이지</h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/s/${getSellerId()}`)
+                          const el = document.getElementById('copy-toast')
+                          if (el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 2000) }
+                        }}
+                        className="text-xs text-blue-600 font-medium hover:underline"
+                      >
+                        링크 복사
+                      </button>
+                      <a
+                        href={`/s/${getSellerId()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-0.5"
+                      >
+                        새 탭 <ArrowUpRight className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                   <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">링크가 복사되었습니다!</p>
-                  <div className="flex gap-2">
-                    <a
-                      href={`/s/${getSellerId()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                      페이지 보기
-                    </a>
+
+                  {/* 모바일 프레임 미리보기 */}
+                  <div className="flex justify-center">
+                    <div className="relative w-[220px] h-[420px] rounded-[24px] border-[3px] border-gray-800 bg-gray-800 shadow-xl overflow-hidden">
+                      {/* 노치 */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-800 rounded-b-xl z-10" />
+                      {/* iframe */}
+                      <iframe
+                        src={`/s/${getSellerId()}`}
+                        title="공개 페이지 미리보기"
+                        className="w-[375px] h-[720px] border-0 origin-top-left bg-white"
+                        style={{ transform: 'scale(0.587)', transformOrigin: 'top left' }}
+                        sandbox="allow-same-origin allow-scripts allow-popups"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 mt-4">
                     <Link
                       to="/seller/profile"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       프로필 편집
                     </Link>
