@@ -75,6 +75,17 @@ export default function CheckoutPage() {
   const isDirectPurchase = !!directPurchaseItems?.length
   const [tokenRefreshing, setTokenRefreshing] = useState(false)  // 토큰 갱신 중 플래그
   
+  // 결제 수단 선택
+  const [paymentMethod, setPaymentMethod] = useState<'toss' | 'deal'>('toss')
+  const [dealBalance, setDealBalance] = useState(0)
+  const [payingWithDeals, setPayingWithDeals] = useState(false)
+
+  useEffect(() => {
+    api.get('/api/points/balance')
+      .then(r => { if (r.data.success) setDealBalance(r.data.data.balance) })
+      .catch(() => {})
+  }, [])
+
   // 배송지 관련 상태
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
@@ -589,12 +600,114 @@ export default function CheckoutPage() {
             {/* Divider */}
             <div className="h-2 bg-[#1A1A1A]" />
 
-            {/* 결제 수단 및 약관 동의 (통합) */}
+            {/* 결제 수단 선택 */}
             <section className="bg-[#121212] px-5 py-4">
               <h2 className="text-[17px] font-bold text-white mb-3">결제 수단</h2>
-              
-              {/* 🔥 Region-based payment widget */}
-              {isKorea() ? (
+
+              {/* 결제 방법 탭 */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setPaymentMethod('toss')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                    paymentMethod === 'toss'
+                      ? 'bg-white text-black'
+                      : 'bg-[#1A1A1A] text-gray-400'
+                  }`}
+                >
+                  카드/간편결제
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('deal')}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                    paymentMethod === 'deal'
+                      ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white'
+                      : 'bg-[#1A1A1A] text-gray-400'
+                  }`}
+                >
+                  딜로 결제
+                </button>
+              </div>
+
+              {paymentMethod === 'deal' ? (
+                /* 딜 결제 */
+                <div>
+                  <div className="bg-[#1A1A1A] rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-400">보유 딜</span>
+                      <span className="text-lg font-bold text-white">{dealBalance.toLocaleString()}딜</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">결제 필요</span>
+                      <span className={`text-lg font-bold ${dealBalance >= totalAmount ? 'text-green-400' : 'text-red-400'}`}>
+                        {totalAmount.toLocaleString()}딜
+                      </span>
+                    </div>
+                    {dealBalance < totalAmount && (
+                      <p className="text-xs text-red-400 mt-2">
+                        딜이 {(totalAmount - dealBalance).toLocaleString()}딜 부족합니다.
+                        <button onClick={() => navigate('/points/charge')} className="text-pink-400 font-bold ml-1 underline">충전하기</button>
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (!selectedAddress) {
+                        toast.error('배송지를 선택해주세요')
+                        setShowAddressModal(true)
+                        return
+                      }
+                      if (dealBalance < totalAmount) {
+                        toast.error('딜이 부족합니다')
+                        return
+                      }
+
+                      setPayingWithDeals(true)
+                      try {
+                        const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+
+                        if (isDirectPurchase) {
+                          sessionStorage.setItem('directPurchase', 'true')
+                        }
+
+                        const res = await api.post('/api/points/pay', {
+                          order_number: orderNumber,
+                          total_amount: totalAmount,
+                          items: cartItems.map(item => ({
+                            product_id: String(item.product_id),
+                            product_name: item.product_name || '상품',
+                            quantity: item.quantity,
+                            price: item.price_snapshot ?? item.price ?? 0,
+                            seller_id: item.seller_id ? String(item.seller_id) : undefined,
+                            option_value: item.option_value,
+                          })),
+                          shipping: {
+                            name: selectedAddress.recipient_name,
+                            phone: selectedAddress.phone,
+                            postal_code: selectedAddress.postal_code,
+                            address1: selectedAddress.address,
+                            address2: selectedAddress.address_detail || '',
+                          },
+                        })
+
+                        if (res.data.success) {
+                          navigate(`/payment/success?orderId=${orderNumber}&method=deal&amount=${totalAmount}`)
+                        } else {
+                          toast.error(res.data.error || '결제에 실패했습니다')
+                        }
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.error || '딜 결제 중 오류가 발생했습니다')
+                      } finally {
+                        setPayingWithDeals(false)
+                      }
+                    }}
+                    disabled={dealBalance < totalAmount || payingWithDeals || !selectedAddress}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40 active:scale-[0.98] transition-all"
+                  >
+                    {payingWithDeals ? '결제 처리 중...' : `${totalAmount.toLocaleString()}딜로 결제하기`}
+                  </button>
+                </div>
+              ) : isKorea() ? (
                 /* 한국: Toss Payments */
                 <Suspense fallback={
                   <div className="flex items-center justify-center py-12 text-gray-500 text-sm">

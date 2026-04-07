@@ -417,4 +417,117 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
   });
 });
 
+// ── POST /api/points/pay — 딜로 상품 결제 ───────────────────────────
+pointsRoutes.post('/pay', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const userId = String(user.id);
+
+  const { order_number, total_amount, items, shipping } = await c.req.json<{
+    order_number: string;
+    total_amount: number;
+    items: Array<{
+      product_id: string;
+      product_name: string;
+      quantity: number;
+      price: number;
+      seller_id?: string;
+      option_value?: string;
+    }>;
+    shipping: {
+      name: string;
+      phone: string;
+      postal_code: string;
+      address1: string;
+      address2?: string;
+    };
+  }>();
+
+  if (!order_number || !total_amount || !items?.length || !shipping?.name) {
+    return c.json({ success: false, error: '필수 항목이 누락되었습니다' }, 400);
+  }
+
+  // 잔액 확인
+  const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+    .bind(userId).first<{ balance: number }>();
+
+  if (!wallet || wallet.balance < total_amount) {
+    return c.json({
+      success: false,
+      error: `딜이 부족합니다. (보유: ${wallet?.balance ?? 0}딜, 필요: ${total_amount}딜)`,
+      code: 'INSUFFICIENT_POINTS',
+    }, 400);
+  }
+
+  try {
+    // 1. 딜 차감
+    const newBalance = wallet.balance - total_amount;
+    await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+      .bind(newBalance, userId).run();
+
+    // 2. 거래 기록
+    await DB.prepare(
+      `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
+       VALUES (?, 'donate', ?, 0, ?, ?, ?, ?)`
+    ).bind(userId, total_amount, total_amount, newBalance, `상품 구매 (${items.length}건)`, order_number).run();
+
+    // 3. 주문 생성 (셀러별 그룹화)
+    const sellerGroups = new Map<string, typeof items>();
+    for (const item of items) {
+      const sid = item.seller_id || '0';
+      if (!sellerGroups.has(sid)) sellerGroups.set(sid, []);
+      sellerGroups.get(sid)!.push(item);
+    }
+
+    for (const [sellerId, groupItems] of sellerGroups) {
+      const groupTotal = groupItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const shippingFee = groupTotal >= 50000 ? 0 : 3000;
+
+      await DB.prepare(`
+        INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, shipping_name, shipping_phone, shipping_address, shipping_memo)
+        VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'paid', 'deal_points', ?, ?, ?, '')
+      `).bind(
+        order_number, userId, sellerId === '0' ? null : sellerId,
+        groupTotal, shippingFee, groupTotal + shippingFee,
+        shipping.name, shipping.phone,
+        JSON.stringify({ postal_code: shipping.postal_code, address1: shipping.address1, address2: shipping.address2 || '' })
+      ).run();
+
+      // 주문 상세 아이템 INSERT
+      const orderRow = await DB.prepare('SELECT id FROM orders WHERE order_number = ? AND seller_id = ? ORDER BY id DESC LIMIT 1')
+        .bind(order_number, sellerId === '0' ? null : sellerId).first<{ id: number }>();
+
+      if (orderRow) {
+        for (const item of groupItems) {
+          await DB.prepare(`
+            INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, subtotal)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).bind(orderRow.id, item.product_id, item.product_name, item.price, item.quantity, item.price * item.quantity).run();
+        }
+      }
+    }
+
+    // 4. 알림
+    createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${total_amount.toLocaleString()}딜 상품 결제`, '/admin/orders').catch(() => {});
+
+    return c.json({
+      success: true,
+      data: {
+        order_number,
+        amount_paid: total_amount,
+        balance: newBalance,
+        payment_method: 'deal_points',
+      },
+      message: `${total_amount.toLocaleString()}딜로 결제가 완료되었습니다!`,
+    });
+  } catch (err) {
+    console.error('[points/pay] Error:', err);
+    return c.json({ success: false, error: '딜 결제 중 오류가 발생했습니다', detail: String(err) }, 500);
+  }
+});
+
 export { pointsRoutes };
