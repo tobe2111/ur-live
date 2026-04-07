@@ -68,6 +68,9 @@ export interface Env {
   // ---- Security ----
   ADMIN_IP_WHITELIST?: string; // comma-separated IPs/CIDRs, e.g. "1.2.3.4,10.0.0.0/8"
 
+  // ---- Naver Ad Scraper ----
+  SCRAPER_URL?: string; // 스크래퍼 서버 URL (dev: http://localhost:3456)
+
   // ---- App Config ----
   ENVIRONMENT: string;
   FRONTEND_URL: string;

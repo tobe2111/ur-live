@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList
+  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
+import DashboardNotificationBell from './DashboardNotificationBell'
 
 const NAV_ITEMS = [
   { path: '/admin',               label: '대시보드',    icon: LayoutDashboard, exact: true },
@@ -12,10 +13,12 @@ const NAV_ITEMS = [
   { path: '/admin/products',      label: '상품 관리',   icon: Package },
   { path: '/admin/banners',       label: '배너 관리',   icon: Image },
   { path: '/admin/settlement',    label: '정산',        icon: DollarSign },
-  { path: '/admin/alimtalk',      label: '알림톡',      icon: Bell },
+  { path: '/admin/alimtalk',      label: '브랜드메시지', icon: Bell },
   { path: '/admin/kv-monitoring', label: 'KV 모니터링', icon: Monitor },
   { path: '/admin/sample-requests', label: '샘플 신청', icon: ClipboardList },
   { path: '/admin/cafe24',       label: 'Cafe24 연동', icon: Store },
+  { path: '/admin/ad-scraper',   label: '광고주 이메일', icon: Search },
+  { path: '/admin/deals',        label: '딜 모니터링',  icon: Gift },
 ]
 
 interface AdminLayoutProps {
@@ -122,7 +125,10 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             </button>
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
-          {headerRight && <div className="flex items-center gap-2">{headerRight}</div>}
+          <div className="flex items-center gap-2">
+            <DashboardNotificationBell tokenKey="admin_token" />
+            {headerRight}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 space-y-5">

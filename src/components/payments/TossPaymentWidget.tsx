@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
+import { loadTossPayments, type TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk'
 import { generateOrderId } from '@/utils/orderIdGenerator'
 import { getUserEmail, getUserNameSync } from '@/utils/auth'
 
@@ -37,18 +37,21 @@ export function TossPaymentWidget({
   onPaymentError
 }: TossPaymentWidgetProps) {
   const { t } = useTranslation()
-  const [widgets, setWidgets] = useState<any>(null)
+  const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null)
   const [isRendered, setIsRendered] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const hasInitialized = useRef(false)
+  const widgetsRef = useRef<TossPaymentsWidgets | null>(null)
 
-  // 1️⃣ SDK 초기화 (V2)
+  // 1️⃣ SDK 초기화 (V2 위젯)
   useEffect(() => {
     if (!userId || cartItems.length === 0 || hasInitialized.current) {
       return
     }
+
+    let cancelled = false
 
     async function initWidgets() {
       try {
@@ -60,18 +63,24 @@ export function TossPaymentWidget({
           throw new Error('userId is too short after sanitization')
         }
 
+        // customerKey: 비회원 결제가 아닌 경우 고객 식별 키 사용
         const customerKey = `user_${sanitizedUserId}`
 
         const tossPayments = await loadTossPayments(clientKey)
         const widgetsInstance = tossPayments.widgets({ customerKey })
 
+        if (cancelled) return
+
+        widgetsRef.current = widgetsInstance
         setWidgets(widgetsInstance)
         hasInitialized.current = true
-      } catch (err: any) {
+      } catch (err: unknown) {
+        if (cancelled) return
         console.error('[TossPayments] 초기화 실패:', err)
-        const msg = err.message?.includes('network')
+        const errMsg = err instanceof Error ? err.message : ''
+        const msg = errMsg.includes('network')
           ? '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'
-          : err.message?.includes('auth') || err.message?.includes('400')
+          : errMsg.includes('auth') || errMsg.includes('400')
             ? '인증 오류가 발생했습니다. 페이지를 새로고침해주세요.'
             : t('payment.initError') || '결제 초기화 실패'
         setErrorMessage(msg)
@@ -81,7 +90,19 @@ export function TossPaymentWidget({
     }
 
     initWidgets()
+
+    return () => {
+      cancelled = true
+    }
   }, [userId, clientKey, cartItems, onPaymentError, t])
+
+  // 언마운트 시 위젯 DOM 정리
+  useEffect(() => {
+    return () => {
+      widgetsRef.current = null
+      hasInitialized.current = false
+    }
+  }, [])
 
   // 2️⃣ 결제 UI 렌더링 (V2: setAmount → renderPaymentMethods → renderAgreement)
   useEffect(() => {
@@ -90,16 +111,30 @@ export function TossPaymentWidget({
     }
 
     async function renderWidgets() {
+      if (!widgets) return
       try {
         const finalAmount = totalAmount + shippingFee
 
-        await widgets.setAmount({ currency: 'KRW', value: finalAmount })
+        // DOM 요소가 존재할 때까지 대기 (최대 3초)
+        let attempts = 0
+        while (!document.getElementById('payment-method') && attempts < 30) {
+          await new Promise(r => setTimeout(r, 100))
+          attempts++
+        }
+        if (!document.getElementById('payment-method')) {
+          throw new Error('결제 UI 영역을 찾을 수 없습니다. 페이지를 새로고침해주세요.')
+        }
 
+        // 결제 금액 설정 (KRW, 정수)
+        await widgets.setAmount({ currency: 'KRW', value: Math.round(finalAmount) })
+
+        // 결제 수단 UI 렌더링
         await widgets.renderPaymentMethods({
           selector: '#payment-method',
           variantKey: 'DEFAULT'
         })
 
+        // 이용약관 동의 UI 렌더링
         await widgets.renderAgreement({
           selector: '#agreement',
           variantKey: 'AGREEMENT'
@@ -107,7 +142,7 @@ export function TossPaymentWidget({
 
         setIsRendered(true)
         setLoadingState('ready')
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[TossPayments] 렌더링 실패:', err)
         const msg = t('payment.renderError') || 'UI 렌더링 실패'
         setErrorMessage(msg)
@@ -119,17 +154,17 @@ export function TossPaymentWidget({
     renderWidgets()
   }, [widgets, isRendered, totalAmount, shippingFee, onPaymentError, t])
 
-  // 3️⃣ 금액 변경 시 위젯 업데이트
+  // 3️⃣ 금액 변경 시 위젯 금액 업데이트
   useEffect(() => {
     if (!widgets || !isRendered) return
-    const finalAmount = totalAmount + shippingFee
-    widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: any) => {
+    const finalAmount = Math.round(totalAmount + shippingFee)
+    widgets.setAmount({ currency: 'KRW', value: finalAmount }).catch((err: unknown) => {
       console.error('[TossPayments] 금액 업데이트 실패:', err)
     })
   }, [totalAmount, shippingFee, isRendered, widgets])
 
   // 4️⃣ 결제 요청
-  const handlePayment = async () => {
+  const handlePayment = useCallback(async () => {
     if (!widgets || loadingState !== 'ready' || isProcessing) return
 
     try {
@@ -141,28 +176,36 @@ export function TossPaymentWidget({
         ? cartItems[0].product_name
         : `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
 
-      // 결제 전 주문 생성 (DB에 먼저 저장)
+      // 결제 전 주문 생성 (DB에 먼저 저장 → Toss 리다이렉트 전 주문 보장)
       if (onBeforePayment) {
         await onBeforePayment(orderId)
       }
 
+      // Toss 위젯 결제 요청 (리다이렉트 방식)
       await widgets.requestPayment({
         orderId,
         orderName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
         customerEmail: getUserEmail() || undefined,
-        customerName: getUserNameSync() || undefined
+        customerName: getUserNameSync() || undefined,
       })
 
-      // 리다이렉트 방식 → 이 아래 코드는 실행되지 않음
-    } catch (err: any) {
+      // 리다이렉트 방식이므로 이 아래 코드는 실행되지 않음
+    } catch (err: unknown) {
       console.error('[TossPayments] 결제 요청 실패:', err)
       setIsProcessing(false)
-      if (err?.code === 'USER_CANCEL') return
-      onPaymentError(err?.message || t('payment.requestError') || '결제 요청 실패')
+      const errObj = err as Record<string, unknown> | undefined
+      // 사용자가 결제를 직접 취소한 경우 에러 표시하지 않음
+      if (errObj?.code === 'USER_CANCEL') return
+      // INVALID_ORDER_ID: orderId 형식 오류
+      if (errObj?.code === 'INVALID_ORDER_ID') {
+        onPaymentError('주문번호 형식이 올바르지 않습니다. 페이지를 새로고침해주세요.')
+        return
+      }
+      onPaymentError((errObj?.message as string) || t('payment.requestError') || '결제 요청 실패')
     }
-  }
+  }, [widgets, loadingState, isProcessing, userId, cartItems, onBeforePayment, onPaymentError, t])
 
   return (
     <div className="space-y-6">

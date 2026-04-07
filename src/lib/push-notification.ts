@@ -62,7 +62,7 @@ export async function savePushSubscription(
     subscription.keys.auth
   ).run()
 
-  console.log(`[Push] Subscription saved for ${userType} ${userId}`)
+  // Subscription saved
 }
 
 /**
@@ -99,7 +99,7 @@ export async function deletePushSubscription(
     DELETE FROM push_subscriptions WHERE endpoint = ?
   `).bind(endpoint).run()
 
-  console.log(`[Push] Subscription deleted: ${endpoint}`)
+  // Subscription deleted
 }
 
 /**
@@ -136,11 +136,9 @@ export async function sendPushNotification(
     })
 
     if (response.status === 201 || response.status === 200) {
-      console.log('[Push] Notification sent successfully')
       return true
     } else if (response.status === 410) {
       // 구독 만료
-      console.log('[Push] Subscription expired')
       return false
     } else {
       console.error('[Push] Failed to send notification:', response.status)
@@ -165,7 +163,6 @@ export async function notifyUser(
   const subscriptions = await getPushSubscriptions(DB, userId, userType)
 
   if (subscriptions.length === 0) {
-    console.log(`[Push] No subscriptions for ${userType} ${userId}`)
     return
   }
 

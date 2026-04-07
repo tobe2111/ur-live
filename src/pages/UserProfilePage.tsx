@@ -8,7 +8,6 @@ import { getUserProfileImage } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { Footer } from '@/components/my-page/footer'
-import BottomNav from '@/components/main/BottomNav'
 import { ArrowLeft } from 'lucide-react'
 
 /**
@@ -16,6 +15,41 @@ import { ArrowLeft } from 'lucide-react'
  * - firebase_token 처리는 여기서만
  * - RouteGuard와 협력해 무한 루프 방지
  */
+function TeamPointsCard() {
+  const navigate = useNavigate()
+  const [balance, setBalance] = useState(0)
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/points/balance')
+        .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    })
+  }, [])
+  return (
+    <div className="px-5 py-3">
+      <div
+        onClick={() => navigate('/points/charge')}
+        className="flex items-center justify-between bg-gradient-to-r from-pink-50 to-orange-50 rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-pink-100"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🎁</span>
+          <div>
+            <p className="text-[11px] text-gray-500 font-medium">내 딜 잔액</p>
+            <p className="text-lg font-bold text-gray-900">
+              {loading ? '...' : `${balance.toLocaleString()}딜`}
+            </p>
+          </div>
+        </div>
+        <button className="px-3 py-1.5 text-xs font-bold text-pink-600 bg-white rounded-lg border border-pink-200">
+          충전
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function UserProfilePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -29,6 +63,8 @@ export default function UserProfilePage() {
   const [isProcessingToken, setIsProcessingToken] = useState(false)
   const hasProcessedToken = useRef(false)
 
+  useEffect(() => { document.title = '마이페이지 - 유어딜' }, [])
+
   // ✅ firebase_token 한 번만 처리
   // 의존성에서 searchParams, user 제거 → 무한 루프 방지
   // searchParams는 마운트 시 읽고, user 변화는 hasProcessedToken으로 제어
@@ -40,7 +76,6 @@ export default function UserProfilePage() {
     // ✅ 이미 로그인되어 있고 URL에 파라미터가 있으면 즉시 정리
     const currentUser = authStore.getState().user
     if ((firebaseToken || userNameParam) && currentUser) {
-      console.log('[UserProfilePage] 🧹 이미 로그인됨 - URL 파라미터 정리')
       if (userNameParam) localStorage.setItem('user_name', userNameParam)
       if (profileImageParam) localStorage.setItem('user_profile_image', profileImageParam)
       navigate('/user/profile', { replace: true })
@@ -54,19 +89,13 @@ export default function UserProfilePage() {
 
       if (userNameParam) {
         localStorage.setItem('user_name', userNameParam)
-        console.log('[UserProfilePage] ✅ user_name 저장:', userNameParam)
       }
       if (profileImageParam) {
         localStorage.setItem('user_profile_image', profileImageParam)
-        console.log('[UserProfilePage] ✅ user_profile_image 저장')
       }
-
-      console.log('[UserProfilePage] 🔑 firebase_token 발견 - 1회만 처리')
 
       loginWithFirebaseToken(firebaseToken)
         .then(async () => {
-          console.log('[UserProfilePage] ✅ 로그인 완료 - Auth State 동기화됨')
-
           try {
             const { isKorea } = await import('@/shared/config/region')
             const { useAuthKR } = await import('@/shared/stores/useAuthKR')
@@ -83,7 +112,6 @@ export default function UserProfilePage() {
               } else {
                 useAuthWorld.getState().setUser({ ...firebaseUser } as any)
               }
-              console.log('[UserProfilePage] ✅ Firebase 프로필 업데이트 완료')
             }
           } catch (e) {
             console.warn('[UserProfilePage] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
@@ -109,11 +137,6 @@ export default function UserProfilePage() {
       const image = user.photoURL || getUserProfileImage() || undefined
       setProfileImage(image)
       
-      console.log('[UserProfilePage] ✅ 사용자 정보:', {
-        uid: user.uid,
-        displayName: user.displayName,
-        userName: name
-      })
     }
   }, [user])
 
@@ -148,17 +171,13 @@ export default function UserProfilePage() {
     }
     
     // 토큰 없고 처리 중도 아니면 로그인 페이지로
-    console.log('[UserProfilePage] 🚫 로그인 필요 - /login으로 리다이렉트')
     return <Navigate to="/login" replace />
   }
 
   // ✅ 로그아웃 핸들러
   const handleLogout = async () => {
-    console.log('[UserProfilePage] 로그아웃 시작')
-    
     try {
       await logout()
-      console.log('[UserProfilePage] ✅ 로그아웃 완료')
       navigate('/', { replace: true })
     } catch (error) {
       console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
@@ -166,7 +185,7 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="bg-background flex flex-col">
       {/* Header with Back Button */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
@@ -183,6 +202,9 @@ export default function UserProfilePage() {
 
       {/* User Info Section */}
       <UserInfo userName={userName} profileImage={profileImage} />
+
+      {/* 딜 포인트 잔액 */}
+      <TeamPointsCard />
 
       {/* Menu List Section */}
       <MenuList />
@@ -215,11 +237,6 @@ export default function UserProfilePage() {
       {/* Footer Section */}
       <Footer />
       
-      {/* Bottom Navigation Spacer */}
-      <div className="h-20" aria-hidden="true"></div>
-      
-      {/* Bottom Navigation */}
-      <BottomNav />
     </div>
   )
 }

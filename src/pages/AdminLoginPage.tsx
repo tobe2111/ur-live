@@ -27,8 +27,6 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      console.log('[AdminLogin] 🔐 Starting JWT-only login (NO Firebase!)')
-      
       // ✅ CRITICAL: User 세션 + Firebase 완전 정리 (토큰 캐시 포함)
       clearAuthData('user')
       clearFirebaseTokenCache()
@@ -44,8 +42,6 @@ export default function AdminLoginPage() {
       })
 
       if (response.data.success) {
-        console.log('[AdminLogin] ✅ JWT Login successful')
-        
         // ✅ Save email if "Remember Me" is checked
         if (rememberMe) {
           localStorage.setItem('admin_remember_email', email)
@@ -57,9 +53,7 @@ export default function AdminLoginPage() {
         clearAuthData('admin')
         
         const { admin, accessToken, refreshToken } = response.data.data
-        
-        console.log('[AdminLogin] Admin ID:', admin.id)
-        
+
         // ✅ Store JWT tokens (PRIMARY: admin_token)
         localStorage.setItem('admin_token', accessToken)
         localStorage.setItem('access_token', accessToken) // Fallback compatibility
@@ -74,7 +68,6 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_name', admin.name || '')
         localStorage.setItem('admin_email', admin.email || '')
         
-        console.log('[AdminLogin] ✅ Admin 로그인 완료, /admin 이동')
         navigate('/admin', { replace: true })
       }
     } catch (err: any) {

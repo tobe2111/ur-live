@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import TopNav from '@/components/main/TopNav'
-import BottomNav from '@/components/main/BottomNav'
 import CategoryHeader from '@/components/browse/CategoryHeader'
 import ProductGrid from '@/components/browse/ProductGrid'
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react'
@@ -144,7 +143,7 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <TopNav />
 
       <main className="px-4 py-4">
@@ -269,10 +268,6 @@ export default function BrowsePage() {
         <ProductGrid products={filteredAndSorted} loading={loading} />
       </main>
 
-      {/* Bottom Navigation Spacer */}
-      <div className="h-20" aria-hidden="true"></div>
-
-      <BottomNav />
     </div>
   )
 }

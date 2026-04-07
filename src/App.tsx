@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import BottomNav from '@/components/main/BottomNav'
+import SideBanner from '@/components/SideBanner'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
@@ -31,9 +33,13 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
+const LiveListPage = lazy(() => import('./pages/LiveListPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
+const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
+const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
+const PointsChargeSuccessPage = lazy(() => import('./pages/PointsChargeSuccessPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
@@ -47,6 +53,7 @@ const SellerRegisterPage = lazy(() => import('./pages/SellerRegisterPage'))
 const SellerBusinessInfoPage = lazy(() => import('./pages/SellerBusinessInfoPage'))
 const SellerOrdersPage = lazy(() => import('./pages/SellerOrdersPage'))
 const SellerProductsPage = lazy(() => import('./pages/SellerProductsPage'))
+const SellerInventoryPage = lazy(() => import('./pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('./pages/SellerProductNewPage'))
 const SellerProductEditPage = lazy(() => import('./pages/SellerProductEditPage'))
 const SellerLiveControlPage = lazy(() => import('./pages/SellerLiveControlPage'))
@@ -56,9 +63,13 @@ const SellerProfileEditPage = lazy(() => import('./pages/SellerProfileEditPage')
 const SellerPublicPage = lazy(() => import('./pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('./pages/SellerSettlementsPage'))
 const SellerAlimtalkPage = lazy(() => import('./pages/SellerAlimtalkPage'))
+const SellerYoutubeGrowthPage = lazy(() => import('./pages/SellerYoutubeGrowthPage'))
+const SellerYoutubeGrowthSuccessPage = lazy(() => import('./pages/SellerYoutubeGrowthSuccessPage'))
 const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
+const SellerLiveAnalyticsPage = lazy(() => import('./pages/SellerLiveAnalyticsPage'))
 const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
+const SellerLivePage = lazy(() => import('./pages/SellerLivePage'))
 const YouTubeCallbackPage = lazy(() => import('./pages/YouTubeCallbackPage'))
 
 // User 페이지들
@@ -83,6 +94,8 @@ const AdminAlimtalkPricingPage = lazy(() => import('./pages/admin/AdminAlimtalkP
 const KVMonitoringPage = lazy(() => import('./pages/admin/KVMonitoringPage'))
 const AdminCafe24Page = lazy(() => import('./pages/admin/AdminCafe24Page'))
 const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequestsPage'))
+const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
+const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -121,8 +134,6 @@ function AppContent() {
       if (!firebaseToken) return
       
       try {
-        console.log('[App] 🔑 firebase_token 파라미터 감지')
-
         // URL에서 사용자 정보 미리 읽기 (삭제 전에)
         const urlUserName = urlParams.get('userName') || ''
         const urlProfileImage = urlParams.get('profileImage') || ''
@@ -130,8 +141,6 @@ function AppContent() {
         const { signInWithCustomToken } = await import('@/lib/firebase-auth')
         const userCredential = await signInWithCustomToken(firebaseToken)
         const user = userCredential.user
-        console.log('[App] ✅ Firebase Custom Token 로그인 성공:', user.uid)
-
         // ID Token 갱신 및 claims 추출
         const idToken = await user.getIdToken(true)
         const tokenResult = await user.getIdTokenResult(true)
@@ -139,9 +148,6 @@ function AppContent() {
         const claimsUserName = (tokenResult.claims?.userName as string) || urlUserName
         const rawProfileImage = (tokenResult.claims?.profileImage as string) || urlProfileImage
         const claimsProfileImage = rawProfileImage.replace(/^http:\/\//, 'https://')
-        console.log('[App] 🔢 Numeric user ID from claims:', numericUserId)
-        console.log('[App] 👤 User name from claims/URL:', claimsUserName)
-
         // ✅ user_name / profileImage localStorage 저장 (프로필 페이지 표시용)
         if (claimsUserName) {
           localStorage.setItem('user_name', claimsUserName)
@@ -158,7 +164,6 @@ function AppContent() {
               displayName: claimsUserName,
               ...(claimsProfileImage ? { photoURL: claimsProfileImage } : {}),
             })
-            console.log('[App] ✅ Firebase 프로필 업데이트 완료')
           } catch (e) {
             console.warn('[App] ⚠️ Firebase 프로필 업데이트 실패 (무시):', e)
           }
@@ -176,8 +181,6 @@ function AppContent() {
         useAuthKR.getState().setUser(user)
         useAuthKR.getState().setAuthReady(true)  // ProtectedRoute 스피너 즉시 해제
         sessionStorage.setItem('auth_processed_uid', user.uid)  // onAuthStateChanged 중복 방지
-        console.log('[App] ✅ useAuthKR에 Firebase User 저장 완료 (isAuthReady=true)')
-
         // ✅ useAuthStore에 토큰 저장
         const { useAuthStore } = await import('@/client/stores/auth.store')
         useAuthStore.getState().setAuth(
@@ -190,8 +193,6 @@ function AppContent() {
           idToken,
           ''
         )
-        console.log('[App] ✅ useAuthStore에 accessToken 저장 완료')
-
         // URL 파라미터 제거 (auth 관련 전부)
         urlParams.delete('firebase_token')
         urlParams.delete('userName')
@@ -236,7 +237,6 @@ function AppContent() {
 
     // ✅ Seller/Admin은 Firebase 초기화 불필요 → isAuthReady를 즉시 true로
     if (!hasIncomingToken && (userType === 'seller' || userType === 'admin')) {
-      console.log(`[App] 🏪 ${userType} 세션 감지 - Firebase 초기화 스킵, isAuthReady=true`)
       useAuthKR.getState().setAuthReady(true)
       useAuthWorld.getState().setAuthReady(true)
       return
@@ -245,7 +245,6 @@ function AppContent() {
     // ✅ firebase_token이 있으면 processFirebaseToken이 인증을 처리하므로
     // initializeAuth()를 호출하지 않음 (onAuthStateChanged(null) → 깜빡임 방지)
     if (hasIncomingToken) {
-      console.log('[App] 🔑 firebase_token 처리 중 - initializeAuth 스킵')
       return
     }
 
@@ -253,8 +252,6 @@ function AppContent() {
     const initAuth = async () => {
       try {
         const isKR = isKorea()
-        console.log(`[App] 🔐 Firebase Auth 초기화 (${isKR ? 'KR' : 'WORLD'})`)
-        
         if (isKR) {
           useAuthKR.getState().initializeAuth()
         } else {
@@ -273,17 +270,31 @@ function AppContent() {
 
   // 🔄 다중 탭 동기화
   useMultiTabSync()
-  
+
+  // Capacitor 네이티브 기능 초기화 (앱에서만 동작)
+  useEffect(() => {
+    import('./lib/native').then(m => m.initNativeFeatures()).catch(() => {})
+  }, [])
+
+  const location = useLocation()
+  const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce']
+  const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
+    || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
+  const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
+
   return (
     <>
       <FrameWrapper>
         <Suspense fallback={<PageLoader />}>
+          <div className={fullScreen ? 'min-h-dvh' : 'max-w-screen-sm mx-auto bg-white min-h-dvh pb-14'}>
+          <div className="flex-1">
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/" element={<MainHomePage />} />
             <Route path="/shortform" element={<ShortFormPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             {/* Redirect old single product URL to plural */}
@@ -311,8 +322,8 @@ function AppContent() {
                 <SellerLoginPage />
               </PublicRoute>
             } />
-            <Route path="/seller/register" element={<SellerRegisterPage />} />
-            <Route path="/seller/signup" element={<SellerRegisterPage />} />
+            <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
+            <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
             
             {/* Seller Protected 페이지들 */}
             <Route path="/seller" element={
@@ -336,6 +347,11 @@ function AppContent() {
                 <SellerProductsPage />
               </ProtectedRoute>
             } />
+            <Route path="/seller/inventory" element={
+              <ProtectedRoute requireSeller>
+                <SellerInventoryPage />
+              </ProtectedRoute>
+            } />
             <Route path="/seller/products/new" element={
               <ProtectedRoute requireSeller>
                 <SellerProductNewPage />
@@ -344,6 +360,11 @@ function AppContent() {
             <Route path="/seller/products/:id/edit" element={
               <ProtectedRoute requireSeller>
                 <SellerProductEditPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live" element={
+              <ProtectedRoute requireSeller>
+                <SellerLivePage />
               </ProtectedRoute>
             } />
             <Route path="/seller/live-control" element={
@@ -363,12 +384,22 @@ function AppContent() {
             } />
             <Route path="/seller/profile" element={
               <ProtectedRoute requireSeller>
-                <SellerProfileEditPage />
+                <ErrorBoundary><SellerProfileEditPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/settlements" element={
               <ProtectedRoute requireSeller>
                 <SellerSettlementsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/youtube-growth" element={
+              <ProtectedRoute requireSeller>
+                <SellerYoutubeGrowthPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/youtube-growth/success" element={
+              <ProtectedRoute requireSeller>
+                <SellerYoutubeGrowthSuccessPage />
               </ProtectedRoute>
             } />
             <Route path="/seller/alimtalk" element={
@@ -378,12 +409,22 @@ function AppContent() {
             } />
             <Route path="/seller/donations" element={
               <ProtectedRoute requireSeller>
-                <SellerDonationsPage />
+                <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/live-broadcast" element={
               <ProtectedRoute requireSeller>
                 <SellerLiveBroadcastPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live-analytics" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveAnalyticsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/live-analytics/:streamId" element={
+              <ProtectedRoute requireSeller>
+                <SellerLiveAnalyticsPage />
               </ProtectedRoute>
             } />
             <Route path="/seller/supply" element={
@@ -412,7 +453,7 @@ function AppContent() {
             } />
             <Route path="/admin/settlement" element={
               <ProtectedRoute requireAdmin>
-                <AdminSettlementPage />
+                <ErrorBoundary><AdminSettlementPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/banners" element={
@@ -422,7 +463,7 @@ function AppContent() {
             } />
             <Route path="/admin/orders" element={
               <ProtectedRoute requireAdmin>
-                <AdminOrdersPage />
+                <ErrorBoundary><AdminOrdersPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/products" element={
@@ -437,22 +478,32 @@ function AppContent() {
             } />
             <Route path="/admin/kv-monitoring" element={
               <ProtectedRoute requireAdmin>
-                <KVMonitoringPage />
+                <ErrorBoundary><KVMonitoringPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/sample-requests" element={
               <ProtectedRoute requireAdmin>
-                <AdminSampleRequestsPage />
+                <ErrorBoundary><AdminSampleRequestsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/cafe24" element={
               <ProtectedRoute requireAdmin>
-                <AdminCafe24Page />
+                <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/cafe24/callback" element={
               <ProtectedRoute requireAdmin>
-                <AdminCafe24Page />
+                <ErrorBoundary><AdminCafe24Page /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/ad-scraper" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAdScraperPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/deals" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminDealMonitorPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             
@@ -511,10 +562,18 @@ function AppContent() {
             <Route path="/account/deleted" element={<AccountDeletedPage />} />
             
             {/* Payment 페이지들 */}
-            <Route path="/payment/demo" element={<PaymentDemoPage />} />
+            <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />
+
+            {/* 임베드 위젯 (외부 서비스용) */}
+            <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/fail" element={<PaymentFailPage />} />
+
+            {/* 딜 포인트 충전 */}
+            <Route path="/points/charge" element={<PointsChargePage />} />
+            <Route path="/points/charge/success" element={<PointsChargeSuccessPage />} />
+            <Route path="/points/charge/fail" element={<PaymentFailPage />} />
             <Route path="/fail" element={<PaymentFailPage />} />
             
             {/* Terms Pages */}
@@ -534,6 +593,21 @@ function AppContent() {
             <Route path="/500" element={<ServerErrorPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </div>
+          {!hideBottomNav && <BottomNav />}
+          {!fullScreen && <SideBanner />}
+          {!hideBottomNav && (
+            <a
+              href="http://pf.kakao.com/_AITdn/chat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="fixed bottom-16 right-4 z-[9998] flex items-center justify-center w-10 h-10 rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+              title="카카오 채널 상담"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.58 2 11c0 2.83 1.86 5.32 4.64 6.74-.15.56-.82 3.06-.85 3.26 0 0-.02.13.05.18.07.06.16.03.16.03.22-.03 2.54-1.67 3.6-2.4.77.11 1.57.19 2.4.19 5.52 0 10-3.58 10-8s-4.48-8-10-8z"/></svg>
+            </a>
+          )}
+          </div>
         </Suspense>
       </FrameWrapper>
       <ToastContainer />

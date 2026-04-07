@@ -11,6 +11,7 @@
 import { Context, Next } from 'hono';
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
+import { parseSessionCookie } from '../utils/session';
 
 /**
  * JWT payload type (both seller/admin JWT and Firebase token)
@@ -45,6 +46,7 @@ export interface AuthUser {
   name?: string;
   type: UserType;
   role?: string;
+  isDbId?: boolean;  // true면 id가 DB users.id (세션 쿠키)
 }
 
 /**
@@ -270,63 +272,79 @@ async function verifyFirebaseToken(
 
 /**
  * Authentication middleware - requires any valid authentication
+ *
+ * Priority:
+ * 1. httpOnly session cookie (ur_session) — user login via Kakao
+ * 2. Bearer JWT (seller/admin)
+ * 3. Bearer Firebase ID token (user — legacy fallback)
  */
 export function requireAuth() {
   return async (c: Context, next: Next) => {
-    const authHeader = c.req.header('Authorization');
-    const token = extractToken(authHeader || null);
-
-    if (!token) {
-      return c.json(unauthorizedResponse('Authentication required'), 401);
-    }
-
-    // Try JWT first (seller/admin)
     const jwtSecret = c.env.JWT_SECRET;
     if (!jwtSecret) {
       console.error('[Auth] JWT_SECRET is not configured');
       return c.json(unauthorizedResponse('Authentication service misconfigured'), 503);
     }
-    const jwtPayload = await verifyJWT(token, jwtSecret);
 
-    if (jwtPayload) {
-      const user: AuthUser = {
-        id: (jwtPayload.userId || jwtPayload.sub) as string,
-        email: jwtPayload.email as string,
-        name: jwtPayload.name,
-        type: (jwtPayload.type || 'user') as UserType,
-        role: jwtPayload.role,
-      };
+    // ── 1. Try Bearer token FIRST (seller/admin JWT or Firebase) ───────
+    // Bearer 토큰이 있으면 우선 사용 (어드민/셀러는 Bearer 토큰 필수)
+    const authHeader = c.req.header('Authorization');
+    const token = extractToken(authHeader || null);
 
-      c.set('user', user);
-      return next();
+    if (token) {
+      // Try JWT first (seller/admin)
+      const jwtPayload = await verifyJWT(token, jwtSecret);
+
+      if (jwtPayload) {
+        const user: AuthUser = {
+          id: (jwtPayload.userId || jwtPayload.sub) as string,
+          email: jwtPayload.email as string,
+          name: jwtPayload.name,
+          type: (jwtPayload.type || 'user') as UserType,
+          role: jwtPayload.role,
+        };
+
+        c.set('user', user);
+        return next();
+      }
+
+      // Try Firebase token (users)
+      const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
+      if (firebaseProjectId) {
+        const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
+        if (firebasePayload) {
+          const user: AuthUser = {
+            id: (firebasePayload.sub || firebasePayload.user_id) as string,
+            email: firebasePayload.email as string,
+            name: firebasePayload.name,
+            type: 'user',
+          };
+          c.set('user', user);
+          return next();
+        }
+      }
     }
 
-    // Try Firebase token (users)
-    const firebaseProjectId = c.env.FIREBASE_PROJECT_ID;
-
-    if (!firebaseProjectId) {
-      console.error('[Auth] FIREBASE_PROJECT_ID not configured');
-      return c.json(unauthorizedResponse('Authentication service not available'), 401);
+    // ── 2. Try httpOnly session cookie (user login only) ───────────────
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
+      if (sessionUser) {
+        const user: AuthUser = {
+          id: sessionUser.userId,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          type: 'user',
+          role: sessionUser.role,
+          isDbId: sessionUser.isDbId,
+        };
+        c.set('user', user);
+        return next();
+      }
     }
 
-    const firebasePayload = await verifyFirebaseToken(token, firebaseProjectId);
-
-    if (firebasePayload) {
-      const user: AuthUser = {
-        id: (firebasePayload.sub || firebasePayload.user_id) as string,
-        email: firebasePayload.email as string,
-        name: firebasePayload.name,
-        type: 'user',
-      };
-
-      c.set('user', user);
-      return next();
-    }
-
-    console.error('[Auth] Both JWT and Firebase verification failed');
-
-    // Return 401 Unauthorized (토큰 검증 실패 = 인증 실패)
-    return c.json(unauthorizedResponse('Token verification failed'), 401);
+    // ── 3. No valid auth found ─────────────────────────────────────────
+    return c.json(unauthorizedResponse('Authentication required'), 401);
   };
 }
 
@@ -396,18 +414,38 @@ export function requireSellerOrAdmin() {
  */
 export function optionalAuth() {
   return async (c: Context, next: Next) => {
+    const jwtSecret = c.env.JWT_SECRET;
+    if (!jwtSecret) return next(); // optional auth — skip if misconfigured
+
+    // ── 1. Try httpOnly session cookie (user login) ─────────────────────
+    const cookieHeader = c.req.header('Cookie');
+    if (cookieHeader) {
+      const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
+      if (sessionUser) {
+        const user: AuthUser = {
+          id: sessionUser.userId,
+          email: sessionUser.email,
+          name: sessionUser.name,
+          type: 'user',
+          role: sessionUser.role,
+          isDbId: sessionUser.isDbId,
+        };
+        c.set('user', user);
+        return next();
+      }
+    }
+
+    // ── 2. Try Bearer token ─────────────────────────────────────────────
     const authHeader = c.req.header('Authorization');
     const token = extractToken(authHeader || null);
-    
+
     if (!token) {
       return next();
     }
-    
+
     // Try JWT
-    const jwtSecret = c.env.JWT_SECRET;
-    if (!jwtSecret) return next(); // optional auth — skip if misconfigured
     const jwtPayload = await verifyJWT(token, jwtSecret);
-    
+
     if (jwtPayload) {
       const user: AuthUser = {
         id: (jwtPayload.userId || jwtPayload.sub) as string,
@@ -435,7 +473,6 @@ export function optionalAuth() {
 
       c.set('user', user);
     }
-
 
     return next();
   };

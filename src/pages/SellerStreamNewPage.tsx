@@ -58,7 +58,7 @@ export default function SellerStreamNewPage() {
 
       if (mode === 'youtube-auto') {
         // YouTube 자동 생성
-        const response = await api.post('/api/seller/youtube/create-live', {
+        const response = await api.post('/api/seller/youtube/live/create', {
           title: formData.title,
           description: formData.description,
           scheduled_at: formData.scheduledAt || null,
@@ -301,6 +301,20 @@ export default function SellerStreamNewPage() {
                   <li>스트림 키: 위의 "스트림 키" 복사 붙여넣기</li>
                   <li>"방송 시작" 클릭!</li>
                 </ol>
+              </div>
+
+              <div className="mt-3 p-4 bg-white rounded-lg border border-purple-200">
+                <h4 className="font-semibold text-purple-900 mb-2">📱 프리즘 라이브 스튜디오 (추천 - 무료):</h4>
+                <ol className="text-sm text-purple-800 space-y-1 list-decimal list-inside">
+                  <li>프리즘 라이브 앱 설치 (PC/iOS/Android)</li>
+                  <li>앱 실행 {'>'} 외부 플랫폼 연동 {'>'} YouTube 선택</li>
+                  <li>스트림 키: 위의 "스트림 키" 붙여넣기</li>
+                  <li>동시 송출: TikTok, Facebook 등 추가 가능</li>
+                  <li>"방송 시작" 클릭!</li>
+                </ol>
+                <div className="mt-2 p-2 bg-purple-50 rounded text-xs text-purple-700">
+                  <strong>프리즘 장점:</strong> 스마트폰으로도 가능, YouTube + TikTok + Facebook 동시 송출, 화면 꾸미기/자막 내장, 완전 무료
+                </div>
               </div>
 
               <button

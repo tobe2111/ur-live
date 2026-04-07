@@ -59,6 +59,8 @@ export default function MyOrdersPage() {
   // both read `activeTab` from the closure at the same point in time.
   const isLoadingRef = useRef(false)
 
+  useEffect(() => { document.title = '주문내역 - 유어딜' }, [])
+
   useEffect(() => {
     // Redirect to login if not logged in (통합 인증 체크)
     if (!isLoggedInSync() || !userId) {
@@ -72,7 +74,6 @@ export default function MyOrdersPage() {
   async function loadData() {
     // ✅ BUG #25 FIX: Guard against concurrent calls
     if (isLoadingRef.current) {
-      console.log('[MyOrdersPage] loadData skipped — already in progress')
       return
     }
     isLoadingRef.current = true
@@ -94,7 +95,8 @@ export default function MyOrdersPage() {
       } else if (activeTab === 'orders') {
         const response = await api.get('/api/orders')
         if (response.data.success) {
-          setOrders(response.data.data || [])
+          const d = response.data.data
+          setOrders(Array.isArray(d) ? d : (d?.items || d?.orders || []))
         }
       }
     } catch (error) {
@@ -207,7 +209,7 @@ export default function MyOrdersPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#fbfbfd]">
+    <div className="bg-[#fbfbfd]">
       {/* Header */}
       <header className="apple-glass sticky top-0 z-50 border-b border-[#e5e5ea]">
         <div className="w-full px-4 sm:px-6">
@@ -491,6 +493,24 @@ export default function MyOrdersPage() {
                   </div>
                 </div>
               </div>
+
+              {/* 판매자 문의 */}
+              <button
+                onClick={() => {
+                  const kakao = selectedOrder.seller_kakao_chat_url as string | undefined
+                  const phone = selectedOrder.seller_phone as string | undefined
+                  if (kakao) {
+                    window.open(kakao, '_blank', 'noopener,noreferrer')
+                  } else if (phone) {
+                    toast.info(`판매자 연락처: ${phone}`)
+                  } else {
+                    toast.info('판매자 연락처가 등록되지 않았습니다')
+                  }
+                }}
+                className="w-full py-3 text-[15px] font-medium text-[#007aff] border border-[#007aff] rounded-xl hover:bg-[#007aff] hover:text-white transition-colors"
+              >
+                판매자 문의
+              </button>
 
               {/* Actions */}
               {['pending', 'paid', 'confirmed', 'done'].includes(selectedOrder.status.toLowerCase()) && (

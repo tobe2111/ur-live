@@ -51,6 +51,8 @@ interface Stream {
   status: string
   youtube_video_id: string
   created_at: string
+  seller_name?: string
+  viewer_count?: number
 }
 
 interface Stats {
@@ -79,11 +81,11 @@ export default function AdminPage() {
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [bizInfoSeller, setBizInfoSeller] = useState<Seller | null>(null)
+  const [liveStreams, setLiveStreams] = useState<Stream[]>([])
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
-    const userType = localStorage.getItem('user_type')
-    if (!token || userType !== 'admin') {
+    if (!token) {
       navigate('/admin/login', { replace: true })
       return
     }
@@ -95,14 +97,17 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const [sellersRes, pendingRes, streamsRes] = await Promise.all([
+      const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.all([
         api.get('/api/admin/sellers'),
         api.get('/api/admin/sellers/pending'),
         api.get('/api/streams'),
+        api.get('/api/streams?status=live'),
       ])
       const sellersData = sellersRes.data.data || []
       const pendingData = pendingRes.data.data || []
       const streamsData = streamsRes.data.data || []
+      const liveStreamsData = liveStreamsRes.data.data || []
+      setLiveStreams(liveStreamsData)
       setSellers(sellersData)
       setPendingSellers(pendingData)
       setStreams(streamsData)
@@ -247,6 +252,18 @@ export default function AdminPage() {
     }
   }
 
+  async function suspendSeller(sellerId: number) {
+    if (!confirm('이 판매자를 정지(비활성화)하시겠습니까?')) return
+    try {
+      const response = await api.delete(`/api/admin/sellers/${sellerId}`)
+      toast.success(response.data.message || '판매자가 정지되었습니다')
+      loadData()
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      toast.error(`정지 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
@@ -334,6 +351,50 @@ export default function AdminPage() {
             <p className="text-xl font-bold text-gray-900">{card.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── 진행 중인 라이브 ── */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-red-100 bg-red-50 flex items-center gap-2">
+          <Play className="w-4 h-4 text-red-500" />
+          <h2 className="text-sm font-semibold text-gray-900">진행 중인 라이브</h2>
+          <span className="ml-auto text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+            {liveStreams.length}개
+          </span>
+        </div>
+        {liveStreams.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">현재 진행 중인 라이브가 없습니다</div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {liveStreams.map(stream => (
+              <div key={stream.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600">
+                    🔴 라이브
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{stream.title}</p>
+                    <p className="text-xs text-gray-500">{stream.seller_name || `판매자 #${stream.seller_id}`}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>{(stream.viewer_count || 0).toLocaleString()}명</span>
+                  </div>
+                  <a
+                    href={`/live/${stream.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+                  >
+                    보기
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── 승인 대기 판매자 ── */}
@@ -427,9 +488,10 @@ export default function AdminPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      seller.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                      seller.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                      seller.status === 'suspended' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
                     }`}>
-                      {seller.status === 'approved' ? '승인됨' : '대기중'}
+                      {seller.status === 'approved' ? '승인됨' : seller.status === 'suspended' ? '정지됨' : '대기중'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{formatKSTDate(seller.created_at)}</td>
@@ -438,6 +500,9 @@ export default function AdminPage() {
                       <button onClick={() => openBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">사업자정보</button>
                       {seller.status !== 'approved' && (
                         <button onClick={() => approveSeller(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">승인</button>
+                      )}
+                      {seller.status !== 'suspended' && (
+                        <button onClick={() => suspendSeller(seller.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">정지</button>
                       )}
                     </div>
                   </td>

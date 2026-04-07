@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
-import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getUserIdSync as getUserId } from '@/utils/auth'
 import api from '@/lib/api'
 import { useModal } from '@/components/CustomModal'
@@ -12,6 +11,9 @@ import type { ChatMessage } from '@/hooks/useFirebaseChat'
 import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
 import { DonationEffect } from '@/components/LiveDonation'
+import { maskUserName } from '@/components/live/LiveUtils'
+import { TeamPointsBadge } from '@/components/live/TeamPointsBadge'
+import LiveDonation from '@/components/LiveDonation'
 import '@/utils/console-suppressor'
 
 // Axios-like error shape for catch blocks
@@ -37,6 +39,7 @@ interface YTPlayer {
   unMute(): void
   setVolume(volume: number): void
   destroy(): void
+  getCurrentTime(): number
 }
 
 interface YTPlayerEvent {
@@ -53,14 +56,7 @@ interface YTNamespace {
   }
 }
 
-// Extend window for YouTube IFrame API
-declare global {
-  interface Window {
-    YT: YTNamespace
-    youtubeCallbacks: (() => void)[]
-    onYouTubeIframeAPIReady: () => void
-  }
-}
+// YouTube IFrame API types are declared in @/components/live/LiveTypes.ts
 
 interface Stream {
   id: number
@@ -81,6 +77,8 @@ interface Stream {
   current_product?: Product | null
   scheduled_at?: string
   seller_name?: string
+  seller_tiktok?: string
+  created_at?: string
 }
 
 interface Product {
@@ -95,6 +93,7 @@ interface Product {
   rating: number
   sold: number
   stock?: number // 🔥 Firebase 실시간 재고
+  seller_id?: number
   colors?: { name: string; hex: string }[]
   sizes?: string[]
 }
@@ -503,7 +502,7 @@ function ReelCard({
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
-  
+
   // Cart & Purchase state
   const [addingToCart, setAddingToCart] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
@@ -532,16 +531,7 @@ function ReelCard({
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
 
-  // ── 후원 모달 상태 ──
-  const [donationModal, setDonationModal] = useState(false)
-  const [donationAmount, setDonationAmount] = useState(5000)
-  const [donationMessage, setDonationMessage] = useState('')
-  const [donationAnonymous, setDonationAnonymous] = useState(false)
-  const [donating, setDonating] = useState(false)
-  // 2단계 결제: step 1 = 금액/메시지, step 2 = 토스 위젯
-  const [donationStep, setDonationStep] = useState<1 | 2>(1)
-  const [donationOrderData, setDonationOrderData] = useState<{ orderId: string; amount: number; orderName: string } | null>(null)
-  const paymentWidgetRef = useRef<any>(null)
+  // ── 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) ──
   
   // Handle null product case
   const safeProduct = (product || {
@@ -558,9 +548,10 @@ function ReelCard({
     isConnected: chatConnected,
     error: chatError,
     sendMessage: sendChatMessage,
+    addLocalMessage,
     streamData: wsStreamData,
     lastDonation,
-  } = useLiveStreamWebSocket(stream.id, true)
+  } = useLiveStreamWebSocket(stream.id, true, stream.status === 'ended')
 
   // Handle incoming donation events from WebSocket
   useEffect(() => {
@@ -578,6 +569,27 @@ function ReelCard({
     }, 5000)
     return () => clearTimeout(timer)
   }, [lastDonation])
+
+  // Listen for donationAlert custom events and add system chat message
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (!detail) return
+      const msg = detail.message
+        ? `🎉 ${detail.donorName}님이 ${detail.amount.toLocaleString()}딜 후원! "${detail.message}"`
+        : `🎉 ${detail.donorName}님이 ${detail.amount.toLocaleString()}딜 후원!`
+      addLocalMessage({
+        id: `donation-alert-${Date.now()}`,
+        userId: 0,
+        userName: '시스템',
+        userType: 'system',
+        message: msg,
+        timestamp: Date.now(),
+      })
+    }
+    window.addEventListener('donationAlert', handler)
+    return () => window.removeEventListener('donationAlert', handler)
+  }, [addLocalMessage])
 
   // YouTube Player Integration
   useEffect(() => {
@@ -724,6 +736,38 @@ function ReelCard({
     }
   }, [isActive, stream.id])
 
+  // View tracking: record view when user watches this stream
+  useEffect(() => {
+    if (!isActive || !stream.id) return
+    const sessionId = `view-${stream.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    let watchSeconds = 0
+    const heartbeatInterval = setInterval(() => {
+      watchSeconds += 30
+      fetch(`/api/live/${stream.id}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
+      }).catch(() => {})
+    }, 30000)
+
+    // Initial join
+    fetch(`/api/live/${stream.id}/view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
+    }).catch(() => {})
+
+    return () => {
+      clearInterval(heartbeatInterval)
+      // Leave
+      fetch(`/api/live/${stream.id}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
+      }).catch(() => {})
+    }
+  }, [isActive, stream.id])
+
   // Pause video when no longer active
   useEffect(() => {
     if (!isActive && playerRef.current && playerReady) {
@@ -828,24 +872,6 @@ function ReelCard({
 
     loadInitialProduct()
   }, [stream.id])
-
-  // ============================================
-  // Mask Username Helper
-  // ============================================
-  function maskUserName(name: string): string {
-    if (!name || name.length === 0) return '익명'
-    if (name === '익명' || name === 'Anonymous') return name
-    
-    if (name.length === 1) {
-      return name + '*'
-    } else if (name.length === 2) {
-      return name[0] + '*'
-    } else if (name.length === 3) {
-      return name[0] + '*' + name[2]
-    } else {
-      return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1]
-    }
-  }
 
   // ============================================
   // Kakao Login Handler
@@ -963,15 +989,31 @@ function ReelCard({
     
     setCheckingOut(true)
     try {
-      await api.post('/api/cart', {
-        product_id: currentProduct.id,
-        quantity: 1,
-        price_snapshot: currentProduct.price,
-        live_stream_id: stream.id,
+      // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
+      navigate('/checkout', {
+        state: {
+          directPurchase: [{
+            id: `live_${currentProduct.id}_${Date.now()}`,
+            product_id: currentProduct.id,
+            product_name: currentProduct.name,
+            product_description: currentProduct.description ?? null,
+            product_price: currentProduct.price,
+            product_image: currentProduct.image_url,
+            image_url: currentProduct.image_url,
+            quantity: 1,
+            price_snapshot: currentProduct.price,
+            price: currentProduct.price,
+            item_total: currentProduct.price,
+            seller_id: currentProduct.seller_id ?? null,
+            seller_name: (currentProduct as any).seller_name ?? null,
+            shipping_fee: 3000,
+            free_shipping_threshold: 0,
+            option_id: null,
+            option_value: null,
+            live_stream_id: stream.id,
+          }]
+        }
       })
-      localStorage.setItem('hasCartItems', 'true')
-      window.dispatchEvent(new CustomEvent('cartItemAdded'))
-      navigate('/checkout')
       
     } catch (error: unknown) {
       console.error('Failed to add product to cart:', error)
@@ -1044,107 +1086,6 @@ function ReelCard({
   }
 
   // ============================================
-  // 후원 처리 — Step 1: init API → 위젯 초기화 → Step 2로 이동
-  // ============================================
-  async function handleDonationStep1() {
-    if (!isLoggedIn) { showAlert('로그인 후 후원하실 수 있습니다.', 'info', '로그인 필요'); return }
-    if (donationAmount < 1000 || donationAmount % 100 !== 0) {
-      toast.error('후원 금액은 최소 1,000원이며 100원 단위여야 합니다')
-      return
-    }
-    setDonating(true)
-    try {
-      const initRes = await api.post('/api/donations/init', {
-        stream_id: stream.id,
-        amount: donationAmount,
-        message: donationMessage || undefined,
-        is_anonymous: donationAnonymous,
-      })
-
-      if (!initRes.data.success) { toast.error(initRes.data.error); return }
-      const { orderId, amount, orderName, clientKey } = initRes.data.data
-      if (!clientKey) { toast.error('결제 설정을 불러올 수 없습니다'); return }
-
-      // PaymentWidget V2
-      const userId = getUserId()
-      const customerKey = userId
-        ? `user_${String(userId).replace(/[^a-zA-Z0-9\-_=.@]/g, '').substring(0, 44)}`
-        : 'ANONYMOUS'
-      const tossPayments = await loadTossPayments(clientKey)
-      const widget = tossPayments.widgets({ customerKey })
-      paymentWidgetRef.current = widget
-      setDonationOrderData({ orderId, amount, orderName })
-      setDonationStep(2) // useEffect가 위젯 렌더링 실행
-    } catch (err: any) {
-      toast.error(err?.message || '결제 준비 중 오류가 발생했습니다')
-    } finally { setDonating(false) }
-  }
-
-  // Step 2에서 위젯 렌더링 (DOM이 준비된 후, V2 API)
-  useEffect(() => {
-    if (donationStep !== 2 || !paymentWidgetRef.current || !donationOrderData) return
-    const widget = paymentWidgetRef.current
-    widget.setAmount({ currency: 'KRW', value: donationOrderData.amount })
-      .then(() => Promise.all([
-        widget.renderPaymentMethods({ selector: '#toss-donation-methods', variantKey: 'DEFAULT' }),
-        widget.renderAgreement({ selector: '#toss-donation-agreement', variantKey: 'AGREEMENT' }),
-      ]))
-      .catch((err: any) => {
-        console.error('[Donation] widget render error:', err)
-        toast.error('결제창 로드에 실패했습니다. 다시 시도해주세요.')
-        setDonationStep(1)
-        paymentWidgetRef.current = null
-      })
-  }, [donationStep, donationOrderData])
-
-  // Step 2: 결제 최종 요청
-  async function handleDonationConfirm() {
-    if (!paymentWidgetRef.current || !donationOrderData) return
-    setDonating(true)
-    try {
-      await paymentWidgetRef.current.requestPayment({
-        orderId: donationOrderData.orderId,
-        orderName: donationOrderData.orderName,
-        successUrl: `${window.location.origin}/live/${stream.id}?donation=success&orderId=${donationOrderData.orderId}&amount=${donationOrderData.amount}`,
-        failUrl: `${window.location.origin}/live/${stream.id}?donation=fail`,
-      })
-    } catch (err: any) {
-      if (err?.code !== 'USER_CANCEL') toast.error(err?.message || '결제 중 오류가 발생했습니다')
-    } finally { setDonating(false) }
-  }
-
-  function closeDonationModal() {
-    setDonationModal(false)
-    setDonationStep(1)
-    setDonationOrderData(null)
-    paymentWidgetRef.current = null
-  }
-
-  // 후원 결제 완료 리다이렉트 처리
-  React.useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const donation = params.get('donation')
-    const paymentKey = params.get('paymentKey')
-    const orderId = params.get('orderId')
-    const amount = params.get('amount')
-    if (donation === 'success' && paymentKey && orderId && amount) {
-      window.history.replaceState({}, '', window.location.pathname)
-      // message/is_anonymous는 init 단계에서 DB에 이미 저장됨 — 재전송 불필요
-      api.post('/api/donations/confirm', {
-        paymentKey, orderId, amount: Number(amount),
-      })
-        .then(res => {
-          if (res.data.success) toast.success(res.data.message || '후원이 완료되었습니다!')
-          else toast.error(res.data.error || '후원 처리에 실패했습니다')
-        })
-        .catch(() => toast.error('후원 처리에 실패했습니다'))
-    } else if (donation === 'fail') {
-      window.history.replaceState({}, '', window.location.pathname)
-      toast.error('후원이 취소되었습니다')
-    }
-  }, [])
-
-  // ============================================
   // Send Chat Message (with throttling)
   // ============================================
   async function handleSendMessage(e: React.FormEvent) {
@@ -1207,7 +1148,7 @@ function ReelCard({
       
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
-        <div className="absolute top-20 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
+        <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
           <span className="text-white font-bold text-[11px] tracking-wide">소개 중</span>
         </div>
@@ -1233,11 +1174,9 @@ function ReelCard({
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
       {/* YouTube Player Container */}
-      {/* ✅ 세로 화면에서 16:9 영상이 cover 모드로 채워지도록 iframe CSS 강제 적용
-           YouTube IFrame API는 style="width:100%;height:100%"를 인라인으로 설정하므로 !important 필요 */}
       <div
         id={`youtube-player-${stream.id}`}
-        className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!aspect-video"
+        className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[max(100vw,177.78vh)] [&_iframe]:!h-[max(100vh,56.25vw)]"
       />
 
       {/* 예약 방송 UI */}
@@ -1281,6 +1220,13 @@ function ReelCard({
 
       {/* Product overlay */}
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
+        {/* Top bar: 딜 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
+        {!isSeller && (
+          <div className="pointer-events-auto absolute top-16 left-3 z-20">
+            <TeamPointsBadge streamId={stream.id} />
+          </div>
+        )}
+
         {/* Bottom gradient */}
         <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
@@ -1296,7 +1242,10 @@ function ReelCard({
           <div className="flex items-end gap-3 mb-2.5">
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
-              <LiveChat messages={chatMessages} onChatClick={() => setChatModalOpen(true)} />
+              <LiveChat
+                messages={chatMessages}
+                onChatClick={() => setChatModalOpen(true)}
+              />
             </div>
 
             {/* Chat + Donate + Share buttons - right side */}
@@ -1325,15 +1274,9 @@ function ReelCard({
                 <Share2 className="h-5 w-5 text-white/90" />
               </button>
 
-              {/* 후원하기 버튼 */}
-              {!isSeller && (
-                <button
-                  onClick={() => setDonationModal(true)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs font-bold shadow-lg shadow-pink-500/30 active:scale-95 transition-all"
-                >
-                  <Heart className="h-3.5 w-3.5 fill-white" />
-                  후원
-                </button>
+              {/* 후원하기 버튼 (딜 포인트) */}
+              {!isSeller && stream?.id && (
+                <LiveDonation streamId={stream.id} />
               )}
             </div>
           </div>
@@ -1450,12 +1393,17 @@ function ReelCard({
             className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm animate-overlay-in"
             onClick={() => setChatModalOpen(false)}
           />
-          
+
           {/* Chat Input Sheet */}
           <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">메시지 보내기</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-gray-900">메시지 보내기</h3>
+                  {isSeller && (
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">🎙 셀러</span>
+                  )}
+                </div>
                 <button
                   onClick={() => setChatModalOpen(false)}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200"
@@ -1463,20 +1411,26 @@ function ReelCard({
                   <X className="h-4 w-4 text-gray-800" />
                 </button>
               </div>
-              
+
               <form onSubmit={handleSendMessage} className="flex gap-2">
                 <input
                   type="text"
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="메시지를 입력하세요..."
-                  className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-red-500 focus:outline-none"
+                  placeholder={isSeller ? "셀러 메시지를 입력하세요..." : "메시지를 입력하세요..."}
+                  className={`flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none ${
+                    isSeller
+                      ? 'border-indigo-300 focus:border-indigo-500 bg-indigo-50/50'
+                      : 'border-gray-300 focus:border-red-500'
+                  }`}
                   disabled={sendingMessage}
                 />
                 <button
                   type="submit"
                   disabled={!chatMessage.trim() || sendingMessage}
-                  className="flex items-center justify-center rounded-xl bg-red-500 px-6 py-3 text-white font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`flex items-center justify-center rounded-xl px-6 py-3 text-white font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isSeller ? 'bg-indigo-500' : 'bg-red-500'
+                  }`}
                 >
                   <Send className="h-5 w-5" />
                 </button>
@@ -1485,99 +1439,7 @@ function ReelCard({
           </div>
         </>
       )}
-      {/* 후원 모달 */}
-      {donationModal && (
-        <>
-          <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm" onClick={closeDonationModal} />
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
-            <div className="p-5">
-              {/* 헤더 */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  {donationStep === 2 && (
-                    <button onClick={() => { setDonationStep(1); paymentWidgetRef.current = null; setDonationOrderData(null) }} className="mr-1 p-1 rounded-full hover:bg-gray-100">
-                      <ChevronLeft className="h-5 w-5 text-gray-500" />
-                    </button>
-                  )}
-                  <Heart className="h-5 w-5 text-pink-500 fill-pink-500" />
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {donationStep === 1 ? `${stream.streamerName || '셀러'} 후원하기` : '결제 방법 선택'}
-                  </h3>
-                </div>
-                <button onClick={closeDonationModal} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-                  <X className="h-4 w-4 text-gray-600" />
-                </button>
-              </div>
-
-              {donationStep === 1 ? (
-                <>
-                  {/* 금액 빠른 선택 */}
-                  <div className="grid grid-cols-4 gap-2 mb-3">
-                    {[1000, 3000, 5000, 10000].map(amt => (
-                      <button
-                        key={amt}
-                        onClick={() => setDonationAmount(amt)}
-                        className={`py-2 rounded-xl text-sm font-semibold transition-colors ${
-                          donationAmount === amt ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {(amt/1000)}천원
-                      </button>
-                    ))}
-                  </div>
-                  {/* 직접 입력 */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <input
-                      type="number"
-                      value={donationAmount}
-                      onChange={e => setDonationAmount(Math.max(1000, Math.floor(Number(e.target.value) / 100) * 100))}
-                      step={100} min={1000}
-                      className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-right focus:border-pink-400 focus:outline-none"
-                    />
-                    <span className="text-sm text-gray-500 shrink-0">원</span>
-                  </div>
-                  {/* 메시지 */}
-                  <input
-                    type="text"
-                    placeholder="응원 메시지 (선택)"
-                    value={donationMessage}
-                    onChange={e => setDonationMessage(e.target.value)}
-                    maxLength={50}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm mb-3 focus:border-pink-400 focus:outline-none"
-                  />
-                  {/* 익명 */}
-                  <label className="flex items-center gap-2 mb-4 cursor-pointer">
-                    <input type="checkbox" checked={donationAnonymous} onChange={e => setDonationAnonymous(e.target.checked)} className="rounded" />
-                    <span className="text-sm text-gray-600">익명으로 후원</span>
-                  </label>
-                  <button
-                    onClick={handleDonationStep1}
-                    disabled={donating || donationAmount < 1000}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-base disabled:opacity-50 active:scale-[0.98] transition-all"
-                  >
-                    {donating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5 fill-white" />}
-                    {donationAmount.toLocaleString()}원 결제 방법 선택
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* 토스 결제위젯 렌더링 영역 */}
-                  <div id="toss-donation-methods" className="mb-3" />
-                  <div id="toss-donation-agreement" className="mb-4" />
-                  <button
-                    onClick={handleDonationConfirm}
-                    disabled={donating}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-base disabled:opacity-50 active:scale-[0.98] transition-all"
-                  >
-                    {donating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className="h-5 w-5 fill-white" />}
-                    {donationOrderData?.amount.toLocaleString()}원 결제하기
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      {/* 후원은 LiveDonation 컴포넌트에서 처리 (딜 포인트 방식) */}
     </div>
   )
 }
@@ -1888,8 +1750,8 @@ export default function LivePageV2() {
   }
 
   return (
-    <main className="relative h-dvh overflow-hidden bg-black">
-      <TopNav 
+    <main className="relative h-dvh overflow-hidden bg-black no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+      <TopNav
         viewers={viewerCount}
         sellerLinks={{
           youtube: reels[activeIndex]?.stream?.seller_youtube || undefined,
@@ -1901,11 +1763,12 @@ export default function LivePageV2() {
       
       <div
         ref={containerRef}
-        className={`h-dvh w-full no-scrollbar ${
-          isDirectLink 
+        className={`h-dvh w-full no-scrollbar scrollbar-hide ${
+          isDirectLink
             ? 'overflow-hidden' // Direct link: No scroll, single stream only
             : 'overflow-y-scroll snap-y snap-mandatory' // Homepage: Scrollable reels
         }`}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {reels.map((reel, index) => (
           <div

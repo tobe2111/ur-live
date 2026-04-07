@@ -11,41 +11,25 @@ export function useCart() {
   return useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
-      console.log('[useCart] 🛒 장바구니 데이터 조회 중...')
-      
-      // ✅ 토큰 확인 (디버깅용)
-      try {
-        const { useAuthStore } = await import('@/client/stores/auth.store')
-        const { accessToken } = useAuthStore.getState()
-        console.log('[useCart] 🎫 Token before API call:', accessToken ? accessToken.substring(0, 30) + '...' : 'NULL')
-      } catch (e) {
-        console.error('[useCart] ❌ Failed to check token:', e)
-      }
-      
       const response = await api.get('/api/cart')
-      console.log('[useCart] 📡 API 전체 응답:', JSON.stringify(response.data, null, 2))
       
       // ✅ API 응답 구조 파싱
       let items: CartItem[] = []
       
       // Case 1: {success: true, data: {items: Array, summary: {...}}} → 현재 cart.routes.ts 구조
       if (response.data?.success && response.data?.data?.items && Array.isArray(response.data.data.items)) {
-        console.log('[useCart] 📦 Case 1: Standard API response {success:true, data:{items:Array}}')
         items = response.data.data.items
       }
       // Case 2: {success: true, data: Array} → 이전 응답 구조 호환
       else if (response.data?.success && response.data?.data && Array.isArray(response.data.data)) {
-        console.log('[useCart] 📦 Case 2: Standard API response {success:true, data:Array}')
         items = response.data.data
       } 
       // Case 3: {items: Array, ...} → 직접 items 필드
       else if (response.data?.items && Array.isArray(response.data.items)) {
-        console.log('[useCart] 📦 Case 3: Direct items field')
         items = response.data.items
       } 
       // Case 4: response.data 자체가 Array
       else if (Array.isArray(response.data)) {
-        console.log('[useCart] 📦 Case 4: response.data is Array')
         items = response.data
       }
       else {
@@ -62,13 +46,6 @@ export function useCart() {
         total_price,
         total_quantity
       }
-      
-      console.log('[useCart] ✅ 최종 장바구니 데이터:', {
-        items_count: cartData.items.length,
-        total_price: cartData.total_price,
-        total_quantity: cartData.total_quantity,
-        first_item: cartData.items[0]
-      })
       
       return cartData
     },

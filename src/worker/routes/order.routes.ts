@@ -16,6 +16,7 @@ import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
+import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 
 // AuthVariables compatible with auth.ts AuthUser
 type AuthVariables = { user: AuthUser };
@@ -30,7 +31,7 @@ ordersRouter.use('*', requireAuth());
  * users 테이블에서 firebase_uid로 정수 id를 조회
  * 없으면 Firebase UID 자체를 fallback으로 사용 (새 스키마 호환)
  */
-async function getUserDbId(db: any, firebaseUid: string): Promise<string> {
+async function getUserDbId(db: D1Database, firebaseUid: string): Promise<string> {
   try {
     const row = await (db
       .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
@@ -128,12 +129,17 @@ ordersRouter.post('/', async (c) => {
     const products = await productRepo.findByIds(productIds);
 
     if (products.length !== productIds.length) {
-      return c.json({ success: false, error: '일부 상품을 찾을 수 없습니다' }, 400);
+      const missingIds = productIds.filter(id => !products.find(p => p.id === id));
+      return c.json({ success: false, error: `일부 상품을 찾을 수 없습니다 (ID: ${missingIds.join(', ')})` }, 400);
     }
 
-    // Verify all products belong to the specified seller (skip if seller_id is empty)
-    if (request.seller_id) {
-      const wrongSeller = products.find(p => p.seller_id !== request.seller_id);
+    // seller_id가 빈 문자열이면 null로 치환 (FK 위반 방지)
+    // 상품에 seller_id가 없는 경우 (null) 주문 생성 시 seller_id도 null 허용
+    const effectiveSellerId = request.seller_id || null;
+
+    // Verify all products belong to the specified seller (skip if seller_id is empty/null)
+    if (effectiveSellerId) {
+      const wrongSeller = products.find(p => p.seller_id !== effectiveSellerId);
       if (wrongSeller) {
         return c.json({
           success: false,
@@ -153,10 +159,12 @@ ordersRouter.post('/', async (c) => {
       }
 
       // Pre-flight 재고 체크 (낙관적 락 전 조기 실패 - UX 개선)
-      if (product.stock_quantity < reqItem.quantity) {
+      // DB 스키마: stock (구) / stock_quantity (신) 양쪽 호환
+      const currentStock = product.stock ?? product.stock_quantity ?? 0;
+      if (currentStock < reqItem.quantity) {
         return c.json({
           success: false,
-          error: `"${product.name}" 재고가 부족합니다 (남은 수량: ${product.stock_quantity})`,
+          error: `"${product.name}" 재고가 부족합니다 (남은 수량: ${currentStock})`,
         }, 400);
       }
 
@@ -204,6 +212,7 @@ ordersRouter.post('/', async (c) => {
     }
 
     // Create order (재고 차감 완료 후 주문 생성)
+    // Note: repository 내부에서 seller_id 빈 문자열 → null 변환 처리
     let order;
     try {
       order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
@@ -212,11 +221,10 @@ ordersRouter.post('/', async (c) => {
       console.error('[ORDERS] createOrder failed, restoring stock:', createErr);
       const restoreStmts = orderItems.map(item => ({
         sql: `UPDATE products
-              SET stock_quantity = stock_quantity + ?,
-                  sold_count     = MAX(0, sold_count - ?),
-                  updated_at     = datetime('now')
+              SET stock      = stock + ?,
+                  updated_at = datetime('now')
               WHERE id = ?`,
-        params: [item.quantity, item.quantity, item.product_id],
+        params: [item.quantity, item.product_id],
       }));
       await orderRepo['qb'].batch(restoreStmts).catch(e =>
         console.error('[ORDERS] stock restore failed:', e)
@@ -230,6 +238,27 @@ ordersRouter.post('/', async (c) => {
       sellerId: order.seller_id,
       total: order.total_amount,
     });
+
+    // Dashboard notification: notify admin about new order
+    createDashboardNotification(
+      c.env.DB, 'admin', null, 'new_order',
+      '새 주문',
+      `주문번호: ${order.order_number}`,
+      '/admin/orders'
+    ).catch(() => {});
+
+    // 셀러에게도 알림 (seller_id가 있는 경우)
+    if (order.seller_id) {
+      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'new_order', '새 주문', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+    }
+
+    // 재고 부족 체크
+    for (const item of orderItems) {
+      const product = products.find(p => p.id === item.product_id);
+      if (product && ((product.stock ?? product.stock_quantity ?? 0) - item.quantity) <= 5) {
+        createDashboardNotification(c.env.DB, 'seller', String(product.seller_id || ''), 'low_stock', '재고 부족', `${product.name}: ${(product.stock ?? product.stock_quantity ?? 0) - item.quantity}개 남음`, '/seller/inventory').catch(() => {});
+      }
+    }
 
     // 자동 알림톡 발송 (주문 확인) - 비동기로 처리, 실패해도 주문 생성에 영향 없음
     if (c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID) {
@@ -248,6 +277,46 @@ ordersRouter.post('/', async (c) => {
     console.error('[ORDERS] Create error:', errMsg, err);
     // TODO: 디버깅 완료 후 errMsg 제거
     return c.json({ success: false, error: errMsg || '주문 생성에 실패했습니다' }, 500);
+  }
+});
+
+// POST /api/orders/debug-update-stream — 임시: 스트림 SNS 링크 업데이트
+ordersRouter.post('/debug-update-stream', async (c) => {
+  try {
+    const db = c.env.DB;
+    const { stream_id, seller_youtube, seller_instagram, seller_tiktok } = await c.req.json();
+    // seller_tiktok 컬럼 없으면 추가
+    try { await db.prepare('ALTER TABLE live_streams ADD COLUMN seller_tiktok TEXT').run(); } catch { /* exists */ }
+    await db.prepare(
+      'UPDATE live_streams SET seller_youtube = ?, seller_instagram = ?, seller_tiktok = ? WHERE id = ?'
+    ).bind(seller_youtube || null, seller_instagram || null, seller_tiktok || null, stream_id).run();
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/orders/debug-schema — 임시 디버그용 (DB 스키마 확인)
+ordersRouter.get('/debug-schema', async (c) => {
+  try {
+    const db = c.env.DB;
+    const ordersSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").first<{ sql: string }>();
+    const orderItemsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='order_items'").first<{ sql: string }>();
+    const productsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='products'").first<{ sql: string }>();
+    const donationsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='donations'").first<{ sql: string }>();
+    const liveStreamsSchema = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='live_streams'").first<{ sql: string }>();
+    const recentOrder = await db.prepare("SELECT id, seller_id, typeof(seller_id) as sid_type FROM orders ORDER BY rowid DESC LIMIT 1").first();
+    return c.json({
+      success: true,
+      orders_schema: ordersSchema?.sql,
+      order_items_schema: orderItemsSchema?.sql,
+      products_schema: productsSchema?.sql?.substring(0, 500),
+      donations_schema: donationsSchema?.sql,
+      live_streams_schema: liveStreamsSchema?.sql?.substring(0, 500),
+      recent_order_seller_id: recentOrder,
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
 
@@ -499,6 +568,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
       // 재고 복구
       await orderRepo.restoreStock(orderId);
 
+      // 주문 취소 알림
+      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});
+      if (order.seller_id) {
+        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+      }
+
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 
       console.info('[ORDERS] Cancel success (paid):', {
@@ -526,6 +601,12 @@ ordersRouter.post('/:id/cancel', async (c) => {
       cancelled_at: new Date().toISOString(),
       cancel_reason: reason,
     });
+
+    // 주문 취소 알림
+    createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(() => {});
+    if (order.seller_id) {
+      createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(() => {});
+    }
 
     console.info('[ORDERS] Cancel success (unpaid):', { orderId, status: order.status });
 

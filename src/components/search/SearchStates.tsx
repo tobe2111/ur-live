@@ -30,12 +30,20 @@ export default function SearchStates({ loading, error, query, hasResults }: Sear
         </div>
         <p className="text-[17px] font-semibold text-[#1d1d1f] mb-2">오류가 발생했습니다</p>
         <p className="text-[15px] text-[#6e6e73] mb-6">{error}</p>
-        <button
-          onClick={() => navigate('/')}
-          className="px-6 py-2.5 bg-[#007aff] text-white rounded-full text-[15px] font-semibold hover:bg-[#0051d5] transition-colors"
-        >
-          홈으로 돌아가기
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg"
+          >
+            다시 시도
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-2.5 bg-[#007aff] text-white rounded-full text-[15px] font-semibold hover:bg-[#0051d5] transition-colors"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
       </div>
     )
   }

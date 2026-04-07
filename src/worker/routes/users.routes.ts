@@ -25,24 +25,38 @@ usersRouter.get('/role', optionalAuth(), async (c) => {
     }
 
     const firebaseUid = String(authUser.id);
+    const numericId = parseInt(firebaseUid, 10);
     const db = c.env.DB;
 
     // DB에서 역할 조회 (sellers / admin 계정 체크)
-    const seller = await db
-      .prepare('SELECT id FROM sellers WHERE firebase_uid = ? LIMIT 1')
-      .bind(firebaseUid)
-      .first()
-      .catch(() => null);
+    // Session cookie users have numeric DB IDs; Firebase users have string UIDs
+    const seller = Number.isFinite(numericId)
+      ? await db
+          .prepare('SELECT id FROM sellers WHERE firebase_uid = ? OR user_id = ? LIMIT 1')
+          .bind(firebaseUid, numericId)
+          .first()
+          .catch(() => null)
+      : await db
+          .prepare('SELECT id FROM sellers WHERE firebase_uid = ? LIMIT 1')
+          .bind(firebaseUid)
+          .first()
+          .catch(() => null);
 
     if (seller) {
       return c.json({ success: true, role: 'seller', data: { role: 'seller' } });
     }
 
-    const admin = await db
-      .prepare("SELECT id FROM admins WHERE firebase_uid = ? LIMIT 1")
-      .bind(firebaseUid)
-      .first()
-      .catch(() => null);
+    const admin = Number.isFinite(numericId)
+      ? await db
+          .prepare('SELECT id FROM admins WHERE firebase_uid = ? OR user_id = ? LIMIT 1')
+          .bind(firebaseUid, numericId)
+          .first()
+          .catch(() => null)
+      : await db
+          .prepare("SELECT id FROM admins WHERE firebase_uid = ? LIMIT 1")
+          .bind(firebaseUid)
+          .first()
+          .catch(() => null);
 
     if (admin) {
       return c.json({ success: true, role: 'admin', data: { role: 'admin' } });
@@ -75,20 +89,32 @@ usersRouter.post('/init', requireAuth(), async (c) => {
     const db = c.env.DB;
 
     // users 테이블에 upsert
-    await db
-      .prepare(
-        `INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
-         VALUES (?, ?, ?, datetime('now'), datetime('now'))
-         ON CONFLICT(firebase_uid) DO UPDATE SET
-           updated_at = datetime('now'),
-           name = COALESCE(excluded.name, name)`
-      )
-      .bind(firebaseUid, email, displayName || null)
-      .run()
-      .catch((e: any) => {
-        // users 테이블 스키마 차이로 실패할 수 있음 – 무시
-        console.warn('[/api/users/init] DB upsert failed (non-critical):', e?.message);
-      });
+    // Session cookie users already have a numeric DB ID — skip upsert for them
+    const initNumericId = parseInt(firebaseUid, 10);
+    if (Number.isFinite(initNumericId)) {
+      // Numeric ID means user already exists via session cookie auth — just touch updated_at
+      await db
+        .prepare(`UPDATE users SET updated_at = datetime('now'), name = COALESCE(?, name) WHERE id = ?`)
+        .bind(displayName || null, initNumericId)
+        .run()
+        .catch((e: any) => {
+          console.warn('[/api/users/init] DB update failed (non-critical):', e?.message);
+        });
+    } else {
+      await db
+        .prepare(
+          `INSERT INTO users (firebase_uid, email, name, created_at, updated_at)
+           VALUES (?, ?, ?, datetime('now'), datetime('now'))
+           ON CONFLICT(firebase_uid) DO UPDATE SET
+             updated_at = datetime('now'),
+             name = COALESCE(excluded.name, name)`
+        )
+        .bind(firebaseUid, email, displayName || null)
+        .run()
+        .catch((e: any) => {
+          console.warn('[/api/users/init] DB upsert failed (non-critical):', e?.message);
+        });
+    }
 
     return c.json({ success: true, message: 'User initialized' });
   } catch (err: any) {

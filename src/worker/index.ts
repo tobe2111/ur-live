@@ -29,6 +29,7 @@ import { globalErrorHandler as errorHandler } from './middleware/error-handler';
 // ---- Feature module routes ----
 import { accountRoutes } from '../features/account/api/account.routes';
 import { adminManagementRoutes, adminBannersRoutes } from '../features/admin/api/index';
+import { scraperProxy } from '../features/admin/api/scraper-proxy.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
 import { kakaoRoutes } from '../features/auth/api/kakao.routes';
 import { sellerRoutes as sellerAuthRoutes } from '../features/auth/api/seller.routes';
@@ -161,14 +162,20 @@ app.use('*', async (c, next) => {
     "frame-ancestors 'none';"
   );
   const url = new URL(c.req.url);
+  // /embed/ 경로는 외부 사이트에서 iframe으로 임베드 가능하도록 허용
+  if (url.pathname.startsWith('/embed/')) {
+    c.header('Content-Security-Policy', c.res.headers.get('Content-Security-Policy')?.replace("frame-ancestors 'none'", "frame-ancestors *") || '');
+    // X-Frame-Options 설정 안 함 (iframe 허용)
+  } else {
+    c.header('X-Frame-Options', 'SAMEORIGIN');
+  }
   if (url.hostname !== 'localhost' && url.protocol === 'https:') {
     c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
-  c.header('X-Frame-Options', 'SAMEORIGIN');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-XSS-Protection', '1; mode=block');
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(self), usb=()');
+  c.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self), payment=(self), usb=()');
 });
 
 // ============================================================
@@ -332,14 +339,22 @@ app.route('/api/seller/streams', sellerStreamsRoutes);
 // Order & Payment Routes
 // ============================================================
 
-// ✅ ordersRouter (worker-native) 가 먼저 처리:
-//    POST /, GET /, GET /:id, POST /:id/cancel
-//    (authMiddleware 사용, 멀티셀러 지원, 아이덤포턴시)
+// -------------------------------------------------------
+// Order routing: TWO repositories, ONE path prefix.
+//
+// ordersRouter  → worker/repositories/order.repository.ts (PRIMARY)
+//   POST /, GET /, GET /:id, POST /:id/cancel
+//   Uses authMiddleware, multi-seller support, idempotency.
+//
+// featureOrdersRoutes → features/orders/repositories/OrderRepository.ts (SECONDARY)
+//   GET /:id/tracking, POST /:id/confirm,
+//   POST /internal/auto-confirm, POST /internal/sync-deliveries
+//   These endpoints do NOT overlap with ordersRouter.
+//
+// ⚠️ Both are mounted on /api/orders — ordersRouter is registered
+//    first so its routes take priority for any overlapping paths.
+// -------------------------------------------------------
 app.route('/api/orders', ordersRouter);
-
-// ✅ featureOrdersRoutes가 ordersRouter에 없는 추가 엔드포인트 처리
-//    GET / 와 GET /:id 는 ordersRouter가 먼저 처리하므로 featureOrdersRoutes의 동일 엔드포인트는 도달하지 않음
-//    → 실제로는 ordersRouter가 모든 주요 경로 처리. feature는 fallback용으로만 유지.
 app.route('/api/orders', featureOrdersRoutes);
 
 // ✅ paymentsRouter: POST /confirm, POST /checkout-session (worker-native)
@@ -377,6 +392,7 @@ app.route('/api/banners', bannerRoutes);
 adminApp.route('/', adminManagementRoutes);
 adminApp.route('/banners', adminBannersRoutes);
 adminApp.route('/cafe24', cafe24Routes);
+app.route('/api/scraper', scraperProxy);  // /api/admin 밖 — adminApp 미들웨어 간섭 없음
 app.route('/api/admin', adminApp);
 // Cafe24 public callback (no admin auth needed for OAuth redirect)
 app.route('/admin/cafe24/callback', cafe24Routes);
@@ -398,6 +414,42 @@ app.route('/api/seller/alimtalk', alimtalkRoutes);
 app.route('/api/donations', donationsRoutes);
 app.route('/api/seller', sellerDonationsRoutes);
 
+// ── 딜 포인트 ──
+import { pointsRoutes } from '../features/points/api/points.routes';
+app.route('/api/points', pointsRoutes);
+
+// ── 상품 리뷰 ──
+import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
+app.route('/api/reviews', reviewsRoutes);
+
+// ── 셀러 등급 ──
+import { sellerTiersRoutes } from '../features/seller-tiers/api/seller-tiers.routes';
+app.route('/api/seller-tiers', sellerTiersRoutes);
+
+// ── 바코드 + 재고 관리 ──
+import { inventoryRoutes } from '../features/inventory/api/inventory.routes';
+app.route('/api/inventory', inventoryRoutes);
+
+// ── 홈페이지 섹션 관리 ──
+import { sectionsRoutes } from '../features/sections/api/sections.routes';
+app.route('/api/sections', sectionsRoutes);
+
+// ── YouTube 구독자 늘리기 ──
+import { youtubeGrowthRoutes } from '../features/youtube-growth/api/youtube-growth.routes';
+app.route('/api/youtube-growth', youtubeGrowthRoutes);
+
+// ── 대시보드 알림 ──
+import { dashboardNotificationsRoutes } from '../features/notifications/api/dashboard-notifications.routes';
+app.route('/api/dashboard-notifications', dashboardNotificationsRoutes);
+
+// ── 상품 대량등록 ──
+import { bulkUploadRoutes } from '../features/bulk-upload/api/bulk-upload.routes';
+app.route('/api/bulk-upload', bulkUploadRoutes);
+
+// ── 반품/환불 ──
+import { returnsRoutes } from '../features/returns/api/returns.routes';
+app.route('/api/returns', returnsRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
@@ -407,6 +459,32 @@ app.route('/api/youtube/chat', youtubeChatRoutes);
 // Live stream real-time (SSE fallback + WebSocket → DO + chat messages)
 app.route('/api/live', liveSseRoutes);
 app.route('/api/chat', chatRoutes);
+
+// ── 사이드 배너 (공개 API, 인증 불필요) ──
+app.get('/api/side-banners', async (c) => {
+  const env = c.env as Env;
+  try {
+    // Auto-create table if not exists
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS side_banners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        image_url TEXT NOT NULL,
+        link_url TEXT,
+        is_active INTEGER DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run();
+    const { results } = await env.DB.prepare(
+      `SELECT id, title, image_url, link_url, sort_order
+       FROM side_banners WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC`
+    ).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch {
+    return c.json({ success: true, data: [] });
+  }
+});
 
 // (Cafe24 is registered under adminApp above)
 

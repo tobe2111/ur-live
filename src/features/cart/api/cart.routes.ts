@@ -54,11 +54,15 @@ cartRoutes.use(
 // ─── Helper: users 테이블에서 DB user_id 조회 ────────────────────────────────
 async function getUserDbId(
   db: D1Database,
-  firebaseUid: string
+  idOrUid: string
 ): Promise<number | null> {
+  // 숫자 ID면 바로 사용 (세션 쿠키 유저)
+  const numId = parseInt(idOrUid);
+  if (!isNaN(numId) && String(numId) === idOrUid) return numId;
+  // Firebase UID로 조회
   const row = await db
     .prepare('SELECT id FROM users WHERE firebase_uid = ? LIMIT 1')
-    .bind(firebaseUid)
+    .bind(idOrUid)
     .first<{ id: number }>();
   return row?.id ?? null;
 }
@@ -94,7 +98,10 @@ cartRoutes.get('/', requireAuth(), async (c) => {
 
     const db = c.env.DB;
     const userId = await getUserDbId(db, String(user.id));
-    if (!userId) return c.json(notFoundResponse('User'), 404);
+    if (!userId) {
+      // New user with no DB record yet — return empty cart instead of 404
+      return c.json(successResponse({ items: [], summary: { total_items: 0, total_amount: 0 } }));
+    }
 
     const rows = await db
       .prepare(
@@ -171,13 +178,10 @@ cartRoutes.get('/', requireAuth(), async (c) => {
  */
 cartRoutes.post('/', requireAuth(), async (c) => {
   try {
-    console.log('[Cart] POST /api/cart - Start');
-
     const user = getCurrentUser(c);
     if (!user) return c.json(unauthorizedResponse(), 401);
 
     const body = await c.req.json<Record<string, any>>();
-    console.log('[Cart] Request body:', JSON.stringify(body));
 
     // ── 필드명 정규화 (camelCase / snake_case 모두 수용) ──────────────────────
     const product_id: number =
@@ -262,8 +266,6 @@ cartRoutes.post('/', requireAuth(), async (c) => {
       )
       .bind(userId, product_id, quantity, snapshot, option_id, live_stream_id)
       .run();
-
-    console.log('[Cart] Insert result:', result.meta);
 
     return c.json(
       createdResponse(

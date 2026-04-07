@@ -79,8 +79,12 @@ async function fetchDeliveryTracker(
 /**
  * Helper: map Firebase UID → DB integer user id
  */
-async function getUserDbIdFromFirebaseUid(db: D1Database, firebaseUid: string): Promise<number | null> {
-  const row = await db.prepare('SELECT id FROM users WHERE firebase_uid = ?').bind(firebaseUid).first<{ id: number }>();
+async function getUserDbIdFromFirebaseUid(db: D1Database, idOrUid: string): Promise<number | null> {
+  // 숫자 ID면 바로 사용 (세션 쿠키 유저)
+  const numId = parseInt(idOrUid);
+  if (!isNaN(numId) && String(numId) === idOrUid) return numId;
+  // Firebase UID로 조회
+  const row = await db.prepare('SELECT id FROM users WHERE firebase_uid = ?').bind(idOrUid).first<{ id: number }>();
   return row?.id ?? null;
 }
 
@@ -226,17 +230,13 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
   const { DB } = c.env;
   
   try {
-    console.log('[Orders] POST /api/orders - Start');
-    
     // ✅ BUG #2 FIX: Get authenticated user's DB ID automatically
     const authUser = getCurrentUser(c);
     if (!authUser) {
       console.error('[Orders] No user found in context');
       return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
-    console.log('[Orders] User authenticated:', { id: authUser.id, email: authUser.email });
-    
-    console.log('[Orders] DB connected:', !!DB);
+
     if (!DB) {
       console.error('[Orders] ❌ DB binding not found');
       return c.json({
@@ -245,11 +245,9 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
         debug: { envKeys: Object.keys(c.env), dbBinding: !!c.env.DB }
       }, 500);
     }
-    
+
     // ✅ Firebase UID → DB ID conversion
-    console.log('[Orders] Converting Firebase UID to DB ID:', authUser.id);
     const dbUserId = await getUserDbIdFromFirebaseUid(DB, String(authUser.id));
-    console.log('[Orders] User DB ID:', dbUserId);
     
     if (!dbUserId) {
       console.error('[Orders] User not found in DB');
@@ -257,7 +255,6 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
     }
     
     const rawData = await c.req.json();
-    console.log('[Orders] Request body:', JSON.stringify(rawData));
 
     // ✅ 타입 안전 변환 (프론트에서 String으로 올 수 있음)
     const data: OrderCreateInput = {
@@ -279,17 +276,14 @@ ordersRoutes.post('/', cors(), requireAuth(), async (c) => {
 
     // 필수 필드 검증 (user_id는 자동 설정되므로 제외)
     if (!data.seller_id || !data.items || data.items.length === 0) {
-      console.error('[Orders] Missing required fields:', { seller_id: data.seller_id, items_count: data.items?.length });
       return c.json({
         success: false,
         error: 'Missing required fields'
       }, 400);
     }
     
-    console.log('[Orders] Creating order with repository');
     const repository = new OrderRepository(DB);
     const order = await repository.create(data);
-    console.log('[Orders] Order created:', { id: (order as any).id });
     
     // ✅ BUG #2 FIX: Map DB column (total_price) to API field (total_amount)
     const mappedOrder = {
@@ -453,7 +447,6 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
   `).run();
 
   const confirmed = meta.changes ?? 0;
-  console.log(`[AutoConfirm] ✅ ${confirmed} orders auto-confirmed (14-day rule)`);
 
   return c.json({ success: true, data: { confirmed } });
 });
@@ -499,7 +492,6 @@ ordersRoutes.post('/internal/sync-deliveries', cors(), async (c) => {
           WHERE id = ? AND status IN ('shipping', 'SHIPPING')
         `).bind(row.id).run();
         delivered++;
-        console.log(`[DeliverySync] ✅ ${row.order_number} → delivered`);
       }
     } catch (err) {
       errors.push(`${row.order_number}: ${(err as Error).message}`);

@@ -25,6 +25,7 @@ import type { Env } from '@/worker/types/env';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 interface SellerRow {
   id: number;
@@ -286,6 +287,8 @@ adminManagementRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'approved' } });
+    // 8. 셀러 승인 → 셀러 알림
+    createDashboardNotification(DB, 'seller', String(sellerId), 'seller_approved', '셀러 승인 완료', '판매를 시작할 수 있습니다', '/seller').catch(() => {});
     return c.json({ success: true, data: { id: sellerId, status: 'approved' } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -302,6 +305,28 @@ adminManagementRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ── DELETE /sellers/:id — 판매자 정지 (soft delete) ──────────────────────────
+adminManagementRoutes.delete('/sellers/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
+    if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
+    if (rows[0].status === 'suspended') return c.json({ success: false, error: '이미 정지된 판매자입니다' }, 400);
+    // Soft-delete: mark as suspended and deactivate
+    try {
+      await executeRun(DB, `UPDATE sellers SET is_active = 0, status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    } catch {
+      // is_active column might not exist
+      await executeRun(DB, `UPDATE sellers SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    }
+    await writeAuditLog(c, { action: 'suspend_seller', targetType: 'seller', targetId: sellerId, before: { status: rows[0].status }, after: { status: 'suspended', is_active: 0 } });
+    return c.json({ success: true, message: '판매자가 정지되었습니다', data: { id: sellerId, status: 'suspended' } });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -388,7 +413,7 @@ adminManagementRoutes.get('/orders', cors(), async (c) => {
     try {
       const { q, params } = buildWhere(`
         SELECT o.id, o.order_number, o.user_id, o.seller_id,
-               COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+               o.total_amount as total_amount,
                COALESCE(o.status,'pending') as status,
                COALESCE(o.payment_status,'pending') as payment_status,
                COALESCE(o.payment_method,'') as payment_method,
@@ -828,12 +853,12 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
 
     // 알림톡 발송용: 셀러 전화번호 + 상품명 조회
     const reqInfo = await DB.prepare(`
-      SELECT s.phone AS seller_phone, s.name AS seller_name, p.name AS product_name
+      SELECT sr.seller_id, s.phone AS seller_phone, s.name AS seller_name, p.name AS product_name
       FROM sample_requests sr
       JOIN sellers s ON sr.seller_id = s.id
       JOIN products p ON sr.product_id = p.id
       WHERE sr.id = ?
-    `).bind(reqId).first<{ seller_phone: string | null; seller_name: string; product_name: string }>()
+    `).bind(reqId).first<{ seller_id: number; seller_phone: string | null; seller_name: string; product_name: string }>()
       .catch(() => null);
 
     await DB.prepare(`
@@ -862,6 +887,13 @@ adminManagementRoutes.patch('/sample-requests/:id', cors(), async (c) => {
         subject_1: subject,
         message_1: message,
       }).catch(e => console.warn('[Alimtalk] 샘플 승인 알림 실패:', e));
+    }
+
+    // 4. 공급 상품 승인/거부 → 셀러 알림
+    if (reqInfo?.seller_id) {
+      const notifType = body.action === 'approve' ? 'supply_approved' : 'supply_rejected';
+      const notifTitle = body.action === 'approve' ? '공급 상품 승인' : '공급 상품 거부';
+      createDashboardNotification(DB, 'seller', String(reqInfo.seller_id), notifType, notifTitle, `상품: ${reqInfo.product_name}`, '/seller/supply').catch(() => {});
     }
 
     return c.json({
@@ -893,7 +925,7 @@ adminManagementRoutes.get('/supply/sales', cors(), async (c) => {
       return c.json({ success: true, data: { rows: [], summary: { total_orders: 0, total_qty: 0, total_revenue: 0, total_supply_cost: 0 } } });
     }
 
-    let where = "sp.supply_source_id IS NOT NULL AND o.payment_status IN ('approved','APPROVED','paid','PAID')";
+    let where = "sp.supply_source_id IS NOT NULL AND o.status IN ('DONE','PAID','DELIVERED')";
     const params: (string | number)[] = [];
     if (supplyProductId) { where += ' AND sp.supply_source_id = ?'; params.push(supplyProductId); }
     if (sellerId) { where += ' AND sp.seller_id = ?'; params.push(sellerId); }
@@ -986,7 +1018,7 @@ adminManagementRoutes.get('/dashboard/stats', cors(), async (c) => {
   };
 
   const [sales, orders, live] = await Promise.all([
-    safe<SalesRow>(`SELECT COALESCE(SUM(COALESCE(total_amount, total_price, 0)),0) as total FROM orders WHERE DATE(created_at)=? AND COALESCE(payment_status,'pending')='approved'`, [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at)=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
     safe<CountRow>('SELECT COUNT(*) as count FROM orders WHERE DATE(created_at)=?', [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
   ]);
@@ -1021,19 +1053,19 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
     let overview: SettlementOverviewRow[];
     const fullOverview = await safeFull<SettlementOverviewRow>(`
       SELECT COUNT(*) as total_orders,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
+             COALESCE(SUM(o.total_amount),0) as total_sales,
+             COALESCE(SUM(o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as total_commission,
+             COALESCE(SUM(o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as total_seller_amount
       FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
-      WHERE COALESCE(o.payment_status,'pending')='approved' ${df}`);
+      WHERE o.status IN ('DONE','PAID','DELIVERED') ${df}`);
     if (fullOverview !== null) {
       overview = fullOverview;
     } else {
       overview = await safeFallback<SettlementOverviewRow>(`
         SELECT COUNT(*) as total_orders,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
+               COALESCE(SUM(o.total_amount),0) as total_sales,
+               COALESCE(SUM(o.total_amount*${DEFAULT_COMMISSION_RATE}/100),0) as total_commission,
+               COALESCE(SUM(o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as total_seller_amount
         FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id
         WHERE 1=1 ${df}`);
     }
@@ -1045,8 +1077,10 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
              COUNT(o.id) as order_count,
              COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
              COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100),0) as commission_amount,
-             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount
-      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND COALESCE(o.payment_status,'pending')='approved' ${df}
+             COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)),0) as seller_amount,
+             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as pending_amount,
+             COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) ELSE 0 END),0) as settled_amount
+      FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id AND o.status IN ('DONE','PAID','DELIVERED') ${df}
       GROUP BY s.id ORDER BY total_sales DESC`);
     if (fullSellers !== null) {
       sellers = fullSellers;
@@ -1057,7 +1091,9 @@ adminManagementRoutes.get('/settlement/stats', cors(), async (c) => {
                COUNT(o.id) as order_count,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)),0) as total_sales,
                COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100),0) as commission_amount,
-               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount
+               COALESCE(SUM(COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100)),0) as seller_amount,
+               COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='pending' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) ELSE 0 END),0) as pending_amount,
+               COALESCE(SUM(CASE WHEN COALESCE(o.settlement_status,'pending')='completed' THEN COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) ELSE 0 END),0) as settled_amount
         FROM sellers s LEFT JOIN orders o ON s.id=o.seller_id
         WHERE 1=1 ${df}
         GROUP BY s.id ORDER BY total_sales DESC`);
@@ -1084,19 +1120,19 @@ adminManagementRoutes.get('/settlement/records', cors(), async (c) => {
     const buildQuery = (withNewCols: boolean) => {
       let q = withNewCols
         ? `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
-                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  o.total_amount as total_amount,
                   COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-                  COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
-                  COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
+                  o.total_amount*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100 as commission_amount,
+                  o.total_amount*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as seller_amount,
                   COALESCE(o.settlement_status,'pending') as settlement_status,
                   o.settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
-           WHERE COALESCE(o.payment_status,'pending')='approved'`
+           WHERE o.status IN ('DONE','PAID','DELIVERED')`
         : `SELECT o.id, o.order_number, o.seller_id, COALESCE(s.name,'') as seller_name, COALESCE(s.business_name,'') as business_name,
-                  COALESCE(o.total_amount, o.total_price, 0) as total_amount,
+                  o.total_amount as total_amount,
                   ${DEFAULT_COMMISSION_RATE} as commission_rate,
-                  COALESCE(o.total_amount, o.total_price, 0)*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
-                  COALESCE(o.total_amount, o.total_price, 0)*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
+                  o.total_amount*${DEFAULT_COMMISSION_RATE}/100 as commission_amount,
+                  o.total_amount*(1-${DEFAULT_COMMISSION_RATE}/100) as seller_amount,
                   'pending' as settlement_status,
                   NULL as settled_at, o.created_at, COALESCE(u.name,'') as user_name
            FROM orders o LEFT JOIN sellers s ON o.seller_id=s.id LEFT JOIN users u ON o.user_id=u.id
@@ -1163,6 +1199,53 @@ adminManagementRoutes.post('/settlement/batch-complete', cors(), async (c) => {
   }
 });
 
+// ─── 정산 자동 실행 (Auto-settlement execution) ──────────────────────────────
+
+adminManagementRoutes.post('/settlement/execute', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json<{ period_start?: string; period_end?: string }>().catch(() => ({} as { period_start?: string; period_end?: string }));
+    const { calculateAutoSettlement, executeSettlement } = await import('@/lib/settlement-automation');
+
+    // Preview mode: if dry_run query param is set, only calculate without executing
+    const dryRun = c.req.query('dry_run') === 'true';
+
+    if (dryRun) {
+      const preview = await calculateAutoSettlement(
+        DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
+      );
+      const totalSales = preview.reduce((s, r) => s + r.total_sales, 0);
+      const totalCommission = preview.reduce((s, r) => s + r.commission_amount, 0);
+      const totalSettlement = preview.reduce((s, r) => s + r.settlement_amount, 0);
+      const totalOrders = preview.reduce((s, r) => s + r.total_orders, 0);
+      return c.json({
+        success: true,
+        data: {
+          dry_run: true,
+          sellers: preview,
+          total_orders: totalOrders,
+          total_sales: totalSales,
+          total_commission: totalCommission,
+          total_settlement: totalSettlement,
+        },
+      });
+    }
+
+    const result = await executeSettlement(
+      DB, body.period_start, body.period_end, DEFAULT_COMMISSION_RATE
+    );
+
+    // 2. 정산 완료 → 셀러 알림
+    for (const seller of result.sellers) {
+      createDashboardNotification(DB, 'seller', String(seller.seller_id), 'settlement_completed', '정산 완료', `정산 금액: ${seller.settlement_amount}원`, '/seller/settlements').catch(() => {});
+    }
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ─── 정산 CSV 내보내기 ────────────────────────────────────────────────────────
 
 adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
@@ -1173,15 +1256,16 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
 
     let query = `
       SELECT o.order_number, s.name as seller_name, s.business_name,
-             COALESCE(o.total_amount, o.total_price, 0), COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE}) as commission_rate,
-             ROUND(COALESCE(o.total_amount, o.total_price, 0)*COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100) as commission_amount,
-             ROUND(COALESCE(o.total_amount, o.total_price, 0)*(1-COALESCE(s.commission_rate,${DEFAULT_COMMISSION_RATE})/100)) as seller_amount,
-             COALESCE(o.settlement_status,'pending') as settlement_status,
+             o.total_amount,
+             COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) as commission_rate,
+             ROUND(o.total_amount * COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100) as commission_amount,
+             ROUND(o.total_amount * (1 - COALESCE(s.commission_rate, ${DEFAULT_COMMISSION_RATE}) / 100)) as seller_amount,
+             COALESCE(o.settlement_status, 'pending') as settlement_status,
              o.settled_at, o.created_at, u.name as user_name
       FROM orders o
       LEFT JOIN sellers s ON o.seller_id = s.id
       LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.payment_status = 'approved'
+      WHERE o.status IN ('DONE', 'PAID', 'DELIVERED')
     `;
     const params: (string | number | null)[] = [];
     if (period === 'today') { query += ' AND DATE(o.created_at) = ?'; params.push(new Date().toISOString().split('T')[0]); }
@@ -1223,6 +1307,123 @@ adminManagementRoutes.get('/settlement/export-csv', cors(), async (c) => {
   }
 });
 
+// ─── 어드민 주문 상태 변경 ─────────────────────────────────────────────────────
+
+// PATCH /orders/:orderNumber/status — 주문 상태 변경
+adminManagementRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+    const { status, cancel_reason } = await c.req.json<{ status: string; cancel_reason?: string }>();
+
+    const validStatuses = ['PENDING', 'PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'FAILED', 'REFUNDED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: `유효하지 않은 상태: ${status}` }, 400);
+    }
+
+    const orders = await executeQuery<{ id: number; status: string }>(
+      DB, 'SELECT id, status FROM orders WHERE order_number = ?', [orderNumber]
+    );
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    const updates: string[] = ['status = ?', 'updated_at = datetime(\'now\')'];
+    const params: (string | null)[] = [status];
+
+    if (status === 'CANCELLED' && cancel_reason) {
+      updates.push('cancel_reason = ?', 'cancelled_at = datetime(\'now\')');
+      params.push(cancel_reason);
+    }
+    if (status === 'DELIVERED') {
+      updates.push('delivered_at = datetime(\'now\')');
+    }
+
+    params.push(orderNumber);
+    await executeQuery(DB, `UPDATE orders SET ${updates.join(', ')} WHERE order_number = ?`, params);
+
+    // 11. 배송 완료 → 어드민 + 셀러 알림
+    if (status === 'DELIVERED') {
+      createDashboardNotification(DB, 'admin', null, 'order_delivered', '배송 완료', `주문: ${orderNumber}`, '/admin/orders').catch(() => {});
+      const orderForNotif = await executeQuery<{ seller_id: number | null }>(DB, 'SELECT seller_id FROM orders WHERE order_number = ?', [orderNumber]);
+      if (orderForNotif.length > 0 && orderForNotif[0].seller_id) {
+        createDashboardNotification(DB, 'seller', String(orderForNotif[0].seller_id), 'order_delivered', '배송 완료', `주문: ${orderNumber}`, '/seller/orders').catch(() => {});
+      }
+    }
+
+    // 취소 시 재고 복구
+    if (status === 'CANCELLED') {
+      const items = await executeQuery<{ product_id: number; quantity: number }>(
+        DB, 'SELECT product_id, quantity FROM order_items WHERE order_id = ?', [String(orders[0].id)]
+      );
+      for (const item of items) {
+        await executeQuery(DB, 'UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
+    return c.json({ success: true, data: { orderNumber, status } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /orders/:orderNumber/tracking — 운송장 등록
+adminManagementRoutes.put('/orders/:orderNumber/tracking', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const orderNumber = c.req.param('orderNumber');
+    const { tracking_number, shipping_company } = await c.req.json<{
+      tracking_number: string;
+      shipping_company: string;
+    }>();
+
+    if (!tracking_number || !shipping_company) {
+      return c.json({ success: false, error: '운송장 번호와 택배사를 입력해주세요' }, 400);
+    }
+
+    const orders = await executeQuery<{ id: number }>(
+      DB, 'SELECT id FROM orders WHERE order_number = ?', [orderNumber]
+    );
+    if (orders.length === 0) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404);
+
+    await executeQuery(DB,
+      `UPDATE orders SET tracking_number = ?, shipping_company = ?, status = 'SHIPPING',
+       shipped_at = datetime('now'), updated_at = datetime('now')
+       WHERE order_number = ?`,
+      [tracking_number, shipping_company, orderNumber]
+    );
+
+    return c.json({ success: true, data: { orderNumber, tracking_number, shipping_company, status: 'SHIPPING' } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PATCH /orders/bulk-status — 일괄 상태 변경
+adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const { order_numbers, status } = await c.req.json<{ order_numbers: string[]; status: string }>();
+
+    if (!order_numbers?.length || order_numbers.length > 100) {
+      return c.json({ success: false, error: '1~100개 주문을 선택해주세요' }, 400);
+    }
+
+    const validStatuses = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
+    if (!validStatuses.includes(status)) {
+      return c.json({ success: false, error: `일괄 변경 가능 상태: ${validStatuses.join(', ')}` }, 400);
+    }
+
+    const placeholders = order_numbers.map(() => '?').join(',');
+    await executeQuery(DB,
+      `UPDATE orders SET status = ?, updated_at = datetime('now') WHERE order_number IN (${placeholders})`,
+      [status, ...order_numbers]
+    );
+
+    return c.json({ success: true, data: { updated: order_numbers.length, status } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // ─── 라이브 스트림 관리 ──────────────────────────────────────────────────────
 
 adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
@@ -1241,12 +1442,44 @@ adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
 export default adminManagementRoutes;
 
 // ─── Alimtalk 관리 ────────────────────────────────────────────────────────────
-// alimtalk_packages 테이블 기반 실제 구현 (migration 0123 필요)
+
+// Auto-create alimtalk_packages table if it doesn't exist
+async function ensureAlimtalkPackagesTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS alimtalk_packages (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        label      TEXT    NOT NULL,
+        credits    INTEGER NOT NULL,
+        price      INTEGER NOT NULL,
+        is_active  INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+      )
+    `).run();
+    // Seed default data if empty
+    const count = await DB.prepare('SELECT COUNT(*) as c FROM alimtalk_packages').first<{ c: number }>();
+    if (!count || count.c === 0) {
+      await DB.prepare(`
+        INSERT INTO alimtalk_packages (label, credits, price, is_active, sort_order) VALUES
+          ('100건',   100,   900,   1, 1),
+          ('500건',   500,   4500,  1, 2),
+          ('1,000건', 1000,  9000,  1, 3),
+          ('3,000건', 3000,  27000, 1, 4),
+          ('5,000건', 5000,  45000, 1, 5)
+      `).run();
+    }
+  } catch {
+    // Table might already exist, ignore errors
+  }
+}
 
 // GET /alimtalk/pricing — 패키지 목록
 adminManagementRoutes.get('/alimtalk/pricing', cors(), async (c) => {
   const { DB } = c.env;
   try {
+    await ensureAlimtalkPackagesTable(DB);
     const { results } = await DB.prepare(
       `SELECT id, label, credits, price, is_active, sort_order, created_at, updated_at
        FROM alimtalk_packages ORDER BY sort_order ASC`
@@ -1402,6 +1635,110 @@ adminManagementRoutes.get('/donations/stats', cors(), async (c) => {
   }
 });
 
+// ─── 사이드 배너 관리 (PC Side Banner, Cookat 스타일) ─────────────────────────
+
+// Auto-create side_banners table if it doesn't exist
+async function ensureSideBannersTable(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS side_banners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        image_url TEXT NOT NULL,
+        link_url TEXT,
+        is_active INTEGER DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT (datetime('now'))
+      )
+    `).run();
+  } catch {
+    // Table might already exist, ignore errors
+  }
+}
+
+// GET /api/admin/side-banners — 사이드 배너 목록
+adminManagementRoutes.get('/side-banners', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    await ensureSideBannersTable(DB);
+    const { results } = await DB.prepare(
+      `SELECT id, title, image_url, link_url, is_active, sort_order, created_at
+       FROM side_banners ORDER BY sort_order ASC, created_at DESC`
+    ).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// POST /api/admin/side-banners — 사이드 배너 생성
+adminManagementRoutes.post('/side-banners', cors(), async (c) => {
+  const { DB } = c.env;
+  try {
+    await ensureSideBannersTable(DB);
+    const body = await c.req.json<{ title: string; image_url: string; link_url?: string; is_active?: boolean; sort_order?: number }>();
+    if (!body.title || !body.image_url) {
+      return c.json({ success: false, error: '제목과 이미지 URL은 필수입니다.' }, 400);
+    }
+    const result = await DB.prepare(
+      `INSERT INTO side_banners (title, image_url, link_url, is_active, sort_order)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(
+      body.title,
+      body.image_url,
+      body.link_url || null,
+      body.is_active !== undefined ? (body.is_active ? 1 : 0) : 1,
+      body.sort_order ?? 0
+    ).run();
+    return c.json({ success: true, data: { id: result.meta.last_row_id, title: body.title } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /api/admin/side-banners/:id — 사이드 배너 수정
+adminManagementRoutes.put('/side-banners/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+  try {
+    await ensureSideBannersTable(DB);
+    const existing = await DB.prepare('SELECT id FROM side_banners WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ success: false, error: '사이드 배너를 찾을 수 없습니다' }, 404);
+
+    const body = await c.req.json<{ title?: string; image_url?: string; link_url?: string; is_active?: boolean; sort_order?: number }>();
+    const fields: string[] = [];
+    const values: (string | number | null)[] = [];
+    if (body.title !== undefined)     { fields.push('title = ?');     values.push(body.title); }
+    if (body.image_url !== undefined) { fields.push('image_url = ?'); values.push(body.image_url); }
+    if (body.link_url !== undefined)  { fields.push('link_url = ?');  values.push(body.link_url || null); }
+    if (body.is_active !== undefined) { fields.push('is_active = ?'); values.push(body.is_active ? 1 : 0); }
+    if (body.sort_order !== undefined){ fields.push('sort_order = ?');values.push(body.sort_order); }
+    if (fields.length === 0) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
+    values.push(parseInt(id));
+    await DB.prepare(
+      `UPDATE side_banners SET ${fields.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+    return c.json({ success: true, data: { id } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// DELETE /api/admin/side-banners/:id — 사이드 배너 삭제
+adminManagementRoutes.delete('/side-banners/:id', cors(), async (c) => {
+  const { DB } = c.env;
+  const id = c.req.param('id');
+  try {
+    await ensureSideBannersTable(DB);
+    const existing = await DB.prepare('SELECT id FROM side_banners WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ success: false, error: '사이드 배너를 찾을 수 없습니다' }, 404);
+    await DB.prepare('DELETE FROM side_banners WHERE id = ?').bind(id).run();
+    return c.json({ success: true, data: { id } });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 // PATCH /api/admin/donations/settlements/:id - 정산 완료/거부
 adminManagementRoutes.patch('/donations/settlements/:id', cors(), async (c) => {
   const { DB } = c.env;
@@ -1429,6 +1766,172 @@ adminManagementRoutes.patch('/donations/settlements/:id', cors(), async (c) => {
       success: true,
       data: { id: settleId, status: newStatus },
       message: body.action === 'done' ? '정산이 완료 처리되었습니다.' : '정산이 거부되었습니다.',
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 딜 충전 모니터링 API
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/admin/deals/stats - 딜 충전 통계 요약
+adminManagementRoutes.get('/deals/stats', async (c) => {
+  const { DB } = c.env;
+  try {
+    const totals = await DB.prepare(`
+      SELECT
+        COUNT(*) as total_transactions,
+        COALESCE(SUM(amount), 0) as total_charged_amount,
+        COALESCE(SUM(commission_amount), 0) as total_commission,
+        COALESCE(SUM(points_amount), 0) as total_points_issued,
+        COUNT(DISTINCT user_id) as unique_users
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+    `).first();
+
+    const today = await DB.prepare(`
+      SELECT
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as amount,
+        COALESCE(SUM(commission_amount), 0) as commission
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+        AND created_at >= date('now')
+    `).first();
+
+    const thisMonth = await DB.prepare(`
+      SELECT
+        COUNT(*) as count,
+        COALESCE(SUM(amount), 0) as amount,
+        COALESCE(SUM(commission_amount), 0) as commission
+      FROM point_transactions
+      WHERE type = 'charge' AND payment_key IS NOT NULL
+        AND created_at >= date('now', 'start of month')
+    `).first();
+
+    const donations = await DB.prepare(`
+      SELECT
+        COUNT(*) as total_donations,
+        COALESCE(SUM(amount), 0) as total_donated
+      FROM point_transactions
+      WHERE type = 'donate'
+    `).first();
+
+    return c.json({
+      success: true,
+      data: {
+        totals: totals ?? {},
+        today: today ?? {},
+        thisMonth: thisMonth ?? {},
+        donations: donations ?? {},
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/admin/deals/charges - 딜 충전 내역 (페이지네이션)
+adminManagementRoutes.get('/deals/charges', async (c) => {
+  const { DB } = c.env;
+  const page = Math.max(1, Number(c.req.query('page')) || 1);
+  const limit = Math.min(100, Math.max(10, Number(c.req.query('limit')) || 20));
+  const offset = (page - 1) * limit;
+  const search = c.req.query('search') || '';
+
+  try {
+    let whereClause = "WHERE pt.type = 'charge' AND pt.payment_key IS NOT NULL";
+    const binds: any[] = [];
+
+    if (search) {
+      whereClause += ' AND (pt.user_id LIKE ? OR pt.order_id LIKE ? OR u.name LIKE ? OR u.email LIKE ?)';
+      binds.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const countResult = await DB.prepare(
+      `SELECT COUNT(*) as total FROM point_transactions pt LEFT JOIN users u ON CAST(pt.user_id AS TEXT) = CAST(u.id AS TEXT) ${whereClause}`
+    ).bind(...binds).first<{ total: number }>();
+
+    const { results } = await DB.prepare(`
+      SELECT
+        pt.id, pt.user_id, pt.amount, pt.commission_amount,
+        pt.points_amount, pt.balance_after, pt.description,
+        pt.payment_key, pt.order_id, pt.created_at,
+        up.balance as current_balance,
+        up.total_charged as user_total_charged,
+        up.total_donated as user_total_donated,
+        u.name as user_name,
+        u.email as user_email,
+        u.profile_image as user_profile_image
+      FROM point_transactions pt
+      LEFT JOIN user_points up ON pt.user_id = up.user_id
+      LEFT JOIN users u ON CAST(pt.user_id AS TEXT) = CAST(u.id AS TEXT)
+      ${whereClause}
+      ORDER BY pt.created_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(...binds, limit, offset).all();
+
+    return c.json({
+      success: true,
+      data: results ?? [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total ?? 0,
+        totalPages: Math.ceil((countResult?.total ?? 0) / limit),
+      },
+    });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/admin/deals/users - 딜 사용자별 요약
+adminManagementRoutes.get('/deals/users', async (c) => {
+  const { DB } = c.env;
+  const page = Math.max(1, Number(c.req.query('page')) || 1);
+  const limit = Math.min(100, Math.max(10, Number(c.req.query('limit')) || 20));
+  const offset = (page - 1) * limit;
+  const sort = c.req.query('sort') || 'total_charged';
+  const allowedSorts = ['total_charged', 'total_donated', 'balance', 'last_charged'];
+  const sortCol = allowedSorts.includes(sort) ? sort : 'total_charged';
+
+  try {
+    const countResult = await DB.prepare(
+      'SELECT COUNT(*) as total FROM user_points WHERE total_charged > 0'
+    ).first<{ total: number }>();
+
+    const { results } = await DB.prepare(`
+      SELECT
+        up.user_id,
+        up.balance,
+        up.total_charged,
+        up.total_donated,
+        up.created_at as first_charge_date,
+        up.updated_at as last_activity,
+        (SELECT COUNT(*) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as charge_count,
+        (SELECT MAX(created_at) FROM point_transactions WHERE user_id = up.user_id AND type = 'charge' AND payment_key IS NOT NULL) as last_charged,
+        u.name as user_name,
+        u.email as user_email,
+        u.profile_image as user_profile_image
+      FROM user_points up
+      LEFT JOIN users u ON CAST(up.user_id AS TEXT) = CAST(u.id AS TEXT)
+      WHERE up.total_charged > 0
+      ORDER BY ${sortCol} DESC
+      LIMIT ? OFFSET ?
+    `).bind(limit, offset).all();
+
+    return c.json({
+      success: true,
+      data: results ?? [],
+      pagination: {
+        page,
+        limit,
+        total: countResult?.total ?? 0,
+        totalPages: Math.ceil((countResult?.total ?? 0) / limit),
+      },
     });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);

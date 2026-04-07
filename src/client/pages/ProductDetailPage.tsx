@@ -21,10 +21,7 @@ export function ProductDetailPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
-      console.log('[ProductDetail] 📡 Fetching product:', id);
-      console.log('[ProductDetail] 🔑 Token:', accessToken?.substring(0, 20));
       const result = await api.get<ApiResponse<Product>>(`/products/${id}`);
-      console.log('[ProductDetail] 📦 API Response:', result);
       return result;
     },
     enabled: !!id,
@@ -33,31 +30,17 @@ export function ProductDetailPage() {
   const product = data?.success ? data.data : null;
 
   useEffect(() => {
-    console.log('[ProductDetail] 🔍 Current state:', {
-      id,
-      isLoading,
-      hasError: !!error,
-      hasData: !!data,
-      dataSuccess: data?.success,
-      hasProduct: !!product,
-      rawData: data,
-    });
-    
     if (data && !data.success) {
-      console.error('[ProductDetail] ❌ API returned success=false:', data);
+      console.error('[ProductDetail] API returned success=false:', data);
     }
-    
+
     if (error) {
-      console.error('[ProductDetail] ❌ Query error:', error);
+      console.error('[ProductDetail] Query error:', error);
     }
-  }, [id, isLoading, error, data, product]);
+  }, [error, data]);
 
   const handleAddToCart = () => {
-    console.log('[ProductDetail] 🛒 Add to cart clicked');
-    console.log('[ProductDetail] 🔑 Token before add:', accessToken?.substring(0, 20));
-    
     if (!accessToken) {
-      console.warn('[ProductDetail] ❌ No token, redirecting to login');
       alert('로그인이 필요합니다.');
       navigate('/login');
       return;
@@ -105,8 +88,6 @@ export function ProductDetailPage() {
   }
 
   if (error || !product) {
-    console.error('[ProductDetailPage] Error:', error);
-    console.error('[ProductDetailPage] Data:', data);
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <p className="text-red-600 font-semibold mb-2">상품을 찾을 수 없습니다</p>

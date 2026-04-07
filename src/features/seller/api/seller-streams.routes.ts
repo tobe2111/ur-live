@@ -85,9 +85,7 @@ sellerStreamsRoutes.get('/', async (c) => {
     let query = `
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE seller_id = ?
@@ -155,9 +153,7 @@ sellerStreamsRoutes.get('/:id', async (c) => {
     const stream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ? AND seller_id = ?
@@ -213,15 +209,14 @@ sellerStreamsRoutes.post('/', async (c) => {
 
     const result = await db.prepare(`
       INSERT INTO live_streams (
-        seller_id, title, description, thumbnail_url, youtube_video_id,
+        seller_id, title, description, youtube_video_id,
         status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'scheduled', datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, 'scheduled', datetime('now'), datetime('now'))
     `).bind(
       sellerId,
       title,
       description || null,
-      thumbnail || null,
-      youtube_video_id || null
+      youtube_video_id || ''
     ).run();
 
     if (!result.success) {
@@ -232,9 +227,7 @@ sellerStreamsRoutes.post('/', async (c) => {
     const newStream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ?
@@ -297,10 +290,6 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       updates.push('description = ?');
       values.push(body.description);
     }
-    if (body.thumbnail !== undefined) {
-      updates.push('thumbnail_url = ?');
-      values.push(body.thumbnail);
-    }
     if (body.youtube_video_id !== undefined) {
       updates.push('youtube_video_id = ?');
       values.push(body.youtube_video_id);
@@ -337,9 +326,7 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     const updatedStream = await db.prepare(`
       SELECT
         id, seller_id, title, description,
-        thumbnail_url AS thumbnail,
         youtube_video_id, status,
-        COALESCE(current_viewers, 0) AS viewer_count,
         ended_at, created_at, updated_at
       FROM live_streams
       WHERE id = ?
@@ -406,5 +393,209 @@ sellerStreamsRoutes.delete('/:id', async (c) => {
       success: false,
       error: (error as Error).message || 'Failed to delete stream'
     }, 500);
+  }
+});
+
+// ============================================================
+// Live Analytics Endpoints
+// ============================================================
+
+/**
+ * GET /api/seller/streams/:id/analytics
+ * 특정 라이브 스트림의 실시간 분석 데이터
+ */
+sellerStreamsRoutes.get('/:id/analytics', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) {
+      return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    }
+
+    const streamId = c.req.param('id');
+    const db = c.env.DB;
+
+    // Verify stream belongs to seller
+    const stream = await db.prepare(
+      'SELECT id, title, status, youtube_video_id, created_at, updated_at FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first<any>();
+
+    if (!stream) {
+      return c.json({ success: false, error: 'Stream not found' }, 404);
+    }
+
+    // Chat messages count (total + per-minute breakdown)
+    const chatStats = await db.prepare(`
+      SELECT
+        COUNT(*) as total_messages,
+        COUNT(DISTINCT user_id) as unique_chatters,
+        SUM(CASE WHEN is_seller = 1 THEN 1 ELSE 0 END) as seller_messages
+      FROM chat_messages
+      WHERE live_stream_id = ? AND is_deleted = 0
+    `).bind(streamId).first<any>();
+
+    // Chat messages per minute (for timeline chart)
+    const chatTimeline = await db.prepare(`
+      SELECT
+        strftime('%H:%M', created_at) as minute,
+        COUNT(*) as count
+      FROM chat_messages
+      WHERE live_stream_id = ? AND is_deleted = 0
+      GROUP BY strftime('%Y-%m-%d %H:%M', created_at)
+      ORDER BY created_at ASC
+    `).bind(streamId).all();
+
+    // Orders from this live stream
+    const orderStats = await db.prepare(`
+      SELECT
+        COUNT(*) as total_orders,
+        COALESCE(SUM(total_amount), 0) as total_revenue,
+        COUNT(DISTINCT user_id) as unique_buyers,
+        COALESCE(AVG(total_amount), 0) as avg_order_value
+      FROM orders
+      WHERE live_stream_id = ? AND payment_status = 'approved'
+    `).bind(streamId).first<any>();
+
+    // Orders timeline (per minute)
+    const ordersTimeline = await db.prepare(`
+      SELECT
+        strftime('%H:%M', created_at) as minute,
+        COUNT(*) as order_count,
+        COALESCE(SUM(total_amount), 0) as revenue
+      FROM orders
+      WHERE live_stream_id = ? AND payment_status = 'approved'
+      GROUP BY strftime('%Y-%m-%d %H:%M', created_at)
+      ORDER BY created_at ASC
+    `).bind(streamId).all();
+
+    // Top products sold during this stream
+    const topProducts = await db.prepare(`
+      SELECT
+        p.id, p.name, p.image_url,
+        SUM(oi.quantity) as total_sold,
+        SUM(oi.quantity * oi.price) as total_revenue
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.live_stream_id = ? AND o.payment_status = 'approved'
+      GROUP BY p.id
+      ORDER BY total_sold DESC
+      LIMIT 10
+    `).bind(streamId).all();
+
+    // Donation stats for this stream
+    const donationStats = await db.prepare(`
+      SELECT
+        COUNT(*) as total_donations,
+        COALESCE(SUM(amount), 0) as total_donation_amount,
+        COUNT(DISTINCT user_id) as unique_donors
+      FROM donations
+      WHERE live_stream_id = ? AND status = 'completed'
+    `).bind(streamId).first<any>();
+
+    // Viewer analytics from live_stream_views
+    let viewStats: any = { total_views: 0, unique_viewers: 0, avg_watch_time: 0, total_watch_time: 0 };
+    try {
+      viewStats = await db.prepare(`
+        SELECT
+          COUNT(*) as total_views,
+          COUNT(DISTINCT user_id) as unique_viewers,
+          COALESCE(AVG(watch_duration), 0) as avg_watch_time,
+          COALESCE(SUM(watch_duration), 0) as total_watch_time
+        FROM live_stream_views
+        WHERE live_stream_id = ?
+      `).bind(streamId).first<any>();
+    } catch {
+      // Table may not exist yet
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        stream,
+        views: viewStats,
+        chat: {
+          total_messages: chatStats?.total_messages || 0,
+          unique_chatters: chatStats?.unique_chatters || 0,
+          seller_messages: chatStats?.seller_messages || 0,
+          timeline: chatTimeline.results || [],
+        },
+        orders: {
+          total_orders: orderStats?.total_orders || 0,
+          total_revenue: orderStats?.total_revenue || 0,
+          unique_buyers: orderStats?.unique_buyers || 0,
+          avg_order_value: Math.round(orderStats?.avg_order_value || 0),
+          timeline: ordersTimeline.results || [],
+        },
+        top_products: topProducts.results || [],
+        donations: {
+          total_donations: donationStats?.total_donations || 0,
+          total_amount: donationStats?.total_donation_amount || 0,
+          unique_donors: donationStats?.unique_donors || 0,
+        },
+      },
+    });
+  } catch (error: unknown) {
+    console.error('Stream analytics error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
+
+/**
+ * GET /api/seller/streams/analytics/summary
+ * 셀러의 전체 라이브 방송 분석 요약
+ */
+sellerStreamsRoutes.get('/analytics/summary', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) {
+      return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    }
+
+    const db = c.env.DB;
+    const period = c.req.query('period') || '30d';
+    const days = period === '7d' ? 7 : period === '90d' ? 90 : 30;
+
+    // All streams for this seller in the period
+    const streams = await db.prepare(`
+      SELECT
+        ls.id, ls.title, ls.status, ls.youtube_video_id, ls.created_at,
+        (SELECT COUNT(*) FROM chat_messages cm WHERE cm.live_stream_id = ls.id AND cm.is_deleted = 0) as chat_count,
+        (SELECT COUNT(*) FROM orders o WHERE o.live_stream_id = ls.id AND o.payment_status = 'approved') as order_count,
+        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.live_stream_id = ls.id AND o.payment_status = 'approved') as revenue
+      FROM live_streams ls
+      WHERE ls.seller_id = ? AND ls.created_at >= datetime('now', '-' || ? || ' days')
+      ORDER BY ls.created_at DESC
+    `).bind(sellerId, days).all();
+
+    // Aggregate stats
+    const totalStats = await db.prepare(`
+      SELECT
+        COUNT(DISTINCT ls.id) as total_streams,
+        (SELECT COUNT(*) FROM orders o WHERE o.seller_id = ? AND o.payment_status = 'approved' AND o.live_stream_id IS NOT NULL AND o.created_at >= datetime('now', '-' || ? || ' days')) as total_orders,
+        (SELECT COALESCE(SUM(o.total_amount), 0) FROM orders o WHERE o.seller_id = ? AND o.payment_status = 'approved' AND o.live_stream_id IS NOT NULL AND o.created_at >= datetime('now', '-' || ? || ' days')) as total_revenue,
+        (SELECT COUNT(*) FROM chat_messages cm JOIN live_streams ls2 ON ls2.id = cm.live_stream_id WHERE ls2.seller_id = ? AND cm.is_deleted = 0 AND cm.created_at >= datetime('now', '-' || ? || ' days')) as total_chats
+      FROM live_streams ls
+      WHERE ls.seller_id = ? AND ls.created_at >= datetime('now', '-' || ? || ' days')
+    `).bind(sellerId, days, sellerId, days, sellerId, days, sellerId, days).first<any>();
+
+    return c.json({
+      success: true,
+      data: {
+        period,
+        stats: {
+          total_streams: totalStats?.total_streams || 0,
+          total_orders: totalStats?.total_orders || 0,
+          total_revenue: totalStats?.total_revenue || 0,
+          total_chats: totalStats?.total_chats || 0,
+          avg_revenue_per_stream: totalStats?.total_streams > 0
+            ? Math.round((totalStats?.total_revenue || 0) / totalStats.total_streams)
+            : 0,
+        },
+        streams: streams.results || [],
+      },
+    });
+  } catch (error: unknown) {
+    console.error('Analytics summary error:', error);
+    return c.json({ success: false, error: (error as Error).message }, 500);
   }
 });

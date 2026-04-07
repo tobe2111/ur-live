@@ -79,7 +79,7 @@ export default function CartPage() {
   // 비로그인 상태: 장바구니 페이지는 보여주되 로그인 유도 UI 표시
   if (!loggedIn) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col bg-gray-50">
+      <div className="flex flex-col bg-gray-50">
         <div className="flex items-center justify-between border-b bg-white px-4 py-4">
           <button onClick={() => navigate(-1)} className="text-gray-600">
             <X className="h-6 w-6" />
@@ -158,6 +158,8 @@ function CartPageContent() {
     setModal({ isOpen: false, message: '' })
   }
 
+  useEffect(() => { document.title = '장바구니 - 유어딜' }, [])
+
   useEffect(() => {
     // 🧹 JWT/레거시 토큰 URL 파라미터 자동 정리
     const jwtParams = ['access_token', 'refresh_token', 'userId', 'userEmail', 'userName', 'firebase_token']
@@ -170,12 +172,10 @@ function CartPageContent() {
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('userId')
       localStorage.removeItem('userEmail')
-      console.log('[CartPage] ✅ JWT 파라미터 정리 완료')
     }
-    
+
     // ✅ ProtectedRoute가 /cart를 이미 보호함 → 여기서 requireLogin 불필요 (중복 리다이렉트 방지)
     // React Query가 자동으로 데이터 로딩
-    console.log('[CartPage] 🔄 장바구니 데이터 새로고침')
     refetch()
   }, [])
   
@@ -374,6 +374,8 @@ function CartPageContent() {
       return
     }
 
+    // 토스 SDK 프리로드 (체크아웃 진입 전)
+    import('@tosspayments/tosspayments-sdk').catch(() => {})
     const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
     navigate('/checkout', { 
       state: { 
@@ -395,7 +397,7 @@ function CartPageContent() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-gray-50">
+    <div className="flex flex-col bg-gray-50">
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader
         itemCount={cartItems.length}

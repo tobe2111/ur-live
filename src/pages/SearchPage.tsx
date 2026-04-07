@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import BottomNav from '@/components/main/BottomNav'
 import { useSearch } from '@/hooks/useSearch'
 import SearchHeader from '@/components/search/SearchHeader'
 import SearchStates from '@/components/search/SearchStates'
@@ -38,6 +37,8 @@ export default function SearchPage() {
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
+
+  useEffect(() => { document.title = '검색 - 유어딜' }, [])
 
   useEffect(() => {
     if (isError) {
@@ -98,7 +99,7 @@ export default function SearchPage() {
   const showResults = !loading && !error && query && hasResults
 
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-[#f5f5f7]">
+    <div className="bg-[#f5f5f7]">
       {/* Header */}
       <SearchHeader
         query={query}
@@ -138,11 +139,6 @@ export default function SearchPage() {
         )}
       </div>
       
-      {/* Bottom Navigation Spacer */}
-      <div className="h-20" aria-hidden="true"></div>
-      
-      {/* Bottom Navigation */}
-      <BottomNav />
     </div>
   )
 }

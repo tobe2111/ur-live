@@ -1,14 +1,15 @@
 /**
- * LiveDonation — 라이브 후원 UI
+ * LiveDonation — 라이브 딜 후원 UI
  *
  * 1. 후원 버튼 (하트 아이콘)
- * 2. 금액 선택 바텀시트
- * 3. 결제 처리 (토스페이먼츠)
- * 4. 후원 이펙트 애니메이션 (WebSocket으로 수신)
+ * 2. 딜 잔액 표시 + 금액 선택
+ * 3. 포인트 차감으로 즉시 후원 (결제 없음)
+ * 4. 잔액 부족 시 충전 안내
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Heart, X, Loader2 } from 'lucide-react'
+import { Heart, X, Loader2, Zap, Plus, Gift } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync as getUserId } from '@/utils/auth'
@@ -26,116 +27,120 @@ interface LiveDonationProps {
 }
 
 const DONATION_AMOUNTS = [
-  { amount: 1000,  label: '1,000원',  emoji: '💛' },
-  { amount: 3000,  label: '3,000원',  emoji: '🧡' },
-  { amount: 5000,  label: '5,000원',  emoji: '❤️' },
-  { amount: 10000, label: '10,000원', emoji: '💎' },
-  { amount: 30000, label: '30,000원', emoji: '👑' },
-  { amount: 50000, label: '50,000원', emoji: '🌟' },
+  { amount: 100,   label: '100딜',    emoji: '💛' },
+  { amount: 500,   label: '500딜',    emoji: '🧡' },
+  { amount: 1000,  label: '1,000딜',  emoji: '❤️' },
+  { amount: 3000,  label: '3,000딜',  emoji: '💎' },
+  { amount: 5000,  label: '5,000딜',  emoji: '👑' },
+  { amount: 10000, label: '10,000딜', emoji: '🌟' },
 ]
 
 export default function LiveDonation({ streamId }: LiveDonationProps) {
+  const navigate = useNavigate()
   const [showSheet, setShowSheet] = useState(false)
   const [selectedAmount, setSelectedAmount] = useState(DONATION_AMOUNTS[0])
   const [message, setMessage] = useState('')
   const [processing, setProcessing] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
+  const [loadingBalance, setLoadingBalance] = useState(false)
+  const [centerAlert, setCenterAlert] = useState<{ emoji: string; donorName: string; amount: number } | null>(null)
 
   const userId = getUserId()
 
-  async function handleDonate() {
+  // 바텀시트 열릴 때 잔액 조회
+  useEffect(() => {
+    if (showSheet && userId) {
+      setLoadingBalance(true)
+      api.get('/api/points/balance')
+        .then(res => {
+          if (res.data.success) setBalance(res.data.data.balance)
+        })
+        .catch(() => setBalance(0))
+        .finally(() => setLoadingBalance(false))
+    }
+  }, [showSheet, userId])
+
+  const handleDonate = useCallback(async () => {
     if (!userId) {
       toast.error('로그인이 필요합니다.')
       return
     }
 
+    if (balance !== null && balance < selectedAmount.amount) {
+      toast.error(`딜이 부족합니다. 충전 후 이용해주세요.`)
+      return
+    }
+
     setProcessing(true)
     try {
-      // 1. 후원 결제 초기화
-      const res = await api.post('/api/donations/init', {
+      const res = await api.post('/api/points/donate', {
         stream_id: streamId,
         amount: selectedAmount.amount,
         message: message.trim() || undefined,
       })
 
-      if (!res.data.success) {
-        toast.error(res.data.error || '후원 생성에 실패했습니다.')
-        return
-      }
+      if (res.data.success) {
+        toast.success(res.data.message || `${selectedAmount.amount.toLocaleString()}딜을 후원했습니다!`)
+        setBalance(res.data.data.balance)
+        setShowSheet(false)
 
-      const { orderId, amount, orderName, clientKey } = res.data.data
-
-      // 2. 토스페이먼츠 결제 (인라인 모드 - 라이브 페이지를 벗어나지 않음)
-      const PaymentWidget = (window as any).PaymentWidget
-      if (!PaymentWidget) {
-        toast.error('결제 모듈을 불러오지 못했습니다.')
-        return
-      }
-
-      const paymentWidget = PaymentWidget(clientKey, `user_${userId}`)
-
-      // 결제 UI 렌더링을 위한 임시 전체화면 요소 생성
-      const paymentContainer = document.createElement('div')
-      paymentContainer.id = 'donation-payment-widget'
-      paymentContainer.style.cssText = 'position:fixed;inset:0;z-index:9999;background:white;overflow:auto;'
-      document.body.appendChild(paymentContainer)
-
-      try {
-        await paymentWidget.renderPaymentMethods(
-          '#donation-payment-widget',
-          { value: amount },
-          { variantKey: 'DEFAULT' }
-        )
-
-        // successUrl/failUrl 미지정 → 인라인 모드: 결제 완료 시 Promise resolve
-        const paymentResult = await paymentWidget.requestPayment({
-          orderId,
-          orderName,
+        // Show center-screen donation alert
+        const donorName = localStorage.getItem('user_name') || '후원자'
+        setCenterAlert({
+          emoji: selectedAmount.emoji,
+          donorName,
+          amount: selectedAmount.amount,
         })
+        setTimeout(() => setCenterAlert(null), 3000)
 
-        if (paymentResult?.paymentKey) {
-          const confirmRes = await api.post('/api/donations/confirm', {
-            paymentKey: paymentResult.paymentKey,
-            orderId,
-            amount,
-            stream_id: streamId,
-            message: message.trim() || undefined,
-          })
-          if (confirmRes.data.success) {
-            toast.success(confirmRes.data.message || confirmRes.data.data?.message || '후원이 완료되었습니다!')
-            setShowSheet(false)
-            setMessage('')
-          } else {
-            toast.error(confirmRes.data.error || '후원 처리에 실패했습니다.')
-          }
-        }
-      } catch (err: any) {
-        if (err?.code === 'USER_CANCEL') {
-          toast.info('후원이 취소되었습니다.')
+        // Dispatch custom event for chat system message
+        window.dispatchEvent(new CustomEvent('donationAlert', {
+          detail: { donorName, amount: selectedAmount.amount, message: message.trim() || '' }
+        }))
+
+        setMessage('')
+      } else {
+        if (res.data.code === 'INSUFFICIENT_POINTS') {
+          toast.error(res.data.error)
         } else {
-          toast.error('결제 중 오류가 발생했습니다.')
-          console.error('[Donation] Payment error:', err)
+          toast.error(res.data.error || '후원에 실패했습니다.')
         }
-      } finally {
-        paymentContainer.remove()
       }
-    } catch (err) {
-      toast.error('후원에 실패했습니다.')
-      console.error('[Donation] Error:', err)
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error || '후원에 실패했습니다.'
+      toast.error(errMsg)
     } finally {
       setProcessing(false)
     }
-  }
+  }, [userId, streamId, selectedAmount, message, balance])
+
+  const isInsufficient = balance !== null && balance < selectedAmount.amount
 
   return (
     <>
-      {/* 후원 버튼 */}
+      {/* 선물하기 버튼 */}
       <button
         onClick={() => setShowSheet(true)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 backdrop-blur-sm transition-all active:scale-90"
-        aria-label="후원하기"
+        className="flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90"
+        aria-label="선물하기"
       >
-        <Heart className="h-5 w-5 text-pink-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500/20 backdrop-blur-sm">
+          <Gift className="h-5 w-5 text-pink-400" />
+        </div>
+        <span className="text-[9px] font-medium text-white/80">선물하기</span>
       </button>
+
+      {/* 후원 센터 알림 애니메이션 */}
+      {centerAlert && (
+        <div className="fixed inset-0 z-[100] pointer-events-none">
+          <div className="animate-donation-center-alert fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-pink-500/90 to-red-500/90 backdrop-blur-xl rounded-3xl px-8 py-6 shadow-2xl border border-white/20 text-center">
+            <div className="text-5xl mb-2">{centerAlert.emoji}</div>
+            <p className="text-white text-lg font-bold whitespace-nowrap">
+              {centerAlert.donorName}님이 {centerAlert.amount.toLocaleString()}딜 후원!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 후원 바텀시트 */}
       {showSheet && (
@@ -145,12 +150,12 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
             onClick={() => !processing && setShowSheet(false)}
           />
 
-          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up">
+          <div className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up max-h-[85vh] overflow-y-auto">
             <div className="p-5 pb-8">
               {/* Header */}
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">후원하기</h3>
+                  <h3 className="text-lg font-bold text-gray-900">딜 후원</h3>
                   <p className="text-xs text-gray-400 mt-0.5">셀러에게 응원을 보내세요!</p>
                 </div>
                 <button
@@ -159,6 +164,29 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 >
                   <X className="h-4 w-4 text-gray-600" />
                 </button>
+              </div>
+
+              {/* 잔액 표시 */}
+              <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-pink-500" />
+                  <span className="text-sm font-medium text-gray-700">내 딜</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {loadingBalance ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : (
+                    <span className="text-lg font-bold text-pink-600">
+                      {(balance ?? 0).toLocaleString()}딜
+                    </span>
+                  )}
+                  <button
+                    onClick={() => navigate('/points/charge')}
+                    className="flex items-center gap-0.5 px-2 py-1 text-xs font-semibold text-pink-600 bg-white rounded-lg border border-pink-200 hover:bg-pink-50"
+                  >
+                    <Plus className="w-3 h-3" />충전
+                  </button>
+                </div>
               </div>
 
               {/* 금액 선택 */}
@@ -179,20 +207,6 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 ))}
               </div>
 
-              {/* 수수료 안내 */}
-              <div className="bg-gray-50 rounded-lg px-3 py-2 mb-4">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">후원 금액</span>
-                  <span className="font-semibold text-gray-700">{selectedAmount.amount.toLocaleString()}원</span>
-                </div>
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-gray-500">셀러 크레딧 적립 (90%)</span>
-                  <span className="font-semibold text-pink-600">
-                    {Math.floor(selectedAmount.amount * 0.9).toLocaleString()}원
-                  </span>
-                </div>
-              </div>
-
               {/* 메시지 입력 */}
               <input
                 type="text"
@@ -204,10 +218,22 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 disabled={processing}
               />
 
+              {/* 잔액 부족 안내 */}
+              {isInsufficient && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-center">
+                  <p className="text-xs text-amber-800">
+                    딜이 부족합니다.
+                  </p>
+                  <button onClick={() => navigate('/points/charge')} className="mt-1 text-xs font-bold text-amber-900 underline">
+                    충전하기
+                  </button>
+                </div>
+              )}
+
               {/* 후원 버튼 */}
               <button
                 onClick={handleDonate}
-                disabled={processing}
+                disabled={processing || isInsufficient}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-pink-500 to-red-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all active:scale-[0.98] disabled:opacity-60"
               >
                 {processing ? (
@@ -215,7 +241,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
                 ) : (
                   <Heart className="w-5 h-5" />
                 )}
-                {processing ? '처리 중...' : `${selectedAmount.amount.toLocaleString()}원 후원하기`}
+                {processing ? '후원 중...' : `${selectedAmount.amount.toLocaleString()}딜 후원하기`}
               </button>
             </div>
           </div>
@@ -242,7 +268,7 @@ export function DonationEffect({ donations }: { donations: DonationEffect[] }) {
             <Heart className="w-5 h-5 text-yellow-300 fill-yellow-300 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-bold truncate">
-                {d.donorName}님이 {d.amount.toLocaleString()}원 후원!
+                {d.donorName}님이 {d.amount.toLocaleString()}딜 후원!
               </p>
               {d.message && (
                 <p className="text-xs text-white/80 truncate mt-0.5">{d.message}</p>

@@ -29,19 +29,29 @@ liveSseRoutes.get('/:liveId/sse', (c) => {
 })
 
 // ── Initial chat messages: GET /api/live/:liveId/chat/messages ───────────────
+// ?replay=true 파라미터: 다시보기 시 전체 채팅 로드 (타임라인 동기화용)
 liveSseRoutes.get('/:liveId/chat/messages', async (c) => {
   const { liveId } = c.req.param()
+  const isReplay = c.req.query('replay') === 'true'
 
   try {
-    const messages = await c.env.DB.prepare(`
-      SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
-      FROM chat_messages
-      WHERE live_stream_id = ? AND is_deleted = 0
-      ORDER BY id DESC
-      LIMIT 50
-    `).bind(liveId).all()
+    const query = isReplay
+      ? `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
+         FROM chat_messages
+         WHERE live_stream_id = ? AND is_deleted = 0
+         ORDER BY id ASC`
+      : `SELECT id, user_id, user_name, user_avatar, message, is_seller, is_admin, created_at
+         FROM chat_messages
+         WHERE live_stream_id = ? AND is_deleted = 0
+         ORDER BY id DESC
+         LIMIT 50`
 
-    return c.json({ success: true, data: messages.results.reverse() })
+    const messages = await c.env.DB.prepare(query).bind(liveId).all()
+
+    return c.json({
+      success: true,
+      data: isReplay ? messages.results : messages.results.reverse(),
+    })
   } catch (err) {
     console.error('[Chat] Failed to fetch messages:', err)
     return c.json({ success: true, data: [] })
@@ -90,6 +100,41 @@ liveSseRoutes.post('/:liveId/broadcast', requireSellerOrAdmin(), async (c) => {
   }) as any)
 
   return c.json({ success: true })
+})
+
+// ── Track view: POST /api/live/:liveId/view ─────────────────────────────────
+liveSseRoutes.post('/:liveId/view', optionalAuth(), async (c) => {
+  const { liveId } = c.req.param()
+  const authUser = getCurrentUser(c)
+  const userId = authUser ? String(authUser.id) : null
+
+  let body: any = {}
+  try { body = await c.req.json() } catch { /* optional */ }
+
+  const sessionId = body.sessionId || `anon-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const action = body.action || 'join' // 'join' | 'leave' | 'heartbeat'
+
+  try {
+    if (action === 'join') {
+      const result = await c.env.DB.prepare(`
+        INSERT INTO live_stream_views (live_stream_id, user_id, session_id, device_type)
+        VALUES (?, ?, ?, ?)
+      `).bind(liveId, userId, sessionId, body.deviceType || 'web').run()
+      return c.json({ success: true, viewId: result.meta.last_row_id, sessionId })
+    } else if (action === 'leave' || action === 'heartbeat') {
+      const watchDuration = body.watchDuration || 0
+      await c.env.DB.prepare(`
+        UPDATE live_stream_views
+        SET watch_duration = ?, left_at = CASE WHEN ? = 'leave' THEN datetime('now') ELSE left_at END
+        WHERE session_id = ? AND live_stream_id = ?
+      `).bind(watchDuration, action, sessionId, liveId).run()
+      return c.json({ success: true })
+    }
+    return c.json({ success: true })
+  } catch (err) {
+    console.error('[View] Tracking failed:', err)
+    return c.json({ success: true }) // Non-fatal
+  }
 })
 
 // ── Send chat message: POST /api/chat/:liveId/messages ──────────────────────

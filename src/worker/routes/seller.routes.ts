@@ -96,7 +96,7 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
 
     const products = await qb.queryMany<any>(
       `SELECT id, name, description, price, original_price, discount_rate,
-              image_url, stock_quantity, category, seller_id, is_active,
+              image_url, stock, category, seller_id, is_active,
               created_at, updated_at
        FROM products
        WHERE seller_id = ? AND is_active = 1
@@ -140,8 +140,7 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
 
     const rows = await db
       .prepare(
-        `SELECT ls.id, ls.title, ls.status, ls.thumbnail_url,
-                ls.viewer_count, ls.scheduled_at, ls.started_at,
+        `SELECT ls.id, ls.title, ls.status,
                 ls.youtube_video_id, ls.created_at
          FROM live_streams ls
          WHERE ls.seller_id = ? ${statusWhere}

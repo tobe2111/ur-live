@@ -53,8 +53,7 @@ export default function AdminSettlementPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
-    const userType = localStorage.getItem('user_type')
-    if (!token || userType !== 'admin') { navigate('/admin/login'); return }
+    if (!token) { navigate('/admin/login'); return }
     loadData()
   }, [navigate, period, selectedSeller, statusFilter])
 
@@ -95,6 +94,21 @@ export default function AdminSettlementPage() {
       await api.post('/api/admin/settlement/batch-complete', { order_ids: orderIds })
       toast.success('일괄 정산 완료!'); loadData()
     } catch (err: any) { toast.error(`일괄 처리 실패: ${err.response?.data?.error || err.message}`) }
+  }
+
+  async function executeSellerSettlement(sellerId: number, sellerName: string) {
+    if (!confirm(`${sellerName}의 미정산 건을 정산 실행하시겠습니까?`)) return
+    try {
+      // Find pending records for this seller and batch complete them
+      const pendingForSeller = records.filter(r => r.seller_id === sellerId && r.settlement_status === 'pending')
+      if (pendingForSeller.length === 0) {
+        toast.info('정산 대기 중인 건이 없습니다')
+        return
+      }
+      await api.post('/api/admin/settlement/batch-complete', { order_ids: pendingForSeller.map(r => r.id) })
+      toast.success(`${sellerName}의 ${pendingForSeller.length}건 정산 완료!`)
+      loadData()
+    } catch (err: any) { toast.error(`정산 실행 실패: ${err.response?.data?.error || err.message}`) }
   }
 
   async function exportCSV() {
@@ -177,14 +191,14 @@ export default function AdminSettlementPage() {
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="bg-gray-50">
-                {['판매자', '사업자명', '주문수', '판매액', '수수료율', '수수료', '정산액', '정산대기', '정산완료'].map(h => (
+                {['판매자', '사업자명', '주문수', '판매액', '수수료율', '수수료', '정산액', '정산대기', '정산완료', '액션'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sellers.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-400">정산 데이터가 없습니다</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-400">정산 데이터가 없습니다</td></tr>
               ) : sellers.map(seller => (
                 <tr
                   key={seller.seller_id}
@@ -200,6 +214,16 @@ export default function AdminSettlementPage() {
                   <td className="px-4 py-3 text-xs font-semibold text-blue-700">{fmtCurrency(seller.seller_amount)}</td>
                   <td className="px-4 py-3 text-xs text-amber-600">{fmtCurrency(seller.pending_amount)}</td>
                   <td className="px-4 py-3 text-xs text-emerald-600">{fmtCurrency(seller.settled_amount)}</td>
+                  <td className="px-4 py-3">
+                    {seller.pending_amount > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); executeSellerSettlement(seller.seller_id, seller.seller_name) }}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
+                      >
+                        정산 실행
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

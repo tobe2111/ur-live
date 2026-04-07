@@ -8,10 +8,6 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 // ✅ Week 5 Day 2: 런타임 환경 변수 검증
 import { validateEnvForRuntime } from '@/shared/config/env-validator'
 
-console.log('[App] 🚀 앱 시작...')
-console.log('[App] 📍 Location:', window.location.href)
-console.log('[App] 🌐 User Agent:', navigator.userAgent)
-
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
 
@@ -23,12 +19,9 @@ if (import.meta.env.DEV) {
 // Sentry 초기화 (앱 시작 전)
 try {
   initSentry()
-  console.log('[App] ✅ Sentry 초기화 완료')
 } catch (error) {
-  console.error('[App] ❌ Sentry 초기화 실패:', error)
+  console.error('[App] Sentry 초기화 실패:', error)
 }
-
-console.log('[App] ⚛️ React DOM 렌더링 시작...')
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
@@ -43,14 +36,11 @@ if (!rootElement) {
     </div>
   `
 } else {
-  console.log('[App] ✅ Root element found')
-  
   try {
     // ✅ React StrictMode 제거 (중복 마운트 방지)
     ReactDOM.createRoot(rootElement).render(
       <App />
     )
-    console.log('[App] ✅ React 렌더링 완료')
   } catch (error) {
     console.error('[App] ❌ React 렌더링 실패:', error)
     rootElement.innerHTML = `

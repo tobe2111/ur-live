@@ -158,7 +158,6 @@ export async function getValidAccessToken(
   }
 
   // Refresh
-  console.log('[Cafe24] Access token expired, refreshing...');
   const newTokens = await refreshAccessToken(mallId, clientId, clientSecret, stored.refresh_token);
   await saveTokens(db, mallId, newTokens);
   return newTokens.access_token;

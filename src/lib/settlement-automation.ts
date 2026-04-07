@@ -206,8 +206,6 @@ export async function generateSettlementReport(
   DB: D1Database,
   period: SettlementPeriod
 ): Promise<SettlementReport> {
-  console.log(`[Settlement] Generating report for ${period.startDate} ~ ${period.endDate}`)
-
   // 정산 대상 셀러 목록 조회
   const sellers = await DB.prepare(`
     SELECT DISTINCT s.id
@@ -242,8 +240,6 @@ export async function generateSettlementReport(
     total_settlement: totalSettlement,
     sellers: sellerSettlements
   }
-
-  console.log(`[Settlement] Report generated: ${sellerSettlements.length} sellers, ${totalSales.toLocaleString()}원`)
 
   return report
 }
@@ -289,7 +285,7 @@ export async function saveSettlementReport(
     ).run()
   }
 
-  console.log(`[Settlement] Report saved: ID ${settlementId}`)
+  // Report saved
 }
 
 /**
@@ -346,20 +342,252 @@ export async function getSettlementReport(
  */
 export async function runMonthlySettlement(env: Env): Promise<void> {
   try {
-    console.log('[Settlement Cron] Starting monthly settlement...')
+    // Monthly settlement starting
 
     // 지난 달 정산
     const period = getLastMonthSettlementPeriod()
-    
+
     // 정산 보고서 생성
     const report = await generateSettlementReport(env.DB, period)
-    
+
     // 저장
     await saveSettlementReport(env.DB, report)
 
-    console.log('[Settlement Cron] Monthly settlement completed successfully')
+    // Monthly settlement completed
   } catch (error) {
     console.error('[Settlement Cron] Failed:', error)
     throw error
+  }
+}
+
+// ─── Auto-settlement calculation (uses actual orders table columns) ───────────
+
+export interface SellerSettlementCalc {
+  seller_id: number
+  seller_name: string
+  business_name: string
+  commission_rate: number
+  total_sales: number
+  total_orders: number
+  commission_amount: number
+  settlement_amount: number
+}
+
+export interface SettlementExecutionResult {
+  batch_id: string
+  executed_at: string
+  period_start: string
+  period_end: string
+  sellers: SellerSettlementCalc[]
+  total_orders_settled: number
+  total_sales: number
+  total_commission: number
+  total_settlement: number
+}
+
+/**
+ * Calculate unsettled amounts per seller for orders with status DONE/DELIVERED.
+ * Uses the actual columns: settlement_status, settled_at, total_amount,
+ * commission_rate (on orders), commission_amount, seller_amount.
+ */
+export async function calculateAutoSettlement(
+  DB: D1Database,
+  periodStart?: string,
+  periodEnd?: string,
+  defaultCommissionRate: number = 10.0
+): Promise<SellerSettlementCalc[]> {
+  let dateFilter = ''
+  const params: (string | number)[] = []
+
+  if (periodStart && periodEnd) {
+    dateFilter = 'AND DATE(o.created_at) BETWEEN ? AND ?'
+    params.push(periodStart, periodEnd)
+  }
+
+  const rows = await DB.prepare(`
+    SELECT
+      COALESCE(o.seller_id, 0) as seller_id,
+      COALESCE(s.name, '미지정') as seller_name,
+      COALESCE(s.business_name, '') as business_name,
+      COALESCE(s.commission_rate, ${defaultCommissionRate}) as commission_rate,
+      COUNT(o.id) as total_orders,
+      COALESCE(SUM(o.total_amount), 0) as total_sales,
+      COALESCE(SUM(
+        ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+      ), 0) as commission_amount,
+      COALESCE(SUM(
+        o.total_amount - ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+      ), 0) as settlement_amount
+    FROM orders o
+    LEFT JOIN sellers s ON o.seller_id = s.id
+    WHERE o.status IN ('DONE', 'DELIVERED')
+      AND COALESCE(o.settlement_status, 'pending') = 'pending'
+      ${dateFilter}
+    GROUP BY o.seller_id
+    ORDER BY total_sales DESC
+  `).bind(...params).all()
+
+  return (rows.results as unknown as SellerSettlementCalc[]) || []
+}
+
+/**
+ * Execute settlement: mark matching orders as settled and return a batch summary.
+ * Updates settlement_status, settled_at, commission_rate, commission_amount, seller_amount
+ * on the orders table.
+ */
+export async function executeSettlement(
+  DB: D1Database,
+  periodStart?: string,
+  periodEnd?: string,
+  defaultCommissionRate: number = 10.0
+): Promise<SettlementExecutionResult> {
+  const now = new Date().toISOString()
+  const batchId = `SETTLE-${Date.now()}`
+
+  // First, calculate the summary before marking
+  const sellers = await calculateAutoSettlement(DB, periodStart, periodEnd, defaultCommissionRate)
+
+  let totalOrdersSettled = 0
+  let totalSales = 0
+  let totalCommission = 0
+  let totalSettlement = 0
+
+  for (const seller of sellers) {
+    totalOrdersSettled += seller.total_orders
+    totalSales += seller.total_sales
+    totalCommission += seller.commission_amount
+    totalSettlement += seller.settlement_amount
+  }
+
+  // Build the date filter for the UPDATE
+  let dateFilter = ''
+  const updateParams: (string | number)[] = [now, defaultCommissionRate, defaultCommissionRate, defaultCommissionRate]
+
+  if (periodStart && periodEnd) {
+    dateFilter = 'AND DATE(created_at) BETWEEN ? AND ?'
+    updateParams.push(periodStart, periodEnd)
+  }
+
+  // Update all matching orders in one statement
+  await DB.prepare(`
+    UPDATE orders
+    SET settlement_status = 'completed',
+        settled_at = ?,
+        commission_rate = COALESCE(
+          (SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id),
+          ?
+        ),
+        commission_amount = ROUND(total_amount * COALESCE(
+          (SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id),
+          ?
+        ) / 100),
+        seller_amount = total_amount - ROUND(total_amount * COALESCE(
+          (SELECT s.commission_rate FROM sellers s WHERE s.id = orders.seller_id),
+          ?
+        ) / 100)
+    WHERE status IN ('DONE', 'DELIVERED')
+      AND COALESCE(settlement_status, 'pending') = 'pending'
+      ${dateFilter}
+  `).bind(...updateParams).run()
+
+  return {
+    batch_id: batchId,
+    executed_at: now,
+    period_start: periodStart || 'all',
+    period_end: periodEnd || 'all',
+    sellers,
+    total_orders_settled: totalOrdersSettled,
+    total_sales: totalSales,
+    total_commission: totalCommission,
+    total_settlement: totalSettlement,
+  }
+}
+
+/**
+ * Get seller settlement summary: unsettled amount, last settlement, lifetime total.
+ * Reads directly from orders table columns.
+ */
+export async function getSellerSettlementSummary(
+  DB: D1Database,
+  sellerId: number,
+  defaultCommissionRate: number = 10.0
+): Promise<{
+  unsettled_amount: number
+  unsettled_orders: number
+  unsettled_commission: number
+  last_settlement_date: string | null
+  last_settlement_amount: number
+  last_settlement_orders: number
+  lifetime_settled_amount: number
+  lifetime_settled_orders: number
+  lifetime_commission: number
+}> {
+  // Current period unsettled
+  const unsettled = await DB.prepare(`
+    SELECT
+      COUNT(o.id) as order_count,
+      COALESCE(SUM(o.total_amount), 0) as total_sales,
+      COALESCE(SUM(
+        ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+      ), 0) as commission_amount,
+      COALESCE(SUM(
+        o.total_amount - ROUND(o.total_amount * COALESCE(s.commission_rate, ${defaultCommissionRate}) / 100)
+      ), 0) as seller_amount
+    FROM orders o
+    LEFT JOIN sellers s ON o.seller_id = s.id
+    WHERE o.seller_id = ?
+      AND o.status IN ('DONE', 'DELIVERED')
+      AND COALESCE(o.settlement_status, 'pending') = 'pending'
+  `).bind(sellerId).first<{
+    order_count: number
+    total_sales: number
+    commission_amount: number
+    seller_amount: number
+  }>()
+
+  // Last settlement batch (most recent settled_at)
+  const lastSettlement = await DB.prepare(`
+    SELECT
+      MAX(o.settled_at) as last_date,
+      COUNT(o.id) as order_count,
+      COALESCE(SUM(o.seller_amount), 0) as seller_amount
+    FROM orders o
+    WHERE o.seller_id = ?
+      AND o.settlement_status = 'completed'
+      AND o.settled_at = (
+        SELECT MAX(o2.settled_at) FROM orders o2
+        WHERE o2.seller_id = ? AND o2.settlement_status = 'completed'
+      )
+  `).bind(sellerId, sellerId).first<{
+    last_date: string | null
+    order_count: number
+    seller_amount: number
+  }>()
+
+  // Lifetime totals
+  const lifetime = await DB.prepare(`
+    SELECT
+      COUNT(o.id) as order_count,
+      COALESCE(SUM(o.seller_amount), 0) as seller_amount,
+      COALESCE(SUM(o.commission_amount), 0) as commission_amount
+    FROM orders o
+    WHERE o.seller_id = ?
+      AND o.settlement_status = 'completed'
+  `).bind(sellerId).first<{
+    order_count: number
+    seller_amount: number
+    commission_amount: number
+  }>()
+
+  return {
+    unsettled_amount: unsettled?.seller_amount ?? 0,
+    unsettled_orders: unsettled?.order_count ?? 0,
+    unsettled_commission: unsettled?.commission_amount ?? 0,
+    last_settlement_date: lastSettlement?.last_date ?? null,
+    last_settlement_amount: lastSettlement?.seller_amount ?? 0,
+    last_settlement_orders: lastSettlement?.order_count ?? 0,
+    lifetime_settled_amount: lifetime?.seller_amount ?? 0,
+    lifetime_settled_orders: lifetime?.order_count ?? 0,
+    lifetime_commission: lifetime?.commission_amount ?? 0,
   }
 }

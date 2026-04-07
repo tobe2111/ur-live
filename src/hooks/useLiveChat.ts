@@ -89,13 +89,6 @@ export function useLiveChat(
         headers['Authorization'] = `Bearer ${accessToken}`
       }
       
-      console.log('[useLiveChat] 📤 Sending message:', {
-        userId,
-        userName,
-        userType,
-        messagePreview: message.substring(0, 50)
-      })
-      
       const response = await fetch(`/api/chat/${liveId}/messages`, {
         method: 'POST',
         headers,
@@ -143,13 +136,11 @@ export function useLiveChat(
         ? `/api/live/${liveId}/chat/sse?token=${encodeURIComponent(accessToken)}`
         : `/api/live/${liveId}/chat/sse`
       
-      console.log('[useLiveChat] Connecting to SSE:', sseUrl.replace(/token=[^&]+/, 'token=***'))
       const eventSource = new EventSource(sseUrl);
       eventSourceRef.current = eventSource;
 
       // 연결 성공
       eventSource.onopen = () => {
-        console.log('[useLiveChat] ✅ SSE 연결 성공');
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0; // 재연결 카운터 초기화
@@ -206,7 +197,6 @@ export function useLiveChat(
           setError(`연결 끊김. ${delay/1000}초 후 재연결 시도 중... (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log(`[useLiveChat] 🔄 재연결 시도 ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS}`);
             connect();
           }, delay);
         } else {
@@ -231,8 +221,6 @@ export function useLiveChat(
 
     // 컴포넌트 언마운트 시 정리
     return () => {
-      console.log('[useLiveChat] 🧹 정리 중...');
-      
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;

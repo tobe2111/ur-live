@@ -56,7 +56,7 @@ export default defineConfig({
         statements: [80, 95],
       }
     },
-    include: ['tests/**/*.test.{ts,tsx}'],
+    include: ['tests/**/*.test.{ts,tsx}', 'src/tests/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', 'dist', '.wrangler'],
   },
   resolve: {

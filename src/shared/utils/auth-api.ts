@@ -125,8 +125,7 @@ export async function getIdTokenFromBackend(
 
       // On 500, retry once after delay
       if (response.status >= 500 && retryCount === 0) {
-        console.log('[AuthAPI] Server error, will retry once after 2s');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         requestTracker.delete(requestKey); // clear dedup so retry can proceed
         return getIdTokenFromBackend(uid, forceRefresh); // Recursive retry (max 1)
       }
@@ -243,8 +242,7 @@ export async function authFetch<T = any>(
       const newToken = await useAuthKR.getState().getIdToken(true); // Force refresh
 
       if (newToken) {
-        console.log('[AuthAPI] Token refreshed, retrying request...');
-        useAuthStore.getState().setAuth(
+          useAuthStore.getState().setAuth(
           useAuthStore.getState().user!,
           newToken,
           ''
@@ -297,7 +295,6 @@ export function redirectToLogin() {
     return;
   }
 
-  console.log('[AuthAPI] Redirecting to login...');
   sessionStorage.setItem('auth_redirect_attempted', 'true');
   
   // Clear auth state

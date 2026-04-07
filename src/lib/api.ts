@@ -61,6 +61,7 @@ function captureError(error: Error, context?: Record<string, any>) {
 const api = axios.create({
   baseURL: '/',
   timeout: 15000,
+  withCredentials: true, // Send httpOnly cookies (ur_session) with every request
   headers: {
     'Content-Type': 'application/json',
   },
@@ -78,6 +79,8 @@ const PUBLIC_API_PATHS = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/kakao',
+  '/api/auth/me',
+  '/api/auth/logout',
   '/api/auth/firebase/sync',
   '/api/auth/firebase/register',
   '/api/seller/login',
@@ -113,40 +116,43 @@ api.interceptors.request.use(
 
     // ── Seller API (/api/seller/*, /api/youtube/*) ─────────────────────────
     if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/')) {
-      const userType = localStorage.getItem('user_type');
-      if (userType === 'seller') {
-        const token = localStorage.getItem('seller_token');
-        if (!token) throw new Error('Seller token missing - please login again');
+      const token = localStorage.getItem('seller_token');
+      if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
         return config;
       }
-      // user_type이 seller가 아니면 Firebase fallthrough
+      // seller_token 없으면 Firebase fallthrough (공개 셀러 API 등)
     }
 
     // ── Admin API (/api/admin/*) ───────────────────────────────────────────
     if (url.startsWith('/api/admin/')) {
-      const userType = localStorage.getItem('user_type');
-      if (userType !== 'admin') throw new Error('Admin access required');
       const token = localStorage.getItem('admin_token');
       if (!token) throw new Error('Admin token missing - please login again');
       config.headers['Authorization'] = `Bearer ${token}`;
       return config;
     }
 
-    // ── Notifications: user_type에 따라 분기 ─────────────────────────────
+    // ── Notifications: 토큰 존재 여부로 분기 ─────────────────────────────
     if (url.startsWith('/api/notifications')) {
-      const userType = localStorage.getItem('user_type');
-      if (userType === 'seller') {
-        const t = localStorage.getItem('seller_token');
-        if (t) { config.headers['Authorization'] = `Bearer ${t}`; return config; }
-      } else if (userType === 'admin') {
-        const t = localStorage.getItem('admin_token');
-        if (t) { config.headers['Authorization'] = `Bearer ${t}`; return config; }
-      }
+      const sellerToken = localStorage.getItem('seller_token');
+      const adminToken = localStorage.getItem('admin_token');
+      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
       // fallthrough to Firebase
     }
 
-    // ── Firebase User API ─────────────────────────────────────────────────
+    // ── Session Cookie User API (preferred for user login) ──────────────
+    // If user is logged in via session cookie (ur_session), the cookie is
+    // sent automatically (withCredentials: true). No Bearer token needed.
+    // The server-side requireAuth() checks Bearer token first, then cookie.
+    // Session cookie users (카카오 로그인) don't need Bearer token — cookie handles it.
+    const userType = localStorage.getItem('user_type');
+    if (userType === 'user' && localStorage.getItem('user_id')) {
+      // 세션 쿠키 유저 → 토큰 탐색 건너뛰기 (즉시 요청)
+      return config;
+    }
+
+    // ── Firebase User API (legacy fallback) ──────────────────────────────
     // ✅ 우선순위 1: useAuthKR/useAuthWorld.getIdToken() → 항상 유효한 토큰 보장
     try {
       const { isKorea } = await import('@/config/region');
@@ -194,7 +200,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     } else {
-      console.error('[API] ❌ 토큰 없음! 401 에러 예상');
+      // 비로그인 상태 — 공개 API는 토큰 없이 진행, 인증 필요 API는 조용히 실패
+      const publicPrefixes = ['/api/products', '/api/streams', '/api/reviews', '/api/sections', '/api/seller-tiers', '/api/banners', '/api/search'];
+      const isPublic = publicPrefixes.some(p => config.url?.startsWith(p));
+      if (!isPublic) {
+        console.warn('[API] 토큰 없음 - 인증 필요 API 호출 스킵 가능');
+      }
     }
 
     return config;
@@ -254,8 +265,6 @@ api.interceptors.response.use(
 
       // ── Firebase User: Token 강제 갱신 시도 ──────────────────────────
       try {
-        console.log('[API] 🔄 Firebase User 401 - 토큰 강제 갱신 시도...');
-        
         let newToken: string | null = null;
 
         // ✅ 1차: useAuthKR/useAuthWorld.getIdToken(true) — Firebase User 객체 직접 사용
@@ -268,7 +277,6 @@ api.interceptors.response.use(
           const authStoreWithToken = authStore as typeof authStore & { getIdToken?: (forceRefresh?: boolean) => Promise<string | null> };
           if (authStoreWithToken.user && typeof authStoreWithToken.getIdToken === 'function') {
             newToken = await authStoreWithToken.getIdToken(true); // force refresh
-            console.log('[API] ✅ useAuthKR.getIdToken(true) 성공');
           }
         } catch (e) {
           console.warn('[API] useAuthKR.getIdToken 실패:', e);
@@ -294,7 +302,6 @@ api.interceptors.response.use(
             }
             
             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-            console.log('[API] 🔁 새 토큰으로 요청 재시도');
             return api(originalRequest);
           } else {
             console.error('[API] ⚠️ 토큰이 변경되지 않음 - 세션 만료로 간주');

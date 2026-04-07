@@ -1,113 +1,51 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Menu, Search, Bell } from 'lucide-react'
-import LanguageSwitcher from '@/components/LanguageSwitcher'
+import React from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Search, ShoppingCart } from 'lucide-react'
 
 export default function TopNav() {
   const navigate = useNavigate()
-  const [menuOpen, setMenuOpen] = useState(false)
-
-  const handleSearchClick = () => {
-    navigate('/search')
-  }
-
-  const handleNotificationClick = () => {
-    navigate('/mypage')
-  }
 
   return (
-    <>
-      <header className="sticky top-0 z-50 w-full bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Open menu"
-              className="p-1 text-foreground"
-            >
-              <Menu className="h-6 w-6" strokeWidth={1.5} />
-            </button>
-
-            <h1 className="text-xl font-extrabold tracking-tighter text-foreground uppercase">
-              UR <span className="text-accent-foreground" style={{ color: '#ef4444' }}>LIVE</span>
-            </h1>
-
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher />
-              <button
-                onClick={handleSearchClick}
-                aria-label="Search"
-                className="p-1 text-foreground hover:text-gray-600 transition-colors"
-              >
-                <Search className="h-5 w-5" strokeWidth={1.5} />
-              </button>
-              <button
-                onClick={handleNotificationClick}
-                aria-label="Notifications"
-                className="relative p-1 text-foreground hover:text-gray-600 transition-colors"
-              >
-                <Bell className="h-5 w-5" strokeWidth={1.5} />
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Slide-out menu */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-[60]">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setMenuOpen(false)}
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
+      <div className="flex items-center justify-between h-12 px-4">
+        {/* Logo */}
+        <Link to="/" className="flex items-center">
+          <img
+            src="/logo.png"
+            alt="유어딜"
+            className="h-8"
+            onError={(e) => {
+              const img = e.target as HTMLImageElement
+              if (!img.src.includes('googleusercontent')) {
+                img.src = 'https://lh3.googleusercontent.com/d/1KIviBiRXEnTqMXRPfQ0gg4ZUewVf7gOq'
+              }
+            }}
           />
-          <nav className="absolute left-0 top-0 h-full w-72 bg-background p-6 shadow-lg animate-slide-in-left">
-            <button
-              onClick={() => setMenuOpen(false)}
-              className="mb-8 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close menu"
-            >
-              닫기
-            </button>
-            <ul className="flex flex-col gap-5">
-              {[
-                { label: 'Home', path: '/' },
-                { label: 'Shop', path: '/browse' },
-                { label: 'Live', path: '/browse?category=all' },
-                { label: 'My Page', path: '/user/profile' },
-                { label: 'Cart', path: '/cart' },
-                { label: 'Orders', path: '/my-orders' }
-              ].map((item) => (
-                <li key={item.label}>
-                  <button
-                    onClick={() => {
-                      navigate(item.path)
-                      setMenuOpen(false)
-                    }}
-                    className="text-base font-semibold text-foreground hover:text-red-500 transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </div>
-      )}
+        </Link>
 
-      <style>{`
-        @keyframes slide-in-left {
-          from {
-            transform: translateX(-100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        .animate-slide-in-left {
-          animation: slide-in-left 0.3s ease-out;
-        }
-      `}</style>
-    </>
+        {/* Right actions: Search + Cart only (profile moved to BottomNav) */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/search')} className="p-1" aria-label="검색">
+            <Search className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+          </button>
+          <button onClick={() => navigate('/cart')} className="p-1 relative" aria-label="장바구니">
+            <ShoppingCart className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+            {(() => {
+              const cartData = localStorage.getItem('cart')
+              let count = 0
+              try {
+                const parsed = cartData ? JSON.parse(cartData) : []
+                count = Array.isArray(parsed) ? parsed.length : 0
+              } catch { /* ignore */ }
+              return count > 0 ? (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-0.5">
+                  {count > 99 ? '99+' : count}
+                </span>
+              ) : null
+            })()}
+          </button>
+        </div>
+      </div>
+    </header>
   )
 }

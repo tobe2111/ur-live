@@ -46,8 +46,6 @@ export function useFirebaseStream(streamId: number | null) {
 
     async function connectFirebase() {
       try {
-        console.log(`🔥 Firebase: Lazy loading database for stream ${streamId}...`)
-        
         // Lazy load Firebase Database using new API
         const { getFirebaseDatabase } = await import('@/lib/firebase-config')
         const { ref, onValue, off } = await import('firebase/database')
@@ -57,8 +55,6 @@ export function useFirebaseStream(streamId: number | null) {
         // Firebase Realtime Database 참조 생성
         const streamRef = ref(database, `streams/stream${streamId}`)
         streamRefObj.current = streamRef
-
-        console.log(`🔥 Firebase: Subscribing to stream ${streamId}...`)
 
         // 실시간 리스너 등록
         const unsubscribe = onValue(
@@ -78,9 +74,7 @@ export function useFirebaseStream(streamId: number | null) {
               })
               setIsConnected(true)
               setError(null)
-              console.log(`✅ Firebase: Stream ${streamId} updated`, data)
             } else {
-              console.log(`⚠️ Firebase: No data for stream ${streamId}`)
               setStreamData(null)
               setIsConnected(true) // 연결은 성공했지만 데이터가 없음
             }
@@ -97,7 +91,6 @@ export function useFirebaseStream(streamId: number | null) {
         return () => {
           isMounted = false
           off(streamRef)
-          console.log(`🔌 Firebase: Disconnected from stream ${streamId}`)
         }
       } catch (err: any) {
         if (!isMounted) return
@@ -139,8 +132,6 @@ export function useFirebaseProduct(productId: number | null) {
 
     async function connectFirebase() {
       try {
-        console.log(`🔥 Firebase: Lazy loading database for product ${productId}...`)
-
         // Lazy load Firebase Database using the same pattern as useFirebaseStream
         const { getFirebaseDatabase } = await import('@/lib/firebase-config')
         const { ref, onValue, off } = await import('firebase/database')
@@ -149,8 +140,6 @@ export function useFirebaseProduct(productId: number | null) {
         // Firebase Realtime Database 참조 생성
         const productRef = ref(database, `products/product${productId}`)
         productRefObj.current = productRef
-
-        console.log(`🔥 Firebase: Subscribing to product ${productId}...`)
 
         // 실시간 리스너 등록
         const unsubscribe = onValue(
@@ -172,9 +161,7 @@ export function useFirebaseProduct(productId: number | null) {
               })
               setIsConnected(true)
               setError(null)
-              console.log(`✅ Firebase: Product ${productId} updated, stock=${data.stock}`)
             } else {
-              console.log(`⚠️ Firebase: No data for product ${productId}`)
               setProductData(null)
               setIsConnected(true)
             }
@@ -191,7 +178,6 @@ export function useFirebaseProduct(productId: number | null) {
         return () => {
           isMounted = false
           off(productRef)
-          console.log(`🔌 Firebase: Disconnected from product ${productId}`)
         }
       } catch (err: any) {
         if (!isMounted) return

@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { TOSS_PAYMENT_URL } from '@/shared/constants';
 
 const donationsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -80,21 +81,23 @@ donationsRoutes.post('/init', requireAuth(), async (c) => {
 
   const orderId = `DON-${userId}-${stream.id}-${Date.now()}`;
   const commissionAmount = Math.round(body.amount * stream.commission_rate / 100);
-  const sellerAmount = body.amount - commissionAmount;
+  const creditAmount = body.amount - commissionAmount;
 
   // pending 레코드를 DB에 저장 — confirm 단계에서 이 레코드의 금액으로 검증
+  // DB 스키마: live_stream_id (NOT stream_id), credit_amount (NOT seller_amount),
+  //           payment_status (NOT status), is_anonymous 컬럼 없음
   await DB.prepare(`
     INSERT INTO donations
-      (stream_id, seller_id, donor_user_id, donor_name, amount,
-       commission_amount, seller_amount, commission_rate,
-       order_id, status, message, is_anonymous, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, datetime('now'), datetime('now'))
+      (live_stream_id, seller_id, donor_user_id, donor_name, amount,
+       commission_amount, credit_amount, commission_rate,
+       order_id, payment_status, message)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
   `).bind(
     body.stream_id, stream.seller_id, userId,
     body.is_anonymous ? '익명' : (body.donor_name ?? '익명'),
-    body.amount, commissionAmount, sellerAmount, stream.commission_rate,
+    body.amount, commissionAmount, creditAmount, stream.commission_rate,
     orderId,
-    body.message ?? null, body.is_anonymous ? 1 : 0,
+    body.message ?? '',
   ).run();
 
   return c.json({
@@ -130,16 +133,17 @@ donationsRoutes.post('/confirm', requireAuth(), async (c) => {
   const { DB } = c.env;
 
   // init 단계에서 DB에 저장한 pending 레코드 조회 (금액 조작 방지)
+  // DB 스키마: live_stream_id, credit_amount, payment_status
   type DonationRow = {
-    id: number; stream_id: number; seller_id: number; amount: number;
-    commission_amount: number; seller_amount: number; status: string; donor_name: string;
+    id: number; live_stream_id: number; seller_id: number; amount: number;
+    commission_amount: number; credit_amount: number; payment_status: string; donor_name: string;
   };
   const pending = await DB.prepare(
-    'SELECT id, stream_id, seller_id, amount, commission_amount, seller_amount, status, donor_name FROM donations WHERE order_id = ? AND donor_user_id = ?'
+    'SELECT id, live_stream_id, seller_id, amount, commission_amount, credit_amount, payment_status, donor_name FROM donations WHERE order_id = ? AND donor_user_id = ?'
   ).bind(body.orderId, userId).first<DonationRow>().catch(() => null);
 
   if (!pending) return c.json({ success: false, error: '후원 정보를 찾을 수 없습니다. 다시 시도해주세요.' }, 404);
-  if (pending.status === 'DONE') return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
+  if (pending.payment_status === 'completed') return c.json({ success: false, error: '이미 처리된 결제입니다' }, 409);
 
   // 클라이언트가 보낸 amount를 DB 저장값으로 검증 (금액 조작 방지)
   if (pending.amount !== body.amount) {
@@ -148,12 +152,13 @@ donationsRoutes.post('/confirm', requireAuth(), async (c) => {
   }
 
   // 토스 결제 승인 (DB에서 검증된 금액 사용)
-  const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+  // Idempotency-Key: paymentKey 기반 — 동일 결제의 중복 승인 요청 방지
+  const tossRes = await fetch(`${TOSS_PAYMENT_URL}/payments/confirm`, {
     method: 'POST',
     headers: {
       Authorization: `Basic ${btoa(c.env.TOSS_SECRET_KEY + ':')}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key': body.orderId,
+      'Idempotency-Key': body.paymentKey,
     },
     body: JSON.stringify({ paymentKey: body.paymentKey, orderId: body.orderId, amount: pending.amount }),
   });
@@ -161,21 +166,22 @@ donationsRoutes.post('/confirm', requireAuth(), async (c) => {
   if (!tossRes.ok) {
     const err = await tossRes.json<{ message?: string; code?: string }>();
     if (err.code !== 'ALREADY_PROCESSED_PAYMENT') {
-      await DB.prepare('UPDATE donations SET status = ? WHERE order_id = ?')
-        .bind('FAILED', body.orderId).run();
-      return c.json({ success: false, error: err.message ?? '결제 승인 실패' }, 400);
+      await DB.prepare('UPDATE donations SET payment_status = ? WHERE order_id = ?')
+        .bind('failed', body.orderId).run();
+      console.error('[donations/confirm] Toss error:', { code: err.code, message: err.message, orderId: body.orderId });
+      return c.json({ success: false, error: err.message ?? '결제 승인 실패', code: err.code }, 400);
     }
   }
 
-  // pending → DONE 상태 업데이트 (payment_key 기록)
-  await DB.prepare('UPDATE donations SET status = ?, payment_key = ?, updated_at = datetime(\'now\') WHERE order_id = ?')
-    .bind('DONE', body.paymentKey, body.orderId).run();
+  // pending → completed 상태 업데이트 (payment_key 기록)
+  await DB.prepare('UPDATE donations SET payment_status = ?, payment_key = ?, completed_at = datetime(\'now\') WHERE order_id = ?')
+    .bind('completed', body.paymentKey, body.orderId).run();
 
   return c.json({
     success: true,
     data: {
       amount: pending.amount,
-      seller_amount: pending.seller_amount,
+      credit_amount: pending.credit_amount,
       commission_amount: pending.commission_amount,
     },
     message: `${pending.amount.toLocaleString()}원 후원이 완료되었습니다!`,
@@ -191,12 +197,10 @@ donationsRoutes.get('/stream/:streamId', async (c) => {
   try {
     const { results } = await DB.prepare(`
       SELECT id,
-             CASE WHEN is_anonymous = 1 THEN '익명'
-                  ELSE SUBSTR(donor_name, 1, 1) || REPLACE(SUBSTR(donor_name, 2), SUBSTR(donor_name, 2), '**')
-             END AS donor_name,
+             SUBSTR(donor_name, 1, 1) || '**' AS donor_name,
              amount, message, created_at
       FROM donations
-      WHERE stream_id = ? AND status = 'DONE'
+      WHERE live_stream_id = ? AND payment_status = 'completed'
       ORDER BY created_at DESC LIMIT 50
     `).bind(streamId).all();
 

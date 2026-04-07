@@ -50,10 +50,8 @@ export async function initializeFirebase(): Promise<FirebaseApp> {
     return appInstance
   }
 
-  console.log('🔥 Lazy loading Firebase App...')
   const { initializeApp } = await import('firebase/app')
   appInstance = initializeApp(firebaseConfig)
-  console.log('✅ Firebase App initialized')
   
   return appInstance
 }
@@ -67,11 +65,9 @@ export async function getFirebaseDatabase(): Promise<Database> {
     return databaseInstance
   }
 
-  console.log('🔥 Lazy loading Firebase Database...')
   const app = await initializeFirebase()
   const { getDatabase } = await import('firebase/database')
   databaseInstance = getDatabase(app)
-  console.log('✅ Firebase Database initialized')
   
   return databaseInstance
 }
@@ -85,11 +81,9 @@ export async function getFirebaseAuth(): Promise<Auth> {
     return authInstance
   }
 
-  console.log('🔥 Lazy loading Firebase Auth...')
   const app = await initializeFirebase()
   const { getAuth } = await import('firebase/auth')
   authInstance = getAuth(app)
-  console.log('✅ Firebase Auth initialized')
   
   return authInstance
 }

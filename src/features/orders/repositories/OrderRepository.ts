@@ -1,5 +1,10 @@
 /**
- * Order Repository
+ * SECONDARY Order Repository — used by features/orders/api/orders.routes.ts
+ *
+ * Handles: delivery tracking, purchase confirmation, auto-confirm cron, delivery sync
+ * These endpoints are NOT in the primary order.routes.ts
+ *
+ * ⚠️ The primary repository is at worker/repositories/order.repository.ts
  */
 
 import type { Order, OrderItem, OrderFilter, OrderCreateInput } from '../types';
@@ -104,12 +109,12 @@ export class OrderRepository {
     
     // 주문 아이템 생성 (배치 INSERT로 최적화)
     if (data.items.length > 0) {
-      const values = data.items.map(() => '(?, ?, ?, ?, datetime(\'now\'))').join(', ');
+      const values = data.items.map(() => '(?, ?, ?, ?)').join(', ');
       const bindings = data.items.flatMap(item => [orderId, item.product_id, item.quantity, item.price]);
-      
+
       await this.db.prepare(`
         INSERT INTO order_items (
-          order_id, product_id, quantity, price, created_at
+          order_id, product_id, quantity, price
         ) VALUES ${values}
       `).bind(...bindings).run();
     }

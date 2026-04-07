@@ -17,6 +17,7 @@ import { hashPassword } from '@/lib/password';
 import type { JWTPayload } from 'hono/utils/jwt/types';
 import { ApiError } from '@/shared/types/common';
 import { ALLOWED_ORIGINS, DEFAULT_COMMISSION_RATE, MIN_PASSWORD_LENGTH } from '@/shared/constants';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 type Bindings = {
   DB: D1Database;
@@ -254,6 +255,9 @@ sellerManagementRoutes.post('/register', async (c) => {
     if (!result.success) {
       throw new Error('Failed to create seller account');
     }
+
+    // 7. 셀러 가입 신청 → 어드민 알림
+    createDashboardNotification(db, 'admin', null, 'seller_registered', '새 셀러 가입', `${name}`, '/admin/sellers').catch(() => {});
 
     return c.json({
       success: true,
@@ -928,6 +932,8 @@ sellerManagementRoutes.post('/settlements/request', async (c) => {
     `).bind(sellerId, amount, bank_name || null, account_number || null, account_holder || null).run()
       .catch(() => null);
     if (!result) return c.json({ success: false, error: '정산 신청 실패 (settlements 테이블 없음)' }, 500);
+    // 1. 정산 신청 → 어드민 알림
+    createDashboardNotification(db, 'admin', null, 'settlement_request', '정산 신청', `셀러 #${sellerId}`, '/admin/settlement').catch(() => {});
     return c.json({ success: true, message: '정산 신청이 완료되었습니다', id: result.meta.last_row_id });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -957,6 +963,23 @@ sellerManagementRoutes.get('/settlements/stats', async (c) => {
     `).bind(sellerId).first<SettlementStatsRow>().catch(() => null);
     const defaultStats = { total_settled: 0, pending_amount: 0, approved_amount: 0, paid_amount: 0, total_pending: 0, total_approved: 0, total_paid: 0, total_requests: 0 };
     return c.json({ success: true, data: stats ? { ...defaultStats, ...stats } : defaultStats });
+  } catch (err: unknown) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ── GET /api/seller/settlements/summary ─────────────────────────────────────
+// 셀러 정산 요약: 미정산 금액, 마지막 정산, 누적 정산
+sellerManagementRoutes.get('/settlements/summary', async (c) => {
+  const db = c.env.DB;
+  const authorization = c.req.header('Authorization');
+  const sellerId = await getSellerIdFromToken(authorization, c.env.JWT_SECRET);
+  if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 401);
+
+  try {
+    const { getSellerSettlementSummary } = await import('@/lib/settlement-automation');
+    const summary = await getSellerSettlementSummary(db, sellerId);
+    return c.json({ success: true, data: summary });
   } catch (err: unknown) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -1047,11 +1070,10 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
 
   try {
     const seller = await DB.prepare(
-      `SELECT id, name, slug, description, logo_url, email,
-              base_shipping_fee, free_shipping_threshold,
-              country, currency, status, is_verified, created_at
-       FROM sellers WHERE id = ? AND status = 'ACTIVE'`
-    ).bind(sellerId).first<PublicSellerRow>();
+      `SELECT id, name, email, description, business_name, phone,
+              status, created_at
+       FROM sellers WHERE id = ? AND status = 'approved'`
+    ).bind(sellerId).first();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     return c.json({ success: true, data: seller });
@@ -1240,7 +1262,7 @@ sellerManagementRoutes.post('/alimtalk', async (c) => {
       ).bind(sellerId, kakao_channel_id, channel_name, sender_key || null, phone_number).run();
     }
 
-    return c.json({ success: true, message: '알림톡 계정이 등록되었습니다. 관리자 승인 후 활성화됩니다.' });
+    return c.json({ success: true, message: '브랜드메시지 계정이 등록되었습니다. 관리자 승인 후 활성화됩니다.' });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
@@ -1286,7 +1308,7 @@ sellerManagementRoutes.post('/alimtalk/test', async (c) => {
       `SELECT id, sender_key, status FROM alimtalk_accounts WHERE seller_id = ? LIMIT 1`
     ).bind(sellerId).first<{ id: number; sender_key: string; status: string }>();
 
-    if (!account) return c.json({ success: false, error: '알림톡 계정이 없습니다.' }, 400);
+    if (!account) return c.json({ success: false, error: '브랜드메시지 계정이 없습니다.' }, 400);
     if (account.status !== 'active') return c.json({ success: false, error: '계정이 활성 상태가 아닙니다. 관리자 승인을 기다려주세요.' }, 400);
 
     // 테스트 발송은 Aligo API 키가 설정되어 있어야 함
@@ -1305,7 +1327,7 @@ sellerManagementRoutes.post('/alimtalk/test', async (c) => {
         senderKey: account.sender_key || '',
         templateCode: 'test',
         to: phone,
-        message: '[테스트] 알림톡 발송 테스트입니다. ur-live에서 발송되었습니다.',
+        message: '[테스트] 브랜드메시지 발송 테스트입니다. ur-live에서 발송되었습니다.',
       }
     );
 

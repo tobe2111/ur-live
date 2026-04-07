@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { handleApiError, showErrorToast } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -14,16 +14,21 @@ import { captureError, captureMessage } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 
 // 🔥 Region-based lazy loading for payment components
-const TossPaymentWidget = lazy(() => 
+const TossPaymentWidget = lazy(() =>
   import('@/components/payments/TossPaymentWidget').then(m => ({ default: m.TossPaymentWidget }))
 )
-const StripeCheckout = lazy(() => 
+const StripeCheckout = lazy(() =>
   import('@/components/payments/StripeCheckout').then(m => ({ default: m.StripeCheckout }))
 )
 
+// 토스 SDK 프리로드 — 체크아웃 진입 전에 로드 시작
+if (typeof window !== 'undefined') {
+  import('@tosspayments/tosspayments-sdk').catch(() => {})
+}
+
 declare global {
   interface Window {
-    daum: any
+    daum: { Postcode: new (options: Record<string, unknown>) => { embed: (el: HTMLElement | null) => void; open: () => void } }
   }
 }
 
@@ -57,12 +62,17 @@ export default function CheckoutPage() {
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [urlParamsProcessed, setUrlParamsProcessed] = useState(false)  // URL 파라미터 처리 완료 플래그
+
+  // 바로구매 모드: navigate state로 전달된 상품만 결제
+  const directPurchaseItems = (location.state as { directPurchase?: CartItem[] } | null)?.directPurchase
+  const isDirectPurchase = !!directPurchaseItems?.length
   const [tokenRefreshing, setTokenRefreshing] = useState(false)  // 토큰 갱신 중 플래그
   
   // 배송지 관련 상태
@@ -122,6 +132,8 @@ export default function CheckoutPage() {
   }, 0)
 
   const totalAmount = subtotal + totalShippingFee
+
+  useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
 
   // ✅ BUG #18 FIX: There were TWO separate useEffect blocks both cleaning URL
   // params on `searchParams` change.  The first (lines 143-162) fired replaceState
@@ -183,38 +195,39 @@ export default function CheckoutPage() {
 
     const loadData = async () => {
       try {
-        // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
-        const cartResponse = await api.get('/api/cart')
-        
-        // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
-        let cartItemsData: CartItem[] = []
-        if (cartResponse.data?.success) {
-          const resData = cartResponse.data.data
-          if (resData?.items && Array.isArray(resData.items)) {
-            // 현재 구조: data.items
-            cartItemsData = resData.items
-          } else if (Array.isArray(resData)) {
-            // 이전 구조 호환: data가 배열
-            cartItemsData = resData
-          }
-        } else if (Array.isArray(cartResponse.data)) {
-          cartItemsData = cartResponse.data
-        }
-        
-        if (cartItemsData.length > 0) {
-          setCartItems(cartItemsData)
+        // 바로구매 모드: navigate state에서 상품 정보 사용 (장바구니 API 미호출)
+        if (isDirectPurchase && directPurchaseItems) {
+          setCartItems(directPurchaseItems)
         } else {
-          setError('장바구니가 비어있습니다.')
-          setTimeout(() => navigate('/cart'), 2000)
+          // 장바구니 조회 (requireAuth 미들웨어가 userId 자동 추출)
+          const cartResponse = await api.get('/api/cart')
+
+          // ✅ API 응답 파싱: { success: true, data: { items: [...], summary: {...} } }
+          let cartItemsData: CartItem[] = []
+          if (cartResponse.data?.success) {
+            const resData = cartResponse.data.data
+            if (resData?.items && Array.isArray(resData.items)) {
+              cartItemsData = resData.items
+            } else if (Array.isArray(resData)) {
+              cartItemsData = resData
+            }
+          } else if (Array.isArray(cartResponse.data)) {
+            cartItemsData = cartResponse.data
+          }
+
+          if (cartItemsData.length > 0) {
+            setCartItems(cartItemsData)
+          } else {
+            setError('장바구니가 비어있습니다.')
+          }
         }
 
-        // 배송지 조회 (requireAuth 미들웨어가 userId 자동 추출)
+        // 배송지 조회
         const addressResponse = await api.get('/api/shipping-addresses')
         if (addressResponse.data.success) {
           const addressList = addressResponse.data.data
           setAddresses(addressList)
 
-          // 기본 배송지 자동 선택
           const defaultAddr = addressList.find((addr: ShippingAddress) => addr.is_default === 1)
           if (defaultAddr) {
             setSelectedAddress(defaultAddr)
@@ -261,7 +274,7 @@ export default function CheckoutPage() {
       if (!container) return
 
       new window.daum.Postcode({
-        oncomplete: (data: any) => {
+        oncomplete: (data: { zonecode: string; roadAddress: string; jibunAddress: string }) => {
           setNewAddress({
             ...newAddress,
             postal_code: data.zonecode,
@@ -325,11 +338,21 @@ export default function CheckoutPage() {
   /**
    * 결제 전 주문 생성: Toss redirect 전에 DB에 주문을 먼저 기록합니다.
    * 배송지 미선택 시 예외를 throw하여 TossPaymentWidget이 결제를 중단합니다.
+   *
+   * 주문 생성 시 각 셀러별 금액(상품 소계 + 배송비)을 함께 저장하여
+   * 결제 승인(confirm) 단계에서 DB 금액 기반 검증이 가능하도록 합니다.
    */
   const handleBeforePayment = async (orderId: string): Promise<void> => {
     if (!selectedAddress) {
       setShowAddressModal(true)
       throw new Error('배송지를 선택해주세요')
+    }
+
+    // 바로구매 모드 플래그 저장 (PaymentSuccessPage에서 장바구니 비우기 스킵용)
+    if (isDirectPurchase) {
+      sessionStorage.setItem('directPurchase', 'true')
+    } else {
+      sessionStorage.removeItem('directPurchase')
     }
 
     const shippingAddress = {
@@ -341,6 +364,11 @@ export default function CheckoutPage() {
     }
 
     for (const group of Object.values(sellerGroups)) {
+      // 셀러 그룹별 배송비 계산
+      const groupShippingFee = (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold)
+        ? 0
+        : group.shipping_fee
+
       const response = await api.post('/api/orders', {
         // seller_id가 0(null에서 변환)이면 빈 문자열 → order route의 seller 검증 skip
         seller_id: group.seller_id ? String(group.seller_id) : '',
@@ -353,6 +381,7 @@ export default function CheckoutPage() {
         shipping_address: shippingAddress,
         shipping_name: selectedAddress.recipient_name,
         shipping_phone: selectedAddress.phone,
+        shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
       })
 
@@ -400,12 +429,15 @@ export default function CheckoutPage() {
             <AlertCircle className="w-5 h-5 text-red-600" />
             <p className="text-red-800">{error}</p>
           </div>
-          <Button 
-            onClick={() => navigate('/cart')} 
-            className="mt-4"
-          >
-            장바구니로 돌아가기
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+            <Button
+              onClick={() => navigate('/cart')}
+              variant="outline"
+            >
+              장바구니로 돌아가기
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -831,6 +863,7 @@ export default function CheckoutPage() {
             <div className="flex gap-2">
               <input
                 type="text"
+                inputMode="numeric"
                 value={newAddress.postal_code}
                 readOnly
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"

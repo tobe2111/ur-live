@@ -1,3 +1,12 @@
+/**
+ * PRIMARY Order Repository — used by worker/routes/order.routes.ts
+ *
+ * Handles: order creation, stock management, payment confirmation, webhooks
+ * Uses QueryBuilder pattern with batch operations.
+ *
+ * ⚠️ DO NOT confuse with features/orders/repositories/OrderRepository.ts
+ * which handles: tracking, purchase confirmation, cron jobs
+ */
 // ============================================================
 // Order Repository
 // ============================================================
@@ -37,26 +46,41 @@ export class OrderRepository {
     const totalAmount = subtotal + shippingFee;
 
     // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환
+    // seller_id 처리: 빈 문자열/null → DB 스키마에 따라 분기
+    //   - NOT NULL 스키마 (001_initial.sql): seller_id 컬럼 생략하면 DEFAULT 부재로 실패
+    //   - nullable 스키마 (0128 migration): null 전달 OK
+    // 안전 전략: seller_id가 있으면 포함, 없으면 INSERT 컬럼 자체를 제외
+    const hasSellerId = !!request.seller_id;
+    const columns = [
+      'order_number', 'user_id',
+      ...(hasSellerId ? ['seller_id'] : []),
+      'subtotal', 'shipping_fee', 'discount_amount', 'total_amount', 'currency',
+      'status', 'shipping_name', 'shipping_phone', 'shipping_address', 'shipping_memo',
+      'idempotency_key', 'locale',
+    ];
+    const placeholders = columns.map(() => '?').join(', ');
+    // discount_amount = 0, currency = 'KRW', status = 'PENDING', locale = 'ko'는 값으로 직접 전달
+    const values: any[] = [
+      request.order_number,
+      userId,
+      ...(hasSellerId ? [request.seller_id] : []),
+      subtotal,
+      shippingFee,
+      0,          // discount_amount
+      totalAmount,
+      'KRW',      // currency
+      'PENDING',  // status
+      request.shipping_name,
+      request.shipping_phone,
+      JSON.stringify(request.shipping_address),
+      request.shipping_memo ?? null,
+      request.idempotency_key,
+      'ko',       // locale
+    ];
+
     const orderResult = await this.qb.execute(
-      `INSERT INTO orders (
-        order_number, user_id, seller_id,
-        subtotal, shipping_fee, discount_amount, total_amount, currency,
-        status, shipping_name, shipping_phone, shipping_address, shipping_memo,
-        idempotency_key, locale
-      ) VALUES (?, ?, ?, ?, ?, 0, ?, 'KRW', 'PENDING', ?, ?, ?, ?, ?, 'ko')`,
-      [
-        request.order_number,
-        userId,
-        request.seller_id,
-        subtotal,
-        shippingFee,
-        totalAmount,
-        request.shipping_name,
-        request.shipping_phone,
-        JSON.stringify(request.shipping_address),
-        request.shipping_memo ?? null,
-        request.idempotency_key,
-      ],
+      `INSERT INTO orders (${columns.join(', ')}) VALUES (${placeholders})`,
+      values,
     );
 
     // Step 2: 실제 order id 조회 (TEXT or INTEGER 스키마 모두 호환)
@@ -74,16 +98,17 @@ export class OrderRepository {
         sql: `INSERT INTO order_items (
           order_id, product_id, seller_id,
           product_name, product_thumbnail, product_sku,
-          unit_price, quantity, subtotal, currency, options, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
+          price, unit_price, quantity, subtotal, currency, options, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KRW', ?, 'PENDING')`,
         params: [
           orderId,
           item.product_id,
-          item.seller_id,
+          item.seller_id || null,
           item.product_name,
           item.product_thumbnail ?? null,
           item.product_sku ?? null,
-          item.unit_price,
+          item.unit_price,       // price (NOT NULL — 구 스키마 호환)
+          item.unit_price,       // unit_price (신 스키마)
           item.quantity,
           item.subtotal,
           JSON.stringify(item.options ?? {}),
@@ -103,7 +128,7 @@ export class OrderRepository {
    */
   async findById(orderId: string): Promise<Order | null> {
     const row = await this.qb.queryOne<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name
+      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.id = ?`,
@@ -112,7 +137,7 @@ export class OrderRepository {
     if (!row) return null;
 
     const items = await this.qb.queryMany<Record<string, unknown>>(
-      'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+      'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
       [orderId]
     );
 
@@ -124,7 +149,7 @@ export class OrderRepository {
    */
   async findByOrderNumber(orderNumber: string): Promise<Order[]> {
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name
+      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.order_number = ?
@@ -135,7 +160,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -162,7 +187,7 @@ export class OrderRepository {
     const total = countRow?.count ?? 0;
 
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT o.*, s.name as seller_name
+      `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
        FROM orders o
        LEFT JOIN sellers s ON o.seller_id = s.id
        WHERE o.user_id = ?
@@ -174,7 +199,7 @@ export class OrderRepository {
     const orders = await Promise.all(
       rows.map(async row => {
         const items = await this.qb.queryMany<Record<string, unknown>>(
-          'SELECT * FROM order_items WHERE order_id = ? ORDER BY created_at',
+          'SELECT * FROM order_items WHERE order_id = ? ORDER BY id',
           [row['id']]
         );
         return this.mapOrder(row, items);
@@ -305,7 +330,7 @@ export class OrderRepository {
     if (items.length === 0) return;
 
     const statements = items.map(item => ({
-      sql: 'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+      sql: 'UPDATE products SET stock = stock + ? WHERE id = ?',
       params: [item.quantity, item.product_id],
     }));
 
@@ -338,11 +363,10 @@ export class OrderRepository {
     // Conditional UPDATE: stock_quantity >= qty 조건 포함
     const statements = items.map(item => ({
       sql: `UPDATE products
-            SET stock_quantity = stock_quantity - ?,
-                updated_at     = datetime('now')
+            SET stock = stock - ?,
+                updated_at = datetime('now')
             WHERE id = ?
-              AND stock_quantity >= ?
-              AND status = 'ACTIVE'`,
+              AND stock >= ?`,
       params: [item.quantity, item.product_id, item.quantity],
     }));
 
@@ -467,6 +491,9 @@ export class OrderRepository {
       paid_at: row['paid_at'] ? String(row['paid_at']) : undefined,
       shipped_at: row['shipped_at'] ? String(row['shipped_at']) : undefined,
       delivered_at: row['delivered_at'] ? String(row['delivered_at']) : undefined,
+      seller_name: row['seller_name'] ? String(row['seller_name']) : undefined,
+      seller_phone: row['seller_phone'] ? String(row['seller_phone']) : undefined,
+      seller_kakao_chat_url: row['seller_kakao_chat_url'] ? String(row['seller_kakao_chat_url']) : undefined,
       created_at: String(row['created_at'] ?? ''),
       updated_at: String(row['updated_at'] ?? ''),
       items: items.map(item => ({

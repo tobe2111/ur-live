@@ -90,6 +90,7 @@ export interface Product {
   compare_at_price?: number;
   currency: string;
   stock_quantity: number;
+  stock?: number; // legacy alias for stock_quantity
   sku?: string;
   thumbnail_url?: string;
   images: string[];
@@ -179,6 +180,8 @@ export interface Order {
   items?: OrderItem[];
   seller?: Seller;
   seller_name?: string;
+  seller_phone?: string;
+  seller_kakao_chat_url?: string;
 }
 
 export interface OrderItem {

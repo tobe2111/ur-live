@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 import { FirebaseAuthService } from '../services/FirebaseAuthService';
+import { createSessionCookie } from '../../../worker/utils/session';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 
 type Bindings = {
@@ -19,6 +20,7 @@ type Bindings = {
   FIREBASE_PRIVATE_KEY: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_DATABASE_URL: string;
+  JWT_SECRET: string;
 };
 
 export const kakaoRoutes = new Hono<{ Bindings: Bindings }>();
@@ -31,13 +33,9 @@ kakaoRoutes.get('/sync/callback', async (c) => {
   const { DB } = c.env;
   
   try {
-    console.log('[Kakao Sync] Callback started');
-    
     const code = c.req.query('code');
     const state = c.req.query('state') || '/';
     const error = c.req.query('error');
-    
-    console.log('[Kakao Sync] Query params:', { hasCode: !!code, state, error });
     
     if (error) {
       console.error('[Kakao Sync] OAuth error:', error);
@@ -58,7 +56,6 @@ kakaoRoutes.get('/sync/callback', async (c) => {
       const accessToken = await kakaoService.exchangeCode(code, KAKAO_REDIRECT_URI);
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
       const serviceTerms = await kakaoService.getServiceTerms(accessToken);
-      console.log('[Kakao Sync] Service terms:', serviceTerms);
       const user = await kakaoService.upsertUser(kakaoUser);
       
       const firebaseUID = FirebaseAuthService.getKakaoFirebaseUID(kakaoUser.kakaoId);
@@ -73,8 +70,20 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
-      console.log('[Kakao Sync] ✅ Login successful for user:', user.id);
-      
+      // Set httpOnly session cookie on the redirect response
+      try {
+        const sessionCookie = await createSessionCookie(
+          user.id,
+          user.name,
+          user.email || '',
+          user.profile_image || undefined,
+          c.env.JWT_SECRET,
+        );
+        c.header('Set-Cookie', sessionCookie);
+      } catch (e) {
+        console.error('[Kakao Sync] Session cookie creation failed:', e);
+      }
+
       const stateUrl = new URL(state, 'https://dummy.com');
       stateUrl.searchParams.set('firebase_token', customToken);
       stateUrl.searchParams.set('userName', user.name);
@@ -126,8 +135,7 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
     }
     
     const redirectUri = redirect_uri || 'https://live.ur-team.com/auth/kakao/callback';
-    console.log('[Kakao Callback] Starting OAuth flow...');
-    
+
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
     const firebaseService = new FirebaseAuthService(c.env);
     
@@ -147,12 +155,25 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
 
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
-    console.log('[Kakao Callback] ✅ Login successful for user:', user.id);
-    
-    return c.json({
+    // Set httpOnly session cookie for user auth (new flow)
+    let sessionCookieHeader: string | undefined;
+    try {
+      sessionCookieHeader = await createSessionCookie(
+        user.id,
+        user.name,
+        user.email || '',
+        user.profile_image || undefined,
+        c.env.JWT_SECRET,
+      );
+    } catch (e) {
+      console.error('[Kakao Callback] Session cookie creation failed:', e);
+    }
+
+    const responseBody = {
       success: true,
       data: {
         customToken,
+        session_ready: !!sessionCookieHeader,
         user: {
           id: user.id,
           name: user.name,
@@ -162,8 +183,13 @@ kakaoRoutes.post('/callback', cors(), async (c) => {
         }
       },
       message: 'Login successful'
-    });
-    
+    };
+
+    if (sessionCookieHeader) {
+      c.header('Set-Cookie', sessionCookieHeader);
+    }
+    return c.json(responseBody);
+
   } catch (error) {
     console.error('[Kakao Callback] Error:', error);
     const errorMsg = (error as Error).message || 'Unknown error';
@@ -186,8 +212,6 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
       return c.json({ success: false, error: 'Access token is required' }, 400);
     }
     
-    console.log('[Kakao Firebase] Starting token exchange...');
-    
     const kakaoService = new KakaoAuthService(DB, c.env.KAKAO_REST_API_KEY);
     const firebaseService = new FirebaseAuthService(c.env);
     
@@ -207,8 +231,6 @@ kakaoRoutes.post('/firebase', cors(), async (c) => {
     await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
 
-    console.log('[Kakao Firebase] ✅ Token exchange successful for user:', user.id);
-    
     return c.json({
       success: true,
       customToken,

@@ -1,3 +1,12 @@
+/**
+ * WORLD Region Auth Store — Firebase + Google OAuth
+ *
+ * Used by: Global region pages (world.ur-team.com)
+ * Manages: Firebase user state, ID tokens, onAuthStateChanged
+ *
+ * Mirrors useAuthKR design but uses Google OAuth instead of Kakao.
+ * Same session cookie migration note applies.
+ */
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -124,7 +133,6 @@ export const useAuthWorld = create<AuthWorldState>()(
                   // ✅ 중복 처리 방지: 이미 처리된 UID면 user+ready만 보장하고 스킵
                   const lastProcessed = sessionStorage.getItem('auth_processed_uid');
                   if (lastProcessed === firebaseUser.uid) {
-                    console.log('[AuthWorld] ⏩ Already processed, ensuring user+ready:', firebaseUser.uid);
                     const currentUser = useAuthWorld.getState().user;
                     if (!currentUser) {
                       set({ user: firebaseUser, isAuthReady: true });

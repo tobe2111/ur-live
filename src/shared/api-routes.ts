@@ -230,6 +230,8 @@ export const SELLER = {
     request: '/api/seller/settlements/request',
     /** GET  /api/seller/settlements/stats */
     stats: '/api/seller/settlements/stats',
+    /** GET  /api/seller/settlements/summary */
+    summary: '/api/seller/settlements/summary',
     /** GET  /api/seller/settlements/:id/download */
     download: (id: string | number) => `/api/seller/settlements/${id}/download` as const,
   },
@@ -350,6 +352,8 @@ export const ADMIN = {
     stats: '/api/admin/settlement/stats',
     /** GET /api/admin/settlement/records */
     records: '/api/admin/settlement/records',
+    /** POST /api/admin/settlement/execute */
+    execute: '/api/admin/settlement/execute',
   },
 
   streams: {

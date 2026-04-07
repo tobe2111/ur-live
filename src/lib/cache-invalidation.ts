@@ -31,7 +31,6 @@ export async function invalidateProductCache(productId?: number): Promise<void> 
   }
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated product cache (${cacheKeys.length} keys)`);
 }
 
 /**
@@ -54,7 +53,6 @@ export async function invalidateLiveStreamCache(streamId?: number): Promise<void
   }
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated live stream cache (${cacheKeys.length} keys)`);
 }
 
 /**
@@ -64,7 +62,6 @@ export async function invalidateLiveStreamCache(streamId?: number): Promise<void
  */
 export async function invalidateStockCache(productId: number): Promise<void> {
   await invalidateProductCache(productId);
-  console.log(`[Cache Invalidation] Invalidated stock cache for product ${productId}`);
 }
 
 /**
@@ -74,7 +71,6 @@ export async function invalidateStockCache(productId: number): Promise<void> {
  */
 export async function invalidateLiveStatusCache(streamId: number): Promise<void> {
   await invalidateLiveStreamCache(streamId);
-  console.log(`[Cache Invalidation] Invalidated live status cache for stream ${streamId}`);
 }
 
 /**
@@ -87,7 +83,6 @@ export async function invalidateOrderCache(productIds: number[]): Promise<void> 
   for (const productId of productIds) {
     await invalidateProductCache(productId);
   }
-  console.log(`[Cache Invalidation] Invalidated cache for ${productIds.length} products after order`);
 }
 
 /**
@@ -103,7 +98,6 @@ export async function invalidateCurrentProductCache(streamId: number, productId:
   ];
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated current product cache (stream ${streamId}, product ${productId})`);
 }
 
 /**
@@ -135,7 +129,6 @@ export async function invalidateUserProfileCache(userId: number, userType: 'user
   }
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated user profile cache for ${userType} ${userId} (${cacheKeys.length} keys)`);
 }
 
 /**
@@ -169,7 +162,6 @@ export async function invalidateStaticDocumentCache(
   }
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated ${documentType} cache (${cacheKeys.length} keys)`);
 }
 
 /**
@@ -190,7 +182,6 @@ export async function invalidateStockMicroCache(productId: number): Promise<void
   ];
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated stock micro-cache for product ${productId}`);
 }
 
 /**
@@ -231,5 +222,4 @@ export async function invalidateAllCache(
   }
 
   await purgeCache(cacheKeys);
-  console.log(`[Cache Invalidation] Invalidated ${cacheType} cache (${cacheKeys.length} keys)`);
 }

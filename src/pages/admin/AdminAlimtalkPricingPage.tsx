@@ -54,7 +54,7 @@ export default function AdminAlimtalkPricingPage() {
   useEffect(() => {
     const sessionToken = localStorage.getItem('admin_token') || localStorage.getItem('admin_session_token')
     const userType = localStorage.getItem('user_type')
-    if (!sessionToken || userType !== 'admin') { navigate('/admin/login'); return }
+    if (!sessionToken) { navigate('/admin/login'); return }
     loadAllData()
   }, [])
 
@@ -135,7 +135,7 @@ export default function AdminAlimtalkPricingPage() {
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">알림톡 데이터를 불러오는 중...</p>
+          <p className="text-sm text-gray-500">브랜드메시지 데이터를 불러오는 중...</p>
         </div>
       </div>
     )
@@ -221,8 +221,7 @@ export default function AdminAlimtalkPricingPage() {
         <div className="p-5 space-y-3">
           {packages.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              등록된 패키지가 없습니다<br />
-              <span className="text-xs">D1 콘솔에서 migration 0123을 실행해주세요</span>
+              등록된 패키지가 없습니다. 새 패키지를 추가해주세요.
             </p>
           ) : packages.map(pkg => (
             <div key={pkg.id} className={`border border-gray-100 rounded-xl p-4 ${pkg.is_active === 0 ? 'opacity-60' : ''}`}>

@@ -84,8 +84,6 @@ sellerRoutes.post('/login', cors(), async (c) => {
       }, 400);
     }
     
-    console.log('[Seller Login] Attempting login for:', email);
-    
     // 1. 이메일로 셀러 조회
     const seller = await DB.prepare(`
       SELECT 
@@ -157,8 +155,6 @@ sellerRoutes.post('/login', cors(), async (c) => {
     };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
     
-    console.log('[Seller Login] ✅ Login successful for seller:', seller.id);
-    
     // 5. 응답 반환 (frontend expects accessToken & refreshToken)
     return c.json({
       success: true,
@@ -227,8 +223,6 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
         error: 'Refresh Token이 필요합니다.' 
       }, 400);
     }
-    
-    console.log('[Seller Refresh] Attempting token refresh');
     
     // 1. Refresh Token 검증
     let payload: any;
@@ -310,8 +304,6 @@ sellerRoutes.post('/refresh', cors(), async (c) => {
       exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30일
     };
     const newRefreshToken = await sign(newRefreshPayload, JWT_SECRET);
-    
-    console.log('[Seller Refresh] ✅ Token refresh successful for seller:', seller.id);
     
     // 7. 응답 반환
     return c.json<AuthResponse>({

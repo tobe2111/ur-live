@@ -64,9 +64,8 @@ export default function SellerProductEditPage() {
   useEffect(() => {
     // Check authentication
     const sessionToken = localStorage.getItem('seller_token')
-    const userType = localStorage.getItem('user_type')
-    
-    if (!sessionToken || userType !== 'seller') {
+
+    if (!sessionToken) {
       navigate('/seller/login')
       return
     }
@@ -174,7 +173,7 @@ export default function SellerProductEditPage() {
         category: formData.category
       }
 
-      const response = await api.patch(`/api/seller/products/${id}`, payload, {
+      const response = await api.put(`/api/seller/products/${id}`, payload, {
         headers: { 'Authorization': `Bearer ${sessionToken}` }
       })
 

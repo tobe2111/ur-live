@@ -11,7 +11,13 @@ export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [orderInfo, setOrderInfo] = useState<any>(null)
+  const [orderInfo, setOrderInfo] = useState<{
+    orderId?: string;
+    method?: string;
+    status?: string;
+    orders?: Array<{ payment_method?: string }>;
+    payment?: { method?: string };
+  } | null>(null)
   
   // ✅ BUG #4 FIX: Use a ref for the processing flag instead of state.
   // Using state inside a useEffect closure causes a stale-closure bug:
@@ -50,8 +56,8 @@ export default function PaymentSuccessPage() {
       const auth = await getFirebaseAuth()
 
       // Firebase v10+: authStateReady() 사용 가능 시 우선 사용
-      if (typeof (auth as any).authStateReady === 'function') {
-        await (auth as any).authStateReady()
+      if (typeof (auth as unknown as Record<string, unknown>).authStateReady === 'function') {
+        await (auth as unknown as { authStateReady: () => Promise<void> }).authStateReady()
       } else {
         // Fallback: onAuthStateChanged가 처음 발화할 때까지 대기
         await new Promise<void>((resolve) => {
@@ -86,7 +92,7 @@ export default function PaymentSuccessPage() {
       // 🎯 데모 모드 감지: userId가 없으면 데모 결제로 간주
       if (!userId) {
         setOrderInfo({
-          orderId: orderId,
+          orderId: orderId ?? undefined,
           method: '테스트',
           status: 'demo'
         })
@@ -96,10 +102,17 @@ export default function PaymentSuccessPage() {
 
 
       // 2️⃣ 결제 승인 요청 (주문은 CheckoutPage에서 결제 전에 이미 생성됨)
+      // 토스 리다이렉트에서 전달된 amount를 정수로 변환 (KRW는 소수점 없음)
+      const parsedAmount = Math.round(Number(amount))
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        setError('결제 금액이 유효하지 않습니다.')
+        return
+      }
+
       const response = await api.post('/api/payments/confirm', {
         paymentKey,
         orderId,
-        amount: Number(amount),
+        amount: parsedAmount,
       })
 
       if (!response.data.success) {
@@ -110,15 +123,18 @@ export default function PaymentSuccessPage() {
       const paymentData = response.data.data
       setOrderInfo(paymentData)
 
-      // 3️⃣ 장바구니 비우기
-      try {
+      // 3️⃣ 장바구니 비우기 (바로구매 모드에서는 스킵)
+      const isDirectPurchase = sessionStorage.getItem('directPurchase') === 'true'
+      sessionStorage.removeItem('directPurchase')
+      if (!isDirectPurchase) try {
         await api.post('/api/cart/clear')
         localStorage.removeItem('hasCartItems')
       } catch (cartErr) {
       }
 
-    } catch (err: any) {
-      setError(err.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr.response?.data?.error || '결제 승인 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료
@@ -183,18 +199,18 @@ export default function PaymentSuccessPage() {
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-[#007aff]" />
                   주문 정보
                 </h2>
-                
+
                 <div className="space-y-2.5 sm:space-y-3">
-                  {/* 주문번호 - 모바일에서 세로 배치, 데스크톱에서 가로 배치 */}
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-2">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">주문번호</span>
-                    <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#007aff] font-mono tracking-tight">
+                  {/* 주문번호 */}
+                  <div className="flex justify-between items-start gap-3">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">주문번호</span>
+                    <span className="text-xs sm:text-sm font-semibold text-[#007aff] font-mono break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium">결제 방법</span>
+
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-xs sm:text-sm text-[#6e6e73] font-medium shrink-0">결제 방법</span>
                     <span className="text-xs sm:text-sm lg:text-base font-semibold text-[#1d1d1f]">
                       {orderInfo.payment?.method || orderInfo.orders?.[0]?.payment_method || '-'}
                     </span>

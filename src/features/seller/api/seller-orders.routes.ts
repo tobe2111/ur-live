@@ -328,6 +328,7 @@ sellerOrdersRoutes.get('/products', async (c) => {
       LEFT JOIN orders o ON oi.order_id = o.id
       WHERE p.seller_id = ?
         AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
+        AND COALESCE(p.is_supply_product, 0) = 0
     `;
     const params: unknown[] = [sellerId];
 
@@ -447,8 +448,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       // 신규 스키마: slug, stock_quantity, thumbnail_url 존재
       result = await db.prepare(`
         INSERT INTO products
-          (seller_id, name, slug, description, price, stock_quantity, thumbnail_url, image_url, category, product_type, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', datetime('now'), datetime('now'))
+          (seller_id, name, slug, description, price, stock_quantity, thumbnail_url, image_url, category, product_type, status, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
       `).bind(
         sellerId, name, slug, description || null, price,
         stock ?? 0, image_url || null, image_url || null, category || null
@@ -458,8 +459,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
         // 프로덕션 스키마: stock, image_url, status 존재 (slug, stock_quantity 없음)
         result = await db.prepare(`
           INSERT INTO products
-            (seller_id, name, description, price, stock, image_url, category, product_type, status, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', datetime('now'), datetime('now'))
+            (seller_id, name, description, price, stock, image_url, category, product_type, status, is_active, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 'ACTIVE', 1, datetime('now'), datetime('now'))
         `).bind(
           sellerId, name, description || null, price,
           stock ?? 0, image_url || null, category || null
@@ -468,8 +469,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
         // 최소 스키마: status 없는 경우
         result = await db.prepare(`
           INSERT INTO products
-            (seller_id, name, description, price, stock, image_url, category, product_type, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', datetime('now'), datetime('now'))
+            (seller_id, name, description, price, stock, image_url, category, product_type, is_active, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'live', 1, datetime('now'), datetime('now'))
         `).bind(
           sellerId, name, description || null, price,
           stock ?? 0, image_url || null, category || null
@@ -512,6 +513,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       live_only_price?: number | null;
       live_price_enabled?: boolean;
       status?: string;
+      is_active?: boolean | number;
     }>();
 
     const db = c.env.DB;
@@ -541,6 +543,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
     if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }
     if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }
+    if (body.is_active !== undefined) { fields.push('is_active = ?'); values.push(body.is_active ? 1 : 0); }
 
     if (fields.length === 0) return c.json({ success: false, error: '수정할 내용이 없습니다.' }, 400);
 

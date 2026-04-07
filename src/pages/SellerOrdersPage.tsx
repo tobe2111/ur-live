@@ -53,6 +53,20 @@ interface Order {
   items?: OrderItem[]
 }
 
+function parseShippingAddress(address: string, detail?: string): { postal_code: string; address1: string; address2: string } {
+  if (!address) return { postal_code: '', address1: '', address2: detail || '' }
+  try {
+    const parsed = JSON.parse(address)
+    return {
+      postal_code: parsed.postal_code || parsed.zipcode || '',
+      address1: parsed.address1 || parsed.address || '',
+      address2: parsed.address2 || parsed.detail || detail || '',
+    }
+  } catch {
+    return { postal_code: '', address1: address, address2: detail || '' }
+  }
+}
+
 export default function SellerOrdersPage() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
@@ -687,18 +701,27 @@ export default function SellerOrdersPage() {
                 {/* Shipping Info */}
                 <div className="border-b pb-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">배송 정보</h3>
+                  {(() => {
+                    const addr = parseShippingAddress(selectedOrder.shipping_address)
+                    return (
                   <div className="space-y-2 text-sm">
                     <div>
-                      <p className="text-gray-500 mb-1">수령인</p>
+                      <p className="text-gray-500 mb-1">받는 사람</p>
                       <p className="font-medium">{selectedOrder.shipping_name}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 mb-1">연락처</p>
                       <p className="font-medium">{selectedOrder.shipping_phone}</p>
                     </div>
+                    {addr.postal_code && (
                     <div>
-                      <p className="text-gray-500 mb-1">배송지 주소</p>
-                      <p className="font-medium">{selectedOrder.shipping_address}</p>
+                      <p className="text-gray-500 mb-1">우편번호</p>
+                      <p className="font-medium">{addr.postal_code}</p>
+                    </div>
+                    )}
+                    <div>
+                      <p className="text-gray-500 mb-1">주소</p>
+                      <p className="font-medium">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p>
                     </div>
                     {selectedOrder.courier && selectedOrder.tracking_number && (
                       <>
@@ -713,6 +736,8 @@ export default function SellerOrdersPage() {
                       </>
                     )}
                   </div>
+                    )
+                  })()}
                 </div>
 
                 {/* Order Items */}
@@ -803,13 +828,27 @@ export default function SellerOrdersPage() {
                         >
                           <option value="">택배사 선택</option>
                           <option value="CJ대한통운">CJ대한통운</option>
+                          <option value="로젠택배">로젠택배</option>
+                          <option value="옐로우캡">옐로우캡</option>
                           <option value="우체국택배">우체국택배</option>
                           <option value="한진택배">한진택배</option>
-                          <option value="로젠택배">로젠택배</option>
                           <option value="롯데택배">롯데택배</option>
-                          <option value="GS택배">GS택배</option>
-                          <option value="쿠팡로켓배송">쿠팡로켓배송</option>
-                          <option value="홈픽">홈픽</option>
+                          <option value="드림택배">드림택배</option>
+                          <option value="KGB택배">KGB택배</option>
+                          <option value="대신택배">대신택배</option>
+                          <option value="일양로지스">일양로지스</option>
+                          <option value="경동택배">경동택배</option>
+                          <option value="천일택배">천일택배</option>
+                          <option value="합동택배">합동택배</option>
+                          <option value="CVSnet편의점택배">CVSnet편의점택배</option>
+                          <option value="우편발송">우편발송</option>
+                          <option value="GTX로지스">GTX로지스</option>
+                          <option value="건영택배">건영택배</option>
+                          <option value="EMS">EMS</option>
+                          <option value="DHL">DHL</option>
+                          <option value="FedEx">FedEx</option>
+                          <option value="UPS">UPS</option>
+                          <option value="USPS">USPS</option>
                         </select>
                       </div>
                       <div>

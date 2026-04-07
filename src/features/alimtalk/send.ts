@@ -43,7 +43,7 @@ export async function sendSellerAlimtalk(opts: SendAlimtalkOptions): Promise<{ s
 
   if (!credit || credit.balance < 1) {
     console.warn(`[Alimtalk] seller ${sellerId} 잔액 부족 (${credit?.balance ?? 0}건)`);
-    return { success: false, error: '알림톡 크레딧이 부족합니다' };
+    return { success: false, error: '브랜드메시지 크레딧이 부족합니다' };
   }
 
   // 템플릿 코드 미설정 (검수 중) → 발송 스킵, 로그만 기록
@@ -79,7 +79,7 @@ export async function sendSellerAlimtalk(opts: SendAlimtalkOptions): Promise<{ s
       DB.prepare(`
         INSERT INTO credit_transactions (seller_id, type, amount, description, created_at)
         VALUES (?, 'deduct', -1, ?, datetime('now'))
-      `).bind(sellerId, `알림톡 발송 - ${orderId ?? '수동'}`),
+      `).bind(sellerId, `브랜드메시지 발송 - ${orderId ?? '수동'}`),
       DB.prepare(`
         INSERT INTO alimtalk_logs (seller_id, receiver, template_code, message, order_id, success, created_at)
         VALUES (?, ?, ?, ?, ?, 1, datetime('now'))

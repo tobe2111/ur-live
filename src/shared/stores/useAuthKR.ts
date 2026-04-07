@@ -1,3 +1,13 @@
+/**
+ * KR Region Auth Store — Firebase + Kakao OAuth
+ *
+ * Used by: KR region pages (live.ur-team.com)
+ * Manages: Firebase user state, ID tokens, onAuthStateChanged
+ *
+ * Note: With session cookie auth, this store's role is reduced.
+ * New login flow uses httpOnly cookies, but this remains as fallback
+ * and for existing Firebase-based features.
+ */
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -125,9 +135,8 @@ export const useAuthKR = create<AuthKRState>()(
             const { getIdTokenFromBackend } = await import('@/shared/utils/auth-api');
             
             if (featureFlags.backendToken) {
-              console.log('[AuthKR] 🚀 Using backend token endpoint (Phase 2.3)');
               const backendToken = await getIdTokenFromBackend(user.uid, forceRefresh);
-              
+
               if (backendToken) {
                 // Cache the backend token
                 const newCache: TokenCache = {
@@ -135,7 +144,6 @@ export const useAuthKR = create<AuthKRState>()(
                   expiresAt: Date.now() + TOKEN_EXPIRY_MS
                 };
                 get().setTokenCache(newCache);
-                console.log('[AuthKR] ✅ Backend token cached');
                 return backendToken;
               }
               
@@ -150,7 +158,6 @@ export const useAuthKR = create<AuthKRState>()(
           // Original client-side token logic (fallback)
           // 캐시된 토큰 사용 (강제 갱신 아님 + 캐시 유효)
           if (!forceRefresh && tokenCache && Date.now() < tokenCache.expiresAt) {
-            console.log('[AuthKR] Using cached ID token (expires in', Math.round((tokenCache.expiresAt - Date.now()) / 1000), 'seconds)');
             return tokenCache.token;
           }
 
@@ -164,7 +171,6 @@ export const useAuthKR = create<AuthKRState>()(
               return null;
             }
 
-            console.log('[AuthKR] Fetching new ID token from Firebase', forceRefresh ? '(forced)' : '(cache expired/missing)');
             const token = await user.getIdToken(forceRefresh);
             
             // 캐시 저장
@@ -356,7 +362,7 @@ export const useAuthKR = create<AuthKRState>()(
                   //    user와 isAuthReady만 보장하고 스킵 (API 중복 호출 방지)
                   const lastProcessed = sessionStorage.getItem('auth_processed_uid');
                   if (lastProcessed === firebaseUser.uid) {
-                    console.log('[AuthKR] ⏩ Already processed, ensuring user+ready:', firebaseUser.uid);
+                    // Already processed by KakaoCallback/LoginPage, just ensure user+ready
                     const currentUser = get().user;
                     if (!currentUser) {
                       set({ user: firebaseUser, isAuthReady: true });
@@ -434,7 +440,7 @@ export const useAuthKR = create<AuthKRState>()(
                           idToken,
                           ''
                         );
-                        console.log('[AuthKR] ✅ accessToken 저장 완료 (API 요청 가능)');
+                        // accessToken saved successfully
                       } catch (e) {
                         console.warn('[AuthKR] ⚠️ useAuthStore 업데이트 실패:', e);
                       }

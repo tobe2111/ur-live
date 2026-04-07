@@ -19,7 +19,7 @@ export class ProductRepository {
       `SELECT p.*, s.name as seller_name, s.slug as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
-       WHERE p.id = ? AND p.status != 'DELETED'`,
+       WHERE p.id = ? AND p.is_active = 1`,
       [id]
     );
     return row ? this.mapProduct(row) : null;
@@ -36,7 +36,7 @@ export class ProductRepository {
     const { seller_id, category_id, status, search, page = 1, limit = 20 } = params;
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ["p.status != 'DELETED'"];
+    const conditions: string[] = ["p.is_active = 1"];
     const queryParams: unknown[] = [];
 
     if (seller_id) {
@@ -84,7 +84,7 @@ export class ProductRepository {
       `SELECT p.*, s.name as seller_name, s.slug as seller_slug
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
-       WHERE p.id IN (${placeholders}) AND p.status = 'ACTIVE'`,
+       WHERE p.id IN (${placeholders}) AND (p.is_active = 1 OR p.status = 'ACTIVE')`,
       ids
     );
     return rows.map(r => this.mapProduct(r));
@@ -101,7 +101,7 @@ export class ProductRepository {
       price: Number(row['price'] ?? 0),
       compare_at_price: row['compare_at_price'] ? Number(row['compare_at_price']) : undefined,
       currency: String(row['currency'] ?? 'KRW'),
-      stock_quantity: Number(row['stock_quantity'] ?? 0),
+      stock_quantity: Number(row['stock_quantity'] ?? row['stock'] ?? 0),
       sku: row['sku'] ? String(row['sku']) : undefined,
       thumbnail_url: row['thumbnail_url'] ? String(row['thumbnail_url']) : undefined,
       images: safeJsonParse(String(row['images'] ?? '[]'), []),

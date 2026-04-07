@@ -105,24 +105,21 @@ streamsRouter.get('/', async (c) => {
         ls.description,
         ls.youtube_video_id,
         ls.status,
-        ls.thumbnail_url,
-        ls.viewer_count,
-        ls.scheduled_at,
-        ls.ended_at,
         ls.seller_id,
         ls.created_at,
         ls.updated_at,
-        s.name       AS seller_name,
-        s.profile_image   AS seller_image,
-        cp.id             AS current_product_id,
-        cp.name           AS current_product_name,
-        cp.price          AS current_product_price,
-        cp.original_price AS current_product_original_price,
-        cp.discount_rate  AS current_product_discount_rate,
-        cp.thumbnail_url  AS current_product_image,
-        cp.image_url      AS current_product_image_url,
-        cp.stock_quantity AS current_product_stock_quantity,
-        cp.description    AS current_product_description
+        ls.scheduled_at,
+        ls.seller_instagram,
+        ls.seller_youtube,
+        s.name             AS seller_name,
+        cp.id              AS current_product_id,
+        cp.name            AS current_product_name,
+        cp.price           AS current_product_price,
+        cp.original_price  AS current_product_original_price,
+        cp.discount_rate   AS current_product_discount_rate,
+        cp.image_url       AS current_product_image_url,
+        cp.stock           AS current_product_stock,
+        cp.description     AS current_product_description
       FROM live_streams ls
       LEFT JOIN sellers s ON s.id = ls.seller_id
       LEFT JOIN products cp ON cp.id = ls.current_product_id
@@ -213,11 +210,10 @@ streamsRouter.get('/:id', async (c) => {
         `SELECT
           ls.*,
           s.name       AS seller_name,
-          s.profile_image   AS seller_image,
           cp.id        AS current_product_id,
           cp.name      AS current_product_name,
           cp.price     AS current_product_price,
-          cp.thumbnail_url AS current_product_image
+          cp.image_url AS current_product_image
         FROM live_streams ls
         LEFT JOIN sellers s ON s.id = ls.seller_id
         LEFT JOIN products cp ON cp.id = ls.current_product_id
@@ -262,7 +258,7 @@ streamsRouter.get('/:id/products', async (c) => {
       .prepare(`
         SELECT
           id, name, description, price, original_price, discount_rate,
-          image_url, thumbnail_url, stock, stock_quantity,
+          image_url, stock,
           category, seller_id, is_active, created_at, updated_at
         FROM products
         WHERE live_stream_id = ? AND is_active = 1
@@ -285,7 +281,7 @@ streamsRouter.get('/:id/products', async (c) => {
           .prepare(`
             SELECT
               id, name, description, price, original_price, discount_rate,
-              image_url, thumbnail_url, stock, stock_quantity,
+              image_url, stock,
               category, seller_id, is_active, created_at, updated_at
             FROM products WHERE id = ?
           `)
@@ -294,12 +290,9 @@ streamsRouter.get('/:id/products', async (c) => {
 
         if (fallbackProduct) {
           products = [fallbackProduct as unknown as Record<string, unknown>];
-          console.log(`[Streams] Using current_product_id ${stream.current_product_id} as fallback for stream ${streamId}`);
         }
       }
     }
-
-    console.log(`[Streams] Loaded ${products.length} products for stream ${streamId}`);
 
     return c.json({
       success: true,
@@ -368,12 +361,19 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
     const db = c.env.DB;
     const streamId = c.req.param('id');
 
-    const row = await db
-      .prepare('SELECT viewer_count FROM live_streams WHERE id = ?')
-      .bind(streamId)
-      .first<{ viewer_count: number }>();
+    // viewer_count 컬럼이 없을 수 있으므로 안전하게 조회
+    let viewerCount = 0;
+    try {
+      const row = await db
+        .prepare('SELECT viewer_count FROM live_streams WHERE id = ?')
+        .bind(streamId)
+        .first<{ viewer_count: number }>();
+      viewerCount = row?.viewer_count ?? 0;
+    } catch {
+      // viewer_count 컬럼 없음 — 0 반환
+    }
 
-    return c.json({ success: true, data: { viewer_count: row?.viewer_count ?? 0 } });
+    return c.json({ success: true, data: { viewer_count: viewerCount } });
   } catch (err: unknown) {
     console.error('[Streams] Viewer count error:', err);
     return c.json({ success: false, error: 'Failed to fetch viewer count' }, 500);

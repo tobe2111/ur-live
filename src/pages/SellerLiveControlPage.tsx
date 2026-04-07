@@ -55,16 +55,14 @@ export default function SellerLiveControlPage() {
 
     if (wsStreamData.current_product_id !== currentProductId) {
       setCurrentProductId(wsStreamData.current_product_id)
-      console.log(`[WS] Current product updated to ${wsStreamData.current_product_id}`)
     }
   }, [wsStreamData?.current_product_id, selectedStream?.id])
 
   useEffect(() => {
     // Check seller session (JWT-based) - seller_token이 primary
     const sellerToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
-    const userType = localStorage.getItem('user_type')
-    
-    if (!sellerToken || userType !== 'seller') {
+
+    if (!sellerToken) {
       navigate('/seller/login')
       return
     }

@@ -16,8 +16,12 @@ import {
   Loader2,
   Image as ImageIcon,
   DollarSign,
-  Box
+  Box,
+  Download,
+  Upload
 } from 'lucide-react'
+import { downloadSellerTemplate } from '@/utils/product-template'
+import BulkUploadModal from '@/components/BulkUploadModal'
 
 interface Product {
   id: number
@@ -34,9 +38,12 @@ interface Product {
 export default function SellerProductsPage() {
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
+  const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [activeTab, setActiveTab] = useState<'my' | 'supply'>('my')
 
   useEffect(() => {
     loadProducts()
@@ -55,12 +62,24 @@ export default function SellerProductsPage() {
         return
       }
 
-      const response = await api.get('/api/seller/products', {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        setProducts(response.data.data)
+      const headers = { 'Authorization': `Bearer ${sessionToken}` }
+      const [prodRes, supplyRes] = await Promise.allSettled([
+        api.get('/api/seller/products', { headers }),
+        api.get('/api/supply/products', { headers }),
+      ])
+      if (prodRes.status === 'fulfilled' && prodRes.value.data.success) {
+        setProducts(prodRes.value.data.data || [])
+      }
+      if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
+        const d = supplyRes.value.data.data
+        const items = Array.isArray(d) ? d : d?.items || []
+        setSupplyProducts(items.filter((p: Record<string, unknown>) =>
+          String(p.request_status || '').toUpperCase() === 'APPROVED'
+        ).map((p: Record<string, unknown>) => ({
+          id: p.id, name: p.name, description: p.description || '',
+          price: p.retail_price || p.price, stock: p.stock || 0,
+          image_url: p.image_url || '', is_active: 1, category: p.category || '',
+        } as unknown as Product)))
       }
     } catch (error: any) {
       console.error('Failed to load products:', error)
@@ -79,9 +98,9 @@ export default function SellerProductsPage() {
       const sessionToken = localStorage.getItem('seller_token')
       
 
-      const response = await api.patch(
+      const response = await api.put(
         `/api/seller/products/${productId}`,
-        { is_active: !currentStatus },
+        { is_active: !currentStatus, status: !currentStatus ? 'ACTIVE' : 'PAUSED' },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 
@@ -140,13 +159,31 @@ export default function SellerProductsPage() {
               판매 상품을 등록하고 관리할 수 있습니다.
             </p>
           </div>
-          <Button
-            onClick={() => navigate('/seller/products/new')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 flex items-center gap-2 justify-center text-sm sm:text-base w-full sm:w-auto"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>상품 등록</span>
-          </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              onClick={downloadSellerTemplate}
+              variant="outline"
+              className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
+            >
+              <Download className="w-4 h-4" />
+              <span>대량등록 양식 다운로드</span>
+            </Button>
+            <Button
+              onClick={() => setShowBulkUpload(true)}
+              variant="outline"
+              className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
+            >
+              <Upload className="w-4 h-4" />
+              <span>대량등록</span>
+            </Button>
+            <Button
+              onClick={() => navigate('/seller/products/new')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 flex items-center gap-2 justify-center text-sm flex-1 sm:flex-none"
+            >
+              <Plus className="w-4 h-4" />
+              <span>상품 등록</span>
+            </Button>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -156,8 +193,29 @@ export default function SellerProductsPage() {
               <Trash2 className="w-5 h-5" />
               <p>{error}</p>
             </div>
+            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
           </div>
         )}
+
+        {/* 탭: 내 상품 / 공급 상품 */}
+        <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setActiveTab('my')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            내 상품 ({products.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('supply')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              activeTab === 'supply' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            공급 상품 ({supplyProducts.length})
+          </button>
+        </div>
 
         {/* Loading */}
         {loading ? (
@@ -167,7 +225,7 @@ export default function SellerProductsPage() {
         ) : (
           /* Products List */
           <div>
-            {products.length === 0 ? (
+            {(activeTab === 'my' ? products : supplyProducts).length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm border text-center py-12 sm:py-20">
                 <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-sm sm:text-base text-gray-600 mb-4">등록된 상품이 없습니다.</p>
@@ -196,7 +254,7 @@ export default function SellerProductsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {products.map((product) => (
+                      {(activeTab === 'my' ? products : supplyProducts).map((product) => (
                         <tr key={product.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4">
                             <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
@@ -278,7 +336,7 @@ export default function SellerProductsPage() {
 
                 {/* Mobile Card View - Shown on mobile/tablet */}
                 <div className="lg:hidden space-y-3 sm:space-y-4">
-                  {products.map((product) => (
+                  {(activeTab === 'my' ? products : supplyProducts).map((product) => (
                     <div key={product.id} className="bg-white rounded-lg shadow-sm border p-3 sm:p-4">
                       <div className="flex gap-3 sm:gap-4">
                         {/* Product Image */}
@@ -423,6 +481,12 @@ export default function SellerProductsPage() {
           </div>
         )}
       </div>
+      <BulkUploadModal
+        open={showBulkUpload}
+        onClose={() => setShowBulkUpload(false)}
+        tokenKey="seller_token"
+        onSuccess={loadProducts}
+      />
     </SellerLayout>
   )
 }
