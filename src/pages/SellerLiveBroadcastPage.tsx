@@ -1028,6 +1028,37 @@ export default function SellerLiveBroadcastPage() {
                         </div>
                       )}
 
+                      {/* 상품 표시 설정 */}
+                      <div className="bg-[#f5f5f7] rounded-lg p-3 mb-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-[12px] font-semibold text-[#1d1d1f]">상품 표시 모드</p>
+                          <p className="text-[11px] text-[#6e6e73]">
+                            {(stream as any).product_display_mode === 'all' ? '등록된 전체 상품 표시' : '소개 중인 상품만 표시'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            const newMode = (stream as any).product_display_mode === 'all' ? 'current_only' : 'all'
+                            try {
+                              const token = localStorage.getItem('seller_token')
+                              await api.put(`/api/seller/streams/${stream.id}/product-display`, { mode: newMode }, {
+                                headers: { Authorization: `Bearer ${token}` }
+                              })
+                              toast.success(newMode === 'all' ? '전체 상품이 표시됩니다' : '현재 상품만 표시됩니다')
+                              ;(stream as any).product_display_mode = newMode
+                              setStreams([...streams])
+                            } catch { toast.error('설정 변경에 실패했습니다') }
+                          }}
+                          className={`relative w-11 h-6 rounded-full transition-colors ${
+                            (stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                            (stream as any).product_display_mode === 'all' ? 'translate-x-5' : 'translate-x-0.5'
+                          }`} />
+                        </button>
+                      </div>
+
                       <div className="flex gap-2 flex-wrap">
                         {stream.status === 'scheduled' && (
                           <Button

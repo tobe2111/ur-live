@@ -79,6 +79,7 @@ interface Stream {
   seller_name?: string
   seller_tiktok?: string
   created_at?: string
+  product_display_mode?: 'current_only' | 'all'
 }
 
 interface Product {
@@ -1041,6 +1042,13 @@ function ReelCard({
   // ============================================
   // Open Product List Sheet
   // ============================================
+  // 전체 상품 모드: 자동 로드
+  useEffect(() => {
+    if (stream.product_display_mode === 'all') {
+      loadStreamProducts()
+    }
+  }, [stream.product_display_mode, stream.id])
+
   function openProductListSheet() {
     loadStreamProducts()
     setProductListSheetOpen(true)
@@ -1287,10 +1295,49 @@ function ReelCard({
             </div>
           </div>
 
-          {/* Unified bottom bar: product info + basket + buy */}
+          {/* 전체 상품 모드: 가로 스크롤 상품 목록 */}
+          {stream.product_display_mode === 'all' && streamProducts.length > 0 && (
+            <div className="mb-2 -mx-1">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar px-1 pb-1">
+                {streamProducts.map(p => {
+                  const isHighlighted = p.id === stream.current_product_id
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setCurrentProduct(p)
+                      }}
+                      className={`flex-shrink-0 flex items-center gap-2 rounded-xl px-2.5 py-2 backdrop-blur-xl border transition-all active:scale-95 ${
+                        isHighlighted
+                          ? 'bg-red-500/20 border-red-500/40'
+                          : 'bg-black/30 border-white/10'
+                      }`}
+                      style={{ maxWidth: '200px' }}
+                    >
+                      <img
+                        src={p.image_url || p.image || ''}
+                        alt=""
+                        className="w-10 h-10 rounded-lg object-cover shrink-0 bg-white/10"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                      <div className="text-left min-w-0">
+                        <p className="text-[11px] text-white font-medium truncate">{p.name}</p>
+                        <p className="text-[12px] font-bold text-red-400">₩{(p.price || 0).toLocaleString()}</p>
+                      </div>
+                      {isHighlighted && (
+                        <span className="shrink-0 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 하단 바: 현재 상품 + 장바구니 + 구매 */}
           <div className="flex items-center gap-1.5 w-full rounded-2xl bg-black/40 backdrop-blur-xl px-3 py-2 border border-white/[0.08]">
-            
-            {/* Product info - left side - 클릭 비활성화 */}
+
+            {/* Product info */}
             <div
               className="flex flex-col items-start min-w-0 flex-1 text-left animate-fade-in"
               key={currentProduct?.id || 'default'}
@@ -1310,7 +1357,7 @@ function ReelCard({
               </div>
             </div>
 
-            {/* Basket button - Opens product list */}
+            {/* Basket */}
             <button
               onClick={handleAddToCart}
               disabled={!product || addingToCart}
@@ -1325,7 +1372,7 @@ function ReelCard({
               </span>
             </button>
 
-            {/* Seller: Change Product Button - 셀러는 "구매하기" 대신 "상품 변경" 버튼 표시 */}
+            {/* Seller: Change Product / User: Buy */}
             {isSeller && product ? (
               <button
                 onClick={handleChangeProduct}
@@ -1337,19 +1384,14 @@ function ReelCard({
                     ? 'bg-gray-500/50 text-white/50 opacity-50 cursor-not-allowed'
                     : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl'
                 }`}
-                aria-label="Change to this product"
               >
                 {changingProduct ? '⏳ 전환 중...' : isCurrentProduct ? '✅ 소개 중' : '🔄 변경하기'}
               </button>
             ) : (
-              /* Buy button - 일반 유저만 "구매하기" 버튼 표시 */
               <button
                 onClick={() => {
-                  if (currentProduct) {
-                    handleCheckout() // 직접 결제 처리
-                  } else {
-                    showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
-                  }
+                  if (currentProduct) handleCheckout()
+                  else showAlert('판매 중인 상품이 없습니다.', 'info', '상품 없음')
                 }}
                 disabled={!product}
                 className={`shrink-0 rounded-lg bg-red-500 px-3.5 py-1.5 text-[12px] font-extrabold text-white shadow-lg shadow-red-500/30 transition-all active:scale-95 ${
