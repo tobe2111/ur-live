@@ -132,6 +132,7 @@ interface SettlementRecordRow {
 interface IdRow {
   id: number;
   status?: string;
+  commission_rate?: number;
 }
 
 export const adminManagementRoutes = new Hono<{ Bindings: Env }>();

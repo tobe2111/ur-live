@@ -158,7 +158,7 @@ paymentsRouter.post('/confirm', async (c) => {
           aligoUserId: c.env.ALIGO_USER_ID,
           aligoSenderKey: c.env.ALIGO_SENDER_KEY ?? '',
           senderPhone: c.env.ALIGO_SENDER_PHONE,
-          sellerId: order.seller_id,
+          sellerId: Number(order.seller_id),
           receiver: order.shipping_phone,
           receiverName: order.shipping_name ?? '고객',
           templateCode: c.env.ALIGO_TPL_ORDER_CONFIRM ?? 'TBD',

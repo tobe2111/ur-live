@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Eye, ShoppingBag, MessageCircle, Share2, X, Star, Check, Minus, Plus, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
+import { Eye, ShoppingBag, MessageCircle, Share2, X, Send, Heart, Loader2, ChevronLeft } from 'lucide-react'
 import axios from 'axios'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getUserIdSync as getUserId } from '@/utils/auth'
@@ -11,12 +11,8 @@ import { useProductStock } from '@/hooks/useProductStock'
 import type { ChatMessage } from '@/hooks/useFirebaseChat'
 import Toast from '@/components/Toast'
 import { toast } from '@/hooks/useToast'
-import { createLogger } from '@/utils/logger'
-import { useAuthStore } from '@/shared/stores'
 import { DonationEffect } from '@/components/LiveDonation'
 import '@/utils/console-suppressor'
-
-const log = createLogger('LivePageV2')
 
 // Axios-like error shape for catch blocks
 interface ApiError {
@@ -115,22 +111,6 @@ interface ReelData {
 // ============================================
 // Utility Functions
 // ============================================
-const usernames = [
-  'minjae_92', 'yuna_shop', 'hyejin.k', 'joonho_lee', 'soyeon_99',
-  'dohyun_park', 'seulgi.m', 'taehyung_fan', 'nayeon_j', 'woojin.c',
-]
-
-const chatTexts = [
-  '와 대박', '이거 진짜 좋아요', '가격 너무 착하다',
-  '색상 이쁘다', '사이즈 추천해주세요!', '라이브 할인 최고',
-  '지금 사야되나요?', '품절되기 전에 빨리!', '배송 얼마나 걸려요?',
-  '후기 좋던데', '이거 선물용으로도 괜찮나요?', '재입고 언제 해요?',
-]
-
-function getRandomItem<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]
-}
-
 function formatViewers(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
   return n.toString()
@@ -402,6 +382,106 @@ function ProductListSheet({
   )
 }
 
+// Countdown hook for scheduled streams
+function useCountdown(targetDate: string | undefined) {
+  const [remaining, setRemaining] = useState('')
+
+  useEffect(() => {
+    if (!targetDate) return
+
+    const update = () => {
+      const diff = new Date(targetDate).getTime() - Date.now()
+      if (diff <= 0) {
+        setRemaining('곧 시작됩니다')
+        return
+      }
+      const days = Math.floor(diff / 86400000)
+      const hours = Math.floor((diff % 86400000) / 3600000)
+      const minutes = Math.floor((diff % 3600000) / 60000)
+      const seconds = Math.floor((diff % 60000) / 1000)
+
+      if (days > 0) {
+        setRemaining(`D-${days} ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+      } else {
+        setRemaining(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+      }
+    }
+
+    update()
+    const interval = setInterval(update, 1000)
+    return () => clearInterval(interval)
+  }, [targetDate])
+
+  return remaining
+}
+
+// Scheduled stream overlay
+function ScheduledOverlay({ stream, onGoHome }: { stream: Stream; onGoHome: () => void }) {
+  const countdown = useCountdown(stream.scheduled_at)
+
+  const formattedDate = stream.scheduled_at
+    ? `${new Date(stream.scheduled_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} ${new Date(stream.scheduled_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+    : null
+
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-5 px-8">
+        <div className="px-5 py-2 bg-blue-600 rounded-full flex items-center gap-2">
+          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-white text-sm font-bold">방송 예정</span>
+        </div>
+
+        <h2 className="text-white text-xl font-bold text-center leading-tight">
+          {stream.title}
+        </h2>
+
+        {(stream.seller_name || stream.streamerName) && (
+          <p className="text-white/70 text-sm">
+            @{stream.seller_name || stream.streamerName}
+          </p>
+        )}
+
+        {stream.scheduled_at && (
+          <div className="text-center">
+            <p className="text-white/60 text-xs mb-2">방송 시작까지</p>
+            <p className="text-white text-3xl font-bold font-mono tracking-wider">
+              {countdown}
+            </p>
+            <p className="text-white/50 text-sm mt-2">{formattedDate}</p>
+          </div>
+        )}
+
+        {!stream.scheduled_at && (
+          <p className="text-white/60 text-sm">방송 시작 시간이 아직 정해지지 않았습니다</p>
+        )}
+
+        <div className="flex gap-3 mt-2">
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ title: stream.title, url: window.location.href })
+              } else {
+                navigator.clipboard?.writeText(window.location.href)
+              }
+            }}
+            className="px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-medium transition-colors"
+          >
+            공유하기
+          </button>
+          <button
+            onClick={onGoHome}
+            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white/80 rounded-full text-sm font-medium transition-colors"
+          >
+            홈으로
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ReelCard Component
 function ReelCard({ 
   reel, 
@@ -420,8 +500,6 @@ function ReelCard({
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<YTPlayer | null>(null)
-  // Check if user came from homepage or direct link
-  const [isDirectLink, setIsDirectLink] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
@@ -512,24 +590,19 @@ function ReelCard({
 
     const initializePlayer = () => {
       try {
-        log.debug(`[ReelCard] Initializing player for stream ${stream.id}:`, stream.youtube_video_id)
         // @ts-ignore
         if (!window.YT || !window.YT.Player) {
-          log.debug(`[ReelCard] YouTube API not ready for stream ${stream.id}`)
           return
         }
         if (!isMounted) {
-          log.debug(`[ReelCard] Component unmounted for stream ${stream.id}`)
           return
         }
 
         const playerElement = document.getElementById(`youtube-player-${stream.id}`)
         if (!playerElement) {
-          log.debug(`[ReelCard] Player element not found for stream ${stream.id}`)
           return
         }
 
-        log.debug(`[ReelCard] Creating YouTube player for stream ${stream.id}`)
         playerElement.innerHTML = ''
 
         // @ts-ignore
@@ -556,10 +629,14 @@ function ReelCard({
           events: {
             onReady: (event: YTPlayerEvent) => {
               if (!isMounted) return
-              log.debug(`[ReelCard] YouTube Player ready for stream ${stream.id}:`, stream.youtube_video_id)
               playerRef.current = event.target
               setPlayerReady(true)
-              setShowPlayButton(true) // Show play button overlay
+              // 자동 재생 (음소거 상태) - 오버레이는 PLAYING 상태에서 제거됨
+              try {
+                event.target.playVideo()
+              } catch (e) {
+                // autoplay 실패 시 사용자 탭 필요
+              }
             },
             onStateChange: (event: YTPlayerEvent) => {
               if (!isMounted) return
@@ -592,13 +669,10 @@ function ReelCard({
 
     // @ts-ignore
     if (window.YT && window.YT.Player) {
-      log.debug(`[ReelCard] YouTube API already loaded, initializing stream ${stream.id}`)
       initializePlayer()
     } else {
-      log.debug(`[ReelCard] YouTube API not loaded, queueing callback for stream ${stream.id}`)
       const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]')
       if (!existingScript) {
-        log.debug('[ReelCard] Loading YouTube IFrame API script')
         const tag = document.createElement('script')
         tag.src = 'https://www.youtube.com/iframe_api'
         tag.async = true
@@ -609,12 +683,10 @@ function ReelCard({
       // Store callback in array to support multiple reels
       // @ts-ignore
       if (!window.youtubeCallbacks) {
-        log.debug('[ReelCard] Creating YouTube callbacks array')
         // @ts-ignore
         window.youtubeCallbacks = []
         // @ts-ignore
         window.onYouTubeIframeAPIReady = () => {
-          log.debug('[ReelCard] YouTube IFrame API ready, executing callbacks:', window.youtubeCallbacks.length)
           // @ts-ignore
           window.youtubeCallbacks.forEach(cb => cb())
           // @ts-ignore
@@ -623,7 +695,6 @@ function ReelCard({
       }
       // @ts-ignore
       window.youtubeCallbacks.push(() => {
-        log.debug(`[ReelCard] Executing queued callback for stream ${stream.id}`)
         if (isMounted) initializePlayer()
       })
     }
@@ -646,7 +717,6 @@ function ReelCard({
       if (playerRef.current && !isActive) {
         try {
           playerRef.current.pauseVideo()
-          log.debug(`[ReelCard] Paused video for stream ${stream.id} (inactive)`)
         } catch (e) {
           // Ignore errors
         }
@@ -660,7 +730,6 @@ function ReelCard({
       try {
         playerRef.current.pauseVideo()
         setShowPlayButton(true)
-        log.debug(`[ReelCard] Paused video for stream ${stream.id} (not active)`)
       } catch (e) {
         // Ignore errors
       }
@@ -677,9 +746,8 @@ function ReelCard({
         playerRef.current.playVideo()
         setIsMuted(false)
         setShowPlayButton(false)
-        log.debug('[ReelCard] Video started with audio enabled')
       } catch (error) {
-        log.error('[ReelCard] Failed to start video:', error)
+        console.error('[ReelCard] Failed to start video:', error)
       }
     }
   }
@@ -710,7 +778,6 @@ function ReelCard({
               setProductChangeToast(`🎁 새로운 상품: ${newProduct.name}`)
             }
 
-            log.debug(`[WS] Product changed to ${newProduct.name}`)
           }
         } catch (error) {
           console.error('[WS] Error loading new product:', error)
@@ -731,7 +798,6 @@ function ReelCard({
         return { ...prev, stock: polledProduct.stock }
       })
 
-      log.debug(`[Stock] Stock updated to ${polledProduct.stock}`)
 
       if (polledProduct.stock === 0) {
         setProductChangeToast(`🔴 ${polledProduct.name}이(가) 품절되었습니다!`)
@@ -751,7 +817,6 @@ function ReelCard({
         const response = await axios.get(`/api/streams/${stream.id}/current-product`)
         if (response.data.success && response.data.data) {
           setCurrentProduct(response.data.data)
-          log.debug('✅ Initial product loaded (full data)')
         } else if (response.data.success && !response.data.data) {
           // current_product_id가 null → 상품 없음 상태로 명시적 초기화
           setCurrentProduct(null)
@@ -831,47 +896,6 @@ function ReelCard({
 
     setAddingToCart(true)
     try {
-      const userId = getUserId()
-      
-      log.debug('[handleAddToCart] 🛒 Starting add to cart:', {
-        userId,
-        productId: currentProduct.id,
-        productName: currentProduct.name,
-        stock: currentProduct.stock
-      })
-      
-      if (!userId) {
-        localStorage.setItem('loginReturnUrl', window.location.pathname)
-        
-        const tempCartData = {
-          productId: currentProduct.id,
-          productName: currentProduct.name,
-          quantity: 1,
-          priceSnapshot: currentProduct.price,
-          liveStreamId: stream.id
-        }
-        localStorage.setItem('tempCartItem', JSON.stringify(tempCartData))
-        
-        showAlert('로그인이 필요합니다. 로그인 후 자동으로 장바구니에 담아드립니다.', 'info', '로그인 필요')
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 1500)
-        return
-      }
-      
-      // POST to server (JWT에서 userId 자동 추출)
-      const accessToken = useAuthStore.getState().accessToken;
-      log.debug('[handleAddToCart] 🔑 Token before API:', accessToken?.substring(0, 20));
-      
-      if (!accessToken) {
-        log.warn('[handleAddToCart] ❌ No token, redirecting to login');
-        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요');
-        setTimeout(() => navigate('/login'), 1500);
-        return;
-      }
-      
-      log.debug('[handleAddToCart] 📡 Calling API /api/cart')
-      
       const response = await api.post('/api/cart', {
         product_id: currentProduct.id,
         quantity: 1,
@@ -879,9 +903,6 @@ function ReelCard({
         live_stream_id: stream.id,
       })
       
-      log.debug('[handleAddToCart] ✅ API response:', response.data)
-      
-      // Set flag
       localStorage.setItem('hasCartItems', 'true')
       
       // 🎯 장바구니 아이템 추가 이벤트 발생 (아이콘 애니메이션용)
@@ -893,12 +914,9 @@ function ReelCard({
       const systemMsg = `${maskedName}님이 ${currentProduct.name}을(를) 담았습니다!`
 
       try {
-        log.debug('[handleAddToCart] 📢 Sending system message...')
         await sendChatMessage(systemMsg, 0, '🎉 시스템', 'system')
-        log.debug('[handleAddToCart] ✅ System message sent successfully')
-      } catch (error) {
-        // 서버 전송 실패해도 로컬 채팅에 직접 추가 (사용자 본인에게만 보임)
-        log.warn('[handleAddToCart] Server send failed, adding local message')
+      } catch {
+        // 시스템 메시지 전송 실패는 무시
       }
     } catch (error: unknown) {
       console.error('[handleAddToCart] ❌ Error:', error)
@@ -945,47 +963,14 @@ function ReelCard({
     
     setCheckingOut(true)
     try {
-      const userId = getUserId()
-      
-      if (!userId) {
-        localStorage.setItem('loginReturnUrl', window.location.pathname)
-        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요')
-        setCheckingOut(false)
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 1500)
-        return
-      }
-      
-      // ✅ 먼저 현재 상품을 장바구니에 추가
-      const accessToken = useAuthStore.getState().accessToken;
-      log.debug('[Checkout] 🔑 Token before checkout:', accessToken?.substring(0, 20));
-      
-      if (!accessToken) {
-        log.warn('[Checkout] ❌ No token');
-        showAlert('로그인이 필요합니다.', 'warning', '로그인 필요');
-        setCheckingOut(false);
-        setTimeout(() => navigate('/login'), 1500);
-        return;
-      }
-
-      const cartData = {
+      await api.post('/api/cart', {
         product_id: currentProduct.id,
         quantity: 1,
         price_snapshot: currentProduct.price,
         live_stream_id: stream.id,
-      }
-      
-      log.debug('[Checkout] Adding current product to cart:', cartData)
-      
-      await api.post('/api/cart', cartData)
+      })
       localStorage.setItem('hasCartItems', 'true')
-      
-      // 🎯 장바구니 아이템 추가 이벤트 발생
       window.dispatchEvent(new CustomEvent('cartItemAdded'))
-      
-      // ✅ 결제 페이지로 바로 이동
-      log.debug('[Checkout] Navigating to checkout')
       navigate('/checkout')
       
     } catch (error: unknown) {
@@ -1049,7 +1034,6 @@ function ReelCard({
       setShowNotification(true)
       setTimeout(() => setShowNotification(false), 2000)
 
-      log.debug('[Seller] Product changed successfully to:', product.id)
     } catch (error: unknown) {
       console.error('[Seller] Failed to change product:', error)
       const apiErr = isApiError(error) ? error : undefined
@@ -1256,66 +1240,12 @@ function ReelCard({
         className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!aspect-video"
       />
 
-      {/* 예약 방송: 별도 UI */}
+      {/* 예약 방송 UI */}
       {stream.status === 'scheduled' && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-5 px-8">
-            {/* Scheduled Badge */}
-            <div className="px-5 py-2 bg-blue-600 rounded-full flex items-center gap-2">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-white text-sm font-bold">방송 예정</span>
-            </div>
-
-            {/* Stream Title */}
-            <h2 className="text-white text-xl font-bold text-center leading-tight">
-              {stream.title}
-            </h2>
-
-            {/* Scheduled Time */}
-            {stream.scheduled_at && (
-              <div className="text-center">
-                <p className="text-white/60 text-xs mb-1">방송 시작 예정</p>
-                <p className="text-white text-lg font-semibold">
-                  {new Date(stream.scheduled_at).toLocaleDateString('ko-KR', {
-                    month: 'long',
-                    day: 'numeric',
-                    weekday: 'short',
-                  })} {new Date(stream.scheduled_at).toLocaleTimeString('ko-KR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
-            )}
-
-            {/* Seller Name */}
-            {(stream.seller_name || stream.streamerName) && (
-              <p className="text-white/70 text-sm">
-                @{stream.seller_name || stream.streamerName}
-              </p>
-            )}
-
-            {/* 알림 설정 안내 */}
-            <div className="mt-2 px-6 py-3 bg-white/10 rounded-xl">
-              <p className="text-white/80 text-sm text-center">
-                방송이 시작되면 알림을 받으실 수 있습니다
-              </p>
-            </div>
-
-            {/* 홈으로 버튼 */}
-            <button
-              onClick={() => navigate('/')}
-              className="mt-2 px-8 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-medium transition-colors"
-            >
-              홈으로 돌아가기
-            </button>
-          </div>
-        </div>
+        <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
-      {/* 라이브/종료 방송: 로딩 → 입장 → 재생 중 */}
+      {/* 라이브/종료 방송: 로딩 오버레이 (준비되면 자동 재생) */}
       {stream.status !== 'scheduled' && showPlayButton && (
         <button
           onClick={playerReady ? handleVideoClick : undefined}
@@ -1328,33 +1258,19 @@ function ReelCard({
           disabled={!playerReady}
         >
           <div className="flex flex-col items-center gap-4">
-            {/* Live Badge */}
             <div className="px-4 py-1.5 bg-red-600 rounded-full flex items-center gap-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               <span className="text-white text-sm font-bold">LIVE</span>
             </div>
-
-            {/* 통일된 로딩 UI: 항상 "라이브 입장 중..." */}
             <div className="relative">
-              <div className={`h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full ${playerReady ? '' : 'animate-spin'}`} />
-              {playerReady && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-              )}
-              {!playerReady && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
-                </div>
-              )}
+              <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+              </div>
             </div>
             <div className="text-center px-6">
               <p className="text-white text-xl font-bold mb-1.5">라이브 입장 중...</p>
-              <p className="text-white/60 text-sm">
-                {playerReady ? '탭하여 라이브 시청 시작' : '잠시만 기다려주세요'}
-              </p>
+              <p className="text-white/60 text-sm">잠시만 기다려주세요</p>
             </div>
           </div>
         </button>
@@ -1679,11 +1595,7 @@ export default function LivePageV2() {
   const containerRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   
-  // 스트리머 상품 선택 UI 상태
-  const [isStreamer, setIsStreamer] = useState(false)
-  const [showProductSelector, setShowProductSelector] = useState(false)
   const [currentStream, setCurrentStream] = useState<Stream | null>(null)
-  const [changingProduct, setChangingProduct] = useState(false)
   
   // 실시간 시청자 수
   const [viewerCount, setViewerCount] = useState<number>(0)
@@ -1697,45 +1609,28 @@ export default function LivePageV2() {
     const userName = urlParams.get('userName')
 
     if (loginSuccess === 'success' && session && userId) {
-      log.debug('[LivePageV2] 💾 로그인 성공 - localStorage 저장:', {
-        session: session ? '있음' : '없음',
-        userId,
-        userName: userName ? decodeURIComponent(userName) : null
-      })
-
-      // CRITICAL: API 클라이언트가 읽을 수 있도록 올바른 키로 저장
-      localStorage.setItem('user_session_token', session)  // ✅ 올바른 키
+      localStorage.setItem('user_session_token', session)
       localStorage.setItem('user_id', userId)
-      
-      // user_type은 seller/admin이 아닌 경우에만 user로 설정
+
       const existingUserType = localStorage.getItem('user_type')
       if (existingUserType !== 'seller' && existingUserType !== 'admin') {
-        localStorage.setItem('user_type', 'user')  // ✅ 사용자 타입 저장
+        localStorage.setItem('user_type', 'user')
       }
-      
+
       if (userName) {
         localStorage.setItem('user_name', decodeURIComponent(userName))
       }
 
-      // 이전 키 제거 (호환성 정리)
       localStorage.removeItem('session')
 
-      // URL 파라미터 제거 (깔끔한 URL 유지)
       urlParams.delete('login')
       urlParams.delete('session')
       urlParams.delete('userId')
       urlParams.delete('userName')
-      
+
       const newSearch = urlParams.toString()
       const newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '')
       window.history.replaceState({}, '', newUrl)
-
-      log.debug('[LivePageV2] ✅ localStorage 저장 완료:', {
-        user_session_token: localStorage.getItem('user_session_token') ? '있음' : '없음',
-        user_type: localStorage.getItem('user_type'),
-        user_id: localStorage.getItem('user_id'),
-        user_name: localStorage.getItem('user_name')
-      })
     }
   }, [])
 
@@ -1779,13 +1674,6 @@ export default function LivePageV2() {
         // Homepage link: Show ALL streams (with scroll)
         const shouldShowSingleStream = hasStreamId && !isFromHomepage
         setIsDirectLink(shouldShowSingleStream)
-        
-        log.debug('[LivePageV2] Navigation context:', {
-          hasStreamId,
-          isFromHomepage,
-          shouldShowSingleStream,
-          referrer
-        })
 
         // Load streams (single or all based on context)
         let streams: Stream[] = []
@@ -1794,11 +1682,9 @@ export default function LivePageV2() {
           // DIRECT LINK: Load only the requested stream
           try {
             const singleStreamResponse = await axios.get(`/api/streams/${streamId}`)
-            log.debug('[LivePageV2] Single stream API response:', singleStreamResponse.data)
             
             if (singleStreamResponse.data.success && singleStreamResponse.data.data) {
               streams = [singleStreamResponse.data.data]
-              log.debug('[LivePageV2] Loaded single stream (direct link)')
             }
           } catch (error) {
             console.error('[LivePageV2] Single stream API failed:', error)
@@ -1807,11 +1693,9 @@ export default function LivePageV2() {
           // HOMEPAGE LINK: Load ALL active streams
           try {
             const streamsResponse = await axios.get('/api/streams')
-            log.debug('[LivePageV2] All streams API response:', streamsResponse.data)
             
             if (streamsResponse.data.success && streamsResponse.data.data?.length > 0) {
               streams = streamsResponse.data.data
-              log.debug('[LivePageV2] Loaded all streams:', streams.length)
             }
           } catch (error) {
             console.error('[LivePageV2] Streams API failed:', error)
@@ -1824,14 +1708,6 @@ export default function LivePageV2() {
           const currentStreamData = streams.find(s => s.id === parseInt(streamId))
           if (currentStreamData) {
             setCurrentStream(currentStreamData)
-            
-            // Check streamer permission
-            const userType = localStorage.getItem('user_type')
-            const userId = getUserId()
-            if (userType === 'seller' && userId && currentStreamData.seller_id === parseInt(userId)) {
-              setIsStreamer(true)
-              log.debug('[LivePageV2] 스트리머 권한 확인됨')
-            }
           }
         }
 
@@ -1847,7 +1723,6 @@ export default function LivePageV2() {
           })
         }
 
-        log.debug('[LivePageV2] Created reels:', reelsData.length)
         
         // Set initial active index based on streamId BEFORE setReels
         let initialIndex = 0
@@ -1855,7 +1730,6 @@ export default function LivePageV2() {
           const foundIndex = reelsData.findIndex(r => r.stream.id === parseInt(streamId))
           if (foundIndex !== -1) {
             initialIndex = foundIndex
-            log.debug('[LivePageV2] Initial index for stream', streamId, ':', initialIndex)
           }
         }
         
@@ -1888,31 +1762,11 @@ export default function LivePageV2() {
     // Update URL without reload
     if (window.location.pathname !== `/live/${activeStreamId}`) {
       window.history.replaceState(null, '', `/live/${activeStreamId}`)
-      log.debug('[LivePageV2] URL updated to:', `/live/${activeStreamId}`)
     }
     
     // Update currentStream
     if (currentStream?.id !== activeStreamId) {
       setCurrentStream(activeReel.stream)
-      
-      // Check streamer permission for new stream
-      const userType = localStorage.getItem('user_type')
-      const userId = getUserId()
-      const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
-      
-      log.debug('[LivePageV2] Checking seller permission:', {
-        userType,
-        userId,
-        hasAccessToken: !!accessToken,
-        streamSellerId: activeReel.stream.seller_id
-      })
-      
-      if (userType === 'seller' && userId && activeReel.stream.seller_id === parseInt(userId)) {
-        setIsStreamer(true)
-        log.debug('[LivePageV2] ✅ User is seller of this stream')
-      } else {
-        setIsStreamer(false)
-      }
     }
   }, [activeIndex, reels])
 
@@ -1924,7 +1778,6 @@ export default function LivePageV2() {
     // Scroll to the active reel
     const targetElement = containerRef.current.children[activeIndex] as HTMLElement
     if (targetElement) {
-      log.debug('[LivePageV2] Scrolling to index:', activeIndex)
       targetElement.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
     }
   }, [reels])
@@ -1978,50 +1831,6 @@ export default function LivePageV2() {
       clearInterval(countInterval)
     }
   }, [currentStream?.id])
-
-  // 스트리머 전용: 상품 변경 함수
-  const handleChangeProduct = async (productId: number) => {
-    if (!currentStream || !streamId) return
-
-    try {
-      setChangingProduct(true)
-      
-      // JWT 기반 인증 토큰 사용 - seller_token이 primary
-      const accessToken = localStorage.getItem('seller_token') || localStorage.getItem('access_token')
-      
-      if (!accessToken) {
-        toast.info('로그인이 필요합니다.')
-        return
-      }
-
-      const response = await api.post(
-        `/api/seller/streams/${streamId}/change-product`,
-        { productId },
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }
-      )
-
-      if (response.data.success) {
-        // 현재 스트림 정보 업데이트
-        setCurrentStream({
-          ...currentStream,
-          current_product_id: productId
-        })
-        toast.success('상품이 변경되었습니다!')
-        setShowProductSelector(false)
-      } else {
-        toast.error('상품 변경에 실패했습니다: ' + (response.data.error || '알 수 없는 오류'))
-      }
-    } catch (error) {
-      console.error('[LivePageV2] Change product error:', error)
-      toast.error('상품 변경 중 오류가 발생했습니다.')
-    } finally {
-      setChangingProduct(false)
-    }
-  }
 
   // ✅ 로딩 중 표시
   if (loading) {
@@ -2089,111 +1898,6 @@ export default function LivePageV2() {
         }}
       />
       
-      {/* 우측 상단 "상품 변경" 버튼 제거 - 각 릴 카드 내부 버튼으로 통일 */}
-      
-      {/* 상품 선택 모달도 제거 - 필요 없음 */}
-      {false && showProductSelector && (
-        <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              log.debug('[LivePageV2] 배경 클릭으로 모달 닫기')
-              setShowProductSelector(false)
-            }
-          }}
-        >
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
-            {/* 헤더 */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">상품 선택</h2>
-              <button
-                onClick={() => setShowProductSelector(false)}
-                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
-              >
-                <X size={24} className="text-gray-400" />
-              </button>
-            </div>
-            
-            {/* 상품 목록 */}
-            <div className="overflow-y-auto max-h-[calc(80vh-140px)] p-6">
-              {reels.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
-                  <ShoppingBag size={48} className="mx-auto mb-4 opacity-50" />
-                  <p>등록된 상품이 없습니다</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {reels.filter((reel): reel is ReelData & { product: Product } => reel.product !== null).map((reel) => {
-                    const isCurrentProduct = currentStream?.current_product_id === reel.product.id
-                    
-                    return (
-                      <button
-                        key={reel.product.id}
-                        onClick={() => handleChangeProduct(reel.product.id)}
-                        disabled={changingProduct || isCurrentProduct}
-                        className={`relative p-4 rounded-xl border-2 transition-all text-left ${
-                          isCurrentProduct
-                            ? 'border-purple-500 bg-purple-500/10'
-                            : 'border-gray-700 hover:border-purple-400 bg-gray-800/50'
-                        } ${
-                          changingProduct ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        {/* 현재 상품 배지 */}
-                        {isCurrentProduct && (
-                          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-purple-500 text-white text-xs font-bold rounded-full">
-                            <Check size={12} />
-                            <span>현재 상품</span>
-                          </div>
-                        )}
-                        
-                        {/* 상품 정보 */}
-                        <div className="flex gap-3">
-                          <img
-                            src={reel.product.image_url || reel.product.image}
-                            alt={reel.product.name}
-                            className="w-20 h-20 object-cover rounded-lg"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-white text-sm mb-1 truncate">
-                              {reel.product.name}
-                            </h3>
-                            <div className="flex items-baseline gap-2 mb-1">
-                              <span className="text-lg font-bold text-purple-400">
-                                ${reel.product.price.toFixed(2)}
-                              </span>
-                              {reel.product.originalPrice > reel.product.price && (
-                                <span className="text-xs text-gray-400 line-through">
-                                  ${reel.product.originalPrice.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                              <div className="flex items-center gap-1">
-                                <Star size={12} className="fill-yellow-400 text-yellow-400" />
-                                <span>{reel.product.rating}</span>
-                              </div>
-                              <span>•</span>
-                              <span>{reel.product.sold.toLocaleString()} sold</span>
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-            
-            {/* 푸터 */}
-            <div className="p-6 border-t border-gray-700 bg-gray-900/50">
-              <p className="text-sm text-gray-400 text-center">
-                선택한 상품이 시청자들에게 강조 표시됩니다
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
       
       <div
         ref={containerRef}

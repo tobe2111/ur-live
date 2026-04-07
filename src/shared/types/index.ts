@@ -178,6 +178,7 @@ export interface Order {
   // Joined
   items?: OrderItem[];
   seller?: Seller;
+  seller_name?: string;
 }
 
 export interface OrderItem {
