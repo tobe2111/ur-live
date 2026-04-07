@@ -355,7 +355,7 @@ export default function ProductDetailPage() {
         {/* Product Description */}
         {product.description && (
           <div className="px-5 py-3">
-            <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+            <p className="text-[13px] text-gray-400 leading-relaxed whitespace-pre-wrap">
               {product.description}
             </p>
           </div>

@@ -47,7 +47,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
       <div className="w-full max-w-sm rounded-lg bg-[#121212] p-6 shadow-xl">
         <div className="mb-4 flex justify-center">{getIcon()}</div>
         {title && <h2 className="mb-2 text-center text-lg font-bold text-white">{title}</h2>}
-        <p className="mb-6 text-center text-sm text-gray-600">{message}</p>
+        <p className="mb-6 text-center text-sm text-gray-400">{message}</p>
         <div className="flex gap-2">
           {type === 'confirm' && (
             <button
@@ -81,7 +81,7 @@ export default function CartPage() {
     return (
       <div className="flex flex-col bg-[#0A0A0A]">
         <div className="flex items-center justify-between border-b bg-[#121212] px-4 py-4">
-          <button onClick={() => navigate(-1)} className="text-gray-600">
+          <button onClick={() => navigate(-1)} className="text-gray-400">
             <X className="h-6 w-6" />
           </button>
           <h1 className="text-lg font-bold">장바구니</h1>
@@ -390,7 +390,7 @@ function CartPageContent() {
       <div className="flex min-h-screen items-center justify-center bg-[#121212]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
-          <p className="mt-4 text-sm text-gray-600">로딩 중...</p>
+          <p className="mt-4 text-sm text-gray-400">로딩 중...</p>
         </div>
       </div>
     )
