@@ -81,6 +81,8 @@ export function RewardAdCard() {
 
         // 3초 후 리워드 메시지 숨김
         setTimeout(() => setRewarded(null), 3000)
+        // 잔액 갱신 이벤트 발생
+        window.dispatchEvent(new CustomEvent('pointsBalanceChanged'))
       } else {
         alert(res.data.error || '리워드 지급에 실패했습니다')
       }

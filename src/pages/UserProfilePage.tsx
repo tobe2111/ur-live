@@ -20,13 +20,22 @@ function TeamPointsCard() {
   const navigate = useNavigate()
   const [balance, setBalance] = useState(0)
   const [loading, setLoading] = useState(true)
-  useEffect(() => {
+
+  const fetchBalance = () => {
     import('@/lib/api').then(({ default: api }) => {
       api.get('/api/points/balance')
         .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
         .catch(() => {})
         .finally(() => setLoading(false))
     })
+  }
+
+  useEffect(() => {
+    fetchBalance()
+    // 광고 리워드 등으로 잔액 변경 시 자동 갱신
+    const handler = () => fetchBalance()
+    window.addEventListener('pointsBalanceChanged', handler)
+    return () => window.removeEventListener('pointsBalanceChanged', handler)
   }, [])
   return (
     <div className="px-5 py-3">
