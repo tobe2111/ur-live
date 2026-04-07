@@ -501,6 +501,7 @@ function ReelCard({
   const playerRef = useRef<YTPlayer | null>(null)
   const [playerReady, setPlayerReady] = useState(false)
   const [showPlayButton, setShowPlayButton] = useState(true)
+  const [autoplayFailed, setAutoplayFailed] = useState(false)
   const [isMuted, setIsMuted] = useState(true) // Start muted for autoplay
 
   // Cart & Purchase state
@@ -623,7 +624,7 @@ function ReelCard({
           width: '100%',
           videoId: stream.youtube_video_id,
           playerVars: {
-            autoplay: 0, // Don't autoplay (user must click)
+            autoplay: 1, // 음소거 상태에서 자동재생
             mute: 1,
             controls: 0,
             modestbranding: 1,
@@ -643,12 +644,18 @@ function ReelCard({
               if (!isMounted) return
               playerRef.current = event.target
               setPlayerReady(true)
-              // 자동 재생 (음소거 상태) - 오버레이는 PLAYING 상태에서 제거됨
+              // 자동 재생 시도 (음소거 상태)
               try {
                 event.target.playVideo()
-              } catch (e) {
-                // autoplay 실패 시 사용자 탭 필요
+              } catch {
+                // autoplay 실패
               }
+              // 2초 후에도 재생 안 되면 탭 유도 CTA 표시
+              setTimeout(() => {
+                if (isMounted && showPlayButton) {
+                  setAutoplayFailed(true)
+                }
+              }, 2000)
             },
             onStateChange: (event: YTPlayerEvent) => {
               if (!isMounted) return
@@ -656,6 +663,7 @@ function ReelCard({
                 // @ts-ignore
                 if (event.data === window.YT.PlayerState.PLAYING) {
                   setShowPlayButton(false)
+                  setAutoplayFailed(false)
                 } else if (event.data === window.YT.PlayerState.PAUSED) {
                   setShowPlayButton(true)
                 }
@@ -679,32 +687,11 @@ function ReelCard({
       }
     }
 
-    // @ts-ignore
+    // @ts-ignore - YouTube API는 index.html에서 미리 로드됨
     if (window.YT && window.YT.Player) {
       initializePlayer()
     } else {
-      const existingScript = document.querySelector('script[src*="youtube.com/iframe_api"]')
-      if (!existingScript) {
-        const tag = document.createElement('script')
-        tag.src = 'https://www.youtube.com/iframe_api'
-        tag.async = true
-        const firstScriptTag = document.getElementsByTagName('script')[0]
-        firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag)
-      }
-
-      // Store callback in array to support multiple reels
-      // @ts-ignore
-      if (!window.youtubeCallbacks) {
-        // @ts-ignore
-        window.youtubeCallbacks = []
-        // @ts-ignore
-        window.onYouTubeIframeAPIReady = () => {
-          // @ts-ignore
-          window.youtubeCallbacks.forEach(cb => cb())
-          // @ts-ignore
-          window.youtubeCallbacks = []
-        }
-      }
+      // API 로드 완료 시 콜백 등록 (index.html에서 초기화된 배열 사용)
       // @ts-ignore
       window.youtubeCallbacks.push(() => {
         if (isMounted) initializePlayer()
@@ -1184,13 +1171,13 @@ function ReelCard({
         <ScheduledOverlay stream={stream} onGoHome={() => navigate('/')} />
       )}
 
-      {/* 라이브/종료 방송: 로딩 오버레이 (준비되면 자동 재생) */}
+      {/* 라이브/종료 방송: 로딩 → 자동재생 → 실패 시 탭 유도 */}
       {stream.status !== 'scheduled' && showPlayButton && (
         <button
           onClick={playerReady ? handleVideoClick : undefined}
           className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all ${
-            playerReady
-              ? 'bg-black/40 backdrop-blur-[2px] cursor-pointer'
+            autoplayFailed
+              ? 'bg-black/50 cursor-pointer'
               : 'bg-black/60 cursor-default'
           }`}
           aria-label="방송 입장하기"
@@ -1201,16 +1188,35 @@ function ReelCard({
               <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               <span className="text-white text-sm font-bold">LIVE</span>
             </div>
-            <div className="relative">
-              <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
-              </div>
-            </div>
-            <div className="text-center px-6">
-              <p className="text-white text-xl font-bold mb-1.5">라이브 입장 중...</p>
-              <p className="text-white/60 text-sm">잠시만 기다려주세요</p>
-            </div>
+
+            {autoplayFailed ? (
+              <>
+                {/* 자동재생 실패 → 명확한 재생 버튼 */}
+                <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/40">
+                  <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+                <div className="text-center px-6">
+                  <p className="text-white text-xl font-bold mb-1">터치하여 시청 시작</p>
+                  <p className="text-white/50 text-xs">소리와 함께 라이브가 시작됩니다</p>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* 로딩 스피너 */}
+                <div className="relative">
+                  <div className="h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+                  </div>
+                </div>
+                <div className="text-center px-6">
+                  <p className="text-white text-xl font-bold mb-1.5">라이브 입장 중...</p>
+                  <p className="text-white/60 text-sm">잠시만 기다려주세요</p>
+                </div>
+              </>
+            )}
           </div>
         </button>
       )}
