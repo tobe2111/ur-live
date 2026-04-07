@@ -1,10 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X } from 'lucide-react'
 import api from '@/lib/api'
-import TopNav from '@/components/main/TopNav'
-import CategoryHeader from '@/components/browse/CategoryHeader'
-import ProductGrid from '@/components/browse/ProductGrid'
-import { SlidersHorizontal, ChevronDown, X } from 'lucide-react'
 
 interface Product {
   id: number
@@ -18,8 +15,6 @@ interface Product {
   stock: number
   category?: string
   seller_name?: string
-  is_new?: boolean
-  is_popular?: boolean
 }
 
 type SortOption = 'popular' | 'newest' | 'price_asc' | 'price_desc' | 'discount'
@@ -32,35 +27,31 @@ const SORT_LABELS: Record<SortOption, string> = {
   discount: '할인율순',
 }
 
-const PRICE_RANGES = [
-  { label: '전체', min: 0, max: Infinity },
-  { label: '1만원 미만', min: 0, max: 10000 },
-  { label: '1만~3만원', min: 10000, max: 30000 },
-  { label: '3만~5만원', min: 30000, max: 50000 },
-  { label: '5만~10만원', min: 50000, max: 100000 },
-  { label: '10만원 이상', min: 100000, max: Infinity },
-]
+const ITEMS_PER_PAGE = 6
 
 export default function BrowsePage() {
+  const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchParams] = useSearchParams()
   const category = searchParams.get('category') || 'all'
-
-  // 필터/정렬 상태
-  const [sortBy, setSortBy] = useState<SortOption>('popular')
-  const [priceRangeIdx, setPriceRangeIdx] = useState(0)
+  const [sortBy, setSortBy] = useState<SortOption>(
+    (searchParams.get('sort') as SortOption) || 'popular'
+  )
   const [showSortDropdown, setShowSortDropdown] = useState(false)
-  const [showFilterPanel, setShowFilterPanel] = useState(false)
-  const [minPrice, setMinPrice] = useState('')
-  const [maxPrice, setMaxPrice] = useState('')
-  const [useCustomPrice, setUseCustomPrice] = useState(false)
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
-    loadProducts()
+    setLoading(true)
+    const url = category === 'all'
+      ? '/api/products?limit=100'
+      : `/api/products?category=${encodeURIComponent(category)}&limit=100`
+    api.get(url)
+      .then(r => { if (r.data.success) setProducts(r.data.data || []) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [category])
 
-  // 정렬 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handler = () => setShowSortDropdown(false)
     if (showSortDropdown) {
@@ -69,108 +60,71 @@ export default function BrowsePage() {
     }
   }, [showSortDropdown])
 
-  async function loadProducts() {
-    try {
-      setLoading(true)
-      const url = category === 'all'
-        ? '/api/products?limit=100'
-        : `/api/products?category=${encodeURIComponent(category)}&limit=100`
-
-      const response = await api.get(url)
-      if (response.data.success) {
-        setProducts(response.data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to load products:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 필터 + 정렬 적용 (클라이언트 사이드)
-  const filteredAndSorted = useMemo(() => {
-    let result = [...products]
-
-    // 가격 필터
-    if (useCustomPrice) {
-      const min = Number(minPrice) || 0
-      const max = Number(maxPrice) || Infinity
-      result = result.filter(p => {
-        const price = p.current_price || p.price
-        return price >= min && price <= max
-      })
-    } else if (priceRangeIdx > 0) {
-      const range = PRICE_RANGES[priceRangeIdx]
-      result = result.filter(p => {
-        const price = p.current_price || p.price
-        return price >= range.min && price < range.max
-      })
-    }
-
-    // 정렬
+  const sorted = useMemo(() => {
+    const result = [...products]
     switch (sortBy) {
-      case 'popular':
-        result.sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0))
-        break
-      case 'newest':
-        // API에서 이미 최신순 정렬 → 기본 유지
-        break
-      case 'price_asc':
-        result.sort((a, b) => (a.current_price || a.price) - (b.current_price || b.price))
-        break
-      case 'price_desc':
-        result.sort((a, b) => (b.current_price || b.price) - (a.current_price || a.price))
-        break
-      case 'discount':
-        result.sort((a, b) => b.discount_rate - a.discount_rate)
-        break
+      case 'popular': result.sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0)); break
+      case 'price_asc': result.sort((a, b) => (a.current_price || a.price) - (b.current_price || b.price)); break
+      case 'price_desc': result.sort((a, b) => (b.current_price || b.price) - (a.current_price || a.price)); break
+      case 'discount': result.sort((a, b) => b.discount_rate - a.discount_rate); break
     }
-
     return result
-  }, [products, sortBy, priceRangeIdx, minPrice, maxPrice, useCustomPrice])
+  }, [products, sortBy])
 
-  const activeFilterCount = [
-    priceRangeIdx > 0 || useCustomPrice,
-    sortBy !== 'popular',
-  ].filter(Boolean).length
-
-  function resetFilters() {
-    setSortBy('popular')
-    setPriceRangeIdx(0)
-    setMinPrice('')
-    setMaxPrice('')
-    setUseCustomPrice(false)
-  }
+  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE)
+  const paged = sorted.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
   return (
-    <div className="bg-[#020202]">
-      <TopNav />
+    <div className="bg-white min-h-screen">
+      {/* 상단 헤더: 검색바 + 아이콘 */}
+      <div className="sticky top-0 z-50 bg-white px-4 py-2.5 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div
+            onClick={() => navigate('/search')}
+            className="flex-1 flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2.5 cursor-pointer"
+          >
+            <Search className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-gray-400">상품명, 브랜드명</span>
+          </div>
+          <button onClick={() => navigate('/cart')} className="p-1 relative">
+            <ShoppingCart className="w-6 h-6 text-gray-800" />
+          </button>
+        </div>
+      </div>
 
-      <main className="px-4 py-4">
-        {/* 카테고리 제목 */}
-        <CategoryHeader category={category} productCount={filteredAndSorted.length} />
+      <div className="px-4 py-5">
+        {/* 섹션 헤더 */}
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-xl font-extrabold text-gray-900">오늘의 핫딜</h1>
+          <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-full">
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
 
-        {/* 필터/정렬 바 */}
-        <div className="flex items-center justify-between mb-4 gap-2">
-          {/* 정렬 드롭다운 */}
+        {/* 배너 */}
+        <div className="bg-gradient-to-r from-indigo-900 via-purple-800 to-pink-700 rounded-2xl px-5 py-3.5 mb-5">
+          <p className="text-center text-white text-sm font-bold tracking-wide">매일 달라지는 초특가 상품</p>
+        </div>
+
+        {/* 정렬 */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs text-gray-500">{sorted.length}개 상품</span>
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowSortDropdown(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#121212] border border-[#1A1A1A] rounded-full text-sm font-medium text-gray-300 hover:bg-[#0A0A0A] shadow-sm"
+              className="flex items-center gap-1 text-sm text-gray-700 font-medium"
             >
               {SORT_LABELS[sortBy]}
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-36 bg-[#121212] border border-[#1A1A1A] rounded-xl shadow-lg z-30 overflow-hidden">
+              <div className="absolute top-full right-0 mt-1 w-32 bg-white border border-gray-200 rounded-xl shadow-lg z-30 overflow-hidden">
                 {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                   <button
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                      sortBy === opt
-                        ? 'bg-primary/10 text-primary font-semibold'
-                        : 'text-gray-300 hover:bg-[#0A0A0A]'
+                    className={`w-full text-left px-3 py-2.5 text-sm ${
+                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     {SORT_LABELS[opt]}
@@ -179,95 +133,105 @@ export default function BrowsePage() {
               </div>
             )}
           </div>
-
-          <div className="flex items-center gap-2">
-            {/* 필터 버튼 */}
-            <button
-              onClick={() => setShowFilterPanel(v => !v)}
-              className={`flex items-center gap-1.5 px-3 py-2 border rounded-full text-sm font-medium shadow-sm transition-colors ${
-                activeFilterCount > 0
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-[#121212] border-[#1A1A1A] text-gray-300 hover:bg-[#0A0A0A]'
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              필터
-              {activeFilterCount > 0 && (
-                <span className="ml-0.5 bg-[#121212] text-primary rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {/* 필터 초기화 */}
-            {activeFilterCount > 0 && (
-              <button
-                onClick={resetFilters}
-                className="flex items-center gap-1 px-2 py-2 text-gray-500 hover:text-gray-300 text-sm"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* 필터 패널 (접이식) */}
-        {showFilterPanel && (
-          <div className="mb-4 p-4 bg-[#121212] border border-[#1A1A1A] rounded-2xl shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-100 mb-3">가격 필터</h3>
-
-            {/* 프리셋 가격 범위 */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {PRICE_RANGES.map((range, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => { setPriceRangeIdx(idx); setUseCustomPrice(false) }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    !useCustomPrice && priceRangeIdx === idx
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-[#121212] text-gray-600 border-[#1A1A1A] hover:border-primary hover:text-primary'
-                  }`}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-
-            {/* 직접 입력 */}
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="최소 금액"
-                value={minPrice}
-                onChange={e => { setMinPrice(e.target.value); setUseCustomPrice(true); setPriceRangeIdx(0) }}
-                className="flex-1 px-3 py-2 border border-[#1A1A1A] rounded-lg text-sm focus:outline-none focus:border-primary"
-              />
-              <span className="text-gray-400 text-sm">~</span>
-              <input
-                type="number"
-                placeholder="최대 금액"
-                value={maxPrice}
-                onChange={e => { setMaxPrice(e.target.value); setUseCustomPrice(true); setPriceRangeIdx(0) }}
-                className="flex-1 px-3 py-2 border border-[#1A1A1A] rounded-lg text-sm focus:outline-none focus:border-primary"
-              />
-              <span className="text-sm text-gray-500">원</span>
-            </div>
-
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={() => setShowFilterPanel(false)}
-                className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90"
-              >
-                적용
-              </button>
-            </div>
+        {/* 상품 그리드 (3열) */}
+        {loading ? (
+          <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i}>
+                <div className="aspect-square bg-gray-100 animate-pulse rounded-lg" />
+                <div className="mt-2 h-3 bg-gray-100 rounded animate-pulse w-full" />
+                <div className="mt-1 h-3 bg-gray-100 rounded animate-pulse w-2/3" />
+              </div>
+            ))}
           </div>
+        ) : sorted.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-gray-400">상품이 없습니다</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-6">
+              {paged.map(product => {
+                const discountRate = product.discount_rate || (product.original_price ? Math.round((1 - product.price / product.original_price) * 100) : 0)
+                const displayPrice = product.current_price || product.price
+
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => navigate(`/products/${product.id}`)}
+                    className="text-left active:scale-[0.98] transition-transform"
+                  >
+                    {/* 썸네일 */}
+                    <div className="relative aspect-square overflow-hidden bg-gray-50 rounded-lg">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-100" />
+                      )}
+                      {/* 하트 */}
+                      <div className="absolute bottom-2 right-2">
+                        <Heart className="w-5 h-5 text-gray-300" strokeWidth={1.5} />
+                      </div>
+                    </div>
+
+                    {/* 상품 정보 */}
+                    <div className="mt-2">
+                      <p className="text-[12px] text-gray-800 leading-tight line-clamp-2">
+                        {product.name}
+                      </p>
+                      {product.original_price && product.original_price > displayPrice && (
+                        <p className="text-[11px] text-gray-400 line-through mt-1">
+                          {product.original_price.toLocaleString()}원
+                        </p>
+                      )}
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        {discountRate > 0 && (
+                          <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
+                        )}
+                        <span className="text-[13px] font-extrabold text-gray-900">
+                          {displayPrice.toLocaleString()}원
+                        </span>
+                      </div>
+                      {(product.sold_count ?? 0) > 0 && (
+                        <p className="text-[10px] text-gray-400 mt-0.5">{product.sold_count}명 구매</p>
+                      )}
+                      <div className="flex items-center gap-1 mt-1">
+                        <Truck className="w-3 h-3 text-gray-400" />
+                        <span className="text-[10px] text-gray-400">무료배송</span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-8 pb-4">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-full disabled:opacity-30"
+                >
+                  <ChevronLeft className="w-4 h-4 text-gray-600" />
+                </button>
+                <span className="text-sm text-gray-700 font-medium">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-full disabled:opacity-30"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            )}
+          </>
         )}
-
-        {/* 상품 그리드 */}
-        <ProductGrid products={filteredAndSorted} loading={loading} />
-      </main>
-
+      </div>
     </div>
   )
 }
