@@ -2,7 +2,7 @@ import React from 'react'
 
 export default function SiteFooter() {
   return (
-    <footer className="px-4 py-6 bg-background border-t border-gray-200">
+    <footer className="px-4 py-6 bg-[#0F0F0F] border-t border-[#2A2A2A]">
       <div className="flex flex-col gap-1.5 footer-tiny">
         {/* Contact */}
         <p className="text-gray-600">
@@ -11,11 +11,11 @@ export default function SiteFooter() {
         
         {/* Links */}
         <div className="flex flex-wrap gap-x-1 text-gray-600">
-          <a href="/terms" className="underline hover:text-gray-900">서비스 이용약관</a>
+          <a href="/terms" className="underline hover:text-white">서비스 이용약관</a>
           <span>|</span>
-          <a href="/privacy" className="underline hover:text-gray-900">개인정보처리방침</a>
+          <a href="/privacy" className="underline hover:text-white">개인정보처리방침</a>
           <span>|</span>
-          <a href="/refund" className="underline hover:text-gray-900">배송 및 환불 정책</a>
+          <a href="/refund" className="underline hover:text-white">배송 및 환불 정책</a>
         </div>
         
         {/* Company Info */}

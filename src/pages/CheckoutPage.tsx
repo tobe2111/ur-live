@@ -444,14 +444,14 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-[#252525]">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-[#1A1A1A] border-b border-[#2A2A2A] sticky top-0 z-10">
         <div className="mx-auto max-w-lg lg:max-w-5xl px-5 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/cart')}
-              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#252525] transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -466,9 +466,9 @@ export default function CheckoutPage() {
           {/* Left column */}
           <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
             {/* 배송지 정보 */}
-            <section className="bg-white px-5 py-6">
+            <section className="bg-[#1A1A1A] px-5 py-6">
               <div className="flex items-center justify-between relative">
-                <h2 className="text-[17px] font-bold text-gray-900">배송지</h2>
+                <h2 className="text-[17px] font-bold text-white">배송지</h2>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -497,7 +497,7 @@ export default function CheckoutPage() {
               ) : (
                 <div className="mt-4 flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[15px] font-semibold text-gray-900">{selectedAddress.recipient_name}</span>
+                    <span className="text-[15px] font-semibold text-white">{selectedAddress.recipient_name}</span>
                     {selectedAddress.is_default === 1 && (
                       <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
                         기본
@@ -505,7 +505,7 @@ export default function CheckoutPage() {
                     )}
                   </div>
                   <p className="text-[14px] leading-relaxed text-gray-600">{selectedAddress.phone}</p>
-                  <p className="text-[14px] leading-relaxed text-gray-900">
+                  <p className="text-[14px] leading-relaxed text-white">
                     [{selectedAddress.postal_code}] {selectedAddress.address} {selectedAddress.address_detail}
                   </p>
                 </div>
@@ -513,12 +513,12 @@ export default function CheckoutPage() {
             </section>
             
             {/* Divider */}
-            <div className="h-2 bg-gray-100" />
+            <div className="h-2 bg-[#252525]" />
 
             {/* 주문 상품 정보 */}
-            <section className="bg-white px-5 py-6">
+            <section className="bg-[#1A1A1A] px-5 py-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-[17px] font-bold text-gray-900">주문 상품</h2>
+                <h2 className="text-[17px] font-bold text-white">주문 상품</h2>
                 <span className="text-[13px] text-gray-600">
                   {cartItems.length}개
                 </span>
@@ -526,15 +526,15 @@ export default function CheckoutPage() {
 
               <div className="mt-5 flex flex-col gap-5">
                 {Object.values(sellerGroups).map((group) => (
-                  <div key={group.seller_id} className="border border-gray-200 rounded-2xl p-4">
-                    <p className="text-[13px] font-semibold text-gray-700 mb-3">
+                  <div key={group.seller_id} className="border border-[#2A2A2A] rounded-2xl p-4">
+                    <p className="text-[13px] font-semibold text-gray-300 mb-3">
                       {group.seller_name}
                     </p>
                     
                     {group.items.map((item) => (
-                      <div key={item.id} className="flex gap-4 py-3 border-t border-gray-100 first:border-t-0">
+                      <div key={item.id} className="flex gap-4 py-3 border-t border-[#2A2A2A] first:border-t-0">
                         {/* 이미지 or 아이콘 */}
-                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-100">
+                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-[#252525]">
                           {item.image_url ? (
                             <img
                               src={item.image_url}
@@ -550,7 +550,7 @@ export default function CheckoutPage() {
                         
                         {/* 상품 정보 */}
                         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                          <p className="truncate text-[14px] leading-snug text-gray-900">
+                          <p className="truncate text-[14px] leading-snug text-white">
                             {item.product_name}
                           </p>
                           {item.option_value && (
@@ -559,7 +559,7 @@ export default function CheckoutPage() {
                             </p>
                           )}
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[15px] font-bold text-gray-900">
+                            <span className="text-[15px] font-bold text-white">
                               {((item.price_snapshot ?? 0) * item.quantity).toLocaleString()}원
                             </span>
                           </div>
@@ -568,9 +568,9 @@ export default function CheckoutPage() {
                     ))}
 
                     {/* 배송비 정보 */}
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between text-[13px]">
+                    <div className="mt-3 pt-3 border-t border-[#2A2A2A] flex justify-between text-[13px]">
                       <span className="text-gray-600">배송비</span>
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-white">
                         {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
                           ? <span className="text-blue-600 font-medium">무료</span>
                           : `${group.shipping_fee.toLocaleString()}원`}
@@ -587,11 +587,11 @@ export default function CheckoutPage() {
             </section>
             
             {/* Divider */}
-            <div className="h-2 bg-gray-100" />
+            <div className="h-2 bg-[#252525]" />
 
             {/* 결제 수단 및 약관 동의 (통합) */}
-            <section className="bg-white px-5 py-4">
-              <h2 className="text-[17px] font-bold text-gray-900 mb-3">결제 수단</h2>
+            <section className="bg-[#1A1A1A] px-5 py-4">
+              <h2 className="text-[17px] font-bold text-white mb-3">결제 수단</h2>
               
               {/* 🔥 Region-based payment widget */}
               {isKorea() ? (
@@ -647,20 +647,20 @@ export default function CheckoutPage() {
           {/* Right column - Order summary (desktop only) */}
           <div className="hidden lg:block lg:w-[360px]">
             <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
-              <section className="bg-white px-5 py-6">
-                <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+              <section className="bg-[#1A1A1A] px-5 py-6">
+                <h2 className="text-[17px] font-bold text-white">결제 금액</h2>
 
                 <div className="mt-5 flex flex-col gap-3.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[14px] text-gray-600">상품금액</span>
-                    <span className="text-[14px] text-gray-900">
+                    <span className="text-[14px] text-white">
                       {subtotal.toLocaleString()}원
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <span className="text-[14px] text-gray-600">배송비</span>
-                    <span className="text-[14px] text-gray-900">
+                    <span className="text-[14px] text-white">
                       {totalShippingFee === 0 ? (
                         <span className="font-medium text-blue-600">무료</span>
                       ) : (
@@ -670,15 +670,15 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="my-5 h-px bg-gray-200" />
+                <div className="my-5 h-px bg-[#333]" />
 
                 <div className="flex items-end justify-between">
-                  <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
+                  <span className="text-[15px] font-semibold text-white">총 결제금액</span>
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-[26px] font-bold tracking-tight text-gray-900">
+                    <span className="text-[26px] font-bold tracking-tight text-white">
                       {totalAmount.toLocaleString()}
                     </span>
-                    <span className="text-[15px] font-semibold text-gray-900">원</span>
+                    <span className="text-[15px] font-semibold text-white">원</span>
                   </div>
                 </div>
 
@@ -697,21 +697,21 @@ export default function CheckoutPage() {
 
         {/* Mobile order summary */}
         <div className="lg:hidden">
-          <div className="h-2 bg-gray-100" />
-          <section className="bg-white px-5 py-6">
-            <h2 className="text-[17px] font-bold text-gray-900">결제 금액</h2>
+          <div className="h-2 bg-[#252525]" />
+          <section className="bg-[#1A1A1A] px-5 py-6">
+            <h2 className="text-[17px] font-bold text-white">결제 금액</h2>
 
             <div className="mt-5 flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-[14px] text-gray-600">상품금액</span>
-                <span className="text-[14px] text-gray-900">
+                <span className="text-[14px] text-white">
                   {subtotal.toLocaleString()}원
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-[14px] text-gray-600">배송비</span>
-                <span className="text-[14px] text-gray-900">
+                <span className="text-[14px] text-white">
                   {totalShippingFee === 0 ? (
                     <span className="font-medium text-blue-600">무료</span>
                   ) : (
@@ -721,15 +721,15 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="my-5 h-px bg-gray-200" />
+            <div className="my-5 h-px bg-[#333]" />
 
             <div className="flex items-end justify-between">
-              <span className="text-[15px] font-semibold text-gray-900">총 결제금액</span>
+              <span className="text-[15px] font-semibold text-white">총 결제금액</span>
               <div className="flex items-baseline gap-0.5">
-                <span className="text-[26px] font-bold tracking-tight text-gray-900">
+                <span className="text-[26px] font-bold tracking-tight text-white">
                   {totalAmount.toLocaleString()}
                 </span>
-                <span className="text-[15px] font-semibold text-gray-900">원</span>
+                <span className="text-[15px] font-semibold text-white">원</span>
               </div>
             </div>
           </section>
@@ -763,7 +763,7 @@ export default function CheckoutPage() {
                 className={`border rounded-2xl p-4 cursor-pointer transition-all ${
                   selectedAddress?.id === addr.id 
                     ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    : 'border-[#2A2A2A] hover:border-blue-300 hover:bg-[#151515]'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -774,7 +774,7 @@ export default function CheckoutPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <p className="text-[15px] font-semibold text-gray-900">{addr.recipient_name}</p>
+                      <p className="text-[15px] font-semibold text-white">{addr.recipient_name}</p>
                       {addr.is_default === 1 && (
                         <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-600">
                           기본
@@ -782,11 +782,11 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     <p className="text-[14px] text-gray-600 mb-1">{addr.phone}</p>
-                    <p className="text-[14px] text-gray-700 leading-relaxed">
+                    <p className="text-[14px] text-gray-300 leading-relaxed">
                       [{addr.postal_code}] {addr.address}
                     </p>
                     {addr.address_detail && (
-                      <p className="text-[14px] text-gray-700 leading-relaxed mt-0.5">
+                      <p className="text-[14px] text-gray-300 leading-relaxed mt-0.5">
                         {addr.address_detail}
                       </p>
                     )}
@@ -810,7 +810,7 @@ export default function CheckoutPage() {
               setShowAddressModal(false)
               setTimeout(() => setShowNewAddressForm(true), 100)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#333] bg-[#151515] py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
             <span>새 배송지 추가</span>
@@ -831,33 +831,33 @@ export default function CheckoutPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-white mb-2">
               수령인 이름 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={newAddress.recipient_name}
               onChange={(e) => setNewAddress({ ...newAddress, recipient_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-[#333] rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="받으실 분의 이름을 입력하세요"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-white mb-2">
               연락처 <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
               value={newAddress.phone}
               onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-[#333] rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="010-1234-5678"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-white mb-2">
               우편번호 <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2">
@@ -866,12 +866,12 @@ export default function CheckoutPage() {
                 inputMode="numeric"
                 value={newAddress.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
+                className="flex-1 px-4 py-3 border border-[#333] rounded-2xl bg-[#151515] text-[15px] text-gray-600"
                 placeholder="우편번호"
               />
               <button
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-gray-300 rounded-2xl text-[14px] font-semibold text-gray-700 hover:bg-gray-50 transition-all whitespace-nowrap"
+                className="px-5 py-3 border border-[#333] rounded-2xl text-[14px] font-semibold text-gray-300 hover:bg-[#151515] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -879,7 +879,7 @@ export default function CheckoutPage() {
           </div>
 
           {showPostcodePopup && (
-            <div className="rounded-2xl overflow-hidden border border-gray-200">
+            <div className="rounded-2xl overflow-hidden border border-[#2A2A2A]">
               <div
                 id="daum-postcode-container"
                 style={{ width: '100%', height: '400px' }}
@@ -888,27 +888,27 @@ export default function CheckoutPage() {
           )}
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-white mb-2">
               주소 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={newAddress.address}
               readOnly
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl bg-gray-50 text-[15px] text-gray-600"
+              className="w-full px-4 py-3 border border-[#333] rounded-2xl bg-[#151515] text-[15px] text-gray-600"
               placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>
 
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 mb-2">
+            <label className="block text-[14px] font-semibold text-white mb-2">
               상세주소
             </label>
             <input
               type="text"
               value={newAddress.address_detail}
               onChange={(e) => setNewAddress({ ...newAddress, address_detail: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 border border-[#333] rounded-2xl text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="동/호수, 건물명 등 (선택)"
             />
           </div>
@@ -931,7 +931,7 @@ export default function CheckoutPage() {
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-[#252525] text-gray-300 rounded-2xl text-[16px] font-bold hover:bg-[#333] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

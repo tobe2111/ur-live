@@ -321,6 +321,7 @@ pointsRoutes.get('/charge-options', async (c) => {
 // ── 리워드 광고 ────────────────────────────────────────────────────
 const AD_REWARD_POINTS = 50;   // 광고 1회 시청 = 50딜
 const AD_DAILY_LIMIT = 10;      // 하루 최대 10회
+const AD_REWARD_DESC_PREFIX = '[광고리워드]'; // description 기반 구분
 
 // POST /api/points/ad-reward — 광고 시청 완료 후 딜 지급
 pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
@@ -332,13 +333,13 @@ pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
 
   // 오늘 이미 시청한 횟수 확인 (KST 기준)
   const todayStart = new Date();
-  todayStart.setHours(todayStart.getHours() + 9); // UTC → KST
+  todayStart.setHours(todayStart.getHours() + 9);
   const kstDateStr = todayStart.toISOString().slice(0, 10);
 
   const countRow = await DB.prepare(
     `SELECT COUNT(*) as cnt FROM point_transactions
-     WHERE user_id = ? AND type = 'ad_reward' AND DATE(created_at, '+9 hours') = ?`
-  ).bind(user.id, kstDateStr).first<{ cnt: number }>();
+     WHERE user_id = ? AND description LIKE ? AND DATE(created_at, '+9 hours') = ?`
+  ).bind(user.id, `${AD_REWARD_DESC_PREFIX}%`, kstDateStr).first<{ cnt: number }>();
 
   const todayCount = countRow?.cnt ?? 0;
   if (todayCount >= AD_DAILY_LIMIT) {
@@ -364,11 +365,11 @@ pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
       .bind(user.id, newBalance).run();
   }
 
-  // 거래 기록
+  // 거래 기록 (type='charge'로 저장, description으로 광고 리워드 구분)
   await DB.prepare(
     `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description)
-     VALUES (?, 'ad_reward', 0, 0, ?, ?, ?)`
-  ).bind(user.id, AD_REWARD_POINTS, newBalance, `광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
+     VALUES (?, 'charge', 0, 0, ?, ?, ?)`
+  ).bind(user.id, AD_REWARD_POINTS, newBalance, `${AD_REWARD_DESC_PREFIX} 광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
 
   return c.json({
     success: true,
@@ -395,8 +396,8 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
 
   const countRow = await DB.prepare(
     `SELECT COUNT(*) as cnt FROM point_transactions
-     WHERE user_id = ? AND type = 'ad_reward' AND DATE(created_at, '+9 hours') = ?`
-  ).bind(user.id, kstDateStr).first<{ cnt: number }>();
+     WHERE user_id = ? AND description LIKE ? AND DATE(created_at, '+9 hours') = ?`
+  ).bind(user.id, `${AD_REWARD_DESC_PREFIX}%`, kstDateStr).first<{ cnt: number }>();
 
   return c.json({
     success: true,

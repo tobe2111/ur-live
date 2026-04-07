@@ -230,7 +230,7 @@ export default function MyOrdersPage() {
       </header>
 
       {/* Tab Navigation */}
-      <div className="bg-white border-b border-[#e5e5ea]">
+      <div className="bg-[#1A1A1A] border-b border-[#e5e5ea]">
         <div className="w-full px-4 sm:px-6">
           <div className="flex space-x-1">
             <button
@@ -329,8 +329,8 @@ export default function MyOrdersPage() {
       {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-[#e5e5ea] p-4 flex items-center justify-between">
+          <div className="bg-[#1A1A1A] rounded-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#1A1A1A] border-b border-[#e5e5ea] p-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-[#1d1d1f]">주문 상세</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
@@ -533,12 +533,12 @@ export default function MyOrdersPage() {
       {cancelModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
           <div 
-            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
+            className="bg-[#1A1A1A] rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-white">
                 주문 취소
               </h3>
               <button
@@ -550,20 +550,20 @@ export default function MyOrdersPage() {
             </div>
 
             {/* Order Info */}
-            <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+            <div className="mb-4 p-4 bg-[#151515] rounded-xl">
               <p className="text-sm text-gray-600 mb-1">주문번호</p>
-              <p className="font-semibold text-gray-900">{cancelModal.orderNumber}</p>
+              <p className="font-semibold text-white">{cancelModal.orderNumber}</p>
             </div>
 
             {/* Cancel Reason */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 취소 사유 <span className="text-red-500">*</span>
               </label>
               <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-[#333] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">취소 사유를 선택해주세요</option>
                 <option value="단순 변심">단순 변심</option>
@@ -576,13 +576,13 @@ export default function MyOrdersPage() {
 
             {/* Partial Cancel */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">환불 방식</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">환불 방식</label>
               <div className="flex gap-2 mb-3">
                 <button
                   type="button"
                   onClick={() => setIsPartialCancel(false)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#252525] text-gray-600 hover:bg-[#333]'
                   }`}
                 >
                   전액 취소
@@ -591,7 +591,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(true)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#252525] text-gray-600 hover:bg-[#333]'
                   }`}
                 >
                   부분 취소
@@ -604,7 +604,7 @@ export default function MyOrdersPage() {
                   onChange={(e) => setCancelAmount(e.target.value)}
                   placeholder="취소할 금액 입력 (원)"
                   min="1"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-[#333] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               )}
             </div>
@@ -625,7 +625,7 @@ export default function MyOrdersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-medium rounded-full hover:bg-gray-200 transition-colors"
+                className="flex-1 py-3 px-4 bg-[#252525] text-gray-300 font-medium rounded-full hover:bg-[#333] transition-colors"
                 disabled={processing}
               >
                 닫기

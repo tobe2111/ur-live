@@ -52,7 +52,7 @@ export function MenuList() {
   const navigate = useNavigate()
 
   return (
-    <div className="bg-background">
+    <div className="bg-[#0F0F0F]">
       <div className="px-5">
         {menuItems.map((item, index) => (
           <button
@@ -60,24 +60,24 @@ export function MenuList() {
             onClick={() => navigate(item.path)}
             className={`flex w-full items-center gap-4 py-4 text-left transition-colors active:bg-secondary ${
               index !== menuItems.length - 1
-                ? "border-b border-border"
+                ? "border-b border-[#2A2A2A]"
                 : ""
             }`}
           >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
-              <item.icon className="h-[18px] w-[18px] text-muted-foreground" />
+              <item.icon className="h-[18px] w-[18px] text-gray-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-sm font-medium text-white">
                 {item.title}
               </p>
               {item.subtitle && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-[11px] text-gray-500">
                   {item.subtitle}
                 </p>
               )}
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" />
           </button>
         ))}
       </div>

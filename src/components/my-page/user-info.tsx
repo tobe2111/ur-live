@@ -5,7 +5,7 @@ interface UserInfoProps {
 
 export function UserInfo({ userName = '게스트', profileImage }: UserInfoProps) {
   return (
-    <div className="bg-background px-5 pt-10 pb-6">
+    <div className="bg-[#0F0F0F] px-5 pt-10 pb-6">
       <div className="text-center">
         <div className="mb-4 flex justify-center">
           {profileImage ? (
@@ -27,10 +27,10 @@ export function UserInfo({ userName = '게스트', profileImage }: UserInfoProps
             {userName.charAt(0).toUpperCase()}
           </div>
         </div>
-        <h1 className="text-lg font-bold text-foreground tracking-tight">
+        <h1 className="text-lg font-bold text-white tracking-tight">
           {userName}님
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-sm text-gray-500 mt-1">
           유어딜에 오신 것을 환영합니다 🎉
         </p>
       </div>

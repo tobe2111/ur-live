@@ -21,7 +21,7 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
-      <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
+      <div className="relative aspect-square overflow-hidden bg-[#252525] rounded-xl">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -41,20 +41,20 @@ function ProductCard({ product }: { product: Product }) {
         )}
         <button
           onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
-          className="absolute bottom-2 right-2 p-1.5 bg-white/90 rounded-lg shadow-sm"
+          className="absolute bottom-2 right-2 p-1.5 bg-[#1A1A1A]/90 rounded-lg shadow-sm"
         >
-          <ShoppingBag className="h-3.5 w-3.5 text-gray-700" />
+          <ShoppingBag className="h-3.5 w-3.5 text-gray-300" />
         </button>
       </div>
       <div className="mt-2 px-0.5">
-        <p className="text-[12px] text-gray-800 leading-snug line-clamp-2">
+        <p className="text-[12px] text-gray-100 leading-snug line-clamp-2">
           {product.name}
         </p>
         <div className="mt-1 flex items-baseline gap-1.5">
           {discountRate > 0 && (
             <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>
           )}
-          <span className="text-[13px] font-extrabold text-gray-900">
+          <span className="text-[13px] font-extrabold text-white">
             {product.price.toLocaleString()}원
           </span>
         </div>
@@ -86,13 +86,13 @@ export default function ProductGrid() {
   if (loading) {
     return (
       <section className="px-4 py-5">
-        <div className="h-6 w-24 bg-gray-200 animate-pulse rounded mb-4" />
+        <div className="h-6 w-24 bg-[#333] animate-pulse rounded mb-4" />
         <div className="grid grid-cols-3 gap-3">
           {[...Array(6)].map((_, i) => (
             <div key={i}>
-              <div className="aspect-square bg-gray-100 animate-pulse rounded-xl" />
-              <div className="mt-2 h-3 bg-gray-100 animate-pulse rounded w-full" />
-              <div className="mt-1 h-3 bg-gray-100 animate-pulse rounded w-2/3" />
+              <div className="aspect-square bg-[#252525] animate-pulse rounded-xl" />
+              <div className="mt-2 h-3 bg-[#252525] animate-pulse rounded w-full" />
+              <div className="mt-1 h-3 bg-[#252525] animate-pulse rounded w-2/3" />
             </div>
           ))}
         </div>
@@ -104,7 +104,7 @@ export default function ProductGrid() {
     <section className="px-4 py-5">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-[16px] font-extrabold text-gray-900">UR 특가 🔥</h3>
+          <h3 className="text-[16px] font-extrabold text-white">UR 특가 🔥</h3>
           <p className="text-[11px] text-gray-400 mt-0.5">지금 가장 인기있는 상품</p>
         </div>
         <a href="/browse" className="flex items-center text-[12px] text-gray-500 font-medium">
