@@ -51,7 +51,7 @@ async function ensureTables(DB: D1Database) {
       CREATE TABLE IF NOT EXISTS point_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('charge', 'donate', 'refund')),
+        type TEXT NOT NULL CHECK (type IN ('charge', 'donate', 'refund', 'ad_reward')),
         amount INTEGER NOT NULL,
         commission_amount INTEGER NOT NULL DEFAULT 0,
         points_amount INTEGER NOT NULL DEFAULT 0,
@@ -313,6 +313,96 @@ pointsRoutes.get('/history', requireAuth(), async (c) => {
 // ── GET /api/points/charge-options ───────────────────────────────────
 pointsRoutes.get('/charge-options', async (c) => {
   return c.json({ success: true, data: CHARGE_AMOUNTS });
+});
+
+// ── 리워드 광고 ────────────────────────────────────────────────────
+const AD_REWARD_POINTS = 50;   // 광고 1회 시청 = 50딜
+const AD_DAILY_LIMIT = 10;      // 하루 최대 10회
+
+// POST /api/points/ad-reward — 광고 시청 완료 후 딜 지급
+pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  // 오늘 이미 시청한 횟수 확인 (KST 기준)
+  const todayStart = new Date();
+  todayStart.setHours(todayStart.getHours() + 9); // UTC → KST
+  const kstDateStr = todayStart.toISOString().slice(0, 10);
+
+  const countRow = await DB.prepare(
+    `SELECT COUNT(*) as cnt FROM point_transactions
+     WHERE user_id = ? AND type = 'ad_reward' AND DATE(created_at, '+9 hours') = ?`
+  ).bind(user.id, kstDateStr).first<{ cnt: number }>();
+
+  const todayCount = countRow?.cnt ?? 0;
+  if (todayCount >= AD_DAILY_LIMIT) {
+    return c.json({
+      success: false,
+      error: `오늘 광고 시청 한도(${AD_DAILY_LIMIT}회)에 도달했습니다`,
+      data: { todayCount, dailyLimit: AD_DAILY_LIMIT, nextResetKST: kstDateStr + ' 자정' },
+    }, 429);
+  }
+
+  // 포인트 지급
+  const currentRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+    .bind(user.id).first<{ balance: number }>();
+
+  const currentBalance = currentRow?.balance ?? 0;
+  const newBalance = currentBalance + AD_REWARD_POINTS;
+
+  if (currentRow) {
+    await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+      .bind(newBalance, user.id).run();
+  } else {
+    await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged, total_donated) VALUES (?, ?, 0, 0)')
+      .bind(user.id, newBalance).run();
+  }
+
+  // 거래 기록
+  await DB.prepare(
+    `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description)
+     VALUES (?, 'ad_reward', 0, 0, ?, ?, ?)`
+  ).bind(user.id, AD_REWARD_POINTS, newBalance, `광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
+
+  return c.json({
+    success: true,
+    data: {
+      rewarded: AD_REWARD_POINTS,
+      balance: newBalance,
+      todayCount: todayCount + 1,
+      dailyLimit: AD_DAILY_LIMIT,
+    },
+  });
+});
+
+// GET /api/points/ad-reward/status — 오늘 광고 시청 현황
+pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const todayStart = new Date();
+  todayStart.setHours(todayStart.getHours() + 9);
+  const kstDateStr = todayStart.toISOString().slice(0, 10);
+
+  const countRow = await DB.prepare(
+    `SELECT COUNT(*) as cnt FROM point_transactions
+     WHERE user_id = ? AND type = 'ad_reward' AND DATE(created_at, '+9 hours') = ?`
+  ).bind(user.id, kstDateStr).first<{ cnt: number }>();
+
+  return c.json({
+    success: true,
+    data: {
+      todayCount: countRow?.cnt ?? 0,
+      dailyLimit: AD_DAILY_LIMIT,
+      rewardPerAd: AD_REWARD_POINTS,
+    },
+  });
 });
 
 export { pointsRoutes };

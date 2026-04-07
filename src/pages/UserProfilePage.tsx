@@ -8,6 +8,7 @@ import { getUserProfileImage } from '@/utils/auth'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { Footer } from '@/components/my-page/footer'
+import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ArrowLeft } from 'lucide-react'
 
 /**
@@ -205,6 +206,9 @@ export default function UserProfilePage() {
 
       {/* 딜 포인트 잔액 */}
       <TeamPointsCard />
+
+      {/* 광고 시청으로 딜 받기 */}
+      <RewardAdCard />
 
       {/* Menu List Section */}
       <MenuList />
