@@ -23,7 +23,7 @@ export default function BottomNav() {
 
   const leftItems = [
     { icon: Home, label: '홈', path: '/' },
-    { icon: Play, label: '쇼츠', path: '/live' },
+    { icon: Play, label: '쇼츠', path: '/shorts' },
   ]
 
   const rightItems = [

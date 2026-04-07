@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { path: '/seller/supply',       labelKey: 'seller.supply',        icon: Truck },
   { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
   { path: '/seller/donations',   labelKey: 'seller.donations',     icon: Heart },
+  { path: '/seller/shorts',      labelKey: 'seller.shorts',        icon: Play },
   { path: '/seller/youtube-growth',labelKey: 'seller.youtubeGrowth', icon: TrendingUp },
   { path: '/seller/alimtalk',     labelKey: 'seller.brandMessage',  icon: Bell },
   { path: '/seller/business-info',labelKey: 'seller.businessInfo',  icon: Building2 },

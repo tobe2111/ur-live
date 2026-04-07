@@ -26,7 +26,7 @@ import ToastContainer from './components/ToastContainer'
 const HomePage = lazy(() => import('./pages/HomePage'))
 const MainHomePage = lazy(() => import('./pages/MainHomePage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
-const ShortFormPage = lazy(() => import('./pages/ShortFormPage'))
+const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -66,6 +66,7 @@ const SellerAlimtalkPage = lazy(() => import('./pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('./pages/SellerYoutubeGrowthPage'))
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('./pages/SellerYoutubeGrowthSuccessPage'))
 const SellerDonationsPage = lazy(() => import('./pages/SellerDonationsPage'))
+const SellerShortsPage = lazy(() => import('./pages/SellerShortsPage'))
 const SellerLiveBroadcastPage = lazy(() => import('./pages/SellerLiveBroadcastPage'))
 const SellerLiveAnalyticsPage = lazy(() => import('./pages/SellerLiveAnalyticsPage'))
 const SellerSupplyPage = lazy(() => import('./pages/SellerSupplyPage'))
@@ -277,7 +278,7 @@ function AppContent() {
   }, [])
 
   const location = useLocation()
-  const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce']
+  const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
@@ -292,7 +293,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/" element={<MainHomePage />} />
-            <Route path="/shortform" element={<ShortFormPage />} />
+            <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
@@ -410,6 +411,11 @@ function AppContent() {
             <Route path="/seller/donations" element={
               <ProtectedRoute requireSeller>
                 <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/shorts" element={
+              <ProtectedRoute requireSeller>
+                <ErrorBoundary><SellerShortsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/live-broadcast" element={
