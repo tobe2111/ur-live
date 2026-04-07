@@ -408,7 +408,7 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <p className="text-gray-400">로딩 중...</p>
         </div>
       </div>
     )
@@ -424,7 +424,7 @@ export default function CheckoutPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">
+          <p className="mt-4 text-gray-400">
             {tokenRefreshing ? '보안 인증 중...' : '로딩 중...'}
           </p>
         </div>
@@ -515,7 +515,7 @@ export default function CheckoutPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[14px] leading-relaxed text-gray-600">{selectedAddress.phone}</p>
+                  <p className="text-[14px] leading-relaxed text-gray-400">{selectedAddress.phone}</p>
                   <p className="text-[14px] leading-relaxed text-white">
                     [{selectedAddress.postal_code}] {selectedAddress.address} {selectedAddress.address_detail}
                   </p>
@@ -530,7 +530,7 @@ export default function CheckoutPage() {
             <section className="bg-[#121212] px-5 py-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-[17px] font-bold text-white">주문 상품</h2>
-                <span className="text-[13px] text-gray-600">
+                <span className="text-[13px] text-gray-400">
                   {cartItems.length}개
                 </span>
               </div>
@@ -565,7 +565,7 @@ export default function CheckoutPage() {
                             {item.product_name}
                           </p>
                           {item.option_value && (
-                            <p className="text-[13px] text-gray-600">
+                            <p className="text-[13px] text-gray-400">
                               {item.option_value} / {item.quantity}개
                             </p>
                           )}
@@ -580,7 +580,7 @@ export default function CheckoutPage() {
 
                     {/* 배송비 정보 */}
                     <div className="mt-3 pt-3 border-t border-[#1A1A1A] flex justify-between text-[13px]">
-                      <span className="text-gray-600">배송비</span>
+                      <span className="text-gray-400">배송비</span>
                       <span className="font-semibold text-white">
                         {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
                           ? <span className="text-blue-600 font-medium">무료</span>
@@ -765,14 +765,14 @@ export default function CheckoutPage() {
 
                 <div className="mt-5 flex flex-col gap-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[14px] text-gray-600">상품금액</span>
+                    <span className="text-[14px] text-gray-400">상품금액</span>
                     <span className="text-[14px] text-white">
                       {subtotal.toLocaleString()}원
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-[14px] text-gray-600">배송비</span>
+                    <span className="text-[14px] text-gray-400">배송비</span>
                     <span className="text-[14px] text-white">
                       {totalShippingFee === 0 ? (
                         <span className="font-medium text-blue-600">무료</span>
@@ -816,14 +816,14 @@ export default function CheckoutPage() {
 
             <div className="mt-5 flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-[14px] text-gray-600">상품금액</span>
+                <span className="text-[14px] text-gray-400">상품금액</span>
                 <span className="text-[14px] text-white">
                   {subtotal.toLocaleString()}원
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-[14px] text-gray-600">배송비</span>
+                <span className="text-[14px] text-gray-400">배송비</span>
                 <span className="text-[14px] text-white">
                   {totalShippingFee === 0 ? (
                     <span className="font-medium text-blue-600">무료</span>
@@ -894,7 +894,7 @@ export default function CheckoutPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[14px] text-gray-600 mb-1">{addr.phone}</p>
+                    <p className="text-[14px] text-gray-400 mb-1">{addr.phone}</p>
                     <p className="text-[14px] text-gray-300 leading-relaxed">
                       [{addr.postal_code}] {addr.address}
                     </p>
@@ -923,7 +923,7 @@ export default function CheckoutPage() {
               setShowAddressModal(false)
               setTimeout(() => setShowNewAddressForm(true), 100)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#333] bg-[#0A0A0A] py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#333] bg-[#0A0A0A] py-4 text-[15px] font-semibold text-gray-400 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
             <span>새 배송지 추가</span>
@@ -979,7 +979,7 @@ export default function CheckoutPage() {
                 inputMode="numeric"
                 value={newAddress.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-[#333] rounded-2xl bg-[#0A0A0A] text-[15px] text-gray-600"
+                className="flex-1 px-4 py-3 border border-[#333] rounded-2xl bg-[#0A0A0A] text-[15px] text-gray-400"
                 placeholder="우편번호"
               />
               <button
@@ -1008,7 +1008,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.address}
               readOnly
-              className="w-full px-4 py-3 border border-[#333] rounded-2xl bg-[#0A0A0A] text-[15px] text-gray-600"
+              className="w-full px-4 py-3 border border-[#333] rounded-2xl bg-[#0A0A0A] text-[15px] text-gray-400"
               placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>

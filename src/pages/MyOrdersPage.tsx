@@ -543,7 +543,7 @@ export default function MyOrdersPage() {
               </h3>
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-400 transition-colors"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -551,7 +551,7 @@ export default function MyOrdersPage() {
 
             {/* Order Info */}
             <div className="mb-4 p-4 bg-[#0A0A0A] rounded-xl">
-              <p className="text-sm text-gray-600 mb-1">주문번호</p>
+              <p className="text-sm text-gray-400 mb-1">주문번호</p>
               <p className="font-semibold text-white">{cancelModal.orderNumber}</p>
             </div>
 
@@ -582,7 +582,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(false)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#1A1A1A] text-gray-600 hover:bg-[#333]'
+                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#1A1A1A] text-gray-400 hover:bg-[#333]'
                   }`}
                 >
                   전액 취소
@@ -591,7 +591,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(true)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#1A1A1A] text-gray-600 hover:bg-[#333]'
+                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#1A1A1A] text-gray-400 hover:bg-[#333]'
                   }`}
                 >
                   부분 취소

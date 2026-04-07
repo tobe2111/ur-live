@@ -314,7 +314,7 @@ export default function LoginPage() {
   if (isAuthReady && isLoggedIn && hasRedirected.current) {
     return (
       <div className="min-h-screen bg-[#121212] flex items-center justify-center">
-        <div className="text-gray-600">Redirecting...</div>
+        <div className="text-gray-400">Redirecting...</div>
       </div>
     )
   }

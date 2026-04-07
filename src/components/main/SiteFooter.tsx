@@ -5,12 +5,12 @@ export default function SiteFooter() {
     <footer className="px-4 py-6 bg-[#020202] border-t border-[#1A1A1A]">
       <div className="flex flex-col gap-1.5 footer-tiny">
         {/* Contact */}
-        <p className="text-gray-600">
+        <p className="text-gray-400">
           제휴 | 입점 문의 : jiwon@ur-team.com
         </p>
         
         {/* Links */}
-        <div className="flex flex-wrap gap-x-1 text-gray-600">
+        <div className="flex flex-wrap gap-x-1 text-gray-400">
           <a href="/terms" className="underline hover:text-white">서비스 이용약관</a>
           <span>|</span>
           <a href="/privacy" className="underline hover:text-white">개인정보처리방침</a>
@@ -19,7 +19,7 @@ export default function SiteFooter() {
         </div>
         
         {/* Company Info */}
-        <div className="flex flex-col gap-0.5 text-gray-600 leading-relaxed">
+        <div className="flex flex-col gap-0.5 text-gray-400 leading-relaxed">
           <p>상호명: 리스터코퍼레이션 | 대표자: 정지원</p>
           <p>사업자등록번호: 479-09-02930 | 통신판매업신고: 2025-부산금정-0540</p>
           <p>사업장주소: 부산광역시 금정구 놀이마당로26 1402</p>
@@ -28,7 +28,7 @@ export default function SiteFooter() {
         </div>
         
         {/* Copyright */}
-        <p className="text-gray-600 mt-1">
+        <p className="text-gray-400 mt-1">
           © 2026 리스터코퍼레이션. All rights reserved.
         </p>
       </div>
