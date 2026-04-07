@@ -222,8 +222,8 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
     message?: string;
   }>();
 
-  if (!stream_id || !amount || amount < 100) {
-    return c.json({ success: false, error: '후원 금액은 최소 100딜입니다' }, 400);
+  if (!stream_id || !amount || amount < 500) {
+    return c.json({ success: false, error: '후원 금액은 최소 500딜입니다' }, 400);
   }
 
   const { DB } = c.env;

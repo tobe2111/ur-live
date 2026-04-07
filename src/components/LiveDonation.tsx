@@ -27,7 +27,6 @@ interface LiveDonationProps {
 }
 
 const DONATION_AMOUNTS = [
-  { amount: 100,   label: '100딜',    emoji: '💛' },
   { amount: 500,   label: '500딜',    emoji: '🧡' },
   { amount: 1000,  label: '1,000딜',  emoji: '❤️' },
   { amount: 3000,  label: '3,000딜',  emoji: '💎' },
