@@ -2,7 +2,7 @@ import React from 'react'
 
 export default function SiteFooter() {
   return (
-    <footer className="px-4 py-6 bg-[#0F0F0F] border-t border-[#2A2A2A]">
+    <footer className="px-4 py-6 bg-[#020202] border-t border-[#1A1A1A]">
       <div className="flex flex-col gap-1.5 footer-tiny">
         {/* Contact */}
         <p className="text-gray-600">

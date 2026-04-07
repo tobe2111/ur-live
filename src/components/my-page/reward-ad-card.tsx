@@ -81,6 +81,8 @@ export function RewardAdCard() {
 
         // 3초 후 리워드 메시지 숨김
         setTimeout(() => setRewarded(null), 3000)
+        // 잔액 갱신 이벤트 발생
+        window.dispatchEvent(new CustomEvent('pointsBalanceChanged'))
       } else {
         alert(res.data.error || '리워드 지급에 실패했습니다')
       }
@@ -134,7 +136,7 @@ export function RewardAdCard() {
         </div>
 
         {/* 진행 바 */}
-        <div className="mt-3 bg-[#1A1A1A]/60 rounded-full h-1.5 overflow-hidden">
+        <div className="mt-3 bg-[#121212]/60 rounded-full h-1.5 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
             style={{ width: `${(status.todayCount / status.dailyLimit) * 100}%` }}

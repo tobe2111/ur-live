@@ -331,55 +331,62 @@ pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
+  const userId = String(user.id); // 항상 문자열로 통일
+
   // 오늘 이미 시청한 횟수 확인 (KST 기준)
   const todayStart = new Date();
   todayStart.setHours(todayStart.getHours() + 9);
   const kstDateStr = todayStart.toISOString().slice(0, 10);
 
-  const countRow = await DB.prepare(
-    `SELECT COUNT(*) as cnt FROM point_transactions
-     WHERE user_id = ? AND description LIKE ? AND DATE(created_at, '+9 hours') = ?`
-  ).bind(user.id, `${AD_REWARD_DESC_PREFIX}%`, kstDateStr).first<{ cnt: number }>();
+  try {
+    const countRow = await DB.prepare(
+      `SELECT COUNT(*) as cnt FROM point_transactions
+       WHERE user_id = ? AND description LIKE ? AND DATE(created_at, '+9 hours') = ?`
+    ).bind(userId, `${AD_REWARD_DESC_PREFIX}%`, kstDateStr).first<{ cnt: number }>();
 
-  const todayCount = countRow?.cnt ?? 0;
-  if (todayCount >= AD_DAILY_LIMIT) {
+    const todayCount = countRow?.cnt ?? 0;
+    if (todayCount >= AD_DAILY_LIMIT) {
+      return c.json({
+        success: false,
+        error: `오늘 광고 시청 한도(${AD_DAILY_LIMIT}회)에 도달했습니다`,
+        data: { todayCount, dailyLimit: AD_DAILY_LIMIT, nextResetKST: kstDateStr + ' 자정' },
+      }, 429);
+    }
+
+    // 포인트 지급
+    const currentRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+      .bind(userId).first<{ balance: number }>();
+
+    const currentBalance = currentRow?.balance ?? 0;
+    const newBalance = currentBalance + AD_REWARD_POINTS;
+
+    if (currentRow) {
+      await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+        .bind(newBalance, userId).run();
+    } else {
+      await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged, total_donated) VALUES (?, ?, 0, 0)')
+        .bind(userId, newBalance).run();
+    }
+
+    // 거래 기록 (type='charge'로 저장, description으로 광고 리워드 구분)
+    await DB.prepare(
+      `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description)
+       VALUES (?, 'charge', 0, 0, ?, ?, ?)`
+    ).bind(userId, AD_REWARD_POINTS, newBalance, `${AD_REWARD_DESC_PREFIX} 광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
+
     return c.json({
-      success: false,
-      error: `오늘 광고 시청 한도(${AD_DAILY_LIMIT}회)에 도달했습니다`,
-      data: { todayCount, dailyLimit: AD_DAILY_LIMIT, nextResetKST: kstDateStr + ' 자정' },
-    }, 429);
+      success: true,
+      data: {
+        rewarded: AD_REWARD_POINTS,
+        balance: newBalance,
+        todayCount: todayCount + 1,
+        dailyLimit: AD_DAILY_LIMIT,
+      },
+    });
+  } catch (err) {
+    console.error('[ad-reward] Error:', err);
+    return c.json({ success: false, error: '리워드 지급 중 오류가 발생했습니다', detail: String(err) }, 500);
   }
-
-  // 포인트 지급
-  const currentRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
-    .bind(user.id).first<{ balance: number }>();
-
-  const currentBalance = currentRow?.balance ?? 0;
-  const newBalance = currentBalance + AD_REWARD_POINTS;
-
-  if (currentRow) {
-    await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
-      .bind(newBalance, user.id).run();
-  } else {
-    await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged, total_donated) VALUES (?, ?, 0, 0)')
-      .bind(user.id, newBalance).run();
-  }
-
-  // 거래 기록 (type='charge'로 저장, description으로 광고 리워드 구분)
-  await DB.prepare(
-    `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description)
-     VALUES (?, 'charge', 0, 0, ?, ?, ?)`
-  ).bind(user.id, AD_REWARD_POINTS, newBalance, `${AD_REWARD_DESC_PREFIX} 광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
-
-  return c.json({
-    success: true,
-    data: {
-      rewarded: AD_REWARD_POINTS,
-      balance: newBalance,
-      todayCount: todayCount + 1,
-      dailyLimit: AD_DAILY_LIMIT,
-    },
-  });
 });
 
 // GET /api/points/ad-reward/status — 오늘 광고 시청 현황
@@ -390,6 +397,7 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
 
+  const userId = String(user.id);
   const todayStart = new Date();
   todayStart.setHours(todayStart.getHours() + 9);
   const kstDateStr = todayStart.toISOString().slice(0, 10);
@@ -397,7 +405,7 @@ pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
   const countRow = await DB.prepare(
     `SELECT COUNT(*) as cnt FROM point_transactions
      WHERE user_id = ? AND description LIKE ? AND DATE(created_at, '+9 hours') = ?`
-  ).bind(user.id, `${AD_REWARD_DESC_PREFIX}%`, kstDateStr).first<{ cnt: number }>();
+  ).bind(userId, `${AD_REWARD_DESC_PREFIX}%`, kstDateStr).first<{ cnt: number }>();
 
   return c.json({
     success: true,

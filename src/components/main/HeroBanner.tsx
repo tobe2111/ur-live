@@ -178,8 +178,8 @@ export default function HeroBanner() {
             onClick={() => emblaApi?.scrollTo(idx)}
             className={`rounded-full transition-all duration-300 ${
               idx === selectedIndex
-                ? 'w-5 h-1.5 bg-[#1A1A1A]'
-                : 'w-1.5 h-1.5 bg-[#1A1A1A]/50 hover:bg-[#1A1A1A]/80'
+                ? 'w-5 h-1.5 bg-[#121212]'
+                : 'w-1.5 h-1.5 bg-[#121212]/50 hover:bg-[#121212]/80'
             }`}
             aria-label={`배너 ${idx + 1}`}
           />

@@ -77,7 +77,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         {/* Status badge */}
         {isLive ? (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
-            <span className="h-1.5 w-1.5 bg-[#1A1A1A] rounded-full animate-pulse" />
+            <span className="h-1.5 w-1.5 bg-[#121212] rounded-full animate-pulse" />
             <span className="text-[10px] font-bold text-white">LIVE</span>
           </div>
         ) : stream.status === 'scheduled' ? (
@@ -105,7 +105,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         {/* Seller info */}
         {stream.seller_name && (
           <div className="absolute bottom-10 left-2 flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-[#1A1A1A]/20 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-5 h-5 rounded-full bg-[#121212]/20 backdrop-blur-sm flex items-center justify-center">
               <span className="text-[8px] font-bold text-white">{stream.seller_name.charAt(0)}</span>
             </div>
             <span className="text-[10px] font-medium text-white/90 drop-shadow-lg">{stream.seller_name}</span>
@@ -135,7 +135,7 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
-      <div className="relative aspect-square overflow-hidden bg-[#252525] rounded-xl">
+      <div className="relative aspect-square overflow-hidden bg-[#1A1A1A] rounded-xl">
         {product.image_url ? (
           <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
@@ -200,9 +200,9 @@ export default function MainHomePage() {
   const allStreams = [...liveStreams, ...scheduledStreams, ...endedStreams]
 
   return (
-    <div className="bg-[#1A1A1A] min-h-screen pb-16">
+    <div className="bg-[#121212] min-h-screen pb-16">
       {/* ── Top Header ── */}
-      <header className="sticky top-0 z-50 bg-[#1A1A1A]">
+      <header className="sticky top-0 z-50 bg-[#121212]">
         {/* Row 1: Logo + Search + Icons */}
         <div className="flex items-center justify-between h-12 px-4">
           <div className="flex items-center gap-4">
@@ -251,7 +251,7 @@ export default function MainHomePage() {
         </div>
 
         {/* Row 2: Tabs */}
-        <div className="flex items-center gap-4 px-4 border-b border-[#2A2A2A]">
+        <div className="flex items-center gap-4 px-4 border-b border-[#1A1A1A]">
           {(['recommend', 'following'] as const).map(tab => (
             <button
               key={tab}
@@ -268,7 +268,7 @@ export default function MainHomePage() {
         </div>
 
         {/* Row 3: Category chips */}
-        <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar bg-[#1A1A1A] border-b border-gray-50">
+        <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar bg-[#121212] border-b border-gray-50">
           {CATEGORIES.map(cat => (
             <button
               key={cat.key}
@@ -276,7 +276,7 @@ export default function MainHomePage() {
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
                 activeCategory === cat.key
                   ? 'bg-gray-900 text-white'
-                  : 'bg-[#252525] text-gray-500'
+                  : 'bg-[#1A1A1A] text-gray-500'
               }`}
             >
               <span className="text-[11px]">{cat.icon}</span>
@@ -295,7 +295,7 @@ export default function MainHomePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md">
-                <span className="h-1.5 w-1.5 bg-[#1A1A1A] rounded-full animate-pulse" />
+                <span className="h-1.5 w-1.5 bg-[#121212] rounded-full animate-pulse" />
                 <span className="text-[10px] font-bold text-white">LIVE</span>
               </div>
               <h2 className="text-[15px] font-bold text-white">지금 방송 중</h2>
@@ -347,7 +347,7 @@ export default function MainHomePage() {
               <button
                 key={stream.id}
                 onClick={() => navigate(`/live/${stream.id}`)}
-                className="flex-shrink-0 w-[200px] bg-[#151515] rounded-xl p-3 text-left active:scale-[0.98] transition-transform"
+                className="flex-shrink-0 w-[200px] bg-[#0A0A0A] rounded-xl p-3 text-left active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -367,7 +367,7 @@ export default function MainHomePage() {
                 <p className="text-[11px] text-gray-500 line-clamp-2">{stream.title}</p>
                 <button
                   onClick={(e) => { e.stopPropagation() }}
-                  className="mt-2 w-full py-1.5 bg-[#1A1A1A] border border-red-200 rounded-lg text-[11px] font-bold text-red-500"
+                  className="mt-2 w-full py-1.5 bg-[#121212] border border-red-200 rounded-lg text-[11px] font-bold text-red-500"
                 >
                   방송 알림 받기
                 </button>
@@ -379,7 +379,7 @@ export default function MainHomePage() {
 
       {/* ── UR 특가 ── */}
       {products.length > 0 && (
-        <section className="px-4 py-4 bg-[#151515]">
+        <section className="px-4 py-4 bg-[#0A0A0A]">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-[15px] font-bold text-white">UR 특가 🔥</h2>
@@ -422,7 +422,7 @@ export default function MainHomePage() {
         <div className="px-4 py-6">
           <div className="grid grid-cols-2 gap-2.5">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-[#252525] animate-pulse rounded-xl" />
+              <div key={i} className="aspect-[3/4] bg-[#1A1A1A] animate-pulse rounded-xl" />
             ))}
           </div>
         </div>

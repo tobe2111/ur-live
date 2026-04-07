@@ -28,7 +28,7 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
   const [open, setOpen] = useState(defaultOpen)
   return (
     <>
-      <div className="border-t border-[#2A2A2A]">
+      <div className="border-t border-[#1A1A1A]">
         <button
           onClick={() => setOpen(!open)}
           className="w-full flex items-center justify-between px-5 py-4 text-left"
@@ -86,7 +86,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
               return (
                 <div key={s} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 w-3">{s}</span>
-                  <div className="flex-1 h-1.5 bg-[#252525] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -102,7 +102,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
       {reviews.length > 0 && (
         <div className="space-y-3 mt-3">
           {reviews.map((r: any) => (
-            <div key={r.id} className="border border-[#2A2A2A]/50 rounded-xl p-3">
+            <div key={r.id} className="border border-[#1A1A1A]/50 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">
@@ -294,7 +294,7 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-[#020202] p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500">{error?.message || '상품을 찾을 수 없습니다.'}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
@@ -328,7 +328,7 @@ export default function ProductDetailPage() {
   const allImages = [product.image_url, ...detailImages].filter(Boolean)
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-[#020202]">
       {/* Mobile Header */}
       <MobileHeader
         onShare={handleShare}
@@ -338,7 +338,7 @@ export default function ProductDetailPage() {
 
       <main className="pb-20">
         {/* Product Images Carousel */}
-        <Suspense fallback={<div className="w-full h-96 bg-[#252525] animate-pulse" />}>
+        <Suspense fallback={<div className="w-full h-96 bg-[#1A1A1A] animate-pulse" />}>
           <ProductImageCarousel images={allImages} />
         </Suspense>
 
@@ -418,7 +418,7 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-[#252525] animate-pulse" />}>
+      <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-[#1A1A1A] animate-pulse" />}>
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
