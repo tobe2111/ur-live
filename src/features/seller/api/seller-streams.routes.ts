@@ -599,3 +599,33 @@ sellerStreamsRoutes.get('/analytics/summary', async (c) => {
     return c.json({ success: false, error: (error as Error).message }, 500);
   }
 });
+
+// ── PUT /api/seller/streams/:id/product-display — 상품 표시 모드 변경 ──
+sellerStreamsRoutes.put('/:id/product-display', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401);
+
+    const streamId = c.req.param('id');
+    const { mode } = await c.req.json<{ mode: 'current_only' | 'all' }>();
+
+    if (!mode || !['current_only', 'all'].includes(mode)) {
+      return c.json({ success: false, error: "mode는 'current_only' 또는 'all'이어야 합니다" }, 400);
+    }
+
+    // 소유권 확인
+    const stream = await c.env.DB.prepare(
+      'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first();
+
+    if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
+
+    await c.env.DB.prepare(
+      "UPDATE live_streams SET product_display_mode = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(mode, streamId).run();
+
+    return c.json({ success: true, data: { mode }, message: mode === 'all' ? '전체 상품이 표시됩니다' : '현재 상품만 표시됩니다' });
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
