@@ -146,6 +146,14 @@ export default function SellerDonationsPage() {
           </div>
         )}
 
+        {/* 수수료 안내 */}
+        <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-blue-700 leading-relaxed">
+            <span className="font-bold">수수료 안내</span> — 후원 정산 시 플랫폼 수수료 <span className="font-bold">15%</span>가 차감됩니다.
+            예) 1,000딜 후원 수령 시 실제 정산 금액은 <span className="font-bold">850원</span>입니다.
+          </p>
+        </div>
+
         {/* 정산 신청 버튼 */}
         {summary && summary.available_amount > 0 && (
           <button
