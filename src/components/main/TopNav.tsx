@@ -29,9 +29,9 @@ export default function TopNav() {
 
   const handleNotificationClick = () => {
     if (isLoggedIn) {
-      navigate('/mypage/notifications')
+      navigate('/mypage')
     } else {
-      navigate('/login?returnUrl=/')
+      navigate('/login?returnUrl=/mypage')
     }
   }
 
@@ -100,7 +100,7 @@ export default function TopNav() {
               {[
                 { label: 'Home', path: '/' },
                 { label: 'Shop', path: '/browse' },
-                { label: 'Live', path: '/live/1' },
+                { label: 'Live', path: '/browse?category=all' },
                 { label: 'My Page', path: '/user/profile' },
                 { label: 'Cart', path: '/cart' },
                 { label: 'Orders', path: '/my-orders' }

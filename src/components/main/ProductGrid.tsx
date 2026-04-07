@@ -24,9 +24,9 @@ function ProductCard({ product }: { product: Product }) {
   useEffect(() => {
     const checkWishlist = async () => {
       try {
-        const userId = localStorage.getItem('userId')
+        const userId = localStorage.getItem('user_id') || localStorage.getItem('userId')
         if (!userId) return
-        
+
         const response = await api.get(`/api/wishlists/check/${userId}/${product.id}`)
         if (response.data.success) {
           setSaved(response.data.data.isSaved)
@@ -45,7 +45,7 @@ function ProductCard({ product }: { product: Product }) {
   const handleSaveClick = async (e: React.MouseEvent) => {
     e.stopPropagation()
     
-    const userId = localStorage.getItem('userId')
+    const userId = localStorage.getItem('user_id') || localStorage.getItem('userId')
     if (!userId) {
       alert('로그인이 필요합니다.')
       navigate('/login')

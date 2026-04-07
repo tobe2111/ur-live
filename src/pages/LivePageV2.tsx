@@ -83,6 +83,8 @@ interface Stream {
   current_product_id?: number | null
   seller_id?: number
   current_product?: Product | null
+  scheduled_at?: string
+  seller_name?: string
 }
 
 interface Product {
@@ -1254,8 +1256,67 @@ function ReelCard({
         className="absolute inset-0 w-full h-full z-[5] [&_iframe]:!absolute [&_iframe]:!top-1/2 [&_iframe]:!left-1/2 [&_iframe]:!-translate-x-1/2 [&_iframe]:!-translate-y-1/2 [&_iframe]:!h-full [&_iframe]:!w-auto [&_iframe]:!aspect-video"
       />
 
-      {/* 로딩 → 입장 버튼 → 재생 중 (3단계 상태 관리) */}
-      {showPlayButton && (
+      {/* 예약 방송: 별도 UI */}
+      {stream.status === 'scheduled' && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-5 px-8">
+            {/* Scheduled Badge */}
+            <div className="px-5 py-2 bg-blue-600 rounded-full flex items-center gap-2">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-white text-sm font-bold">방송 예정</span>
+            </div>
+
+            {/* Stream Title */}
+            <h2 className="text-white text-xl font-bold text-center leading-tight">
+              {stream.title}
+            </h2>
+
+            {/* Scheduled Time */}
+            {stream.scheduled_at && (
+              <div className="text-center">
+                <p className="text-white/60 text-xs mb-1">방송 시작 예정</p>
+                <p className="text-white text-lg font-semibold">
+                  {new Date(stream.scheduled_at).toLocaleDateString('ko-KR', {
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'short',
+                  })} {new Date(stream.scheduled_at).toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+            )}
+
+            {/* Seller Name */}
+            {(stream.seller_name || stream.streamerName) && (
+              <p className="text-white/70 text-sm">
+                @{stream.seller_name || stream.streamerName}
+              </p>
+            )}
+
+            {/* 알림 설정 안내 */}
+            <div className="mt-2 px-6 py-3 bg-white/10 rounded-xl">
+              <p className="text-white/80 text-sm text-center">
+                방송이 시작되면 알림을 받으실 수 있습니다
+              </p>
+            </div>
+
+            {/* 홈으로 버튼 */}
+            <button
+              onClick={() => navigate('/')}
+              className="mt-2 px-8 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-full text-sm font-medium transition-colors"
+            >
+              홈으로 돌아가기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 라이브/종료 방송: 로딩 → 입장 → 재생 중 */}
+      {stream.status !== 'scheduled' && showPlayButton && (
         <button
           onClick={playerReady ? handleVideoClick : undefined}
           className={`absolute inset-0 z-10 flex flex-col items-center justify-center transition-all ${
@@ -1273,24 +1334,28 @@ function ReelCard({
               <span className="text-white text-sm font-bold">LIVE</span>
             </div>
 
-            {playerReady ? (
-              <>
-                {/* 준비 완료: 재생 버튼 */}
-                <svg className="w-16 h-16 text-white drop-shadow-2xl transition-all hover:scale-110 active:scale-95" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                <div className="text-center px-6">
-                  <p className="text-white text-xl font-bold mb-1.5">방송 입장하기</p>
-                  <p className="text-white/80 text-sm">탭하여 라이브 시청 시작</p>
+            {/* 통일된 로딩 UI: 항상 "라이브 입장 중..." */}
+            <div className="relative">
+              <div className={`h-16 w-16 border-4 border-red-500/20 border-t-red-600 rounded-full ${playerReady ? '' : 'animate-spin'}`} />
+              {playerReady && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
                 </div>
-              </>
-            ) : (
-              <>
-                {/* 로딩 중: 스피너 */}
-                <div className="w-12 h-12 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                <p className="text-white/80 text-sm">방송 준비 중...</p>
-              </>
-            )}
+              )}
+              {!playerReady && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+                </div>
+              )}
+            </div>
+            <div className="text-center px-6">
+              <p className="text-white text-xl font-bold mb-1.5">라이브 입장 중...</p>
+              <p className="text-white/60 text-sm">
+                {playerReady ? '탭하여 라이브 시청 시작' : '잠시만 기다려주세요'}
+              </p>
+            </div>
           </div>
         </button>
       )}
