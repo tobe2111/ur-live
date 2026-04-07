@@ -50,19 +50,19 @@ export default function BottomNav() {
             src={profileImage}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-gray-900 ring-offset-1' : 'opacity-70'
+              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#0F0F0F]' : 'opacity-60'
             }`}
             onError={() => setProfileImage(null)}
           />
         ) : (
           <Icon
             size={22}
-            className={active ? 'text-gray-900' : 'text-gray-400'}
+            className={active ? 'text-white' : 'text-gray-500'}
             strokeWidth={active ? 2 : 1.5}
           />
         )}
         <span className={`text-[9px] mt-0.5 ${
-          active ? 'font-bold text-gray-900' : 'text-gray-400'
+          active ? 'font-bold text-white' : 'text-gray-500'
         }`}>
           {label}
         </span>
@@ -76,7 +76,7 @@ export default function BottomNav() {
       <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none">
         <div className="max-w-screen-sm mx-auto pointer-events-auto">
           <nav
-            className="bg-white border-t border-gray-200"
+            className="bg-[#0F0F0F] border-t border-[#1F1F1F]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="flex items-center h-14">
@@ -112,21 +112,21 @@ export default function BottomNav() {
           <div className="fixed inset-x-0 bottom-0 z-[10001] animate-sheet-up">
             <div className="max-w-screen-sm mx-auto">
               <div
-                className="bg-white rounded-t-3xl"
+                className="bg-[#1A1A1A] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
               >
                 {/* Handle */}
                 <div className="flex justify-center pt-3 pb-2">
-                  <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                  <div className="w-10 h-1 bg-gray-600 rounded-full" />
                 </div>
 
                 <div className="px-6 pb-6">
                   {/* Close */}
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">
+                    <h3 className="text-lg font-bold text-white">
                       {isSeller ? '라이브 방송' : !isLoggedIn ? '로그인이 필요합니다' : '셀러로 시작하기'}
                     </h3>
-                    <button onClick={() => setSheetOpen(false)} className="p-1 rounded-full hover:bg-gray-100">
+                    <button onClick={() => setSheetOpen(false)} className="p-1 rounded-full hover:bg-white/10">
                       <X className="w-5 h-5 text-gray-500" />
                     </button>
                   </div>
@@ -149,13 +149,13 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gray-50 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-[#252525] rounded-2xl active:scale-[0.98] transition-transform"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-gray-900">셀러 대시보드</p>
+                          <p className="text-[15px] font-bold text-white">셀러 대시보드</p>
                           <p className="text-[12px] text-gray-500 mt-0.5">상품 관리, 주문, 매출 확인</p>
                         </div>
                       </button>
@@ -198,7 +198,7 @@ export default function BottomNav() {
                   {/* Not logged in */}
                   {!isLoggedIn && (
                     <div className="space-y-3">
-                      <p className="text-sm text-gray-500 mb-2">
+                      <p className="text-sm text-gray-400 mb-2">
                         라이브 방송을 시작하려면 먼저 로그인해주세요.
                       </p>
 

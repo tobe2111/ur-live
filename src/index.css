@@ -4,68 +4,36 @@
 
 @layer base {
   :root {
-    /* Apple Design System - SF Symbols & Colors */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-
-    /* Apple Blue */
-    --primary: 211 100% 50%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
-
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-
-    --accent: 211 100% 50%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 100% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 89%;
-    --input: 0 0% 89%;
-    --ring: 211 100% 50%;
-
-    /* Apple prefers minimal radius */
-    --radius: 0.75rem;
-  }
-
-  .dark {
-    --background: 0 0% 0%;
+    /* Dark Theme — Grip-style live commerce */
+    --background: 0 0% 6%;       /* #0F0F0F */
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 7%;
+    --card: 0 0% 10%;             /* #1A1A1A */
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 7%;
+    --popover: 0 0% 12%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 211 100% 50%;
+    --primary: 345 100% 65%;      /* #FF4D6D 핑크레드 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 50%;
 
-    --accent: 211 100% 50%;
+    --accent: 345 100% 65%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 211 100% 50%;
+    --border: 0 0% 17%;           /* #2A2A2A */
+    --input: 0 0% 17%;
+    --ring: 345 100% 65%;
+
+    --radius: 0.75rem;
   }
 }
 
@@ -75,8 +43,9 @@
   }
   
   body {
-    /* PC 배경색: 연한 회색 */
-    background-color: #f5f5f7 !important;
+    /* 다크 테마 배경 */
+    background-color: #0F0F0F !important;
+    color: #ffffff;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
       -apple-system,
@@ -257,9 +226,9 @@
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-/* Apple card with subtle shadow */
+/* Card with subtle shadow */
 .apple-card {
-  background: #fff;
+  background: #1A1A1A;
   border-radius: 18px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
@@ -393,8 +362,8 @@ html {
   /* 최소 높이: 화면 꽉 채우기 */
   min-height: 100vh;
   
-  /* 컨테이너 배경: 순백 */
-  background-color: #ffffff;
+  /* 컨테이너 배경: 다크 */
+  background-color: #0F0F0F;
   
   /* 은은한 그림자: 입체감 */
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);

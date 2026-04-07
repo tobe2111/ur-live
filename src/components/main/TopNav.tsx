@@ -6,14 +6,14 @@ export default function TopNav() {
   const navigate = useNavigate()
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
+    <header className="sticky top-0 z-50 w-full bg-[#0F0F0F] border-b border-[#1F1F1F]">
       <div className="flex items-center justify-between h-12 px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center">
           <img
             src="/logo.png"
             alt="유어딜"
-            className="h-8"
+            className="h-8 brightness-0 invert"
             onError={(e) => {
               const img = e.target as HTMLImageElement
               if (!img.src.includes('googleusercontent')) {
@@ -23,13 +23,13 @@ export default function TopNav() {
           />
         </Link>
 
-        {/* Right actions: Search + Cart only (profile moved to BottomNav) */}
+        {/* Right actions */}
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/search')} className="p-1" aria-label="검색">
-            <Search className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+            <Search className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
           </button>
           <button onClick={() => navigate('/cart')} className="p-1 relative" aria-label="장바구니">
-            <ShoppingCart className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
+            <ShoppingCart className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
             {(() => {
               const cartData = localStorage.getItem('cart')
               let count = 0

@@ -65,7 +65,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
 
   return (
     <button onClick={onClick} className="w-full text-left active:scale-[0.98] transition-transform">
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-200">
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-[#333]">
         {thumb ? (
           <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
         ) : (
@@ -77,7 +77,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         {/* Status badge */}
         {isLive ? (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
-            <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
+            <span className="h-1.5 w-1.5 bg-[#1A1A1A] rounded-full animate-pulse" />
             <span className="text-[10px] font-bold text-white">LIVE</span>
           </div>
         ) : stream.status === 'scheduled' ? (
@@ -105,7 +105,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         {/* Seller info */}
         {stream.seller_name && (
           <div className="absolute bottom-10 left-2 flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-5 h-5 rounded-full bg-[#1A1A1A]/20 backdrop-blur-sm flex items-center justify-center">
               <span className="text-[8px] font-bold text-white">{stream.seller_name.charAt(0)}</span>
             </div>
             <span className="text-[10px] font-medium text-white/90 drop-shadow-lg">{stream.seller_name}</span>
@@ -135,12 +135,12 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
-      <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-xl">
+      <div className="relative aspect-square overflow-hidden bg-[#252525] rounded-xl">
         {product.image_url ? (
           <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-            <ShoppingBag className="w-6 h-6 text-gray-400" />
+            <ShoppingBag className="w-6 h-6 text-gray-500" />
           </div>
         )}
         {discountRate > 0 && (
@@ -150,12 +150,12 @@ function ProductCard({ product }: { product: Product }) {
         )}
       </div>
       <div className="mt-1.5">
-        <p className="text-[11px] text-gray-700 leading-snug line-clamp-2">{product.name}</p>
+        <p className="text-[11px] text-gray-300 leading-snug line-clamp-2">{product.name}</p>
         <div className="mt-0.5 flex items-baseline gap-1">
           {discountRate > 0 && (
             <span className="text-[12px] font-extrabold text-red-500">{discountRate}%</span>
           )}
-          <span className="text-[12px] font-extrabold text-gray-900">{product.price.toLocaleString()}원</span>
+          <span className="text-[12px] font-extrabold text-white">{product.price.toLocaleString()}원</span>
         </div>
       </div>
     </div>
@@ -200,9 +200,9 @@ export default function MainHomePage() {
   const allStreams = [...liveStreams, ...scheduledStreams, ...endedStreams]
 
   return (
-    <div className="bg-white min-h-screen pb-16">
+    <div className="bg-[#1A1A1A] min-h-screen pb-16">
       {/* ── Top Header ── */}
-      <header className="sticky top-0 z-50 bg-white">
+      <header className="sticky top-0 z-50 bg-[#1A1A1A]">
         {/* Row 1: Logo + Search + Icons */}
         <div className="flex items-center justify-between h-12 px-4">
           <div className="flex items-center gap-4">
@@ -219,10 +219,10 @@ export default function MainHomePage() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => navigate('/search')} className="p-1.5">
-              <Search className="h-5 w-5 text-gray-800" strokeWidth={1.5} />
+              <Search className="h-5 w-5 text-gray-100" strokeWidth={1.5} />
             </button>
             <button onClick={() => navigate('/cart')} className="p-1.5 relative">
-              <ShoppingCart className="h-5 w-5 text-gray-800" strokeWidth={1.5} />
+              <ShoppingCart className="h-5 w-5 text-gray-100" strokeWidth={1.5} />
               {(() => {
                 let count = 0
                 try { count = JSON.parse(localStorage.getItem('cart') || '[]').length } catch {}
@@ -240,7 +240,7 @@ export default function MainHomePage() {
               {isLoggedIn && localStorage.getItem('user_profile_image') ? (
                 <img src={localStorage.getItem('user_profile_image')!} alt="" className="h-6 w-6 rounded-full object-cover" />
               ) : (
-                <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center">
+                <div className="h-6 w-6 rounded-full bg-[#333] flex items-center justify-center">
                   <span className="text-[10px] font-bold text-gray-500">
                     {isLoggedIn ? ((user as any)?.name?.charAt(0) || 'U') : '?'}
                   </span>
@@ -251,15 +251,15 @@ export default function MainHomePage() {
         </div>
 
         {/* Row 2: Tabs */}
-        <div className="flex items-center gap-4 px-4 border-b border-gray-100">
+        <div className="flex items-center gap-4 px-4 border-b border-[#2A2A2A]">
           {(['recommend', 'following'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-2.5 text-[14px] font-bold border-b-2 transition-colors ${
                 activeTab === tab
-                  ? 'text-gray-900 border-gray-900'
-                  : 'text-gray-400 border-transparent'
+                  ? 'text-white border-gray-900'
+                  : 'text-gray-500 border-transparent'
               }`}
             >
               {tab === 'recommend' ? '추천' : '팔로잉'}
@@ -268,7 +268,7 @@ export default function MainHomePage() {
         </div>
 
         {/* Row 3: Category chips */}
-        <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar bg-white border-b border-gray-50">
+        <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar bg-[#1A1A1A] border-b border-gray-50">
           {CATEGORIES.map(cat => (
             <button
               key={cat.key}
@@ -276,7 +276,7 @@ export default function MainHomePage() {
               className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
                 activeCategory === cat.key
                   ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-600'
+                  : 'bg-[#252525] text-gray-500'
               }`}
             >
               <span className="text-[11px]">{cat.icon}</span>
@@ -295,12 +295,12 @@ export default function MainHomePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md">
-                <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
+                <span className="h-1.5 w-1.5 bg-[#1A1A1A] rounded-full animate-pulse" />
                 <span className="text-[10px] font-bold text-white">LIVE</span>
               </div>
-              <h2 className="text-[15px] font-bold text-gray-900">지금 방송 중</h2>
+              <h2 className="text-[15px] font-bold text-white">지금 방송 중</h2>
             </div>
-            <button onClick={() => navigate('/live')} className="text-[12px] text-gray-400 flex items-center">
+            <button onClick={() => navigate('/live')} className="text-[12px] text-gray-500 flex items-center">
               더보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -324,7 +324,7 @@ export default function MainHomePage() {
               <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${menu.color} flex items-center justify-center shadow-sm`}>
                 <menu.icon className="w-5 h-5 text-white" strokeWidth={2} />
               </div>
-              <span className="text-[10px] font-medium text-gray-600">{menu.label}</span>
+              <span className="text-[10px] font-medium text-gray-500">{menu.label}</span>
             </button>
           ))}
         </div>
@@ -334,11 +334,11 @@ export default function MainHomePage() {
       {scheduledStreams.length > 0 && (
         <section className="px-4 pb-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[15px] font-bold text-gray-900 flex items-center gap-1.5">
+            <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-blue-500" />
               방송 예고
             </h2>
-            <button onClick={() => navigate('/live')} className="text-[12px] text-gray-400 flex items-center">
+            <button onClick={() => navigate('/live')} className="text-[12px] text-gray-500 flex items-center">
               더보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -347,14 +347,14 @@ export default function MainHomePage() {
               <button
                 key={stream.id}
                 onClick={() => navigate(`/live/${stream.id}`)}
-                className="flex-shrink-0 w-[200px] bg-gray-50 rounded-xl p-3 text-left active:scale-[0.98] transition-transform"
+                className="flex-shrink-0 w-[200px] bg-[#151515] rounded-xl p-3 text-left active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <span className="text-[10px] font-bold text-blue-600">{stream.seller_name?.charAt(0) || '?'}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-gray-900 truncate">{stream.seller_name || '셀러'}</p>
+                    <p className="text-[11px] font-bold text-white truncate">{stream.seller_name || '셀러'}</p>
                     {stream.scheduled_at && (
                       <p className="text-[10px] text-blue-500 font-medium">
                         {new Date(stream.scheduled_at).toLocaleString('ko-KR', {
@@ -364,10 +364,10 @@ export default function MainHomePage() {
                     )}
                   </div>
                 </div>
-                <p className="text-[11px] text-gray-600 line-clamp-2">{stream.title}</p>
+                <p className="text-[11px] text-gray-500 line-clamp-2">{stream.title}</p>
                 <button
                   onClick={(e) => { e.stopPropagation() }}
-                  className="mt-2 w-full py-1.5 bg-white border border-red-200 rounded-lg text-[11px] font-bold text-red-500"
+                  className="mt-2 w-full py-1.5 bg-[#1A1A1A] border border-red-200 rounded-lg text-[11px] font-bold text-red-500"
                 >
                   방송 알림 받기
                 </button>
@@ -379,13 +379,13 @@ export default function MainHomePage() {
 
       {/* ── UR 특가 ── */}
       {products.length > 0 && (
-        <section className="px-4 py-4 bg-gray-50">
+        <section className="px-4 py-4 bg-[#151515]">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-[15px] font-bold text-gray-900">UR 특가 🔥</h2>
-              <p className="text-[11px] text-gray-400">라이브 없이도 구매 가능한 인기 상품</p>
+              <h2 className="text-[15px] font-bold text-white">UR 특가 🔥</h2>
+              <p className="text-[11px] text-gray-500">라이브 없이도 구매 가능한 인기 상품</p>
             </div>
-            <button onClick={() => navigate('/browse')} className="text-[12px] text-gray-400 flex items-center">
+            <button onClick={() => navigate('/browse')} className="text-[12px] text-gray-500 flex items-center">
               전체보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -401,11 +401,11 @@ export default function MainHomePage() {
       {endedStreams.length > 0 && (
         <section className="px-4 py-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[15px] font-bold text-gray-900 flex items-center gap-1.5">
+            <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
               <Play className="w-4 h-4 text-gray-500" />
               다시보기
             </h2>
-            <button onClick={() => navigate('/live')} className="text-[12px] text-gray-400 flex items-center">
+            <button onClick={() => navigate('/live')} className="text-[12px] text-gray-500 flex items-center">
               더보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -422,7 +422,7 @@ export default function MainHomePage() {
         <div className="px-4 py-6">
           <div className="grid grid-cols-2 gap-2.5">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-gray-100 animate-pulse rounded-xl" />
+              <div key={i} className="aspect-[3/4] bg-[#252525] animate-pulse rounded-xl" />
             ))}
           </div>
         </div>
