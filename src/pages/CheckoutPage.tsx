@@ -444,14 +444,14 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#252525]">
+    <div className="min-h-screen bg-[#1A1A1A]">
       {/* 헤더 */}
-      <div className="bg-[#1A1A1A] border-b border-[#2A2A2A] sticky top-0 z-10">
+      <div className="bg-[#121212] border-b border-[#1A1A1A] sticky top-0 z-10">
         <div className="mx-auto max-w-lg lg:max-w-5xl px-5 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/cart')}
-              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#252525] transition-colors"
+              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#1A1A1A] transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -466,7 +466,7 @@ export default function CheckoutPage() {
           {/* Left column */}
           <div className="flex flex-1 flex-col lg:rounded-3xl">{/* overflow-hidden 제거 */}
             {/* 배송지 정보 */}
-            <section className="bg-[#1A1A1A] px-5 py-6">
+            <section className="bg-[#121212] px-5 py-6">
               <div className="flex items-center justify-between relative">
                 <h2 className="text-[17px] font-bold text-white">배송지</h2>
                 <button
@@ -513,10 +513,10 @@ export default function CheckoutPage() {
             </section>
             
             {/* Divider */}
-            <div className="h-2 bg-[#252525]" />
+            <div className="h-2 bg-[#1A1A1A]" />
 
             {/* 주문 상품 정보 */}
-            <section className="bg-[#1A1A1A] px-5 py-6">
+            <section className="bg-[#121212] px-5 py-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-[17px] font-bold text-white">주문 상품</h2>
                 <span className="text-[13px] text-gray-600">
@@ -526,15 +526,15 @@ export default function CheckoutPage() {
 
               <div className="mt-5 flex flex-col gap-5">
                 {Object.values(sellerGroups).map((group) => (
-                  <div key={group.seller_id} className="border border-[#2A2A2A] rounded-2xl p-4">
+                  <div key={group.seller_id} className="border border-[#1A1A1A] rounded-2xl p-4">
                     <p className="text-[13px] font-semibold text-gray-300 mb-3">
                       {group.seller_name}
                     </p>
                     
                     {group.items.map((item) => (
-                      <div key={item.id} className="flex gap-4 py-3 border-t border-[#2A2A2A] first:border-t-0">
+                      <div key={item.id} className="flex gap-4 py-3 border-t border-[#1A1A1A] first:border-t-0">
                         {/* 이미지 or 아이콘 */}
-                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-[#252525]">
+                        <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-[#1A1A1A]">
                           {item.image_url ? (
                             <img
                               src={item.image_url}
@@ -568,7 +568,7 @@ export default function CheckoutPage() {
                     ))}
 
                     {/* 배송비 정보 */}
-                    <div className="mt-3 pt-3 border-t border-[#2A2A2A] flex justify-between text-[13px]">
+                    <div className="mt-3 pt-3 border-t border-[#1A1A1A] flex justify-between text-[13px]">
                       <span className="text-gray-600">배송비</span>
                       <span className="font-semibold text-white">
                         {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold
@@ -587,10 +587,10 @@ export default function CheckoutPage() {
             </section>
             
             {/* Divider */}
-            <div className="h-2 bg-[#252525]" />
+            <div className="h-2 bg-[#1A1A1A]" />
 
             {/* 결제 수단 및 약관 동의 (통합) */}
-            <section className="bg-[#1A1A1A] px-5 py-4">
+            <section className="bg-[#121212] px-5 py-4">
               <h2 className="text-[17px] font-bold text-white mb-3">결제 수단</h2>
               
               {/* 🔥 Region-based payment widget */}
@@ -647,7 +647,7 @@ export default function CheckoutPage() {
           {/* Right column - Order summary (desktop only) */}
           <div className="hidden lg:block lg:w-[360px]">
             <div className="sticky top-20 rounded-3xl">{/* overflow-hidden 제거 */}
-              <section className="bg-[#1A1A1A] px-5 py-6">
+              <section className="bg-[#121212] px-5 py-6">
                 <h2 className="text-[17px] font-bold text-white">결제 금액</h2>
 
                 <div className="mt-5 flex flex-col gap-3.5">
@@ -697,8 +697,8 @@ export default function CheckoutPage() {
 
         {/* Mobile order summary */}
         <div className="lg:hidden">
-          <div className="h-2 bg-[#252525]" />
-          <section className="bg-[#1A1A1A] px-5 py-6">
+          <div className="h-2 bg-[#1A1A1A]" />
+          <section className="bg-[#121212] px-5 py-6">
             <h2 className="text-[17px] font-bold text-white">결제 금액</h2>
 
             <div className="mt-5 flex flex-col gap-3.5">
@@ -763,7 +763,7 @@ export default function CheckoutPage() {
                 className={`border rounded-2xl p-4 cursor-pointer transition-all ${
                   selectedAddress?.id === addr.id 
                     ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                    : 'border-[#2A2A2A] hover:border-blue-300 hover:bg-[#151515]'
+                    : 'border-[#1A1A1A] hover:border-blue-300 hover:bg-[#0A0A0A]'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -810,7 +810,7 @@ export default function CheckoutPage() {
               setShowAddressModal(false)
               setTimeout(() => setShowNewAddressForm(true), 100)
             }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#333] bg-[#151515] py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#333] bg-[#0A0A0A] py-4 text-[15px] font-semibold text-gray-600 transition-all hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 cursor-pointer touch-manipulation active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
             <span>새 배송지 추가</span>
@@ -866,12 +866,12 @@ export default function CheckoutPage() {
                 inputMode="numeric"
                 value={newAddress.postal_code}
                 readOnly
-                className="flex-1 px-4 py-3 border border-[#333] rounded-2xl bg-[#151515] text-[15px] text-gray-600"
+                className="flex-1 px-4 py-3 border border-[#333] rounded-2xl bg-[#0A0A0A] text-[15px] text-gray-600"
                 placeholder="우편번호"
               />
               <button
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-[#333] rounded-2xl text-[14px] font-semibold text-gray-300 hover:bg-[#151515] transition-all whitespace-nowrap"
+                className="px-5 py-3 border border-[#333] rounded-2xl text-[14px] font-semibold text-gray-300 hover:bg-[#0A0A0A] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -879,7 +879,7 @@ export default function CheckoutPage() {
           </div>
 
           {showPostcodePopup && (
-            <div className="rounded-2xl overflow-hidden border border-[#2A2A2A]">
+            <div className="rounded-2xl overflow-hidden border border-[#1A1A1A]">
               <div
                 id="daum-postcode-container"
                 style={{ width: '100%', height: '400px' }}
@@ -895,7 +895,7 @@ export default function CheckoutPage() {
               type="text"
               value={newAddress.address}
               readOnly
-              className="w-full px-4 py-3 border border-[#333] rounded-2xl bg-[#151515] text-[15px] text-gray-600"
+              className="w-full px-4 py-3 border border-[#333] rounded-2xl bg-[#0A0A0A] text-[15px] text-gray-600"
               placeholder="주소 검색 후 자동 입력됩니다"
             />
           </div>
@@ -931,7 +931,7 @@ export default function CheckoutPage() {
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              className="flex-1 py-4 bg-[#252525] text-gray-300 rounded-2xl text-[16px] font-bold hover:bg-[#333] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-[#1A1A1A] text-gray-300 rounded-2xl text-[16px] font-bold hover:bg-[#333] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

@@ -143,7 +143,7 @@ export default function BrowsePage() {
   }
 
   return (
-    <div className="bg-[#0F0F0F]">
+    <div className="bg-[#020202]">
       <TopNav />
 
       <main className="px-4 py-4">
@@ -156,13 +156,13 @@ export default function BrowsePage() {
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowSortDropdown(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-full text-sm font-medium text-gray-300 hover:bg-[#151515] shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#121212] border border-[#1A1A1A] rounded-full text-sm font-medium text-gray-300 hover:bg-[#0A0A0A] shadow-sm"
             >
               {SORT_LABELS[sortBy]}
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-36 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
+              <div className="absolute top-full left-0 mt-1 w-36 bg-[#121212] border border-[#1A1A1A] rounded-xl shadow-lg z-30 overflow-hidden">
                 {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                   <button
                     key={opt}
@@ -170,7 +170,7 @@ export default function BrowsePage() {
                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                       sortBy === opt
                         ? 'bg-primary/10 text-primary font-semibold'
-                        : 'text-gray-300 hover:bg-[#151515]'
+                        : 'text-gray-300 hover:bg-[#0A0A0A]'
                     }`}
                   >
                     {SORT_LABELS[opt]}
@@ -187,13 +187,13 @@ export default function BrowsePage() {
               className={`flex items-center gap-1.5 px-3 py-2 border rounded-full text-sm font-medium shadow-sm transition-colors ${
                 activeFilterCount > 0
                   ? 'bg-primary text-white border-primary'
-                  : 'bg-[#1A1A1A] border-[#2A2A2A] text-gray-300 hover:bg-[#151515]'
+                  : 'bg-[#121212] border-[#1A1A1A] text-gray-300 hover:bg-[#0A0A0A]'
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
               필터
               {activeFilterCount > 0 && (
-                <span className="ml-0.5 bg-[#1A1A1A] text-primary rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">
+                <span className="ml-0.5 bg-[#121212] text-primary rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">
                   {activeFilterCount}
                 </span>
               )}
@@ -213,7 +213,7 @@ export default function BrowsePage() {
 
         {/* 필터 패널 (접이식) */}
         {showFilterPanel && (
-          <div className="mb-4 p-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl shadow-sm">
+          <div className="mb-4 p-4 bg-[#121212] border border-[#1A1A1A] rounded-2xl shadow-sm">
             <h3 className="text-sm font-semibold text-gray-100 mb-3">가격 필터</h3>
 
             {/* 프리셋 가격 범위 */}
@@ -225,7 +225,7 @@ export default function BrowsePage() {
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                     !useCustomPrice && priceRangeIdx === idx
                       ? 'bg-primary text-white border-primary'
-                      : 'bg-[#1A1A1A] text-gray-600 border-[#2A2A2A] hover:border-primary hover:text-primary'
+                      : 'bg-[#121212] text-gray-600 border-[#1A1A1A] hover:border-primary hover:text-primary'
                   }`}
                 >
                   {range.label}
@@ -240,7 +240,7 @@ export default function BrowsePage() {
                 placeholder="최소 금액"
                 value={minPrice}
                 onChange={e => { setMinPrice(e.target.value); setUseCustomPrice(true); setPriceRangeIdx(0) }}
-                className="flex-1 px-3 py-2 border border-[#2A2A2A] rounded-lg text-sm focus:outline-none focus:border-primary"
+                className="flex-1 px-3 py-2 border border-[#1A1A1A] rounded-lg text-sm focus:outline-none focus:border-primary"
               />
               <span className="text-gray-400 text-sm">~</span>
               <input
@@ -248,7 +248,7 @@ export default function BrowsePage() {
                 placeholder="최대 금액"
                 value={maxPrice}
                 onChange={e => { setMaxPrice(e.target.value); setUseCustomPrice(true); setPriceRangeIdx(0) }}
-                className="flex-1 px-3 py-2 border border-[#2A2A2A] rounded-lg text-sm focus:outline-none focus:border-primary"
+                className="flex-1 px-3 py-2 border border-[#1A1A1A] rounded-lg text-sm focus:outline-none focus:border-primary"
               />
               <span className="text-sm text-gray-500">원</span>
             </div>

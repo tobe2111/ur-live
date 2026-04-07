@@ -134,7 +134,7 @@ export function RewardAdCard() {
         </div>
 
         {/* 진행 바 */}
-        <div className="mt-3 bg-[#1A1A1A]/60 rounded-full h-1.5 overflow-hidden">
+        <div className="mt-3 bg-[#121212]/60 rounded-full h-1.5 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
             style={{ width: `${(status.todayCount / status.dailyLimit) * 100}%` }}

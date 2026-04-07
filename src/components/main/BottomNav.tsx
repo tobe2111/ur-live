@@ -50,7 +50,7 @@ export default function BottomNav() {
             src={profileImage}
             alt="Profile"
             className={`h-6 w-6 rounded-full object-cover transition-all ${
-              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#0F0F0F]' : 'opacity-60'
+              active ? 'ring-2 ring-white ring-offset-1 ring-offset-[#020202]' : 'opacity-60'
             }`}
             onError={() => setProfileImage(null)}
           />
@@ -76,7 +76,7 @@ export default function BottomNav() {
       <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none">
         <div className="max-w-screen-sm mx-auto pointer-events-auto">
           <nav
-            className="bg-[#0F0F0F] border-t border-[#1F1F1F]"
+            className="bg-[#020202] border-t border-[#0A0A0A]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             <div className="flex items-center h-14">
@@ -112,7 +112,7 @@ export default function BottomNav() {
           <div className="fixed inset-x-0 bottom-0 z-[10001] animate-sheet-up">
             <div className="max-w-screen-sm mx-auto">
               <div
-                className="bg-[#1A1A1A] rounded-t-3xl"
+                className="bg-[#121212] rounded-t-3xl"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
               >
                 {/* Handle */}
@@ -149,7 +149,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller') }}
-                        className="w-full flex items-center gap-4 p-4 bg-[#252525] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-[#1A1A1A] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-[#333] flex items-center justify-center">
                           <LayoutDashboard className="w-6 h-6 text-gray-600" />

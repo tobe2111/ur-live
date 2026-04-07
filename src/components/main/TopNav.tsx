@@ -6,7 +6,7 @@ export default function TopNav() {
   const navigate = useNavigate()
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#0F0F0F] border-b border-[#1F1F1F]">
+    <header className="sticky top-0 z-50 w-full bg-[#020202] border-b border-[#0A0A0A]">
       <div className="flex items-center justify-between h-12 px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-1.5">

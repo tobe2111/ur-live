@@ -21,7 +21,7 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="cursor-pointer active:scale-[0.98] transition-transform" onClick={() => navigate(`/products/${product.id}`)}>
-      <div className="relative aspect-square overflow-hidden bg-[#252525] rounded-xl">
+      <div className="relative aspect-square overflow-hidden bg-[#1A1A1A] rounded-xl">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -41,7 +41,7 @@ function ProductCard({ product }: { product: Product }) {
         )}
         <button
           onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
-          className="absolute bottom-2 right-2 p-1.5 bg-[#1A1A1A]/90 rounded-lg shadow-sm"
+          className="absolute bottom-2 right-2 p-1.5 bg-[#121212]/90 rounded-lg shadow-sm"
         >
           <ShoppingBag className="h-3.5 w-3.5 text-gray-300" />
         </button>
@@ -90,9 +90,9 @@ export default function ProductGrid() {
         <div className="grid grid-cols-3 gap-3">
           {[...Array(6)].map((_, i) => (
             <div key={i}>
-              <div className="aspect-square bg-[#252525] animate-pulse rounded-xl" />
-              <div className="mt-2 h-3 bg-[#252525] animate-pulse rounded w-full" />
-              <div className="mt-1 h-3 bg-[#252525] animate-pulse rounded w-2/3" />
+              <div className="aspect-square bg-[#1A1A1A] animate-pulse rounded-xl" />
+              <div className="mt-2 h-3 bg-[#1A1A1A] animate-pulse rounded w-full" />
+              <div className="mt-1 h-3 bg-[#1A1A1A] animate-pulse rounded w-2/3" />
             </div>
           ))}
         </div>

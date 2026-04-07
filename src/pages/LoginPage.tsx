@@ -313,14 +313,14 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isAuthReady && isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-[#1A1A1A] flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <div className="text-gray-600">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#1A1A1A] flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}
@@ -381,7 +381,7 @@ export default function LoginPage() {
               <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full h-[52px] bg-[#1A1A1A] hover:bg-[#151515] text-[#3c4043] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-[#dadce0]"
+                className="w-full h-[52px] bg-[#121212] hover:bg-[#0A0A0A] text-[#3c4043] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-[#dadce0]"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">

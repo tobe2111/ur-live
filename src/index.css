@@ -4,23 +4,23 @@
 
 @layer base {
   :root {
-    /* Dark Theme — Grip-style live commerce */
-    --background: 0 0% 6%;       /* #0F0F0F */
+    /* Dark Theme — #020202 base */
+    --background: 0 0% 1%;        /* #020202 */
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 10%;             /* #1A1A1A */
+    --card: 0 0% 7%;              /* #121212 */
     --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 12%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 345 100% 65%;      /* #FF4D6D 핑크레드 */
+    --primary: 345 100% 65%;      /* #FF4D6D */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 14%;
+    --muted: 0 0% 10%;
     --muted-foreground: 0 0% 50%;
 
     --accent: 345 100% 65%;
@@ -29,8 +29,8 @@
     --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 17%;           /* #2A2A2A */
-    --input: 0 0% 17%;
+    --border: 0 0% 12%;           /* #1F1F1F */
+    --input: 0 0% 12%;
     --ring: 345 100% 65%;
 
     --radius: 0.75rem;
@@ -44,7 +44,7 @@
   
   body {
     /* 다크 테마 배경 */
-    background-color: #0F0F0F !important;
+    background-color: #020202 !important;
     color: #ffffff;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
@@ -228,7 +228,7 @@
 
 /* Card with subtle shadow */
 .apple-card {
-  background: #1A1A1A;
+  background: #121212;
   border-radius: 18px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 20px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
@@ -363,7 +363,7 @@ html {
   min-height: 100vh;
   
   /* 컨테이너 배경: 다크 */
-  background-color: #0F0F0F;
+  background-color: #020202;
   
   /* 은은한 그림자: 입체감 */
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);

@@ -5,7 +5,7 @@ interface UserInfoProps {
 
 export function UserInfo({ userName = '게스트', profileImage }: UserInfoProps) {
   return (
-    <div className="bg-[#0F0F0F] px-5 pt-10 pb-6">
+    <div className="bg-[#020202] px-5 pt-10 pb-6">
       <div className="text-center">
         <div className="mb-4 flex justify-center">
           {profileImage ? (

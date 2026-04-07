@@ -52,7 +52,7 @@ export function MenuList() {
   const navigate = useNavigate()
 
   return (
-    <div className="bg-[#0F0F0F]">
+    <div className="bg-[#020202]">
       <div className="px-5">
         {menuItems.map((item, index) => (
           <button
@@ -60,7 +60,7 @@ export function MenuList() {
             onClick={() => navigate(item.path)}
             className={`flex w-full items-center gap-4 py-4 text-left transition-colors active:bg-secondary ${
               index !== menuItems.length - 1
-                ? "border-b border-[#2A2A2A]"
+                ? "border-b border-[#1A1A1A]"
                 : ""
             }`}
           >
