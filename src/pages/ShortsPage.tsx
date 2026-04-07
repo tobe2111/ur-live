@@ -260,6 +260,23 @@ export default function ShortsPage() {
 
             {/* 하단 정보 */}
             <div className="absolute bottom-6 left-0 right-16 px-4 z-20">
+              {/* 실시간 라이브 배지 */}
+              {item.source_type === 'live' && (
+                <button
+                  onClick={() => item.live_stream_id && navigate(`/live/${item.live_stream_id}`)}
+                  className="flex items-center gap-2 mb-3 bg-red-500/90 backdrop-blur-sm rounded-xl px-4 py-2.5 w-full active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 bg-white rounded-full animate-pulse" />
+                    <span className="text-xs font-bold text-white">LIVE</span>
+                  </div>
+                  <span className="text-xs text-white/80 flex-1 text-left">라이브 방송 입장하기</span>
+                  {(item as any).viewer_count > 0 && (
+                    <span className="text-[10px] text-white/70">{(item as any).viewer_count}명 시청</span>
+                  )}
+                </button>
+              )}
+
               {/* 셀러 정보 */}
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
@@ -270,6 +287,9 @@ export default function ShortsPage() {
                   )}
                 </div>
                 <span className="text-sm font-bold text-white">{item.seller_name || '셀러'}</span>
+                {item.source_type === 'live' && (
+                  <span className="ml-auto text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">LIVE</span>
+                )}
               </div>
 
               {/* 제목 */}
@@ -296,7 +316,7 @@ export default function ShortsPage() {
                 </button>
               )}
 
-              {/* 라이브 다시보기 배지 */}
+              {/* 라이브 다시보기 */}
               {item.source_type === 'live_replay' && (
                 <button
                   onClick={() => item.live_stream_id && navigate(`/live/${item.live_stream_id}`)}

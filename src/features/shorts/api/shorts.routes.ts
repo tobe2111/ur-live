@@ -58,69 +58,119 @@ async function ensureTables(DB: D1Database) {
   } catch { /* exists */ }
 }
 
-// ── GET /api/shorts/feed — 랜덤 피드 ──────────────────────────────
+// ── GET /api/shorts/feed — 쇼츠 + 실시간 라이브 + 다시보기 혼합 피드 ──
 shortsRoutes.get('/feed', async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
   const limit = Number(c.req.query('limit')) || 10
-  const exclude = c.req.query('exclude') || '' // 이미 본 ID들 (콤마 구분)
+  const exclude = c.req.query('exclude') || ''
 
-  let query = `
-    SELECT s.*, sel.name as seller_name, sel.profile_image as seller_avatar,
-           p.name as product_name, p.price as product_price, p.image_url as product_image
-    FROM shorts s
-    LEFT JOIN sellers sel ON s.seller_id = sel.id
-    LEFT JOIN products p ON s.product_id = p.id
-    WHERE s.status = 'active'
-  `
-
-  const binds: unknown[] = []
+  const excludeShorts: number[] = []
+  const excludeLive: number[] = []
   if (exclude) {
-    const excludeIds = exclude.split(',').filter(Boolean).map(Number)
-    if (excludeIds.length > 0) {
-      query += ` AND s.id NOT IN (${excludeIds.map(() => '?').join(',')})`
-      binds.push(...excludeIds)
-    }
+    exclude.split(',').filter(Boolean).forEach(id => {
+      if (id.startsWith('live_')) excludeLive.push(Number(id.replace('live_', '')))
+      else excludeShorts.push(Number(id))
+    })
   }
 
-  // 랜덤 + 최신 가중치: 최근 것이 더 자주 나오도록
-  query += ` ORDER BY RANDOM() LIMIT ?`
-  binds.push(limit)
+  const feed: Record<string, unknown>[] = []
 
-  const { results } = await DB.prepare(query).bind(...binds).all()
-
-  // 쇼츠가 부족하면 라이브 다시보기도 포함
-  let feed = results ?? []
-  if (feed.length < limit) {
-    const remaining = limit - feed.length
-    const liveShorts = await DB.prepare(`
+  // 1) 실시간 라이브 스트림 (최우선)
+  try {
+    let liveQuery = `
       SELECT ls.id, ls.title, ls.youtube_video_id, ls.seller_id,
              s.name as seller_name, s.profile_image as seller_avatar,
-             'live_replay' as source_type
+             ls.viewer_count, 'live' as source_type
       FROM live_streams ls
       LEFT JOIN sellers s ON ls.seller_id = s.id
-      WHERE ls.status = 'ended' AND ls.youtube_video_id IS NOT NULL
-      ORDER BY RANDOM() LIMIT ?
-    `).bind(remaining).all()
-
-    if (liveShorts.results) {
-      feed = [...feed, ...liveShorts.results.map(ls => ({
-        id: `live_${ls.id}`,
-        title: ls.title,
-        youtube_video_id: ls.youtube_video_id,
-        seller_name: ls.seller_name,
-        seller_avatar: ls.seller_avatar,
-        seller_id: ls.seller_id,
-        view_count: 0,
-        like_count: 0,
-        source_type: 'live_replay',
-        live_stream_id: ls.id,
-      }))]
+      WHERE ls.status = 'live' AND ls.youtube_video_id IS NOT NULL
+    `
+    const liveBinds: unknown[] = []
+    if (excludeLive.length > 0) {
+      liveQuery += ` AND ls.id NOT IN (${excludeLive.map(() => '?').join(',')})`
+      liveBinds.push(...excludeLive)
     }
+    liveQuery += ` ORDER BY ls.viewer_count DESC LIMIT ?`
+    liveBinds.push(Math.min(3, limit))
+
+    const liveRes = await DB.prepare(liveQuery).bind(...liveBinds).all()
+    if (liveRes.results) {
+      feed.push(...liveRes.results.map(ls => ({
+        ...ls,
+        id: `live_${ls.id}`,
+        live_stream_id: ls.id,
+      })))
+    }
+  } catch { /* ignore */ }
+
+  // 2) 쇼츠
+  const shortsLimit = Math.max(1, limit - feed.length)
+  try {
+    let shortsQuery = `
+      SELECT s.*, sel.name as seller_name, sel.profile_image as seller_avatar,
+             p.name as product_name, p.price as product_price, p.image_url as product_image,
+             'shorts' as source_type
+      FROM shorts s
+      LEFT JOIN sellers sel ON s.seller_id = sel.id
+      LEFT JOIN products p ON s.product_id = p.id
+      WHERE s.status = 'active'
+    `
+    const shortsBinds: unknown[] = []
+    if (excludeShorts.length > 0) {
+      shortsQuery += ` AND s.id NOT IN (${excludeShorts.map(() => '?').join(',')})`
+      shortsBinds.push(...excludeShorts)
+    }
+    shortsQuery += ` ORDER BY RANDOM() LIMIT ?`
+    shortsBinds.push(shortsLimit)
+
+    const shortsRes = await DB.prepare(shortsQuery).bind(...shortsBinds).all()
+    if (shortsRes.results) feed.push(...shortsRes.results)
+  } catch { /* ignore */ }
+
+  // 3) 라이브 다시보기 (나머지 슬롯 채우기)
+  if (feed.length < limit) {
+    const remaining = limit - feed.length
+    try {
+      let replayQuery = `
+        SELECT ls.id, ls.title, ls.youtube_video_id, ls.seller_id,
+               s.name as seller_name, s.profile_image as seller_avatar,
+               'live_replay' as source_type
+        FROM live_streams ls
+        LEFT JOIN sellers s ON ls.seller_id = s.id
+        WHERE ls.status = 'ended' AND ls.youtube_video_id IS NOT NULL
+      `
+      const replayBinds: unknown[] = []
+      if (excludeLive.length > 0) {
+        replayQuery += ` AND ls.id NOT IN (${excludeLive.map(() => '?').join(',')})`
+        replayBinds.push(...excludeLive)
+      }
+      replayQuery += ` ORDER BY RANDOM() LIMIT ?`
+      replayBinds.push(remaining)
+
+      const replayRes = await DB.prepare(replayQuery).bind(...replayBinds).all()
+      if (replayRes.results) {
+        feed.push(...replayRes.results.map(ls => ({
+          ...ls,
+          id: `live_${ls.id}`,
+          live_stream_id: ls.id,
+        })))
+      }
+    } catch { /* ignore */ }
   }
 
-  return c.json({ success: true, data: feed })
+  // 4) 실시간 라이브를 첫 번째에, 나머지는 랜덤 셔플
+  const liveItems = feed.filter(f => f.source_type === 'live')
+  const otherItems = feed.filter(f => f.source_type !== 'live')
+  // Fisher-Yates shuffle
+  for (let i = otherItems.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [otherItems[i], otherItems[j]] = [otherItems[j], otherItems[i]]
+  }
+  const shuffled = [...liveItems, ...otherItems]
+
+  return c.json({ success: true, data: shuffled })
 })
 
 // ── GET /api/shorts/:id ────────────────────────────────────────────
