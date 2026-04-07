@@ -774,8 +774,6 @@ function ReelCard({
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
       {/* YouTube Player Container */}
-      {/* YouTube 제목 표시줄 숨김: 상단 그라디언트 + pointer-events-none으로 덮기 */}
-      <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/60 to-transparent z-[6] pointer-events-none" />
       <div
         id={`youtube-player-${stream.id}`}
         className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[177.78vh] [&_iframe]:!h-[56.25vw] [&_iframe]:!min-w-full [&_iframe]:!min-h-full"
