@@ -41,3 +41,7 @@ test-results/
 # Logs
 *.log
 core
+
+# Capacitor native projects
+android/
+ios/
