@@ -32,13 +32,14 @@ export function RewardAdCard() {
       // 네이티브 앱: AdMob 리워드 광고
       if (Capacitor.isNativePlatform()) {
         try {
-          // @ts-ignore — 앱 빌드 시에만 설치되는 패키지
-          const { AdMob, RewardAdPluginEvents } = await import('@capacitor-community/admob')
+          // 네이티브 앱에서만 실행 — 웹 빌드 시 이 코드는 실행되지 않음
+          const pkg = '@capacitor-community/admob'
+          const admobModule = await (Function('p', 'return import(p)')(pkg)) as any
+          const { AdMob, RewardAdPluginEvents } = admobModule
 
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error('광고 로드 시간 초과')), 15000)
 
-            // 광고 시청 완료 이벤트
             const rewardListener = AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
               clearTimeout(timeout)
               rewardListener.remove()
@@ -46,7 +47,6 @@ export function RewardAdCard() {
               resolve()
             })
 
-            // 광고 실패 이벤트
             const failListener = AdMob.addListener(RewardAdPluginEvents.FailedToLoad, () => {
               clearTimeout(timeout)
               rewardListener.remove()
@@ -54,18 +54,14 @@ export function RewardAdCard() {
               reject(new Error('광고 로드 실패'))
             })
 
-            // 테스트 광고 단위 ID (프로덕션에서는 실제 ID로 교체)
             AdMob.prepareRewardVideoAd({
-              adId: Capacitor.getPlatform() === 'android'
-                ? 'ca-app-pub-3940256099942544/5224354917'  // Android test
-                : 'ca-app-pub-3940256099942544/1712485313', // iOS test
-              isTesting: true,
+              adId: 'ca-app-pub-1598352332166062/5632481147',
+              isTesting: false,
             }).then(() => {
               AdMob.showRewardVideoAd()
             }).catch(reject)
           })
         } catch {
-          // AdMob 미설치 시 시뮬레이션 (개발 중)
           await simulateAdWatch()
         }
       } else {

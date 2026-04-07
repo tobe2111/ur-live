@@ -20,27 +20,27 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          // React core - single instance critical
-          'react-core': ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
-          // React ecosystem
-          'react-router': ['react-router-dom'],
-          // Firebase
-          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/analytics'],
+        manualChunks(id) {
+          // React core
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-core'
+          }
+          // React Router
+          if (id.includes('react-router')) return 'react-router'
+          // Firebase — 별도 청크 (lazy load)
+          if (id.includes('firebase/')) return 'firebase'
           // TanStack Query
-          'tanstack-query': ['@tanstack/react-query'],
+          if (id.includes('@tanstack/react-query')) return 'tanstack-query'
           // Payment SDKs
-          'payments': ['@stripe/stripe-js', '@stripe/react-stripe-js', '@tosspayments/payment-sdk', '@tosspayments/tosspayments-sdk'],
-          // State management
-          'zustand': ['zustand'],
-          // UI libraries
-          'radix-ui': [
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slot',
-          ],
+          if (id.includes('@tosspayments') || id.includes('@stripe')) return 'payments'
+          // Charts (관리자 전용)
+          if (id.includes('recharts') || id.includes('d3-')) return 'charts'
           // Icons
-          'lucide': ['lucide-react'],
+          if (id.includes('lucide-react')) return 'lucide'
+          // Sentry
+          if (id.includes('@sentry')) return 'sentry'
+          // Embla carousel
+          if (id.includes('embla-carousel')) return 'embla'
         },
       },
     },
