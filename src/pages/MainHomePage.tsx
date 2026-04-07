@@ -58,26 +58,25 @@ function getThumb(stream: LiveStream) {
     (stream.youtube_video_id ? `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg` : null)
 }
 
-// ── Live stream card (2-column grid) ──
+// ── Live stream card (Grip-style: thumbnail + info separated) ──
 function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void }) {
   const thumb = getThumb(stream)
   const isLive = stream.status === 'live'
 
   return (
     <button onClick={onClick} className="w-full text-left active:scale-[0.98] transition-transform">
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-[#333]">
+      {/* 썸네일 영역 */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-[#1A1A1A]">
         {thumb ? (
           <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400" />
+          <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800" />
         )}
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-        {/* Status badge */}
+        {/* LIVE / 예정 / 다시보기 배지 */}
         {isLive ? (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-500 px-2 py-0.5 rounded-md shadow-lg shadow-red-500/30">
-            <span className="h-1.5 w-1.5 bg-[#121212] rounded-full animate-pulse" />
+            <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
             <span className="text-[10px] font-bold text-white">LIVE</span>
           </div>
         ) : stream.status === 'scheduled' ? (
@@ -92,7 +91,7 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
           </div>
         )}
 
-        {/* Viewers */}
+        {/* 시청자 수 */}
         {isLive && stream.viewer_count !== undefined && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-md">
             <Eye className="h-3 w-3 text-white" />
@@ -102,27 +101,30 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
           </div>
         )}
 
-        {/* Seller info */}
+        {/* 셀러 프로필 (썸네일 하단) */}
         {stream.seller_name && (
-          <div className="absolute bottom-10 left-2 flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-[#121212]/20 backdrop-blur-sm flex items-center justify-center">
-              <span className="text-[8px] font-bold text-white">{stream.seller_name.charAt(0)}</span>
+          <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
+            <div className="w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+              <span className="text-[9px] font-bold text-white">{stream.seller_name.charAt(0)}</span>
             </div>
-            <span className="text-[10px] font-medium text-white/90 drop-shadow-lg">{stream.seller_name}</span>
+            <span className="text-[11px] font-medium text-white drop-shadow-lg">{stream.seller_name}</span>
           </div>
         )}
+      </div>
 
-        {/* Bottom info */}
-        <div className="absolute bottom-0 left-0 right-0 p-2">
-          <p className="text-[11px] font-bold text-white leading-tight line-clamp-2 drop-shadow-lg">
-            {stream.title}
-          </p>
-          {stream.current_product && (
-            <p className="text-[12px] font-extrabold text-white mt-0.5">
+      {/* 텍스트 정보 영역 (썸네일 아래 분리) */}
+      <div className="mt-2 px-0.5">
+        <p className="text-[12px] font-bold text-white leading-tight line-clamp-2">
+          {stream.title}
+        </p>
+        {stream.current_product && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[13px] font-extrabold text-white">
               {stream.current_product.price.toLocaleString()}원
-            </p>
-          )}
-        </div>
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 font-bold rounded">특가</span>
+          </div>
+        )}
       </div>
     </button>
   )
@@ -422,7 +424,11 @@ export default function MainHomePage() {
         <div className="px-4 py-6">
           <div className="grid grid-cols-2 gap-2.5">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] bg-[#1A1A1A] animate-pulse rounded-xl" />
+              <div key={i}>
+                <div className="aspect-[3/4] bg-[#1A1A1A] animate-pulse rounded-2xl" />
+                <div className="mt-2 h-3 bg-[#1A1A1A] rounded animate-pulse w-3/4" />
+                <div className="mt-1 h-3 bg-[#1A1A1A] rounded animate-pulse w-1/2" />
+              </div>
             ))}
           </div>
         </div>
