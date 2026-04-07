@@ -22,14 +22,15 @@ pointsRoutes.use('*', cors({
   credentials: true,
 }));
 
-const COMMISSION_RATE = 0.15; // 15% 수수료
+const COMMISSION_RATE = 0.15; // 15% 수수료 (셀러 정산 시 적용)
 
+// 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 15% 차감)
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250딜' },
-  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500딜' },
-  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500딜' },
-  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500딜' },
-  { amount: 100000, points: 85000,  label: '100,000원 → 85,000딜' },
+  { amount: 5000,   points: 5000,   label: '5,000원 → 5,000딜' },
+  { amount: 10000,  points: 10000,  label: '10,000원 → 10,000딜' },
+  { amount: 30000,  points: 30000,  label: '30,000원 → 30,000딜' },
+  { amount: 50000,  points: 50000,  label: '50,000원 → 50,000딜' },
+  { amount: 100000, points: 100000, label: '100,000원 → 100,000딜' },
 ];
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
@@ -267,15 +268,17 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
     stream_id, stream.seller_id
   ).run();
 
-  // donations 테이블에도 기록 (기존 호환)
+  // donations 테이블에도 기록 (셀러 정산 시 15% 수수료 적용)
+  const commissionAmount = Math.round(amount * COMMISSION_RATE);
+  const creditAmount = amount - commissionAmount; // 셀러 실수령액
   const donationOrderId = `DEAL-DON-${user.id}-${stream_id}-${Date.now()}`;
   await DB.prepare(`
     INSERT INTO donations (live_stream_id, seller_id, donor_user_id, donor_name, amount,
       commission_amount, credit_amount, commission_rate, order_id, payment_status, message)
-    VALUES (?, ?, ?, ?, ?, 0, ?, 0, ?, 'completed', ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
   `).bind(
     stream_id, stream.seller_id, user.id, '후원자',
-    amount, amount, donationOrderId, message ?? ''
+    amount, commissionAmount, creditAmount, COMMISSION_RATE, donationOrderId, message ?? ''
   ).run();
 
   // 10. 후원 받음 → 셀러 알림
