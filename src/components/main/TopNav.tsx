@@ -1,16 +1,9 @@
 import React from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, ShoppingCart, User } from 'lucide-react'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
+import { Search, ShoppingCart } from 'lucide-react'
 
 export default function TopNav() {
   const navigate = useNavigate()
-  const krUser = useAuthKR(state => state.user)
-  const worldUser = useAuthWorld(state => state.user)
-  const user = isKorea() ? krUser : worldUser
-  const isLoggedIn = !!user
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100">
@@ -22,7 +15,6 @@ export default function TopNav() {
             alt="유어딜"
             className="h-8"
             onError={(e) => {
-              // logo.png 없으면 구글 드라이브 fallback
               const img = e.target as HTMLImageElement
               if (!img.src.includes('googleusercontent')) {
                 img.src = 'https://lh3.googleusercontent.com/d/1KIviBiRXEnTqMXRPfQ0gg4ZUewVf7gOq'
@@ -31,7 +23,7 @@ export default function TopNav() {
           />
         </Link>
 
-        {/* Right actions */}
+        {/* Right actions: Search + Cart only (profile moved to BottomNav) */}
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/search')} className="p-1" aria-label="검색">
             <Search className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
@@ -51,23 +43,6 @@ export default function TopNav() {
                 </span>
               ) : null
             })()}
-          </button>
-          <button
-            onClick={() => navigate(isLoggedIn ? '/user/profile' : '/login')}
-            className="p-1"
-            aria-label={isLoggedIn ? '마이페이지' : '로그인'}
-          >
-            {isLoggedIn ? (
-              <div className="h-7 w-7 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
-                {localStorage.getItem('user_profile_image') ? (
-                  <img src={localStorage.getItem('user_profile_image')!} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[9px] font-bold text-white">{(user as any)?.name?.charAt(0) || 'U'}</span>
-                )}
-              </div>
-            ) : (
-              <User className="h-5 w-5 text-gray-700" strokeWidth={1.5} />
-            )}
           </button>
         </div>
       </div>

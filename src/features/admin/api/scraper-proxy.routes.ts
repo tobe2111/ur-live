@@ -34,7 +34,7 @@ scraperProxy.all('/*', async (c) => {
 
   let payload: Record<string, unknown>;
   try {
-    payload = await verify(token, jwtSecret) as Record<string, unknown>;
+    payload = await verify(token, jwtSecret, 'HS256') as Record<string, unknown>;
   } catch {
     return c.json({ error: 'Invalid or expired token' }, 401);
   }

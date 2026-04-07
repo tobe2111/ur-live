@@ -33,11 +33,6 @@ export interface Env {
   FIREBASE_CLIENT_EMAIL?: string;
   FIREBASE_DATABASE_URL?: string;
 
-  // ---- Aligo (알림톡) ----
-  ALIGO_API_KEY?: string;
-  ALIGO_USER_ID?: string;
-  ALIMTALK_SENDER_KEY?: string;
-
   // ---- Kakao ----
   KAKAO_REST_API_KEY?: string;
 
@@ -46,7 +41,10 @@ export interface Env {
   CAFE24_CLIENT_SECRET?: string;
   CAFE24_MALL_ID?: string;
 
-  // ---- Aligo 알림톡 (추가 설정) ----
+  // ---- Aligo (알림톡) ----
+  ALIGO_API_KEY?: string;
+  ALIGO_USER_ID?: string;
+  ALIMTALK_SENDER_KEY?: string;
   ALIGO_SENDER_KEY?: string;
   ALIGO_SENDER_PHONE?: string;           // 발신번호 (예: 07080420000)
   ALIGO_TPL_ORDER_CONFIRM?: string;      // 주문완료 템플릿 코드

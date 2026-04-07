@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Home, Play, ShoppingCart, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn } from 'lucide-react'
 
@@ -6,8 +6,18 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [profileImage, setProfileImage] = useState<string | null>(null)
 
-  const userType = localStorage.getItem('user_type') // 'user' | 'seller' | 'admin' | null
+  useEffect(() => {
+    const loadProfile = () => {
+      setProfileImage(localStorage.getItem('user_profile_image'))
+    }
+    loadProfile()
+    window.addEventListener('storage', loadProfile)
+    return () => window.removeEventListener('storage', loadProfile)
+  }, [])
+
+  const userType = localStorage.getItem('user_type')
   const isLoggedIn = !!localStorage.getItem('access_token')
   const isSeller = userType === 'seller'
 
@@ -21,28 +31,44 @@ export default function BottomNav() {
     { icon: User, label: '마이', path: '/user/profile' },
   ]
 
-  const isActive = (path: string) =>
+  const isActivePath = (path: string) =>
     location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
 
-  const renderItem = ({ icon: Icon, label, path }: typeof leftItems[0]) => (
-    <button
-      key={label}
-      onClick={() => navigate(path)}
-      className="flex-1 flex flex-col items-center justify-center h-full"
-      aria-label={label}
-    >
-      <Icon
-        size={22}
-        className={isActive(path) ? 'text-gray-900' : 'text-gray-400'}
-        strokeWidth={isActive(path) ? 2 : 1.5}
-      />
-      <span className={`text-[9px] mt-0.5 ${
-        isActive(path) ? 'font-bold text-gray-900' : 'text-gray-400'
-      }`}>
-        {label}
-      </span>
-    </button>
-  )
+  const renderItem = ({ icon: Icon, label, path }: typeof leftItems[0]) => {
+    const active = isActivePath(path)
+    const isMyTab = path === '/user/profile'
+
+    return (
+      <button
+        key={label}
+        onClick={() => navigate(path)}
+        className="flex-1 flex flex-col items-center justify-center h-full"
+        aria-label={label}
+      >
+        {isMyTab && profileImage ? (
+          <img
+            src={profileImage}
+            alt="Profile"
+            className={`h-6 w-6 rounded-full object-cover transition-all ${
+              active ? 'ring-2 ring-gray-900 ring-offset-1' : 'opacity-70'
+            }`}
+            onError={() => setProfileImage(null)}
+          />
+        ) : (
+          <Icon
+            size={22}
+            className={active ? 'text-gray-900' : 'text-gray-400'}
+            strokeWidth={active ? 2 : 1.5}
+          />
+        )}
+        <span className={`text-[9px] mt-0.5 ${
+          active ? 'font-bold text-gray-900' : 'text-gray-400'
+        }`}>
+          {label}
+        </span>
+      </button>
+    )
+  }
 
   return (
     <>
@@ -105,7 +131,7 @@ export default function BottomNav() {
                     </button>
                   </div>
 
-                  {/* ── Seller: show live + dashboard options ── */}
+                  {/* Seller: live + dashboard */}
                   {isSeller && (
                     <div className="space-y-3">
                       <button
@@ -136,7 +162,7 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* ── Logged in but not seller ── */}
+                  {/* Logged in but not seller */}
                   {isLoggedIn && !isSeller && (
                     <div className="space-y-4">
                       <div className="text-center py-2">
@@ -169,7 +195,7 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* ── Not logged in ── */}
+                  {/* Not logged in */}
                   {!isLoggedIn && (
                     <div className="space-y-3">
                       <p className="text-sm text-gray-500 mb-2">
