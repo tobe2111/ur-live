@@ -22,14 +22,15 @@ pointsRoutes.use('*', cors({
   credentials: true,
 }));
 
-const COMMISSION_RATE = 0.15; // 15% 수수료
+const COMMISSION_RATE = 0.15; // 15% 수수료 (셀러 정산 시 적용)
 
+// 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 15% 차감)
 const CHARGE_AMOUNTS = [
-  { amount: 5000,   points: 4250,   label: '5,000원 → 4,250딜' },
-  { amount: 10000,  points: 8500,   label: '10,000원 → 8,500딜' },
-  { amount: 30000,  points: 25500,  label: '30,000원 → 25,500딜' },
-  { amount: 50000,  points: 42500,  label: '50,000원 → 42,500딜' },
-  { amount: 100000, points: 85000,  label: '100,000원 → 85,000딜' },
+  { amount: 5000,   points: 5000,   label: '5,000원 → 5,000딜' },
+  { amount: 10000,  points: 10000,  label: '10,000원 → 10,000딜' },
+  { amount: 30000,  points: 30000,  label: '30,000원 → 30,000딜' },
+  { amount: 50000,  points: 50000,  label: '50,000원 → 50,000딜' },
+  { amount: 100000, points: 100000, label: '100,000원 → 100,000딜' },
 ];
 
 // ── 테이블 자동 생성 (마이그레이션 미적용 시 fallback) ────────────────
@@ -51,7 +52,7 @@ async function ensureTables(DB: D1Database) {
       CREATE TABLE IF NOT EXISTS point_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('charge', 'donate', 'refund')),
+        type TEXT NOT NULL CHECK (type IN ('charge', 'donate', 'refund', 'ad_reward')),
         amount INTEGER NOT NULL,
         commission_amount INTEGER NOT NULL DEFAULT 0,
         points_amount INTEGER NOT NULL DEFAULT 0,
@@ -222,8 +223,8 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
     message?: string;
   }>();
 
-  if (!stream_id || !amount || amount < 100) {
-    return c.json({ success: false, error: '후원 금액은 최소 100딜입니다' }, 400);
+  if (!stream_id || !amount || amount < 500) {
+    return c.json({ success: false, error: '후원 금액은 최소 500딜입니다' }, 400);
   }
 
   const { DB } = c.env;
@@ -267,15 +268,17 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
     stream_id, stream.seller_id
   ).run();
 
-  // donations 테이블에도 기록 (기존 호환)
+  // donations 테이블에도 기록 (셀러 정산 시 15% 수수료 적용)
+  const commissionAmount = Math.round(amount * COMMISSION_RATE);
+  const creditAmount = amount - commissionAmount; // 셀러 실수령액
   const donationOrderId = `DEAL-DON-${user.id}-${stream_id}-${Date.now()}`;
   await DB.prepare(`
     INSERT INTO donations (live_stream_id, seller_id, donor_user_id, donor_name, amount,
       commission_amount, credit_amount, commission_rate, order_id, payment_status, message)
-    VALUES (?, ?, ?, ?, ?, 0, ?, 0, ?, 'completed', ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
   `).bind(
     stream_id, stream.seller_id, user.id, '후원자',
-    amount, amount, donationOrderId, message ?? ''
+    amount, commissionAmount, creditAmount, COMMISSION_RATE, donationOrderId, message ?? ''
   ).run();
 
   // 10. 후원 받음 → 셀러 알림
@@ -313,6 +316,96 @@ pointsRoutes.get('/history', requireAuth(), async (c) => {
 // ── GET /api/points/charge-options ───────────────────────────────────
 pointsRoutes.get('/charge-options', async (c) => {
   return c.json({ success: true, data: CHARGE_AMOUNTS });
+});
+
+// ── 리워드 광고 ────────────────────────────────────────────────────
+const AD_REWARD_POINTS = 50;   // 광고 1회 시청 = 50딜
+const AD_DAILY_LIMIT = 10;      // 하루 최대 10회
+
+// POST /api/points/ad-reward — 광고 시청 완료 후 딜 지급
+pointsRoutes.post('/ad-reward', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  // 오늘 이미 시청한 횟수 확인 (KST 기준)
+  const todayStart = new Date();
+  todayStart.setHours(todayStart.getHours() + 9); // UTC → KST
+  const kstDateStr = todayStart.toISOString().slice(0, 10);
+
+  const countRow = await DB.prepare(
+    `SELECT COUNT(*) as cnt FROM point_transactions
+     WHERE user_id = ? AND type = 'ad_reward' AND DATE(created_at, '+9 hours') = ?`
+  ).bind(user.id, kstDateStr).first<{ cnt: number }>();
+
+  const todayCount = countRow?.cnt ?? 0;
+  if (todayCount >= AD_DAILY_LIMIT) {
+    return c.json({
+      success: false,
+      error: `오늘 광고 시청 한도(${AD_DAILY_LIMIT}회)에 도달했습니다`,
+      data: { todayCount, dailyLimit: AD_DAILY_LIMIT, nextResetKST: kstDateStr + ' 자정' },
+    }, 429);
+  }
+
+  // 포인트 지급
+  const currentRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+    .bind(user.id).first<{ balance: number }>();
+
+  const currentBalance = currentRow?.balance ?? 0;
+  const newBalance = currentBalance + AD_REWARD_POINTS;
+
+  if (currentRow) {
+    await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
+      .bind(newBalance, user.id).run();
+  } else {
+    await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged, total_donated) VALUES (?, ?, 0, 0)')
+      .bind(user.id, newBalance).run();
+  }
+
+  // 거래 기록
+  await DB.prepare(
+    `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description)
+     VALUES (?, 'ad_reward', 0, 0, ?, ?, ?)`
+  ).bind(user.id, AD_REWARD_POINTS, newBalance, `광고 시청 리워드 (+${AD_REWARD_POINTS}딜)`).run();
+
+  return c.json({
+    success: true,
+    data: {
+      rewarded: AD_REWARD_POINTS,
+      balance: newBalance,
+      todayCount: todayCount + 1,
+      dailyLimit: AD_DAILY_LIMIT,
+    },
+  });
+});
+
+// GET /api/points/ad-reward/status — 오늘 광고 시청 현황
+pointsRoutes.get('/ad-reward/status', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const todayStart = new Date();
+  todayStart.setHours(todayStart.getHours() + 9);
+  const kstDateStr = todayStart.toISOString().slice(0, 10);
+
+  const countRow = await DB.prepare(
+    `SELECT COUNT(*) as cnt FROM point_transactions
+     WHERE user_id = ? AND type = 'ad_reward' AND DATE(created_at, '+9 hours') = ?`
+  ).bind(user.id, kstDateStr).first<{ cnt: number }>();
+
+  return c.json({
+    success: true,
+    data: {
+      todayCount: countRow?.cnt ?? 0,
+      dailyLimit: AD_DAILY_LIMIT,
+      rewardPerAd: AD_REWARD_POINTS,
+    },
+  });
 });
 
 export { pointsRoutes };
