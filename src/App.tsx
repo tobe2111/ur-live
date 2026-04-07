@@ -271,6 +271,11 @@ function AppContent() {
   // 🔄 다중 탭 동기화
   useMultiTabSync()
 
+  // Capacitor 네이티브 기능 초기화 (앱에서만 동작)
+  useEffect(() => {
+    import('./lib/native').then(m => m.initNativeFeatures()).catch(() => {})
+  }, [])
+
   const location = useLocation()
   const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
