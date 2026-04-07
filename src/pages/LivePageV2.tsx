@@ -794,7 +794,7 @@ function ReelCard({
       
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {isCurrentProduct && isSeller && (
-        <div className="absolute top-20 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
+        <div className="absolute top-24 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
           <span className="text-white font-bold text-[11px] tracking-wide">소개 중</span>
         </div>
@@ -875,7 +875,7 @@ function ReelCard({
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
         {/* Top bar: 딜 잔액 게이지 (LIVE 뱃지 아래에 위치) */}
         {!isSeller && (
-          <div className="pointer-events-auto absolute top-12 left-3 z-20">
+          <div className="pointer-events-auto absolute top-16 left-3 z-20">
             <TeamPointsBadge streamId={stream.id} />
           </div>
         )}
