@@ -774,8 +774,8 @@ function ReelCard({
       <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-gray-900 via-gray-800 to-black -z-20" />
 
       {/* YouTube Player Container */}
-      {/* ✅ 세로 화면에서 16:9 영상이 cover 모드로 채워지도록 iframe CSS 강제 적용
-           YouTube IFrame API는 style="width:100%;height:100%"를 인라인으로 설정하므로 !important 필요 */}
+      {/* YouTube 제목 표시줄 숨김: 상단 그라디언트 + pointer-events-none으로 덮기 */}
+      <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/60 to-transparent z-[6] pointer-events-none" />
       <div
         id={`youtube-player-${stream.id}`}
         className="absolute inset-0 w-full h-full z-[5] overflow-hidden [&_iframe]:!absolute [&_iframe]:!top-[50%] [&_iframe]:!left-[50%] [&_iframe]:![transform:translate(-50%,-50%)] [&_iframe]:!w-[177.78vh] [&_iframe]:!h-[56.25vw] [&_iframe]:!min-w-full [&_iframe]:!min-h-full"
