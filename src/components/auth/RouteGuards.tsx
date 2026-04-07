@@ -108,8 +108,11 @@ function UserProtectedRoute({
   const isAuthReady = kr ? isAuthReadyKR : isAuthReadyWorld
   const currentUser = kr ? userKR : userWorld
 
-  // ✅ 타임아웃 안전장치: 최대 8초 대기 후 강제 진행
-  // Firebase onAuthStateChanged + 비동기 role/claims 확인이 느릴 수 있음
+  // ✅ 로그인 캐시 있으면 즉시 페이지 표시 (optimistic rendering)
+  // Firebase 인증은 백그라운드에서 확인, 실패 시 리다이렉트
+  const hasTokenCache = hasValidTokenCache()
+
+  // ✅ 타임아웃 안전장치: 최대 5초 대기 후 강제 진행
   const [timedOut, setTimedOut] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -123,9 +126,9 @@ function UserProtectedRoute({
       return
     }
     timerRef.current = setTimeout(() => {
-      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (8s) - 강제 진행')
+      console.warn('[ProtectedRoute] ⏰ Firebase Auth 타임아웃 (5s) - 강제 진행')
       setTimedOut(true)
-    }, 8000)
+    }, 5000)
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
@@ -148,8 +151,12 @@ function UserProtectedRoute({
   }
 
   // 아직 초기화 중 (타임아웃 전)
-  // ✅ 유효한 토큰 캐시가 있으면 스피너 생략 → 깜빡거림 제거 (optimistic render)
-  if (!isAuthReady && !timedOut && !hasValidTokenCache()) {
+  // ✅ 로그인 캐시(토큰 or localStorage 흔적)가 있으면 스피너 없이 바로 페이지 표시
+  if (!isAuthReady && !timedOut) {
+    if (hasTokenCache || hasPossibleSession) {
+      // optimistic rendering: 페이지 먼저 보여주고 백그라운드에서 인증 확인
+      return <>{children}</>
+    }
     if (DEBUG) console.log('[ProtectedRoute] ⏳ Firebase Auth 초기화 대기 중...')
     return (
       <div className="flex items-center justify-center min-h-screen">
