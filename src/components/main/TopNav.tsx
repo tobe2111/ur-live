@@ -9,18 +9,17 @@ export default function TopNav() {
     <header className="sticky top-0 z-50 w-full bg-[#0F0F0F] border-b border-[#1F1F1F]">
       <div className="flex items-center justify-between h-12 px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center">
-          <img
-            src="/logo.png"
-            alt="유어딜"
-            className="h-8 brightness-0 invert"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement
-              if (!img.src.includes('googleusercontent')) {
-                img.src = 'https://lh3.googleusercontent.com/d/1KIviBiRXEnTqMXRPfQ0gg4ZUewVf7gOq'
-              }
-            }}
-          />
+        <Link to="/" className="flex items-center gap-1.5">
+          <svg viewBox="0 0 40 36" fill="none" className="h-7 w-auto">
+            {/* Cart body */}
+            <path d="M8 8h2l1.5 3H34a1 1 0 01.96 1.28l-3.5 12A1 1 0 0130.5 25H14.5a1 1 0 01-.96-.72L9.8 10H8V8z" stroke="#EF4444" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Cart wheels */}
+            <circle cx="16" cy="31" r="2.5" fill="#EF4444"/>
+            <circle cx="29" cy="31" r="2.5" fill="#EF4444"/>
+            {/* Play triangle */}
+            <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
+          </svg>
+          <span className="text-[15px] font-extrabold text-white tracking-tight">유어딜</span>
         </Link>
 
         {/* Right actions */}
