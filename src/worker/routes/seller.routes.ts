@@ -83,6 +83,31 @@ sellersRouter.get('/:id', async (c) => {
   }
 });
 
+// GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증)
+sellersRouter.get('/:id/public', async (c) => {
+  try {
+    const qb = new QueryBuilder(c.env.DB);
+    const sellerId = c.req.param('id');
+
+    const seller = await qb.queryOne(
+      `SELECT id, name, business_name, profile_image, bio,
+              sns_instagram, sns_youtube, sns_facebook, kakao_chat_link,
+              created_at
+       FROM sellers WHERE id = ?`,
+      [sellerId]
+    );
+
+    if (!seller) {
+      return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+    }
+
+    return c.json({ success: true, data: seller });
+  } catch (err) {
+    console.error('[SELLERS] Public profile error:', err);
+    return c.json({ success: false, error: 'Failed to fetch seller' }, 500);
+  }
+});
+
 // GET /api/sellers/:sellerId/products-public
 // 비인증 판매자 공개 상품 목록 (프론트에서 /api/seller/:sellerId/products-public 및 /api/sellers/:sellerId/products-public 사용)
 sellersRouter.get('/:sellerId/products-public', async (c) => {

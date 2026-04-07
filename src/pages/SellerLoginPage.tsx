@@ -54,7 +54,7 @@ export default function SellerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] flex">
+    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
       {/* 왼쪽 브랜딩 패널 (데스크탑) */}
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-white border-r border-gray-200">
         <div className="px-10 pt-10">

@@ -45,7 +45,7 @@
   body {
     /* 다크 테마 배경 */
     background-color: #020202 !important;
-    color: #ffffff;
+    color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
       "Pretendard Variable",

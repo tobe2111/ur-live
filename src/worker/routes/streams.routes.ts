@@ -87,16 +87,23 @@ streamsRouter.get('/', async (c) => {
   try {
     const db = c.env.DB;
     const status = c.req.query('status');
+    const sellerId = c.req.query('seller_id');
     const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
     const offset = parseInt(c.req.query('offset') || '0', 10);
 
     const params: unknown[] = [];
-    let whereClause = '';
+    const conditions: string[] = [];
 
     if (status) {
-      whereClause = 'WHERE ls.status = ?';
+      conditions.push('ls.status = ?');
       params.push(status);
     }
+    if (sellerId) {
+      conditions.push('ls.seller_id = ?');
+      params.push(sellerId);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const query = `
       SELECT
