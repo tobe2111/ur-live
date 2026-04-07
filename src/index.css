@@ -48,13 +48,20 @@
     color: #ffffff;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family:
+      "Pretendard Variable",
+      Pretendard,
       -apple-system,
       BlinkMacSystemFont,
-      "SF Pro Display",
-      "SF Pro Text",
+      system-ui,
+      Roboto,
       "Helvetica Neue",
-      Helvetica,
-      Arial,
+      "Segoe UI",
+      "Apple SD Gothic Neo",
+      "Noto Sans KR",
+      "Malgun Gothic",
+      "Apple Color Emoji",
+      "Segoe UI Emoji",
+      "Segoe UI Symbol",
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
