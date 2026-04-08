@@ -677,6 +677,12 @@ export default function SellerLiveBroadcastPage() {
                                 </button>
                               </div>
                             </div>
+                            <button
+                              onClick={copyRTMP}
+                              className="w-full py-2.5 bg-purple-600 text-white text-[13px] font-semibold rounded-lg hover:bg-purple-700 active:scale-[0.98] transition-all"
+                            >
+                              {copiedRTMP ? '✓ 복사됨!' : 'RTMP URL + Key 전체 복사'}
+                            </button>
                             <p className="text-[11px] text-purple-600 flex items-center gap-1">
                               <Key className="h-3 w-3" />
                               {t('seller.persistentKeyShort')}

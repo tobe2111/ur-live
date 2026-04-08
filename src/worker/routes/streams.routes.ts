@@ -387,6 +387,24 @@ streamsRouter.get('/:id/viewer-count', async (c) => {
   }
 });
 
+// ── PUT /api/streams/:id/viewer-count (셀러 수동 설정) ────────────────────────
+streamsRouter.put('/:id/viewer-count', async (c) => {
+  try {
+    const streamId = c.req.param('id');
+    const { manual_count } = await c.req.json<{ manual_count: number | null }>();
+
+    if (manual_count !== null) {
+      await c.env.DB.prepare(
+        "UPDATE live_streams SET viewer_count = ?, updated_at = datetime('now') WHERE id = ?"
+      ).bind(manual_count, streamId).run();
+    }
+
+    return c.json({ success: true });
+  } catch (err: unknown) {
+    return c.json({ success: false, error: 'Failed to update viewer count' }, 500);
+  }
+});
+
 // ── POST /api/streams/:id/viewer/join ─────────────────────────────────────────
 streamsRouter.post('/:id/viewer/join', async (c) => {
   try {
