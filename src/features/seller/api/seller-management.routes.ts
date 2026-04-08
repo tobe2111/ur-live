@@ -1074,7 +1074,7 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
               status, created_at, profile_image, bio,
               sns_instagram, sns_youtube, sns_facebook, sns_twitter,
               website_url, kakao_chat_url
-       FROM sellers WHERE id = ? AND status = 'approved'`
+       FROM sellers WHERE id = ? AND status IN ('approved', 'active')`
     ).bind(sellerId).first();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);

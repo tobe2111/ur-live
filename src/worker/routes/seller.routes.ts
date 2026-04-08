@@ -24,7 +24,7 @@ sellersRouter.get('/', async (c) => {
     const offset = (pageNum - 1) * limitNum;
 
     // ✅ 실제 sellers 테이블 스키마에 맞게 수정
-    const where = "WHERE status = 'approved' AND is_active = 1";
+    const where = "WHERE status IN ('approved', 'active') AND is_active = 1";
     const countRow = await qb.queryOne<{ count: number }>(
       `SELECT COUNT(*) as count FROM sellers ${where}`,
       []
@@ -68,7 +68,7 @@ sellersRouter.get('/:id', async (c) => {
               business_name, business_number, bank_account,
               status, is_active,
               created_at, updated_at, approved_at
-       FROM sellers WHERE id = ? AND status = 'approved' AND is_active = 1`,
+       FROM sellers WHERE id = ? AND status IN ('approved', 'active') AND is_active = 1`,
       [sellerId]
     );
 
