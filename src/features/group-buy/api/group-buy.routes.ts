@@ -21,7 +21,16 @@ groupBuyRoutes.use('*', cors({
   credentials: true,
 }))
 
-const MEAL_VOUCHER_COMMISSION_RATE = 0.10 // 식사권 공동구매 수수료 10%
+const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.10 // 식사권 기본 수수료 10%
+
+// DB에서 수수료율 조회 (어드민 설정 우선, 없으면 기본값)
+async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'commission_rate_meal_voucher'").first<{ value: string }>()
+    if (row) return Number(row.value) / 100
+  } catch { /* table may not exist */ }
+  return DEFAULT_MEAL_VOUCHER_COMMISSION_RATE
+}
 
 // 테이블 자동 생성
 async function ensureTables(DB: D1Database) {
@@ -163,8 +172,9 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
       ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber).run()
     }
 
-    // 수수료 계산 (식사권 10%)
-    const commissionAmount = Math.round(totalAmount * MEAL_VOUCHER_COMMISSION_RATE)
+    // 수수료 계산 (DB 설정값 또는 기본 10%)
+    const commissionRate = await getMealVoucherCommissionRate(DB)
+    const commissionAmount = Math.round(totalAmount * commissionRate)
     const sellerAmount = totalAmount - commissionAmount
 
     // 주문 생성
@@ -181,7 +191,7 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
         VALUES (0, ?, ?, '공동구매', ?, ?, ?, ?, ?, 'completed', ?)
       `).bind(
         product.seller_id, userId,
-        totalAmount, commissionAmount, sellerAmount, MEAL_VOUCHER_COMMISSION_RATE,
+        totalAmount, commissionAmount, sellerAmount, commissionRate,
         orderNumber, `식사권 공동구매: ${product.name}`
       ).run()
     } catch { /* donations 테이블 없으면 무시 */ }
@@ -233,7 +243,7 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
         amount: totalAmount,
         commission: commissionAmount,
         seller_amount: sellerAmount,
-        commission_rate: MEAL_VOUCHER_COMMISSION_RATE,
+        commission_rate: commissionRate,
         vouchers: vouchers.results ?? [],
         group_buy_current: (updated?.group_buy_current ?? 0),
         group_buy_target: updated?.group_buy_target ?? 0,

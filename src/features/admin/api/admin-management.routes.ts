@@ -1937,3 +1937,37 @@ adminManagementRoutes.get('/deals/users', async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// ── 플랫폼 수수료 설정 ──────────────────────────────────────────────
+
+adminManagementRoutes.get('/settings/commission', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    try {
+      await DB.prepare(`CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run();
+      await DB.prepare(`INSERT OR IGNORE INTO platform_settings (key, value, description) VALUES ('commission_rate_default', '15', '일반 상품/후원 수수료율 (%)')`).run();
+      await DB.prepare(`INSERT OR IGNORE INTO platform_settings (key, value, description) VALUES ('commission_rate_meal_voucher', '10', '식사권 공동구매 수수료율 (%)')`).run();
+    } catch { /* exists */ }
+
+    const { results } = await DB.prepare("SELECT * FROM platform_settings WHERE key LIKE 'commission_%' ORDER BY key").all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+adminManagementRoutes.put('/settings/commission', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const { key, value } = await c.req.json<{ key: string; value: string }>();
+
+    if (!key || value === undefined) return c.json({ success: false, error: '키와 값이 필요합니다' }, 400);
+    const numValue = Number(value);
+    if (isNaN(numValue) || numValue < 0 || numValue > 100) return c.json({ success: false, error: '수수료율은 0~100 사이여야 합니다' }, 400);
+
+    await DB.prepare("UPDATE platform_settings SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = ?").bind(value, key).run();
+    return c.json({ success: true, message: `수수료율이 ${value}%로 변경되었습니다` });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
