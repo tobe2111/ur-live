@@ -31,11 +31,16 @@ interface Product {
   image_url?: string
   discount_rate?: number
   seller_name?: string
+  category?: string
+  group_buy_target?: number
+  group_buy_current?: number
+  group_buy_deadline?: string
 }
 
 // ── Category filter chips ──
 const CATEGORIES = [
   { key: 'all', label: '전체', icon: '🔥' },
+  { key: 'meal_voucher', label: '맛집', icon: '🍽️' },
   { key: 'ranking', label: '랭킹', icon: '🏆' },
   { key: 'fashion', label: '패션', icon: '👗' },
   { key: 'beauty', label: '뷰티', icon: '💄' },
@@ -127,6 +132,76 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         )}
       </div>
     </button>
+  )
+}
+
+// ── 맛집 공동구매 섹션 ──
+function GroupBuySection() {
+  const navigate = useNavigate()
+  const [items, setItems] = useState<Product[]>([])
+
+  useEffect(() => {
+    api.get('/api/group-buy/products?status=active')
+      .then(r => { if (r.data.success) setItems((r.data.data || []).slice(0, 4)) })
+      .catch(() => {})
+  }, [])
+
+  return (
+    <section className="px-4 py-4">
+      {/* 공동구매 배너 */}
+      <button
+        onClick={() => navigate('/browse?category=meal_voucher')}
+        className="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-red-500 rounded-2xl p-4 mb-4 text-left active:scale-[0.98] transition-transform"
+      >
+        <p className="text-white text-lg font-extrabold">🍽️ 맛집 공동구매</p>
+        <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권, 최대 70% 할인!</p>
+      </button>
+
+      {items.length === 0 ? null : (
+      <>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-[15px] font-bold text-white">진행 중인 공동구매</h2>
+          <p className="text-[11px] text-gray-500">마감 전에 참여하세요</p>
+        </div>
+        <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[12px] text-gray-500 flex items-center">
+          전체보기 <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+        {items.map(item => {
+          const progress = item.group_buy_target ? Math.min(100, ((item.group_buy_current || 0) / item.group_buy_target) * 100) : 0
+          const disc = item.original_price ? Math.round((1 - item.price / item.original_price) * 100) : 0
+          return (
+            <button key={item.id} onClick={() => navigate(`/products/${item.id}`)} className="shrink-0 w-40 text-left active:scale-[0.97]">
+              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
+                {item.image_url && <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                {disc > 0 && (
+                  <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{disc}%</span>
+                )}
+              </div>
+              <div className="mt-2">
+                <p className="text-[11px] text-white font-medium line-clamp-1">{item.name}</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  <span className="text-[13px] font-extrabold text-red-400">{item.price?.toLocaleString()}원</span>
+                  {item.original_price && <span className="text-[10px] text-gray-600 line-through">{item.original_price.toLocaleString()}</span>}
+                </div>
+                {(item.group_buy_target ?? 0) > 0 && (
+                  <div className="mt-1.5">
+                    <div className="w-full bg-[#1A1A1A] rounded-full h-1.5">
+                      <div className="h-full bg-pink-500 rounded-full" style={{ width: `${progress}%` }} />
+                    </div>
+                    <p className="text-[9px] text-gray-500 mt-0.5">{item.group_buy_current || 0}/{item.group_buy_target}명 참여</p>
+                  </div>
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      </>
+      )}
+    </section>
   )
 }
 
@@ -380,6 +455,9 @@ export default function MainHomePage() {
       )}
 
       {/* ── UR 특가 ── */}
+      {/* ── 맛집 공동구매 섹션 ── */}
+      <GroupBuySection />
+
       {products.length > 0 && (
         <section className="px-4 py-4 bg-[#0A0A0A]">
           <div className="flex items-center justify-between mb-3">

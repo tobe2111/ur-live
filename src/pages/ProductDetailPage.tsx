@@ -24,6 +24,24 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
+function GroupBuyCountdown({ deadline }: { deadline: string }) {
+  const [remaining, setRemaining] = useState('')
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(deadline).getTime() - Date.now()
+      if (diff <= 0) { setRemaining('마감됨'); return }
+      const d = Math.floor(diff / 86400000)
+      const h = Math.floor((diff % 86400000) / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      setRemaining(d > 0 ? `${d}일 ${h}시간 남음` : `${h}시간 ${m}분 남음`)
+    }
+    update()
+    const interval = setInterval(update, 60000)
+    return () => clearInterval(interval)
+  }, [deadline])
+  return <p className="text-[11px] text-red-400 font-medium mt-1.5">⏰ {remaining}</p>
+}
+
 function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
@@ -380,6 +398,48 @@ export default function ProductDetailPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* 공동구매 진행률 (식사권일 때만) */}
+        {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
+          <div className="px-5 py-4 bg-[#121212] border-b border-[#1A1A1A]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-white">공동구매 진행 중</span>
+              <span className="text-xs text-pink-400 font-bold">
+                {product.group_buy_current || 0}/{product.group_buy_target}명
+              </span>
+            </div>
+            <div className="w-full bg-[#1A1A1A] rounded-full h-2.5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }}
+              />
+            </div>
+            {product.group_buy_deadline && (
+              <GroupBuyCountdown deadline={product.group_buy_deadline} />
+            )}
+          </div>
+        )}
+
+        {/* 식당 정보 (식사권일 때만) */}
+        {product.category === 'meal_voucher' && product.restaurant_name && (
+          <AccordionSection title="식당 정보" defaultOpen={true}>
+            <div className="space-y-2.5 text-xs text-gray-500">
+              <div className="flex"><span className="w-16 shrink-0 text-gray-400">식당명</span><span className="text-white font-medium">{product.restaurant_name}</span></div>
+              {product.restaurant_address && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">주소</span><span>{product.restaurant_address}</span></div>
+              )}
+              {product.restaurant_phone && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">전화</span><span>{product.restaurant_phone}</span></div>
+              )}
+              {product.voucher_terms && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">이용조건</span><span>{product.voucher_terms}</span></div>
+              )}
+              {product.voucher_expiry && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">유효기간</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+              )}
+            </div>
+          </AccordionSection>
         )}
 
         {/* 상품 정보 — 아코디언 */}

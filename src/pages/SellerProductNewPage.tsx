@@ -94,7 +94,7 @@ export default function SellerProductNewPage() {
         return
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
@@ -104,7 +104,18 @@ export default function SellerProductNewPage() {
         live_only_price: formData.live_only_price ? Number(formData.live_only_price) : null,
         live_price_enabled: formData.live_price_enabled,
         product_type: formData.product_type,
-        category: formData.category
+        category: formData.category,
+        // 식사권/공동구매 필드 (category가 meal_voucher일 때만 유효)
+        ...(formData.category === 'meal_voucher' ? {
+          restaurant_name: (formData as any).restaurant_name || null,
+          restaurant_address: (formData as any).restaurant_address || null,
+          restaurant_phone: (formData as any).restaurant_phone || null,
+          voucher_terms: (formData as any).voucher_terms || null,
+          voucher_expiry: (formData as any).voucher_expiry || null,
+          group_buy_target: Number((formData as any).group_buy_target) || 0,
+          group_buy_deadline: (formData as any).group_buy_deadline || null,
+          store_verify_pin: (formData as any).store_verify_pin || null,
+        } : {}),
       }
 
       const response = await api.post('/api/seller/products', payload, {
@@ -336,9 +347,60 @@ export default function SellerProductNewPage() {
               <option value="food">{t('common.food')}</option>
               <option value="electronics">{t('common.electronics')}</option>
               <option value="lifestyle">{t('common.lifestyle')}</option>
+              <option value="meal_voucher">🍽️ 식사권 (공동구매)</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
           </div>
+
+          {/* 식사권 전용 필드 */}
+          {formData.category === 'meal_voucher' && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-bold text-orange-800">🍽️ 식사권 / 공동구매 정보</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당명 *</label>
+                <input name="restaurant_name" onChange={handleChange} placeholder="예) 강남 OO식당"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 주소</label>
+                <input name="restaurant_address" onChange={handleChange} placeholder="서울시 강남구..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 전화번호</label>
+                <input name="restaurant_phone" onChange={handleChange} placeholder="02-1234-5678"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">이용 조건</label>
+                <input name="voucher_terms" onChange={handleChange} placeholder="평일 런치만 / 주말 포함 등"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">유효기간</label>
+                  <input type="date" name="voucher_expiry" onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 목표 인원</label>
+                  <input type="number" name="group_buy_target" onChange={handleChange} placeholder="50"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 마감일</label>
+                <input type="datetime-local" name="group_buy_deadline" onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 인증 비밀번호 *</label>
+                <input name="store_verify_pin" onChange={handleChange} placeholder="식당 사장에게 전달할 비밀번호"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <p className="text-xs text-gray-400 mt-1">식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요.</p>
+              </div>
+            </div>
+          )}
 
           {/* Product Type - Only Live Products for Sellers */}
           <div>

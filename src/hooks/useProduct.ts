@@ -24,6 +24,16 @@ export interface Product {
   sales_count?: number
   sold_count?: number
   kakao_chat_link?: string
+  // 식사권 / 공동구매
+  restaurant_name?: string
+  restaurant_address?: string
+  restaurant_phone?: string
+  voucher_expiry?: string
+  voucher_terms?: string
+  group_buy_target?: number
+  group_buy_current?: number
+  group_buy_deadline?: string
+  group_buy_status?: string
 }
 
 export interface ProductOption {

@@ -480,6 +480,18 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     if (!result.success) throw new Error('Failed to create product');
 
+    // 식사권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
+    const productId = result.meta.last_row_id;
+    if (category === 'meal_voucher') {
+      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin'] as const;
+      for (const field of mealFields) {
+        const val = (body as any)[field];
+        if (val !== undefined && val !== null && val !== '') {
+          try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
+        }
+      }
+    }
+
     const newProduct = await db.prepare(
       `SELECT id, seller_id, name, description, price,
               COALESCE(stock_quantity, stock, 0) AS stock,

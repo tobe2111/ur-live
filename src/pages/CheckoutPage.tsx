@@ -353,8 +353,11 @@ export default function CheckoutPage() {
    * 주문 생성 시 각 셀러별 금액(상품 소계 + 배송비)을 함께 저장하여
    * 결제 승인(confirm) 단계에서 DB 금액 기반 검증이 가능하도록 합니다.
    */
+  // 식사권 여부 확인
+  const isMealVoucher = cartItems.some(item => (item as any).category === 'meal_voucher')
+
   const handleBeforePayment = async (orderId: string): Promise<void> => {
-    if (!selectedAddress) {
+    if (!isMealVoucher && !selectedAddress) {
       setShowAddressModal(true)
       throw new Error('배송지를 선택해주세요')
     }
@@ -366,12 +369,18 @@ export default function CheckoutPage() {
       sessionStorage.removeItem('directPurchase')
     }
 
-    const shippingAddress = {
-      postal_code: selectedAddress.postal_code,
-      address1: selectedAddress.address,
-      address2: selectedAddress.address_detail || '',
+    const shippingAddress = isMealVoucher ? {
+      postal_code: '00000',
+      address1: '식사권 (배송 불필요)',
+      address2: '',
       country: 'KR',
-      recipient_name: selectedAddress.recipient_name,
+      recipient_name: '식사권 구매자',
+    } : {
+      postal_code: selectedAddress!.postal_code,
+      address1: selectedAddress!.address,
+      address2: selectedAddress!.address_detail || '',
+      country: 'KR',
+      recipient_name: selectedAddress!.recipient_name,
     }
 
     for (const group of Object.values(sellerGroups)) {
@@ -390,8 +399,8 @@ export default function CheckoutPage() {
           ...(item.option_value ? { options: { value: item.option_value } } : {}),
         })),
         shipping_address: shippingAddress,
-        shipping_name: selectedAddress.recipient_name,
-        shipping_phone: selectedAddress.phone,
+        shipping_name: isMealVoucher ? '식사권 구매자' : selectedAddress!.recipient_name,
+        shipping_phone: isMealVoucher ? '' : selectedAddress!.phone,
         shipping_fee: groupShippingFee,
         idempotency_key: `${orderId}_${group.seller_id}`,
       })
