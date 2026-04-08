@@ -64,6 +64,7 @@ interface LiveStream {
   title: string
   description: string
   youtube_video_id: string
+  youtube_broadcast_id?: string
   youtube_url?: string
   embed_url?: string
   rtmp_url?: string
@@ -517,25 +518,39 @@ export default function SellerLiveBroadcastPage() {
                 {/* 방송 방식별 가이드 */}
                 <div className="space-y-4">
 
-                  {/* 브라우저 방송 */}
+                  {/* YouTube Studio 방송 */}
                   {streamingMethod === 'web' && (
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
-                        <Monitor className="h-5 w-5 text-[#007aff]" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.browserDirect')}</h4>
+                        <Monitor className="h-5 w-5 text-red-600" />
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">YouTube Studio에서 방송</h4>
                       </div>
                       <p className="text-[13px] text-[#6e6e73] mb-4">
-                        {t('seller.browserDirectDesc')}
+                        YouTube Studio 라이브 페이지에서 웹캠으로 바로 방송을 시작합니다.
+                        상품 연결과 채팅, 후원은 유어딜에서 자동으로 관리됩니다.
                       </p>
                       <div className="flex gap-3">
                         <Button
-                          onClick={() => startStream(newStream.id)}
+                          onClick={async () => {
+                            // 1. 유어딜 DB에서 방송 상태를 'live'로 전환
+                            await startStream(newStream.id)
+                            // 2. YouTube Studio 라이브 페이지 열기
+                            const videoId = newStream.youtube_video_id || newStream.youtube_broadcast_id
+                            if (videoId) {
+                              window.open(`https://studio.youtube.com/video/${videoId}/livestreaming`, '_blank')
+                            } else {
+                              window.open('https://studio.youtube.com/channel/UC/livestreaming', '_blank')
+                            }
+                          }}
                           className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
                         >
                           <Radio className="h-5 w-5 mr-2" />
-                          {t('seller.startBroadcast')}
+                          YouTube Studio에서 방송 시작
                         </Button>
                       </div>
+                      <p className="text-[11px] text-[#6e6e73] mt-3 text-center">
+                        YouTube Studio가 새 탭에서 열립니다. "라이브 시작"을 클릭하면 방송이 시작됩니다.
+                      </p>
                     </div>
                   )}
 
