@@ -92,7 +92,7 @@ export default function SellerSettlementsPage() {
       }
     } catch (error: any) {
       console.error('Failed to load settlements:', error)
-      setError('정산 내역을 불러올 수 없습니다.')
+      setError(t('seller.settlementLoadFailed'))
       if (error.response?.status === 401) {
         navigate('/seller/login')
       }
@@ -104,10 +104,10 @@ export default function SellerSettlementsPage() {
   async function requestSettlement() {
     const pendingAmount = stats?.pending_amount || 0
     if (pendingAmount <= 0) {
-      toast.error('정산 가능한 금액이 없습니다.')
+      toast.error(t('seller.noSettlementAmount'))
       return
     }
-    if (!confirm(`₩${pendingAmount.toLocaleString()} 정산을 신청하시겠습니까?`)) return
+    if (!confirm(t('seller.confirmSettlementRequest', { amount: pendingAmount.toLocaleString() }))) return
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
@@ -125,11 +125,11 @@ export default function SellerSettlementsPage() {
       })
 
       if (response.data.success) {
-        toast.success('정산 신청이 완료되었습니다.')
+        toast.success(t('seller.settlementRequested'))
         loadSettlements()
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || '정산 신청에 실패했습니다.')
+      toast.error(error.response?.data?.error || t('seller.settlementRequestFailed2'))
     }
   }
 
@@ -149,7 +149,7 @@ export default function SellerSettlementsPage() {
       link.click()
       link.remove()
     } catch (error) {
-      toast.error('정산서 다운로드에 실패했습니다.')
+      toast.error(t('seller.settlementDownloadFailed'))
     }
   }
 
@@ -180,7 +180,7 @@ export default function SellerSettlementsPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">정산 내역을 불러오는 중...</p>
+          <p className="text-gray-600">{t('seller.settlementLoadingText')}</p>
         </div>
       </div>
     )
@@ -200,7 +200,7 @@ export default function SellerSettlementsPage() {
 
   const headerRight = (
     <div className="flex gap-2">
-      <Button onClick={() => loadSettlements()} variant="outline" size="sm">
+      <Button onClick={() => loadSettlements()} variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">
         <RefreshCw className="w-4 h-4 mr-2" />
         {t('common.refresh')}
       </Button>
@@ -266,7 +266,7 @@ export default function SellerSettlementsPage() {
                   </p>
                 </div>
               </div>
-              <p className="text-sm opacity-75">전체 기간 누적</p>
+              <p className="text-sm opacity-75">{t('seller.allPeriod')}</p>
             </div>
           </div>
         )}
@@ -276,15 +276,15 @@ export default function SellerSettlementsPage() {
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium text-gray-700">
               <Calendar className="w-4 h-4 inline mr-2" />
-              기간 선택:
+              {t('seller.periodSelect')}:
             </label>
             <div className="flex gap-2">
               {[
                 { value: 'all', label: t('common.all') },
-                { value: '1m', label: '최근 1개월' },
-                { value: '3m', label: '최근 3개월' },
-                { value: '6m', label: '최근 6개월' },
-                { value: '1y', label: '최근 1년' }
+                { value: '1m', label: t('seller.recent1Month') },
+                { value: '3m', label: t('seller.recent3Months') },
+                { value: '6m', label: t('seller.recent6Months') },
+                { value: '1y', label: t('seller.recent1Year') }
               ].map(period => (
                 <button
                   key={period.value}
@@ -309,25 +309,25 @@ export default function SellerSettlementsPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    정산 기간
+                    {t('seller.settlementPeriod')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('seller.sales')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    수수료율
+                    {t('seller.commissionRate')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    수수료 금액
+                    {t('seller.commissionAmountColumn')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    정산 금액
+                    {t('seller.settlementAmountColumn')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    신청일
+                    {t('seller.requestDateColumn')}
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     액션
@@ -400,13 +400,13 @@ export default function SellerSettlementsPage() {
 
         {/* Help Text */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">💡 정산 안내</h3>
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">{t('seller.settlementGuide')}</h3>
           <ul className="space-y-2 text-sm text-blue-800">
-            <li>• 정산은 매월 1일부터 말일까지의 매출을 기준으로 합니다.</li>
-            <li>• 정산 신청은 익월 1일부터 가능합니다.</li>
-            <li>• 정산 금액 = 총 매출 - 수수료 ({stats?.pending_amount ? '현재 수수료율 기준' : '판매자별 수수료율 적용'})</li>
-            <li>• 관리자 승인 후 영업일 기준 3-5일 내 지급됩니다.</li>
-            <li>• 정산서는 승인 후 다운로드 가능합니다.</li>
+            <li>• {t('seller.settlementGuide1')}</li>
+            <li>• {t('seller.settlementGuide2')}</li>
+            <li>• {t('seller.settlementGuide3')}</li>
+            <li>• {t('seller.settlementGuide4')}</li>
+            <li>• {t('seller.settlementGuide5')}</li>
           </ul>
         </div>
       </div>

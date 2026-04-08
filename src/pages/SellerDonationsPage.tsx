@@ -88,23 +88,23 @@ export default function SellerDonationsPage() {
   }
 
   async function requestSettlement() {
-    if (!bankInfo.trim()) { toast.error('정산 계좌 정보를 입력해주세요'); return }
+    if (!bankInfo.trim()) { toast.error(t('seller.enterBankInfo')); return }
     setRequesting(true)
     try {
       const res = await api.post('/api/seller/donations/settlements', { bank_info: bankInfo }, {
         headers: { Authorization: `Bearer ${getSellerToken()}` },
       })
       if (res.data.success) {
-        toast.success(res.data.message || '정산 신청이 완료되었습니다')
+        toast.success(res.data.message || t('seller.settlementRequestSuccess'))
         setSettleModal(false)
         setBankInfo('')
         loadData()
         loadSettlements()
       } else {
-        toast.error(res.data.error || '정산 신청에 실패했습니다')
+        toast.error(res.data.error || t('seller.settlementRequestFailed'))
       }
     } catch (e: any) {
-      toast.error(e.response?.data?.error || '정산 신청에 실패했습니다')
+      toast.error(e.response?.data?.error || t('seller.settlementRequestFailed'))
     } finally { setRequesting(false) }
   }
 
@@ -132,10 +132,10 @@ export default function SellerDonationsPage() {
         {summary && (
           <div className="grid grid-cols-2 gap-3 mb-5">
             {[
-              { label: '총 후원 수령액', value: `${fmt(summary.total_received)}원`, icon: <TrendingUp className="w-4 h-4" />, color: 'text-pink-500', bg: 'bg-pink-50' },
-              { label: '정산 가능액', value: `${fmt(summary.available_amount)}원`, icon: <CreditCard className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: '정산 완료액', value: `${fmt(summary.total_settled)}원`, icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: '정산 대기액', value: `${fmt(summary.pending_settlement)}원`, icon: <Clock className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: t('seller.totalReceivedDonations'), value: `${fmt(summary.total_received)}원`, icon: <TrendingUp className="w-4 h-4" />, color: 'text-pink-500', bg: 'bg-pink-50' },
+              { label: t('seller.settlementAvailable'), value: `${fmt(summary.available_amount)}원`, icon: <CreditCard className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: t('seller.settlementCompleted'), value: `${fmt(summary.total_settled)}원`, icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: t('seller.settlementPendingAmount'), value: `${fmt(summary.pending_settlement)}원`, icon: <Clock className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map(c => (
               <div key={c.label} className="bg-white rounded-xl p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
@@ -151,8 +151,7 @@ export default function SellerDonationsPage() {
         {/* 수수료 안내 */}
         <div className="mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
           <p className="text-xs text-blue-700 leading-relaxed">
-            <span className="font-bold">수수료 안내</span> — 후원 정산 시 플랫폼 수수료 <span className="font-bold">15%</span>가 차감됩니다.
-            예) 1,000딜 후원 수령 시 실제 정산 금액은 <span className="font-bold">850원</span>입니다.
+            {t('seller.commissionInfoDesc')}
           </p>
         </div>
 
@@ -162,22 +161,22 @@ export default function SellerDonationsPage() {
             onClick={() => setSettleModal(true)}
             className="w-full mb-5 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-sm shadow-md shadow-pink-200 active:scale-[0.98]"
           >
-            정산 신청하기 ({fmt(summary.available_amount)}원)
+            {t('seller.requestSettlement', { amount: fmt(summary.available_amount) })}
           </button>
         )}
 
         {/* 탭 */}
         <div className="flex gap-1 mb-4 border-b border-gray-200">
           {([
-            { id: 'donations', label: '후원 내역' },
-            { id: 'settlements', label: '정산 내역' },
-          ] as const).map(t => (
+            { id: 'donations', label: t('seller.donationHistoryTab') },
+            { id: 'settlements', label: t('seller.settlementHistoryTab') },
+          ] as const).map(tab => (
             <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === t.id ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500'}`}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500'}`}
             >
-              {t.label}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -188,7 +187,7 @@ export default function SellerDonationsPage() {
             {donations.length === 0 ? (
               <div className="py-16 text-center">
                 <Heart className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">아직 후원이 없습니다.</p>
+                <p className="text-sm text-gray-400">{t('seller.noDonationsYet')}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
@@ -199,7 +198,7 @@ export default function SellerDonationsPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-gray-900">{d.donor_name}</span>
                           {d.can_settle === 1 && (
-                            <span className="text-xs px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full">정산 가능</span>
+                            <span className="text-xs px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full">{t('seller.settleable')}</span>
                           )}
                         </div>
                         {d.message && <p className="text-xs text-gray-500 mt-0.5 truncate">{d.message}</p>}
@@ -207,7 +206,7 @@ export default function SellerDonationsPage() {
                       </div>
                       <div className="text-right ml-3">
                         <p className="text-sm font-bold text-pink-600">+{fmt(d.seller_amount)}원</p>
-                        <p className="text-xs text-gray-400">(수수료 {fmt(d.commission_amount)}원)</p>
+                        <p className="text-xs text-gray-400">({t('seller.commissionFee', { amount: fmt(d.commission_amount) })})</p>
                       </div>
                     </div>
                   </div>
@@ -223,7 +222,7 @@ export default function SellerDonationsPage() {
             {settlements.length === 0 ? (
               <div className="py-16 text-center">
                 <CreditCard className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">정산 신청 내역이 없습니다.</p>
+                <p className="text-sm text-gray-400">{t('seller.noSettlementRequests')}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
@@ -235,8 +234,8 @@ export default function SellerDonationsPage() {
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
                         <span className="text-base font-bold text-gray-900">{fmt(s.settlement_amount)}원</span>
                       </div>
-                      <p className="text-xs text-gray-400">후원 {s.donation_count}건 · 총 {fmt(s.total_amount)}원 (수수료 {fmt(s.commission_amount)}원)</p>
-                      <p className="text-xs text-gray-400 mt-0.5">신청일: {fmtDate(s.requested_at)}{s.settled_at ? ` · 정산일: ${fmtDate(s.settled_at)}` : ''}</p>
+                      <p className="text-xs text-gray-400">{t('seller.donationCountAndTotal', { count: s.donation_count, total: fmt(s.total_amount), commission: fmt(s.commission_amount) })}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t('seller.requestDateLabel')}: {fmtDate(s.requested_at)}{s.settled_at ? ` · ${t('seller.settlementDateLabel')}: ${fmtDate(s.settled_at)}` : ''}</p>
                       {s.admin_memo && <p className="text-xs text-gray-500 mt-1 bg-gray-50 rounded px-2 py-1">{s.admin_memo}</p>}
                     </div>
                   )
@@ -252,12 +251,12 @@ export default function SellerDonationsPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setSettleModal(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">정산 신청</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.settlementRequestTitle')}</h3>
             <p className="text-xs text-gray-400 mb-4">
-              정산 가능 금액: <span className="font-bold text-emerald-600">{fmt(summary?.available_amount ?? 0)}원</span>
-              <br />수수료 15% 제외 후 입금됩니다.
+              {t('seller.settlementAvailableAmountLabel')}: <span className="font-bold text-emerald-600">{fmt(summary?.available_amount ?? 0)}{t('common.won')}</span>
+              <br />{t('seller.commissionDeducted')}
             </p>
-            <label className="block text-xs text-gray-600 mb-1">정산 계좌 정보</label>
+            <label className="block text-xs text-gray-600 mb-1">{t('seller.bankAccountInfo')}</label>
             <textarea
               value={bankInfo}
               onChange={e => setBankInfo(e.target.value)}

@@ -147,7 +147,9 @@ function StartTab({ token }: { token: string | null }) {
       api.get('/api/supply/products', { headers }),
     ]).then(([prodRes, ytRes, supplyRes]) => {
       if (prodRes.status === 'fulfilled' && prodRes.value.data?.success) {
-        setProducts(prodRes.value.data.data || [])
+        // 공급 상품(is_supply_product) 제외
+        const allProds = prodRes.value.data.data || []
+        setProducts(allProds.filter((p: any) => !p.is_supply_product))
       }
       if (ytRes.status === 'fulfilled' && ytRes.value.data?.success) {
         const channels = ytRes.value.data.data || []
@@ -867,7 +869,8 @@ function ControlTab({ token }: { token: string | null }) {
       }
 
       if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
-        setProducts(productsRes.value.data.data || [])
+        const allProds = productsRes.value.data.data || []
+        setProducts(allProds.filter((p: any) => !p.is_supply_product))
       }
     } catch (err) {
       console.error('Failed to load control data:', err)
