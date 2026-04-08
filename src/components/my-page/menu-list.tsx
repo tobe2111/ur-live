@@ -7,20 +7,35 @@ import {
   Truck,
   Settings,
   ChevronRight,
+  Ticket,
+  Heart,
 } from "lucide-react"
 
 const menuItems = [
-  {
-    icon: MapPin,
-    title: "배송지 관리",
-    subtitle: "배송 주소를 관리하세요",
-    path: "/mypage/addresses",
-  },
   {
     icon: ShoppingBag,
     title: "주문 내역",
     subtitle: "구매한 상품을 확인하세요",
     path: "/my-orders",
+  },
+  {
+    icon: Ticket,
+    title: "내 식사권",
+    subtitle: "공동구매 바우처를 확인하세요",
+    path: "/my-vouchers",
+    accent: true,
+  },
+  {
+    icon: Heart,
+    title: "위시리스트",
+    subtitle: "찜한 상품 목록",
+    path: "/wishlist",
+  },
+  {
+    icon: MapPin,
+    title: "배송지 관리",
+    subtitle: "배송 주소를 관리하세요",
+    path: "/mypage/addresses",
   },
   {
     icon: Settings,
@@ -30,7 +45,7 @@ const menuItems = [
   },
   {
     icon: FileText,
-    title: "서비스 이용약관",
+    title: "이용약관",
     subtitle: "",
     path: "/terms-of-service",
   },

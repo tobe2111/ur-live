@@ -146,14 +146,23 @@ function GroupBuySection() {
       .catch(() => {})
   }, [])
 
-  if (items.length === 0) return null
-
   return (
     <section className="px-4 py-4">
+      {/* 공동구매 배너 */}
+      <button
+        onClick={() => navigate('/browse?category=meal_voucher')}
+        className="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-red-500 rounded-2xl p-4 mb-4 text-left active:scale-[0.98] transition-transform"
+      >
+        <p className="text-white text-lg font-extrabold">🍽️ 맛집 공동구매</p>
+        <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권, 최대 70% 할인!</p>
+      </button>
+
+      {items.length === 0 ? null : (
+      <>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-[15px] font-bold text-white">🍽️ 맛집 공동구매</h2>
-          <p className="text-[11px] text-gray-500">인플루언서 추천 맛집 식사권</p>
+          <h2 className="text-[15px] font-bold text-white">진행 중인 공동구매</h2>
+          <p className="text-[11px] text-gray-500">마감 전에 참여하세요</p>
         </div>
         <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[12px] text-gray-500 flex items-center">
           전체보기 <ChevronRight className="w-3.5 h-3.5" />
@@ -190,6 +199,8 @@ function GroupBuySection() {
           )
         })}
       </div>
+      </>
+      )}
     </section>
   )
 }

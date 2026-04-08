@@ -43,6 +43,8 @@ interface DashboardStats {
   cancelledOrders: number
   completedOrders: number
   avgOrderValue: number
+  totalProducts?: number
+  totalStreams?: number
 }
 
 interface DailyStats {
@@ -275,6 +277,28 @@ export default function SellerPage() {
 
   return (
     <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
+
+          {/* ── 온보딩 체크리스트 (상품 0개 or YouTube 미연동 시) ── */}
+          {(stats.totalProducts === 0 || !localStorage.getItem('youtube_channel_name')) && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 mb-5">
+              <h3 className="text-sm font-bold text-gray-900 mb-3">🚀 시작하기</h3>
+              <div className="space-y-2.5">
+                {[
+                  { done: !!localStorage.getItem('youtube_channel_name'), label: 'YouTube 계정 연동', path: '/seller/live-broadcast' },
+                  { done: (stats.totalProducts || 0) > 0, label: '첫 상품 등록', path: '/seller/products/new' },
+                  { done: (stats.totalStreams || 0) > 0, label: '첫 라이브 방송', path: '/seller/live-broadcast' },
+                ].map(step => (
+                  <Link key={step.label} to={step.path} className="flex items-center gap-3 group">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${step.done ? 'bg-green-500' : 'bg-gray-200'}`}>
+                      {step.done ? <CheckCircle2 className="w-4 h-4 text-white" /> : <span className="w-2 h-2 bg-gray-400 rounded-full" />}
+                    </div>
+                    <span className={`text-sm ${step.done ? 'text-gray-400 line-through' : 'text-gray-900 font-medium group-hover:text-blue-600'}`}>{step.label}</span>
+                    {!step.done && <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Stats row ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

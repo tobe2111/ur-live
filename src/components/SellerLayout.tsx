@@ -8,20 +8,43 @@ import {
 import { logoutSeller } from '@/lib/seller-auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
-const NAV_ITEMS = [
-  { path: '/seller/live-broadcast', labelKey: 'seller.live',          icon: Radio, highlight: true },
-  { path: '/seller',              labelKey: 'seller.dashboard',     icon: LayoutDashboard, exact: true },
-  { path: '/seller/orders',       labelKey: 'seller.orders',        icon: ShoppingBag },
-  { path: '/seller/settlements',  labelKey: 'seller.revenue',       icon: DollarSign },
-  { path: '/seller/products',     labelKey: 'seller.products',      icon: Package },
-  { path: '/seller/inventory',    labelKey: 'seller.inventory',     icon: BarChart3 },
-  { path: '/seller/supply',       labelKey: 'seller.supply',        icon: Truck },
-  { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
-  { path: '/seller/donations',   labelKey: 'seller.donations',     icon: Heart },
-  { path: '/seller/shorts',      labelKey: 'seller.shorts',        icon: Play },
-  { path: '/seller/youtube-growth',labelKey: 'seller.youtubeGrowth', icon: TrendingUp },
-  { path: '/seller/alimtalk',     labelKey: 'seller.brandMessage',  icon: Bell },
-  { path: '/seller/business-info',labelKey: 'seller.businessInfo',  icon: Building2 },
+const NAV_GROUPS = [
+  {
+    label: '', // 홈 (그룹 라벨 없음)
+    items: [
+      { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true },
+    ],
+  },
+  {
+    label: '방송',
+    items: [
+      { path: '/seller/live-broadcast', labelKey: 'seller.live', icon: Radio, highlight: true },
+      { path: '/seller/shorts', labelKey: 'seller.shorts', icon: Play },
+      { path: '/seller/live-analytics', labelKey: 'seller.liveAnalytics', icon: Activity },
+    ],
+  },
+  {
+    label: '판매',
+    items: [
+      { path: '/seller/products', labelKey: 'seller.products', icon: Package },
+      { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
+      { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
+    ],
+  },
+  {
+    label: '수익',
+    items: [
+      { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign },
+      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart },
+    ],
+  },
+  {
+    label: '설정',
+    items: [
+      { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2 },
+      { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell },
+    ],
+  },
 ]
 
 interface SellerLayoutProps {
@@ -76,37 +99,48 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ path, labelKey, icon: Icon, exact, highlight }) => {
-          const active = isActive(path, exact)
-          const label = t(labelKey)
-          return (
-            <Link
-              key={path}
-              to={path}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-blue-600 text-white'
-                  : highlight && !active
-                  ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${highlight && !active ? 'text-red-500' : ''}`} />
-              {label}
-              {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
-              {labelKey === 'seller.orders' && pendingOrders > 0 && (
-                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                  active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {pendingOrders}
-                </span>
-              )}
-            </Link>
-          )
-        })}
+      {/* Nav - Grouped */}
+      <nav className="flex-1 px-3 py-3 overflow-y-auto">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={gi} className={gi > 0 ? 'mt-4' : ''}>
+            {group.label && (
+              <p className="px-3 mb-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{group.label}</p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
+                const exact = (rest as any).exact as boolean | undefined
+                const highlight = (rest as any).highlight as boolean | undefined
+                const active = isActive(path, exact)
+                const label = t(labelKey)
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                      active
+                        ? 'bg-blue-600 text-white'
+                        : highlight && !active
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 flex-shrink-0 ${highlight && !active ? 'text-red-500' : ''}`} />
+                    {label}
+                    {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
+                    {labelKey === 'seller.orders' && pendingOrders > 0 && (
+                      <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                        active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {pendingOrders}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom */}

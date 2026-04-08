@@ -44,6 +44,7 @@ const CartPage = lazy(() => import('./pages/CartPage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
+const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 
 // Seller 페이지들
@@ -543,6 +544,11 @@ function AppContent() {
             <Route path="/wishlist" element={
               <ProtectedRoute requireUser>
                 <WishlistPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-vouchers" element={
+              <ProtectedRoute requireUser>
+                <MyVouchersPage />
               </ProtectedRoute>
             } />
             <Route path="/my-orders" element={
