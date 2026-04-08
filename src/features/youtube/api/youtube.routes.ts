@@ -42,6 +42,62 @@ interface SellerYouTubeAuthRow {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// 테이블 자동 생성 (마이그레이션 미적용 시 fallback)
+async function ensureYouTubeTables(DB: D1Database) {
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS seller_youtube_oauth (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        seller_id INTEGER NOT NULL,
+        google_email TEXT,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        channel_id TEXT NOT NULL,
+        channel_title TEXT,
+        channel_thumbnail TEXT,
+        subscriber_count INTEGER DEFAULT 0,
+        default_stream_id TEXT,
+        default_rtmp_url TEXT,
+        default_rtmp_key TEXT,
+        has_persistent_key INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(seller_id, channel_id)
+      )
+    `).run()
+  } catch { /* already exists */ }
+
+  try {
+    await DB.prepare(`
+      CREATE TABLE IF NOT EXISTS stream_products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stream_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(stream_id, product_id)
+      )
+    `).run()
+  } catch { /* already exists */ }
+
+  // live_streams에 누락 컬럼 추가 (SQLite에서 이미 있으면 에러 → catch)
+  const columns = [
+    'youtube_broadcast_id TEXT',
+    'youtube_stream_key TEXT',
+    'youtube_live_chat_id TEXT',
+    'rtmp_url TEXT',
+    'rtmp_key TEXT',
+    'youtube_embed_url TEXT',
+    'youtube_url TEXT',
+    'current_product_id INTEGER',
+    'product_display_mode TEXT DEFAULT \'current_only\'',
+  ]
+  for (const col of columns) {
+    try { await DB.prepare(`ALTER TABLE live_streams ADD COLUMN ${col}`).run() } catch { /* exists */ }
+  }
+}
+
 // CORS configuration
 app.use('/*', cors({
   origin: [
@@ -182,6 +238,7 @@ app.get('/auth-url', async (c) => {
  * Handle OAuth callback
  */
 app.post('/oauth/callback', async (c) => {
+  await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   
   if (!sellerId) {
@@ -282,6 +339,7 @@ app.post('/oauth/callback', async (c) => {
  * Get seller's YouTube channels
  */
 app.get('/channels', async (c) => {
+  await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   
   if (!sellerId) {
@@ -328,6 +386,7 @@ app.get('/channels', async (c) => {
  * Create a new YouTube live broadcast (zero-setup)
  */
 app.post('/live/create', async (c) => {
+  await ensureYouTubeTables(c.env.DB)
   const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
   
   if (!sellerId) {
