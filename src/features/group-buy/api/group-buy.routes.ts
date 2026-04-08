@@ -29,6 +29,7 @@ async function ensureTables(DB: D1Database) {
     'voucher_expiry DATE', 'voucher_terms TEXT',
     'group_buy_target INTEGER DEFAULT 0', 'group_buy_current INTEGER DEFAULT 0',
     'group_buy_deadline DATETIME', "group_buy_status TEXT DEFAULT 'active'",
+    'store_verify_pin TEXT',
   ]
   for (const col of columns) {
     try { await DB.prepare(`ALTER TABLE products ADD COLUMN ${col}`).run() } catch { /* exists */ }
@@ -233,26 +234,60 @@ groupBuyRoutes.get('/my', requireAuth(), async (c) => {
   return c.json({ success: true, data: results ?? [] })
 })
 
-// ── POST /api/vouchers/:code/use — 바우처 사용 ─────────────────────
-groupBuyRoutes.post('/:code/use', async (c) => {
+// ── GET /api/vouchers/verify/:code — 바우처 정보 조회 (비밀번호 입력 전) ──
+groupBuyRoutes.get('/verify/:code', async (c) => {
   const { DB } = c.env
   const code = c.req.param('code')
 
+  const voucher = await DB.prepare(`
+    SELECT v.*, p.name as product_name, p.restaurant_name, p.image_url as product_image
+    FROM vouchers v LEFT JOIN products p ON v.product_id = p.id
+    WHERE v.code = ?
+  `).bind(code).first<any>()
+
+  if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
+
+  return c.json({
+    success: true,
+    data: {
+      code: voucher.code,
+      status: voucher.status,
+      product_name: voucher.product_name,
+      restaurant_name: voucher.restaurant_name,
+      product_image: voucher.product_image,
+      expires_at: voucher.expires_at,
+    },
+  })
+})
+
+// ── POST /api/vouchers/:code/use — 바우처 사용 (비밀번호 인증) ─────
+groupBuyRoutes.post('/:code/use', async (c) => {
+  const { DB } = c.env
+  const code = c.req.param('code')
+  const { pin } = await c.req.json<{ pin: string }>()
+
   const voucher = await DB.prepare(
-    "SELECT * FROM vouchers WHERE code = ? AND status = 'unused'"
+    "SELECT v.*, p.store_verify_pin FROM vouchers v LEFT JOIN products p ON v.product_id = p.id WHERE v.code = ?"
   ).bind(code).first<any>()
 
-  if (!voucher) return c.json({ success: false, error: '유효하지 않은 바우처입니다' }, 404)
+  if (!voucher) return c.json({ success: false, error: '바우처를 찾을 수 없습니다' }, 404)
+  if (voucher.status === 'used') return c.json({ success: false, error: '이미 사용된 바우처입니다' }, 400)
+  if (voucher.status === 'expired') return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
 
   if (voucher.expires_at && new Date(voucher.expires_at) < new Date()) {
     await DB.prepare("UPDATE vouchers SET status = 'expired' WHERE id = ?").bind(voucher.id).run()
     return c.json({ success: false, error: '만료된 바우처입니다' }, 400)
   }
 
+  // 비밀번호 확인
+  if (voucher.store_verify_pin && voucher.store_verify_pin !== pin) {
+    return c.json({ success: false, error: '비밀번호가 일치하지 않습니다' }, 403)
+  }
+
   await DB.prepare("UPDATE vouchers SET status = 'used', used_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(voucher.id).run()
 
-  return c.json({ success: true, message: '바우처가 사용 처리되었습니다' })
+  return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
 })
 
 export { groupBuyRoutes }

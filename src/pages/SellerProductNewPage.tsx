@@ -114,6 +114,7 @@ export default function SellerProductNewPage() {
           voucher_expiry: (formData as any).voucher_expiry || null,
           group_buy_target: Number((formData as any).group_buy_target) || 0,
           group_buy_deadline: (formData as any).group_buy_deadline || null,
+          store_verify_pin: (formData as any).store_verify_pin || null,
         } : {}),
       }
 
@@ -391,6 +392,12 @@ export default function SellerProductNewPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 마감일</label>
                 <input type="datetime-local" name="group_buy_deadline" onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 인증 비밀번호 *</label>
+                <input name="store_verify_pin" onChange={handleChange} placeholder="식당 사장에게 전달할 비밀번호"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <p className="text-xs text-gray-400 mt-1">식당 사장이 바우처 사용 시 입력할 비밀번호입니다. 식당 사장에게 전달해주세요.</p>
               </div>
             </div>
           )}
