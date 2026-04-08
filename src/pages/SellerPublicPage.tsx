@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 interface Seller {
@@ -33,6 +33,13 @@ export default function SellerPublicPage() {
   const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('home')
+
+  // 셀러 본인인지 확인 (편집 버튼 표시용)
+  const isOwner = (() => {
+    const userType = localStorage.getItem('user_type')
+    const storedSellerId = localStorage.getItem('seller_id')
+    return userType === 'seller' && storedSellerId === sellerId
+  })()
 
   useEffect(() => {
     if (!sellerId) return
@@ -117,7 +124,14 @@ export default function SellerPublicPage() {
 
       {/* 셀러 정보 */}
       <div className="pt-14 px-5 pb-4">
-        <h1 className="text-xl font-extrabold text-gray-900">{seller.name}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-extrabold text-gray-900">{seller.name}</h1>
+          {isOwner && (
+            <button onClick={() => navigate('/seller/profile')} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-600 font-medium hover:bg-gray-200">
+              <Pencil className="w-3 h-3" /> 프로필 편집
+            </button>
+          )}
+        </div>
         {seller.business_name && (
           <div className="flex items-center gap-1 mt-0.5">
             <MapPin className="w-3 h-3 text-gray-400" />
@@ -208,7 +222,12 @@ export default function SellerPublicPage() {
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base font-bold text-gray-900">{t('seller.recommendBest')}</h2>
-                  <button onClick={() => setTab('products')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
+                  <div className="flex items-center gap-2">
+                    {isOwner && (
+                      <button onClick={() => navigate('/seller/products')} className="text-xs text-blue-500 flex items-center gap-0.5"><Plus className="w-3 h-3" /> 상품추가</button>
+                    )}
+                    <button onClick={() => setTab('products')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
+                  </div>
                 </div>
                 {bestProducts.slice(0, 3).map(p => {
                   const disc = p.discount_rate || (p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0)
@@ -235,7 +254,12 @@ export default function SellerPublicPage() {
               <section>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base font-bold text-gray-900">{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>
-                  <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
+                  <div className="flex items-center gap-2">
+                    {isOwner && (
+                      <button onClick={() => navigate('/seller/live-broadcast')} className="text-xs text-red-500 flex items-center gap-0.5"><Play className="w-3 h-3" /> 방송하기</button>
+                    )}
+                    <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {recentStreams.slice(0, 4).map(s => (
@@ -314,7 +338,12 @@ export default function SellerPublicPage() {
         {tab === 'info' && (
           <div className="space-y-6">
             <section>
-              <h3 className="text-base font-bold text-gray-900 mb-2">{t('seller.storeIntro')}</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-bold text-gray-900">{t('seller.storeIntro')}</h3>
+                {isOwner && (
+                  <button onClick={() => navigate('/seller/profile')} className="text-xs text-blue-500 flex items-center gap-0.5"><Pencil className="w-3 h-3" /> 수정</button>
+                )}
+              </div>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
                 {seller.bio || t('seller.noBioYet')}
               </p>
@@ -337,6 +366,17 @@ export default function SellerPublicPage() {
           </div>
         )}
       </div>
+
+      {/* 셀러 본인: 플로팅 대시보드 버튼 */}
+      {isOwner && (
+        <button
+          onClick={() => navigate('/seller')}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-full shadow-xl shadow-blue-600/30 text-sm font-bold active:scale-95"
+        >
+          <Settings className="w-4 h-4" />
+          대시보드
+        </button>
+      )}
     </div>
   )
 }
