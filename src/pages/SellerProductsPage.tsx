@@ -281,7 +281,7 @@ export default function SellerProductsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                            {formatPrice(product.price)}원
+                            {formatPrice(product.price)}{t('common.won')}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
@@ -391,7 +391,7 @@ export default function SellerProductsPage() {
                             <div className="flex items-center gap-1 text-gray-900">
                               <DollarSign className="w-4 h-4 text-green-600" />
                               <span className="text-base sm:text-lg font-bold">
-                                {formatPrice(product.price)}원
+                                {formatPrice(product.price)}{t('common.won')}
                               </span>
                             </div>
                             <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>

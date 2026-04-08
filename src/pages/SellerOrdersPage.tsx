@@ -861,7 +861,7 @@ export default function SellerOrdersPage() {
                           type="text"
                           value={trackingForm.tracking_number}
                           onChange={(e) => setTrackingForm({ ...trackingForm, tracking_number: e.target.value })}
-                          placeholder="예: 123456789012"
+                          placeholder={t('seller.trackingNumberPlaceholder')}
                           required
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />

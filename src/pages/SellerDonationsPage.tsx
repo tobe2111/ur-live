@@ -132,10 +132,10 @@ export default function SellerDonationsPage() {
         {summary && (
           <div className="grid grid-cols-2 gap-3 mb-5">
             {[
-              { label: t('seller.totalReceivedDonations'), value: `${fmt(summary.total_received)}원`, icon: <TrendingUp className="w-4 h-4" />, color: 'text-pink-500', bg: 'bg-pink-50' },
-              { label: t('seller.settlementAvailable'), value: `${fmt(summary.available_amount)}원`, icon: <CreditCard className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: t('seller.settlementCompleted'), value: `${fmt(summary.total_settled)}원`, icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-              { label: t('seller.settlementPendingAmount'), value: `${fmt(summary.pending_settlement)}원`, icon: <Clock className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+              { label: t('seller.totalReceivedDonations'), value: `${fmt(summary.total_received)}${t('common.won')}`, icon: <TrendingUp className="w-4 h-4" />, color: 'text-pink-500', bg: 'bg-pink-50' },
+              { label: t('seller.settlementAvailable'), value: `${fmt(summary.available_amount)}${t('common.won')}`, icon: <CreditCard className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: t('seller.settlementCompleted'), value: `${fmt(summary.total_settled)}${t('common.won')}`, icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: t('seller.settlementPendingAmount'), value: `${fmt(summary.pending_settlement)}${t('common.won')}`, icon: <Clock className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
             ].map(c => (
               <div key={c.label} className="bg-white rounded-xl p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
@@ -205,7 +205,7 @@ export default function SellerDonationsPage() {
                         <p className="text-xs text-gray-400 mt-0.5">{d.stream_title ?? '-'} · {fmtDate(d.created_at)}</p>
                       </div>
                       <div className="text-right ml-3">
-                        <p className="text-sm font-bold text-pink-600">+{fmt(d.seller_amount)}원</p>
+                        <p className="text-sm font-bold text-pink-600">+{fmt(d.seller_amount)}{t('common.won')}</p>
                         <p className="text-xs text-gray-400">({t('seller.commissionFee', { amount: fmt(d.commission_amount) })})</p>
                       </div>
                     </div>
@@ -232,7 +232,7 @@ export default function SellerDonationsPage() {
                     <div key={s.id} className="px-4 py-4">
                       <div className="flex items-start justify-between mb-1">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
-                        <span className="text-base font-bold text-gray-900">{fmt(s.settlement_amount)}원</span>
+                        <span className="text-base font-bold text-gray-900">{fmt(s.settlement_amount)}{t('common.won')}</span>
                       </div>
                       <p className="text-xs text-gray-400">{t('seller.donationCountAndTotal', { count: s.donation_count, total: fmt(s.total_amount), commission: fmt(s.commission_amount) })}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{t('seller.requestDateLabel')}: {fmtDate(s.requested_at)}{s.settled_at ? ` · ${t('seller.settlementDateLabel')}: ${fmtDate(s.settled_at)}` : ''}</p>
@@ -260,7 +260,7 @@ export default function SellerDonationsPage() {
             <textarea
               value={bankInfo}
               onChange={e => setBankInfo(e.target.value)}
-              placeholder="은행명, 계좌번호, 예금주를 입력해주세요&#10;예) 카카오뱅크 3333-01-1234567 홍길동"
+              placeholder={t('seller.bankAccountPlaceholder')}
               rows={3}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-4 focus:border-pink-400 focus:outline-none resize-none"
             />

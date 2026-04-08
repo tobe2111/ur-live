@@ -89,11 +89,9 @@ sellersRouter.get('/:id/public', async (c) => {
     const qb = new QueryBuilder(c.env.DB);
     const sellerId = c.req.param('id');
 
+    // 프로덕션 DB 호환: SELECT * 사용 (컬럼 존재 여부 무관)
     const seller = await qb.queryOne(
-      `SELECT id, name, business_name, profile_image, bio,
-              sns_instagram, sns_youtube, sns_facebook, kakao_chat_link,
-              created_at
-       FROM sellers WHERE id = ?`,
+      `SELECT * FROM sellers WHERE id = ?`,
       [sellerId]
     );
 
