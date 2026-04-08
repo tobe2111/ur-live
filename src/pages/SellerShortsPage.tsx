@@ -159,7 +159,7 @@ export default function SellerShortsPage() {
                 <input
                   value={videoUrl}
                   onChange={e => setVideoUrl(e.target.value)}
-                  placeholder="https://youtube.com/shorts/... 또는 https://youtu.be/..."
+                  placeholder="https://youtube.com/shorts/... or https://youtu.be/..."
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
                 />
                 {videoUrl && extractYoutubeId(videoUrl) && (
