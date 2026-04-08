@@ -1071,7 +1071,9 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
   try {
     const seller = await DB.prepare(
       `SELECT id, name, email, description, business_name, phone,
-              status, created_at
+              status, created_at, profile_image, bio,
+              sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+              website_url, kakao_chat_url
        FROM sellers WHERE id = ? AND status = 'approved'`
     ).bind(sellerId).first();
 
