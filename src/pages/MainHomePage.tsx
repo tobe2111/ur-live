@@ -120,9 +120,9 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
         )}
       </div>
 
-      {/* 텍스트 정보 영역 (썸네일 아래 분리) */}
-      <div className="mt-2 px-0.5">
-        <p className="text-[12px] font-bold text-white leading-tight line-clamp-2">
+      {/* 텍스트 정보 영역 (높이 고정) */}
+      <div className="mt-2 px-0.5 h-[42px]">
+        <p className="text-[12px] font-bold text-white leading-tight truncate">
           {stream.title}
         </p>
         {stream.current_product && (
