@@ -1,13 +1,18 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
-import HttpBackend from 'i18next-http-backend'
 
-// ✅ Runtime region detection (single build → runtime hostname check)
+// 번역 파일을 빌드 시 번들에 포함 (네트워크 요청 없이 즉시 전환)
+import ko from '../public/locales/ko/translation.json'
+import en from '../public/locales/en/translation.json'
+import ja from '../public/locales/ja/translation.json'
+import zh from '../public/locales/zh/translation.json'
+import es from '../public/locales/es/translation.json'
+import fr from '../public/locales/fr/translation.json'
+
 function detectDefaultLanguage(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
-    // GLOBAL 도메인이면 영어 기본
     if (hostname.includes('world.ur-team.com') || hostname.includes('global.') || hostname.includes('localhost:5174')) {
       return 'en'
     }
@@ -15,48 +20,38 @@ function detectDefaultLanguage(): string {
   return import.meta.env.VITE_DEFAULT_LANGUAGE || 'ko'
 }
 
-function detectSupportedLngs(): string[] {
-  return ['ko', 'en', 'ja', 'zh', 'es', 'fr']
-}
-
 const defaultLanguage = detectDefaultLanguage()
 
 i18n
-  .use(HttpBackend) // 번역 파일 로드
-  .use(LanguageDetector) // 브라우저 언어 감지
-  .use(initReactI18next) // React 통합
+  .use(LanguageDetector)
+  .use(initReactI18next)
   .init({
     fallbackLng: defaultLanguage,
-    debug: import.meta.env.DEV, // 개발 환경에서만 디버그
-    
+    debug: false,
+
     interpolation: {
-      escapeValue: false, // React가 XSS 방지 처리
+      escapeValue: false,
     },
-    
-    backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json', // 번역 파일 경로
+
+    resources: {
+      ko: { translation: ko },
+      en: { translation: en },
+      ja: { translation: ja },
+      zh: { translation: zh },
+      es: { translation: es },
+      fr: { translation: fr },
     },
-    
+
     detection: {
-      order: ['querystring', 'localStorage', 'navigator'],
+      order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
-      lookupQuerystring: 'lang',
       lookupLocalStorage: 'i18nextLng',
     },
-    
-    // 지원 언어 (runtime detection)
-    supportedLngs: detectSupportedLngs(),
-    
-    // 기본 네임스페이스
+
+    supportedLngs: ['ko', 'en', 'ja', 'zh', 'es', 'fr'],
+
     ns: ['translation'],
     defaultNS: 'translation',
-    
-    // 로딩 실패 시 콜백
-    missingKeyHandler: (lngs, ns, key) => {
-      if (import.meta.env.DEV) {
-        console.warn(`Missing translation: ${key}`)
-      }
-    }
   })
 
 export default i18n
