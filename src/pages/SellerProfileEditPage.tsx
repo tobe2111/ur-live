@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,7 @@ interface SellerProfile {
 }
 
 export default function SellerProfileEditPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -145,7 +147,7 @@ export default function SellerProfileEditPage() {
       }
     } catch (error) {
       console.error('Failed to load profile:', error)
-      setErrorMessage('프로필을 불러오는데 실패했습니다')
+      setErrorMessage(t('seller.profileLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -164,12 +166,12 @@ export default function SellerProfileEditPage() {
 
       if (response.data.success) {
         setProfile(response.data.data)
-        setSuccessMessage('✅ 프로필이 성공적으로 업데이트되었습니다!')
+        setSuccessMessage(t('seller.profileUpdateSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: any) {
       console.error('Failed to update profile:', error)
-      setErrorMessage(error.response?.data?.error || '프로필 업데이트에 실패했습니다')
+      setErrorMessage(error.response?.data?.error || t('seller.profileUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -185,12 +187,12 @@ export default function SellerProfileEditPage() {
 
       if (response.data.success) {
         setProfile(response.data.data)
-        setSuccessMessage('✅ 사업자 정보가 성공적으로 업데이트되었습니다!')
+        setSuccessMessage(t('seller.businessUpdateSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: any) {
       console.error('Failed to update business info:', error)
-      setErrorMessage(error.response?.data?.error || '사업자 정보 업데이트에 실패했습니다')
+      setErrorMessage(error.response?.data?.error || t('seller.businessUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -206,12 +208,12 @@ export default function SellerProfileEditPage() {
 
       if (response.data.success) {
         setProfile(response.data.data)
-        setSuccessMessage('✅ 개인정보가 성공적으로 업데이트되었습니다!')
+        setSuccessMessage(t('seller.personalUpdateSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: any) {
       console.error('Failed to update personal info:', error)
-      setErrorMessage(error.response?.data?.error || '개인정보 업데이트에 실패했습니다')
+      setErrorMessage(error.response?.data?.error || t('seller.personalUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -224,19 +226,19 @@ export default function SellerProfileEditPage() {
 
     // Validation
     if (!passwordData.current_password) {
-      setErrorMessage('현재 비밀번호를 입력해주세요')
+      setErrorMessage(t('seller.enterCurrentPassword'))
       setSaving(false)
       return
     }
     
     if (passwordData.new_password.length < 8) {
-      setErrorMessage('새 비밀번호는 8자 이상이어야 합니다')
+      setErrorMessage(t('seller.newPasswordMin8'))
       setSaving(false)
       return
     }
     
     if (passwordData.new_password !== passwordData.confirm_password) {
-      setErrorMessage('새 비밀번호가 일치하지 않습니다')
+      setErrorMessage(t('seller.newPasswordMismatch'))
       setSaving(false)
       return
     }
@@ -248,13 +250,13 @@ export default function SellerProfileEditPage() {
       })
 
       if (response.data.success) {
-        setSuccessMessage('✅ 비밀번호가 성공적으로 변경되었습니다!')
+        setSuccessMessage(t('seller.passwordChangeSuccess'))
         setPasswordData({ current_password: '', new_password: '', confirm_password: '' })
         setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: any) {
       console.error('Failed to change password:', error)
-      setErrorMessage(error.response?.data?.error || '비밀번호 변경에 실패했습니다')
+      setErrorMessage(error.response?.data?.error || t('seller.passwordChangeFailed'))
     } finally {
       setSaving(false)
     }
@@ -266,13 +268,13 @@ export default function SellerProfileEditPage() {
     
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setErrorMessage('이미지 파일만 업로드 가능합니다')
+      setErrorMessage(t('seller.imageOnlyAllowed'))
       return
     }
     
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage('이미지 크기는 5MB 이하여야 합니다')
+      setErrorMessage(t('seller.imageSizeLimit'))
       return
     }
     
@@ -291,12 +293,12 @@ export default function SellerProfileEditPage() {
       
       if (response.data.success) {
         setProfileData({ ...profileData, profile_image: response.data.url })
-        setSuccessMessage('✅ 이미지가 업로드되었습니다!')
+        setSuccessMessage(t('seller.imageUploadSuccess'))
         setTimeout(() => setSuccessMessage(''), 3000)
       }
     } catch (error: any) {
       console.error('Failed to upload image:', error)
-      setErrorMessage(error.response?.data?.error || '이미지 업로드에 실패했습니다')
+      setErrorMessage(error.response?.data?.error || t('seller.imageUploadFailed'))
     } finally {
       setUploadingImage(false)
     }
@@ -311,11 +313,11 @@ export default function SellerProfileEditPage() {
 
   if (loading) {
     return (
-      <SellerLayout title="프로필 편집">
+      <SellerLayout title={t('seller.profileEdit')}>
         <div className="flex items-center justify-center py-32">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-sm text-gray-500">프로필 로딩 중...</p>
+            <p className="text-sm text-gray-500">{t('seller.profileLoading')}</p>
           </div>
         </div>
       </SellerLayout>
@@ -323,7 +325,7 @@ export default function SellerProfileEditPage() {
   }
 
   return (
-    <SellerLayout title="프로필 편집">
+    <SellerLayout title={t('seller.profileEdit')}>
       <div className="max-w-[980px] mx-auto">
         {/* Success/Error Messages */}
         {successMessage && (
@@ -348,11 +350,11 @@ export default function SellerProfileEditPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <ExternalLink className="h-5 w-5 text-[#007aff]" />
                   <h3 className="text-[17px] font-semibold text-[#1d1d1f]">
-                    공개 페이지 미리보기
+                    {t('seller.publicPagePreview')}
                   </h3>
                 </div>
                 <p className="text-[13px] text-[#6e6e73] mb-3">
-                  변경사항을 저장하면 공개 페이지에 즉시 반영됩니다
+                  {t('seller.changesSaveNotice')}
                 </p>
                 <a
                   href={`/s/${profile.id}`}
@@ -361,7 +363,7 @@ export default function SellerProfileEditPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#007aff] text-white rounded-lg hover:bg-[#0051d5] transition-colors text-[13px] font-medium"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  공개 페이지 보기
+                  {t('seller.viewPublicPage')}
                 </a>
               </div>
             </div>
@@ -376,8 +378,8 @@ export default function SellerProfileEditPage() {
                 <ImageIcon className="h-5 w-5 text-[#007aff]" />
               </div>
               <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">프로필 이미지</h2>
-                <p className="text-[13px] text-[#6e6e73]">이미지 URL을 입력하세요</p>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.profileImage')}</h2>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.enterImageUrl')}</p>
               </div>
             </div>
 
@@ -400,7 +402,7 @@ export default function SellerProfileEditPage() {
 
               <div>
                 <label className="block text-[13px] font-medium text-[#1d1d1f] mb-2">
-                  이미지 URL
+                  {t('seller.imageUrl')}
                 </label>
                 <input
                   type="text"
@@ -410,7 +412,7 @@ export default function SellerProfileEditPage() {
                   className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
                 />
                 <p className="mt-2 text-[11px] text-[#6e6e73]">
-                  추천: 정사각형 이미지 (500x500px 이상)
+                  {t('seller.recommendSquare')}
                 </p>
               </div>
             </div>
@@ -423,8 +425,8 @@ export default function SellerProfileEditPage() {
                 <MessageSquare className="h-5 w-5 text-[#34c759]" />
               </div>
               <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">소개</h2>
-                <p className="text-[13px] text-[#6e6e73]">자기소개를 입력하세요</p>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.bio')}</h2>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.enterBio')}</p>
               </div>
             </div>
 
@@ -432,7 +434,7 @@ export default function SellerProfileEditPage() {
               <textarea
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                placeholder="안녕하세요! 저는..."
+                placeholder={t('seller.bioPlaceholder')}
                 rows={4}
                 maxLength={500}
                 className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent resize-none"
@@ -450,8 +452,8 @@ export default function SellerProfileEditPage() {
                 <User className="h-5 w-5 text-[#ff3b30]" />
               </div>
               <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">SNS 링크</h2>
-                <p className="text-[13px] text-[#6e6e73]">소셜 미디어 계정을 연결하세요</p>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.snsLinks')}</h2>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.connectSns')}</p>
               </div>
             </div>
 
@@ -466,7 +468,7 @@ export default function SellerProfileEditPage() {
                   type="text"
                   value={formData.sns_instagram}
                   onChange={(e) => setFormData({ ...formData, sns_instagram: e.target.value })}
-                  placeholder="username 또는 https://instagram.com/username"
+                  placeholder="username"
                   className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
                 />
               </div>
@@ -481,7 +483,7 @@ export default function SellerProfileEditPage() {
                   type="text"
                   value={formData.sns_youtube}
                   onChange={(e) => setFormData({ ...formData, sns_youtube: e.target.value })}
-                  placeholder="@username 또는 https://youtube.com/@username"
+                  placeholder="@username"
                   className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
                 />
               </div>
@@ -496,7 +498,7 @@ export default function SellerProfileEditPage() {
                   type="text"
                   value={formData.sns_facebook}
                   onChange={(e) => setFormData({ ...formData, sns_facebook: e.target.value })}
-                  placeholder="username 또는 https://facebook.com/username"
+                  placeholder="username"
                   className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
                 />
               </div>
@@ -511,7 +513,7 @@ export default function SellerProfileEditPage() {
                   type="text"
                   value={formData.sns_twitter}
                   onChange={(e) => setFormData({ ...formData, sns_twitter: e.target.value })}
-                  placeholder="@username 또는 https://twitter.com/username"
+                  placeholder="@username"
                   className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
                 />
               </div>
@@ -525,8 +527,8 @@ export default function SellerProfileEditPage() {
                 <MessageSquare className="h-5 w-5 text-[#fee500]" />
               </div>
               <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">카카오톡 문의</h2>
-                <p className="text-[13px] text-[#6e6e73]">고객 문의를 위한 카카오톡 오픈채팅 링크</p>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.kakaoInquiry')}</h2>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.kakaoInquiryDesc')}</p>
               </div>
             </div>
 
@@ -542,8 +544,8 @@ export default function SellerProfileEditPage() {
                 <div className="flex gap-2 text-[11px] text-orange-800">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <div>
-                    <p className="font-semibold mb-1">⚠️ 외부 거래 주의 사항</p>
-                    <p>플랫폼 외부에서의 거래는 금지되며, 사기 피해 시 플랫폼은 책임지지 않습니다. 의심스러운 거래는 고객센터(0507-0177-0432)로 즉시 신고해주세요.</p>
+                    <p className="font-semibold mb-1">{t('seller.externalTradeWarningTitle')}</p>
+                    <p>{t('seller.externalTradeWarningDesc')}</p>
                   </div>
                 </div>
               </div>
@@ -557,8 +559,8 @@ export default function SellerProfileEditPage() {
                 <Globe className="h-5 w-5 text-[#5856d6]" />
               </div>
               <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">웹사이트</h2>
-                <p className="text-[13px] text-[#6e6e73]">개인 웹사이트 URL</p>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.websiteLabel')}</h2>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.personalWebsite')}</p>
               </div>
             </div>
 
@@ -579,7 +581,7 @@ export default function SellerProfileEditPage() {
               onClick={() => navigate('/seller')}
               className="flex-1 py-4 px-6 bg-white border border-[#e5e5ea] text-[#1d1d1f] rounded-xl hover:bg-[#f5f5f7] transition-colors text-[15px] font-medium"
             >
-              취소
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
@@ -589,12 +591,12 @@ export default function SellerProfileEditPage() {
               {saving ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  저장 중...
+                  {t('seller.saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-5 w-5" />
-                  변경사항 저장
+                  {t('common.save')}
                 </>
               )}
             </button>

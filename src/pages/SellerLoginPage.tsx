@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
@@ -6,6 +7,7 @@ import { clearFirebaseTokenCache } from '@/lib/api'
 import { Mail, Lock, Eye, EyeOff, TrendingUp, Package, Users, ArrowRight } from 'lucide-react'
 
 export default function SellerLoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
@@ -47,7 +49,7 @@ export default function SellerLoginPage() {
         navigate('/seller', { replace: true })
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || '이메일 또는 비밀번호를 확인해주세요.')
+      setError(err.response?.data?.error || t('seller.loginErrorDefault'))
     } finally {
       setLoading(false)
     }
@@ -68,17 +70,17 @@ export default function SellerLoginPage() {
 
         <div className="flex-1 flex flex-col justify-center px-10">
           <h1 className="text-3xl font-bold text-gray-900 leading-tight mb-3">
-            라이브 커머스를<br />더 쉽게, 더 빠르게
+            {t('seller.liveCommerceTagline')}
           </h1>
           <p className="text-gray-500 text-base mb-10">
-            Ur 셀러 대시보드로 상품 관리부터 정산까지<br />한 곳에서 관리하세요.
+            {t('seller.liveCommerceDesc')}
           </p>
 
           <div className="space-y-5">
             {[
-              { icon: <TrendingUp className="w-5 h-5 text-blue-600" />, title: '실시간 매출 현황', desc: '라이브 방송 중 실시간 주문·매출 확인' },
-              { icon: <Package className="w-5 h-5 text-blue-600" />, title: '통합 주문 관리', desc: '주문 처리부터 배송 추적까지 한눈에' },
-              { icon: <Users className="w-5 h-5 text-blue-600" />, title: '정산 자동화', desc: '수수료 계산 및 정산 내역 자동 처리' },
+              { icon: <TrendingUp className="w-5 h-5 text-blue-600" />, title: t('seller.realtimeSalesStatus'), desc: t('seller.realtimeSalesDesc') },
+              { icon: <Package className="w-5 h-5 text-blue-600" />, title: t('seller.integratedOrderManage'), desc: t('seller.integratedOrderDesc') },
+              { icon: <Users className="w-5 h-5 text-blue-600" />, title: t('seller.settlementAutomation'), desc: t('seller.settlementAutomationDesc') },
             ].map(({ icon, title, desc }) => (
               <div key={title} className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -109,8 +111,8 @@ export default function SellerLoginPage() {
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-7">
-              <h2 className="text-2xl font-bold text-gray-900">로그인</h2>
-              <p className="text-sm text-gray-500 mt-1">셀러 계정으로 로그인하세요</p>
+              <h2 className="text-2xl font-bold text-gray-900">{t('common.login')}</h2>
+              <p className="text-sm text-gray-500 mt-1">{t('seller.loginSubtitle')}</p>
             </div>
 
             {error && (
@@ -122,7 +124,7 @@ export default function SellerLoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* 이메일 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">이메일</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -141,7 +143,7 @@ export default function SellerLoginPage() {
 
               {/* 비밀번호 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -152,7 +154,7 @@ export default function SellerLoginPage() {
                     required
                     autoComplete="current-password"
                     disabled={loading}
-                    placeholder="비밀번호를 입력하세요"
+                    placeholder={t('seller.passwordPlaceholder')}
                     className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all disabled:bg-gray-50"
                   />
                   <button
@@ -165,7 +167,7 @@ export default function SellerLoginPage() {
                 </div>
               </div>
 
-              {/* 이메일 기억하기 */}
+              {/* {t('seller.rememberEmail')} */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -184,7 +186,7 @@ export default function SellerLoginPage() {
                   onClick={() => setRememberMe(v => !v)}
                   className="text-sm text-gray-600 cursor-pointer select-none"
                 >
-                  이메일 기억하기
+                  {t('seller.rememberEmail')}
                 </span>
               </div>
 
@@ -197,26 +199,26 @@ export default function SellerLoginPage() {
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    로그인 중...
+                    {t('seller.loggingIn')}
                   </>
                 ) : (
-                  <>로그인 <ArrowRight className="w-4 h-4" /></>
+                  <>{t('seller.loginButton')} <ArrowRight className="w-4 h-4" /></>
                 )}
               </button>
             </form>
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">
-                아직 판매자 계정이 없으신가요?{' '}
+                {t('seller.noSellerAccount')}{' '}
                 <Link to="/seller/signup" className="text-blue-600 font-medium hover:text-blue-700 transition-colors">
-                  가입하기
+                  {t('seller.signUpLink')}
                 </Link>
               </p>
             </div>
           </div>
 
           <p className="mt-5 text-center text-xs text-gray-400">
-            문의:{' '}
+            {t('seller.contactInquiry')}:{' '}
             <a href="mailto:support@ur-team.com" className="hover:text-gray-600 underline transition-colors">
               support@ur-team.com
             </a>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 /**
  * Seller Live Broadcast Page
  * Prism-style zero-setup YouTube live streaming
@@ -75,6 +76,7 @@ interface LiveStream {
 }
 
 export default function SellerLiveBroadcastPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -127,7 +129,7 @@ export default function SellerLiveBroadcastPage() {
       }
     } catch (error: any) {
       console.error('[LiveBroadcast] Failed to load data:', error)
-      setLoadError('데이터를 불러오는데 실패했습니다. 페이지를 새로고침해주세요.')
+      setLoadError(t('common.dataLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -141,13 +143,13 @@ export default function SellerLiveBroadcastPage() {
         // Redirect to YouTube OAuth
         window.location.href = response.data.data.authUrl
       } else {
-        const errMsg = response.data.error || 'YouTube 연동 URL을 가져오지 못했습니다.'
-        toast.error(`YouTube 연동 실패: ${errMsg}\n\n관리자에게 문의해주세요 (YouTube API 설정 필요).`)
+        const errMsg = response.data.error || t('seller.youtubeApiNotConfigured')
+        toast.error(t('seller.youtubeApiNotConfigured'))
       }
     } catch (error: any) {
       console.error('Failed to get auth URL:', error)
-      const errMsg = error.response?.data?.error || error.message || '알 수 없는 오류'
-      toast.error(`YouTube 연동에 실패했습니다: ${errMsg}`)
+      const errMsg = error.response?.data?.error || error.message || ''
+      toast.error(t('common.disconnectFailed'))
     } finally {
       setConnectingYouTube(false)
     }
@@ -155,12 +157,12 @@ export default function SellerLiveBroadcastPage() {
 
   async function createLiveStream() {
     if (!title.trim()) {
-      toast.error('방송 제목을 입력해주세요.')
+      toast.error(t('seller.broadcastTitleRequired'))
       return
     }
 
     if (selectedProducts.length === 0) {
-      toast.error('최소 1개 이상의 상품을 선택해주세요.')
+      toast.error(t('seller.selectMinProducts'))
       return
     }
 
@@ -184,26 +186,26 @@ export default function SellerLiveBroadcastPage() {
         setSelectedProducts([])
         await loadData()
       } else if (response.data) {
-        const errMsg = response.data.error || '라이브 생성에 실패했습니다.'
+        const errMsg = response.data.error || t('seller.broadcastCreateFailed')
         if (response.data.error_code === 'YOUTUBE_AUTH_REQUIRED') {
-          toast.error('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
+          toast.error(t('seller.youtubeAuthRequired'))
         } else if (response.data.error === 'YouTube API not configured') {
-          toast.error('YouTube API가 설정되지 않았습니다.\n관리자에게 문의하여 YOUTUBE_CLIENT_ID 및 YOUTUBE_CLIENT_SECRET 설정을 요청하세요.')
+          toast.error(t('seller.youtubeApiNotConfigured'))
         } else {
-          toast.error(`라이브 생성 실패: ${errMsg}`)
+          toast.error(`${t('seller.broadcastCreateFailed')}: ${errMsg}`)
         }
       } else {
         // Empty response - API not configured or route mismatch
         console.warn('[LiveBroadcast] Empty response - checking YouTube API configuration')
-        toast.error('방송 생성에 실패했습니다. YouTube API 설정을 확인해주세요.\n\n관리자에게 문의하세요.')
+        toast.error(t('seller.broadcastCreateFailed'))
       }
     } catch (error: any) {
       console.error('[LiveBroadcast] Failed to create stream:', error)
       if (error.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
-        toast.error('YouTube 연동이 필요합니다. 먼저 YouTube 계정을 연동해주세요.')
+        toast.error(t('seller.youtubeAuthRequired'))
       } else {
-        const errMsg = error.response?.data?.error || error.message || '알 수 없는 오류'
-        toast.error('라이브 생성에 실패했습니다: ' + errMsg)
+        const errMsg = error.response?.data?.error || error.message || ''
+        toast.error(t('seller.broadcastCreateFailed') + ': ' + errMsg)
       }
     } finally {
       setCreating(false)
@@ -215,13 +217,13 @@ export default function SellerLiveBroadcastPage() {
       const res = await api.post(`/api/seller/youtube/live/${streamId}/start`)
       await loadData()
       if (res.data.success) {
-        toast.success('방송이 시작되었습니다!')
+        toast.success(t('seller.broadcastStarted'))
       } else {
-        toast.error('방송 시작 실패: ' + (res.data.error || '알 수 없는 오류'))
+        toast.error(t('seller.broadcastStartFailed') + ': ' + (res.data.error || ''))
       }
     } catch (error: any) {
       console.error('Failed to start stream:', error)
-      toast.error('방송 시작에 실패했습니다: ' + (error.response?.data?.error || error.message))
+      toast.error(t('seller.broadcastStartFailed') + ': ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -236,7 +238,7 @@ export default function SellerLiveBroadcastPage() {
           const res = await api.get(`/api/seller/youtube/live/${stream.id}/status`)
           if (res.data?.success && res.data.data?.synced) {
             // YouTube에서 자동으로 라이브 시작됨 → 데이터 리로드
-            toast.success(`"${stream.title}" 방송이 자동으로 시작되었습니다!`)
+            toast.success(`"${stream.title}" ${t('seller.broadcastAutoStarted')}`)
             await loadData()
             return
           }
@@ -252,32 +254,32 @@ export default function SellerLiveBroadcastPage() {
   }, [streams])
 
   async function endStream(streamId: number) {
-    if (!confirm('방송을 종료하시겠습니까?')) return
+    if (!confirm(t('seller.endBroadcastConfirm'))) return
 
     try {
       const res = await api.post(`/api/seller/youtube/live/${streamId}/end`)
       await loadData()
       setNewStream(null)
       if (res.data.success) {
-        toast.success('방송이 종료되었습니다.')
+        toast.success(t('seller.broadcastEnded'))
       } else {
-        toast.error('방송 종료 처리: ' + (res.data.error || '상태를 확인해주세요.'))
+        toast.error(t('seller.broadcastEndFailed') + ': ' + (res.data.error || ''))
       }
     } catch (error: any) {
       console.error('Failed to end stream:', error)
-      toast.error('방송 종료에 실패했습니다: ' + (error.response?.data?.error || error.message))
+      toast.error(t('seller.broadcastEndFailed') + ': ' + (error.response?.data?.error || error.message))
     }
   }
 
   async function disconnectYouTube(channelId: number) {
-    if (!confirm('YouTube 연동을 해제하시겠습니까?')) return
+    if (!confirm(t('seller.disconnectConfirm'))) return
 
     try {
       await api.delete(`/api/seller/youtube/oauth/${channelId}`)
       await loadData()
     } catch (error) {
       console.error('Failed to disconnect:', error)
-      toast.error('연동 해제에 실패했습니다.')
+      toast.error(t('common.disconnectFailed'))
     }
   }
 
@@ -302,7 +304,7 @@ export default function SellerLiveBroadcastPage() {
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-[#007aff] mx-auto mb-4" />
-          <p className="text-[17px] text-[#6e6e73]">로딩 중...</p>
+          <p className="text-[17px] text-[#6e6e73]">{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -315,7 +317,7 @@ export default function SellerLiveBroadcastPage() {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-[17px] text-[#1d1d1f] mb-4">{loadError}</p>
           <Button onClick={loadData} className="bg-[#007aff] hover:bg-[#0051d5] text-white">
-            다시 시도
+            {t('common.retry')}
           </Button>
         </div>
       </div>
@@ -323,7 +325,7 @@ export default function SellerLiveBroadcastPage() {
   }
 
   return (
-    <SellerLayout title="YouTube 라이브 방송">
+    <SellerLayout title={t('seller.liveBroadcast')}>
       <div className="max-w-[1280px] mx-auto">
         {/* YouTube Connection Status */}
         {channels.length === 0 ? (
@@ -332,11 +334,10 @@ export default function SellerLiveBroadcastPage() {
               <Youtube className="h-10 w-10 text-red-600" />
             </div>
             <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">
-              YouTube 계정 연동 필요
+              {t('seller.youtubeAccountNeeded')}
             </h2>
             <p className="text-[15px] text-[#6e6e73] mb-6 max-w-md mx-auto">
-              YouTube 라이브 방송을 시작하려면 먼저 YouTube 계정을 연동해주세요.
-              한 번만 인증하면 계속 사용할 수 있습니다.
+              {t('seller.youtubeAccountNeededDesc')}
             </p>
             <Button
               onClick={connectYouTube}
@@ -346,12 +347,12 @@ export default function SellerLiveBroadcastPage() {
               {connectingYouTube ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  연결 중...
+                  {t('common.connecting')}
                 </>
               ) : (
                 <>
                   <Youtube className="h-5 w-5 mr-2" />
-                  YouTube 계정 연동하기
+                  {t('seller.connectYouTube')}
                 </>
               )}
             </Button>
@@ -361,7 +362,7 @@ export default function SellerLiveBroadcastPage() {
             {/* Connected YouTube Channels */}
             <div className="mb-8">
               <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                연동된 YouTube 채널
+                {t('seller.linkedYouTubeChannels')}
               </h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 {channels.map(channel => (
@@ -383,13 +384,13 @@ export default function SellerLiveBroadcastPage() {
                         {channel.channel_title}
                       </h4>
                       <p className="text-[13px] text-[#6e6e73]">
-                        구독자 {channel.subscriber_count.toLocaleString()}명
+                        {t('seller.subscribers')} {channel.subscriber_count.toLocaleString()}{t('common.person')}
                       </p>
                     </div>
                     <button
                       onClick={() => disconnectYouTube(channel.id)}
                       className="p-2 text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded-lg transition-colors"
-                      title="연동 해제"
+                      title={t("seller.disconnect")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -406,37 +407,37 @@ export default function SellerLiveBroadcastPage() {
                     <Key className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="text-[15px] font-semibold text-[#1d1d1f]">내 고정 RTMP 설정</h3>
-                    <p className="text-[12px] text-[#6e6e73]">OBS/프리즘에 한 번만 입력하면 매번 자동으로 연결됩니다</p>
+                    <h3 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.persistentRtmpSettings')}</h3>
+                    <p className="text-[12px] text-[#6e6e73]">{t('seller.persistentRtmpDesc')}</p>
                   </div>
                 </div>
                 {channels.filter(ch => ch.has_persistent_key).map(channel => (
                   <div key={channel.id} className="space-y-3">
                     <div>
-                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">서버 URL</label>
+                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">{t('seller.serverUrl')}</label>
                       <div className="flex gap-2 mt-1">
                         <code className="flex-1 px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate select-all">
                           {channel.default_rtmp_url}
                         </code>
                         <button
-                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_url || ''); toast.success('URL 복사됨') }}
+                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_url || ''); toast.success(t('seller.urlCopied')) }}
                           className="px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors flex-shrink-0"
-                          title="복사"
+                          title={t("common.copy")}
                         >
                           <Copy className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">스트림 키</label>
+                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">{t('seller.streamKey')}</label>
                       <div className="flex gap-2 mt-1">
                         <code className="flex-1 px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate select-all">
                           {channel.default_rtmp_key}
                         </code>
                         <button
-                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_key || ''); toast.success('키 복사됨') }}
+                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_key || ''); toast.success(t('seller.keyCopied')) }}
                           className="px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors flex-shrink-0"
-                          title="복사"
+                          title={t("common.copy")}
                         >
                           <Copy className="h-4 w-4" />
                         </button>
@@ -444,7 +445,7 @@ export default function SellerLiveBroadcastPage() {
                     </div>
                     <p className="text-[11px] text-purple-600 flex items-center gap-1">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      이 키는 영구적으로 사용 가능합니다. 방송마다 새로 입력할 필요 없습니다.
+                      {t('seller.persistentKeyNote')}
                     </p>
                   </div>
                 ))}
@@ -460,18 +461,18 @@ export default function SellerLiveBroadcastPage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-[21px] font-bold text-[#1d1d1f] mb-2">
-                      방송 준비 완료!
+                      {t('seller.broadcastReady')}
                     </h3>
                     <p className="text-[15px] text-[#6e6e73]">
-                      방송 방식을 선택하고 스트리밍을 시작하세요.
+                      {t('seller.broadcastMethodGuide')}
                     </p>
                   </div>
                 </div>
 
-                {/* 방송 방식 선택 */}
+                {/* {t('seller.broadcastMethod')} */}
                 <div className="mb-6">
                   <label className="block text-[13px] font-semibold text-[#1d1d1f] mb-3">
-                    방송 방식 선택
+                    {t('seller.broadcastMethod')}
                   </label>
                   <div className="grid grid-cols-3 gap-3">
                     <button
@@ -483,8 +484,8 @@ export default function SellerLiveBroadcastPage() {
                       }`}
                     >
                       <Monitor className="h-7 w-7 mx-auto mb-2 text-[#007aff]" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">브라우저</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-1">바로 시작</p>
+                      <p className="text-[13px] font-semibold text-[#1d1d1f]">{t('seller.browser')}</p>
+                      <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.startNow')}</p>
                     </button>
                     <button
                       onClick={() => setStreamingMethod('obs')}
@@ -496,7 +497,7 @@ export default function SellerLiveBroadcastPage() {
                     >
                       <VideoIcon className="h-7 w-7 mx-auto mb-2 text-purple-600" />
                       <p className="text-[13px] font-semibold text-[#1d1d1f]">OBS</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-1">자막/오버레이</p>
+                      <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.captionOverlay')}</p>
                     </button>
                     <button
                       onClick={() => setStreamingMethod('prism')}
@@ -507,8 +508,8 @@ export default function SellerLiveBroadcastPage() {
                       }`}
                     >
                       <Smartphone className="h-7 w-7 mx-auto mb-2 text-orange-600" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">프리즘</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-1">모바일 방송</p>
+                      <p className="text-[13px] font-semibold text-[#1d1d1f]">{t('seller.prismLive')}</p>
+                      <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.mobileBroadcast')}</p>
                     </button>
                   </div>
                 </div>
@@ -521,10 +522,10 @@ export default function SellerLiveBroadcastPage() {
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <Monitor className="h-5 w-5 text-[#007aff]" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">브라우저에서 바로 방송</h4>
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.browserDirect')}</h4>
                       </div>
                       <p className="text-[13px] text-[#6e6e73] mb-4">
-                        별도 프로그램 없이 웹캠으로 바로 방송합니다. 가장 간편한 방법입니다.
+                        {t('seller.browserDirectDesc')}
                       </p>
                       <div className="flex gap-3">
                         <Button
@@ -532,7 +533,7 @@ export default function SellerLiveBroadcastPage() {
                           className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
                         >
                           <Radio className="h-5 w-5 mr-2" />
-                          방송 시작
+                          {t('seller.startBroadcast')}
                         </Button>
                       </div>
                     </div>
@@ -543,7 +544,7 @@ export default function SellerLiveBroadcastPage() {
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <VideoIcon className="h-5 w-5 text-purple-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">OBS Studio로 방송</h4>
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.obsBroadcast')}</h4>
                       </div>
 
                       {channels.some(ch => ch.has_persistent_key) ? (
@@ -552,35 +553,34 @@ export default function SellerLiveBroadcastPage() {
                           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                             <div className="flex items-center gap-2 mb-2">
                               <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <p className="text-[13px] font-semibold text-green-800">RTMP 설정 완료</p>
+                              <p className="text-[13px] font-semibold text-green-800">{t('seller.rtmpSetupComplete')}</p>
                             </div>
                             <p className="text-[13px] text-green-700">
-                              OBS에 이미 RTMP 키가 설정되어 있다면, OBS에서 <strong>방송 시작</strong>만 클릭하세요.
-                              자동으로 라이브가 시작됩니다.
+                              {t('seller.obsRtmpAlreadySet')}
                             </p>
                           </div>
 
                           {/* 동시 송출 가이드 */}
                           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출</p>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.multiPlatformSimulcast')}</p>
                             <p className="text-[12px] text-[#6e6e73] mb-3">
-                              <strong>obs-multi-rtmp</strong> 플러그인(무료)을 설치하면 여러 플랫폼에 동시 송출할 수 있습니다.
+                              {t('seller.multiPlatformObs')}
                             </p>
-                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">송출 가능 플랫폼 (RTMP 키 필요)</p>
+                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">{t('seller.availablePlatforms')}</p>
                             <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok 라이브</span>
-                              <span>• Instagram 라이브</span>
+                              <span>• TikTok Live</span>
+                              <span>• Instagram Live</span>
                               <span>• Twitch</span>
-                              <span>• 페이스북 라이브</span>
-                              <span>• 카카오TV</span>
-                              <span>• 네이버 쇼핑라이브</span>
-                              <span>• 아프리카TV</span>
-                              <span>• X (트위터) 라이브</span>
+                              <span>• Facebook Live</span>
+                              <span>• KakaoTV</span>
+                              <span>• Naver Shopping Live</span>
+                              <span>• AfreecaTV</span>
+                              <span>• X (Twitter) Live</span>
                               <span>• Kick</span>
-                              <span>• LinkedIn 라이브</span>
+                              <span>• LinkedIn Live</span>
                             </div>
                             <p className="text-[11px] text-purple-600 mt-2">
-                              각 플랫폼 대시보드에서 RTMP URL + 키를 받아 OBS에 추가하세요.
+                              {t('seller.addPlatformRtmp')}
                             </p>
                           </div>
                         </>
@@ -588,52 +588,52 @@ export default function SellerLiveBroadcastPage() {
                         <>
                           {/* 처음 설정 가이드 */}
                           <p className="text-[13px] text-[#6e6e73] mb-4">
-                            자막, 로고, 오버레이 등을 자유롭게 설정할 수 있습니다.
+                            {t('seller.subtitleOverlayFreeSetup')}
                           </p>
                           <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">최초 1회 설정</p>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.firstTimeSetup')}</p>
                             <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
-                              <li>OBS 실행 → 설정 → 방송</li>
-                              <li>서비스: <strong>사용자 지정</strong> 선택</li>
-                              <li>아래 서버 URL과 스트림 키를 붙여넣기</li>
-                              <li>다음 방송부터는 OBS에서 <strong>방송 시작</strong>만 클릭!</li>
+                              <li>{t('seller.obsGuideCustomService')}</li>
+                              <li>{t('seller.obsGuideSelectCustom')}</li>
+                              <li>{t('seller.obsGuidePasteKeys')}</li>
+                              <li>{t('seller.obsGuideNextTime')}</li>
                             </ol>
                           </div>
 
                           {/* 동시 송출 가이드 */}
                           <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출</p>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.multiPlatformSimulcast')}</p>
                             <p className="text-[12px] text-[#6e6e73] mb-3">
-                              <strong>obs-multi-rtmp</strong> 플러그인(무료)을 설치하면 여러 플랫폼에 동시 송출할 수 있습니다.
+                              {t('seller.multiPlatformObs')}
                             </p>
-                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">송출 가능 플랫폼 (각 플랫폼에서 RTMP 키 발급)</p>
+                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">{t('seller.availablePlatforms')}</p>
                             <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok 라이브</span>
-                              <span>• Instagram 라이브</span>
+                              <span>• TikTok Live</span>
+                              <span>• Instagram Live</span>
                               <span>• Twitch</span>
-                              <span>• 페이스북 라이브</span>
-                              <span>• 카카오TV</span>
-                              <span>• 네이버 쇼핑라이브</span>
-                              <span>• 아프리카TV</span>
-                              <span>• X (트위터) 라이브</span>
+                              <span>• Facebook Live</span>
+                              <span>• KakaoTV</span>
+                              <span>• Naver Shopping Live</span>
+                              <span>• AfreecaTV</span>
+                              <span>• X (Twitter) Live</span>
                               <span>• Kick</span>
-                              <span>• LinkedIn 라이브</span>
+                              <span>• LinkedIn Live</span>
                             </div>
                             <p className="text-[11px] text-purple-600 mt-2">
-                              각 플랫폼 대시보드에서 RTMP URL + 키를 받아 OBS에 추가하세요.
+                              {t('seller.addPlatformRtmp')}
                             </p>
                           </div>
 
                           {/* RTMP 정보 */}
                           <div className="space-y-3 mb-4">
                             <div>
-                              <label className="text-[11px] font-semibold text-[#6e6e73]">서버 URL</label>
+                              <label className="text-[11px] font-semibold text-[#6e6e73]">{t('seller.serverUrl')}</label>
                               <div className="flex gap-2 mt-1">
                                 <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
                                   {newStream.rtmp_url}
                                 </code>
                                 <button
-                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success('복사됨') }}
+                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success(t('common.copied')) }}
                                   className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
                                 >
                                   <Copy className="h-4 w-4" />
@@ -641,13 +641,13 @@ export default function SellerLiveBroadcastPage() {
                               </div>
                             </div>
                             <div>
-                              <label className="text-[11px] font-semibold text-[#6e6e73]">스트림 키</label>
+                              <label className="text-[11px] font-semibold text-[#6e6e73]">{t('seller.streamKey')}</label>
                               <div className="flex gap-2 mt-1">
                                 <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
                                   {newStream.rtmp_key}
                                 </code>
                                 <button
-                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success('복사됨') }}
+                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success(t('common.copied')) }}
                                   className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
                                 >
                                   <Copy className="h-4 w-4" />
@@ -656,7 +656,7 @@ export default function SellerLiveBroadcastPage() {
                             </div>
                             <p className="text-[11px] text-purple-600 flex items-center gap-1">
                               <Key className="h-3 w-3" />
-                              이 키는 영구적입니다. 한 번 입력하면 다시 입력할 필요 없습니다.
+                              {t('seller.persistentKeyShort')}
                             </p>
                           </div>
                         </>
@@ -668,7 +668,7 @@ export default function SellerLiveBroadcastPage() {
                           className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
                         >
                           <Radio className="h-5 w-5 mr-2" />
-                          방송 시작
+                          {t('seller.startBroadcast')}
                         </Button>
                         <a
                           href={newStream.youtube_url || `https://youtube.com/watch?v=${newStream.youtube_video_id}`}
@@ -688,7 +688,7 @@ export default function SellerLiveBroadcastPage() {
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <Smartphone className="h-5 w-5 text-orange-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">프리즘 라이브로 방송</h4>
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.prismLiveBroadcast')}</h4>
                       </div>
 
                       {channels.some(ch => ch.has_persistent_key) ? (
@@ -696,66 +696,65 @@ export default function SellerLiveBroadcastPage() {
                           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                             <div className="flex items-center gap-2 mb-2">
                               <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <p className="text-[13px] font-semibold text-green-800">RTMP 설정 완료</p>
+                              <p className="text-[13px] font-semibold text-green-800">{t('seller.rtmpSetupComplete')}</p>
                             </div>
                             <p className="text-[13px] text-green-700">
-                              프리즘에 이미 RTMP 키가 설정되어 있다면, 프리즘에서 <strong>방송 시작</strong>만 하세요.
-                              자동으로 라이브가 시작됩니다.
+                              {t('seller.prismRtmpAlreadySet')}
                             </p>
                           </div>
 
                           <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출 (무료)</p>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.prismMultiSimulcast')}</p>
                             <p className="text-[12px] text-[#6e6e73] mb-2">
-                              프리즘 앱 설정에서 플랫폼 계정을 연동하면 동시 송출됩니다.
+                              {t('seller.prismMultiDesc')}
                             </p>
                             <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok 라이브</span>
-                              <span>• Instagram 라이브</span>
+                              <span>• TikTok Live</span>
+                              <span>• Instagram Live</span>
                               <span>• Twitch</span>
-                              <span>• 페이스북 라이브</span>
-                              <span>• 카카오TV</span>
-                              <span>• 네이버 쇼핑라이브</span>
-                              <span>• 아프리카TV</span>
-                              <span>• X (트위터) 라이브</span>
+                              <span>• Facebook Live</span>
+                              <span>• KakaoTV</span>
+                              <span>• Naver Shopping Live</span>
+                              <span>• AfreecaTV</span>
+                              <span>• X (Twitter) Live</span>
                             </div>
                             <p className="text-[11px] text-orange-600 mt-2">
-                              프리즘 앱 → 설정 → 플랫폼 추가에서 계정 연동 또는 외부 RTMP 추가
+                              {t('seller.prismAddPlatform')}
                             </p>
                           </div>
                         </>
                       ) : (
                         <>
                           <p className="text-[13px] text-[#6e6e73] mb-4">
-                            스마트폰에서 간편하게 방송합니다. 오버레이, 꾸미기, 동시 송출 기능을 지원합니다.
+                            {t('seller.prismMobileDesc')}
                           </p>
 
                           <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">최초 1회 설정</p>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.firstTimeSetup')}</p>
                             <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
-                              <li>QR 코드를 스캔하거나 아래 RTMP 정보를 복사</li>
-                              <li>프리즘 앱 → 외부 RTMP → 붙여넣기</li>
-                              <li>다음 방송부터는 프리즘에서 <strong>방송 시작</strong>만!</li>
+                              <li>{t('seller.prismFirstSetup')}</li>
+                              <li>{t('seller.prismPasteRtmp')}</li>
+                              <li>{t('seller.prismNextTime')}</li>
                             </ol>
                           </div>
 
                           <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">멀티 플랫폼 동시 송출 (무료)</p>
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.prismMultiSimulcast')}</p>
                             <p className="text-[12px] text-[#6e6e73] mb-2">
-                              프리즘 앱에서 계정 연동 또는 외부 RTMP로 동시 송출이 가능합니다.
+                              {t('seller.prismMultiExternal')}
                             </p>
                             <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok 라이브</span>
-                              <span>• Instagram 라이브</span>
+                              <span>• TikTok Live</span>
+                              <span>• Instagram Live</span>
                               <span>• Twitch</span>
-                              <span>• 페이스북 라이브</span>
-                              <span>• 카카오TV</span>
-                              <span>• 네이버 쇼핑라이브</span>
-                              <span>• 아프리카TV</span>
-                              <span>• X (트위터) 라이브</span>
+                              <span>• Facebook Live</span>
+                              <span>• KakaoTV</span>
+                              <span>• Naver Shopping Live</span>
+                              <span>• AfreecaTV</span>
+                              <span>• X (Twitter) Live</span>
                             </div>
                             <p className="text-[11px] text-orange-600 mt-2">
-                              프리즘 앱 → 설정 → 플랫폼 추가에서 계정 연동 또는 외부 RTMP 추가
+                              {t('seller.prismAddPlatform')}
                             </p>
                           </div>
                         </>
@@ -777,7 +776,7 @@ export default function SellerLiveBroadcastPage() {
                     variant="outline"
                     className="w-full h-10"
                   >
-                    닫기
+                    {t('common.close')}
                   </Button>
                 </div>
               </div>
@@ -787,21 +786,21 @@ export default function SellerLiveBroadcastPage() {
             {!showSetup && !newStream && (
               <div className="apple-card p-6 sm:p-8 mb-8">
                 <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2 text-center">
-                  새 라이브 방송 시작
+                  {t('seller.newLiveBroadcast')}
                 </h2>
                 <p className="text-[14px] text-[#6e6e73] mb-6 text-center">
-                  방송 방식을 선택하고 시작하세요
+                  {t('seller.selectMethodAndStart')}
                 </p>
 
-                {/* 방송 방식 선택 */}
+                {/* {t('seller.broadcastMethod')} */}
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   <button
                     onClick={() => { setStreamingMethod('web'); setShowSetup(true) }}
                     className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-[#007aff] hover:bg-[#007aff]/5 transition-all text-center"
                   >
                     <Monitor className="h-8 w-8 mx-auto mb-2 text-[#007aff]" />
-                    <p className="text-[14px] font-semibold text-[#1d1d1f]">브라우저</p>
-                    <p className="text-[11px] text-[#6e6e73] mt-1">웹캠으로 바로 시작</p>
+                    <p className="text-[14px] font-semibold text-[#1d1d1f]">{t('seller.browser')}</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.browserStartNow')}</p>
                   </button>
                   <button
                     onClick={() => { setStreamingMethod('obs'); setShowSetup(true) }}
@@ -809,15 +808,15 @@ export default function SellerLiveBroadcastPage() {
                   >
                     <VideoIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
                     <p className="text-[14px] font-semibold text-[#1d1d1f]">OBS Studio</p>
-                    <p className="text-[11px] text-[#6e6e73] mt-1">자막/오버레이/동시송출</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.obsSubtitle')}</p>
                   </button>
                   <button
                     onClick={() => { setStreamingMethod('prism'); setShowSetup(true) }}
                     className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-orange-500 hover:bg-orange-50 transition-all text-center"
                   >
                     <Smartphone className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                    <p className="text-[14px] font-semibold text-[#1d1d1f]">프리즘 라이브</p>
-                    <p className="text-[11px] text-[#6e6e73] mt-1">모바일/동시송출</p>
+                    <p className="text-[14px] font-semibold text-[#1d1d1f]">{t('seller.prismLive')}</p>
+                    <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.prismMobile')}</p>
                   </button>
                 </div>
               </div>
@@ -828,27 +827,27 @@ export default function SellerLiveBroadcastPage() {
               <div className="apple-card p-6 sm:p-8 mb-8">
                 <div className="flex items-center gap-3 mb-6">
                   <h3 className="text-[21px] font-bold text-[#1d1d1f]">
-                    방송 정보 입력
+                    {t('seller.broadcastInfoInput')}
                   </h3>
                   <Badge className={`text-[12px] ${
                     streamingMethod === 'web' ? 'bg-[#007aff] text-white' :
                     streamingMethod === 'obs' ? 'bg-purple-600 text-white' :
                     'bg-orange-500 text-white'
                   }`}>
-                    {streamingMethod === 'web' ? '브라우저' : streamingMethod === 'obs' ? 'OBS' : '프리즘'}
+                    {streamingMethod === 'web' ? t('seller.browserLabel') : streamingMethod === 'obs' ? 'OBS' : t('seller.prismLive')}
                   </Badge>
                 </div>
 
                 <div className="space-y-6">
                   <div>
                     <label className="block text-[15px] font-semibold text-[#1d1d1f] mb-2">
-                      방송 제목 *
+                      {t('seller.broadcastTitleLabel')}
                     </label>
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="예: 신상품 특가 라이브!"
+                      placeholder={t("seller.broadcastTitlePlaceholderAlt")}
                       className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
                       maxLength={100}
                     />
@@ -856,12 +855,12 @@ export default function SellerLiveBroadcastPage() {
 
                   <div>
                     <label className="block text-[15px] font-semibold text-[#1d1d1f] mb-2">
-                      방송 설명
+                      {t('seller.broadcastDesc')}
                     </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="방송에 대한 간단한 설명을 입력하세요"
+                      placeholder={t("seller.broadcastDescPlaceholderAlt")}
                       className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] focus:outline-none focus:ring-2 focus:ring-[#007aff] resize-none"
                       rows={4}
                       maxLength={500}
@@ -870,16 +869,16 @@ export default function SellerLiveBroadcastPage() {
 
                   <div>
                     <label className="block text-[15px] font-semibold text-[#1d1d1f] mb-3">
-                      판매 상품 선택 *
+                      {t('seller.selectSaleProducts')} *
                     </label>
                     {products.length === 0 ? (
                       <div className="text-center py-8 text-[#6e6e73]">
-                        <p className="mb-3">등록된 상품이 없습니다</p>
+                        <p className="mb-3">{t('seller.noProducts')}</p>
                         <Button
                           onClick={() => navigate('/seller/products/new')}
                           variant="outline"
                         >
-                          상품 등록하기
+                          {t('seller.registerProduct')}
                         </Button>
                       </div>
                     ) : (
@@ -919,10 +918,10 @@ export default function SellerLiveBroadcastPage() {
                                   {product.name}
                                 </h4>
                                 <p className="text-[15px] font-bold text-[#007aff]">
-                                  {product.price.toLocaleString()}원
+                                  {product.price.toLocaleString()}{t('common.won')}
                                 </p>
                                 <p className="text-[11px] text-[#6e6e73]">
-                                  재고: {product.stock}개
+                                  {t('common.stock')}: {product.stock}{t('common.count')}
                                 </p>
                               </div>
                               {selectedProducts.includes(product.id) && (
@@ -934,7 +933,7 @@ export default function SellerLiveBroadcastPage() {
                       </div>
                     )}
                     <p className="text-[13px] text-[#6e6e73] mt-2">
-                      선택된 상품: {selectedProducts.length}개
+                      {t('seller.selectedProducts')}: {selectedProducts.length}{t('common.count')}
                     </p>
                   </div>
 
@@ -947,12 +946,12 @@ export default function SellerLiveBroadcastPage() {
                       {creating ? (
                         <>
                           <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                          생성 중...
+                          {t('common.creating')}
                         </>
                       ) : (
                         <>
                           <Play className="h-5 w-5 mr-2" />
-                          방송 생성하기
+                          {t('seller.createBroadcast')}
                         </>
                       )}
                     </Button>
@@ -961,7 +960,7 @@ export default function SellerLiveBroadcastPage() {
                       variant="outline"
                       className="px-8 h-12"
                     >
-                      취소
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -972,7 +971,7 @@ export default function SellerLiveBroadcastPage() {
             {streams.filter(s => s.status !== 'ended').length > 0 && (
               <div className="mb-8">
                 <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                  진행 중인 방송
+                  {t('seller.activeBroadcasts')}
                 </h3>
                 <div className="space-y-4">
                   {streams.filter(s => s.status !== 'ended').map(stream => (
@@ -991,7 +990,7 @@ export default function SellerLiveBroadcastPage() {
                                 }
                               `}
                             >
-                              {stream.status === 'live' ? 'LIVE' : '예정'}
+                              {stream.status === 'live' ? 'LIVE' : t('common.scheduled')}
                             </Badge>
                           </div>
                           <p className="text-[13px] text-[#6e6e73] mb-3">
@@ -1005,7 +1004,7 @@ export default function SellerLiveBroadcastPage() {
                             {stream.started_at && (
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" />
-                                시작: {formatKSTTime(stream.started_at)}
+                                {t('seller.startedAt')}: {formatKSTTime(stream.started_at)}
                               </div>
                             )}
                           </div>
@@ -1014,15 +1013,15 @@ export default function SellerLiveBroadcastPage() {
                       {/* RTMP 정보 (예정 상태일 때 표시 - OBS/프리즘 설정용) */}
                       {stream.status === 'scheduled' && stream.rtmp_url && stream.rtmp_key && (
                         <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                          <p className="text-[11px] font-semibold text-[#6e6e73] mb-2">OBS/프리즘 RTMP 설정</p>
+                          <p className="text-[11px] font-semibold text-[#6e6e73] mb-2">{t('seller.rtmpSettings')}</p>
                           <div className="space-y-2">
                             <div className="flex gap-2">
                               <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_url}</code>
-                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_url || ''); toast.success('URL 복사됨') }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_url || ''); toast.success(t('seller.urlCopied')) }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
                             </div>
                             <div className="flex gap-2">
                               <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_key}</code>
-                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_key || ''); toast.success('키 복사됨') }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_key || ''); toast.success(t('seller.keyCopied')) }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
                             </div>
                           </div>
                         </div>
@@ -1031,9 +1030,9 @@ export default function SellerLiveBroadcastPage() {
                       {/* 상품 표시 설정 */}
                       <div className="bg-[#f5f5f7] rounded-lg p-3 mb-3 flex items-center justify-between">
                         <div>
-                          <p className="text-[12px] font-semibold text-[#1d1d1f]">상품 표시 모드</p>
+                          <p className="text-[12px] font-semibold text-[#1d1d1f]">{t('seller.productDisplayMode')}</p>
                           <p className="text-[11px] text-[#6e6e73]">
-                            {(stream as any).product_display_mode === 'all' ? '등록된 전체 상품 표시' : '소개 중인 상품만 표시'}
+                            {(stream as any).product_display_mode === 'all' ? t('seller.showAllProducts') : t('seller.currentProductOnly')}
                           </p>
                         </div>
                         <button
@@ -1044,10 +1043,10 @@ export default function SellerLiveBroadcastPage() {
                               await api.put(`/api/seller/streams/${stream.id}/product-display`, { mode: newMode }, {
                                 headers: { Authorization: `Bearer ${token}` }
                               })
-                              toast.success(newMode === 'all' ? '전체 상품이 표시됩니다' : '현재 상품만 표시됩니다')
+                              toast.success(newMode === 'all' ? t('seller.showAllProductsToast') : t('seller.showCurrentOnlyToast'))
                               ;(stream as any).product_display_mode = newMode
                               setStreams([...streams])
-                            } catch { toast.error('설정 변경에 실패했습니다') }
+                            } catch { toast.error(t('common.settingChangeFailed')) }
                           }}
                           className={`relative w-11 h-6 rounded-full transition-colors ${
                             (stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'
@@ -1066,7 +1065,7 @@ export default function SellerLiveBroadcastPage() {
                             className="bg-red-600 hover:bg-red-700 text-white"
                           >
                             <Radio className="h-4 w-4 mr-2" />
-                            방송 시작
+                            {t('seller.startBroadcast')}
                           </Button>
                         )}
                         {stream.status === 'live' && (
@@ -1079,13 +1078,13 @@ export default function SellerLiveBroadcastPage() {
                               className="bg-[#007aff] hover:bg-[#0051d5] text-white"
                             >
                               <Settings className="h-4 w-4 mr-2" />
-                              방송 관리
+                              {t('seller.broadcastManage')}
                             </Button>
                             <Button
                               onClick={() => endStream(stream.id)}
                               variant="destructive"
                             >
-                              방송 종료
+                              {t('seller.endBroadcast')}
                             </Button>
                           </>
                         )}
@@ -1118,7 +1117,7 @@ export default function SellerLiveBroadcastPage() {
             {streams.filter(s => s.status === 'ended').length > 0 && (
               <div>
                 <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                  지난 방송
+                  {t('seller.recentBroadcasts')}
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {streams.filter(s => s.status === 'ended').slice(0, 4).map(stream => (
@@ -1145,7 +1144,7 @@ export default function SellerLiveBroadcastPage() {
                         className="text-[13px] text-[#007aff] hover:opacity-60 transition-opacity flex items-center gap-1"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
-                        다시보기
+                        {t('common.replay')}
                       </a>
                     </div>
                   ))}

@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
 export default function SellerRegisterPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     username: '',
@@ -32,34 +34,34 @@ export default function SellerRegisterPage() {
 
     // 유효성 검증
     if (formData.password !== formData.passwordConfirm) {
-      setError('비밀번호가 일치하지 않습니다')
+      setError(t('seller.passwordMismatch'))
       return
     }
 
     if (formData.password.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다')
+      setError(t('seller.passwordMin8'))
       return
     }
 
     if (!formData.email.includes('@')) {
-      setError('올바른 이메일 주소를 입력해주세요')
+      setError(t('seller.invalidEmail'))
       return
     }
 
     if (!formData.youtubeEmail.includes('@')) {
-      setError('유튜브 라이브에 사용할 구글 계정 이메일을 올바르게 입력해주세요')
+      setError(t('seller.invalidYoutubeEmail'))
       return
     }
 
     if (formData.username.length < 3) {
-      setError('아이디는 3자 이상이어야 합니다')
+      setError(t('seller.usernameMin3'))
       return
     }
 
     // 사업자번호 형식 검증 (XXX-XX-XXXXX)
     const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/
     if (!businessNumberRegex.test(formData.businessNumber)) {
-      setError('사업자등록번호 형식이 올바르지 않습니다 (예: 123-45-67890)')
+      setError(t('seller.invalidBusinessNumber'))
       return
     }
 
@@ -78,13 +80,13 @@ export default function SellerRegisterPage() {
       })
 
       if (response.data.success) {
-        toast.success('회원가입이 완료되었습니다!\n관리자 승인 후 로그인할 수 있습니다.')
+        toast.success(t('seller.registerSuccessMsg'))
         navigate('/seller/login')
       } else {
-        setError(response.data.error || '회원가입 실패')
+        setError(response.data.error || t('seller.registerFailedGeneric'))
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || '회원가입 실패')
+      setError(err.response?.data?.error || err.response?.data?.message || t('seller.registerFailedGeneric'))
     } finally {
       setLoading(false)
     }
@@ -96,8 +98,8 @@ export default function SellerRegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">👨‍💼</h1>
-          <h2 className="text-3xl font-bold text-gray-900">셀러 회원가입</h2>
-          <p className="text-gray-600 mt-2">리스터코퍼레이션 판매자 등록</p>
+          <h2 className="text-3xl font-bold text-gray-900">{t('seller.sellerRegister')}</h2>
+          <p className="text-gray-600 mt-2">{t('seller.sellerRegistration')}</p>
         </div>
 
         {/* Registration Form */}
@@ -111,11 +113,11 @@ export default function SellerRegisterPage() {
 
             {/* 기본 정보 */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">기본 정보</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('seller.basicInfo')}</h3>
 
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  아이디 * (3자 이상 영문·숫자)
+                  {t('seller.usernameLabel')}
                 </label>
                 <input
                   id="username"
@@ -131,9 +133,7 @@ export default function SellerRegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  이메일 *
-                </label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">{t('seller.emailLabel')}</label>
                 <input
                   id="email"
                   name="email"
@@ -148,10 +148,10 @@ export default function SellerRegisterPage() {
 
               <div>
                 <label htmlFor="youtubeEmail" className="block text-sm font-medium text-gray-700 mb-1">
-                  유튜브 라이브에 사용할 구글 계정 이메일 * (필수)
+                  {t('seller.youtubeEmailLabel')}
                 </label>
                 <p className="text-xs text-gray-500 mb-2">
-                  유튜브 라이브 방송에 연동할 구글 계정(@gmail.com)을 입력해주세요.
+                  {t('seller.youtubeEmailDesc')}
                 </p>
                 <input
                   id="youtubeEmail"
@@ -167,7 +167,7 @@ export default function SellerRegisterPage() {
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  비밀번호 * (6자 이상)
+                  {t('seller.passwordLabel')}
                 </label>
                 <input
                   id="password"
@@ -183,9 +183,7 @@ export default function SellerRegisterPage() {
               </div>
 
               <div>
-                <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-700 mb-2">
-                  비밀번호 확인 *
-                </label>
+                <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-700 mb-2">{t('seller.passwordConfirmLabel')}</label>
                 <input
                   id="passwordConfirm"
                   name="passwordConfirm"
@@ -201,7 +199,7 @@ export default function SellerRegisterPage() {
 
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  담당자 이름 *
+                  {t('seller.representativeName')}
                 </label>
                 <input
                   id="name"
@@ -211,14 +209,12 @@ export default function SellerRegisterPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="홍길동"
+                  placeholder="John Doe"
                 />
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  전화번호 *
-                </label>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">{t('seller.phoneLabel')}</label>
                 <input
                   id="phone"
                   name="phone"
@@ -234,11 +230,11 @@ export default function SellerRegisterPage() {
 
             {/* 사업자 정보 */}
             <div className="space-y-4 pt-6 border-t border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">사업자 정보</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('seller.businessInfoSection')}</h3>
               
               <div>
                 <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
-                  상호명 (회사명) *
+                  {t('seller.businessNameLabel')}
                 </label>
                 <input
                   id="businessName"
@@ -248,13 +244,13 @@ export default function SellerRegisterPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="(주)리스터코퍼레이션"
+                  placeholder="Lister Corporation"
                 />
               </div>
 
               <div>
                 <label htmlFor="businessNumber" className="block text-sm font-medium text-gray-700 mb-2">
-                  사업자등록번호 * (XXX-XX-XXXXX)
+                  {t('seller.businessNumberLabel')}
                 </label>
                 <input
                   id="businessNumber"
@@ -274,19 +270,19 @@ export default function SellerRegisterPage() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '가입 중...' : '판매자 가입하기'}
+              {loading ? t('seller.registrationInProgress') : t('seller.registerAsSeller')}
             </button>
           </form>
 
           {/* Login Link */}
           <div className="mt-6 text-center">
             <p className="text-gray-600">
-              이미 계정이 있으신가요?{' '}
+              {t('seller.alreadyHaveAccount')}{' '}
               <button
                 onClick={() => navigate('/seller/login')}
                 className="text-purple-600 hover:text-purple-700 font-semibold"
               >
-                로그인하기
+                {t('seller.goToLogin')}
               </button>
             </p>
           </div>
@@ -294,7 +290,7 @@ export default function SellerRegisterPage() {
           {/* Note */}
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-700">
-              💡 회원가입 후 관리자 승인이 필요합니다. 승인까지 1-2일 소요될 수 있습니다.
+              {t('seller.registrationNote')}
             </p>
           </div>
         </div>
@@ -305,7 +301,7 @@ export default function SellerRegisterPage() {
             onClick={() => navigate('/')}
             className="text-gray-600 hover:text-gray-900 text-sm"
           >
-            ← 홈으로 돌아가기
+            {t('seller.goHome')}
           </button>
         </div>
       </div>

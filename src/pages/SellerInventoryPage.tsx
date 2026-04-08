@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -27,13 +28,14 @@ interface StockMovement {
 }
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  in:     { label: '입고', color: 'text-green-600 bg-green-50' },
-  out:    { label: '출고', color: 'text-red-600 bg-red-50' },
-  adjust: { label: '조정', color: 'text-blue-600 bg-blue-50' },
-  return: { label: '반품', color: 'text-amber-600 bg-amber-50' },
+  in:     { label: 'stockHistoryIn', color: 'text-green-600 bg-green-50' },
+  out:    { label: 'stockHistoryOut', color: 'text-red-600 bg-red-50' },
+  adjust: { label: 'stockHistoryAdjust', color: 'text-blue-600 bg-blue-50' },
+  return: { label: 'stockHistoryReturn', color: 'text-amber-600 bg-amber-50' },
 }
 
 export default function SellerInventoryPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [alerts, setAlerts] = useState<Product[]>([])
@@ -103,7 +105,7 @@ export default function SellerInventoryPage() {
                       toast.error(res.data.error)
                     }
                   } catch {
-                    toast.error('상품을 찾을 수 없습니다.')
+                    toast.error(t('seller.productNotFound'))
                   }
                   return
                 }
@@ -117,7 +119,7 @@ export default function SellerInventoryPage() {
         }
       }, 100)
     } catch {
-      toast.error('카메라를 사용할 수 없습니다.')
+      toast.error(t('seller.cameraUnavailable'))
     }
   }, [stopCamera])
 
@@ -144,7 +146,7 @@ export default function SellerInventoryPage() {
         setAlerts(alertRes.data.data || [])
       }
     } catch {
-      toast.error('데이터를 불러올 수 없습니다.')
+      toast.error(t('seller.dataLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -157,11 +159,11 @@ export default function SellerInventoryPage() {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.data.success) {
-        toast.success(`바코드 생성: ${res.data.data.barcode}`)
+        toast.success(t('seller.barcodeGenerated', { barcode: res.data.data.barcode }))
         loadData()
       }
     } catch {
-      toast.error('바코드 생성에 실패했습니다.')
+      toast.error(t('seller.barcodeGenerateFailed'))
     }
   }
 
@@ -182,7 +184,7 @@ export default function SellerInventoryPage() {
         toast.error(res.data.error)
       }
     } catch {
-      toast.error('상품을 찾을 수 없습니다.')
+      toast.error(t('seller.productNotFound'))
     }
   }
 
@@ -201,13 +203,13 @@ export default function SellerInventoryPage() {
           product_id: selectedProduct.id, quantity, reason
         }, { headers })
       }
-      toast.success(stockAction === 'in' ? '입고 완료' : stockAction === 'out' ? '출고 완료' : '조정 완료')
+      toast.success(stockAction === 'in' ? t('seller.stockInComplete') : stockAction === 'out' ? t('seller.stockOutComplete') : t('seller.stockAdjustComplete'))
       setShowModal(false)
       setQuantity(0)
       setReason('')
       loadData()
     } catch (err: unknown) {
-      const errMsg = (err as Record<string, Record<string, Record<string, string>>>)?.response?.data?.error || '처리에 실패했습니다.'
+      const errMsg = (err as Record<string, Record<string, Record<string, string>>>)?.response?.data?.error || t('seller.processFailed')
       toast.error(errMsg)
     }
   }
@@ -236,7 +238,7 @@ export default function SellerInventoryPage() {
 
   if (loading) {
     return (
-      <SellerLayout title="재고 관리">
+      <SellerLayout title={t('seller.inventory')}>
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -245,7 +247,7 @@ export default function SellerInventoryPage() {
   }
 
   return (
-    <SellerLayout title="재고 관리">
+    <SellerLayout title={t('seller.inventory')}>
       {/* 바코드 스캔 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="flex gap-2">
@@ -256,7 +258,7 @@ export default function SellerInventoryPage() {
               value={scanInput}
               onChange={e => setScanInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleScan()}
-              placeholder="바코드 번호 또는 상품 ID 입력"
+              placeholder={t('seller.barcodeScanInput')}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
@@ -264,12 +266,12 @@ export default function SellerInventoryPage() {
             type="button"
             onClick={startCamera}
             className="px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            title="카메라로 바코드 스캔"
+            title={t('seller.cameraScanBarcode')}
           >
             <Camera className="w-4 h-4" />
           </button>
           <button onClick={handleScan} className="px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-            조회
+            {t('seller.lookupButton')}
           </button>
         </div>
       </div>
@@ -279,13 +281,13 @@ export default function SellerInventoryPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
-            <h3 className="text-sm font-semibold text-amber-800">재고 부족 상품 ({alerts.length}개)</h3>
+            <h3 className="text-sm font-semibold text-amber-800">{t('seller.lowStockProducts', { count: alerts.length })}</h3>
           </div>
           <div className="space-y-1">
             {alerts.slice(0, 5).map(p => (
               <div key={p.id} className="flex items-center justify-between text-xs">
                 <span className="text-amber-700">{p.name}</span>
-                <span className="font-bold text-red-600">{p.stock}개 남음</span>
+                <span className="font-bold text-red-600">{t('seller.remainingStock', { count: p.stock })}</span>
               </div>
             ))}
           </div>
@@ -296,7 +298,7 @@ export default function SellerInventoryPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">
-            <Package className="w-4 h-4 inline mr-1" />상품 재고 현황
+            <Package className="w-4 h-4 inline mr-1" />{t('seller.inventory')}
           </h3>
         </div>
         <div className="divide-y divide-gray-50">
@@ -316,19 +318,19 @@ export default function SellerInventoryPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                 <p className="text-xs text-gray-400">
-                  {p.barcode ? `바코드: ${p.barcode}` : '바코드 미생성'}
+                  {p.barcode ? `${t('seller.barcodePrefix')}: ${p.barcode}` : t('seller.barcodeNotGenerated')}
                 </p>
               </div>
               <div className="text-right">
                 <p className={`text-sm font-bold ${p.stock <= (p.min_stock_alert || 5) ? 'text-red-600' : 'text-gray-900'}`}>
-                  {p.stock}개
+                  {p.stock}{t('common.count')}
                 </p>
                 {!p.barcode && (
                   <button
                     onClick={e => { e.stopPropagation(); generateBarcode(p.id) }}
                     className="text-[10px] text-blue-600 font-medium mt-0.5"
                   >
-                    <QrCode className="w-3 h-3 inline" /> 생성
+                    <QrCode className="w-3 h-3 inline" /> {t('seller.generateButton')}
                   </button>
                 )}
               </div>
@@ -347,19 +349,68 @@ export default function SellerInventoryPage() {
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
             <div className="p-5 space-y-4">
-              {/* 바코드 표시 */}
+              {/* 바코드 표시 + 다운로드/인쇄 */}
               {selectedProduct.barcode && (
                 <div className="text-center py-3 bg-gray-50 rounded-xl">
-                  <BarcodeDisplay value={selectedProduct.barcode} />
+                  <div id="barcode-container">
+                    <BarcodeDisplay value={selectedProduct.barcode} />
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">{selectedProduct.barcode}</p>
+                  <div className="flex gap-2 justify-center mt-3">
+                    <button
+                      onClick={() => {
+                        const svg = document.querySelector('#barcode-container svg')
+                        if (!svg) return
+                        const svgData = new XMLSerializer().serializeToString(svg)
+                        const canvas = document.createElement('canvas')
+                        const ctx = canvas.getContext('2d')
+                        const img = new Image()
+                        img.onload = () => {
+                          canvas.width = img.width * 2
+                          canvas.height = img.height * 2
+                          ctx!.fillStyle = 'white'
+                          ctx!.fillRect(0, 0, canvas.width, canvas.height)
+                          ctx!.drawImage(img, 0, 0, canvas.width, canvas.height)
+                          const a = document.createElement('a')
+                          a.download = `barcode-${selectedProduct.barcode}.png`
+                          a.href = canvas.toDataURL('image/png')
+                          a.click()
+                        }
+                        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg"
+                    >
+                      {t('common.save')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const svg = document.querySelector('#barcode-container svg')
+                        if (!svg) return
+                        const printWin = window.open('', '_blank', 'width=400,height=300')
+                        if (!printWin) return
+                        printWin.document.write(`
+                          <html><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif">
+                            <h3 style="margin-bottom:8px">${selectedProduct.name}</h3>
+                            ${new XMLSerializer().serializeToString(svg)}
+                            <p style="margin-top:4px;font-size:12px">${selectedProduct.barcode}</p>
+                          </body></html>
+                        `)
+                        printWin.document.close()
+                        printWin.print()
+                      }}
+                      className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg"
+                    >
+                      Print
+                    </button>
+                  </div>
                 </div>
               )}
 
               {/* 현재 재고 */}
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                <span className="text-sm text-gray-700">현재 재고</span>
+                <span className="text-sm text-gray-700">{t('common.stock')}</span>
                 <span className={`text-xl font-bold ${selectedProduct.stock <= (selectedProduct.min_stock_alert || 5) ? 'text-red-600' : 'text-blue-600'}`}>
-                  {selectedProduct.stock}개
+                  {selectedProduct.stock}{t('common.count')}
                 </span>
               </div>
 
@@ -374,7 +425,7 @@ export default function SellerInventoryPage() {
                         stockAction === type ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
                       }`}
                     >
-                      {type === 'in' ? '입고' : type === 'out' ? '출고' : '실사 조정'}
+                      {type === 'in' ? t('seller.stockIn') : type === 'out' ? t('seller.stockOut') : t('seller.stockAdjust')}
                     </button>
                   ))}
                 </div>
@@ -383,7 +434,7 @@ export default function SellerInventoryPage() {
                     type="number"
                     value={quantity || ''}
                     onChange={e => setQuantity(parseInt(e.target.value) || 0)}
-                    placeholder={stockAction === 'adjust' ? '조정 후 재고 수량' : '수량'}
+                    placeholder={stockAction === 'adjust' ? t('common.quantity') : t('common.quantity')}
                     min={0}
                     className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
@@ -391,7 +442,7 @@ export default function SellerInventoryPage() {
                     type="text"
                     value={reason}
                     onChange={e => setReason(e.target.value)}
-                    placeholder="사유 (선택)"
+                    placeholder={t('seller.reasonOptional')}
                     className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
@@ -400,9 +451,9 @@ export default function SellerInventoryPage() {
                   disabled={!quantity && stockAction !== 'adjust'}
                   className="w-full mt-2 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {stockAction === 'in' ? <><Plus className="w-3.5 h-3.5 inline" /> 입고 처리</> :
-                   stockAction === 'out' ? <><Minus className="w-3.5 h-3.5 inline" /> 출고 처리</> :
-                   <><ArrowUpDown className="w-3.5 h-3.5 inline" /> 재고 조정</>}
+                  {stockAction === 'in' ? <><Plus className="w-3.5 h-3.5 inline" /> {t('seller.stockInProcess')}</> :
+                   stockAction === 'out' ? <><Minus className="w-3.5 h-3.5 inline" /> {t('seller.stockOutProcess')}</> :
+                   <><ArrowUpDown className="w-3.5 h-3.5 inline" /> {t('seller.stockAdjustProcess')}</>}
                 </button>
               </div>
 
@@ -410,7 +461,7 @@ export default function SellerInventoryPage() {
               {history.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold text-gray-500 mb-2">
-                    <BarChart3 className="w-3.5 h-3.5 inline mr-1" />입출고 이력
+                    <BarChart3 className="w-3.5 h-3.5 inline mr-1" />{t('seller.stockHistory')}
                   </h4>
                   <div className="space-y-1.5">
                     {history.map(h => {
@@ -418,7 +469,7 @@ export default function SellerInventoryPage() {
                       return (
                         <div key={h.id} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${style.color}`}>{style.label}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${style.color}`}>{t(`seller.${style.label}`)}</span>
                             <span className="text-gray-500">{h.reason}</span>
                           </div>
                           <div className="text-right">
@@ -443,7 +494,7 @@ export default function SellerInventoryPage() {
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Camera className="w-4 h-4 text-blue-600" />
-                바코드 스캔
+                {t('seller.barcodeScan')}
               </h3>
               <button onClick={stopCamera} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
@@ -464,18 +515,18 @@ export default function SellerInventoryPage() {
             <div className="p-4 space-y-3">
               {!('BarcodeDetector' in window) && (
                 <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                  이 브라우저는 자동 바코드 인식을 지원하지 않습니다. 카메라로 바코드를 확인한 후 아래에 직접 입력해주세요.
+                  {t('seller.noBarcodeDetector')}
                 </p>
               )}
               {'BarcodeDetector' in window && (
                 <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
-                  바코드를 카메라에 비춰주세요. 자동으로 인식됩니다.
+                  {t('seller.barcodeAutoDetect')}
                 </p>
               )}
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="바코드 번호 직접 입력"
+                  placeholder={t('seller.enterBarcodeManual')}
                   className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
@@ -494,7 +545,7 @@ export default function SellerInventoryPage() {
                   }}
                   className="px-4 py-2.5 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300"
                 >
-                  닫기
+                  {t('common.close')}
                 </button>
               </div>
             </div>

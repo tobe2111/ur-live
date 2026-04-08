@@ -1,5 +1,6 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -36,6 +37,7 @@ interface Product {
 }
 
 export default function SellerProductsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
@@ -68,7 +70,9 @@ export default function SellerProductsPage() {
         api.get('/api/supply/products', { headers }),
       ])
       if (prodRes.status === 'fulfilled' && prodRes.value.data.success) {
-        setProducts(prodRes.value.data.data || [])
+        // 내 상품에서 공급 상품(is_supply_product=1) 제외
+        const allProducts = prodRes.value.data.data || []
+        setProducts(allProducts.filter((p: any) => !p.is_supply_product))
       }
       if (supplyRes.status === 'fulfilled' && supplyRes.value.data?.success) {
         const d = supplyRes.value.data.data
@@ -83,14 +87,14 @@ export default function SellerProductsPage() {
       }
     } catch (error: any) {
       console.error('Failed to load products:', error)
-      setError('상품 목록을 불러올 수 없습니다.')
+      setError(t('seller.productListLoadFailed'))
     } finally {
       setLoading(false)
     }
   }
 
   async function handleToggleActive(productId: number, currentStatus: boolean) {
-    if (!confirm(`상품을 ${currentStatus ? '비활성화' : '활성화'}하시겠습니까?`)) {
+    if (!confirm(t('seller.confirmToggleActive', { status: currentStatus ? t('seller.toggleDeactivate') : t('seller.toggleActivate') }))) {
       return
     }
 
@@ -105,17 +109,17 @@ export default function SellerProductsPage() {
       )
 
       if (response.data.success) {
-        toast.success('상품 상태가 변경되었습니다.')
+        toast.success(t('seller.productStatusChanged'))
         loadProducts()
       }
     } catch (error: any) {
       console.error('Failed to toggle product:', error)
-      toast.error(error.response?.data?.error || '상품 상태 변경에 실패했습니다.')
+      toast.error(error.response?.data?.error || t('seller.productStatusChangeFailed'))
     }
   }
 
   async function handleDelete(productId: number) {
-    if (!confirm('정말 이 상품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+    if (!confirm(t('seller.confirmDeleteProduct'))) {
       return
     }
 
@@ -130,12 +134,12 @@ export default function SellerProductsPage() {
       })
 
       if (response.data.success) {
-        toast.success('상품이 삭제되었습니다.')
+        toast.success(t('seller.productDeleted'))
         loadProducts()
       }
     } catch (error: any) {
       console.error('Failed to delete product:', error)
-      toast.error(error.response?.data?.error || '상품 삭제에 실패했습니다.')
+      toast.error(error.response?.data?.error || t('seller.productDeleteFailed'))
     } finally {
       setDeleting(null)
     }
@@ -146,17 +150,17 @@ export default function SellerProductsPage() {
   }
 
   return (
-    <SellerLayout title="상품 관리">
+    <SellerLayout title={t('seller.products')}>
       <div className="max-w-7xl mx-auto">
         {/* Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
             <div className="flex items-center gap-2 sm:gap-3 mb-2">
               <Package className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">상품 관리</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{t('seller.products')}</h1>
             </div>
             <p className="text-sm sm:text-base text-gray-600">
-              판매 상품을 등록하고 관리할 수 있습니다.
+              {t('seller.manageProducts')}
             </p>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -166,7 +170,7 @@ export default function SellerProductsPage() {
               className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
             >
               <Download className="w-4 h-4" />
-              <span>대량등록 양식 다운로드</span>
+              <span>{t('seller.bulkTemplateDownload')}</span>
             </Button>
             <Button
               onClick={() => setShowBulkUpload(true)}
@@ -174,14 +178,14 @@ export default function SellerProductsPage() {
               className="border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 px-3 py-2.5 flex items-center gap-1.5 justify-center text-sm flex-1 sm:flex-none"
             >
               <Upload className="w-4 h-4" />
-              <span>대량등록</span>
+              <span>{t('seller.bulkUpload')}</span>
             </Button>
             <Button
               onClick={() => navigate('/seller/products/new')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 flex items-center gap-2 justify-center text-sm flex-1 sm:flex-none"
             >
               <Plus className="w-4 h-4" />
-              <span>상품 등록</span>
+              <span>{t('seller.addProduct')}</span>
             </Button>
           </div>
         </div>
@@ -193,7 +197,7 @@ export default function SellerProductsPage() {
               <Trash2 className="w-5 h-5" />
               <p>{error}</p>
             </div>
-            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
+            <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">{t('seller.retryButton')}</button>
           </div>
         )}
 
@@ -205,7 +209,7 @@ export default function SellerProductsPage() {
               activeTab === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
             }`}
           >
-            내 상품 ({products.length})
+            {t('seller.myProducts')} ({products.length})
           </button>
           <button
             onClick={() => setActiveTab('supply')}
@@ -213,7 +217,7 @@ export default function SellerProductsPage() {
               activeTab === 'supply' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
             }`}
           >
-            공급 상품 ({supplyProducts.length})
+            {t('seller.supplyProductsTab')} ({supplyProducts.length})
           </button>
         </div>
 
@@ -228,13 +232,13 @@ export default function SellerProductsPage() {
             {(activeTab === 'my' ? products : supplyProducts).length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm border text-center py-12 sm:py-20">
                 <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-sm sm:text-base text-gray-600 mb-4">등록된 상품이 없습니다.</p>
+                <p className="text-sm sm:text-base text-gray-600 mb-4">{t('seller.noProductsRegistered')}</p>
                 <Button
                   onClick={() => navigate('/seller/products/new')}
                   className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
                 >
                   <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  첫 상품 등록하기
+                  {t('seller.firstProductRegister')}
                 </Button>
               </div>
             ) : (
@@ -244,13 +248,13 @@ export default function SellerProductsPage() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이미지</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">가격</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">재고</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상태</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">라이브 스트림</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">액션</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.image')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.productName')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.price')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('common.stock')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.liveStreamColumn')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.actionColumn')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -273,15 +277,15 @@ export default function SellerProductsPage() {
                           <td className="px-6 py-4">
                             <div>
                               <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                              <p className="text-xs text-gray-500 line-clamp-1 mt-1">{product.description || '설명 없음'}</p>
+                              <p className="text-xs text-gray-500 line-clamp-1 mt-1">{product.description || t('seller.noDescription')}</p>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                            {formatPrice(product.price)}원
+                            {formatPrice(product.price)}{t('common.won')}
                           </td>
                           <td className="px-6 py-4 text-center">
                             <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
-                              {product.stock > 0 ? `${product.stock}개` : '품절'}
+                              {product.stock > 0 ? `${product.stock}${t('common.count')}` : t('seller.soldOut')}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 text-center">
@@ -292,12 +296,12 @@ export default function SellerProductsPage() {
                               {product.is_active ? (
                                 <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200">
                                   <Eye className="w-3 h-3 mr-1" />
-                                  판매중
+                                  {t('seller.onSale')}
                                 </Badge>
                               ) : (
                                 <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200">
                                   <EyeOff className="w-3 h-3 mr-1" />
-                                  비활성
+                                  {t('seller.inactiveStatus')}
                                 </Badge>
                               )}
                             </button>
@@ -310,7 +314,7 @@ export default function SellerProductsPage() {
                               <button
                                 onClick={() => navigate(`/seller/products/${product.id}/edit`)}
                                 className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                                title="수정"
+                                title={t('common.edit')}
                               >
                                 <Edit className="w-5 h-5" />
                               </button>
@@ -318,7 +322,7 @@ export default function SellerProductsPage() {
                                 onClick={() => handleDelete(product.id)}
                                 disabled={deleting === product.id}
                                 className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50"
-                                title="삭제"
+                                title={t('common.delete')}
                               >
                                 {deleting === product.id ? (
                                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -366,12 +370,12 @@ export default function SellerProductsPage() {
                               {product.is_active ? (
                                 <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200 text-xs">
                                   <Eye className="w-3 h-3 mr-1" />
-                                  판매중
+                                  {t('seller.onSale')}
                                 </Badge>
                               ) : (
                                 <Badge className="bg-gray-100 text-gray-800 border-gray-200 cursor-pointer hover:bg-gray-200 text-xs">
                                   <EyeOff className="w-3 h-3 mr-1" />
-                                  비활성
+                                  {t('seller.inactiveStatus')}
                                 </Badge>
                               )}
                             </button>
@@ -387,12 +391,12 @@ export default function SellerProductsPage() {
                             <div className="flex items-center gap-1 text-gray-900">
                               <DollarSign className="w-4 h-4 text-green-600" />
                               <span className="text-base sm:text-lg font-bold">
-                                {formatPrice(product.price)}원
+                                {formatPrice(product.price)}{t('common.won')}
                               </span>
                             </div>
                             <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
                               <Box className="w-3 h-3 mr-1" />
-                              {product.stock > 0 ? `${product.stock}개` : '품절'}
+                              {product.stock > 0 ? `${product.stock}${t('common.count')}` : t('seller.soldOut')}
                             </Badge>
                           </div>
 
@@ -409,7 +413,7 @@ export default function SellerProductsPage() {
                               className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
                             >
                               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                              수정
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => handleDelete(product.id)}
@@ -421,7 +425,7 @@ export default function SellerProductsPage() {
                               ) : (
                                 <>
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                  삭제
+                                  {t('common.delete')}
                                 </>
                               )}
                             </button>
@@ -445,8 +449,8 @@ export default function SellerProductsPage() {
                   <Package className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">전체 상품</p>
-                  <p className="text-2xl font-bold text-gray-900">{products.length}개</p>
+                  <p className="text-sm text-gray-600">{t('common.product')}</p>
+                  <p className="text-2xl font-bold text-gray-900">{products.length}{t('common.count')}</p>
                 </div>
               </div>
             </div>
@@ -457,9 +461,9 @@ export default function SellerProductsPage() {
                   <Eye className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">판매중</p>
+                  <p className="text-sm text-gray-600">{t('seller.onSale')}</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {products.filter(p => p.is_active).length}개
+                    {products.filter(p => p.is_active).length}{t('common.count')}
                   </p>
                 </div>
               </div>
@@ -471,9 +475,9 @@ export default function SellerProductsPage() {
                   <Box className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">총 재고</p>
+                  <p className="text-sm text-gray-600">{t('common.stock')}</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {products.reduce((sum, p) => sum + p.stock, 0)}개
+                    {products.reduce((sum, p) => sum + p.stock, 0)}{t('common.count')}
                   </p>
                 </div>
               </div>

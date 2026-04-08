@@ -173,6 +173,24 @@ shortsRoutes.get('/feed', async (c) => {
   return c.json({ success: true, data: shuffled })
 })
 
+// ── GET /api/shorts/seller/list — 셀러: 내 쇼츠 (/:id 보다 먼저 정의) ──
+shortsRoutes.get('/seller/list', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 조회 가능' }, 403)
+
+  const { DB } = c.env
+  await ensureTables(DB)
+
+  const seller = await DB.prepare('SELECT id FROM sellers WHERE user_id = ?').bind(String(user.id)).first<{ id: number }>()
+  if (!seller) return c.json({ success: true, data: [] })
+
+  const { results } = await DB.prepare(
+    "SELECT * FROM shorts WHERE seller_id = ? AND status != 'deleted' ORDER BY created_at DESC"
+  ).bind(seller.id).all()
+
+  return c.json({ success: true, data: results ?? [] })
+})
+
 // ── GET /api/shorts/:id ────────────────────────────────────────────
 shortsRoutes.get('/:id', async (c) => {
   const { DB } = c.env
@@ -250,24 +268,6 @@ shortsRoutes.post('/', requireAuth(), async (c) => {
   `).bind(seller.id, title, description || null, video_url, youtube_video_id || null, thumbnail_url || null, duration || 0, product_id || null).run()
 
   return c.json({ success: true, data: { id: result.meta.last_row_id }, message: '쇼츠가 등록되었습니다' })
-})
-
-// ── GET /api/shorts/seller/list — 셀러: 내 쇼츠 ────────────────────
-shortsRoutes.get('/seller/list', requireAuth(), async (c) => {
-  const user = getCurrentUser(c)
-  if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 조회 가능' }, 403)
-
-  const { DB } = c.env
-  await ensureTables(DB)
-
-  const seller = await DB.prepare('SELECT id FROM sellers WHERE user_id = ?').bind(String(user.id)).first<{ id: number }>()
-  if (!seller) return c.json({ success: true, data: [] })
-
-  const { results } = await DB.prepare(
-    'SELECT * FROM shorts WHERE seller_id = ? AND status != ? ORDER BY created_at DESC'
-  ).bind(seller.id, 'deleted').all()
-
-  return c.json({ success: true, data: results ?? [] })
 })
 
 // ── DELETE /api/shorts/:id — 셀러: 쇼츠 삭제 ───────────────────────

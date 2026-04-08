@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -36,6 +37,7 @@ interface Product {
 }
 
 export default function SellerProductEditPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [loading, setLoading] = useState(true)
@@ -121,7 +123,7 @@ export default function SellerProductEditPage() {
       }
     } catch (error: any) {
       console.error('Failed to load product:', error)
-      setError('상품 정보를 불러올 수 없습니다.')
+      setError(t('common.productLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -187,15 +189,15 @@ export default function SellerProductEditPage() {
           })
         } catch (optError: any) {
           console.error('Failed to save options:', optError)
-          toast.error('상품은 수정되었으나 옵션 저장에 실패했습니다.')
+          toast.error(t('common.productSavedOptionsFailed'))
         }
         
-        toast.success('상품이 수정되었습니다.')
+        toast.success(t('common.productUpdated'))
         navigate('/seller/products')
       }
     } catch (error: any) {
       console.error('Failed to update product:', error)
-      setError(error.response?.data?.error || '상품 수정에 실패했습니다.')
+      setError(error.response?.data?.error || t('common.productUpdateFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -218,7 +220,7 @@ export default function SellerProductEditPage() {
   }
 
   function addDetailImage() {
-    const url = prompt('상세 이미지 URL을 입력하세요:')
+    const url = prompt(t('seller.detailImageUrlPrompt'))
     if (url && url.trim()) {
       setFormData({
         ...formData,
@@ -247,12 +249,12 @@ export default function SellerProductEditPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">상품을 찾을 수 없습니다.</p>
+          <p className="text-gray-600">{t('common.productNotFound')}</p>
           <Button
             onClick={() => navigate('/seller/products')}
             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
           >
-            목록으로 돌아가기
+            {t('common.backToList')}
           </Button>
         </div>
       </div>
@@ -269,7 +271,7 @@ export default function SellerProductEditPage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>상품 목록으로 돌아가기</span>
+            <span>{t('seller.backToProductList')}</span>
           </button>
         </div>
       </div>
@@ -280,10 +282,10 @@ export default function SellerProductEditPage() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Package className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">상품 수정</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('seller.productEdit')}</h1>
           </div>
           <p className="text-gray-600 mt-2">
-            상품 정보를 수정하고 변경사항을 저장할 수 있습니다.
+            {t('seller.editProductDesc')}
           </p>
         </div>
 
@@ -302,14 +304,14 @@ export default function SellerProductEditPage() {
           {/* Product Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상품명 <span className="text-red-500">*</span>
+              {t('seller.productName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="예: 프리미엄 무선 이어폰"
+              placeholder={t('seller.productNamePlaceholderForm')}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -318,13 +320,13 @@ export default function SellerProductEditPage() {
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상품 설명
+              {t('seller.productDescription')}
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              placeholder="상품에 대한 자세한 설명을 입력해주세요"
+              placeholder={t('seller.descriptionPlaceholder')}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -334,7 +336,7 @@ export default function SellerProductEditPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                판매가격 <span className="text-red-500">*</span>
+                {t('seller.originalPrice')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -349,12 +351,12 @@ export default function SellerProductEditPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">원 단위로 입력해주세요</p>
+              <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                재고 수량 <span className="text-red-500">*</span>
+                {t('seller.stockQuantity')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -369,7 +371,7 @@ export default function SellerProductEditPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">개 단위로 입력해주세요</p>
+              <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
             </div>
           </div>
 
@@ -384,9 +386,9 @@ export default function SellerProductEditPage() {
                 className="rounded border-orange-300 text-orange-600"
               />
               <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
-                라이브 전용 특가 설정
+                {t('seller.liveOnly')}
               </label>
-              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">라이브 방송 중에만 적용</span>
+              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
             </div>
             {formData.live_price_enabled && (
               <div>
@@ -395,11 +397,11 @@ export default function SellerProductEditPage() {
                   name="live_only_price"
                   value={formData.live_only_price}
                   onChange={handleChange}
-                  placeholder="라이브 특가 (예: 25000)"
+                  placeholder={t('seller.liveOnlyPricePlaceholder')}
                   min="0"
                   className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 bg-white"
                 />
-                <p className="text-xs text-orange-600 mt-1">라이브 방송 중에만 이 가격으로 노출됩니다</p>
+                <p className="text-xs text-orange-600 mt-1">{t('seller.liveOnlyPriceDesc')}</p>
               </div>
             )}
           </div>
@@ -408,14 +410,14 @@ export default function SellerProductEditPage() {
           <ImageUpload
             value={formData.image_url}
             onChange={(url) => setFormData({ ...formData, image_url: url })}
-            label="상품 이미지"
+            label={t('seller.productImage')}
             maxSizeKB={800}
           />
 
           {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              카테고리 <span className="text-red-500">*</span>
+              {t('common.category')} <span className="text-red-500">*</span>
             </label>
             <select
               name="category"
@@ -424,19 +426,19 @@ export default function SellerProductEditPage() {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="fashion">패션</option>
-              <option value="beauty">뷰티</option>
-              <option value="food">식품</option>
-              <option value="electronics">전자기기</option>
-              <option value="lifestyle">라이프스타일</option>
+              <option value="fashion">{t('common.fashion')}</option>
+              <option value="beauty">{t('common.beauty')}</option>
+              <option value="food">{t('common.food')}</option>
+              <option value="electronics">{t('common.electronics')}</option>
+              <option value="lifestyle">{t('common.lifestyle')}</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">상품이 속할 카테고리를 선택하세요</p>
+            <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
           </div>
 
           {/* Product Type Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              상품 타입 <span className="text-red-500">*</span>
+              {t('seller.productType')} <span className="text-red-500">*</span>
             </label>
             <div className="space-y-3">
               <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'live' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
@@ -451,10 +453,10 @@ export default function SellerProductEditPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Play className="w-5 h-5 text-red-600" />
-                    <span className="font-semibold text-gray-900">라이브 방송 전용 상품</span>
+                    <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    라이브 스트리밍 중에만 판매되는 한정 상품
+                    {t('seller.liveOnlyProductDesc')}
                   </p>
                 </div>
               </label>
@@ -471,10 +473,10 @@ export default function SellerProductEditPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Package className="w-5 h-5 text-blue-600" />
-                    <span className="font-semibold text-gray-900">Ur 특가 상품</span>
+                    <span className="font-semibold text-gray-900">{t('seller.featuredProduct')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    메인 페이지 "Ur 특가" 섹션에 노출되는 일반 판매 상품
+                    {t('seller.featuredProductDesc')}
                   </p>
                 </div>
               </label>
@@ -487,14 +489,14 @@ export default function SellerProductEditPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-700">
-                상품 상세 이미지 (선택)
+                {t('seller.productDetailImages')}
               </label>
               <Button
                 type="button"
                 onClick={addDetailImage}
                 className="text-sm py-1 px-3 bg-green-600 hover:bg-green-700 text-white"
               >
-                + 이미지 추가
+                {t('seller.addImage')}
               </Button>
             </div>
             
@@ -505,7 +507,7 @@ export default function SellerProductEditPage() {
                     <div className="w-24 h-24 bg-gray-200 rounded overflow-hidden flex-shrink-0">
                       <img
                         src={imageUrl}
-                        alt={`상세 이미지 ${index + 1}`}
+                        alt={`${t('seller.detailImage')} ${index + 1}`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = 'https://via.placeholder.com/96'
@@ -513,7 +515,7 @@ export default function SellerProductEditPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500 mb-1">이미지 {index + 1}</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('seller.imageIndex', { index: index + 1 })}</p>
                       <p className="text-sm text-gray-700 break-all">{imageUrl}</p>
                     </div>
                     <Button
@@ -521,7 +523,7 @@ export default function SellerProductEditPage() {
                       onClick={() => removeDetailImage(index)}
                       className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm"
                     >
-                      삭제
+                      {t('common.delete')}
                     </Button>
                   </div>
                 ))}
@@ -529,12 +531,12 @@ export default function SellerProductEditPage() {
             ) : (
               <div className="p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
                 <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">상세 이미지가 없습니다</p>
-                <p className="text-xs text-gray-400 mt-1">위의 "+ 이미지 추가" 버튼을 클릭하여 이미지를 추가하세요</p>
+                <p className="text-sm text-gray-500">{t('seller.noDetailImages')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('seller.addDetailImageGuide')}</p>
               </div>
             )}
             <p className="text-xs text-gray-500 mt-2">
-              💡 Tip: Unsplash, Pexels 등 무료 이미지 사이트에서 이미지 URL을 복사하여 사용할 수 있습니다
+              💡 {t('seller.detailImageTip')}
             </p>
           </div>
 
@@ -542,7 +544,7 @@ export default function SellerProductEditPage() {
           {liveStreams.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                라이브 스트림 연결 (선택)
+                {t('seller.liveStreamLink')}
               </label>
               <div className="relative">
                 <Play className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -552,15 +554,15 @@ export default function SellerProductEditPage() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
                 >
-                  <option value="">라이브 스트림을 선택하세요 (선택사항)</option>
+                  <option value="">{t('seller.selectLiveStream')}</option>
                   {liveStreams.map((stream) => (
                     <option key={stream.id} value={stream.id}>
-                      {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? '예정' : '종료'})
+                      {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? t('common.scheduled') : t('common.ended')})
                     </option>
                   ))}
                 </select>
               </div>
-              <p className="text-xs text-gray-500 mt-1">특정 라이브 스트림에서 판매할 상품인 경우 선택하세요</p>
+              <p className="text-xs text-gray-500 mt-1">{t('seller.selectLiveStreamDesc')}</p>
             </div>
           )}
 
@@ -575,8 +577,8 @@ export default function SellerProductEditPage() {
                 className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <div>
-                <p className="text-sm font-medium text-gray-700">상품 활성화</p>
-                <p className="text-xs text-gray-500">체크하면 고객에게 상품이 표시됩니다</p>
+                <p className="text-sm font-medium text-gray-700">{t('seller.productActivate')}</p>
+                <p className="text-xs text-gray-500">{t('seller.productActivateDesc')}</p>
               </div>
             </label>
           </div>
@@ -598,7 +600,7 @@ export default function SellerProductEditPage() {
                 onClick={() => navigate('/seller/products')}
                 className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white"
               >
-                취소
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -608,10 +610,10 @@ export default function SellerProductEditPage() {
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    저장 중...
+                    {t('common.saving')}
                   </span>
                 ) : (
-                  '변경사항 저장'
+                  t('seller.saveChanges')
                 )}
               </Button>
             </div>
@@ -622,11 +624,11 @@ export default function SellerProductEditPage() {
             <div className="flex items-start gap-2 text-sm text-gray-600">
               <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium mb-1">안내사항</p>
+                <p className="font-medium mb-1">{t('common.notices')}</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>상품명과 가격, 재고는 필수 입력 항목입니다.</li>
-                  <li>변경사항은 즉시 반영됩니다.</li>
-                  <li>비활성화 상태로 변경하면 고객에게 표시되지 않습니다.</li>
+                  <li>{t('seller.productNameRequired')}</li>
+                  <li>{t('seller.changesAppliedImmediately')}</li>
+                  <li>{t('seller.inactiveProductHidden')}</li>
                 </ul>
               </div>
             </div>

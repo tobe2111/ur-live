@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Eye, Heart, Video, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
@@ -24,6 +25,7 @@ interface Product {
 }
 
 export default function SellerShortsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [shorts, setShorts] = useState<Short[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -71,8 +73,8 @@ export default function SellerShortsPage() {
   }
 
   async function handleSubmit() {
-    if (!title.trim()) { toast.error('제목을 입력해주세요'); return }
-    if (!videoUrl.trim()) { toast.error('영상 URL을 입력해주세요'); return }
+    if (!title.trim()) { toast.error(t('seller.enterTitle')); return }
+    if (!videoUrl.trim()) { toast.error(t('seller.enterVideoUrl')); return }
 
     setSubmitting(true)
     try {
@@ -87,36 +89,36 @@ export default function SellerShortsPage() {
       }, { headers })
 
       if (res.data.success) {
-        toast.success('쇼츠가 등록되었습니다')
+        toast.success(t('seller.shortsRegistered'))
         setShowForm(false)
         setTitle('')
         setVideoUrl('')
         setProductId(null)
         loadData()
       } else {
-        toast.error(res.data.error || '등록에 실패했습니다')
+        toast.error(res.data.error || t('seller.registerFailed'))
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || '등록 중 오류가 발생했습니다')
+      toast.error(err?.response?.data?.error || t('seller.registerError'))
     } finally {
       setSubmitting(false)
     }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('이 쇼츠를 삭제하시겠습니까?')) return
+    if (!confirm(t('seller.confirmDeleteShorts'))) return
     try {
       await api.delete(`/api/shorts/${id}`, { headers })
-      toast.success('삭제되었습니다')
+      toast.success(t('seller.deleted'))
       setShorts(prev => prev.filter(s => s.id !== id))
     } catch {
-      toast.error('삭제에 실패했습니다')
+      toast.error(t('seller.deleteFailed'))
     }
   }
 
   if (loading) {
     return (
-      <SellerLayout title="쇼츠 관리">
+      <SellerLayout title={t('seller.shortsManage')}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
         </div>
@@ -125,7 +127,7 @@ export default function SellerShortsPage() {
   }
 
   return (
-    <SellerLayout title="쇼츠 관리">
+    <SellerLayout title={t('seller.shortsManage')}>
       <div className="max-w-2xl mx-auto">
         {/* 등록 버튼 */}
         <button
@@ -133,38 +135,38 @@ export default function SellerShortsPage() {
           className="w-full mb-5 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
-          새 쇼츠 등록
+          {t('seller.newShorts')}
         </button>
 
         {/* 등록 폼 */}
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-4">쇼츠 등록</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-4">{t('seller.shortsRegister')}</h3>
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-600 mb-1 block">제목 *</label>
+                <label className="text-xs text-gray-600 mb-1 block">{t('common.name')} *</label>
                 <input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder="쇼츠 제목"
+                  placeholder={t('seller.shortsTitle')}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-gray-600 mb-1 block">YouTube 영상 URL *</label>
+                <label className="text-xs text-gray-600 mb-1 block">{t('seller.videoUrl')} *</label>
                 <input
                   value={videoUrl}
                   onChange={e => setVideoUrl(e.target.value)}
-                  placeholder="https://youtube.com/shorts/... 또는 https://youtu.be/..."
+                  placeholder="https://youtube.com/shorts/... or https://youtu.be/..."
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
                 />
                 {videoUrl && extractYoutubeId(videoUrl) && (
                   <div className="mt-2 rounded-lg overflow-hidden bg-gray-100">
                     <img
                       src={`https://img.youtube.com/vi/${extractYoutubeId(videoUrl)}/hqdefault.jpg`}
-                      alt="미리보기"
+                      alt={t('seller.preview')}
                       className="w-full h-32 object-cover"
                     />
                   </div>
@@ -172,13 +174,13 @@ export default function SellerShortsPage() {
               </div>
 
               <div>
-                <label className="text-xs text-gray-600 mb-1 block">연결 상품 (선택)</label>
+                <label className="text-xs text-gray-600 mb-1 block">{t('seller.linkedProductOptional')}</label>
                 <select
                   value={productId || ''}
                   onChange={e => setProductId(e.target.value ? Number(e.target.value) : null)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-purple-400 focus:outline-none"
                 >
-                  <option value="">상품 없음</option>
+                  <option value="">{t('seller.noProduct')}</option>
                   {products.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -188,14 +190,14 @@ export default function SellerShortsPage() {
 
             <div className="flex gap-2 mt-4">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-sm rounded-lg font-medium">
-                취소
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
                 className="flex-[2] py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm rounded-lg font-bold disabled:opacity-50"
               >
-                {submitting ? '등록 중...' : '등록하기'}
+                {submitting ? t('seller.registering') : t('seller.registerSubmit')}
               </button>
             </div>
           </div>
@@ -205,8 +207,8 @@ export default function SellerShortsPage() {
         {shorts.length === 0 ? (
           <div className="text-center py-16">
             <Video className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">등록된 쇼츠가 없습니다</p>
-            <p className="text-gray-400 text-xs mt-1">YouTube 쇼츠 URL로 간편하게 등록하세요</p>
+            <p className="text-gray-500 text-sm">{t('seller.noShorts')}</p>
+            <p className="text-gray-400 text-xs mt-1">{t('seller.shortsRegisterEasy')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">

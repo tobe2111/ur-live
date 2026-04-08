@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -68,6 +69,7 @@ function parseShippingAddress(address: string, detail?: string): { postal_code: 
 }
 
 export default function SellerOrdersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -125,7 +127,7 @@ export default function SellerOrdersPage() {
       }
     } catch (error: any) {
       console.error('Failed to load orders:', error)
-      setError('주문 목록을 불러올 수 없습니다.')
+      setError(t('seller.orderListLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -179,7 +181,7 @@ export default function SellerOrdersPage() {
   // CSV Export
   function exportToCSV() {
     if (filteredOrders.length === 0) {
-      toast.info('내보낼 주문이 없습니다.')
+      toast.info(t('seller.noExportOrders'))
       return
     }
 
@@ -191,7 +193,7 @@ export default function SellerOrdersPage() {
       order.shipping_address,
       order.total_amount,
       getStatusText(order.status),
-      order.payment_status === 'completed' ? '결제완료' : order.payment_status,
+      order.payment_status === 'completed' ? 'Paid' : order.payment_status,
       order.courier || '',
       order.tracking_number || '',
       formatKST(order.created_at)
@@ -210,7 +212,7 @@ export default function SellerOrdersPage() {
   }
 
   async function handleStatusChange(orderNumber: string, newStatus: string) {
-    if (!confirm(`주문 상태를 "${getStatusText(newStatus)}"(으)로 변경하시겠습니까?`)) {
+    if (!confirm(t('seller.confirmStatusChange', { status: getStatusText(newStatus) }))) {
       return
     }
 
@@ -225,7 +227,7 @@ export default function SellerOrdersPage() {
       )
 
       if (response.data.success) {
-        toast.success('주문 상태가 변경되었습니다.')
+        toast.success(t('seller.statusChanged'))
         loadOrders()
         if (selectedOrder && selectedOrder.order_number === orderNumber) {
           setShowDetail(false)
@@ -234,7 +236,7 @@ export default function SellerOrdersPage() {
       }
     } catch (error: any) {
       console.error('Failed to update status:', error)
-      setError(error.response?.data?.error || '상태 변경에 실패했습니다.')
+      setError(error.response?.data?.error || t('seller.statusChangeFailed'))
     } finally {
       setUpdating(false)
     }
@@ -252,7 +254,7 @@ export default function SellerOrdersPage() {
       )
 
       if (response.data.success) {
-        toast.success('송장번호가 등록되었습니다.')
+        toast.success(t('seller.trackingRegistered'))
         setTrackingForm({ courier: '', tracking_number: '' })
         loadOrders()
         if (selectedOrder && selectedOrder.order_number === orderNumber) {
@@ -262,7 +264,7 @@ export default function SellerOrdersPage() {
       }
     } catch (error: any) {
       console.error('Failed to update tracking:', error)
-      setError(error.response?.data?.error || '송장번호 등록에 실패했습니다.')
+      setError(error.response?.data?.error || t('seller.trackingRegisterFailed'))
     } finally {
       setUpdating(false)
     }
@@ -292,14 +294,14 @@ export default function SellerOrdersPage() {
       const ids = Array.from(selectedIds).map(Number)
       const response = await api.patch('/api/seller/orders/bulk-status', { order_ids: ids, status: bulkStatus })
       if (response.data.success) {
-        toast.success(response.data.message || `${ids.length}건 상태 변경 완료`)
+        toast.success(response.data.message || t('seller.bulkChangeDone', { count: ids.length }))
         setSelectedIds(new Set())
         setBulkStatus('')
         loadOrders()
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } }
-      toast.error(err.response?.data?.error || '일괄 처리에 실패했습니다.')
+      toast.error(err.response?.data?.error || t('seller.bulkChangeFailed'))
     } finally {
       setBulkLoading(false)
     }
@@ -307,14 +309,14 @@ export default function SellerOrdersPage() {
 
   function getStatusText(status: string) {
     switch (status) {
-      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return '결제완료'
-      case 'PENDING': case 'AWAITING_PAYMENT': return '결제대기'
-      case 'PREPARING': return '상품준비중'
-      case 'SHIPPING': return '배송중'
-      case 'DELIVERED': return '배송완료'
-      case 'CANCELLED': return '주문취소'
-      case 'REFUNDED': return '환불완료'
-      case 'FAILED': return '결제실패'
+      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return t('seller.statusDone')
+      case 'PENDING': case 'AWAITING_PAYMENT': return t('seller.statusPending')
+      case 'PREPARING': return t('seller.statusPreparing')
+      case 'SHIPPING': return t('seller.statusShipping')
+      case 'DELIVERED': return t('seller.statusDelivered')
+      case 'CANCELLED': return t('seller.statusCancelled')
+      case 'REFUNDED': return t('common.refunded')
+      case 'FAILED': return status
       default: return status
     }
   }
@@ -322,19 +324,19 @@ export default function SellerOrdersPage() {
   function getStatusBadge(status: string) {
     switch (status) {
       case 'PAY_COMPLETE': case 'PAID': case 'DONE':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">결제완료</Badge>
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t('seller.statusDone')}</Badge>
       case 'PENDING': case 'AWAITING_PAYMENT':
-        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">결제대기</Badge>
+        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{t('seller.statusPending')}</Badge>
       case 'PREPARING':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">상품준비중</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{t('seller.statusPreparing')}</Badge>
       case 'SHIPPING':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">배송중</Badge>
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">{t('seller.statusShipping')}</Badge>
       case 'DELIVERED':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">배송완료</Badge>
+        return <Badge className="bg-green-100 text-green-800 border-green-200">{t('seller.statusDelivered')}</Badge>
       case 'CANCELLED':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">주문취소</Badge>
+        return <Badge className="bg-red-100 text-red-800 border-red-200">{t('seller.statusCancelled')}</Badge>
       case 'REFUNDED':
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">환불완료</Badge>
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{t('common.refunded')}</Badge>
       default:
         return <Badge>{status}</Badge>
     }
@@ -367,7 +369,7 @@ export default function SellerOrdersPage() {
   }
 
   return (
-    <SellerLayout title="주문 관리">
+    <SellerLayout title={t('seller.orders')}>
       <div className="max-w-7xl mx-auto">
         {/* Title */}
         <div className="mb-8">
@@ -375,9 +377,9 @@ export default function SellerOrdersPage() {
             <div className="flex items-center gap-3">
               <Package className="w-10 h-10 text-blue-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">주문 관리</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{t('seller.orders')}</h1>
                 <p className="text-sm text-gray-500 mt-1">
-                  전체 {orders.length}건 / 필터링 {filteredOrders.length}건
+                  {t('seller.totalFiltered', { total: orders.length, filtered: filteredOrders.length })}
                 </p>
               </div>
             </div>
@@ -386,7 +388,7 @@ export default function SellerOrdersPage() {
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
               <Download className="w-4 h-4" />
-              CSV 다운로드
+              {t('seller.csvDownload')}
             </Button>
           </div>
         </div>
@@ -395,33 +397,33 @@ export default function SellerOrdersPage() {
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">필터</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('seller.filterLabel')}</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                주문 상태
+                {t('common.status')}
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="ALL">전체</option>
-                <option value="PAY_COMPLETE">결제완료</option>
-                <option value="PREPARING">상품준비중</option>
-                <option value="SHIPPING">배송중</option>
-                <option value="DELIVERED">배송완료</option>
-                <option value="CANCELLED">주문취소</option>
+                <option value="ALL">{t('common.all')}</option>
+                <option value="PAY_COMPLETE">{t('seller.statusDone')}</option>
+                <option value="PREPARING">{t('seller.statusPreparing')}</option>
+                <option value="SHIPPING">{t('seller.statusShipping')}</option>
+                <option value="DELIVERED">{t('seller.statusDelivered')}</option>
+                <option value="CANCELLED">{t('seller.statusCancelled')}</option>
               </select>
             </div>
 
             {/* Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                검색
+                {t('common.search')}
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -429,7 +431,7 @@ export default function SellerOrdersPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="주문번호, 주문자명, 전화번호"
+                  placeholder={t('seller.searchPlaceholder')}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -438,7 +440,7 @@ export default function SellerOrdersPage() {
             {/* Date Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                시작일
+                {t('seller.startDate')}
               </label>
               <input
                 type="date"
@@ -450,7 +452,7 @@ export default function SellerOrdersPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                종료일
+                {t('seller.endDate')}
               </label>
               <input
                 type="date"
@@ -473,7 +475,7 @@ export default function SellerOrdersPage() {
                 variant="outline"
                 size="sm"
               >
-                필터 초기화
+                {t('seller.resetFilters')}
               </Button>
             </div>
           )}
@@ -503,27 +505,27 @@ export default function SellerOrdersPage() {
                   <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-600 mb-2">
                     {filteredOrders.length === 0 && orders.length > 0 
-                      ? '필터 조건에 맞는 주문이 없습니다.' 
-                      : '주문이 없습니다.'}
+                      ? t('seller.noMatchingOrders') 
+                      : t('seller.noOrdersYet')}
                   </p>
-                  <p className="text-sm text-gray-500">새 주문이 들어오면 여기에 표시됩니다.</p>
+                  <p className="text-sm text-gray-500">{t('seller.newOrdersWillAppear')}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   {/* 일괄 처리 바 */}
                   {selectedIds.size > 0 && (
                     <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-200">
-                      <span className="text-sm font-medium text-blue-700">{selectedIds.size}건 선택됨</span>
+                      <span className="text-sm font-medium text-blue-700">{t('seller.selectedCount', { count: selectedIds.size })}</span>
                       <select
                         value={bulkStatus}
                         onChange={e => setBulkStatus(e.target.value)}
                         className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">상태 선택</option>
-                        <option value="PREPARING">준비중</option>
-                        <option value="SHIPPING">배송중</option>
-                        <option value="DELIVERED">배송완료</option>
-                        <option value="CANCELLED">취소</option>
+                        <option value="">{t('common.status')}</option>
+                        <option value="PREPARING">{t('seller.statusPreparing')}</option>
+                        <option value="SHIPPING">{t('seller.statusShipping')}</option>
+                        <option value="DELIVERED">{t('seller.statusDelivered')}</option>
+                        <option value="CANCELLED">{t('seller.statusCancelled')}</option>
                       </select>
                       <button
                         onClick={handleBulkStatusChange}
@@ -531,13 +533,13 @@ export default function SellerOrdersPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                       >
                         {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                        일괄 변경
+                        {t('seller.bulkChange')}
                       </button>
                       <button
                         onClick={() => setSelectedIds(new Set())}
                         className="text-sm text-gray-500 hover:text-gray-700"
                       >
-                        선택 해제
+                        {t('seller.deselectAll')}
                       </button>
                     </div>
                   )}
@@ -552,13 +554,13 @@ export default function SellerOrdersPage() {
                             className="rounded border-gray-300 text-blue-600"
                           />
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문번호</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문자</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">주문금액</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">주문상태</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">결제상태</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">주문일시</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상세</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.orderNumberHeader')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.ordererHeader')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('seller.orderAmountHeader')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.orderStatusHeader')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.paymentStatusHeader')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.orderDateHeader')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('seller.detailHeader')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -580,11 +582,11 @@ export default function SellerOrdersPage() {
                             <div>{order.shipping_name}</div>
                             <div className="text-xs text-gray-400">{order.shipping_phone}</div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}원</td>
+                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                           <td className="px-6 py-4 text-center">
                             <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
-                              {order.payment_status === 'completed' ? '결제완료' : order.payment_status}
+                              {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
@@ -610,7 +612,7 @@ export default function SellerOrdersPage() {
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  {startIndex + 1}-{Math.min(endIndex, filteredOrders.length)} / 전체 {filteredOrders.length}건
+                  {t('seller.paginationInfo', { start: startIndex + 1, end: Math.min(endIndex, filteredOrders.length), total: filteredOrders.length })}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -658,7 +660,7 @@ export default function SellerOrdersPage() {
             <div className="p-6">
               {/* Modal Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">주문 상세</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{t('seller.orderDetail')}</h2>
                 <button
                   onClick={() => setShowDetail(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -671,27 +673,27 @@ export default function SellerOrdersPage() {
               <div className="space-y-6">
                 {/* Basic Info */}
                 <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">주문 정보</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderInfoSection')}</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-500 mb-1">주문번호</p>
+                      <p className="text-gray-500 mb-1">{t('seller.orderNumberHeader')}</p>
                       <p className="font-mono font-medium">{selectedOrder.order_number}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">주문일시</p>
+                      <p className="text-gray-500 mb-1">{t('seller.orderDateHeader')}</p>
                       <p className="font-medium">
                         {formatKST(selectedOrder.created_at)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">주문상태</p>
+                      <p className="text-gray-500 mb-1">{t('seller.orderStatusHeader')}</p>
                       <div>{getStatusBadge(selectedOrder.status)}</div>
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">결제상태</p>
+                      <p className="text-gray-500 mb-1">{t('seller.paymentStatusHeader')}</p>
                       <div>
                         <Badge className={selectedOrder.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                          {selectedOrder.payment_status === 'completed' ? '결제완료' : selectedOrder.payment_status}
+                          {selectedOrder.payment_status === 'completed' ? t('seller.statusDone') : selectedOrder.payment_status}
                         </Badge>
                       </div>
                     </div>
@@ -700,37 +702,37 @@ export default function SellerOrdersPage() {
 
                 {/* Shipping Info */}
                 <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">배송 정보</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoSection')}</h3>
                   {(() => {
                     const addr = parseShippingAddress(selectedOrder.shipping_address)
                     return (
                   <div className="space-y-2 text-sm">
                     <div>
-                      <p className="text-gray-500 mb-1">받는 사람</p>
+                      <p className="text-gray-500 mb-1">{t('seller.recipient')}</p>
                       <p className="font-medium">{selectedOrder.shipping_name}</p>
                     </div>
                     <div>
-                      <p className="text-gray-500 mb-1">연락처</p>
+                      <p className="text-gray-500 mb-1">{t('seller.contactNumber')}</p>
                       <p className="font-medium">{selectedOrder.shipping_phone}</p>
                     </div>
                     {addr.postal_code && (
                     <div>
-                      <p className="text-gray-500 mb-1">우편번호</p>
+                      <p className="text-gray-500 mb-1">{t('seller.postalCode')}</p>
                       <p className="font-medium">{addr.postal_code}</p>
                     </div>
                     )}
                     <div>
-                      <p className="text-gray-500 mb-1">주소</p>
+                      <p className="text-gray-500 mb-1">{t('seller.addressField')}</p>
                       <p className="font-medium">{addr.address1}{addr.address2 ? ` ${addr.address2}` : ''}</p>
                     </div>
                     {selectedOrder.courier && selectedOrder.tracking_number && (
                       <>
                         <div>
-                          <p className="text-gray-500 mb-1">택배사</p>
+                          <p className="text-gray-500 mb-1">{t('seller.courierLabel')}</p>
                           <p className="font-medium">{selectedOrder.courier}</p>
                         </div>
                         <div>
-                          <p className="text-gray-500 mb-1">송장번호</p>
+                          <p className="text-gray-500 mb-1">{t('seller.trackingNumberLabel')}</p>
                           <p className="font-mono font-medium">{selectedOrder.tracking_number}</p>
                         </div>
                       </>
@@ -743,7 +745,7 @@ export default function SellerOrdersPage() {
                 {/* Order Items */}
                 {selectedOrder.items && selectedOrder.items.length > 0 && (
                   <div className="border-b pb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">주문 상품</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderProductsSection')}</h3>
                     <div className="space-y-3">
                       {selectedOrder.items.map((item) => (
                         <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
@@ -768,9 +770,9 @@ export default function SellerOrdersPage() {
                           {/* Product Info */}
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900 truncate">{item.product_name}</p>
-                            <p className="text-sm text-gray-500 mt-1">수량: {item.quantity}개</p>
+                            <p className="text-sm text-gray-500 mt-1">{t('seller.quantityLabel')}: {item.quantity}{t('common.count')}</p>
                             <p className="text-sm font-medium text-gray-900 mt-1">
-                              {formatPrice(item.price * item.quantity)}원
+                              {formatPrice(item.price * item.quantity)}{t('common.won')}
                             </p>
                           </div>
                         </div>
@@ -781,11 +783,11 @@ export default function SellerOrdersPage() {
 
                 {/* Amount Info */}
                 <div className="border-b pb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">결제 정보</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.paymentInfoSection')}</h3>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex justify-between text-lg font-bold">
-                      <span>총 주문금액</span>
-                      <span className="text-blue-600">{formatPrice(selectedOrder.total_amount)}원</span>
+                      <span>{t('seller.totalOrderAmount')}</span>
+                      <span className="text-blue-600">{formatPrice(selectedOrder.total_amount)}{t('common.won')}</span>
                     </div>
                   </div>
                 </div>
@@ -793,7 +795,7 @@ export default function SellerOrdersPage() {
                 {/* Status Change */}
                 {getNextStatus(selectedOrder.status) && (
                   <div className="border-b pb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">상태 변경</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.statusChangeSection')}</h3>
                     <Button
                       onClick={() => handleStatusChange(selectedOrder.order_number, getNextStatus(selectedOrder.status)!)}
                       disabled={updating}
@@ -802,10 +804,10 @@ export default function SellerOrdersPage() {
                       {updating ? (
                         <span className="flex items-center justify-center gap-2">
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          처리 중...
+                          {t('seller.processingStatus')}
                         </span>
                       ) : (
-                        `"${getStatusText(getNextStatus(selectedOrder.status)!)}"(으)로 변경`
+                        t('seller.changeStatusTo', { status: getStatusText(getNextStatus(selectedOrder.status)!) })
                       )}
                     </Button>
                   </div>
@@ -814,11 +816,11 @@ export default function SellerOrdersPage() {
                 {/* Tracking Number Form */}
                 {selectedOrder.status !== 'DELIVERED' && selectedOrder.status !== 'CANCELLED' && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">배송 정보 입력</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoInput')}</h3>
                     <form onSubmit={(e) => handleTrackingSubmit(e, selectedOrder.order_number)} className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          택배사 <span className="text-red-500">*</span>
+                          {t('seller.courierLabel')} <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={trackingForm.courier}
@@ -826,7 +828,7 @@ export default function SellerOrdersPage() {
                           required
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                         >
-                          <option value="">택배사 선택</option>
+                          <option value="">{t('seller.selectCourier')}</option>
                           <option value="CJ대한통운">CJ대한통운</option>
                           <option value="로젠택배">로젠택배</option>
                           <option value="옐로우캡">옐로우캡</option>
@@ -853,13 +855,13 @@ export default function SellerOrdersPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          송장번호 <span className="text-red-500">*</span>
+                          {t('seller.trackingNumberLabel')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
                           value={trackingForm.tracking_number}
                           onChange={(e) => setTrackingForm({ ...trackingForm, tracking_number: e.target.value })}
-                          placeholder="예: 123456789012"
+                          placeholder={t('seller.trackingNumberPlaceholder')}
                           required
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
@@ -872,10 +874,10 @@ export default function SellerOrdersPage() {
                         {updating ? (
                           <span className="flex items-center justify-center gap-2">
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            등록 중...
+                            {t('seller.registeringTracking')}
                           </span>
                         ) : (
-                          '송장번호 등록'
+                          t('seller.registerTracking')
                         )}
                       </Button>
                     </form>
@@ -889,7 +891,7 @@ export default function SellerOrdersPage() {
                   onClick={() => setShowDetail(false)}
                   className="w-full py-3 bg-gray-600 hover:bg-gray-700 text-white"
                 >
-                  닫기
+                  {t('common.close')}
                 </Button>
               </div>
             </div>

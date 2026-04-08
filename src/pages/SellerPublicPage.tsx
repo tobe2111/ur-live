@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin } from 'lucide-react'
@@ -23,6 +24,7 @@ interface Short {
 type Tab = 'home' | 'products' | 'live' | 'shorts' | 'info'
 
 export default function SellerPublicPage() {
+  const { t } = useTranslation()
   const { sellerId } = useParams<{ sellerId: string }>()
   const navigate = useNavigate()
   const [seller, setSeller] = useState<Seller | null>(null)
@@ -54,8 +56,8 @@ export default function SellerPublicPage() {
 
   if (!seller) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-      <p className="text-gray-500">셀러를 찾을 수 없습니다</p>
-      <button onClick={() => navigate('/')} className="mt-3 text-sm text-pink-500">홈으로</button>
+      <p className="text-gray-500">{t('seller.sellerNotFound')}</p>
+      <button onClick={() => navigate('/')} className="mt-3 text-sm text-pink-500">{t('seller.goToHome')}</button>
     </div>
   )
 
@@ -64,11 +66,11 @@ export default function SellerPublicPage() {
   const recentStreams = streams.slice(0, 6)
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'home', label: '홈' },
-    { key: 'products', label: '상품' },
-    { key: 'live', label: '라이브' },
-    { key: 'shorts', label: '쇼츠' },
-    { key: 'info', label: '정보' },
+    { key: 'home', label: t('seller.tabHome') },
+    { key: 'products', label: t('seller.tabProducts') },
+    { key: 'live', label: t('seller.tabLive') },
+    { key: 'shorts', label: t('seller.tabShorts') },
+    { key: 'info', label: t('seller.tabInfo') },
   ]
 
   return (
@@ -87,7 +89,7 @@ export default function SellerPublicPage() {
             <button onClick={() => {
               const url = window.location.href
               if (navigator.share) navigator.share({ title: seller.name, url })
-              else { navigator.clipboard?.writeText(url); toast.success('링크 복사됨') }
+              else { navigator.clipboard?.writeText(url); toast.success(t('seller.linkCopiedToast')) }
             }} className="p-2 bg-black/20 rounded-full backdrop-blur-sm">
               <Share2 className="w-5 h-5 text-white" />
             </button>
@@ -129,15 +131,15 @@ export default function SellerPublicPage() {
         {/* 통계 */}
         <div className="flex items-center gap-6 mt-4 py-3 border-y border-gray-100">
           <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">상품</p>
+            <p className="text-xs text-gray-500">{t('seller.tabProducts')}</p>
             <p className="text-sm font-bold text-gray-900">{products.length}</p>
           </div>
           <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">라이브</p>
+            <p className="text-xs text-gray-500">{t('seller.tabLive')}</p>
             <p className="text-sm font-bold text-gray-900">{streams.length}</p>
           </div>
           <div className="text-center flex-1">
-            <p className="text-xs text-gray-500">평점</p>
+            <p className="text-xs text-gray-500">{t('seller.rating')}</p>
             <p className="text-sm font-bold text-gray-900 flex items-center justify-center gap-0.5">
               <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" /> 5.0
             </p>
@@ -148,14 +150,14 @@ export default function SellerPublicPage() {
         <div className="flex gap-2 mt-4">
           {seller.kakao_chat_link && (
             <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700">
-              <MessageCircle className="w-4 h-4" /> 1:1 문의
+              <MessageCircle className="w-4 h-4" /> {t('seller.oneOnOneInquiry')}
             </a>
           )}
           <button
-            onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info('현재 진행 중인 라이브가 없습니다')}
+            onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700"
           >
-            <Heart className="w-4 h-4" /> 후원하기
+            <Heart className="w-4 h-4" /> {t('seller.donateButton')}
           </button>
         </div>
       </div>
@@ -185,7 +187,7 @@ export default function SellerPublicPage() {
             {/* 다가오는 라이브 */}
             {streams.filter(s => s.status === 'scheduled').length > 0 && (
               <section>
-                <h2 className="text-base font-bold text-gray-900 mb-3">다가오는 라이브 일정</h2>
+                <h2 className="text-base font-bold text-gray-900 mb-3">{t('seller.upcomingLiveSchedule')}</h2>
                 {streams.filter(s => s.status === 'scheduled').slice(0, 2).map(s => (
                   <button key={s.id} onClick={() => navigate(`/live/${s.id}`)}
                     className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-2 text-left active:scale-[0.98]">
@@ -205,8 +207,8 @@ export default function SellerPublicPage() {
             {bestProducts.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-bold text-gray-900">추천! BEST 상품</h2>
-                  <button onClick={() => setTab('products')} className="text-xs text-gray-500 flex items-center">더보기 <ChevronRight className="w-3 h-3" /></button>
+                  <h2 className="text-base font-bold text-gray-900">{t('seller.recommendBest')}</h2>
+                  <button onClick={() => setTab('products')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 {bestProducts.slice(0, 3).map(p => {
                   const disc = p.discount_rate || (p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0)
@@ -218,9 +220,9 @@ export default function SellerPublicPage() {
                         <p className="text-sm text-gray-800 line-clamp-2">{p.name}</p>
                         <div className="flex items-baseline gap-1.5 mt-1">
                           {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                          <span className="text-sm font-extrabold text-gray-900">{p.price.toLocaleString()}원</span>
+                          <span className="text-sm font-extrabold text-gray-900">{p.price.toLocaleString()}{t('common.won')}</span>
                         </div>
-                        {(p.sold_count ?? 0) > 0 && <p className="text-[10px] text-gray-400 mt-0.5">{p.sold_count}명 구매</p>}
+                        {(p.sold_count ?? 0) > 0 && <p className="text-[10px] text-gray-400 mt-0.5">{t('seller.purchased', { count: p.sold_count })}</p>}
                       </div>
                     </button>
                   )
@@ -232,8 +234,8 @@ export default function SellerPublicPage() {
             {recentStreams.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-bold text-gray-900">라이브 <span className="text-pink-500">{streams.length}</span></h2>
-                  <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">더보기 <ChevronRight className="w-3 h-3" /></button>
+                  <h2 className="text-base font-bold text-gray-900">{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>
+                  <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {recentStreams.slice(0, 4).map(s => (
@@ -248,7 +250,7 @@ export default function SellerPublicPage() {
         {/* ═══ 상품 탭 ═══ */}
         {tab === 'products' && (
           products.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">등록된 상품이 없습니다</div>
+            <div className="text-center py-16 text-gray-400 text-sm">{t('seller.noProducts')}</div>
           ) : (
             <div className="grid grid-cols-3 gap-x-3 gap-y-5">
               {products.map(p => {
@@ -261,7 +263,7 @@ export default function SellerPublicPage() {
                     <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2">{p.name}</p>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {disc > 0 && <span className="text-[12px] font-extrabold text-red-500">{disc}%</span>}
-                      <span className="text-[12px] font-extrabold text-gray-900">{p.price.toLocaleString()}원</span>
+                      <span className="text-[12px] font-extrabold text-gray-900">{p.price.toLocaleString()}{t('common.won')}</span>
                     </div>
                   </button>
                 )
@@ -273,7 +275,7 @@ export default function SellerPublicPage() {
         {/* ═══ 라이브 탭 ═══ */}
         {tab === 'live' && (
           streams.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">라이브 기록이 없습니다</div>
+            <div className="text-center py-16 text-gray-400 text-sm">{t('seller.noLiveRecord')}</div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {streams.map(s => (
@@ -286,7 +288,7 @@ export default function SellerPublicPage() {
         {/* ═══ 쇼츠 탭 ═══ */}
         {tab === 'shorts' && (
           shorts.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">등록된 쇼츠가 없습니다</div>
+            <div className="text-center py-16 text-gray-400 text-sm">{t('seller.noShortsPublic')}</div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {shorts.map(s => (
@@ -312,24 +314,24 @@ export default function SellerPublicPage() {
         {tab === 'info' && (
           <div className="space-y-6">
             <section>
-              <h3 className="text-base font-bold text-gray-900 mb-2">스토어 소개</h3>
+              <h3 className="text-base font-bold text-gray-900 mb-2">{t('seller.storeIntro')}</h3>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {seller.bio || '소개글이 없습니다.'}
+                {seller.bio || t('seller.noBioYet')}
               </p>
               {seller.sns_instagram && (
-                <a href={seller.sns_instagram} target="_blank" rel="noopener" className="text-sm text-pink-500 mt-2 block">인스타그램 →</a>
+                <a href={seller.sns_instagram} target="_blank" rel="noopener" className="text-sm text-pink-500 mt-2 block">{t('seller.instagramLink')} →</a>
               )}
               {seller.sns_youtube && (
-                <a href={seller.sns_youtube} target="_blank" rel="noopener" className="text-sm text-red-500 mt-1 block">유튜브 →</a>
+                <a href={seller.sns_youtube} target="_blank" rel="noopener" className="text-sm text-red-500 mt-1 block">{t('seller.youtubeLink')} →</a>
               )}
             </section>
             <section>
-              <h3 className="text-base font-bold text-gray-900 mb-2">배송·반품·교환·A/S</h3>
+              <h3 className="text-base font-bold text-gray-900 mb-2">{t('seller.shippingReturnInfo')}</h3>
               <div className="text-sm text-gray-600 space-y-2">
-                <div className="flex"><span className="w-16 text-gray-500 shrink-0">배송</span><span>택배 / CJ대한통운</span></div>
-                <div className="flex"><span className="w-16 text-gray-500 shrink-0">배송비</span><span>3,000원 / 50,000원 이상 무료배송</span></div>
-                <div className="flex"><span className="w-16 text-gray-500 shrink-0">배송출발</span><span>7일 이내 배송 출발 예정</span></div>
-                <div className="flex"><span className="w-16 text-gray-500 shrink-0">반품교환</span><span>7일 이내 가능 (단순변심 배송비 고객 부담)</span></div>
+                <div className="flex"><span className="w-16 text-gray-500 shrink-0">{t('seller.shippingMethod')}</span><span>{t('seller.shippingMethodValue')}</span></div>
+                <div className="flex"><span className="w-16 text-gray-500 shrink-0">{t('seller.shippingFeeLabel')}</span><span>{t('seller.shippingFeeValue')}</span></div>
+                <div className="flex"><span className="w-16 text-gray-500 shrink-0">{t('seller.shippingStart')}</span><span>{t('seller.shippingStartValue')}</span></div>
+                <div className="flex"><span className="w-16 text-gray-500 shrink-0">{t('seller.returnExchange')}</span><span>{t('seller.returnExchangeValue')}</span></div>
               </div>
             </section>
           </div>
@@ -340,6 +342,7 @@ export default function SellerPublicPage() {
 }
 
 function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => void }) {
+  const { t } = useTranslation()
   const isLive = stream.status === 'live'
   const thumb = stream.youtube_video_id ? `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg` : null
 
@@ -352,7 +355,7 @@ function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => vo
             <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />LIVE
           </span>
         ) : stream.status === 'scheduled' ? (
-          <span className="absolute top-2 left-2 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded">예고</span>
+          <span className="absolute top-2 left-2 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded">{t('seller.scheduledLabel')}</span>
         ) : null}
         {isLive && stream.viewer_count !== undefined && (
           <span className="absolute bottom-2 left-2 text-white text-[10px] flex items-center gap-0.5 drop-shadow-lg">

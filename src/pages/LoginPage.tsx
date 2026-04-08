@@ -324,11 +324,17 @@ export default function LoginPage() {
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}
-        <div className="text-center mb-16">
-          <h1 className="text-[32px] font-bold tracking-[0.08em] text-[#111]">
-            UR LIVE
-          </h1>
-          <p className="text-[14px] text-[#999] mt-3 font-light">
+        <div className="flex flex-col items-center mb-16">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 40 36" fill="none" className="h-10 w-auto">
+              <path d="M8 8h2l1.5 3H34a1 1 0 01.96 1.28l-3.5 12A1 1 0 0130.5 25H14.5a1 1 0 01-.96-.72L9.8 10H8V8z" stroke="#EF4444" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="16" cy="31" r="2.5" fill="#EF4444"/>
+              <circle cx="29" cy="31" r="2.5" fill="#EF4444"/>
+              <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
+            </svg>
+            <span className="text-[28px] font-extrabold text-white tracking-tight">유어딜</span>
+          </div>
+          <p className="text-[14px] text-gray-500 mt-3 font-light">
             {t('auth.tagline')}
           </p>
         </div>
@@ -381,7 +387,7 @@ export default function LoginPage() {
               <button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full h-[52px] bg-[#121212] hover:bg-[#0A0A0A] text-[#3c4043] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-[#dadce0]"
+                className="w-full h-[52px] bg-white hover:bg-gray-50 text-[#3c4043] rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-3 border border-gray-300"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">

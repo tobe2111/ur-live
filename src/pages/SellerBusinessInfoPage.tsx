@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -32,7 +33,7 @@ interface BusinessInfo {
   created_at: string
 }
 
-// Daum Postcode 타입 정의
+// Daum Postcode type definition
 declare global {
   interface Window {
     daum: { Postcode: new (options: Record<string, unknown>) => { embed: (el: HTMLElement | null) => void; open: () => void } }
@@ -40,6 +41,7 @@ declare global {
 }
 
 export default function SellerBusinessInfoPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -76,7 +78,6 @@ export default function SellerBusinessInfoPage() {
   async function loadBusinessInfo() {
     try {
       const sessionToken = localStorage.getItem('seller_token')
-      
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -102,10 +103,10 @@ export default function SellerBusinessInfoPage() {
       }
     } catch (error: any) {
       if (error.response?.status === 404) {
-        // 사업자 정보가 아직 등록되지 않음
+        // Business info not yet registered
       } else {
         console.error('Failed to load business info:', error)
-        setError('사업자 정보를 불러올 수 없습니다.')
+        setError(t('seller.businessInfoLoadFailed'))
       }
     } finally {
       setLoading(false)
@@ -120,7 +121,6 @@ export default function SellerBusinessInfoPage() {
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
-      
 
       if (!sessionToken) {
         navigate('/seller/login')
@@ -130,14 +130,14 @@ export default function SellerBusinessInfoPage() {
       const response = await api.post('/api/seller/business-info', formData)
 
       if (response.data.success) {
-        setSuccess('사업자 정보가 저장되었습니다. 관리자 승인을 기다려주세요.')
+        setSuccess(t('seller.businessInfoSaved'))
         setTimeout(() => {
           loadBusinessInfo()
         }, 1500)
       }
     } catch (error: any) {
       console.error('Failed to save business info:', error)
-      setError(error.response?.data?.error || '사업자 정보 저장에 실패했습니다.')
+      setError(error.response?.data?.error || t('seller.businessInfoSaveFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -145,10 +145,9 @@ export default function SellerBusinessInfoPage() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target
-    
+
     let formattedValue = value
 
-    // 사업자등록번호 자동 하이픈 (000-00-00000)
     if (name === 'business_number') {
       const numbers = value.replace(/[^\d]/g, '')
       if (numbers.length <= 3) {
@@ -160,11 +159,9 @@ export default function SellerBusinessInfoPage() {
       }
     }
 
-    // 전화번호 자동 하이픈
     if (name === 'phone') {
       const numbers = value.replace(/[^\d]/g, '')
-      
-      // 010, 011 등 휴대폰 번호 (010-0000-0000)
+
       if (numbers.startsWith('01')) {
         if (numbers.length <= 3) {
           formattedValue = numbers
@@ -173,9 +170,7 @@ export default function SellerBusinessInfoPage() {
         } else {
           formattedValue = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`
         }
-      }
-      // 02 서울 지역번호 (02-000-0000 또는 02-0000-0000)
-      else if (numbers.startsWith('02')) {
+      } else if (numbers.startsWith('02')) {
         if (numbers.length <= 2) {
           formattedValue = numbers
         } else if (numbers.length <= 5) {
@@ -185,9 +180,7 @@ export default function SellerBusinessInfoPage() {
         } else {
           formattedValue = `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6, 10)}`
         }
-      }
-      // 그 외 지역번호 (031-000-0000 또는 031-0000-0000)
-      else {
+      } else {
         if (numbers.length <= 3) {
           formattedValue = numbers
         } else if (numbers.length <= 6) {
@@ -208,13 +201,12 @@ export default function SellerBusinessInfoPage() {
 
   function openAddressSearch() {
     if (!window.daum || !window.daum.Postcode) {
-      toast.info('주소 검색 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      toast.info(t('seller.addressSearchLoading'))
       return
     }
 
     new window.daum.Postcode({
       oncomplete: function(data: any) {
-        // 우편번호와 주소 정보를 formData에 설정
         setFormData({
           ...formData,
           postal_code: data.zonecode,
@@ -233,16 +225,16 @@ export default function SellerBusinessInfoPage() {
   }
 
   return (
-    <SellerLayout title="사업자 정보 관리">
+    <SellerLayout title={t('seller.businessInfoManagement')}>
       <div className="max-w-4xl mx-auto">
         {/* Title */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Building2 className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">사업자 정보 관리</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('seller.businessInfoManagement')}</h1>
           </div>
           <p className="text-gray-600 mt-2">
-            세금계산서 발행을 위해 사업자 정보를 등록해주세요. 관리자 승인 후 사용 가능합니다.
+            {t('seller.businessInfoDesc')}
           </p>
         </div>
 
@@ -258,9 +250,9 @@ export default function SellerBusinessInfoPage() {
                 <>
                   <CheckCircle2 className="w-5 h-5 text-green-600" />
                   <div>
-                    <p className="font-medium text-green-900">승인 완료</p>
+                    <p className="font-medium text-green-900">{t('seller.verificationApproved')}</p>
                     <p className="text-sm text-green-700">
-                      {businessInfo.verified_at && `승인일시: ${formatKST(businessInfo.verified_at)}`}
+                      {businessInfo.verified_at && t('seller.verifiedAt', { date: formatKST(businessInfo.verified_at) })}
                     </p>
                   </div>
                 </>
@@ -268,9 +260,9 @@ export default function SellerBusinessInfoPage() {
                 <>
                   <AlertCircle className="w-5 h-5 text-yellow-600" />
                   <div>
-                    <p className="font-medium text-yellow-900">승인 대기중</p>
+                    <p className="font-medium text-yellow-900">{t('seller.verificationPending')}</p>
                     <p className="text-sm text-yellow-700">
-                      관리자가 사업자 정보를 검토하고 있습니다. 영업일 기준 1~2일 소요됩니다.
+                      {t('seller.verificationPendingDesc')}
                     </p>
                   </div>
                 </>
@@ -301,10 +293,9 @@ export default function SellerBusinessInfoPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
-          {/* 사업자등록번호 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              사업자등록번호 <span className="text-red-500">*</span>
+              {t('seller.businessNumber')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -317,79 +308,75 @@ export default function SellerBusinessInfoPage() {
               disabled={businessInfo?.is_verified && !editMode}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
-            <p className="text-xs text-gray-500 mt-1">숫자만 입력하면 자동으로 하이픈이 추가됩니다.</p>
+            <p className="text-xs text-gray-500 mt-1">{t('seller.businessNumberHint')}</p>
           </div>
 
-          {/* 상호명 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상호(법인명) <span className="text-red-500">*</span>
+              {t('seller.businessName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               name="business_name"
               value={formData.business_name}
               onChange={handleChange}
-              placeholder="예: (주)리스터코퍼레이션"
+              placeholder={t('seller.businessNamePlaceholder')}
               required
               disabled={businessInfo?.is_verified && !editMode}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
-          {/* 대표자명 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              대표자명 <span className="text-red-500">*</span>
+              {t('seller.representative')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               name="ceo_name"
               value={formData.ceo_name}
               onChange={handleChange}
-              placeholder="예: 홍길동"
+              placeholder={t('seller.representativePlaceholder')}
               required
               disabled={businessInfo?.is_verified && !editMode}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
-          {/* 업태/업종 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                업태
+                {t('seller.businessType')}
               </label>
               <input
                 type="text"
                 name="business_type"
                 value={formData.business_type}
                 onChange={handleChange}
-                placeholder="예: 도소매업"
+                placeholder={t('seller.businessTypePlaceholder')}
                 disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                업종
+                {t('seller.businessCategory')}
               </label>
               <input
                 type="text"
                 name="business_category"
                 value={formData.business_category}
                 onChange={handleChange}
-                placeholder="예: 전자상거래업"
+                placeholder={t('seller.businessCategoryPlaceholder')}
                 disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
-          {/* 사업장 주소 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              사업장 소재지 <span className="text-red-500">*</span>
+              {t('seller.businessAddress')} <span className="text-red-500">*</span>
             </label>
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -398,7 +385,7 @@ export default function SellerBusinessInfoPage() {
                   name="postal_code"
                   value={formData.postal_code}
                   onChange={handleChange}
-                  placeholder="우편번호"
+                  placeholder={t('seller.postalCode')}
                   required
                   readOnly
                   disabled={businessInfo?.is_verified && !editMode}
@@ -411,7 +398,7 @@ export default function SellerBusinessInfoPage() {
                     className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center gap-2"
                   >
                     <Search className="w-4 h-4" />
-                    주소 검색
+                    {t('seller.addressSearch')}
                   </Button>
                 )}
               </div>
@@ -420,7 +407,7 @@ export default function SellerBusinessInfoPage() {
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                placeholder="기본 주소"
+                placeholder={t('seller.baseAddress')}
                 required
                 readOnly
                 disabled={businessInfo?.is_verified && !editMode}
@@ -431,18 +418,17 @@ export default function SellerBusinessInfoPage() {
                 name="address_detail"
                 value={formData.address_detail}
                 onChange={handleChange}
-                placeholder="상세 주소"
+                placeholder={t('seller.detailAddress')}
                 disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
-          {/* 연락처 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                전화번호 <span className="text-red-500">*</span>
+                {t('seller.phoneNumber')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
@@ -455,11 +441,11 @@ export default function SellerBusinessInfoPage() {
                 disabled={businessInfo?.is_verified && !editMode}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
-              <p className="text-xs text-gray-500 mt-1">숫자만 입력하면 자동으로 하이픈이 추가됩니다.</p>
+              <p className="text-xs text-gray-500 mt-1">{t('seller.phoneNumberHint')}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                이메일 <span className="text-red-500">*</span>
+                {t('seller.emailLabel')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
@@ -474,7 +460,6 @@ export default function SellerBusinessInfoPage() {
             </div>
           </div>
 
-          {/* Submit / Edit Request Button */}
           {(!businessInfo?.is_verified || editMode) ? (
             <div className="pt-4 space-y-3">
               <Button
@@ -485,14 +470,14 @@ export default function SellerBusinessInfoPage() {
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    저장 중...
+                    {t('seller.savingInfo')}
                   </span>
                 ) : editMode ? (
-                  '수정 신청하기'
+                  t('seller.requestEdit')
                 ) : businessInfo ? (
-                  '정보 수정하기'
+                  t('seller.editInfo')
                 ) : (
-                  '사업자 정보 등록하기'
+                  t('seller.registerBusinessInfo')
                 )}
               </Button>
               {editMode && (
@@ -517,7 +502,7 @@ export default function SellerBusinessInfoPage() {
                   }}
                   className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
                 >
-                  취소
+                  {t('common.cancel')}
                 </Button>
               )}
             </div>
@@ -528,10 +513,10 @@ export default function SellerBusinessInfoPage() {
                 onClick={() => setEditMode(true)}
                 className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
               >
-                정보 수정 신청
+                {t('seller.requestInfoEdit')}
               </Button>
               <p className="text-xs text-gray-500 mt-2 text-center">
-                수정 신청 시 관리자 재승인이 필요합니다.
+                {t('seller.requestInfoEditNote')}
               </p>
             </div>
           )}
@@ -541,12 +526,12 @@ export default function SellerBusinessInfoPage() {
             <div className="flex items-start gap-2 text-sm text-gray-600">
               <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium mb-1">안내사항</p>
+                <p className="font-medium mb-1">{t('seller.infoNotice')}</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>사업자 정보는 세금계산서 발행에 사용됩니다.</li>
-                  <li>승인 후 수정이 필요한 경우 "정보 수정 신청" 버튼을 이용해주세요. 관리자 재승인이 필요합니다.</li>
-                  <li>허위 정보 입력 시 서비스 이용이 제한될 수 있습니다.</li>
-                  <li>주소는 "주소 검색" 버튼을 클릭하여 정확하게 입력해주세요.</li>
+                  <li>{t('seller.infoNotice1')}</li>
+                  <li>{t('seller.infoNotice2')}</li>
+                  <li>{t('seller.infoNotice3')}</li>
+                  <li>{t('seller.infoNotice4')}</li>
                 </ul>
               </div>
             </div>

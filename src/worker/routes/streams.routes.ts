@@ -118,7 +118,6 @@ streamsRouter.get('/', async (c) => {
         ls.scheduled_at,
         ls.seller_instagram,
         ls.seller_youtube,
-        ls.product_display_mode,
         s.name             AS seller_name,
         cp.id              AS current_product_id,
         cp.name            AS current_product_name,
