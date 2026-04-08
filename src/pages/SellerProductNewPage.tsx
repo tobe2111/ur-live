@@ -94,7 +94,7 @@ export default function SellerProductNewPage() {
         return
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
@@ -104,7 +104,17 @@ export default function SellerProductNewPage() {
         live_only_price: formData.live_only_price ? Number(formData.live_only_price) : null,
         live_price_enabled: formData.live_price_enabled,
         product_type: formData.product_type,
-        category: formData.category
+        category: formData.category,
+        // 식사권/공동구매 필드 (category가 meal_voucher일 때만 유효)
+        ...(formData.category === 'meal_voucher' ? {
+          restaurant_name: (formData as any).restaurant_name || null,
+          restaurant_address: (formData as any).restaurant_address || null,
+          restaurant_phone: (formData as any).restaurant_phone || null,
+          voucher_terms: (formData as any).voucher_terms || null,
+          voucher_expiry: (formData as any).voucher_expiry || null,
+          group_buy_target: Number((formData as any).group_buy_target) || 0,
+          group_buy_deadline: (formData as any).group_buy_deadline || null,
+        } : {}),
       }
 
       const response = await api.post('/api/seller/products', payload, {
