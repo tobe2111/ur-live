@@ -382,6 +382,50 @@ export default function ProductDetailPage() {
           </>
         )}
 
+        {/* 공동구매 진행률 (식사권일 때만) */}
+        {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
+          <div className="px-5 py-4 bg-[#121212] border-b border-[#1A1A1A]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-white">공동구매 진행 중</span>
+              <span className="text-xs text-pink-400 font-bold">
+                {product.group_buy_current || 0}/{product.group_buy_target}명
+              </span>
+            </div>
+            <div className="w-full bg-[#1A1A1A] rounded-full h-2.5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }}
+              />
+            </div>
+            {product.group_buy_deadline && (
+              <p className="text-[10px] text-gray-500 mt-1.5">
+                마감: {new Date(product.group_buy_deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 식당 정보 (식사권일 때만) */}
+        {product.category === 'meal_voucher' && product.restaurant_name && (
+          <AccordionSection title="식당 정보" defaultOpen={true}>
+            <div className="space-y-2.5 text-xs text-gray-500">
+              <div className="flex"><span className="w-16 shrink-0 text-gray-400">식당명</span><span className="text-white font-medium">{product.restaurant_name}</span></div>
+              {product.restaurant_address && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">주소</span><span>{product.restaurant_address}</span></div>
+              )}
+              {product.restaurant_phone && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">전화</span><span>{product.restaurant_phone}</span></div>
+              )}
+              {product.voucher_terms && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">이용조건</span><span>{product.voucher_terms}</span></div>
+              )}
+              {product.voucher_expiry && (
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400">유효기간</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+              )}
+            </div>
+          </AccordionSection>
+        )}
+
         {/* 상품 정보 — 아코디언 */}
         <AccordionSection title="상품 정보">
           <ProductInfoGrid items={[

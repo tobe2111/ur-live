@@ -422,6 +422,11 @@ app.route('/api/points', pointsRoutes);
 import { shortsRoutes } from '../features/shorts/api/shorts.routes';
 app.route('/api/shorts', shortsRoutes);
 
+// ── 공동구매 & 바우처 ──
+import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
+app.route('/api/group-buy', groupBuyRoutes);
+app.route('/api/vouchers', groupBuyRoutes);
+
 // ── 상품 리뷰 ──
 import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 app.route('/api/reviews', reviewsRoutes);
