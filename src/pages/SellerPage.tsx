@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -9,12 +9,29 @@ import {
   AlertCircle, CheckCircle2, Truck, XCircle,
   AlertTriangle, CreditCard, ArchiveRestore
 } from 'lucide-react'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer
-} from 'recharts'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+
+// recharts lazy load (377KB → 대시보드 진입 시 차트 영역만 지연 로드)
+const LazyChart = lazy(() => import('recharts').then(m => ({
+  default: ({ data }: { data: any[] }) => {
+    const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = m
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+          <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+          <Tooltip />
+          <Legend />
+          <Line yAxisId="left" type="monotone" dataKey="revenue" name="매출" stroke="#3b82f6" strokeWidth={2} dot={false} />
+          <Line yAxisId="right" type="monotone" dataKey="orders" name="주문" stroke="#f97316" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    )
+  }
+})))
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface DashboardStats {
@@ -523,34 +540,11 @@ export default function SellerPage() {
                     {period === '7d' ? t('seller.last7days') : period === '30d' ? t('seller.last30days') : t('seller.last90days')}
                   </span>
                 </div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={dailyStats} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      tickFormatter={v => {
-                        const d = new Date(v)
-                        return `${d.getMonth() + 1}/${d.getDate()}`
-                      }}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                      tickFormatter={v => fmtShort(v)}
-                      width={45}
-                    />
-                    <Tooltip
-                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }}
-                      // @ts-ignore
-                    formatter={(v: number, name: string) =>
-                        name === t('seller.sales') ? [fmtPrice(v), name] : [`${v}`, name]
-                      }
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} name={t('seller.sales')} dot={false} activeDot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={2} name={t('seller.order')} dot={false} activeDot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div style={{ width: '100%', height: 220 }}>
+                  <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">차트 로딩...</div>}>
+                    <LazyChart data={dailyStats} />
+                  </Suspense>
+                </div>
               </div>
 
               {/* Top products */}

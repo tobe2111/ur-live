@@ -349,11 +349,60 @@ export default function SellerInventoryPage() {
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
             <div className="p-5 space-y-4">
-              {/* 바코드 표시 */}
+              {/* 바코드 표시 + 다운로드/인쇄 */}
               {selectedProduct.barcode && (
                 <div className="text-center py-3 bg-gray-50 rounded-xl">
-                  <BarcodeDisplay value={selectedProduct.barcode} />
+                  <div id="barcode-container">
+                    <BarcodeDisplay value={selectedProduct.barcode} />
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">{selectedProduct.barcode}</p>
+                  <div className="flex gap-2 justify-center mt-3">
+                    <button
+                      onClick={() => {
+                        const svg = document.querySelector('#barcode-container svg')
+                        if (!svg) return
+                        const svgData = new XMLSerializer().serializeToString(svg)
+                        const canvas = document.createElement('canvas')
+                        const ctx = canvas.getContext('2d')
+                        const img = new Image()
+                        img.onload = () => {
+                          canvas.width = img.width * 2
+                          canvas.height = img.height * 2
+                          ctx!.fillStyle = 'white'
+                          ctx!.fillRect(0, 0, canvas.width, canvas.height)
+                          ctx!.drawImage(img, 0, 0, canvas.width, canvas.height)
+                          const a = document.createElement('a')
+                          a.download = `barcode-${selectedProduct.barcode}.png`
+                          a.href = canvas.toDataURL('image/png')
+                          a.click()
+                        }
+                        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg"
+                    >
+                      이미지 다운로드
+                    </button>
+                    <button
+                      onClick={() => {
+                        const svg = document.querySelector('#barcode-container svg')
+                        if (!svg) return
+                        const printWin = window.open('', '_blank', 'width=400,height=300')
+                        if (!printWin) return
+                        printWin.document.write(`
+                          <html><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif">
+                            <h3 style="margin-bottom:8px">${selectedProduct.name}</h3>
+                            ${new XMLSerializer().serializeToString(svg)}
+                            <p style="margin-top:4px;font-size:12px">${selectedProduct.barcode}</p>
+                          </body></html>
+                        `)
+                        printWin.document.close()
+                        printWin.print()
+                      }}
+                      className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg"
+                    >
+                      인쇄
+                    </button>
+                  </div>
                 </div>
               )}
 
