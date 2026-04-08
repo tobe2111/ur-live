@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { isKorea } from '@/config/region'
 
 interface Language {
   code: string
@@ -12,17 +11,14 @@ interface Language {
 export default function LanguageSwitcher() {
   const { i18n } = useTranslation()
   
-  const languages: Language[] = isKorea() 
-    ? [
-        { code: 'ko', label: '한국어', flag: '🇰🇷' },
-        { code: 'en', label: 'English', flag: '🇺🇸' }
-      ]
-    : [
-        { code: 'en', label: 'English', flag: '🇺🇸' },
-        { code: 'ko', label: '한국어', flag: '🇰🇷' },
-        { code: 'ja', label: '日本語', flag: '🇯🇵' },
-        { code: 'zh', label: '中文', flag: '🇨🇳' }
-      ]
+  const languages: Language[] = [
+    { code: 'ko', label: '한국어', flag: '🇰🇷' },
+    { code: 'en', label: 'English', flag: '🇺🇸' },
+    { code: 'ja', label: '日本語', flag: '🇯🇵' },
+    { code: 'zh', label: '中文', flag: '🇨🇳' },
+    { code: 'es', label: 'Español', flag: '🇪🇸' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  ]
   
   const currentLang = i18n.language || 'en'
   const currentLanguage = languages.find(l => l.code === currentLang) || languages[0]
