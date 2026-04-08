@@ -322,7 +322,7 @@ export default function SellerProductNewPage() {
           {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              카테고리 <span className="text-red-500">*</span>
+              {t('common.category')} <span className="text-red-500">*</span>
             </label>
             <select
               name="category"
@@ -331,33 +331,33 @@ export default function SellerProductNewPage() {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="fashion">패션</option>
-              <option value="beauty">뷰티</option>
-              <option value="food">식품</option>
-              <option value="electronics">전자기기</option>
-              <option value="lifestyle">라이프스타일</option>
+              <option value="fashion">{t('common.fashion')}</option>
+              <option value="beauty">{t('common.beauty')}</option>
+              <option value="food">{t('common.food')}</option>
+              <option value="electronics">{t('common.electronics')}</option>
+              <option value="lifestyle">{t('common.lifestyle')}</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">상품이 속할 카테고리를 선택하세요</p>
+            <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
           </div>
 
           {/* Product Type - Only Live Products for Sellers */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              상품 타입
+              {t('seller.productType')}
             </label>
             <div className="p-4 border-2 border-blue-500 bg-blue-50 rounded-lg">
               <div className="flex items-start gap-3">
                 <Play className="w-5 h-5 text-red-600 mt-1" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">라이브 방송 전용 상품</span>
-                    <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">판매자 전용</span>
+                    <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
+                    <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">{t('seller.sellerOnly')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    라이브 스트리밍 중에만 판매되는 한정 상품입니다.
+                    {t('seller.liveOnlyProductNote')}
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
-                    💡 "Ur 특가" 상품은 어드민 대시보드에서만 등록 가능합니다.
+                    💡 {t('seller.featuredOnlyAdmin')}
                   </p>
                 </div>
               </div>
@@ -370,7 +370,7 @@ export default function SellerProductNewPage() {
           {liveStreams.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                라이브 스트림 연결 (선택)
+                {t('seller.liveStreamLink')}
               </label>
               <div className="relative">
                 <Play className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -380,15 +380,15 @@ export default function SellerProductNewPage() {
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
                 >
-                  <option value="">라이브 스트림을 선택하세요 (선택사항)</option>
+                  <option value="">{t('seller.selectLiveStream')}</option>
                   {liveStreams.map((stream) => (
                     <option key={stream.id} value={stream.id}>
-                      {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? '예정' : '종료'})
+                      {stream.title} ({stream.status === 'live' ? 'LIVE' : stream.status === 'scheduled' ? t('common.scheduled') : t('common.ended')})
                     </option>
                   ))}
                 </select>
               </div>
-              <p className="text-xs text-gray-500 mt-1">특정 라이브 스트림에서 판매할 상품인 경우 선택하세요</p>
+              <p className="text-xs text-gray-500 mt-1">{t('seller.selectLiveStreamDesc')}</p>
             </div>
           )}
 
@@ -409,7 +409,7 @@ export default function SellerProductNewPage() {
                 onClick={() => navigate('/seller/products')}
                 className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white"
               >
-                취소
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -419,10 +419,10 @@ export default function SellerProductNewPage() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    등록 중...
+                    {t('seller.registering')}
                   </span>
                 ) : (
-                  '상품 등록'
+                  t('seller.productCreate')
                 )}
               </Button>
             </div>
@@ -433,11 +433,11 @@ export default function SellerProductNewPage() {
             <div className="flex items-start gap-2 text-sm text-gray-600">
               <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium mb-1">안내사항</p>
+                <p className="font-medium mb-1">{t('common.notices')}</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>상품명과 가격, 재고는 필수 입력 항목입니다.</li>
-                  <li>상품 등록 후 언제든지 수정할 수 있습니다.</li>
-                  <li>라이브 스트림은 나중에도 연결할 수 있습니다.</li>
+                  <li>{t('seller.productNameRequired')}</li>
+                  <li>{t('seller.productCreateAfterEdit')}</li>
+                  <li>{t('seller.liveStreamLaterLink')}</li>
                 </ul>
               </div>
             </div>

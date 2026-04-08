@@ -51,15 +51,14 @@ export default function SellerStreamNewPage() {
 
     try {
       const sessionToken = localStorage.getItem('seller_token')
-      
+
       if (!sessionToken) {
-        setError('로그인이 필요합니다')
+        setError(t('common.loginRequired'))
         navigate('/seller/login')
         return
       }
 
       if (mode === 'youtube-auto') {
-        // YouTube 자동 생성
         const response = await api.post('/api/seller/youtube/live/create', {
           title: formData.title,
           description: formData.description,
@@ -76,12 +75,11 @@ export default function SellerStreamNewPage() {
             streamUrl: response.data.data.streamUrl,
             watchUrl: response.data.data.watchUrl,
           })
-          toast.success('YouTube 라이브가 생성되었습니다! 스트림 키를 복사하여 OBS에 설정하세요.')
+          toast.success(t('seller.youtubeAutoCreated'))
         } else {
-          setError(response.data.error || '생성 실패')
+          setError(response.data.error || t('seller.creationFailed'))
         }
       } else {
-        // 수동 입력
         const response = await api.post('/api/seller/streams', {
           title: formData.title,
           description: formData.description,
@@ -98,7 +96,7 @@ export default function SellerStreamNewPage() {
         })
 
         if (response.data.success) {
-          toast.success('라이브 스트림이 생성되었습니다!')
+          toast.success(t('seller.streamCreated'))
           const streamId = response.data.data?.id
           if (streamId) {
             setCreatedStreamId(streamId)
@@ -106,13 +104,13 @@ export default function SellerStreamNewPage() {
             navigate('/seller')
           }
         } else {
-          setError(response.data.error || '생성 실패')
+          setError(response.data.error || t('seller.creationFailed'))
         }
       }
     } catch (err: any) {
       console.error('Stream creation error:', err)
       console.error('Error response:', err.response?.data)
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || '생성 실패'
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || t('seller.creationFailed')
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -145,9 +143,9 @@ export default function SellerStreamNewPage() {
           )
         )
       )
-      toast.success(`${linkedProductIds.size}개 상품이 라이브에 연결되었습니다!`)
+      toast.success(t('seller.productsLinkedSuccess', { count: linkedProductIds.size }))
     } catch {
-      toast.error('일부 상품 연결에 실패했습니다.')
+      toast.error(t('seller.productsLinkFailed'))
     } finally {
       setLinkingProducts(false)
       navigate('/seller')
@@ -156,18 +154,18 @@ export default function SellerStreamNewPage() {
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text)
-    toast.success(`${label}이(가) 복사되었습니다!`)
+    toast.success(t('seller.labelCopied', { label }))
   }
 
-  // 상품 연결 단계 (스트림 생성 완료 후)
+  // Product linking step (after stream creation)
   if (createdStreamId !== null) {
     return (
       <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-lg">
-          <h2 className="text-lg font-bold text-gray-900 mb-1">라이브에 상품 연결</h2>
-          <p className="text-sm text-gray-500 mb-5">이 라이브에서 판매할 상품을 선택하세요 (선택 사항)</p>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">{t('seller.linkProductsToStream')}</h2>
+          <p className="text-sm text-gray-500 mb-5">{t('seller.selectProductsForStream')}</p>
           {myProducts.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">등록된 상품이 없습니다</p>
+            <p className="text-sm text-gray-400 text-center py-8">{t('seller.noRegisteredProductsMsg')}</p>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto mb-5">
               {myProducts.map(p => (
@@ -180,7 +178,7 @@ export default function SellerStreamNewPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.price.toLocaleString()}원</p>
+                    <p className="text-xs text-gray-400">{p.price.toLocaleString()}{t('common.won')}</p>
                   </div>
                 </label>
               ))}
@@ -191,14 +189,14 @@ export default function SellerStreamNewPage() {
               onClick={() => navigate('/seller')}
               className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
             >
-              건너뛰기
+              {t('seller.skip')}
             </button>
             <button
               onClick={linkProductsAndFinish}
               disabled={linkingProducts || linkedProductIds.size === 0}
               className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {linkingProducts ? '연결 중...' : `${linkedProductIds.size}개 상품 연결`}
+              {linkingProducts ? t('seller.linkingProducts') : t('seller.linkProductsBtn', { count: linkedProductIds.size })}
             </button>
           </div>
         </div>
@@ -216,9 +214,9 @@ export default function SellerStreamNewPage() {
               onClick={goBack}
               className="text-gray-600 hover:text-gray-900"
             >
-              ← 뒤로가기
+              &larr; {t('seller.goBack')}
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">새 라이브 스트림</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('seller.createStream')}</h1>
           </div>
         </div>
       </header>
@@ -229,13 +227,13 @@ export default function SellerStreamNewPage() {
           {youtubeInfo && (
             <div className="mb-8 p-6 bg-green-50 rounded-lg border-2 border-green-200">
               <h3 className="text-xl font-bold text-green-900 mb-4">
-                ✅ YouTube 라이브 생성 완료!
+                {t('seller.youtubeCreatedTitle')}
               </h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-green-900 mb-2">
-                    📺 시청 URL:
+                    {t('seller.watchUrlLabel')}:
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -245,17 +243,17 @@ export default function SellerStreamNewPage() {
                       className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg"
                     />
                     <button
-                      onClick={() => copyToClipboard(youtubeInfo.watchUrl, '시청 URL')}
+                      onClick={() => copyToClipboard(youtubeInfo.watchUrl, t('seller.watchUrlLabel'))}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
-                      복사
+                      {t('seller.copyBtn')}
                     </button>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-green-900 mb-2">
-                    🔑 스트림 키 (OBS에 입력):
+                    {t('seller.streamKeyObs')}:
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -265,17 +263,17 @@ export default function SellerStreamNewPage() {
                       className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm"
                     />
                     <button
-                      onClick={() => copyToClipboard(youtubeInfo.streamKey, '스트림 키')}
+                      onClick={() => copyToClipboard(youtubeInfo.streamKey, t('seller.streamKeyObs'))}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
-                      복사
+                      {t('seller.copyBtn')}
                     </button>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-green-900 mb-2">
-                    📡 스트림 URL (OBS 서버):
+                    {t('seller.streamUrlObs')}:
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -285,37 +283,37 @@ export default function SellerStreamNewPage() {
                       className="flex-1 px-4 py-2 bg-white border border-green-300 rounded-lg font-mono text-sm"
                     />
                     <button
-                      onClick={() => copyToClipboard(youtubeInfo.streamUrl, '스트림 URL')}
+                      onClick={() => copyToClipboard(youtubeInfo.streamUrl, t('seller.streamUrlObs'))}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                     >
-                      복사
+                      {t('seller.copyBtn')}
                     </button>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 p-4 bg-white rounded-lg border border-green-200">
-                <h4 className="font-semibold text-green-900 mb-2">📝 OBS 설정 방법:</h4>
+                <h4 className="font-semibold text-green-900 mb-2">{t('seller.obsSetupGuide')}:</h4>
                 <ol className="text-sm text-green-800 space-y-1 list-decimal list-inside">
-                  <li>OBS Studio 실행</li>
-                  <li>설정 {'>'} 방송 {'>'} 서비스: YouTube - RTMPS</li>
-                  <li>서버: 위의 "스트림 URL" 복사 붙여넣기</li>
-                  <li>스트림 키: 위의 "스트림 키" 복사 붙여넣기</li>
-                  <li>"방송 시작" 클릭!</li>
+                  <li>{t('seller.obsStep1')}</li>
+                  <li>{t('seller.obsStep2')}</li>
+                  <li>{t('seller.obsStep3')}</li>
+                  <li>{t('seller.obsStep4')}</li>
+                  <li>{t('seller.obsStep5')}</li>
                 </ol>
               </div>
 
               <div className="mt-3 p-4 bg-white rounded-lg border border-purple-200">
-                <h4 className="font-semibold text-purple-900 mb-2">📱 프리즘 라이브 스튜디오 (추천 - 무료):</h4>
+                <h4 className="font-semibold text-purple-900 mb-2">{t('seller.prismGuide')}:</h4>
                 <ol className="text-sm text-purple-800 space-y-1 list-decimal list-inside">
-                  <li>프리즘 라이브 앱 설치 (PC/iOS/Android)</li>
-                  <li>앱 실행 {'>'} 외부 플랫폼 연동 {'>'} YouTube 선택</li>
-                  <li>스트림 키: 위의 "스트림 키" 붙여넣기</li>
-                  <li>동시 송출: TikTok, Facebook 등 추가 가능</li>
-                  <li>"방송 시작" 클릭!</li>
+                  <li>{t('seller.prismStep1')}</li>
+                  <li>{t('seller.prismStep2')}</li>
+                  <li>{t('seller.prismStep3')}</li>
+                  <li>{t('seller.prismStep4')}</li>
+                  <li>{t('seller.prismStep5')}</li>
                 </ol>
                 <div className="mt-2 p-2 bg-purple-50 rounded text-xs text-purple-700">
-                  <strong>프리즘 장점:</strong> 스마트폰으로도 가능, YouTube + TikTok + Facebook 동시 송출, 화면 꾸미기/자막 내장, 완전 무료
+                  {t('seller.prismBenefits')}
                 </div>
               </div>
 
@@ -323,7 +321,7 @@ export default function SellerStreamNewPage() {
                 onClick={goBack}
                 className="mt-4 w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
               >
-                완료
+                {t('seller.doneBtn')}
               </button>
             </div>
           )}
@@ -340,8 +338,8 @@ export default function SellerStreamNewPage() {
                       : 'border-gray-300 bg-white text-gray-600 hover:border-purple-400'
                   }`}
                 >
-                  <div className="text-lg mb-1">📹 수동 입력</div>
-                  <div className="text-sm font-normal">기존 YouTube/TikTok URL 입력</div>
+                  <div className="text-lg mb-1">{t('seller.manualInput')}</div>
+                  <div className="text-sm font-normal">{t('seller.manualInputDesc')}</div>
                 </button>
                 <button
                   onClick={() => setMode('youtube-auto')}
@@ -351,8 +349,8 @@ export default function SellerStreamNewPage() {
                       : 'border-gray-300 bg-white text-gray-600 hover:border-red-400'
                   }`}
                 >
-                  <div className="text-lg mb-1">🚀 YouTube 자동 생성</div>
-                  <div className="text-sm font-normal">자동으로 YouTube Live 생성</div>
+                  <div className="text-lg mb-1">{t('seller.youtubeAutoCreate')}</div>
+                  <div className="text-sm font-normal">{t('seller.youtubeAutoCreateDesc')}</div>
                 </button>
               </div>
 
@@ -363,13 +361,12 @@ export default function SellerStreamNewPage() {
                   </div>
                 )}
 
-                {/* 기본 정보 */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">기본 정보</h3>
-                  
+                  <h3 className="text-lg font-semibold text-gray-900">{t('seller.basicInfo')}</h3>
+
                   <div>
                     <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                      라이브 제목 *
+                      {t('seller.streamTitle')} *
                     </label>
                     <input
                       id="title"
@@ -379,13 +376,13 @@ export default function SellerStreamNewPage() {
                       onChange={handleChange}
                       required
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="🎮 게이밍 기어 특가 라이브"
+                      placeholder={t('seller.streamTitlePlaceholder')}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                      설명
+                      {t('seller.streamDescription')}
                     </label>
                     <textarea
                       id="description"
@@ -394,14 +391,14 @@ export default function SellerStreamNewPage() {
                       onChange={handleChange}
                       rows={4}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      placeholder="라이브 방송에 대한 설명을 입력하세요..."
+                      placeholder={t('seller.descPlaceholder')}
                     />
                   </div>
 
                   {mode === 'manual' && (
                     <div>
                       <label htmlFor="youtubeUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                        YouTube & TikTok 라이브 URL *
+                        {t('seller.youtubeUrlLabel')} *
                       </label>
                       <input
                         id="youtubeUrl"
@@ -411,17 +408,17 @@ export default function SellerStreamNewPage() {
                         onChange={handleChange}
                         required={mode === 'manual'}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="https://www.youtube.com/watch?v=... 또는 https://www.tiktok.com/@username/video/..."
+                        placeholder={t('seller.youtubeTiktokUrlPlaceholder')}
                       />
                       <p className="mt-2 text-sm text-gray-500">
-                        지원 형식: YouTube (일반/라이브/쇼츠), TikTok (일반 영상/라이브)
+                        {t('seller.supportedFormats')}
                       </p>
                     </div>
                   )}
 
                   <div>
                     <label htmlFor="scheduledAt" className="block text-sm font-medium text-gray-700 mb-2">
-                      예약 시간 (선택)
+                      {t('seller.scheduledTimeLabel')}
                     </label>
                     <input
                       id="scheduledAt"
@@ -432,17 +429,16 @@ export default function SellerStreamNewPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                     <p className="mt-2 text-sm text-gray-500">
-                      비워두면 즉시 라이브가 시작됩니다
+                      {t('seller.scheduledTimeHint')}
                     </p>
                   </div>
                 </div>
 
                 {mode === 'manual' && (
                   <>
-                    {/* SNS 정보 */}
                     <div className="space-y-4 pt-6 border-t border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900">SNS 링크 (선택)</h3>
-                      
+                      <h3 className="text-lg font-semibold text-gray-900">{t('seller.snsLinksOptional')}</h3>
+
                       <div>
                         <label htmlFor="sellerInstagram" className="block text-sm font-medium text-gray-700 mb-2">
                           Instagram
@@ -454,7 +450,7 @@ export default function SellerStreamNewPage() {
                           value={formData.sellerInstagram}
                           onChange={handleChange}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="your_instagram_id 또는 전체 URL"
+                          placeholder={t('seller.instagramPlaceholder')}
                         />
                       </div>
 
@@ -469,7 +465,7 @@ export default function SellerStreamNewPage() {
                           value={formData.sellerYoutube}
                           onChange={handleChange}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="@your_channel 또는 전체 URL"
+                          placeholder={t('seller.youtubePlaceholder')}
                         />
                       </div>
 
@@ -484,21 +480,20 @@ export default function SellerStreamNewPage() {
                           value={formData.sellerFacebook}
                           onChange={handleChange}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="your_page_name 또는 전체 URL"
+                          placeholder={t('seller.facebookPlaceholder')}
                         />
                       </div>
                     </div>
                   </>
                 )}
 
-                {/* 버튼 */}
                 <div className="flex gap-4 pt-6">
                   <button
                     type="button"
                     onClick={goBack}
                     className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    취소
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -509,11 +504,11 @@ export default function SellerStreamNewPage() {
                         : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
                     }`}
                   >
-                    {loading 
-                      ? '생성 중...' 
+                    {loading
+                      ? t('seller.creatingStream')
                       : mode === 'youtube-auto'
-                        ? '🚀 YouTube Live 생성'
-                        : '📹 라이브 시작'}
+                        ? t('seller.createYoutubeLive')
+                        : t('seller.startLiveStream')}
                   </button>
                 </div>
               </form>
@@ -521,27 +516,27 @@ export default function SellerStreamNewPage() {
               {/* Info Box */}
               {mode === 'manual' && (
                 <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-semibold text-blue-900 mb-2">💡 지원되는 영상 형식</h4>
+                  <h4 className="font-semibold text-blue-900 mb-2">{t('seller.supportedVideoFormats')}</h4>
                   <div className="text-sm text-blue-700 space-y-3">
                     <div>
                       <p className="font-semibold mb-1">YouTube:</p>
                       <ul className="space-y-1 list-disc list-inside ml-2">
-                        <li>일반 영상: youtube.com/watch?v=VIDEO_ID</li>
-                        <li>라이브: youtube.com/live/VIDEO_ID</li>
-                        <li>쇼츠: youtube.com/shorts/VIDEO_ID</li>
-                        <li>단축 URL: youtu.be/VIDEO_ID</li>
+                        <li>youtube.com/watch?v=VIDEO_ID</li>
+                        <li>youtube.com/live/VIDEO_ID</li>
+                        <li>youtube.com/shorts/VIDEO_ID</li>
+                        <li>youtu.be/VIDEO_ID</li>
                       </ul>
                     </div>
                     <div>
                       <p className="font-semibold mb-1">TikTok:</p>
                       <ul className="space-y-1 list-disc list-inside ml-2">
-                        <li>일반 영상: tiktok.com/@username/video/12345</li>
-                        <li>라이브: tiktok.com/@username/live</li>
-                        <li>단축 URL: vm.tiktok.com/..., vt.tiktok.com/...</li>
+                        <li>tiktok.com/@username/video/12345</li>
+                        <li>tiktok.com/@username/live</li>
+                        <li>vm.tiktok.com/..., vt.tiktok.com/...</li>
                       </ul>
                     </div>
                     <p className="pt-2 border-t border-blue-200">
-                      URL을 복사하여 붙여넣기만 하면 자동으로 인식됩니다
+                      {t('seller.autoDetectHint')}
                     </p>
                   </div>
                 </div>
@@ -549,16 +544,16 @@ export default function SellerStreamNewPage() {
 
               {mode === 'youtube-auto' && (
                 <div className="mt-8 p-4 bg-red-50 rounded-lg">
-                  <h4 className="font-semibold text-red-900 mb-2">🚀 YouTube 자동 생성 안내</h4>
+                  <h4 className="font-semibold text-red-900 mb-2">{t('seller.youtubeAutoGuide')}</h4>
                   <div className="text-sm text-red-700 space-y-2">
                     <p>
-                      <strong>주의:</strong> YouTube 자동 생성 기능을 사용하려면 관리자가 YouTube API OAuth Token을 설정해야 합니다.
+                      {t('seller.youtubeAutoNote')}
                     </p>
                     <p>
-                      설정이 완료되면 자동으로 YouTube Live 방송이 생성되고, OBS 스트리밍에 필요한 스트림 키가 발급됩니다.
+                      {t('seller.youtubeAutoDesc')}
                     </p>
                     <p className="pt-2 border-t border-red-200">
-                      <strong>설정 방법:</strong> wrangler secret put YOUTUBE_ACCESS_TOKEN
+                      <strong>{t('seller.youtubeAutoSetup')}</strong>
                     </p>
                   </div>
                 </div>

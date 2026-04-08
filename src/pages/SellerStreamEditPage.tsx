@@ -40,7 +40,7 @@ export default function SellerStreamEditPage() {
       navigate('/seller/login')
       return
     }
-    
+
     loadStream()
   }, [id])
 
@@ -62,12 +62,12 @@ export default function SellerStreamEditPage() {
             status: foundStream.status || 'live'
           })
         } else {
-          setError('스트림을 찾을 수 없습니다')
+          setError(t('seller.streamNotFound'))
         }
       }
     } catch (error: any) {
       console.error('Failed to load stream:', error)
-      setError('스트림 로드 실패')
+      setError(t('seller.streamLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -90,21 +90,21 @@ export default function SellerStreamEditPage() {
       })
 
       if (response.data.success) {
-        toast.success('스트림이 수정되었습니다')
+        toast.success(t('seller.streamUpdated'))
         navigate('/seller')
       } else {
-        setError(response.data.error || '수정 실패')
+        setError(response.data.error || t('seller.updateFailed'))
       }
     } catch (error: any) {
       console.error('Failed to update stream:', error)
-      setError(error.response?.data?.error || '수정 실패')
+      setError(error.response?.data?.error || t('seller.updateFailed'))
     } finally {
       setLoading(false)
     }
   }
 
   async function handleDelete() {
-    if (!confirm('정말 이 스트림을 삭제하시겠습니까?')) {
+    if (!confirm(t('seller.confirmDeleteStream'))) {
       return
     }
 
@@ -116,14 +116,14 @@ export default function SellerStreamEditPage() {
       })
 
       if (response.data.success) {
-        toast.success('스트림이 삭제되었습니다')
+        toast.success(t('seller.streamDeleted'))
         navigate('/seller')
       } else {
-        setError(response.data.error || '삭제 실패')
+        setError(response.data.error || t('seller.streamDeleteFailed'))
       }
     } catch (error: any) {
       console.error('Failed to delete stream:', error)
-      setError(error.response?.data?.error || '삭제 실패')
+      setError(error.response?.data?.error || t('seller.streamDeleteFailed'))
     }
   }
 
@@ -136,7 +136,7 @@ export default function SellerStreamEditPage() {
 
   function getVideoUrl() {
     if (!stream) return ''
-    
+
     if (stream.platform === 'youtube') {
       return `https://www.youtube.com/watch?v=${stream.youtube_video_id}`
     } else if (stream.platform === 'tiktok') {
@@ -150,7 +150,7 @@ export default function SellerStreamEditPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">스트림 로딩 중...</p>
+          <p className="text-gray-600">{t('seller.streamLoading')}</p>
         </div>
       </div>
     )
@@ -160,12 +160,12 @@ export default function SellerStreamEditPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">스트림을 찾을 수 없습니다</p>
+          <p className="text-gray-600 mb-4">{t('seller.streamNotFound')}</p>
           <button
             onClick={() => navigate('/seller')}
             className="text-blue-600 hover:underline"
           >
-            대시보드로 돌아가기
+            {t('seller.backToDashboard')}
           </button>
         </div>
       </div>
@@ -182,7 +182,7 @@ export default function SellerStreamEditPage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>대시보드로 돌아가기</span>
+            <span>{t('seller.backToDashboard')}</span>
           </button>
         </div>
       </div>
@@ -194,35 +194,35 @@ export default function SellerStreamEditPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Play className="w-10 h-10 text-blue-600" />
-              <h1 className="text-3xl font-bold text-gray-900">스트림 관리</h1>
+              <h1 className="text-3xl font-bold text-gray-900">{t('seller.streamManagement')}</h1>
             </div>
             <button
               onClick={handleDelete}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
-              삭제
+              {t('common.delete')}
             </button>
           </div>
         </div>
 
         {/* Stream Info */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">스트림 정보</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('seller.streamInfo')}</h2>
           <div className="space-y-3 text-sm">
             <div className="flex">
-              <span className="w-32 text-gray-600">플랫폼:</span>
+              <span className="w-32 text-gray-600">{t('seller.platformLabel')}:</span>
               <span className="font-medium">{stream.platform === 'youtube' ? 'YouTube' : 'TikTok'}</span>
             </div>
             <div className="flex">
-              <span className="w-32 text-gray-600">영상 ID:</span>
+              <span className="w-32 text-gray-600">{t('seller.videoId')}:</span>
               <span className="font-mono text-gray-900">{stream.youtube_video_id}</span>
             </div>
             <div className="flex">
-              <span className="w-32 text-gray-600">영상 URL:</span>
-              <a 
-                href={getVideoUrl()} 
-                target="_blank" 
+              <span className="w-32 text-gray-600">{t('seller.videoUrl')}:</span>
+              <a
+                href={getVideoUrl()}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
               >
@@ -230,7 +230,7 @@ export default function SellerStreamEditPage() {
               </a>
             </div>
             <div className="flex">
-              <span className="w-32 text-gray-600">생성일:</span>
+              <span className="w-32 text-gray-600">{t('seller.createdDate')}:</span>
               <span className="text-gray-900">{formatKST(stream.created_at)}</span>
             </div>
           </div>
@@ -247,13 +247,13 @@ export default function SellerStreamEditPage() {
         <form onSubmit={handleUpdate} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Edit className="w-5 h-5" />
-            스트림 수정
+            {t('seller.editStream')}
           </h2>
 
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              스트림 제목 <span className="text-red-500">*</span>
+              {t('seller.streamTitleField')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -268,7 +268,7 @@ export default function SellerStreamEditPage() {
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              설명
+              {t('seller.streamDescription')}
             </label>
             <textarea
               name="description"
@@ -282,7 +282,7 @@ export default function SellerStreamEditPage() {
           {/* Status */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상태
+              {t('seller.statusField')}
             </label>
             <select
               name="status"
@@ -290,9 +290,9 @@ export default function SellerStreamEditPage() {
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="scheduled">예정</option>
-              <option value="live">라이브</option>
-              <option value="ended">종료</option>
+              <option value="scheduled">{t('seller.statusScheduled')}</option>
+              <option value="live">{t('seller.statusLive')}</option>
+              <option value="ended">{t('seller.statusEnded')}</option>
             </select>
           </div>
 
@@ -304,7 +304,7 @@ export default function SellerStreamEditPage() {
                 onClick={() => navigate('/seller')}
                 className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
               >
-                취소
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -314,10 +314,10 @@ export default function SellerStreamEditPage() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    수정 중...
+                    {t('seller.updatingStream')}
                   </span>
                 ) : (
-                  '수정 완료'
+                  t('seller.updateComplete')
                 )}
               </button>
             </div>

@@ -57,13 +57,13 @@ export default function SellerLivePage() {
   }, [token, navigate])
 
   const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
-    { key: 'start', label: '방송 시작', icon: <Play className="w-4 h-4" /> },
-    { key: 'control', label: '방송 컨트롤', icon: <Radio className="w-4 h-4" /> },
-    { key: 'history', label: '방송 기록', icon: <History className="w-4 h-4" /> },
+    { key: 'start', label: t('seller.startBroadcast'), icon: <Play className="w-4 h-4" /> },
+    { key: 'control', label: t('seller.broadcastControl'), icon: <Radio className="w-4 h-4" /> },
+    { key: 'history', label: t('seller.broadcastHistory'), icon: <History className="w-4 h-4" /> },
   ]
 
   return (
-    <SellerLayout title="라이브 방송">
+    <SellerLayout title={t('seller.liveManage')}>
       <div className="max-w-4xl mx-auto">
         {/* Tab Bar */}
         <div className="bg-white rounded-xl shadow-sm mb-5">
@@ -97,6 +97,7 @@ export default function SellerLivePage() {
 // ─── Tab 1: 방송 시작 ────────────────────────────────────────────
 
 function StartTab({ token }: { token: string | null }) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'instant' | 'scheduled'>('instant')
   const [formData, setFormData] = useState({
     title: '',
@@ -249,7 +250,7 @@ function StartTab({ token }: { token: string | null }) {
             )
           )
         }
-        toast.success(isScheduled ? '방송이 예약되었습니다!' : '라이브가 시작되었습니다!')
+        toast.success(isScheduled ? t('seller.broadcastScheduled') : t('seller.liveStarted'))
 
         // Show the broadcast ready section
         setCreatedStream({
@@ -263,10 +264,10 @@ function StartTab({ token }: { token: string | null }) {
         setFormData({ title: '', description: '', youtubeUrl: '', scheduledAt: '', sellerInstagram: '', sellerYoutube: '' })
         setSelectedProductIds([])
       } else {
-        setError(response.data.error || '생성 실패')
+        setError(response.data.error || t('seller.broadcastCreateFailed'))
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || '생성 실패')
+      setError(err.response?.data?.error || err.message || t('seller.broadcastCreateFailed'))
     } finally {
       setLoading(false)
     }
@@ -276,10 +277,10 @@ function StartTab({ token }: { token: string | null }) {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedField(field)
-      toast.success('복사되었습니다!')
+      toast.success(t('common.copySuccess'))
       setTimeout(() => setCopiedField(null), 2000)
     } catch {
-      toast.error('복사에 실패했습니다.')
+      toast.error(t('common.copyFailed'))
     }
   }
 
@@ -290,20 +291,20 @@ function StartTab({ token }: { token: string | null }) {
         {/* Success header */}
         <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
           <CheckCircle2 className="w-10 h-10 text-green-600 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-green-800 mb-1">방송 준비 완료!</h3>
-          <p className="text-sm text-green-700">&quot;{createdStream.title}&quot; 방송이 생성되었습니다.</p>
+          <h3 className="text-lg font-bold text-green-800 mb-1">{t('seller.broadcastReady')}</h3>
+          <p className="text-sm text-green-700">&quot;{createdStream.title}&quot; {t('seller.broadcastCreated')}</p>
         </div>
 
         {/* Stream Key & RTMP URL */}
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
           <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
             <Settings className="w-4 h-4 text-blue-600" />
-            스트림 정보
+            {t('seller.streamInfo')}
           </h4>
 
           {createdStream.streamKey && (
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">스트림 키</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('seller.streamKey')}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -321,9 +322,9 @@ function StartTab({ token }: { token: string | null }) {
                   }`}
                 >
                   {copiedField === 'streamKey' ? (
-                    <><CheckCircle2 className="w-4 h-4" /> 복사됨</>
+                    <><CheckCircle2 className="w-4 h-4" /> {t('common.copied')}</>
                   ) : (
-                    <><Copy className="w-4 h-4" /> 복사</>
+                    <><Copy className="w-4 h-4" /> {t('common.copy')}</>
                   )}
                 </button>
               </div>
@@ -349,9 +350,9 @@ function StartTab({ token }: { token: string | null }) {
                 }`}
               >
                 {copiedField === 'rtmpUrl' ? (
-                  <><CheckCircle2 className="w-4 h-4" /> 복사됨</>
+                  <><CheckCircle2 className="w-4 h-4" /> {t('common.copied')}</>
                 ) : (
-                  <><Copy className="w-4 h-4" /> 복사</>
+                  <><Copy className="w-4 h-4" /> {t('common.copy')}</>
                 )}
               </button>
             </div>
@@ -359,7 +360,7 @@ function StartTab({ token }: { token: string | null }) {
 
           {createdStream.youtubeVideoId && (
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">YouTube 영상 ID</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{t('seller.youtubeVideoId')}</label>
               <p className="px-4 py-3 border border-gray-200 rounded-lg text-sm font-mono bg-gray-50">{createdStream.youtubeVideoId}</p>
             </div>
           )}
@@ -367,41 +368,41 @@ function StartTab({ token }: { token: string | null }) {
 
         {/* Platform-specific next steps */}
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h4 className="text-sm font-semibold text-gray-800 mb-3">다음 단계</h4>
+          <h4 className="text-sm font-semibold text-gray-800 mb-3">{t('seller.nextSteps')}</h4>
           {broadcastPlatform === 'prism' && (
             <div className="p-4 bg-purple-50 rounded-lg">
-              <h5 className="text-sm font-semibold text-purple-900 mb-2">프리즘 라이브 스튜디오</h5>
+              <h5 className="text-sm font-semibold text-purple-900 mb-2">{t('seller.prismStudioGuide')}</h5>
               <ol className="text-xs text-purple-800 space-y-1.5 list-decimal list-inside">
-                <li>프리즘 라이브 앱을 실행하세요</li>
-                <li>{'외부 플랫폼 연동 > YouTube를 선택하세요'}</li>
-                <li>위의 <strong>스트림 키</strong>를 복사하여 붙여넣으세요</li>
-                <li>필요시 TikTok, Facebook 등 동시 송출을 추가하세요</li>
-                <li>&quot;방송 시작&quot; 버튼을 클릭하세요</li>
+                <li>{t('seller.prismStudioGuide')}</li>
+                <li>{'YouTube'}</li>
+                <li>{t('seller.streamKey')}</li>
+                <li>TikTok, Facebook</li>
+                <li>{t('seller.startBroadcast')}</li>
               </ol>
             </div>
           )}
           {broadcastPlatform === 'obs' && (
             <div className="p-4 bg-blue-50 rounded-lg">
-              <h5 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio</h5>
+              <h5 className="text-sm font-semibold text-blue-900 mb-2">{t('seller.obsStudioGuide')}</h5>
               <ol className="text-xs text-blue-800 space-y-1.5 list-decimal list-inside">
-                <li>OBS Studio를 실행하세요</li>
-                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS를 선택하세요'}</li>
-                <li>위의 <strong>RTMP URL</strong>과 <strong>스트림 키</strong>를 입력하세요</li>
-                <li>&quot;방송 시작&quot; 버튼을 클릭하세요</li>
+                <li>OBS Studio</li>
+                <li>{'Settings > Stream > YouTube - RTMPS'}</li>
+                <li>RTMP URL + {t('seller.streamKey')}</li>
+                <li>{t('seller.startBroadcast')}</li>
               </ol>
             </div>
           )}
           {broadcastPlatform === 'youtube' && (
             <div className="p-4 bg-red-50 rounded-lg">
-              <h5 className="text-sm font-semibold text-red-900 mb-2">YouTube 스튜디오</h5>
+              <h5 className="text-sm font-semibold text-red-900 mb-2">{t('seller.youtubeStudioGuide')}</h5>
               <ol className="text-xs text-red-800 space-y-1.5 list-decimal list-inside">
                 <li>
                   <a href="https://studio.youtube.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">
-                    YouTube 스튜디오
-                  </a>에 접속하세요
+                    YouTube Studio
+                  </a>
                 </li>
-                <li>상단 &quot;만들기&quot; 버튼 &gt; &quot;실시간 스트리밍&quot;을 선택하세요</li>
-                <li>방송 제목과 설명을 입력하고 시작하세요</li>
+                <li>YouTube Studio</li>
+                <li>{t('seller.startBroadcast')}</li>
               </ol>
             </div>
           )}
@@ -416,7 +417,7 @@ function StartTab({ token }: { token: string | null }) {
             className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             <ExternalLink className="w-4 h-4" />
-            라이브 보기
+            {t('seller.liveView')}
           </a>
           <button
             type="button"
@@ -424,7 +425,7 @@ function StartTab({ token }: { token: string | null }) {
             className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            새 방송 만들기
+            {t('seller.newBroadcastCreate')}
           </button>
         </div>
       </div>
@@ -441,11 +442,11 @@ function StartTab({ token }: { token: string | null }) {
 
       {/* 즉시/예약 Toggle */}
       <div className="bg-white rounded-xl shadow-sm p-5">
-        <label className="block text-sm font-semibold text-gray-800 mb-3">방송 유형</label>
+        <label className="block text-sm font-semibold text-gray-800 mb-3">{t('seller.broadcastType')}</label>
         <div className="flex gap-3">
           {[
-            { key: 'instant' as const, label: '즉시 시작', icon: <Zap className="w-4 h-4" /> },
-            { key: 'scheduled' as const, label: '예약', icon: <CalendarClock className="w-4 h-4" /> },
+            { key: 'instant' as const, label: t('seller.instantStart'), icon: <Zap className="w-4 h-4" /> },
+            { key: 'scheduled' as const, label: t('seller.scheduled'), icon: <CalendarClock className="w-4 h-4" /> },
           ].map(opt => (
             <button
               key={opt.key}
@@ -465,7 +466,7 @@ function StartTab({ token }: { token: string | null }) {
 
         {mode === 'scheduled' && (
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">예약 시간</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.scheduledTime')}</label>
             <input
               type="datetime-local"
               name="scheduledAt"
@@ -480,25 +481,25 @@ function StartTab({ token }: { token: string | null }) {
 
       {/* YouTube 연동 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
-        <label className="block text-sm font-semibold text-gray-800 mb-3">YouTube 연동 설정</label>
+        <label className="block text-sm font-semibold text-gray-800 mb-3">{t('seller.liveBroadcast')}</label>
         {youtubeConnected ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between bg-green-50 px-3 py-2 rounded-lg">
               <div className="flex items-center gap-2 text-sm text-green-700">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>YouTube 연동됨{youtubeChannelName ? `: @${youtubeChannelName}` : ''}</span>
+                <span>{t('seller.youtubeLinked')}{youtubeChannelName ? `: @${youtubeChannelName}` : ''}</span>
               </div>
               <button
                 type="button"
                 onClick={() => navigate('/seller/live-broadcast')}
                 className="text-xs text-green-600 hover:text-green-800 font-medium"
               >
-                변경
+                {t('common.change')}
               </button>
             </div>
             {streamKey && (
               <div>
-                <label className="block text-xs text-gray-500 mb-1">스트림 키</label>
+                <label className="block text-xs text-gray-500 mb-1">{t('seller.streamKey')}</label>
                 <div className="flex gap-2">
                   <input
                     type="password"
@@ -510,7 +511,7 @@ function StartTab({ token }: { token: string | null }) {
                     type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(streamKey)
-                      toast.success('스트림 키가 복사되었습니다!')
+                      toast.success(t('seller.streamKeyCopied'))
                     }}
                     className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors"
                   >
@@ -524,7 +525,7 @@ function StartTab({ token }: { token: string | null }) {
           <div>
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
               <Youtube className="w-4 h-4 text-red-500" />
-              YouTube 계정을 연동해주세요
+              {t('seller.connectYouTubeAccount')}
             </div>
             <button
               type="button"
@@ -534,27 +535,27 @@ function StartTab({ token }: { token: string | null }) {
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors mb-3"
             >
               <Youtube className="w-4 h-4" />
-              YouTube 계정 연동하기
+              {t('seller.connectYouTube')}
             </button>
-            <p className="text-xs text-gray-400 mb-2">또는 수동으로 URL을 입력하세요</p>
+            <p className="text-xs text-gray-400 mb-2">{t('seller.orManualUrl')}</p>
             <input
               type="url"
               name="youtubeUrl"
               value={formData.youtubeUrl}
               onChange={handleChange}
-              placeholder="https://www.youtube.com/watch?v=... 또는 라이브 URL"
+              placeholder={t("seller.youtubeUrlPlaceholder")}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         )}
       </div>
 
-      {/* 판매 상품 선택 */}
+      {/* {t('seller.selectSaleProducts')} */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <label className="block text-sm font-semibold text-gray-800 mb-3">
-          판매 상품 선택
+          {t('seller.selectSaleProducts')}
           {selectedProductIds.length > 0 && (
-            <span className="ml-2 text-blue-600 font-normal">{selectedProductIds.length}개 선택됨</span>
+            <span className="ml-2 text-blue-600 font-normal">{t('seller.selectedCount', { count: selectedProductIds.length })}</span>
           )}
         </label>
 
@@ -569,7 +570,7 @@ function StartTab({ token }: { token: string | null }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            내 상품
+            {t('seller.myProducts')}
           </button>
           <button
             type="button"
@@ -580,7 +581,7 @@ function StartTab({ token }: { token: string | null }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            공급 상품
+            {t('seller.supplyProducts')}
           </button>
           <button
             type="button"
@@ -588,18 +589,18 @@ function StartTab({ token }: { token: string | null }) {
             className="ml-auto flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            새 상품 등록
+            {t('seller.newProduct')}
           </button>
         </div>
 
         {productsLoading ? (
           <div className="flex items-center justify-center py-6 text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            <span className="text-sm">상품 불러오는 중...</span>
+            <span className="text-sm">{t('seller.loadingProducts')}</span>
           </div>
         ) : (productTab === 'my' ? products : supplyProducts).length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">
-            {productTab === 'my' ? '등록된 상품이 없습니다' : '승인된 공급 상품이 없습니다'}
+            {productTab === 'my' ? t('seller.noMyProducts') : t('seller.noSupplyProducts')}
           </p>
         ) : (
           <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -627,7 +628,7 @@ function StartTab({ token }: { token: string | null }) {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                  <p className="text-xs text-gray-400">{p.price.toLocaleString()}원</p>
+                  <p className="text-xs text-gray-400">{p.price.toLocaleString()}{t('common.won')}</p>
                 </div>
                 {selectedProductIds.includes(p.id) && (
                   <div className="flex flex-col gap-0.5">
@@ -636,7 +637,7 @@ function StartTab({ token }: { token: string | null }) {
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveProduct(p.id, 'up'); }}
                       disabled={selectedProductIds.indexOf(p.id) === 0}
                       className="p-0.5 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="위로 이동"
+                      title="Up"
                     >
                       <ChevronUp className="w-4 h-4 text-blue-600" />
                     </button>
@@ -645,7 +646,7 @@ function StartTab({ token }: { token: string | null }) {
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveProduct(p.id, 'down'); }}
                       disabled={selectedProductIds.indexOf(p.id) === selectedProductIds.length - 1}
                       className="p-0.5 rounded hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="아래로 이동"
+                      title="Down"
                     >
                       <ChevronDown className="w-4 h-4 text-blue-600" />
                     </button>
@@ -659,27 +660,27 @@ function StartTab({ token }: { token: string | null }) {
 
       {/* 방송 정보 */}
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-        <label className="block text-sm font-semibold text-gray-800">방송 정보</label>
+        <label className="block text-sm font-semibold text-gray-800">{t('seller.broadcastInfo')}</label>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">방송 제목 *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.broadcastTitleLabel')}</label>
           <input
             type="text"
             name="title"
             value={formData.title}
             onChange={handleChange}
             required
-            placeholder="라이브 방송 제목을 입력하세요"
+            placeholder={t("seller.broadcastTitlePlaceholder")}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.broadcastDescLabel')}</label>
           <textarea
             name="description"
             value={formData.description}
             onChange={handleChange}
             rows={3}
-            placeholder="방송에 대한 설명을 입력하세요"
+            placeholder={t("seller.broadcastDescPlaceholder")}
             className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
         </div>
@@ -687,7 +688,7 @@ function StartTab({ token }: { token: string | null }) {
 
       {/* SNS 링크 */}
       <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-        <label className="block text-sm font-semibold text-gray-800">SNS 링크 (선택)</label>
+        <label className="block text-sm font-semibold text-gray-800">{t('seller.snsLinks')}</label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1">
@@ -699,7 +700,7 @@ function StartTab({ token }: { token: string | null }) {
               name="sellerInstagram"
               value={formData.sellerInstagram}
               onChange={handleChange}
-              placeholder="@username 또는 URL"
+              placeholder="@username"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -713,7 +714,7 @@ function StartTab({ token }: { token: string | null }) {
               name="sellerYoutube"
               value={formData.sellerYoutube}
               onChange={handleChange}
-              placeholder="@channel 또는 URL"
+              placeholder="@channel"
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -722,12 +723,12 @@ function StartTab({ token }: { token: string | null }) {
 
       {/* 송출 플랫폼 선택 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
-        <label className="block text-sm font-semibold text-gray-800 mb-3">어떤 방식으로 방송하시나요?</label>
+        <label className="block text-sm font-semibold text-gray-800 mb-3">{t('seller.broadcastPlatformLabel')}</label>
         <div className="space-y-2">
           {([
-            { key: 'prism' as const, label: '프리즘 라이브', desc: '추천 - 무료, 동시송출', color: 'text-purple-600' },
-            { key: 'obs' as const, label: 'OBS Studio', desc: '고급 설정 가능', color: 'text-blue-600' },
-            { key: 'youtube' as const, label: 'YouTube 스튜디오에서 직접', desc: '별도 소프트웨어 불필요', color: 'text-red-600' },
+            { key: 'prism' as const, label: t('seller.prismLiveStudio'), desc: t('seller.prismRecommended'), color: 'text-purple-600' },
+            { key: 'obs' as const, label: 'OBS Studio', desc: t('seller.obsAdvanced'), color: 'text-blue-600' },
+            { key: 'youtube' as const, label: t('seller.youtubeStudioDirect'), desc: t('seller.youtubeStudioNoSoftware'), color: 'text-red-600' },
           ]).map(opt => (
             <label
               key={opt.key}
@@ -757,40 +758,40 @@ function StartTab({ token }: { token: string | null }) {
         <div className="mt-4">
           {broadcastPlatform === 'prism' && (
             <div className="p-4 bg-purple-50 rounded-lg">
-              <h4 className="text-sm font-semibold text-purple-900 mb-2">프리즘 라이브 스튜디오 (추천)</h4>
+              <h4 className="text-sm font-semibold text-purple-900 mb-2">{t('seller.prismLiveStudioFull')}</h4>
               <ol className="text-xs text-purple-800 space-y-1 list-decimal list-inside">
-                <li>프리즘 라이브 앱 설치 (PC/iOS/Android)</li>
-                <li>{'외부 플랫폼 연동 > YouTube 선택'}</li>
-                <li>스트림 키 입력</li>
-                <li>동시 송출: TikTok, Facebook 등 추가 가능</li>
-                <li>&quot;방송 시작&quot; 클릭</li>
+                <li>Prism Live (PC/iOS/Android)</li>
+                <li>{'YouTube'}</li>
+                <li>{t('seller.streamKey')}</li>
+                <li>TikTok, Facebook</li>
+                <li>{t('seller.startBroadcast')}</li>
               </ol>
               <p className="mt-2 text-xs text-purple-700">
-                <strong>장점:</strong> 스마트폰으로도 가능, 동시 송출, 화면 꾸미기/자막 내장, 완전 무료
+                <strong>{t('seller.prismAdvantage')}</strong>
               </p>
             </div>
           )}
           {broadcastPlatform === 'obs' && (
             <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">OBS Studio 설정</h4>
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">{t('seller.obsStudioSetup')}</h4>
               <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                <li>OBS Studio 실행</li>
-                <li>{'설정 > 방송 > 서비스: YouTube - RTMPS'}</li>
-                <li>스트림 키 입력</li>
-                <li>&quot;방송 시작&quot; 클릭</li>
+                <li>OBS Studio</li>
+                <li>{'Settings > Stream > YouTube - RTMPS'}</li>
+                <li>{t('seller.streamKey')}</li>
+                <li>{t('seller.startBroadcast')}</li>
               </ol>
             </div>
           )}
           {broadcastPlatform === 'youtube' && (
             <div className="p-4 bg-red-50 rounded-lg">
-              <h4 className="text-sm font-semibold text-red-900 mb-2">YouTube 스튜디오</h4>
+              <h4 className="text-sm font-semibold text-red-900 mb-2">{t('seller.youtubeStudioLabel')}</h4>
               <ol className="text-xs text-red-800 space-y-1 list-decimal list-inside">
-                <li>YouTube 스튜디오 접속</li>
-                <li>상단 &quot;만들기&quot; 버튼 클릭 &gt; &quot;실시간 스트리밍&quot; 선택</li>
-                <li>방송 제목/설명 입력 후 바로 시작</li>
+                <li>YouTube Studio</li>
+                <li>YouTube Studio</li>
+                <li>{t('seller.startBroadcast')}</li>
               </ol>
               <p className="mt-2 text-xs text-red-700">
-                <strong>참고:</strong> 별도 소프트웨어 설치 없이 웹캠만으로 방송 가능
+                {t('seller.youtubeStudioNoSoftwareNote')}
               </p>
             </div>
           )}
@@ -806,17 +807,17 @@ function StartTab({ token }: { token: string | null }) {
         {loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            처리 중...
+            {t('common.processing')}
           </>
         ) : mode === 'scheduled' ? (
           <>
             <CalendarClock className="w-4 h-4" />
-            예약하기
+            {t('seller.scheduleAction')}
           </>
         ) : (
           <>
             <Play className="w-4 h-4" />
-            방송 시작
+            {t('seller.startBroadcast')}
           </>
         )}
       </button>
@@ -827,6 +828,7 @@ function StartTab({ token }: { token: string | null }) {
 // ─── Tab 2: 방송 컨트롤 ──────────────────────────────────────────
 
 function ControlTab({ token }: { token: string | null }) {
+  const { t } = useTranslation()
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [selectedStream, setSelectedStream] = useState<LiveStream | null>(null)
@@ -912,9 +914,9 @@ function ControlTab({ token }: { token: string | null }) {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       setSelectedStream(prev => prev ? { ...prev, current_product_id: productId } : null)
-      toast.success('상품이 변경되었습니다!')
+      toast.success(t('common.productChanged'))
     } catch (err: any) {
-      toast.error(`상품 변경 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`${t('common.productChangeFailed')}: ${err.response?.data?.error || err.message}`)
     } finally {
       setChangingProduct(false)
     }
@@ -922,7 +924,7 @@ function ControlTab({ token }: { token: string | null }) {
 
   async function endStream() {
     if (!selectedStream) return
-    if (!confirm('방송을 종료하시겠습니까?')) return
+    if (!confirm(t('seller.endBroadcastConfirm'))) return
     setEndingStream(true)
     try {
       await api.patch(
@@ -930,13 +932,13 @@ function ControlTab({ token }: { token: string | null }) {
         { status: 'ended' },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      toast.success('방송이 종료되었습니다.')
+      toast.success(t('seller.broadcastEnded'))
       localStorage.removeItem(`viewer_boost_${selectedStream.id}`)
       setSelectedStream(null)
       setLoading(true)
       await loadData()
     } catch (err: any) {
-      toast.error(`방송 종료 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`${t('seller.broadcastEndFailed')}: ${err.response?.data?.error || err.message}`)
     } finally {
       setEndingStream(false)
     }
@@ -946,18 +948,18 @@ function ControlTab({ token }: { token: string | null }) {
     if (!selectedStream) return
     const val = parseInt(boostValue)
     if (isNaN(val) || val < 0) {
-      toast.error('0 이상의 숫자를 입력하세요')
+      toast.error(t('seller.enterAboveZero'))
       return
     }
     localStorage.setItem(`viewer_boost_${selectedStream.id}`, String(val))
-    toast.success(`시청자 수 부스트가 ${val}명으로 설정되었습니다`)
+    toast.success(t('seller.boostSet', { count: val }))
   }
 
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-12 text-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">로딩 중...</p>
+        <p className="text-sm text-gray-500">{t('common.loading')}</p>
       </div>
     )
   }
@@ -966,8 +968,8 @@ function ControlTab({ token }: { token: string | null }) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-12 text-center">
         <Radio className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-gray-700 mb-1">현재 진행 중인 방송이 없습니다</p>
-        <p className="text-xs text-gray-400">&quot;방송 시작&quot; 탭에서 새 라이브를 시작하세요</p>
+        <p className="text-sm font-medium text-gray-700 mb-1">{t('seller.noCurrentBroadcast')}</p>
+        <p className="text-xs text-gray-400">{t('seller.startFromTab')}</p>
       </div>
     )
   }
@@ -1018,12 +1020,12 @@ function ControlTab({ token }: { token: string | null }) {
             <div className="flex items-center gap-4 text-sm text-gray-600">
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4" />
-                {displayViewerCount}명 시청
+                {displayViewerCount}{t('common.person')} {t('common.watching')}
               </span>
               {selectedStream.started_at && (
                 <span className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  {formatKSTTime(selectedStream.started_at)} 시작
+                  {formatKSTTime(selectedStream.started_at)} {t('seller.startedAt')}
                 </span>
               )}
             </div>
@@ -1031,19 +1033,19 @@ function ControlTab({ token }: { token: string | null }) {
 
           {/* Current product */}
           <div className="bg-white rounded-xl shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">현재 노출 상품</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">{t('seller.currentDisplayedProduct')}</h3>
             {currentProduct ? (
               <div className="border-2 border-blue-500 rounded-lg p-3">
                 <p className="text-sm font-bold text-gray-900">{currentProduct.name}</p>
-                <p className="text-sm font-semibold text-blue-600 mt-1">{currentProduct.price.toLocaleString()}원</p>
+                <p className="text-sm font-semibold text-blue-600 mt-1">{currentProduct.price.toLocaleString()}{t('common.won')}</p>
               </div>
             ) : (
-              <p className="text-sm text-gray-400 text-center py-4">노출 중인 상품이 없습니다</p>
+              <p className="text-sm text-gray-400 text-center py-4">{t('seller.noCurrentProduct')}</p>
             )}
 
             {/* Product selector */}
             <div className="mt-4">
-              <label className="block text-xs text-gray-500 mb-2">상품 변경</label>
+              <label className="block text-xs text-gray-500 mb-2">{t('seller.changeProduct')}</label>
               <div className="space-y-1.5 max-h-48 overflow-y-auto">
                 {products.map(p => (
                   <button
@@ -1057,7 +1059,7 @@ function ControlTab({ token }: { token: string | null }) {
                     } ${changingProduct ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <span className="truncate block">{p.name}</span>
-                    <span className="text-xs text-gray-400">{p.price.toLocaleString()}원</span>
+                    <span className="text-xs text-gray-400">{p.price.toLocaleString()}{t('common.won')}</span>
                   </button>
                 ))}
               </div>
@@ -1068,13 +1070,13 @@ function ControlTab({ token }: { token: string | null }) {
           <div className="bg-white rounded-xl shadow-sm p-5">
             <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-600" />
-              시청자 수 부스트
+              {t('seller.viewerBoost')}
             </h3>
             <p className="text-xs text-gray-500 mb-3">
-              현재 실제 시청자: {viewerCounts[selectedStream.id] || 0}명
+              {t('seller.currentRealViewers')}: {viewerCounts[selectedStream.id] || 0}{t('common.person')}
               {localStorage.getItem(`viewer_boost_${selectedStream.id}`) && (
                 <span className="ml-1 text-blue-600">
-                  (+ {localStorage.getItem(`viewer_boost_${selectedStream.id}`)} 부스트)
+                  (+ {localStorage.getItem(`viewer_boost_${selectedStream.id}`)} {t('seller.boost')})
                 </span>
               )}
             </p>
@@ -1084,14 +1086,14 @@ function ControlTab({ token }: { token: string | null }) {
                 min="0"
                 value={boostValue}
                 onChange={e => setBoostValue(e.target.value)}
-                placeholder="부스트 수"
+                placeholder={t("seller.boostCount")}
                 className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
                 onClick={applyBoost}
                 className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                적용
+                {t('common.apply')}
               </button>
             </div>
           </div>
@@ -1105,12 +1107,12 @@ function ControlTab({ token }: { token: string | null }) {
             {endingStream ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                종료 중...
+                {t('common.ending')}
               </>
             ) : (
               <>
                 <Square className="w-4 h-4" />
-                방송 종료
+                {t('seller.endBroadcast')}
               </>
             )}
           </button>
@@ -1123,6 +1125,7 @@ function ControlTab({ token }: { token: string | null }) {
 // ─── Tab 3: 방송 기록 ────────────────────────────────────────────
 
 function HistoryTab({ token }: { token: string | null }) {
+  const { t } = useTranslation()
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedStream, setSelectedStream] = useState<LiveStream | null>(null)
@@ -1148,9 +1151,9 @@ function HistoryTab({ token }: { token: string | null }) {
       case 'live':
         return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />LIVE</span>
       case 'scheduled':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3" />예약됨</span>
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3" />{t('common.scheduled')}</span>
       case 'ended':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">종료</span>
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{t('common.ended')}</span>
       default:
         return <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">{status}</span>
     }
@@ -1163,17 +1166,17 @@ function HistoryTab({ token }: { token: string | null }) {
     const s = new Date(start).getTime()
     const e = end ? new Date(end).getTime() : Date.now()
     const diffMin = Math.round((e - s) / 60000)
-    if (diffMin < 60) return `${diffMin}분`
+    if (diffMin < 60) return `${diffMin}${t('common.minutes')}`
     const hours = Math.floor(diffMin / 60)
     const mins = diffMin % 60
-    return `${hours}시간 ${mins}분`
+    return `${hours}h ${mins}m`
   }
 
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-12 text-center">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">로딩 중...</p>
+        <p className="text-sm text-gray-500">{t('common.loading')}</p>
       </div>
     )
   }
@@ -1182,8 +1185,8 @@ function HistoryTab({ token }: { token: string | null }) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-12 text-center">
         <History className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <p className="text-sm font-medium text-gray-700 mb-1">방송 기록이 없습니다</p>
-        <p className="text-xs text-gray-400">첫 라이브를 시작해보세요</p>
+        <p className="text-sm font-medium text-gray-700 mb-1">{t('seller.noBroadcastHistory')}</p>
+        <p className="text-xs text-gray-400">{t('seller.startFirstLive')}</p>
       </div>
     )
   }
@@ -1196,7 +1199,7 @@ function HistoryTab({ token }: { token: string | null }) {
           onClick={() => setSelectedStream(null)}
           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
         >
-          &larr; 목록으로
+          &larr; {t('seller.backToListShort')}
         </button>
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -1208,20 +1211,20 @@ function HistoryTab({ token }: { token: string | null }) {
           )}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">날짜</p>
+              <p className="text-xs text-gray-500 mb-1">{t('common.date')}</p>
               <p className="font-medium text-gray-800">{formatKSTDate(selectedStream.created_at || null)}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">시간</p>
+              <p className="text-xs text-gray-500 mb-1">{t('common.time')}</p>
               <p className="font-medium text-gray-800">{formatKSTTime(selectedStream.started_at || selectedStream.created_at || null)}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">방송 시간</p>
+              <p className="text-xs text-gray-500 mb-1">{t('seller.broadcastDuration')}</p>
               <p className="font-medium text-gray-800">{getDuration(selectedStream)}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">시청자</p>
-              <p className="font-medium text-gray-800">{selectedStream.viewer_count ?? '-'}명</p>
+              <p className="text-xs text-gray-500 mb-1">{t('common.viewers')}</p>
+              <p className="font-medium text-gray-800">{selectedStream.viewer_count ?? '-'}{t('common.person')}</p>
             </div>
           </div>
           {selectedStream.youtube_url && (
@@ -1232,7 +1235,7 @@ function HistoryTab({ token }: { token: string | null }) {
               className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700"
             >
               <Youtube className="w-4 h-4" />
-              YouTube에서 보기
+              {t('common.viewOnYouTube')}
             </a>
           )}
         </div>

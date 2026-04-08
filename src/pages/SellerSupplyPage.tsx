@@ -96,7 +96,7 @@ export default function SellerSupplyPage() {
       })
       if (res.data.success) setProducts(res.data.data?.items ?? [])
     } catch {
-      toast.error('공급 상품 목록을 불러올 수 없습니다.')
+      toast.error(t('seller.loadSupplyProductsFailed'))
     } finally { setCatalogLoading(false) }
   }
 
@@ -108,7 +108,7 @@ export default function SellerSupplyPage() {
       })
       if (res.data.success) setRequests(res.data.data ?? [])
     } catch {
-      toast.error('샘플 신청 목록을 불러올 수 없습니다.')
+      toast.error(t('seller.loadSampleRequestsFailed'))
     } finally { setReqLoading(false) }
   }
 
@@ -120,36 +120,36 @@ export default function SellerSupplyPage() {
         product_id: requestModal.id,
         seller_memo: sellerMemo || undefined,
       }, { headers: { Authorization: `Bearer ${token()}` } })
-      toast.success('샘플 신청이 완료되었습니다. 관리자 승인 후 상품을 등록할 수 있습니다.')
+      toast.success(t('seller.sampleRequestSuccess'))
       setRequestModal(null); setSellerMemo('')
       loadCatalog()
     } catch (err: any) {
-      toast.error(err.response?.data?.error || '샘플 신청에 실패했습니다.')
+      toast.error(err.response?.data?.error || t('seller.sampleRequestFailed'))
     } finally { setSubmitting(false) }
   }
 
   async function handleRegister() {
     if (!registerModal || !sellerPrice) return
     const price = Number(sellerPrice)
-    if (price <= 0) { toast.error('판매가를 입력해주세요.'); return }
+    if (price <= 0) { toast.error(t('seller.enterSellerPriceError')); return }
     setRegistering(true)
     try {
       await api.post('/api/supply/register', {
         product_id: registerModal.product_id,
         seller_price: price,
       }, { headers: { Authorization: `Bearer ${token()}` } })
-      toast.success('상품이 등록되었습니다! 라이브에서 판매를 시작하세요.')
+      toast.success(t('seller.productRegisteredSuccess'))
       setRegisterModal(null); setSellerPrice('')
       loadMyRequests()
     } catch (err: any) {
-      toast.error(err.response?.data?.error || '상품 등록에 실패했습니다.')
+      toast.error(err.response?.data?.error || t('seller.productRegisterFailedMsg'))
     } finally { setRegistering(false) }
   }
 
   const approvedCount = requests.filter(r => r.status === 'APPROVED').length
 
   return (
-    <SellerLayout title="공급 상품">
+    <SellerLayout title={t('seller.supplyProducts')}>
       <div className="max-w-3xl mx-auto">
         {/* Tabs */}
         <div className="flex gap-1 mb-5 border-b border-gray-200">
@@ -157,14 +157,14 @@ export default function SellerSupplyPage() {
             onClick={() => setActiveTab('catalog')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'catalog' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
-            <span className="flex items-center gap-1.5"><ShoppingBag className="w-4 h-4" /> 공급 상품 목록</span>
+            <span className="flex items-center gap-1.5"><ShoppingBag className="w-4 h-4" /> {t('seller.supplyProductList')}</span>
           </button>
           <button
             onClick={() => setActiveTab('my-requests')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'my-requests' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <span className="flex items-center gap-1.5">
-              <Package className="w-4 h-4" /> 내 신청 목록
+              <Package className="w-4 h-4" /> {t('seller.myRequestList')}
               {approvedCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 bg-green-500 text-white text-xs rounded-full">{approvedCount}</span>
               )}
@@ -184,7 +184,7 @@ export default function SellerSupplyPage() {
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') setSearch(searchInput) }}
-                  placeholder="상품명 검색"
+                  placeholder={t('seller.searchProductName')}
                   className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
                 />
               </div>
@@ -192,7 +192,7 @@ export default function SellerSupplyPage() {
                 onClick={() => setSearch(searchInput)}
                 className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
               >
-                검색
+                {t('common.search')}
               </button>
             </div>
 
@@ -201,7 +201,7 @@ export default function SellerSupplyPage() {
             ) : products.length === 0 ? (
               <div className="py-20 text-center">
                 <Truck className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">공급 상품이 없습니다.</p>
+                <p className="text-sm text-gray-400">{t('seller.noSupplyProductsEmpty')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -223,13 +223,13 @@ export default function SellerSupplyPage() {
                       )}
                       <div className="flex items-center gap-3 mt-2">
                         <span className="flex items-center gap-1 text-xs text-gray-600">
-                          <Tag className="w-3 h-3" /> 판매가 <strong>{product.retail_price.toLocaleString()}원</strong>
+                          <Tag className="w-3 h-3" /> {t('seller.retailPrice')} <strong>{product.retail_price.toLocaleString()}{t('common.won')}</strong>
                         </span>
                         <span className="flex items-center gap-1 text-xs text-purple-600 font-medium">
-                          공급가 <strong>{product.supply_price.toLocaleString()}원</strong>
+                          {t('seller.supplyPrice')} <strong>{product.supply_price.toLocaleString()}{t('common.won')}</strong>
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">재고 {product.stock}개</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t('seller.stockCount', { count: product.stock })}</p>
                     </div>
 
                     {/* CTA */}
@@ -239,22 +239,22 @@ export default function SellerSupplyPage() {
                           onClick={() => { setRequestModal(product); setSellerMemo('') }}
                           className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700"
                         >
-                          <Plus className="w-3.5 h-3.5" /> 샘플 신청
+                          <Plus className="w-3.5 h-3.5" /> {t('seller.sampleRequest')}
                         </button>
                       )}
                       {product.request_status === 'PENDING' && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200">
-                          <Clock className="w-3 h-3" /> 검토중
+                          <Clock className="w-3 h-3" /> {t('seller.reviewing')}
                         </span>
                       )}
                       {product.request_status === 'APPROVED' && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 border border-green-200">
-                          <CheckCircle className="w-3 h-3" /> 승인됨
+                          <CheckCircle className="w-3 h-3" /> {t('seller.approved')}
                         </span>
                       )}
                       {product.request_status === 'REJECTED' && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-600 border border-red-200">
-                          <XCircle className="w-3 h-3" /> 거부됨
+                          <XCircle className="w-3 h-3" /> {t('seller.rejected')}
                         </span>
                       )}
                     </div>
@@ -273,12 +273,12 @@ export default function SellerSupplyPage() {
             ) : requests.length === 0 ? (
               <div className="py-20 text-center">
                 <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400 mb-4">아직 샘플 신청 내역이 없습니다.</p>
+                <p className="text-sm text-gray-400 mb-4">{t('seller.noSampleRequests')}</p>
                 <button
                   onClick={() => setActiveTab('catalog')}
                   className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 mx-auto"
                 >
-                  <Truck className="w-4 h-4" /> 공급 상품 둘러보기
+                  <Truck className="w-4 h-4" /> {t('seller.browseSupplyProducts')}
                 </button>
               </div>
             ) : (
@@ -296,21 +296,21 @@ export default function SellerSupplyPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> 검토중</span>}
-                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> 승인됨</span>}
-                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> 거부됨</span>}
+                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> {t('seller.reviewing')}</span>}
+                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> {t('seller.approved')}</span>}
+                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> {t('seller.rejected')}</span>}
                         <span className="text-xs text-gray-400">{formatKSTDate(req.created_at)}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-gray-500">판매가 {req.retail_price?.toLocaleString()}원</span>
-                        <span className="text-xs text-purple-600 font-medium">공급가 {req.supply_price?.toLocaleString()}원</span>
+                        <span className="text-xs text-gray-500">{t('seller.retailPrice')} {req.retail_price?.toLocaleString()}{t('common.won')}</span>
+                        <span className="text-xs text-purple-600 font-medium">{t('seller.supplyPrice')} {req.supply_price?.toLocaleString()}{t('common.won')}</span>
                       </div>
                       {req.seller_memo && (
-                        <p className="mt-1 text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">신청 메모: {req.seller_memo}</p>
+                        <p className="mt-1 text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">{t('seller.requestMemo')}: {req.seller_memo}</p>
                       )}
                       {req.admin_memo && (
-                        <p className="mt-1 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">관리자 메모: {req.admin_memo}</p>
+                        <p className="mt-1 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">{t('seller.adminMemo')}: {req.admin_memo}</p>
                       )}
                     </div>
 
@@ -321,7 +321,7 @@ export default function SellerSupplyPage() {
                           onClick={() => { setRegisterModal(req); setSellerPrice(req.retail_price?.toString() || '') }}
                           className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700"
                         >
-                          <Plus className="w-3.5 h-3.5" /> 스토어 등록
+                          <Plus className="w-3.5 h-3.5" /> {t('seller.storeRegister')}
                         </button>
                       </div>
                     )}
@@ -338,27 +338,27 @@ export default function SellerSupplyPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setRequestModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">샘플 신청</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.sampleRequestTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{requestModal.name}</p>
 
             <div className="bg-purple-50 rounded-lg p-3 mb-4 space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">판매가 (Ur 특가)</span>
-                <span className="font-medium">{requestModal.retail_price.toLocaleString()}원</span>
+                <span className="text-gray-500">{t('seller.retailPriceLabel')}</span>
+                <span className="font-medium">{requestModal.retail_price.toLocaleString()}{t('common.won')}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-purple-700 font-medium">공급가 (내 원가)</span>
-                <span className="text-purple-700 font-semibold">{requestModal.supply_price.toLocaleString()}원</span>
+                <span className="text-purple-700 font-medium">{t('seller.supplyPriceLabel')}</span>
+                <span className="text-purple-700 font-semibold">{requestModal.supply_price.toLocaleString()}{t('common.won')}</span>
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">신청 메모 (선택)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.requestMemoOptional')}</label>
               <textarea
                 value={sellerMemo}
                 onChange={e => setSellerMemo(e.target.value)}
                 rows={3}
-                placeholder="판매 계획, 희망 수량 등을 입력하세요"
+                placeholder={t('seller.requestMemoPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
               />
             </div>
@@ -371,7 +371,7 @@ export default function SellerSupplyPage() {
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
-                신청하기
+                {t('seller.submitRequest')}
               </button>
             </div>
           </div>
@@ -383,30 +383,30 @@ export default function SellerSupplyPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setRegisterModal(null)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">스토어 등록</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.storeRegisterTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{registerModal.product_name}</p>
 
             <div className="bg-green-50 rounded-lg p-3 mb-4 space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">공급가 (내 원가)</span>
-                <span className="font-medium text-purple-700">{registerModal.supply_price?.toLocaleString()}원</span>
+                <span className="text-gray-500">{t('seller.supplyPriceCost')}</span>
+                <span className="font-medium text-purple-700">{registerModal.supply_price?.toLocaleString()}{t('common.won')}</span>
               </div>
-              <p className="text-xs text-green-700 mt-1">판매가를 공급가보다 높게 설정하면 그 차이가 수익이 됩니다.</p>
+              <p className="text-xs text-green-700 mt-1">{t('seller.profitExplain')}</p>
             </div>
 
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">내 판매가 설정 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.setSellerPrice')} <span className="text-red-500">*</span></label>
               <input
                 type="number"
                 value={sellerPrice}
                 onChange={e => setSellerPrice(e.target.value)}
                 min={registerModal.supply_price || 1}
-                placeholder="판매가 입력"
+                placeholder={t('seller.enterSellerPrice')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
               />
               {sellerPrice && Number(sellerPrice) > (registerModal.supply_price || 0) && (
                 <p className="text-xs text-green-600 mt-1 font-medium">
-                  예상 마진: {(Number(sellerPrice) - (registerModal.supply_price || 0)).toLocaleString()}원
+                  {t('seller.expectedMargin', { amount: (Number(sellerPrice) - (registerModal.supply_price || 0)).toLocaleString() })}
                 </p>
               )}
             </div>
@@ -419,7 +419,7 @@ export default function SellerSupplyPage() {
                 className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {registering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
-                등록하기
+                {t('seller.registerProductBtn')}
               </button>
             </div>
           </div>

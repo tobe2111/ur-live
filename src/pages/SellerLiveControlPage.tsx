@@ -145,7 +145,7 @@ export default function SellerLiveControlPage() {
     const count = manualViewerCount ? parseInt(manualViewerCount) : null
     
     if (count !== null && (isNaN(count) || count < 0)) {
-      toast.error('올바른 숫자를 입력하세요 (0 이상)')
+      toast.error(t('seller.enterValidNumber'))
       return
     }
 
@@ -156,7 +156,7 @@ export default function SellerLiveControlPage() {
       })
 
       if (response.data.success) {
-        toast.success(count === null ? '실제 시청자 수로 복귀했습니다!' : `시청자 수가 ${count}명으로 설정되었습니다!`)
+        toast.success(count === null ? t('seller.viewerCountRestored') : t('seller.viewerCountSet', { count }))
         setManualViewerCount('')
         
         // 시청자 수 즉시 업데이트
@@ -166,7 +166,7 @@ export default function SellerLiveControlPage() {
         }))
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.error || '시청자 수 업데이트 실패'
+      const errorMsg = error.response?.data?.error || t('seller.viewerCountUpdateFailed')
       toast.error(errorMsg)
     } finally {
       setUpdatingViewerCount(false)
@@ -178,7 +178,7 @@ export default function SellerLiveControlPage() {
     if (!selectedStream || sendingFakeNotification) return
     
     if (!fakeProductName.trim()) {
-      toast.error('상품명을 입력하세요')
+      toast.error(t('seller.enterProductName'))
       return
     }
 
@@ -190,12 +190,12 @@ export default function SellerLiveControlPage() {
       })
 
       if (response.data.success) {
-        toast.success('🎉 가짜 알림이 전송되었습니다!')
+        toast.success(t('common.notificationSent'))
         setFakeProductName('')
         setFakeQuantity(1)
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.error || '알림 전송 실패'
+      const errorMsg = error.response?.data?.error || t('common.notificationSendFailed')
       toast.error(errorMsg)
     } finally {
       setSendingFakeNotification(false)
@@ -218,9 +218,9 @@ export default function SellerLiveControlPage() {
       )
 
       setCurrentProductId(productId)
-      toast.success('상품이 변경되었습니다!')
+      toast.success(t('common.productChanged'))
     } catch (err: any) {
-      toast.error(`상품 변경 실패: ${err.response?.data?.error || err.message}`)
+      toast.error(`${t('common.productChangeFailed')}: ${err.response?.data?.error || err.message}`)
     } finally {
       setChanging(false)
     }
@@ -261,7 +261,7 @@ export default function SellerLiveControlPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">로딩 중...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -272,13 +272,13 @@ export default function SellerLiveControlPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">진행 중인 라이브가 없습니다</h2>
-            <p className="text-gray-600 mb-6">라이브 방송을 시작하려면 먼저 라이브 스트림을 생성하세요.</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('seller.noLiveStreams')}</h2>
+            <p className="text-gray-600 mb-6">{t('seller.noLiveStreamsDesc')}</p>
             <button
               onClick={() => navigate('/seller')}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
             >
-              대시보드로 돌아가기
+              {t('common.backToDashboard')}
             </button>
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function SellerLiveControlPage() {
   const currentProduct = products.find(p => p.id === currentProductId)
 
   return (
-    <SellerLayout title="라이브 상품 컨트롤">
+    <SellerLayout title={t('seller.liveProductControl')}>
       <div className="max-w-7xl mx-auto">
         {/* Stream info & selector */}
         <div className="mb-6">
@@ -299,7 +299,7 @@ export default function SellerLiveControlPage() {
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                 <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
               </svg>
-              <span className="font-semibold">{viewerCounts[selectedStream.id] || 0}명 시청 중</span>
+              <span className="font-semibold">{viewerCounts[selectedStream.id] || 0}{t('common.person')} {t('common.watching')}</span>
             </div>
           )}
 
@@ -327,7 +327,7 @@ export default function SellerLiveControlPage() {
           {/* Current Product Display */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">현재 노출 중인 상품</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('seller.currentlyDisplayed')}</h2>
               
               {currentProduct ? (
                 <div className="border-2 border-blue-500 rounded-lg p-4">
@@ -336,16 +336,16 @@ export default function SellerLiveControlPage() {
                     {currentProduct.discount_rate > 0 && (
                       <span className="text-red-500 font-bold">{currentProduct.discount_rate}%</span>
                     )}
-                    <span className="text-xl font-bold">{currentProduct.price.toLocaleString()}원</span>
+                    <span className="text-xl font-bold">{currentProduct.price.toLocaleString()}{t('common.won')}</span>
                   </div>
                   {currentProduct.original_price > currentProduct.price && (
-                    <p className="text-gray-500 line-through">{currentProduct.original_price.toLocaleString()}원</p>
+                    <p className="text-gray-500 line-through">{currentProduct.original_price.toLocaleString()}{t('common.won')}</p>
                   )}
-                  <p className="text-sm text-gray-600 mt-2">재고: {currentProduct.stock}개</p>
+                  <p className="text-sm text-gray-600 mt-2">{t('common.stock')}: {currentProduct.stock}{t('common.count')}</p>
                 </div>
               ) : (
                 <div className="text-center text-gray-500 py-8">
-                  노출 중인 상품이 없습니다
+                  {t('seller.noCurrentProduct')}
                 </div>
               )}
             </div>
@@ -353,7 +353,7 @@ export default function SellerLiveControlPage() {
             {/* Live Preview Link */}
             {selectedStream && (
               <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-blue-900 mb-2">📺 라이브 미리보기</p>
+                <p className="text-sm font-semibold text-blue-900 mb-2">📺 {t('seller.livePreview')}</p>
                 <a
                   href={`/live/${selectedStream.id}`}
                   target="_blank"
@@ -371,8 +371,8 @@ export default function SellerLiveControlPage() {
                 {/* 시청자 수 조작 */}
                 <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4">
                   <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
-                    🔢 시청자 수 조작
-                    <span className="text-xs bg-purple-200 px-2 py-0.5 rounded">관리자 승인됨</span>
+                    🔢 {t('seller.viewerManipulation')}
+                    <span className="text-xs bg-purple-200 px-2 py-0.5 rounded">{t('seller.adminApproved')}</span>
                   </h3>
                   <div className="space-y-2">
                     <input
@@ -380,7 +380,7 @@ export default function SellerLiveControlPage() {
                       min="0"
                       value={manualViewerCount}
                       onChange={(e) => setManualViewerCount(e.target.value)}
-                      placeholder={`현재: ${viewerCounts[selectedStream.id] || 0}명`}
+                      placeholder={`${t('seller.actual')}: ${viewerCounts[selectedStream.id] || 0}${t('common.person')}`}
                       className="w-full px-3 py-2 border border-purple-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     />
                     <div className="flex gap-2">
@@ -389,7 +389,7 @@ export default function SellerLiveControlPage() {
                         disabled={updatingViewerCount || !manualViewerCount}
                         className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
                       >
-                        {updatingViewerCount ? '설정 중...' : '설정'}
+                        {updatingViewerCount ? t('common.settingUp') : t('common.setting')}
                       </button>
                       <button
                         onClick={() => {
@@ -399,11 +399,11 @@ export default function SellerLiveControlPage() {
                         disabled={updatingViewerCount}
                         className="flex-1 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
                       >
-                        실제값 복귀
+                        {t('common.actualValueRestore')}
                       </button>
                     </div>
                     <p className="text-xs text-purple-700">
-                      💡 실제: {viewerCounts[selectedStream.id] || 0}명
+                      💡 {t('seller.actual')}: {viewerCounts[selectedStream.id] || 0}{t('common.person')}
                     </p>
                   </div>
                 </div>
@@ -411,19 +411,19 @@ export default function SellerLiveControlPage() {
                 {/* 가짜 장바구니 알림 */}
                 <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
                   <h3 className="text-sm font-bold text-yellow-900 mb-3 flex items-center gap-2">
-                    🛒 장바구니 알림 전송
-                    <span className="text-xs bg-yellow-200 px-2 py-0.5 rounded">관리자 승인됨</span>
+                    🛒 {t('seller.cartNotification')}
+                    <span className="text-xs bg-yellow-200 px-2 py-0.5 rounded">{t('seller.adminApproved')}</span>
                   </h3>
                   <div className="space-y-2">
                     <input
                       type="text"
                       value={fakeProductName}
                       onChange={(e) => setFakeProductName(e.target.value)}
-                      placeholder="상품명 (예: 프리미엄 텀블러)"
+                      placeholder={t('seller.productNamePlaceholder')}
                       className="w-full px-3 py-2 border border-yellow-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="text-xs text-yellow-900">수량:</label>
+                      <label className="text-xs text-yellow-900">{t('common.quantity')}:</label>
                       <input
                         type="number"
                         min="1"
@@ -437,10 +437,10 @@ export default function SellerLiveControlPage() {
                       disabled={sendingFakeNotification || !fakeProductName.trim()}
                       className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
                     >
-                      {sendingFakeNotification ? '전송 중...' : '🎉 알림 전송'}
+                      {sendingFakeNotification ? t('seller.sending') : `🎉 ${t('seller.sendNotification')}`}
                     </button>
                     <p className="text-xs text-yellow-700">
-                      💡 채팅창에 "🎉 {fakeProductName || '상품명'} {fakeQuantity}개가 장바구니에 추가되었습니다!" 메시지가 표시됩니다
+                      💡 {t('seller.cartNotificationDesc', { name: fakeProductName || t('seller.productName'), count: fakeQuantity })}
                     </p>
                   </div>
                 </div>
@@ -451,11 +451,11 @@ export default function SellerLiveControlPage() {
           {/* Product List */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">상품 목록 (클릭: 전환 | 드래그: 순서 변경)</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">{t('seller.productList')}</h2>
               
               {products.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
-                  등록된 상품이 없습니다
+                  {t('seller.noRegisteredProducts')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -491,11 +491,11 @@ export default function SellerLiveControlPage() {
                           {product.discount_rate > 0 && (
                             <span className="text-red-500 text-xs font-bold">{product.discount_rate}%</span>
                           )}
-                          <span className="font-bold text-sm">{product.price.toLocaleString()}원</span>
+                          <span className="font-bold text-sm">{product.price.toLocaleString()}{t('common.won')}</span>
                         </div>
-                        <p className="text-xs text-gray-600">재고: {product.stock}개</p>
+                        <p className="text-xs text-gray-600">{t('common.stock')}: {product.stock}{t('common.count')}</p>
                         {currentProductId === product.id && (
-                          <p className="text-xs text-blue-600 font-semibold mt-1">✓ 현재 노출 중</p>
+                          <p className="text-xs text-blue-600 font-semibold mt-1">✓ {t('seller.currentlyDisplaying')}</p>
                         )}
                       </button>
                     </div>
@@ -508,12 +508,12 @@ export default function SellerLiveControlPage() {
 
         {/* Instructions */}
         <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h3 className="font-bold text-yellow-900 mb-2">💡 사용 방법</h3>
+          <h3 className="font-bold text-yellow-900 mb-2">💡 {t('seller.usageGuide')}</h3>
           <ul className="text-sm text-yellow-800 space-y-1">
-            <li>• 상품을 <strong>클릭</strong>하면 실시간으로 시청자 화면의 상품이 변경됩니다</li>
-            <li>• 상품을 <strong>드래그</strong>하여 순서를 변경할 수 있습니다</li>
-            <li>• 좌측에서 현재 노출 중인 상품을 확인할 수 있습니다</li>
-            <li>• 라이브 미리보기 링크를 새 탭에서 열어 실시간으로 확인하세요</li>
+            <li>• {t('seller.usageClickProduct')}</li>
+            <li>• {t('seller.usageDragProduct')}</li>
+            <li>• {t('seller.usageCheckCurrent')}</li>
+            <li>• {t('seller.usagePreviewLink')}</li>
           </ul>
         </div>
       </div>
