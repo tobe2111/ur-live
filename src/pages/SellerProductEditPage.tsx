@@ -57,8 +57,17 @@ export default function SellerProductEditPage() {
     live_price_enabled: false,
     is_active: true,
     detail_images: [] as string[],
-    product_type: 'featured', // 'live' or 'featured'
-    category: 'lifestyle' // 카테고리 기본값
+    product_type: 'featured',
+    category: 'lifestyle',
+    // 식사권 필드
+    restaurant_name: '',
+    restaurant_address: '',
+    restaurant_phone: '',
+    voucher_terms: '',
+    voucher_expiry: '',
+    group_buy_target: '',
+    group_buy_deadline: '',
+    store_verify_pin: '',
   })
   
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -113,7 +122,15 @@ export default function SellerProductEditPage() {
           is_active: productData.is_active,
           detail_images: detailImages,
           product_type: productData.product_type || 'featured',
-          category: productData.category || 'lifestyle'
+          category: productData.category || 'lifestyle',
+          restaurant_name: productData.restaurant_name || '',
+          restaurant_address: productData.restaurant_address || '',
+          restaurant_phone: productData.restaurant_phone || '',
+          voucher_terms: productData.voucher_terms || '',
+          voucher_expiry: productData.voucher_expiry || '',
+          group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '',
+          group_buy_deadline: productData.group_buy_deadline || '',
+          store_verify_pin: productData.store_verify_pin || '',
         })
         
         // Set product options if they exist
@@ -160,7 +177,7 @@ export default function SellerProductEditPage() {
         return
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
@@ -172,7 +189,17 @@ export default function SellerProductEditPage() {
         is_active: formData.is_active,
         detail_images: JSON.stringify(formData.detail_images),
         product_type: formData.product_type,
-        category: formData.category
+        category: formData.category,
+        ...(formData.category === 'meal_voucher' ? {
+          restaurant_name: formData.restaurant_name || null,
+          restaurant_address: formData.restaurant_address || null,
+          restaurant_phone: formData.restaurant_phone || null,
+          voucher_terms: formData.voucher_terms || null,
+          voucher_expiry: formData.voucher_expiry || null,
+          group_buy_target: Number(formData.group_buy_target) || 0,
+          group_buy_deadline: formData.group_buy_deadline || null,
+          store_verify_pin: formData.store_verify_pin || null,
+        } : {}),
       }
 
       const response = await api.put(`/api/seller/products/${id}`, payload, {
@@ -431,9 +458,50 @@ export default function SellerProductEditPage() {
               <option value="food">{t('common.food')}</option>
               <option value="electronics">{t('common.electronics')}</option>
               <option value="lifestyle">{t('common.lifestyle')}</option>
+              <option value="meal_voucher">🍽️ 식사권 (공동구매)</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">{t('seller.selectCategoryDesc')}</p>
           </div>
+
+          {/* 식사권 전용 필드 */}
+          {formData.category === 'meal_voucher' && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-bold text-orange-800">🍽️ 식사권 / 공동구매 정보</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당명</label>
+                <input name="restaurant_name" value={formData.restaurant_name} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 주소</label>
+                <input name="restaurant_address" value={formData.restaurant_address} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 전화번호</label>
+                <input name="restaurant_phone" value={formData.restaurant_phone} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">이용 조건</label>
+                <input name="voucher_terms" value={formData.voucher_terms} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">유효기간</label>
+                  <input type="date" name="voucher_expiry" value={formData.voucher_expiry} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">목표 인원</label>
+                  <input type="number" name="group_buy_target" value={formData.group_buy_target} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">공동구매 마감일</label>
+                <input type="datetime-local" name="group_buy_deadline" value={formData.group_buy_deadline} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">식당 인증 비밀번호</label>
+                <input name="store_verify_pin" value={formData.store_verify_pin} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+            </div>
+          )}
 
           {/* Product Type Selection */}
           <div>

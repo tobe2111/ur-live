@@ -67,6 +67,15 @@ groupBuyRoutes.get('/products', async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
+  // 마감된 공동구매 자동 상태 업데이트
+  try {
+    await DB.prepare(`
+      UPDATE products SET group_buy_status = 'expired', updated_at = CURRENT_TIMESTAMP
+      WHERE category = 'meal_voucher' AND group_buy_status = 'active'
+        AND group_buy_deadline IS NOT NULL AND group_buy_deadline < datetime('now')
+    `).run()
+  } catch { /* ignore */ }
+
   const status = c.req.query('status') || 'active'
 
   const { results } = await DB.prepare(`
@@ -258,6 +267,52 @@ groupBuyRoutes.get('/verify/:code', async (c) => {
       expires_at: voucher.expires_at,
     },
   })
+})
+
+// ── POST /api/group-buy/refund/:productId — 미달성 공동구매 환불 ────
+groupBuyRoutes.post('/refund/:productId', requireAuth(), async (c) => {
+  const { DB } = c.env
+  const productId = c.req.param('productId')
+
+  try {
+    const product = await DB.prepare(
+      "SELECT * FROM products WHERE id = ? AND category = 'meal_voucher'"
+    ).bind(productId).first<any>()
+
+    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+    if (product.group_buy_status !== 'expired') return c.json({ success: false, error: '마감된 공동구매만 환불 가능합니다' }, 400)
+    if (product.group_buy_current >= product.group_buy_target) return c.json({ success: false, error: '목표 달성된 공동구매는 환불 불가' }, 400)
+
+    // 미사용 바우처 환불 처리
+    const { results: vouchers } = await DB.prepare(
+      "SELECT v.*, o.user_id, o.total_amount, o.payment_method FROM vouchers v LEFT JOIN orders o ON v.order_id = o.id WHERE v.product_id = ? AND v.status = 'unused'"
+    ).bind(productId).all()
+
+    let refundCount = 0
+    for (const v of (vouchers || [])) {
+      // 바우처 상태 변경
+      await DB.prepare("UPDATE vouchers SET status = 'refunded' WHERE id = ?").bind(v.id).run()
+
+      // 딜 결제였으면 딜 환불
+      if ((v as any).payment_method === 'deal_points' && (v as any).user_id) {
+        const amount = (v as any).total_amount || product.price
+        await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
+          .bind(amount, (v as any).user_id).run()
+        await DB.prepare(
+          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
+        ).bind((v as any).user_id, amount, amount, (v as any).user_id, `공동구매 미달성 환불: ${product.name}`).run()
+      }
+      refundCount++
+    }
+
+    // 상품 상태 업데이트
+    await DB.prepare("UPDATE products SET group_buy_status = 'cancelled' WHERE id = ?").bind(productId).run()
+
+    return c.json({ success: true, data: { refunded: refundCount }, message: `${refundCount}건 환불 처리 완료` })
+  } catch (err) {
+    console.error('[group-buy refund]', err)
+    return c.json({ success: false, error: '환불 처리 중 오류' }, 500)
+  }
 })
 
 // ── POST /api/vouchers/:code/use — 바우처 사용 (비밀번호 인증) ─────

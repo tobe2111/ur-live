@@ -24,6 +24,24 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
+function GroupBuyCountdown({ deadline }: { deadline: string }) {
+  const [remaining, setRemaining] = useState('')
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(deadline).getTime() - Date.now()
+      if (diff <= 0) { setRemaining('마감됨'); return }
+      const d = Math.floor(diff / 86400000)
+      const h = Math.floor((diff % 86400000) / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      setRemaining(d > 0 ? `${d}일 ${h}시간 남음` : `${h}시간 ${m}분 남음`)
+    }
+    update()
+    const interval = setInterval(update, 60000)
+    return () => clearInterval(interval)
+  }, [deadline])
+  return <p className="text-[11px] text-red-400 font-medium mt-1.5">⏰ {remaining}</p>
+}
+
 function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
@@ -398,9 +416,7 @@ export default function ProductDetailPage() {
               />
             </div>
             {product.group_buy_deadline && (
-              <p className="text-[10px] text-gray-500 mt-1.5">
-                마감: {new Date(product.group_buy_deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </p>
+              <GroupBuyCountdown deadline={product.group_buy_deadline} />
             )}
           </div>
         )}
