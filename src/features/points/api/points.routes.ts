@@ -22,7 +22,15 @@ pointsRoutes.use('*', cors({
   credentials: true,
 }));
 
-const COMMISSION_RATE = 0.15; // 15% 수수료 (셀러 정산 시 적용)
+const DEFAULT_COMMISSION_RATE = 0.15; // 기본 15% (DB 설정으로 오버라이드 가능)
+
+async function getDefaultCommissionRate(DB: D1Database): Promise<number> {
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'commission_rate_default'").first<{ value: string }>();
+    if (row) return Number(row.value) / 100;
+  } catch { /* table may not exist */ }
+  return DEFAULT_COMMISSION_RATE;
+}
 
 // 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 15% 차감)
 const CHARGE_AMOUNTS = [
@@ -111,7 +119,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
     INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
     VALUES (?, 'charge', ?, ?, ?, 0, ?, ?)
   `).bind(
-    user.id, amount, Math.round(amount * COMMISSION_RATE), pkg.points,
+    user.id, amount, 0, pkg.points, // 충전은 수수료 0 (1:1)
     `딜 ${pkg.points.toLocaleString()}개 충전`, orderId
   ).run();
 
@@ -121,7 +129,7 @@ pointsRoutes.post('/charge/init', requireAuth(), async (c) => {
       orderId,
       amount,
       points: pkg.points,
-      commission: Math.round(amount * COMMISSION_RATE),
+      commission: 0, // 충전은 수수료 없음
       orderName: `딜 ${pkg.points.toLocaleString()}개 충전`,
       clientKey: c.env.TOSS_CLIENT_KEY,
     },
@@ -269,6 +277,7 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
   ).run();
 
   // donations 테이블에도 기록 (셀러 정산 시 15% 수수료 적용)
+  const COMMISSION_RATE = await getDefaultCommissionRate(DB);
   const commissionAmount = Math.round(amount * COMMISSION_RATE);
   const creditAmount = amount - commissionAmount; // 셀러 실수령액
   const donationOrderId = `DEAL-DON-${user.id}-${stream_id}-${Date.now()}`;
