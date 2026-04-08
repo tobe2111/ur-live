@@ -76,6 +76,16 @@ interface LiveStream {
   ended_at?: string
 }
 
+// 스텝 가이드 컴포넌트
+function Step({ num, text, done }: { num: string; text: string; done?: boolean }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{num}</span>
+      <p className="text-sm text-gray-700">{text}</p>
+    </div>
+  )
+}
+
 export default function SellerLiveBroadcastPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -335,791 +345,284 @@ export default function SellerLiveBroadcastPage() {
 
   return (
     <SellerLayout title={t('seller.liveBroadcast')}>
-      <div className="max-w-[1280px] mx-auto">
-        {/* YouTube Connection Status */}
+      <div className="max-w-3xl mx-auto space-y-6">
+
+        {/* ── Step 0: YouTube 연동 필요 ── */}
         {channels.length === 0 ? (
-          <div className="apple-card p-8 sm:p-12 text-center mb-8 bg-gradient-to-br from-red-50 to-orange-50">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Youtube className="h-10 w-10 text-red-600" />
+          <div className="bg-white rounded-2xl p-8 text-center border border-gray-200">
+            <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Youtube className="h-7 w-7 text-red-600" />
             </div>
-            <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">
-              {t('seller.youtubeAccountNeeded')}
-            </h2>
-            <p className="text-[15px] text-[#6e6e73] mb-6 max-w-md mx-auto">
-              {t('seller.youtubeAccountNeededDesc')}
-            </p>
-            <Button
-              onClick={connectYouTube}
-              disabled={connectingYouTube}
-              className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-[17px] font-semibold h-auto"
-            >
-              {connectingYouTube ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  {t('common.connecting')}
-                </>
-              ) : (
-                <>
-                  <Youtube className="h-5 w-5 mr-2" />
-                  {t('seller.connectYouTube')}
-                </>
-              )}
+            <h2 className="text-lg font-bold text-gray-900 mb-2">YouTube 계정을 연동하세요</h2>
+            <p className="text-sm text-gray-500 mb-6">라이브 방송을 시작하려면 YouTube 계정 연동이 필요합니다</p>
+            <Button onClick={connectYouTube} disabled={connectingYouTube} className="bg-red-600 hover:bg-red-700 text-white px-6">
+              {connectingYouTube ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Youtube className="h-4 w-4 mr-2" />}
+              YouTube 연동하기
             </Button>
           </div>
         ) : (
           <>
-            {/* Connected YouTube Channels */}
-            <div className="mb-8">
-              <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                {t('seller.linkedYouTubeChannels')}
-              </h3>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {channels.map(channel => (
-                  <div key={channel.id} className="apple-card p-4 flex items-center gap-4">
-                    {channel.channel_thumbnail ? (
-                      <img
-                        src={channel.channel_thumbnail}
-                        alt=""
-                        className="w-16 h-16 rounded-full flex-shrink-0 object-cover bg-[#f5f5f7]"
-                        onError={(e) => { e.currentTarget.style.display = 'none' }}
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-full flex-shrink-0 bg-red-100 flex items-center justify-center">
-                        <Youtube className="h-8 w-8 text-red-500" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-[15px] font-semibold text-[#1d1d1f] truncate">
-                        {channel.channel_title}
-                      </h4>
-                      <p className="text-[13px] text-[#6e6e73]">
-                        {t('seller.subscribers')} {channel.subscriber_count.toLocaleString()}{t('common.person')}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => disconnectYouTube(channel.id)}
-                      className="p-2 text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded-lg transition-colors"
-                      title={t("seller.disconnect")}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+            {/* ── 연동된 채널 (간결) ── */}
+            <div className="flex items-center gap-3 bg-white rounded-xl p-4 border border-gray-200">
+              {channels[0]?.channel_thumbnail ? (
+                <img src={channels[0].channel_thumbnail} alt="" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center"><Youtube className="h-5 w-5 text-red-500" /></div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{channels[0]?.channel_title}</p>
+                <p className="text-xs text-gray-500">구독자 {channels[0]?.subscriber_count?.toLocaleString()}명</p>
               </div>
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">연동됨</span>
             </div>
 
-            {/* 고정 RTMP 키 (OBS/프리즘 원클릭 설정) */}
-            {channels.some(ch => ch.has_persistent_key) && (
-              <div className="apple-card p-5 sm:p-6 mb-8 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Key className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.persistentRtmpSettings')}</h3>
-                    <p className="text-[12px] text-[#6e6e73]">{t('seller.persistentRtmpDesc')}</p>
+            {/* ── 새 방송 생성 ── */}
+            {!newStream && !showSetup && (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="p-6 text-center">
+                  <h3 className="text-base font-bold text-gray-900 mb-1">새 라이브 방송</h3>
+                  <p className="text-xs text-gray-500 mb-5">방송 방식을 선택하고 시작하세요</p>
+                  <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+                    {[
+                      { key: 'web' as const, icon: Monitor, label: 'YouTube Studio', desc: '가장 간편', color: 'text-red-600', bg: 'bg-red-50' },
+                      { key: 'obs' as const, icon: VideoIcon, label: 'OBS Studio', desc: 'PC 방송', color: 'text-purple-600', bg: 'bg-purple-50' },
+                      { key: 'prism' as const, icon: Smartphone, label: '프리즘', desc: '모바일', color: 'text-orange-600', bg: 'bg-orange-50' },
+                    ].map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => { setStreamingMethod(m.key); setShowSetup(true) }}
+                        className="p-4 rounded-xl border-2 border-gray-100 hover:border-blue-300 transition-all text-center active:scale-[0.97]"
+                      >
+                        <div className={`w-10 h-10 ${m.bg} rounded-xl flex items-center justify-center mx-auto mb-2`}>
+                          <m.icon className={`h-5 w-5 ${m.color}`} />
+                        </div>
+                        <p className="text-xs font-semibold text-gray-900">{m.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{m.desc}</p>
+                      </button>
+                    ))}
                   </div>
                 </div>
-                {channels.filter(ch => ch.has_persistent_key).map(channel => (
-                  <div key={channel.id} className="space-y-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">{t('seller.serverUrl')}</label>
-                      <div className="flex gap-2 mt-1">
-                        <code className="flex-1 px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate select-all">
-                          {channel.default_rtmp_url}
-                        </code>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_url || ''); toast.success(t('seller.urlCopied')) }}
-                          className="px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors flex-shrink-0"
-                          title={t("common.copy")}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-[#6e6e73] uppercase tracking-wide">{t('seller.streamKey')}</label>
-                      <div className="flex gap-2 mt-1">
-                        <code className="flex-1 px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate select-all">
-                          {channel.default_rtmp_key}
-                        </code>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(channel.default_rtmp_key || ''); toast.success(t('seller.keyCopied')) }}
-                          className="px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors flex-shrink-0"
-                          title={t("common.copy")}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-purple-600 flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {t('seller.persistentKeyNote')}
-                    </p>
-                  </div>
-                ))}
               </div>
             )}
 
-            {/* New Stream Success Modal */}
-            {newStream && (
-              <div className="apple-card p-6 sm:p-8 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-500/20">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 className="h-7 w-7 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-[21px] font-bold text-[#1d1d1f] mb-2">
-                      {t('seller.broadcastReady')}
-                    </h3>
-                    <p className="text-[15px] text-[#6e6e73]">
-                      {t('seller.broadcastMethodGuide')}
-                    </p>
-                  </div>
+            {/* ── 방송 설정 폼 ── */}
+            {showSetup && !newStream && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-base font-bold text-gray-900">방송 정보 입력</h3>
+                  <button onClick={() => setShowSetup(false)} className="text-sm text-gray-500">취소</button>
                 </div>
-
-                {/* {t('seller.broadcastMethod')} */}
-                <div className="mb-6">
-                  <label className="block text-[13px] font-semibold text-[#1d1d1f] mb-3">
-                    {t('seller.broadcastMethod')}
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      onClick={() => setStreamingMethod('web')}
-                      className={`p-4 rounded-xl border-2 transition-all text-center ${
-                        streamingMethod === 'web'
-                          ? 'border-[#007aff] bg-[#007aff]/5'
-                          : 'border-[#e5e5ea] bg-white hover:border-[#007aff]/30'
-                      }`}
-                    >
-                      <Monitor className="h-7 w-7 mx-auto mb-2 text-red-600" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">YouTube Studio</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.startNow')}</p>
-                    </button>
-                    <button
-                      onClick={() => setStreamingMethod('obs')}
-                      className={`p-4 rounded-xl border-2 transition-all text-center ${
-                        streamingMethod === 'obs'
-                          ? 'border-[#007aff] bg-[#007aff]/5'
-                          : 'border-[#e5e5ea] bg-white hover:border-[#007aff]/30'
-                      }`}
-                    >
-                      <VideoIcon className="h-7 w-7 mx-auto mb-2 text-purple-600" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">OBS</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.captionOverlay')}</p>
-                    </button>
-                    <button
-                      onClick={() => setStreamingMethod('prism')}
-                      className={`p-4 rounded-xl border-2 transition-all text-center ${
-                        streamingMethod === 'prism'
-                          ? 'border-[#007aff] bg-[#007aff]/5'
-                          : 'border-[#e5e5ea] bg-white hover:border-[#007aff]/30'
-                      }`}
-                    >
-                      <Smartphone className="h-7 w-7 mx-auto mb-2 text-orange-600" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">{t('seller.prismLive')}</p>
-                      <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.mobileBroadcast')}</p>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 방송 방식별 가이드 */}
                 <div className="space-y-4">
-
-                  {/* YouTube Studio 방송 */}
-                  {streamingMethod === 'web' && (
-                    <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Monitor className="h-5 w-5 text-red-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">YouTube Studio 라이브</h4>
-                        <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">가장 간편</span>
-                      </div>
-
-                      <div className="space-y-3 mb-5">
-                        <div className="flex items-start gap-3">
-                          <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                          <div>
-                            <p className="text-[13px] font-medium text-[#1d1d1f]">아래 버튼을 클릭하세요</p>
-                            <p className="text-[11px] text-[#6e6e73]">YouTube Studio가 새 탭에서 열립니다</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                          <div>
-                            <p className="text-[13px] font-medium text-[#1d1d1f]">YouTube Studio에서 "라이브 시작" 클릭</p>
-                            <p className="text-[11px] text-[#6e6e73]">웹캠이 자동으로 켜지며 방송이 시작됩니다</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">✓</span>
-                          <div>
-                            <p className="text-[13px] font-medium text-[#1d1d1f]">유어딜이 자동으로 감지합니다</p>
-                            <p className="text-[11px] text-[#6e6e73]">상품, 채팅, 후원이 자동으로 연결됩니다</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <Button
-                        onClick={async () => {
-                          await startStream(newStream.id)
-                          const videoId = newStream.youtube_video_id || newStream.youtube_broadcast_id
-                          if (videoId) {
-                            window.open(`https://studio.youtube.com/video/${videoId}/livestreaming`, '_blank')
-                          } else {
-                            window.open('https://studio.youtube.com/channel/UC/livestreaming', '_blank')
-                          }
-                        }}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
-                      >
-                        <Radio className="h-5 w-5 mr-2" />
-                        YouTube Studio 열기
-                      </Button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">방송 제목 *</label>
+                    <input value={title} onChange={e => setTitle(e.target.value)} placeholder="예) 오늘의 맛집 라이브"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" maxLength={100} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">설명</label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="방송 내용을 간단히 소개해주세요" rows={3}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" maxLength={500} />
+                  </div>
+                  {/* 예약 */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">방송 예약</p>
+                      <p className="text-xs text-gray-500">{isScheduled ? '예약 시간에 방송을 시작합니다' : '즉시 방송을 시작합니다'}</p>
+                    </div>
+                    <button onClick={() => setIsScheduled(!isScheduled)} className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isScheduled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                  {isScheduled && (
+                    <div className="flex gap-3">
+                      <input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} min={new Date().toISOString().split('T')[0]}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                      <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                     </div>
                   )}
-
-                  {/* OBS 방송 */}
-                  {streamingMethod === 'obs' && (
-                    <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <VideoIcon className="h-5 w-5 text-purple-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">OBS Studio</h4>
-                        <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">PC 방송</span>
+                  {/* 상품 선택 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">판매 상품 선택 *</label>
+                    {products.length === 0 ? (
+                      <div className="text-center py-6 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-500 mb-2">등록된 상품이 없습니다</p>
+                        <button onClick={() => navigate('/seller/products/new')} className="text-sm text-blue-600 font-medium">상품 등록하기 →</button>
                       </div>
-
-                      {channels.some(ch => ch.has_persistent_key) ? (
-                        <>
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                              <p className="text-[13px] text-green-700">RTMP 설정 완료 — OBS에서 <strong>방송 시작</strong>만 클릭하세요!</p>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="space-y-3 mb-5">
-                            <div className="flex items-start gap-3">
-                              <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                              <div>
-                                <p className="text-[13px] font-medium text-[#1d1d1f]">아래 RTMP 정보를 복사하세요</p>
-                                <p className="text-[11px] text-[#6e6e73]">URL과 Key를 한 번에 복사합니다</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                              <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                              <div>
-                                <p className="text-[13px] font-medium text-[#1d1d1f]">OBS → 설정 → 방송 → 사용자 지정</p>
-                                <p className="text-[11px] text-[#6e6e73]">서버 URL과 스트림 키를 붙여넣기 (최초 1회)</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                              <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                              <div>
-                                <p className="text-[13px] font-medium text-[#1d1d1f]">OBS에서 "방송 시작" 클릭</p>
-                                <p className="text-[11px] text-[#6e6e73]">다음부터는 이 단계만 하면 됩니다</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                              <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">✓</span>
-                              <div>
-                                <p className="text-[13px] font-medium text-[#1d1d1f]">유어딜이 자동으로 감지합니다</p>
-                                <p className="text-[11px] text-[#6e6e73]">OBS 송출이 시작되면 라이브가 자동 전환됩니다</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* RTMP 정보 */}
-                          <div className="space-y-3 mb-4">
-                            <div>
-                              <label className="text-[11px] font-semibold text-[#6e6e73]">{t('seller.serverUrl')}</label>
-                              <div className="flex gap-2 mt-1">
-                                <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
-                                  {newStream.rtmp_url}
-                                </code>
-                                <button
-                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success(t('common.copied')) }}
-                                  className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-[#6e6e73]">{t('seller.streamKey')}</label>
-                              <div className="flex gap-2 mt-1">
-                                <code className="flex-1 px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg text-[13px] font-mono truncate">
-                                  {newStream.rtmp_key}
-                                </code>
-                                <button
-                                  onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success(t('common.copied')) }}
-                                  className="px-3 py-2 bg-[#f5f5f7] border border-[#e5e5ea] rounded-lg hover:bg-[#e5e5ea] transition-colors"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-                            <button
-                              onClick={copyRTMP}
-                              className="w-full py-2.5 bg-purple-600 text-white text-[13px] font-semibold rounded-lg hover:bg-purple-700 active:scale-[0.98] transition-all"
-                            >
-                              {copiedRTMP ? '✓ 복사됨!' : 'RTMP URL + Key 전체 복사'}
-                            </button>
-                            <p className="text-[11px] text-purple-600 flex items-center gap-1">
-                              <Key className="h-3 w-3" />
-                              {t('seller.persistentKeyShort')}
-                            </p>
-                          </div>
-                        </>
-                      )}
-
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={() => startStream(newStream.id)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
-                        >
-                          <Radio className="h-5 w-5 mr-2" />
-                          {t('seller.startBroadcast')}
-                        </Button>
-                        <a
-                          href={newStream.youtube_url || `https://youtube.com/watch?v=${newStream.youtube_video_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 flex items-center gap-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors text-[13px] font-medium"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          YouTube
-                        </a>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                        {products.filter((p: any) => !p.is_supply_product).map(p => (
+                          <button key={p.id} onClick={() => toggleProduct(p.id)}
+                            className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-colors ${
+                              selectedProducts.includes(p.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                            }`}>
+                            {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />}
+                            <span className="truncate">{p.name}</span>
+                            {selectedProducts.includes(p.id) && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 ml-auto" />}
+                          </button>
+                        ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* 프리즘 방송 */}
-                  {streamingMethod === 'prism' && (
-                    <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Smartphone className="h-5 w-5 text-orange-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">프리즘 라이브</h4>
-                        <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">모바일 방송</span>
-                      </div>
-
-                      {channels.some(ch => ch.has_persistent_key) ? (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                            <p className="text-[13px] text-green-700">RTMP 설정 완료 — 프리즘에서 <strong>방송 시작</strong>만 누르세요!</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 mb-5">
-                          <div className="flex items-start gap-3">
-                            <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
-                            <div>
-                              <p className="text-[13px] font-medium text-[#1d1d1f]">아래 RTMP 정보를 복사하세요</p>
-                              <p className="text-[11px] text-[#6e6e73]">또는 QR 코드를 스캔하면 자동 입력됩니다</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
-                            <div>
-                              <p className="text-[13px] font-medium text-[#1d1d1f]">프리즘 → 외부 RTMP → 붙여넣기</p>
-                              <p className="text-[11px] text-[#6e6e73]">최초 1회만 설정하면 됩니다</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
-                            <div>
-                              <p className="text-[13px] font-medium text-[#1d1d1f]">프리즘에서 "방송 시작" 클릭</p>
-                              <p className="text-[11px] text-[#6e6e73]">다음부터는 이 단계만 하면 됩니다</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3">
-                            <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">✓</span>
-                            <div>
-                              <p className="text-[13px] font-medium text-[#1d1d1f]">유어딜이 자동으로 감지합니다</p>
-                              <p className="text-[11px] text-[#6e6e73]">프리즘 송출이 시작되면 라이브가 자동 전환됩니다</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {newStream.rtmp_url && newStream.rtmp_key && !channels.some(ch => ch.has_persistent_key) && (
-                        <PrismQRCode
-                          rtmpUrl={newStream.rtmp_url}
-                          rtmpKey={newStream.rtmp_key}
-                          streamTitle={newStream.title}
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {/* 닫기 버튼 */}
-                  <Button
-                    onClick={() => setNewStream(null)}
-                    variant="outline"
-                    className="w-full h-10"
-                  >
-                    {t('common.close')}
+                    )}
+                  </div>
+                  {/* 생성 버튼 */}
+                  <Button onClick={createLiveStream} disabled={creating || !title.trim() || selectedProducts.length === 0}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white h-12 text-base font-semibold">
+                    {creating ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Radio className="h-5 w-5 mr-2" />}
+                    {creating ? '생성 중...' : '방송 생성하기'}
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* Create Live Stream Section */}
-            {!showSetup && !newStream && (
-              <div className="apple-card p-6 sm:p-8 mb-8">
-                <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2 text-center">
-                  {t('seller.newLiveBroadcast')}
-                </h2>
-                <p className="text-[14px] text-[#6e6e73] mb-6 text-center">
-                  {t('seller.selectMethodAndStart')}
-                </p>
-
-                {/* {t('seller.broadcastMethod')} */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  <button
-                    onClick={() => { setStreamingMethod('web'); setShowSetup(true) }}
-                    className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-[#007aff] hover:bg-[#007aff]/5 transition-all text-center"
-                  >
-                    <Monitor className="h-8 w-8 mx-auto mb-2 text-[#007aff]" />
-                    <p className="text-[14px] font-semibold text-[#1d1d1f]">{t('seller.browser')}</p>
-                    <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.browserStartNow')}</p>
-                  </button>
-                  <button
-                    onClick={() => { setStreamingMethod('obs'); setShowSetup(true) }}
-                    className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-purple-500 hover:bg-purple-50 transition-all text-center"
-                  >
-                    <VideoIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                    <p className="text-[14px] font-semibold text-[#1d1d1f]">OBS Studio</p>
-                    <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.obsSubtitle')}</p>
-                  </button>
-                  <button
-                    onClick={() => { setStreamingMethod('prism'); setShowSetup(true) }}
-                    className="p-5 rounded-xl border-2 border-[#e5e5ea] bg-white hover:border-orange-500 hover:bg-orange-50 transition-all text-center"
-                  >
-                    <Smartphone className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                    <p className="text-[14px] font-semibold text-[#1d1d1f]">{t('seller.prismLive')}</p>
-                    <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.prismMobile')}</p>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Setup Form */}
-            {showSetup && !newStream && (
-              <div className="apple-card p-6 sm:p-8 mb-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <h3 className="text-[21px] font-bold text-[#1d1d1f]">
-                    {t('seller.broadcastInfoInput')}
-                  </h3>
-                  <Badge className={`text-[12px] ${
-                    streamingMethod === 'web' ? 'bg-[#007aff] text-white' :
-                    streamingMethod === 'obs' ? 'bg-purple-600 text-white' :
-                    'bg-orange-500 text-white'
-                  }`}>
-                    {streamingMethod === 'web' ? t('seller.browserLabel') : streamingMethod === 'obs' ? 'OBS' : t('seller.prismLive')}
-                  </Badge>
+            {/* ── 방송 생성 완료 → 가이드 ── */}
+            {newStream && (
+              <div className="bg-white rounded-2xl border-2 border-green-200 p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  <h3 className="text-base font-bold text-gray-900">방송 준비 완료!</h3>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-[15px] font-semibold text-[#1d1d1f] mb-2">
-                      {t('seller.broadcastTitleLabel')}
-                    </label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder={t("seller.broadcastTitlePlaceholderAlt")}
-                      className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
-                      maxLength={100}
-                    />
+                {/* 방송 방식별 가이드 */}
+                {streamingMethod === 'web' && (
+                  <div className="space-y-3 mb-5">
+                    <Step num="1" text="아래 버튼으로 YouTube Studio를 여세요" />
+                    <Step num="2" text="YouTube Studio에서 '라이브 시작' 클릭" />
+                    <Step num="✓" text="유어딜이 자동으로 감지합니다" done />
+                    <Button onClick={async () => {
+                      await startStream(newStream.id)
+                      const vid = newStream.youtube_video_id || newStream.youtube_broadcast_id
+                      window.open(vid ? `https://studio.youtube.com/video/${vid}/livestreaming` : 'https://studio.youtube.com/channel/UC/livestreaming', '_blank')
+                    }} className="w-full bg-red-600 hover:bg-red-700 text-white h-11">
+                      <ExternalLink className="h-4 w-4 mr-2" /> YouTube Studio 열기
+                    </Button>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-[15px] font-semibold text-[#1d1d1f] mb-2">
-                      {t('seller.broadcastDesc')}
-                    </label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder={t("seller.broadcastDescPlaceholderAlt")}
-                      className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] focus:outline-none focus:ring-2 focus:ring-[#007aff] resize-none"
-                      rows={4}
-                      maxLength={500}
-                    />
-                  </div>
-
-                  {/* 예약 방송 설정 */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-[15px] font-semibold text-[#1d1d1f]">방송 예약</label>
-                      <button
-                        onClick={() => setIsScheduled(!isScheduled)}
-                        className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-[#007aff]' : 'bg-gray-300'}`}
-                      >
-                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isScheduled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-                    {isScheduled && (
-                      <div className="flex gap-3">
-                        <input
-                          type="date"
-                          value={scheduledDate}
-                          onChange={e => setScheduledDate(e.target.value)}
-                          min={new Date().toISOString().split('T')[0]}
-                          className="flex-1 px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
-                        />
-                        <input
-                          type="time"
-                          value={scheduledTime}
-                          onChange={e => setScheduledTime(e.target.value)}
-                          className="flex-1 px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
-                        />
-                      </div>
-                    )}
-                    {!isScheduled && (
-                      <p className="text-[12px] text-[#6e6e73]">즉시 방송을 시작합니다. 예약하려면 토글을 켜세요.</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[15px] font-semibold text-[#1d1d1f] mb-3">
-                      {t('seller.selectSaleProducts')} *
-                    </label>
-                    {products.length === 0 ? (
-                      <div className="text-center py-8 text-[#6e6e73]">
-                        <p className="mb-3">{t('seller.noProducts')}</p>
-                        <Button
-                          onClick={() => navigate('/seller/products/new')}
-                          variant="outline"
-                        >
-                          {t('seller.registerProduct')}
-                        </Button>
+                {streamingMethod === 'obs' && (
+                  <div className="space-y-3 mb-5">
+                    {channels.some(ch => ch.has_persistent_key) ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" /> RTMP 설정 완료 — OBS에서 방송 시작만 클릭하세요!
                       </div>
                     ) : (
-                      <div className="grid sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto">
-                        {products.map(product => (
-                          <button
-                            key={product.id}
-                            onClick={() => toggleProduct(product.id)}
-                            className={`
-                              p-4 rounded-lg border-2 transition-all text-left
-                              ${selectedProducts.includes(product.id)
-                                ? 'border-[#007aff] bg-[#007aff]/5'
-                                : 'border-[#e5e5ea] bg-white hover:border-[#007aff]/30'
-                              }
-                            `}
-                          >
-                            <div className="flex gap-3">
-                              {product.image_url && product.image_url.trim() !== '' ? (
-                                <img
-                                  src={product.image_url}
-                                  alt={product.name}
-                                  className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
-                                    const placeholder = e.currentTarget.nextElementSibling as HTMLElement
-                                    if (placeholder) placeholder.style.display = 'flex'
-                                  }}
-                                />
-                              ) : null}
-                              <div
-                                className="w-16 h-16 rounded-lg bg-[#f5f5f7] flex-shrink-0 items-center justify-center"
-                                style={{ display: (product.image_url && product.image_url.trim() !== '') ? 'none' : 'flex' }}
-                              >
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-[13px] font-semibold text-[#1d1d1f] truncate">
-                                  {product.name}
-                                </h4>
-                                <p className="text-[15px] font-bold text-[#007aff]">
-                                  {product.price.toLocaleString()}{t('common.won')}
-                                </p>
-                                <p className="text-[11px] text-[#6e6e73]">
-                                  {t('common.stock')}: {product.stock}{t('common.count')}
-                                </p>
-                              </div>
-                              {selectedProducts.includes(product.id) && (
-                                <CheckCircle2 className="h-5 w-5 text-[#007aff] flex-shrink-0" />
-                              )}
-                            </div>
-                          </button>
-                        ))}
+                      <>
+                        <Step num="1" text="아래 RTMP 정보를 복사하세요" />
+                        <Step num="2" text="OBS → 설정 → 방송 → 사용자 지정에 붙여넣기" />
+                        <Step num="3" text="OBS에서 방송 시작 클릭" />
+                        <Step num="✓" text="유어딜이 자동으로 감지합니다" done />
+                      </>
+                    )}
+                    {newStream.rtmp_url && (
+                      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                        <div className="flex gap-2">
+                          <code className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded text-xs font-mono truncate">{newStream.rtmp_url}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success('URL 복사됨') }} className="px-2 py-1.5 bg-white border border-gray-200 rounded hover:bg-gray-100"><Copy className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <div className="flex gap-2">
+                          <code className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded text-xs font-mono truncate">{newStream.rtmp_key}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success('Key 복사됨') }} className="px-2 py-1.5 bg-white border border-gray-200 rounded hover:bg-gray-100"><Copy className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <button onClick={copyRTMP} className="w-full py-2 bg-purple-600 text-white text-xs font-bold rounded-lg">
+                          {copiedRTMP ? '✓ 복사됨!' : 'URL + Key 전체 복사'}
+                        </button>
                       </div>
                     )}
-                    <p className="text-[13px] text-[#6e6e73] mt-2">
-                      {t('seller.selectedProducts')}: {selectedProducts.length}{t('common.count')}
-                    </p>
                   </div>
+                )}
 
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={createLiveStream}
-                      disabled={creating || !title.trim() || selectedProducts.length === 0}
-                      className="flex-1 bg-[#007aff] hover:bg-[#0051d5] text-white h-12 text-[15px] font-semibold"
-                    >
-                      {creating ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                          {t('common.creating')}
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-5 w-5 mr-2" />
-                          {t('seller.createBroadcast')}
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={() => setShowSetup(false)}
-                      variant="outline"
-                      className="px-8 h-12"
-                    >
-                      {t('common.cancel')}
-                    </Button>
+                {streamingMethod === 'prism' && (
+                  <div className="space-y-3 mb-5">
+                    {channels.some(ch => ch.has_persistent_key) ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" /> RTMP 설정 완료 — 프리즘에서 방송 시작만 누르세요!
+                      </div>
+                    ) : (
+                      <>
+                        <Step num="1" text="아래 RTMP 정보를 복사하세요" />
+                        <Step num="2" text="프리즘 → 외부 RTMP → 붙여넣기 (최초 1회)" />
+                        <Step num="3" text="프리즘에서 방송 시작 클릭" />
+                        <Step num="✓" text="유어딜이 자동으로 감지합니다" done />
+                      </>
+                    )}
+                    {newStream.rtmp_url && !channels.some(ch => ch.has_persistent_key) && (
+                      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                        <div className="flex gap-2">
+                          <code className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded text-xs font-mono truncate">{newStream.rtmp_url}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(newStream.rtmp_url || ''); toast.success('URL 복사됨') }} className="px-2 py-1.5 bg-white border border-gray-200 rounded hover:bg-gray-100"><Copy className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <div className="flex gap-2">
+                          <code className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded text-xs font-mono truncate">{newStream.rtmp_key}</code>
+                          <button onClick={() => { navigator.clipboard.writeText(newStream.rtmp_key || ''); toast.success('Key 복사됨') }} className="px-2 py-1.5 bg-white border border-gray-200 rounded hover:bg-gray-100"><Copy className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <button onClick={copyRTMP} className="w-full py-2 bg-orange-500 text-white text-xs font-bold rounded-lg">
+                          {copiedRTMP ? '✓ 복사됨!' : 'URL + Key 전체 복사'}
+                        </button>
+                      </div>
+                    )}
+                    {newStream.rtmp_url && newStream.rtmp_key && !channels.some(ch => ch.has_persistent_key) && (
+                      <PrismQRCode rtmpUrl={newStream.rtmp_url} rtmpKey={newStream.rtmp_key} streamTitle={newStream.title || ''} />
+                    )}
                   </div>
-                </div>
+                )}
+
+                <button onClick={() => { setNewStream(null); setShowSetup(false); loadData() }} className="w-full py-2 text-sm text-gray-500 mt-2">
+                  다른 방송 생성하기
+                </button>
               </div>
             )}
 
-            {/* Active Streams */}
+            {/* ── 진행 중 / 예정 방송 ── */}
             {streams.filter(s => s.status !== 'ended').length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                  {t('seller.activeBroadcasts')}
-                </h3>
-                <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 mb-3">진행 중인 방송</h3>
+                <div className="space-y-3">
                   {streams.filter(s => s.status !== 'ended').map(stream => (
-                    <div key={stream.id} className="apple-card p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="text-[17px] font-semibold text-[#1d1d1f]">
-                              {stream.title}
-                            </h4>
-                            <Badge
-                              className={`
-                                ${stream.status === 'live'
-                                  ? 'bg-red-600 text-white'
-                                  : 'bg-orange-500 text-white'
-                                }
-                              `}
-                            >
-                              {stream.status === 'live' ? 'LIVE' : t('common.scheduled')}
-                            </Badge>
-                          </div>
-                          <p className="text-[13px] text-[#6e6e73] mb-3">
-                            {stream.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-[13px] text-[#6e6e73]">
-                            <div className="flex items-center gap-1">
-                              <Eye className="h-3.5 w-3.5" />
-                              {stream.viewer_count.toLocaleString()}
-                            </div>
-                            {stream.started_at && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                {t('seller.startedAt')}: {formatKSTTime(stream.started_at)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                    <div key={stream.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stream.status === 'live' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                          {stream.status === 'live' ? '● LIVE' : '예정'}
+                        </span>
+                        <h4 className="text-sm font-semibold text-gray-900 truncate flex-1">{stream.title}</h4>
+                        {stream.status === 'live' && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1"><Eye className="h-3 w-3" />{stream.viewer_count}</span>
+                        )}
                       </div>
-                      {/* RTMP 정보 (예정 상태일 때 표시 - OBS/프리즘 설정용) */}
-                      {stream.status === 'scheduled' && stream.rtmp_url && stream.rtmp_key && (
-                        <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                          <p className="text-[11px] font-semibold text-[#6e6e73] mb-2">{t('seller.rtmpSettings')}</p>
-                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                              <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_url}</code>
-                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_url || ''); toast.success(t('seller.urlCopied')) }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                            </div>
-                            <div className="flex gap-2">
-                              <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_key}</code>
-                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_key || ''); toast.success(t('seller.keyCopied')) }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
-                      {/* 상품 표시 설정 */}
-                      <div className="bg-[#f5f5f7] rounded-lg p-3 mb-3 flex items-center justify-between">
+                      {/* 상품 표시 모드 토글 */}
+                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg mb-3">
                         <div>
-                          <p className="text-[12px] font-semibold text-[#1d1d1f]">{t('seller.productDisplayMode')}</p>
-                          <p className="text-[11px] text-[#6e6e73]">
-                            {(stream as any).product_display_mode === 'all' ? t('seller.showAllProducts') : t('seller.currentProductOnly')}
-                          </p>
+                          <p className="text-xs font-medium text-gray-900">상품 표시</p>
+                          <p className="text-[10px] text-gray-500">{(stream as any).product_display_mode === 'all' ? '전체 상품' : '현재 상품만'}</p>
                         </div>
-                        <button
-                          onClick={async () => {
-                            const newMode = (stream as any).product_display_mode === 'all' ? 'current_only' : 'all'
-                            try {
-                              const token = localStorage.getItem('seller_token')
-                              await api.put(`/api/seller/streams/${stream.id}/product-display`, { mode: newMode }, {
-                                headers: { Authorization: `Bearer ${token}` }
-                              })
-                              toast.success(newMode === 'all' ? t('seller.showAllProductsToast') : t('seller.showCurrentOnlyToast'))
-                              ;(stream as any).product_display_mode = newMode
-                              setStreams([...streams])
-                            } catch { toast.error(t('common.settingChangeFailed')) }
-                          }}
-                          className={`relative w-11 h-6 rounded-full transition-colors ${
-                            (stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'
-                          }`}
-                        >
-                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                            (stream as any).product_display_mode === 'all' ? 'translate-x-5' : 'translate-x-0.5'
-                          }`} />
+                        <button onClick={async () => {
+                          const newMode = (stream as any).product_display_mode === 'all' ? 'current_only' : 'all'
+                          try {
+                            await api.put(`/api/seller/streams/${stream.id}/product-display`, { mode: newMode }, { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
+                            toast.success(newMode === 'all' ? '전체 상품 표시' : '현재 상품만 표시')
+                            ;(stream as any).product_display_mode = newMode
+                            setStreams([...streams])
+                          } catch { toast.error('변경 실패') }
+                        }} className={`relative w-9 h-5 rounded-full transition-colors ${(stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(stream as any).product_display_mode === 'all' ? 'translate-x-4' : 'translate-x-0.5'}`} />
                         </button>
                       </div>
 
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2">
                         {stream.status === 'scheduled' && (
-                          <Button
-                            onClick={() => startStream(stream.id)}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            <Radio className="h-4 w-4 mr-2" />
-                            {t('seller.startBroadcast')}
+                          <Button onClick={() => startStream(stream.id)} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1">
+                            <Radio className="h-3.5 w-3.5 mr-1" /> 방송 시작
                           </Button>
                         )}
                         {stream.status === 'live' && (
                           <>
-                            <Button
-                              onClick={() => {
-                                setShowControlPanel(true)
-                                setNewStream(stream)
-                              }}
-                              className="bg-[#007aff] hover:bg-[#0051d5] text-white"
-                            >
-                              <Settings className="h-4 w-4 mr-2" />
-                              {t('seller.broadcastManage')}
+                            <Button onClick={() => { setShowControlPanel(true); setNewStream(stream) }} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1">
+                              <Settings className="h-3.5 w-3.5 mr-1" /> 관리
                             </Button>
-                            <Button
-                              onClick={() => endStream(stream.id)}
-                              variant="destructive"
-                            >
-                              {t('seller.endBroadcast')}
-                            </Button>
+                            <Button onClick={() => endStream(stream.id)} size="sm" variant="destructive" className="flex-1">종료</Button>
                           </>
                         )}
-                        <a
-                          href={stream.youtube_url || `https://youtube.com/watch?v=${stream.youtube_video_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 text-[13px] font-medium"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          YouTube
-                        </a>
-                        <a
-                          href={`/live/${stream.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 text-[13px] font-medium"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ur Live
+                        <a href={`/live/${stream.id}`} target="_blank" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
+                          <ExternalLink className="h-4 w-4 text-gray-500" />
                         </a>
                       </div>
                     </div>
@@ -1128,39 +631,21 @@ export default function SellerLiveBroadcastPage() {
               </div>
             )}
 
-            {/* Recent Streams */}
+            {/* ── 최근 방송 ── */}
             {streams.filter(s => s.status === 'ended').length > 0 && (
               <div>
-                <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                  {t('seller.recentBroadcasts')}
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {streams.filter(s => s.status === 'ended').slice(0, 4).map(stream => (
-                    <div key={stream.id} className="apple-card p-4">
-                      <h4 className="text-[15px] font-semibold text-[#1d1d1f] mb-2">
-                        {stream.title}
-                      </h4>
-                      <div className="flex items-center gap-3 text-[13px] text-[#6e6e73] mb-3">
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-3.5 w-3.5" />
-                          {stream.viewer_count.toLocaleString()}
-                        </div>
-                        {stream.ended_at && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {formatKSTDate(stream.ended_at)}
-                          </div>
-                        )}
+                <h3 className="text-sm font-bold text-gray-900 mb-3">최근 방송</h3>
+                <div className="space-y-2">
+                  {streams.filter(s => s.status === 'ended').slice(0, 5).map(stream => (
+                    <div key={stream.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-3">
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                        {stream.youtube_video_id && <img src={`https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`} alt="" className="w-full h-full object-cover" />}
                       </div>
-                      <a
-                        href={stream.youtube_url || `https://youtube.com/watch?v=${stream.youtube_video_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[13px] text-[#007aff] hover:opacity-60 transition-opacity flex items-center gap-1"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        {t('common.replay')}
-                      </a>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{stream.title}</p>
+                        <p className="text-xs text-gray-500">{stream.ended_at ? formatKSTDate(stream.ended_at) : ''}</p>
+                      </div>
+                      <a href={`/seller/live-analytics/${stream.id}`} className="text-xs text-blue-600 font-medium shrink-0">분석</a>
                     </div>
                   ))}
                 </div>
