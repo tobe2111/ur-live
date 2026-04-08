@@ -96,6 +96,9 @@ export default function SellerLiveBroadcastPage() {
   // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
 
   useEffect(() => {
     if (!isSellerAuthenticated()) {
@@ -170,11 +173,16 @@ export default function SellerLiveBroadcastPage() {
     try {
       setCreating(true)
 
+      let scheduledStartTime = new Date().toISOString()
+      if (isScheduled && scheduledDate && scheduledTime) {
+        scheduledStartTime = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+      }
+
       const payload = {
         title: title.trim(),
         description: description.trim(),
         product_ids: selectedProducts,
-        scheduled_start_time: new Date().toISOString()
+        scheduled_start_time: scheduledStartTime
       }
 
       const response = await api.post('/api/seller/youtube/live/create', payload)
@@ -880,6 +888,39 @@ export default function SellerLiveBroadcastPage() {
                       rows={4}
                       maxLength={500}
                     />
+                  </div>
+
+                  {/* 예약 방송 설정 */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-[15px] font-semibold text-[#1d1d1f]">방송 예약</label>
+                      <button
+                        onClick={() => setIsScheduled(!isScheduled)}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-[#007aff]' : 'bg-gray-300'}`}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isScheduled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    {isScheduled && (
+                      <div className="flex gap-3">
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          onChange={e => setScheduledDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="flex-1 px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                        />
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={e => setScheduledTime(e.target.value)}
+                          className="flex-1 px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                        />
+                      </div>
+                    )}
+                    {!isScheduled && (
+                      <p className="text-[12px] text-[#6e6e73]">즉시 방송을 시작합니다. 예약하려면 토글을 켜세요.</p>
+                    )}
                   </div>
 
                   <div>
