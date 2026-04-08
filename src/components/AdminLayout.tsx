@@ -99,7 +99,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   )
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
+    <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}

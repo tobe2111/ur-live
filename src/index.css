@@ -107,6 +107,26 @@
   }
 }
 
+/* 셀러/어드민 대시보드: 라이트 CSS 변수 오버라이드 */
+.seller-light-theme,
+.admin-light-theme {
+  --background: 0 0% 96%;
+  --foreground: 0 0% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 9%;
+  --border: 0 0% 89%;
+  --input: 0 0% 89%;
+  --ring: 211 100% 50%;
+}
+
 /* Apple-style animations - Subtle and purposeful */
 @keyframes smooth-appear {
   from {
