@@ -21,7 +21,7 @@ groupBuyRoutes.use('*', cors({
   credentials: true,
 }))
 
-const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.10 // 식사권 기본 수수료 10%
+const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
 
 // DB에서 수수료율 조회 (어드민 설정 우선, 없으면 기본값)
 async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {

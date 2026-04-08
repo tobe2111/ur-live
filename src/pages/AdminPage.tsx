@@ -81,6 +81,24 @@ export default function AdminPage() {
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [bizInfoSeller, setBizInfoSeller] = useState<Seller | null>(null)
+  const [commissionSettings, setCommissionSettings] = useState<{ key: string; value: string; description: string }[]>([])
+
+  // 수수료 설정 로드
+  useEffect(() => {
+    api.get('/api/admin/settings/commission', { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } })
+      .then(r => { if (r.data.success) setCommissionSettings(r.data.data) })
+      .catch(() => {})
+  }, [])
+
+  async function updateCommission(key: string, newValue: string) {
+    try {
+      const res = await api.put('/api/admin/settings/commission', { key, value: newValue }, { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } })
+      if (res.data.success) {
+        toast.success(res.data.message)
+        setCommissionSettings(prev => prev.map(s => s.key === key ? { ...s, value: newValue } : s))
+      }
+    } catch { toast.error('수수료 변경 실패') }
+  }
   const [liveStreams, setLiveStreams] = useState<Stream[]>([])
 
   useEffect(() => {
@@ -396,6 +414,39 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* ── 수수료 설정 ── */}
+      {commissionSettings.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">💰 플랫폼 수수료 설정</h2>
+          <div className="space-y-3">
+            {commissionSettings.map(setting => (
+              <div key={setting.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{setting.description}</p>
+                  <p className="text-xs text-gray-500">{setting.key}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={setting.value}
+                    onChange={e => setCommissionSettings(prev => prev.map(s => s.key === setting.key ? { ...s, value: e.target.value } : s))}
+                    className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-right font-bold"
+                    min="0" max="100" step="0.5"
+                  />
+                  <span className="text-sm text-gray-500">%</span>
+                  <button
+                    onClick={() => updateCommission(setting.key, setting.value)}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
+                  >
+                    적용
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── 승인 대기 판매자 ── */}
       {pendingSellers.length > 0 && (
