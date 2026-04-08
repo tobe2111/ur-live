@@ -9,7 +9,7 @@ import { logoutSeller } from '@/lib/seller-auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
 
 const NAV_ITEMS = [
-  { path: '/seller/live',          labelKey: 'seller.live',          icon: Radio, highlight: true },
+  { path: '/seller/live-broadcast', labelKey: 'seller.live',          icon: Radio, highlight: true },
   { path: '/seller',              labelKey: 'seller.dashboard',     icon: LayoutDashboard, exact: true },
   { path: '/seller/orders',       labelKey: 'seller.orders',        icon: ShoppingBag },
   { path: '/seller/settlements',  labelKey: 'seller.revenue',       icon: DollarSign },
