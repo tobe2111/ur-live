@@ -483,8 +483,8 @@ export default function SellerLiveBroadcastPage() {
                           : 'border-[#e5e5ea] bg-white hover:border-[#007aff]/30'
                       }`}
                     >
-                      <Monitor className="h-7 w-7 mx-auto mb-2 text-[#007aff]" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">{t('seller.browser')}</p>
+                      <Monitor className="h-7 w-7 mx-auto mb-2 text-red-600" />
+                      <p className="text-[13px] font-semibold text-[#1d1d1f]">YouTube Studio</p>
                       <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.startNow')}</p>
                     </button>
                     <button
