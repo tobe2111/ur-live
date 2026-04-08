@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loadTossPayments } from '@tosspayments/tosspayments-sdk'
@@ -33,6 +34,7 @@ const STATUS_STYLES: Record<string, { label: string; icon: typeof Clock; color: 
 }
 
 export default function SellerYoutubeGrowthPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [packages, setPackages] = useState<GrowthPackage[]>([])
   const [requests, setRequests] = useState<GrowthRequest[]>([])

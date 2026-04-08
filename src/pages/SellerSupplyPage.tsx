@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 /**
  * SellerSupplyPage - 셀러 공급가 시스템
  *
@@ -50,6 +51,7 @@ interface SampleRequest {
 }
 
 export default function SellerSupplyPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-requests'>('catalog')
 
@@ -362,7 +364,7 @@ export default function SellerSupplyPage() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setRequestModal(null)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
+              <button onClick={() => setRequestModal(null)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('common.cancel')}</button>
               <button
                 onClick={handleSampleRequest}
                 disabled={submitting}
@@ -410,7 +412,7 @@ export default function SellerSupplyPage() {
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setRegisterModal(null)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
+              <button onClick={() => setRegisterModal(null)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('common.cancel')}</button>
               <button
                 onClick={handleRegister}
                 disabled={registering || !sellerPrice || Number(sellerPrice) <= 0}

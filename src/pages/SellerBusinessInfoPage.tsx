@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -40,6 +41,7 @@ declare global {
 }
 
 export default function SellerBusinessInfoPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo | null>(null)
   const [loading, setLoading] = useState(true)

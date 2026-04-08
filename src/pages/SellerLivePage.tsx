@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -43,6 +44,7 @@ type TabKey = 'start' | 'control' | 'history'
 // ─── Component ───────────────────────────────────────────────────
 
 export default function SellerLivePage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('start')
 

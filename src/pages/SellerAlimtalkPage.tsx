@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -46,6 +47,7 @@ declare global {
 }
 
 export default function SellerAlimtalkPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'logs'>('overview')
   const [balance, setBalance] = useState(0)

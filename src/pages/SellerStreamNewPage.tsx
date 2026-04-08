@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
 export default function SellerStreamNewPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'manual' | 'youtube-auto'>('manual')
   const [formData, setFormData] = useState({

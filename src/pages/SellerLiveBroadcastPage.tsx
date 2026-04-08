@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 /**
  * Seller Live Broadcast Page
  * Prism-style zero-setup YouTube live streaming
@@ -75,6 +76,7 @@ interface LiveStream {
 }
 
 export default function SellerLiveBroadcastPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)

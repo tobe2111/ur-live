@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -36,6 +37,7 @@ interface Product {
 }
 
 export default function SellerProductEditPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [loading, setLoading] = useState(true)
@@ -121,7 +123,7 @@ export default function SellerProductEditPage() {
       }
     } catch (error: any) {
       console.error('Failed to load product:', error)
-      setError('상품 정보를 불러올 수 없습니다.')
+      setError(t('common.productLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -187,15 +189,15 @@ export default function SellerProductEditPage() {
           })
         } catch (optError: any) {
           console.error('Failed to save options:', optError)
-          toast.error('상품은 수정되었으나 옵션 저장에 실패했습니다.')
+          toast.error(t('common.productSavedOptionsFailed'))
         }
         
-        toast.success('상품이 수정되었습니다.')
+        toast.success(t('common.productUpdated'))
         navigate('/seller/products')
       }
     } catch (error: any) {
       console.error('Failed to update product:', error)
-      setError(error.response?.data?.error || '상품 수정에 실패했습니다.')
+      setError(error.response?.data?.error || t('common.productUpdateFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -218,7 +220,7 @@ export default function SellerProductEditPage() {
   }
 
   function addDetailImage() {
-    const url = prompt('상세 이미지 URL을 입력하세요:')
+    const url = prompt(t('seller.detailImageUrlPrompt'))
     if (url && url.trim()) {
       setFormData({
         ...formData,
@@ -247,12 +249,12 @@ export default function SellerProductEditPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">상품을 찾을 수 없습니다.</p>
+          <p className="text-gray-600">{t('common.productNotFound')}</p>
           <Button
             onClick={() => navigate('/seller/products')}
             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
           >
-            목록으로 돌아가기
+            {t('common.backToList')}
           </Button>
         </div>
       </div>
@@ -269,7 +271,7 @@ export default function SellerProductEditPage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>상품 목록으로 돌아가기</span>
+            <span>{t('seller.backToProductList')}</span>
           </button>
         </div>
       </div>
@@ -280,10 +282,10 @@ export default function SellerProductEditPage() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Package className="w-10 h-10 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">상품 수정</h1>
+            <h1 className="text-3xl font-bold text-gray-900">{t('seller.productEdit')}</h1>
           </div>
           <p className="text-gray-600 mt-2">
-            상품 정보를 수정하고 변경사항을 저장할 수 있습니다.
+            {t('seller.editProductDesc')}
           </p>
         </div>
 
@@ -302,14 +304,14 @@ export default function SellerProductEditPage() {
           {/* Product Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상품명 <span className="text-red-500">*</span>
+              {t('seller.productName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="예: 프리미엄 무선 이어폰"
+              placeholder={t('seller.productNamePlaceholderForm')}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -318,13 +320,13 @@ export default function SellerProductEditPage() {
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              상품 설명
+              {t('seller.productDescription')}
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              placeholder="상품에 대한 자세한 설명을 입력해주세요"
+              placeholder={t('seller.descriptionPlaceholder')}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -334,7 +336,7 @@ export default function SellerProductEditPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                판매가격 <span className="text-red-500">*</span>
+                {t('seller.originalPrice')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -349,12 +351,12 @@ export default function SellerProductEditPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">원 단위로 입력해주세요</p>
+              <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                재고 수량 <span className="text-red-500">*</span>
+                {t('seller.stockQuantity')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -369,7 +371,7 @@ export default function SellerProductEditPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">개 단위로 입력해주세요</p>
+              <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
             </div>
           </div>
 
@@ -384,9 +386,9 @@ export default function SellerProductEditPage() {
                 className="rounded border-orange-300 text-orange-600"
               />
               <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
-                라이브 전용 특가 설정
+                {t('seller.liveOnly')}
               </label>
-              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">라이브 방송 중에만 적용</span>
+              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
             </div>
             {formData.live_price_enabled && (
               <div>

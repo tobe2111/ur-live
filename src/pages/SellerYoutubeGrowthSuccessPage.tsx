@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Youtube, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 
 export default function SellerYoutubeGrowthSuccessPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -20,6 +21,7 @@ interface Stream {
 }
 
 export default function SellerStreamEditPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
   const [stream, setStream] = useState<Stream | null>(null)

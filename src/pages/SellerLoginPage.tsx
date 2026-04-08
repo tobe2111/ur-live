@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
@@ -6,6 +7,7 @@ import { clearFirebaseTokenCache } from '@/lib/api'
 import { Mail, Lock, Eye, EyeOff, TrendingUp, Package, Users, ArrowRight } from 'lucide-react'
 
 export default function SellerLoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
@@ -109,7 +111,7 @@ export default function SellerLoginPage() {
         <div className="w-full max-w-sm">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-7">
-              <h2 className="text-2xl font-bold text-gray-900">로그인</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('common.login')}</h2>
               <p className="text-sm text-gray-500 mt-1">셀러 계정으로 로그인하세요</p>
             </div>
 

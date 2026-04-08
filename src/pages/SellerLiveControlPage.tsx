@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -28,6 +29,7 @@ interface LiveStream {
 }
 
 export default function SellerLiveControlPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [products, setProducts] = useState<Product[]>([])

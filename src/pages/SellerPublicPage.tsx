@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -23,6 +24,7 @@ interface Short {
 type Tab = 'home' | 'products' | 'live' | 'shorts' | 'info'
 
 export default function SellerPublicPage() {
+  const { t } = useTranslation()
   const { sellerId } = useParams<{ sellerId: string }>()
   const navigate = useNavigate()
   const [seller, setSeller] = useState<Seller | null>(null)

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Eye, Heart, Video, Loader2 } from 'lucide-react'
@@ -24,6 +25,7 @@ interface Product {
 }
 
 export default function SellerShortsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [shorts, setShorts] = useState<Short[]>([])
   const [products, setProducts] = useState<Product[]>([])
