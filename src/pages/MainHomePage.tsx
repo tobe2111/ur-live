@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, ShoppingCart, Bell, Eye, Play, ChevronRight, ShoppingBag, Clock, Star, Flame, Tv, Radio } from 'lucide-react'
-import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { useAuthWorld } from '@/shared/stores/useAuthWorld'
-import { isKorea } from '@/shared/config/region'
+import { Search, ShoppingCart, Eye, Play, ChevronRight, Clock, ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
 import axios from 'axios'
 import HeroBanner from '@/components/main/HeroBanner'
@@ -37,11 +34,11 @@ interface Product {
   group_buy_deadline?: string
 }
 
-// ── Category filter chips ──
+// ── Category (퀵메뉴 통합) ──
 const CATEGORIES = [
   { key: 'all', label: '전체', icon: '🔥' },
+  { key: 'live', label: '라이브', icon: '📺' },
   { key: 'meal_voucher', label: '맛집', icon: '🍽️' },
-  { key: 'ranking', label: '랭킹', icon: '🏆' },
   { key: 'fashion', label: '패션', icon: '👗' },
   { key: 'beauty', label: '뷰티', icon: '💄' },
   { key: 'food', label: '식품', icon: '🍜' },
@@ -49,12 +46,18 @@ const CATEGORIES = [
   { key: 'digital', label: '디지털', icon: '📱' },
 ]
 
-// ── Quick menu buttons ──
-const QUICK_MENUS = [
-  { label: '인기 랭킹', icon: Star, path: '/browse?sort=popular', color: 'from-amber-400 to-orange-500' },
-  { label: '오늘의 핫딜', icon: Flame, path: '/browse?sort=discount', color: 'from-red-400 to-pink-500' },
-  { label: '인기 쇼츠', icon: Tv, path: '/live', color: 'from-purple-400 to-indigo-500' },
-  { label: '방송 예고', icon: Radio, path: '/live', color: 'from-blue-400 to-cyan-500' },
+// ── 지역 필터 ──
+const REGIONS = [
+  { key: 'all', label: '전체' },
+  { key: '서울', label: '서울' },
+  { key: '경기', label: '경기' },
+  { key: '인천', label: '인천' },
+  { key: '부산', label: '부산' },
+  { key: '대구', label: '대구' },
+  { key: '광주', label: '광주' },
+  { key: '대전', label: '대전' },
+  { key: '울산', label: '울산' },
+  { key: '제주', label: '제주' },
 ]
 
 // ── Stream thumbnail helper ──
@@ -135,16 +138,22 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
   )
 }
 
-// ── 맛집 공동구매 섹션 ──
+// ── 맛집 공동구매 섹션 (지역 필터 포함) ──
 function GroupBuySection() {
   const navigate = useNavigate()
   const [items, setItems] = useState<Product[]>([])
+  const [region, setRegion] = useState('all')
 
   useEffect(() => {
     api.get('/api/group-buy/products?status=active')
-      .then(r => { if (r.data.success) setItems((r.data.data || []).slice(0, 4)) })
+      .then(r => { if (r.data.success) setItems(r.data.data || []) })
       .catch(() => {})
   }, [])
+
+  // 지역 필터링 (restaurant_address에서 첫 단어 매칭)
+  const filtered = region === 'all' ? items : items.filter(item =>
+    (item as any).restaurant_address?.includes(region)
+  )
 
   return (
     <section className="px-4 py-4">
@@ -157,19 +166,33 @@ function GroupBuySection() {
         <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권, 최대 70% 할인!</p>
       </button>
 
-      {items.length === 0 ? null : (
+      {/* 지역 필터 */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3">
+        {REGIONS.map(r => (
+          <button
+            key={r.key}
+            onClick={() => setRegion(r.key)}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors ${
+              region === r.key ? 'bg-pink-500 text-white' : 'bg-[#1A1A1A] text-gray-500'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-center text-gray-600 text-xs py-4">해당 지역 공동구매가 없습니다</p>
+      ) : (
       <>
       <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-[15px] font-bold text-white">진행 중인 공동구매</h2>
-          <p className="text-[11px] text-gray-500">마감 전에 참여하세요</p>
-        </div>
+        <p className="text-[13px] font-bold text-white">{region === 'all' ? '전체' : region} 맛집 {filtered.length}개</p>
         <button onClick={() => navigate('/browse?category=meal_voucher')} className="text-[12px] text-gray-500 flex items-center">
           전체보기 <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-        {items.map(item => {
+        {filtered.slice(0, 6).map(item => {
           const progress = item.group_buy_target ? Math.min(100, ((item.group_buy_current || 0) / item.group_buy_target) * 100) : 0
           const disc = item.original_price ? Math.round((1 - item.price / item.original_price) * 100) : 0
           return (
@@ -242,13 +265,7 @@ function ProductCard({ product }: { product: Product }) {
 // ── Main component ──
 export default function MainHomePage() {
   const navigate = useNavigate()
-  const krUser = useAuthKR(state => state.user)
-  const worldUser = useAuthWorld(state => state.user)
-  const user = isKorea() ? krUser : worldUser
-  const isLoggedIn = !!user
 
-  const [activeTab, setActiveTab] = useState<'recommend' | 'following'>('recommend')
-  const [activeCategory, setActiveCategory] = useState('all')
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<LiveStream[]>([])
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
@@ -278,28 +295,24 @@ export default function MainHomePage() {
 
   return (
     <div className="bg-[#121212] min-h-screen pb-16">
-      {/* ── Top Header ── */}
-      <header className="sticky top-0 z-50 bg-[#121212]">
-        {/* Row 1: Logo + Search + Icons */}
+      {/* ── Header (1줄) ── */}
+      <header className="sticky top-0 z-50 bg-[#020202] border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between h-12 px-4">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <img
-                src="/logo.png" alt="유어딜" className="h-7"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement
-                  if (!img.src.includes('googleusercontent'))
-                    img.src = 'https://lh3.googleusercontent.com/d/1KIviBiRXEnTqMXRPfQ0gg4ZUewVf7gOq'
-                }}
-              />
-            </Link>
-          </div>
+          <Link to="/" className="flex items-center gap-1.5">
+            <svg viewBox="0 0 40 36" fill="none" className="h-7 w-auto">
+              <path d="M8 8h2l1.5 3H34a1 1 0 01.96 1.28l-3.5 12A1 1 0 0130.5 25H14.5a1 1 0 01-.96-.72L9.8 10H8V8z" stroke="#EF4444" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="16" cy="31" r="2.5" fill="#EF4444"/>
+              <circle cx="29" cy="31" r="2.5" fill="#EF4444"/>
+              <path d="M19.5 13.5v8l6-4z" fill="#EF4444"/>
+            </svg>
+            <span className="text-[15px] font-extrabold text-white tracking-tight">유어딜</span>
+          </Link>
           <div className="flex items-center gap-2">
             <button onClick={() => navigate('/search')} className="p-1.5">
-              <Search className="h-5 w-5 text-gray-100" strokeWidth={1.5} />
+              <Search className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
             </button>
             <button onClick={() => navigate('/cart')} className="p-1.5 relative">
-              <ShoppingCart className="h-5 w-5 text-gray-100" strokeWidth={1.5} />
+              <ShoppingCart className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
               {(() => {
                 let count = 0
                 try { count = JSON.parse(localStorage.getItem('cart') || '[]').length } catch {}
@@ -310,56 +323,7 @@ export default function MainHomePage() {
                 ) : null
               })()}
             </button>
-            <button
-              onClick={() => navigate(isLoggedIn ? '/user/profile' : '/login')}
-              className="p-1.5"
-            >
-              {isLoggedIn && localStorage.getItem('user_profile_image') ? (
-                <img src={localStorage.getItem('user_profile_image')!} alt="" className="h-6 w-6 rounded-full object-cover" />
-              ) : (
-                <div className="h-6 w-6 rounded-full bg-[#333] flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-gray-500">
-                    {isLoggedIn ? ((user as any)?.name?.charAt(0) || 'U') : '?'}
-                  </span>
-                </div>
-              )}
-            </button>
           </div>
-        </div>
-
-        {/* Row 2: Tabs */}
-        <div className="flex items-center gap-4 px-4 border-b border-[#1A1A1A]">
-          {(['recommend', 'following'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-2.5 text-[14px] font-bold border-b-2 transition-colors ${
-                activeTab === tab
-                  ? 'text-white border-gray-900'
-                  : 'text-gray-500 border-transparent'
-              }`}
-            >
-              {tab === 'recommend' ? '추천' : '팔로잉'}
-            </button>
-          ))}
-        </div>
-
-        {/* Row 3: Category chips */}
-        <div className="flex items-center gap-2 px-4 py-2.5 overflow-x-auto no-scrollbar bg-[#121212] border-b border-gray-50">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.key}
-              onClick={() => setActiveCategory(cat.key)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
-                activeCategory === cat.key
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-[#1A1A1A] text-gray-500'
-              }`}
-            >
-              <span className="text-[11px]">{cat.icon}</span>
-              {cat.label}
-            </button>
-          ))}
         </div>
       </header>
 
@@ -389,19 +353,23 @@ export default function MainHomePage() {
         </section>
       )}
 
-      {/* ── Quick Menu ── */}
-      <section className="px-4 py-4">
-        <div className="grid grid-cols-4 gap-3">
-          {QUICK_MENUS.map(menu => (
+      {/* ── 카테고리 (원형 아이콘) ── */}
+      <section className="px-4 py-3">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          {CATEGORIES.map(cat => (
             <button
-              key={menu.label}
-              onClick={() => navigate(menu.path)}
-              className="flex flex-col items-center gap-1.5"
+              key={cat.key}
+              onClick={() => {
+                if (cat.key === 'live') navigate('/live')
+                else if (cat.key === 'all') navigate('/browse')
+                else navigate(`/browse?category=${cat.key}`)
+              }}
+              className="flex flex-col items-center gap-1 shrink-0"
             >
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${menu.color} flex items-center justify-center shadow-sm`}>
-                <menu.icon className="w-5 h-5 text-white" strokeWidth={2} />
+              <div className="w-12 h-12 rounded-full bg-[#1A1A1A] flex items-center justify-center text-xl">
+                {cat.icon}
               </div>
-              <span className="text-[10px] font-medium text-gray-500">{menu.label}</span>
+              <span className="text-[10px] font-medium text-gray-400">{cat.label}</span>
             </button>
           ))}
         </div>
