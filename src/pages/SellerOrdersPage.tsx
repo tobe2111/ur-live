@@ -193,7 +193,7 @@ export default function SellerOrdersPage() {
       order.shipping_address,
       order.total_amount,
       getStatusText(order.status),
-      order.payment_status === 'completed' ? '결제완료' : order.payment_status,
+      order.payment_status === 'completed' ? 'Paid' : order.payment_status,
       order.courier || '',
       order.tracking_number || '',
       formatKST(order.created_at)
@@ -582,7 +582,7 @@ export default function SellerOrdersPage() {
                             <div>{order.shipping_name}</div>
                             <div className="text-xs text-gray-400">{order.shipping_phone}</div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}원</td>
+                          <td className="px-6 py-4 text-sm text-right text-gray-900">{formatPrice(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                           <td className="px-6 py-4 text-center">
                             <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
@@ -772,7 +772,7 @@ export default function SellerOrdersPage() {
                             <p className="font-medium text-gray-900 truncate">{item.product_name}</p>
                             <p className="text-sm text-gray-500 mt-1">{t('seller.quantityLabel')}: {item.quantity}{t('common.count')}</p>
                             <p className="text-sm font-medium text-gray-900 mt-1">
-                              {formatPrice(item.price * item.quantity)}원
+                              {formatPrice(item.price * item.quantity)}{t('common.won')}
                             </p>
                           </div>
                         </div>
@@ -787,7 +787,7 @@ export default function SellerOrdersPage() {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>{t('seller.totalOrderAmount')}</span>
-                      <span className="text-blue-600">{formatPrice(selectedOrder.total_amount)}원</span>
+                      <span className="text-blue-600">{formatPrice(selectedOrder.total_amount)}{t('common.won')}</span>
                     </div>
                   </div>
                 </div>

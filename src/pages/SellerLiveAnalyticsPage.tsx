@@ -64,9 +64,9 @@ function fmtPrice(n: number) {
 }
 
 function fmtDuration(seconds: number) {
-  if (seconds < 60) return `${Math.round(seconds)}초`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}분 ${Math.round(seconds % 60)}초`
-  return `${Math.floor(seconds / 3600)}시간 ${Math.floor((seconds % 3600) / 60)}분`
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`
 }
 
 // ── Summary View (list of all streams) ──
@@ -365,7 +365,7 @@ function StreamAnalyticsDetail({ streamId }: { streamId: string }) {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">{t('seller.totalDonationsLabel')}</span>
-                  <span className="text-sm font-bold">{donations.total_donations}건</span>
+                  <span className="text-sm font-bold">{donations.total_donations}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">{t('seller.donationAmountLabel')}</span>

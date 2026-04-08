@@ -218,7 +218,7 @@ export default function SellerYoutubeGrowthPage() {
                       }`}
                     >
                       <span className="text-sm font-bold text-gray-900">
-                        {t('seller.subscriberPlus', { count: pkg.subscribers.toLocaleString() })}
+                        {String(t('seller.subscriberPlus', { count: pkg.subscribers.toLocaleString()} as any))}
                       </span>
                       <span className={`text-sm font-bold ${
                         selected?.subscribers === pkg.subscribers ? 'text-red-600' : 'text-gray-600'
@@ -247,9 +247,9 @@ export default function SellerYoutubeGrowthPage() {
                     <Loader2 className="w-4 h-4 animate-spin" /> {t('seller.preparingPayment')}
                   </span>
                 ) : selected ? (
-                  `${selected.price.toLocaleString()}원 결제하기`
+                  `${selected.price.toLocaleString()}${t('common.won')} ${t('common.payment')}`
                 ) : (
-                  '패키지를 선택해주세요'
+                  t('seller.selectPackagePlease')
                 )}
               </button>
             </div>
@@ -260,9 +260,9 @@ export default function SellerYoutubeGrowthPage() {
         {showWidget && (
           <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
             <div className="bg-red-50 rounded-xl px-4 py-3 flex justify-between items-center">
-              <span className="text-sm text-gray-600">결제 내용</span>
+              <span className="text-sm text-gray-600">{t('seller.paymentContent')}</span>
               <span className="text-sm font-bold text-red-600">
-                구독자 +{selected?.subscribers.toLocaleString()}명 / {selected?.price.toLocaleString()}원
+                {String(t('seller.subscriberPlus', { count: selected?.subscribers.toLocaleString()} as any))} / {selected?.price.toLocaleString()}{t('common.won')}
               </span>
             </div>
             <div id="ytg-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
@@ -273,14 +273,14 @@ export default function SellerYoutubeGrowthPage() {
                 onClick={cancelWidget}
                 className="flex-1 py-3.5 bg-gray-100 text-gray-700 text-sm font-bold rounded-xl"
               >
-                뒤로
+                {t('common.back')}
               </button>
               <button
                 onClick={handleConfirmPayment}
                 disabled={processing}
                 className="flex-[2] py-3.5 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600 disabled:opacity-60"
               >
-                {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${selected?.price.toLocaleString()}원 결제하기`}
+                {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${selected?.price.toLocaleString()}${t('common.won')} ${t('common.payment')}`}
               </button>
             </div>
           </div>
@@ -288,9 +288,9 @@ export default function SellerYoutubeGrowthPage() {
 
         {/* 신청 내역 */}
         <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">신청 내역</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.requestHistory')}</h3>
           {requests.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">신청 내역이 없습니다</p>
+            <p className="text-sm text-gray-400 text-center py-8">{t('seller.noRequestHistory')}</p>
           ) : (
             <div className="space-y-3">
               {requests.map(req => {
@@ -300,18 +300,18 @@ export default function SellerYoutubeGrowthPage() {
                   <div key={req.id} className="border border-gray-100 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${style.color}`}>
-                        <Icon className="w-3 h-3" /> {style.label}
+                        <Icon className="w-3 h-3" /> {t(`seller.${style.label}`)}
                       </span>
                       <span className="text-xs text-gray-400">{new Date(req.requested_at).toLocaleDateString('ko-KR')}</span>
                     </div>
                     <p className="text-sm text-gray-900 truncate">{req.channel_url}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-500">
-                        구독자 +{(req.target_subscribers || 0).toLocaleString()}명
+                        {String(t('seller.subscriberPlus', { count: (req.target_subscribers || 0).toLocaleString()} as any))}
                       </p>
                       {req.price > 0 && (
                         <p className="text-xs font-medium text-red-600">
-                          {req.price.toLocaleString()}원
+                          {req.price.toLocaleString()}{t('common.won')}
                         </p>
                       )}
                     </div>

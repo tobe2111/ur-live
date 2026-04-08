@@ -186,7 +186,7 @@ export default function SellerLoginPage() {
                   onClick={() => setRememberMe(v => !v)}
                   className="text-sm text-gray-600 cursor-pointer select-none"
                 >
-                  이메일 기억하기
+                  {t('seller.rememberEmail')}
                 </span>
               </div>
 

@@ -209,7 +209,7 @@ export default function SellerRegisterPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="홍길동"
+                  placeholder="John Doe"
                 />
               </div>
 
@@ -244,7 +244,7 @@ export default function SellerRegisterPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="(주)리스터코퍼레이션"
+                  placeholder="Lister Corporation"
                 />
               </div>
 

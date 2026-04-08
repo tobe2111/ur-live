@@ -220,7 +220,7 @@ export default function SellerPublicPage() {
                         <p className="text-sm text-gray-800 line-clamp-2">{p.name}</p>
                         <div className="flex items-baseline gap-1.5 mt-1">
                           {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                          <span className="text-sm font-extrabold text-gray-900">{p.price.toLocaleString()}원</span>
+                          <span className="text-sm font-extrabold text-gray-900">{p.price.toLocaleString()}{t('common.won')}</span>
                         </div>
                         {(p.sold_count ?? 0) > 0 && <p className="text-[10px] text-gray-400 mt-0.5">{t('seller.purchased', { count: p.sold_count })}</p>}
                       </div>
@@ -234,7 +234,7 @@ export default function SellerPublicPage() {
             {recentStreams.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-bold text-gray-900">라이브 <span className="text-pink-500">{streams.length}</span></h2>
+                  <h2 className="text-base font-bold text-gray-900">{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>
                   <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">{t('seller.seeMore')} <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -263,7 +263,7 @@ export default function SellerPublicPage() {
                     <p className="text-[11px] text-gray-800 mt-1.5 line-clamp-2">{p.name}</p>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       {disc > 0 && <span className="text-[12px] font-extrabold text-red-500">{disc}%</span>}
-                      <span className="text-[12px] font-extrabold text-gray-900">{p.price.toLocaleString()}원</span>
+                      <span className="text-[12px] font-extrabold text-gray-900">{p.price.toLocaleString()}{t('common.won')}</span>
                     </div>
                   </button>
                 )
