@@ -16,13 +16,7 @@ function detectDefaultLanguage(): string {
 }
 
 function detectSupportedLngs(): string[] {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    if (hostname.includes('world.ur-team.com') || hostname.includes('global.') || hostname.includes('localhost:5174')) {
-      return ['en', 'ko', 'ja', 'zh']
-    }
-  }
-  return ['ko', 'en']
+  return ['ko', 'en', 'ja', 'zh', 'es', 'fr']
 }
 
 const defaultLanguage = detectDefaultLanguage()
