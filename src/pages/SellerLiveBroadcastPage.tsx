@@ -64,6 +64,7 @@ interface LiveStream {
   title: string
   description: string
   youtube_video_id: string
+  youtube_broadcast_id?: string
   youtube_url?: string
   embed_url?: string
   rtmp_url?: string
@@ -95,6 +96,9 @@ export default function SellerLiveBroadcastPage() {
   // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
 
   useEffect(() => {
     if (!isSellerAuthenticated()) {
@@ -169,11 +173,16 @@ export default function SellerLiveBroadcastPage() {
     try {
       setCreating(true)
 
+      let scheduledStartTime = new Date().toISOString()
+      if (isScheduled && scheduledDate && scheduledTime) {
+        scheduledStartTime = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+      }
+
       const payload = {
         title: title.trim(),
         description: description.trim(),
         product_ids: selectedProducts,
-        scheduled_start_time: new Date().toISOString()
+        scheduled_start_time: scheduledStartTime
       }
 
       const response = await api.post('/api/seller/youtube/live/create', payload)
@@ -483,8 +492,8 @@ export default function SellerLiveBroadcastPage() {
                           : 'border-[#e5e5ea] bg-white hover:border-[#007aff]/30'
                       }`}
                     >
-                      <Monitor className="h-7 w-7 mx-auto mb-2 text-[#007aff]" />
-                      <p className="text-[13px] font-semibold text-[#1d1d1f]">{t('seller.browser')}</p>
+                      <Monitor className="h-7 w-7 mx-auto mb-2 text-red-600" />
+                      <p className="text-[13px] font-semibold text-[#1d1d1f]">YouTube Studio</p>
                       <p className="text-[11px] text-[#6e6e73] mt-1">{t('seller.startNow')}</p>
                     </button>
                     <button
@@ -517,111 +526,106 @@ export default function SellerLiveBroadcastPage() {
                 {/* 방송 방식별 가이드 */}
                 <div className="space-y-4">
 
-                  {/* 브라우저 방송 */}
+                  {/* YouTube Studio 방송 */}
                   {streamingMethod === 'web' && (
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Monitor className="h-5 w-5 text-[#007aff]" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.browserDirect')}</h4>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Monitor className="h-5 w-5 text-red-600" />
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">YouTube Studio 라이브</h4>
+                        <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">가장 간편</span>
                       </div>
-                      <p className="text-[13px] text-[#6e6e73] mb-4">
-                        {t('seller.browserDirectDesc')}
-                      </p>
-                      <div className="flex gap-3">
-                        <Button
-                          onClick={() => startStream(newStream.id)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
-                        >
-                          <Radio className="h-5 w-5 mr-2" />
-                          {t('seller.startBroadcast')}
-                        </Button>
+
+                      <div className="space-y-3 mb-5">
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                          <div>
+                            <p className="text-[13px] font-medium text-[#1d1d1f]">아래 버튼을 클릭하세요</p>
+                            <p className="text-[11px] text-[#6e6e73]">YouTube Studio가 새 탭에서 열립니다</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                          <div>
+                            <p className="text-[13px] font-medium text-[#1d1d1f]">YouTube Studio에서 "라이브 시작" 클릭</p>
+                            <p className="text-[11px] text-[#6e6e73]">웹캠이 자동으로 켜지며 방송이 시작됩니다</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">✓</span>
+                          <div>
+                            <p className="text-[13px] font-medium text-[#1d1d1f]">유어딜이 자동으로 감지합니다</p>
+                            <p className="text-[11px] text-[#6e6e73]">상품, 채팅, 후원이 자동으로 연결됩니다</p>
+                          </div>
+                        </div>
                       </div>
+
+                      <Button
+                        onClick={async () => {
+                          await startStream(newStream.id)
+                          const videoId = newStream.youtube_video_id || newStream.youtube_broadcast_id
+                          if (videoId) {
+                            window.open(`https://studio.youtube.com/video/${videoId}/livestreaming`, '_blank')
+                          } else {
+                            window.open('https://studio.youtube.com/channel/UC/livestreaming', '_blank')
+                          }
+                        }}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white h-12 text-[15px] font-semibold"
+                      >
+                        <Radio className="h-5 w-5 mr-2" />
+                        YouTube Studio 열기
+                      </Button>
                     </div>
                   )}
 
                   {/* OBS 방송 */}
                   {streamingMethod === 'obs' && (
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-2 mb-4">
                         <VideoIcon className="h-5 w-5 text-purple-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.obsBroadcast')}</h4>
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">OBS Studio</h4>
+                        <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">PC 방송</span>
                       </div>
 
                       {channels.some(ch => ch.has_persistent_key) ? (
                         <>
-                          {/* 고정 키가 있으면 간단 안내만 */}
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <p className="text-[13px] font-semibold text-green-800">{t('seller.rtmpSetupComplete')}</p>
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                              <p className="text-[13px] text-green-700">RTMP 설정 완료 — OBS에서 <strong>방송 시작</strong>만 클릭하세요!</p>
                             </div>
-                            <p className="text-[13px] text-green-700">
-                              {t('seller.obsRtmpAlreadySet')}
-                            </p>
-                          </div>
-
-                          {/* 동시 송출 가이드 */}
-                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.multiPlatformSimulcast')}</p>
-                            <p className="text-[12px] text-[#6e6e73] mb-3">
-                              {t('seller.multiPlatformObs')}
-                            </p>
-                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">{t('seller.availablePlatforms')}</p>
-                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok Live</span>
-                              <span>• Instagram Live</span>
-                              <span>• Twitch</span>
-                              <span>• Facebook Live</span>
-                              <span>• KakaoTV</span>
-                              <span>• Naver Shopping Live</span>
-                              <span>• AfreecaTV</span>
-                              <span>• X (Twitter) Live</span>
-                              <span>• Kick</span>
-                              <span>• LinkedIn Live</span>
-                            </div>
-                            <p className="text-[11px] text-purple-600 mt-2">
-                              {t('seller.addPlatformRtmp')}
-                            </p>
                           </div>
                         </>
                       ) : (
                         <>
-                          {/* 처음 설정 가이드 */}
-                          <p className="text-[13px] text-[#6e6e73] mb-4">
-                            {t('seller.subtitleOverlayFreeSetup')}
-                          </p>
-                          <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.firstTimeSetup')}</p>
-                            <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
-                              <li>{t('seller.obsGuideCustomService')}</li>
-                              <li>{t('seller.obsGuideSelectCustom')}</li>
-                              <li>{t('seller.obsGuidePasteKeys')}</li>
-                              <li>{t('seller.obsGuideNextTime')}</li>
-                            </ol>
-                          </div>
-
-                          {/* 동시 송출 가이드 */}
-                          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.multiPlatformSimulcast')}</p>
-                            <p className="text-[12px] text-[#6e6e73] mb-3">
-                              {t('seller.multiPlatformObs')}
-                            </p>
-                            <p className="text-[11px] font-semibold text-[#1d1d1f] mb-1.5">{t('seller.availablePlatforms')}</p>
-                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok Live</span>
-                              <span>• Instagram Live</span>
-                              <span>• Twitch</span>
-                              <span>• Facebook Live</span>
-                              <span>• KakaoTV</span>
-                              <span>• Naver Shopping Live</span>
-                              <span>• AfreecaTV</span>
-                              <span>• X (Twitter) Live</span>
-                              <span>• Kick</span>
-                              <span>• LinkedIn Live</span>
+                          <div className="space-y-3 mb-5">
+                            <div className="flex items-start gap-3">
+                              <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                              <div>
+                                <p className="text-[13px] font-medium text-[#1d1d1f]">아래 RTMP 정보를 복사하세요</p>
+                                <p className="text-[11px] text-[#6e6e73]">URL과 Key를 한 번에 복사합니다</p>
+                              </div>
                             </div>
-                            <p className="text-[11px] text-purple-600 mt-2">
-                              {t('seller.addPlatformRtmp')}
-                            </p>
+                            <div className="flex items-start gap-3">
+                              <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                              <div>
+                                <p className="text-[13px] font-medium text-[#1d1d1f]">OBS → 설정 → 방송 → 사용자 지정</p>
+                                <p className="text-[11px] text-[#6e6e73]">서버 URL과 스트림 키를 붙여넣기 (최초 1회)</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                              <div>
+                                <p className="text-[13px] font-medium text-[#1d1d1f]">OBS에서 "방송 시작" 클릭</p>
+                                <p className="text-[11px] text-[#6e6e73]">다음부터는 이 단계만 하면 됩니다</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">✓</span>
+                              <div>
+                                <p className="text-[13px] font-medium text-[#1d1d1f]">유어딜이 자동으로 감지합니다</p>
+                                <p className="text-[11px] text-[#6e6e73]">OBS 송출이 시작되면 라이브가 자동 전환됩니다</p>
+                              </div>
+                            </div>
                           </div>
 
                           {/* RTMP 정보 */}
@@ -654,6 +658,12 @@ export default function SellerLiveBroadcastPage() {
                                 </button>
                               </div>
                             </div>
+                            <button
+                              onClick={copyRTMP}
+                              className="w-full py-2.5 bg-purple-600 text-white text-[13px] font-semibold rounded-lg hover:bg-purple-700 active:scale-[0.98] transition-all"
+                            >
+                              {copiedRTMP ? '✓ 복사됨!' : 'RTMP URL + Key 전체 복사'}
+                            </button>
                             <p className="text-[11px] text-purple-600 flex items-center gap-1">
                               <Key className="h-3 w-3" />
                               {t('seller.persistentKeyShort')}
@@ -686,78 +696,50 @@ export default function SellerLiveBroadcastPage() {
                   {/* 프리즘 방송 */}
                   {streamingMethod === 'prism' && (
                     <div className="bg-white border border-[#e5e5ea] rounded-xl p-5">
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-2 mb-4">
                         <Smartphone className="h-5 w-5 text-orange-600" />
-                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">{t('seller.prismLiveBroadcast')}</h4>
+                        <h4 className="text-[15px] font-semibold text-[#1d1d1f]">프리즘 라이브</h4>
+                        <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">모바일 방송</span>
                       </div>
 
                       {channels.some(ch => ch.has_persistent_key) ? (
-                        <>
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <p className="text-[13px] font-semibold text-green-800">{t('seller.rtmpSetupComplete')}</p>
-                            </div>
-                            <p className="text-[13px] text-green-700">
-                              {t('seller.prismRtmpAlreadySet')}
-                            </p>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                            <p className="text-[13px] text-green-700">RTMP 설정 완료 — 프리즘에서 <strong>방송 시작</strong>만 누르세요!</p>
                           </div>
-
-                          <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.prismMultiSimulcast')}</p>
-                            <p className="text-[12px] text-[#6e6e73] mb-2">
-                              {t('seller.prismMultiDesc')}
-                            </p>
-                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok Live</span>
-                              <span>• Instagram Live</span>
-                              <span>• Twitch</span>
-                              <span>• Facebook Live</span>
-                              <span>• KakaoTV</span>
-                              <span>• Naver Shopping Live</span>
-                              <span>• AfreecaTV</span>
-                              <span>• X (Twitter) Live</span>
-                            </div>
-                            <p className="text-[11px] text-orange-600 mt-2">
-                              {t('seller.prismAddPlatform')}
-                            </p>
-                          </div>
-                        </>
+                        </div>
                       ) : (
-                        <>
-                          <p className="text-[13px] text-[#6e6e73] mb-4">
-                            {t('seller.prismMobileDesc')}
-                          </p>
-
-                          <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.firstTimeSetup')}</p>
-                            <ol className="text-[13px] text-[#6e6e73] space-y-1.5 list-decimal list-inside">
-                              <li>{t('seller.prismFirstSetup')}</li>
-                              <li>{t('seller.prismPasteRtmp')}</li>
-                              <li>{t('seller.prismNextTime')}</li>
-                            </ol>
-                          </div>
-
-                          <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 mb-4">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] mb-2">{t('seller.prismMultiSimulcast')}</p>
-                            <p className="text-[12px] text-[#6e6e73] mb-2">
-                              {t('seller.prismMultiExternal')}
-                            </p>
-                            <div className="grid grid-cols-2 gap-1 text-[11px] text-[#6e6e73]">
-                              <span>• TikTok Live</span>
-                              <span>• Instagram Live</span>
-                              <span>• Twitch</span>
-                              <span>• Facebook Live</span>
-                              <span>• KakaoTV</span>
-                              <span>• Naver Shopping Live</span>
-                              <span>• AfreecaTV</span>
-                              <span>• X (Twitter) Live</span>
+                        <div className="space-y-3 mb-5">
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                            <div>
+                              <p className="text-[13px] font-medium text-[#1d1d1f]">아래 RTMP 정보를 복사하세요</p>
+                              <p className="text-[11px] text-[#6e6e73]">또는 QR 코드를 스캔하면 자동 입력됩니다</p>
                             </div>
-                            <p className="text-[11px] text-orange-600 mt-2">
-                              {t('seller.prismAddPlatform')}
-                            </p>
                           </div>
-                        </>
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                            <div>
+                              <p className="text-[13px] font-medium text-[#1d1d1f]">프리즘 → 외부 RTMP → 붙여넣기</p>
+                              <p className="text-[11px] text-[#6e6e73]">최초 1회만 설정하면 됩니다</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                            <div>
+                              <p className="text-[13px] font-medium text-[#1d1d1f]">프리즘에서 "방송 시작" 클릭</p>
+                              <p className="text-[11px] text-[#6e6e73]">다음부터는 이 단계만 하면 됩니다</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <span className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0">✓</span>
+                            <div>
+                              <p className="text-[13px] font-medium text-[#1d1d1f]">유어딜이 자동으로 감지합니다</p>
+                              <p className="text-[11px] text-[#6e6e73]">프리즘 송출이 시작되면 라이브가 자동 전환됩니다</p>
+                            </div>
+                          </div>
+                        </div>
                       )}
 
                       {newStream.rtmp_url && newStream.rtmp_key && !channels.some(ch => ch.has_persistent_key) && (
@@ -865,6 +847,39 @@ export default function SellerLiveBroadcastPage() {
                       rows={4}
                       maxLength={500}
                     />
+                  </div>
+
+                  {/* 예약 방송 설정 */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-[15px] font-semibold text-[#1d1d1f]">방송 예약</label>
+                      <button
+                        onClick={() => setIsScheduled(!isScheduled)}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-[#007aff]' : 'bg-gray-300'}`}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isScheduled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    {isScheduled && (
+                      <div className="flex gap-3">
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          onChange={e => setScheduledDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="flex-1 px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                        />
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={e => setScheduledTime(e.target.value)}
+                          className="flex-1 px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[14px] focus:outline-none focus:ring-2 focus:ring-[#007aff]"
+                        />
+                      </div>
+                    )}
+                    {!isScheduled && (
+                      <p className="text-[12px] text-[#6e6e73]">즉시 방송을 시작합니다. 예약하려면 토글을 켜세요.</p>
+                    )}
                   </div>
 
                   <div>

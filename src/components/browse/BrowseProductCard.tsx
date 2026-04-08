@@ -37,7 +37,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
         
         const response = await api.get(`/api/wishlists/check/${userId}/${product.id}`)
         if (response.data.success) {
-          setSaved(response.data.data.isSaved)
+          setSaved(response.data.data.isWishlisted || response.data.data.isSaved)
         }
       } catch (err) {
         console.error('위시리스트 확인 실패:', err)
@@ -71,8 +71,7 @@ export default function BrowseProductCard({ product }: BrowseProductCardProps) {
       } else {
         // 위시리스트에 추가
         await api.post('/api/wishlists', {
-          user_id: parseInt(userId),
-          product_id: product.id
+          productId: product.id
         })
         setSaved(true)
       }
