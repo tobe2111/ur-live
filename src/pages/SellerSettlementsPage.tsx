@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -47,6 +48,7 @@ interface SettlementStats {
 }
 
 export default function SellerSettlementsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [stats, setStats] = useState<SettlementStats | null>(null)
@@ -160,10 +162,10 @@ export default function SellerSettlementsPage() {
     }
 
     const labels: Record<string, string> = {
-      pending: '대기 중',
-      approved: '승인됨',
-      paid: '지급 완료',
-      rejected: '거부됨'
+      pending: t('common.pending'),
+      approved: t('common.completed'),
+      paid: t('common.paid'),
+      rejected: t('common.cancelled'),
     }
 
     return (
@@ -190,7 +192,7 @@ export default function SellerSettlementsPage() {
         <div className="text-center">
           <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => loadSettlements()}>다시 시도</Button>
+          <Button onClick={() => loadSettlements()}>{t('common.refresh')}</Button>
         </div>
       </div>
     )
@@ -200,17 +202,17 @@ export default function SellerSettlementsPage() {
     <div className="flex gap-2">
       <Button onClick={() => loadSettlements()} variant="outline" size="sm">
         <RefreshCw className="w-4 h-4 mr-2" />
-        새로고침
+        {t('common.refresh')}
       </Button>
       <Button onClick={requestSettlement} className="bg-blue-600 hover:bg-blue-700" size="sm">
         <FileText className="w-4 h-4 mr-2" />
-        정산 신청
+        {t('common.apply')}
       </Button>
     </div>
   )
 
   return (
-    <SellerLayout title="정산 관리" headerRight={headerRight}>
+    <SellerLayout title={t('seller.revenue')} headerRight={headerRight}>
       <div className="max-w-7xl mx-auto">
         {/* Statistics Cards */}
         {stats && (
@@ -219,7 +221,7 @@ export default function SellerSettlementsPage() {
               <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-8 h-8 text-yellow-600" />
                 <div>
-                  <p className="text-sm text-gray-600">대기 중</p>
+                  <p className="text-sm text-gray-600">{t('common.pending')}</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total_pending}</p>
                 </div>
               </div>
@@ -232,7 +234,7 @@ export default function SellerSettlementsPage() {
               <div className="flex items-center gap-3 mb-2">
                 <CheckCircle className="w-8 h-8 text-blue-600" />
                 <div>
-                  <p className="text-sm text-gray-600">승인됨</p>
+                  <p className="text-sm text-gray-600">{t('common.completed')}</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total_approved}</p>
                 </div>
               </div>
@@ -245,7 +247,7 @@ export default function SellerSettlementsPage() {
               <div className="flex items-center gap-3 mb-2">
                 <DollarSign className="w-8 h-8 text-green-600" />
                 <div>
-                  <p className="text-sm text-gray-600">지급 완료</p>
+                  <p className="text-sm text-gray-600">{t('common.paid')}</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.total_paid}</p>
                 </div>
               </div>
@@ -258,7 +260,7 @@ export default function SellerSettlementsPage() {
               <div className="flex items-center gap-3 mb-2">
                 <TrendingUp className="w-10 h-10" />
                 <div>
-                  <p className="text-sm opacity-90">총 정산 금액</p>
+                  <p className="text-sm opacity-90">{t('common.settlement')}</p>
                   <p className="text-3xl font-bold">
                     ₩{(stats.pending_amount + stats.approved_amount + stats.paid_amount).toLocaleString()}
                   </p>
@@ -278,7 +280,7 @@ export default function SellerSettlementsPage() {
             </label>
             <div className="flex gap-2">
               {[
-                { value: 'all', label: '전체' },
+                { value: 'all', label: t('common.all') },
                 { value: '1m', label: '최근 1개월' },
                 { value: '3m', label: '최근 3개월' },
                 { value: '6m', label: '최근 6개월' },
@@ -310,7 +312,7 @@ export default function SellerSettlementsPage() {
                     정산 기간
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    총 매출
+                    {t('seller.sales')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     수수료율
@@ -322,7 +324,7 @@ export default function SellerSettlementsPage() {
                     정산 금액
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    상태
+                    {t('common.status')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     신청일
@@ -336,7 +338,7 @@ export default function SellerSettlementsPage() {
                 {settlements.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      정산 내역이 없습니다.
+                      {t('common.noData')}
                     </td>
                   </tr>
                 ) : (

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -68,6 +69,7 @@ function parseShippingAddress(address: string, detail?: string): { postal_code: 
 }
 
 export default function SellerOrdersPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [orders, setOrders] = useState<Order[]>([])
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
@@ -307,14 +309,14 @@ export default function SellerOrdersPage() {
 
   function getStatusText(status: string) {
     switch (status) {
-      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return '결제완료'
-      case 'PENDING': case 'AWAITING_PAYMENT': return '결제대기'
-      case 'PREPARING': return '상품준비중'
-      case 'SHIPPING': return '배송중'
-      case 'DELIVERED': return '배송완료'
-      case 'CANCELLED': return '주문취소'
-      case 'REFUNDED': return '환불완료'
-      case 'FAILED': return '결제실패'
+      case 'PAY_COMPLETE': case 'PAID': case 'DONE': return t('seller.statusDone')
+      case 'PENDING': case 'AWAITING_PAYMENT': return t('seller.statusPending')
+      case 'PREPARING': return t('seller.statusPreparing')
+      case 'SHIPPING': return t('seller.statusShipping')
+      case 'DELIVERED': return t('seller.statusDelivered')
+      case 'CANCELLED': return t('seller.statusCancelled')
+      case 'REFUNDED': return t('common.refunded')
+      case 'FAILED': return status
       default: return status
     }
   }
@@ -322,19 +324,19 @@ export default function SellerOrdersPage() {
   function getStatusBadge(status: string) {
     switch (status) {
       case 'PAY_COMPLETE': case 'PAID': case 'DONE':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">결제완료</Badge>
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t('seller.statusDone')}</Badge>
       case 'PENDING': case 'AWAITING_PAYMENT':
-        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">결제대기</Badge>
+        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{t('seller.statusPending')}</Badge>
       case 'PREPARING':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">상품준비중</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{t('seller.statusPreparing')}</Badge>
       case 'SHIPPING':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">배송중</Badge>
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">{t('seller.statusShipping')}</Badge>
       case 'DELIVERED':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">배송완료</Badge>
+        return <Badge className="bg-green-100 text-green-800 border-green-200">{t('seller.statusDelivered')}</Badge>
       case 'CANCELLED':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">주문취소</Badge>
+        return <Badge className="bg-red-100 text-red-800 border-red-200">{t('seller.statusCancelled')}</Badge>
       case 'REFUNDED':
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">환불완료</Badge>
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{t('common.refunded')}</Badge>
       default:
         return <Badge>{status}</Badge>
     }
@@ -367,7 +369,7 @@ export default function SellerOrdersPage() {
   }
 
   return (
-    <SellerLayout title="주문 관리">
+    <SellerLayout title={t('seller.orders')}>
       <div className="max-w-7xl mx-auto">
         {/* Title */}
         <div className="mb-8">
@@ -375,7 +377,7 @@ export default function SellerOrdersPage() {
             <div className="flex items-center gap-3">
               <Package className="w-10 h-10 text-blue-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">주문 관리</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{t('seller.orders')}</h1>
                 <p className="text-sm text-gray-500 mt-1">
                   전체 {orders.length}건 / 필터링 {filteredOrders.length}건
                 </p>
@@ -402,26 +404,26 @@ export default function SellerOrdersPage() {
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                주문 상태
+                {t('common.status')}
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="ALL">전체</option>
-                <option value="PAY_COMPLETE">결제완료</option>
-                <option value="PREPARING">상품준비중</option>
-                <option value="SHIPPING">배송중</option>
-                <option value="DELIVERED">배송완료</option>
-                <option value="CANCELLED">주문취소</option>
+                <option value="ALL">{t('common.all')}</option>
+                <option value="PAY_COMPLETE">{t('seller.statusDone')}</option>
+                <option value="PREPARING">{t('seller.statusPreparing')}</option>
+                <option value="SHIPPING">{t('seller.statusShipping')}</option>
+                <option value="DELIVERED">{t('seller.statusDelivered')}</option>
+                <option value="CANCELLED">{t('seller.statusCancelled')}</option>
               </select>
             </div>
 
             {/* Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                검색
+                {t('common.search')}
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -519,11 +521,11 @@ export default function SellerOrdersPage() {
                         onChange={e => setBulkStatus(e.target.value)}
                         className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">상태 선택</option>
-                        <option value="PREPARING">준비중</option>
-                        <option value="SHIPPING">배송중</option>
-                        <option value="DELIVERED">배송완료</option>
-                        <option value="CANCELLED">취소</option>
+                        <option value="">{t('common.status')}</option>
+                        <option value="PREPARING">{t('seller.statusPreparing')}</option>
+                        <option value="SHIPPING">{t('seller.statusShipping')}</option>
+                        <option value="DELIVERED">{t('seller.statusDelivered')}</option>
+                        <option value="CANCELLED">{t('seller.statusCancelled')}</option>
                       </select>
                       <button
                         onClick={handleBulkStatusChange}
@@ -584,7 +586,7 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-center">{getStatusBadge(order.status)}</td>
                           <td className="px-6 py-4 text-center">
                             <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
-                              {order.payment_status === 'completed' ? '결제완료' : order.payment_status}
+                              {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
@@ -691,7 +693,7 @@ export default function SellerOrdersPage() {
                       <p className="text-gray-500 mb-1">결제상태</p>
                       <div>
                         <Badge className={selectedOrder.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                          {selectedOrder.payment_status === 'completed' ? '결제완료' : selectedOrder.payment_status}
+                          {selectedOrder.payment_status === 'completed' ? t('seller.statusDone') : selectedOrder.payment_status}
                         </Badge>
                       </div>
                     </div>
@@ -889,7 +891,7 @@ export default function SellerOrdersPage() {
                   onClick={() => setShowDetail(false)}
                   className="w-full py-3 bg-gray-600 hover:bg-gray-700 text-white"
                 >
-                  닫기
+                  {t('common.close')}
                 </Button>
               </div>
             </div>

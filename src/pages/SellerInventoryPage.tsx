@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -34,6 +35,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
 }
 
 export default function SellerInventoryPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [alerts, setAlerts] = useState<Product[]>([])
@@ -236,7 +238,7 @@ export default function SellerInventoryPage() {
 
   if (loading) {
     return (
-      <SellerLayout title="재고 관리">
+      <SellerLayout title={t('seller.inventory')}>
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -245,7 +247,7 @@ export default function SellerInventoryPage() {
   }
 
   return (
-    <SellerLayout title="재고 관리">
+    <SellerLayout title={t('seller.inventory')}>
       {/* 바코드 스캔 */}
       <div className="bg-white rounded-xl shadow-sm p-5">
         <div className="flex gap-2">
@@ -296,7 +298,7 @@ export default function SellerInventoryPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">
-            <Package className="w-4 h-4 inline mr-1" />상품 재고 현황
+            <Package className="w-4 h-4 inline mr-1" />{t('seller.inventory')}
           </h3>
         </div>
         <div className="divide-y divide-gray-50">
@@ -357,7 +359,7 @@ export default function SellerInventoryPage() {
 
               {/* 현재 재고 */}
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
-                <span className="text-sm text-gray-700">현재 재고</span>
+                <span className="text-sm text-gray-700">{t('common.stock')}</span>
                 <span className={`text-xl font-bold ${selectedProduct.stock <= (selectedProduct.min_stock_alert || 5) ? 'text-red-600' : 'text-blue-600'}`}>
                   {selectedProduct.stock}개
                 </span>
@@ -383,7 +385,7 @@ export default function SellerInventoryPage() {
                     type="number"
                     value={quantity || ''}
                     onChange={e => setQuantity(parseInt(e.target.value) || 0)}
-                    placeholder={stockAction === 'adjust' ? '조정 후 재고 수량' : '수량'}
+                    placeholder={stockAction === 'adjust' ? t('common.quantity') : t('common.quantity')}
                     min={0}
                     className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
@@ -494,7 +496,7 @@ export default function SellerInventoryPage() {
                   }}
                   className="px-4 py-2.5 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300"
                 >
-                  닫기
+                  {t('common.close')}
                 </button>
               </div>
             </div>

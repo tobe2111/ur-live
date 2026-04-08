@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -44,6 +45,7 @@ interface Summary {
 }
 
 export default function SellerDonationsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'donations' | 'settlements'>('donations')
   const [donations, setDonations] = useState<DonationRow[]>([])
@@ -110,9 +112,9 @@ export default function SellerDonationsPage() {
   function fmtDate(s: string) { return formatKSTDate(s) }
 
   const STATUS_MAP: Record<string, { label: string; color: string }> = {
-    REQUESTED: { label: '정산 대기', color: 'bg-amber-50 text-amber-700' },
-    DONE:      { label: '정산 완료', color: 'bg-emerald-50 text-emerald-700' },
-    REJECTED:  { label: '거부됨',    color: 'bg-red-50 text-red-600' },
+    REQUESTED: { label: t('common.pending'), color: 'bg-amber-50 text-amber-700' },
+    DONE:      { label: t('common.completed'), color: 'bg-emerald-50 text-emerald-700' },
+    REJECTED:  { label: t('common.cancelled'), color: 'bg-red-50 text-red-600' },
   }
 
   if (loading) {
@@ -124,7 +126,7 @@ export default function SellerDonationsPage() {
   }
 
   return (
-    <SellerLayout title="후원 관리">
+    <SellerLayout title={t('seller.donations')}>
       <div className="max-w-2xl mx-auto">
         {/* 요약 카드 */}
         {summary && (
@@ -264,14 +266,14 @@ export default function SellerDonationsPage() {
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-4 focus:border-pink-400 focus:outline-none resize-none"
             />
             <div className="flex gap-3">
-              <button onClick={() => setSettleModal(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl">취소</button>
+              <button onClick={() => setSettleModal(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl">{t('common.cancel')}</button>
               <button
                 onClick={requestSettlement}
                 disabled={requesting}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
               >
                 {requesting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                신청하기
+                {t('common.submit')}
               </button>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { CustomModal, useModal } from '@/components/CustomModal'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -36,6 +37,7 @@ interface Product {
 }
 
 export default function SellerProductsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [products, setProducts] = useState<Product[]>([])
   const [supplyProducts, setSupplyProducts] = useState<Product[]>([])
@@ -146,14 +148,14 @@ export default function SellerProductsPage() {
   }
 
   return (
-    <SellerLayout title="상품 관리">
+    <SellerLayout title={t('seller.products')}>
       <div className="max-w-7xl mx-auto">
         {/* Title & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
             <div className="flex items-center gap-2 sm:gap-3 mb-2">
               <Package className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">상품 관리</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{t('seller.products')}</h1>
             </div>
             <p className="text-sm sm:text-base text-gray-600">
               판매 상품을 등록하고 관리할 수 있습니다.
@@ -181,7 +183,7 @@ export default function SellerProductsPage() {
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 flex items-center gap-2 justify-center text-sm flex-1 sm:flex-none"
             >
               <Plus className="w-4 h-4" />
-              <span>상품 등록</span>
+              <span>{t('seller.addProduct')}</span>
             </Button>
           </div>
         </div>
@@ -244,11 +246,11 @@ export default function SellerProductsPage() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이미지</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">상품명</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">가격</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">재고</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">상태</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('common.image')}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('seller.productName')}</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('common.price')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('common.stock')}</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">{t('common.status')}</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">라이브 스트림</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">액션</th>
                       </tr>
@@ -310,7 +312,7 @@ export default function SellerProductsPage() {
                               <button
                                 onClick={() => navigate(`/seller/products/${product.id}/edit`)}
                                 className="text-blue-600 hover:text-blue-800 transition-colors p-1"
-                                title="수정"
+                                title={t('common.edit')}
                               >
                                 <Edit className="w-5 h-5" />
                               </button>
@@ -318,7 +320,7 @@ export default function SellerProductsPage() {
                                 onClick={() => handleDelete(product.id)}
                                 disabled={deleting === product.id}
                                 className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50"
-                                title="삭제"
+                                title={t('common.delete')}
                               >
                                 {deleting === product.id ? (
                                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -409,7 +411,7 @@ export default function SellerProductsPage() {
                               className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-xs sm:text-sm"
                             >
                               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                              수정
+                              {t('common.edit')}
                             </button>
                             <button
                               onClick={() => handleDelete(product.id)}
@@ -421,7 +423,7 @@ export default function SellerProductsPage() {
                               ) : (
                                 <>
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                  삭제
+                                  {t('common.delete')}
                                 </>
                               )}
                             </button>
@@ -445,7 +447,7 @@ export default function SellerProductsPage() {
                   <Package className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">전체 상품</p>
+                  <p className="text-sm text-gray-600">{t('common.product')}</p>
                   <p className="text-2xl font-bold text-gray-900">{products.length}개</p>
                 </div>
               </div>
@@ -471,7 +473,7 @@ export default function SellerProductsPage() {
                   <Box className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">총 재고</p>
+                  <p className="text-sm text-gray-600">{t('common.stock')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {products.reduce((sum, p) => sum + p.stock, 0)}개
                   </p>
