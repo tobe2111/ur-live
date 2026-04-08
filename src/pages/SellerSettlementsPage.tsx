@@ -330,7 +330,7 @@ export default function SellerSettlementsPage() {
                     {t('seller.requestDateColumn')}
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    액션
+                    {t('seller.actionColumn')}
                   </th>
                 </tr>
               </thead>

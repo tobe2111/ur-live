@@ -88,7 +88,7 @@ export default function SellerYoutubeGrowthSuccessPage() {
             <Youtube className="w-5 h-5 text-red-500" />
             <span className="text-sm text-gray-600">{t('seller.youtubeGrowth')}</span>
           </div>
-          <p className="text-3xl font-bold text-red-600">{t('seller.subscriberPlus', { count: result?.subscribers.toLocaleString() })}</p>
+          <p className="text-3xl font-bold text-red-600">{String(t('seller.subscriberPlus', { count: result?.subscribers.toLocaleString() } as any))}</p>
           <p className="text-sm text-gray-500 mt-2">{t('seller.paymentAmountLabel')}: {result?.amount.toLocaleString()}{t('common.won')}</p>
         </div>
         <button
