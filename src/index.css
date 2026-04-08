@@ -127,6 +127,16 @@
   --ring: 211 100% 50%;
 }
 
+.seller-light-theme .apple-card,
+.admin-light-theme .apple-card {
+  background: #ffffff;
+}
+
+.seller-light-theme .apple-glass-dark,
+.admin-light-theme .apple-glass-dark {
+  background: rgba(255, 255, 255, 0.72);
+}
+
 /* Apple-style animations - Subtle and purposeful */
 @keyframes smooth-appear {
   from {
