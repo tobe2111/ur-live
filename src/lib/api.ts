@@ -235,10 +235,8 @@ api.interceptors.response.use(
 
         if (refreshToken) {
           try {
-            const refreshRes = await axios.post('/api/auth/refresh', {
-              refreshToken,
-              userType: isSeller ? 'seller' : 'admin',
-            });
+            const refreshUrl = isSeller ? '/api/seller/refresh' : '/api/admin/refresh';
+            const refreshRes = await axios.post(refreshUrl, { refreshToken });
 
             if (refreshRes.data.success) {
               const { accessToken, refreshToken: newRT } = refreshRes.data.data;
