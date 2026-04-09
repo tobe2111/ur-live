@@ -607,6 +607,39 @@ export default function SellerLiveBroadcastPage() {
                         </button>
                       </div>
 
+                      {/* 라이브 중: 인라인 상품 컨트롤 */}
+                      {stream.status === 'live' && (
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-gray-700 mb-2">현재 소개 상품 변경</p>
+                          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                            {products.filter((p: any) => !p.is_supply_product).map(p => {
+                              const isCurrent = (stream as any).current_product_id === p.id
+                              return (
+                                <button
+                                  key={p.id}
+                                  onClick={async () => {
+                                    try {
+                                      const token = localStorage.getItem('seller_token')
+                                      await api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: p.id }, { headers: { Authorization: `Bearer ${token}` } })
+                                      ;(stream as any).current_product_id = p.id
+                                      setStreams([...streams])
+                                      toast.success(`${p.name} 소개 중`)
+                                    } catch { toast.error('변경 실패') }
+                                  }}
+                                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium shrink-0 transition-all active:scale-95 ${
+                                    isCurrent ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 text-gray-700 hover:border-blue-300'
+                                  }`}
+                                >
+                                  {p.image_url && <img src={p.image_url} alt="" className="w-6 h-6 rounded object-cover" />}
+                                  <span className="truncate max-w-[80px]">{p.name}</span>
+                                  {isCurrent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         {stream.status === 'scheduled' && (
                           <Button onClick={() => startStream(stream.id)} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1">
@@ -614,12 +647,7 @@ export default function SellerLiveBroadcastPage() {
                           </Button>
                         )}
                         {stream.status === 'live' && (
-                          <>
-                            <Button onClick={() => { setShowControlPanel(true); setNewStream(stream) }} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1">
-                              <Settings className="h-3.5 w-3.5 mr-1" /> 관리
-                            </Button>
-                            <Button onClick={() => endStream(stream.id)} size="sm" variant="destructive" className="flex-1">종료</Button>
-                          </>
+                          <Button onClick={() => endStream(stream.id)} size="sm" variant="destructive" className="flex-1">방송 종료</Button>
                         )}
                         <a href={`/live/${stream.id}`} target="_blank" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
                           <ExternalLink className="h-4 w-4 text-gray-500" />
