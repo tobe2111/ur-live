@@ -210,34 +210,40 @@ function LiveChat({ messages, onChatClick }: { messages: ChatMessage[]; onChatCl
     }
   }, [messages])
 
-  const recentMessages = messages.slice(-5)
+  const recentMessages = messages.slice(-6)
 
   return (
     <div
       ref={scrollRef}
-      className="flex flex-col gap-0.5 overflow-y-auto max-h-32 cursor-pointer no-scrollbar"
+      className="flex flex-col gap-1 overflow-y-auto max-h-36 cursor-pointer no-scrollbar"
       onClick={onChatClick}
     >
       {recentMessages.map((msg) => {
-        const isSystemMessage = msg.message.includes('장바구니') || 
-                                 msg.message.includes('담았습니다') || 
-                                 msg.message.includes('구매했습니다') ||
-                                 msg.userName === 'System' ||
-                                 msg.role === 'system'
-        
+        const isSystemMessage = msg.userName === 'System' || msg.role === 'system'
+        const isYouTube = msg.source === 'youtube'
+        const isKakao = !isYouTube && !isSystemMessage
+
         return (
-          <p
-            key={msg.id}
-            className="text-[11px] leading-[1.3] animate-fade-in"
-            style={{
-              textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)',
-            }}
-          >
-            <span className="font-bold text-white/90">{msg.userName}</span>
-            <span className={`${isSystemMessage ? 'text-yellow-300 font-semibold' : 'text-white/70'}`}>
-              {' '}{msg.message}
-            </span>
-          </p>
+          <div key={msg.id} className="flex items-start gap-1 animate-fade-in">
+            {/* 소스 아이콘 */}
+            {isSystemMessage ? (
+              <span className="text-[9px] mt-0.5">🎉</span>
+            ) : isYouTube ? (
+              <svg viewBox="0 0 24 24" fill="#FF0000" className="w-3.5 h-3.5 shrink-0 mt-0.5">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="#FEE500" className="w-3.5 h-3.5 shrink-0 mt-0.5">
+                <path d="M12 3c-5.523 0-10 3.694-10 8.25 0 2.904 1.887 5.46 4.726 6.924-.157.564-.57 2.044-.652 2.362-.101.395.145.39.305.284.125-.083 1.994-1.355 2.808-1.907A11.59 11.59 0 0 0 12 19.5c5.523 0 10-3.694 10-8.25S17.523 3 12 3z" />
+              </svg>
+            )}
+            <p className="text-[11px] leading-[1.3]" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)' }}>
+              <span className="font-bold text-white/90">{msg.userName}</span>
+              <span className={`${isSystemMessage ? 'text-yellow-300 font-semibold' : 'text-white/70'}`}>
+                {' '}{msg.message}
+              </span>
+            </p>
+          </div>
         )
       })}
     </div>
@@ -545,6 +551,46 @@ function ReelCard({
   }) as Product
   
   // 🔥 DO WebSocket 기반 실시간 채팅 + 스트림 상태
+
+  // YouTube 라이브 채팅 폴링 (WebSocket 채팅과 통합)
+  const [ytChatMessages, setYtChatMessages] = useState<ChatMessage[]>([])
+
+  useEffect(() => {
+    if (stream.status !== 'live') return
+    let active = true
+    let nextPageToken = ''
+
+    const pollYouTubeChat = async () => {
+      try {
+        const url = `/api/youtube/chat/chat/${stream.id}${nextPageToken ? `?pageToken=${nextPageToken}` : ''}`
+        const res = await axios.get(url)
+        if (res.data.success && res.data.data?.messages) {
+          const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({
+            id: `yt-${m.id}`,
+            userId: 0,
+            userName: m.author,
+            userType: 'viewer' as const,
+            message: m.message,
+            timestamp: m.timestamp,
+            source: 'youtube' as const,
+            avatarUrl: m.avatarUrl,
+          }))
+          if (ytMsgs.length > 0) {
+            setYtChatMessages(prev => {
+              const existing = new Set(prev.map(p => p.id))
+              const newMsgs = ytMsgs.filter(m => !existing.has(m.id))
+              return [...prev, ...newMsgs].slice(-50)
+            })
+          }
+          if (res.data.data.nextPageToken) nextPageToken = res.data.data.nextPageToken
+        }
+      } catch { /* YouTube 채팅 비활성 시 무시 */ }
+    }
+
+    pollYouTubeChat()
+    const interval = setInterval(pollYouTubeChat, 6000) // 6초마다
+    return () => { active = false; clearInterval(interval) }
+  }, [stream.id, stream.status])
   const {
     messages: chatMessages,
     isConnected: chatConnected,
@@ -1257,7 +1303,10 @@ function ReelCard({
             {/* Live chat feed - left side, wide */}
             <div className="min-w-0 flex-1">
               <LiveChat
-                messages={chatMessages}
+                messages={[
+                  ...chatMessages.map(m => ({ ...m, source: m.source || 'kakao' as const })),
+                  ...ytChatMessages,
+                ].sort((a, b) => a.timestamp - b.timestamp).slice(-8)}
                 onChatClick={() => setChatModalOpen(true)}
               />
             </div>

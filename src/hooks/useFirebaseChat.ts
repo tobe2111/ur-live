@@ -14,6 +14,8 @@ export interface ChatMessage {
   isAdmin?: boolean
   role?: string
   username?: string
+  source?: 'kakao' | 'youtube' | 'system' // 채팅 출처
+  avatarUrl?: string // YouTube 프로필 이미지
 }
 
 /**
