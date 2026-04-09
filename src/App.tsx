@@ -46,6 +46,8 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
+const SellerGroupBuyPage = lazy(() => import('./pages/SellerGroupBuyPage'))
+const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 
 // Seller 페이지들
@@ -297,6 +299,7 @@ function AppContent() {
             <Route path="/" element={<MainHomePage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
+            <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/live" element={<LiveListPage />} />
             <Route path="/live/:streamId" element={<LivePageV2 />} />
@@ -419,6 +422,11 @@ function AppContent() {
             <Route path="/seller/shorts" element={
               <ProtectedRoute requireSeller>
                 <ErrorBoundary><SellerShortsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/seller/group-buy" element={
+              <ProtectedRoute requireSeller>
+                <ErrorBoundary><SellerGroupBuyPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/seller/live-broadcast" element={

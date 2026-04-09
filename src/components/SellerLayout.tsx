@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Truck, Play, DollarSign,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Radio, TrendingUp, Globe, Activity, Ticket
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
@@ -27,6 +27,7 @@ const NAV_GROUPS = [
     label: '판매',
     items: [
       { path: '/seller/products', labelKey: 'seller.products', icon: Package },
+      { path: '/seller/group-buy', labelKey: 'seller.groupBuy', icon: Ticket },
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
     ],
