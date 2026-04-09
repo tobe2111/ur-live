@@ -111,7 +111,8 @@ export default function SellerProfileEditPage() {
     if (!tabParam || tabParam === 'profile') {
       const sellerId = localStorage.getItem('seller_id')
       if (sellerId) {
-        navigate(`/s/${sellerId}`, { replace: true })
+        const sellerSlug = localStorage.getItem('seller_username') || sellerId
+        navigate(`/profile/${sellerSlug}`, { replace: true })
         return
       }
     }

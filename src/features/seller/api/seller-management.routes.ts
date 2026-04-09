@@ -1063,17 +1063,27 @@ sellerManagementRoutes.get('/settlements/:id/download', async (c) => {
 });
 
 // ── GET /api/seller/public/:sellerId ─────────────────────────────────────────
-// 공개 셀러 프로필 조회 (SellerPublicPage.tsx에서 호출, 인증 불필요)
+// 공개 셀러 프로필 조회 (ID 또는 slug/username으로 조회, 인증 불필요)
 sellerManagementRoutes.get('/public/:sellerId', async (c) => {
   const { DB } = c.env;
-  const sellerId = c.req.param('sellerId');
+  const param = c.req.param('sellerId');
 
   try {
-    const seller = await DB.prepare(
-      `SELECT id, name, email, description, business_name, phone,
-              status, created_at
-       FROM sellers WHERE id = ? AND status = 'approved'`
-    ).bind(sellerId).first();
+    // 숫자면 ID, 아니면 slug 또는 username으로 조회
+    const isNumeric = /^\d+$/.test(param);
+    const seller = isNumeric
+      ? await DB.prepare(
+          `SELECT id, username, slug, name, email, description, business_name, phone,
+                  profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+                  website_url, kakao_chat_link, status, created_at
+           FROM sellers WHERE id = ? AND status = 'approved'`
+        ).bind(param).first()
+      : await DB.prepare(
+          `SELECT id, username, slug, name, email, description, business_name, phone,
+                  profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
+                  website_url, kakao_chat_link, status, created_at
+           FROM sellers WHERE (slug = ? OR username = ?) AND status = 'approved'`
+        ).bind(param, param).first();
 
     if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
     return c.json({ success: true, data: seller });

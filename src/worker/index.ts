@@ -167,7 +167,7 @@ app.use('*', async (c, next) => {
     c.header('Content-Security-Policy', c.res.headers.get('Content-Security-Policy')?.replace("frame-ancestors 'self'", "frame-ancestors *") || '');
     // X-Frame-Options 헤더 제거 (iframe 허용)
     c.res.headers.delete('X-Frame-Options');
-  } else if (url.pathname.startsWith('/s/') || url.pathname.startsWith('/live/')) {
+  } else if (url.pathname.startsWith('/s/') || url.pathname.startsWith('/profile/') || url.pathname.startsWith('/live/')) {
     // 셀러 공개 페이지 + 라이브: 같은 도메인 iframe 허용 (대시보드 미리보기)
     c.header('X-Frame-Options', 'SAMEORIGIN');
   } else {

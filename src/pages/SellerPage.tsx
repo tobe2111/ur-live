@@ -513,7 +513,7 @@ export default function SellerPage() {
                         {t('seller.copyLink')}
                       </button>
                       <a
-                        href={`/s/${getSellerId()}`}
+                        href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-0.5"
@@ -527,7 +527,7 @@ export default function SellerPage() {
                   {/* 공개 페이지 바로가기 (인라인 편집 가능) */}
                   <div className="flex justify-center">
                     <a
-                      href={`/s/${getSellerId()}`}
+                      href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
                       className="block w-full max-w-[280px] p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border border-pink-100 text-center hover:shadow-md transition-shadow"
                     >
                       <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
@@ -540,7 +540,7 @@ export default function SellerPage() {
 
                   <div className="flex gap-2 mt-4">
                     <a
-                      href={`/s/${getSellerId()}`}
+                      href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200"

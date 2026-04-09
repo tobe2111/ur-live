@@ -8,8 +8,9 @@ import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
 
 interface Seller {
-  id: number; name: string; business_name?: string; profile_image?: string; bio?: string
-  sns_instagram?: string; sns_youtube?: string; kakao_chat_link?: string; created_at: string
+  id: number; name: string; username?: string; slug?: string; business_name?: string; profile_image?: string; bio?: string
+  sns_instagram?: string; sns_youtube?: string; sns_facebook?: string; sns_twitter?: string
+  kakao_chat_link?: string; website_url?: string; created_at: string
 }
 interface LiveStream {
   id: number; title: string; youtube_video_id?: string; status: string; viewer_count?: number
@@ -30,8 +31,10 @@ type Tab = 'home' | 'vouchers' | 'shorts' | 'live' | 'info'
 
 export default function SellerPublicPage() {
   const { t } = useTranslation()
-  const { sellerId } = useParams<{ sellerId: string }>()
+  const { sellerId: rawParam } = useParams<{ sellerId: string }>()
   const navigate = useNavigate()
+  // sellerId는 숫자 ID 또는 slug/username
+  const sellerId = rawParam
   const [seller, setSeller] = useState<Seller | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
@@ -39,12 +42,10 @@ export default function SellerPublicPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('home')
 
-  // 셀러 본인인지 확인 (편집 버튼 표시용)
-  const isOwner = (() => {
-    const userType = localStorage.getItem('user_type')
-    const storedSellerId = localStorage.getItem('seller_id')
-    return userType === 'seller' && storedSellerId === sellerId
-  })()
+  // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id 비교
+  const storedSellerId = localStorage.getItem('seller_id')
+  const userType = localStorage.getItem('user_type')
+  const isOwner = userType === 'seller' && !!seller && String(seller.id) === storedSellerId
 
   // ── 인라인 편집 상태 ──
   const [editingField, setEditingField] = useState<string | null>(null)

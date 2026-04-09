@@ -46,6 +46,7 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_id', seller.id.toString())
         localStorage.setItem('seller_name', seller.name || '')
         localStorage.setItem('seller_email', seller.email || '')
+        localStorage.setItem('seller_username', seller.username || seller.slug || '')
         navigate('/seller', { replace: true })
       }
     } catch (err: any) {
