@@ -369,16 +369,8 @@ function AppContent() {
                 <SellerProductEditPage />
               </ProtectedRoute>
             } />
-            <Route path="/seller/live" element={
-              <ProtectedRoute requireSeller>
-                <SellerLivePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/seller/live-control" element={
-              <ProtectedRoute requireSeller>
-                <SellerLiveControlPage />
-              </ProtectedRoute>
-            } />
+            <Route path="/seller/live" element={<Navigate to="/seller/live-broadcast" replace />} />
+            <Route path="/seller/live-control" element={<Navigate to="/seller/live-broadcast" replace />} />
             <Route path="/seller/streams/new" element={
               <ProtectedRoute requireSeller>
                 <SellerStreamNewPage />
