@@ -547,7 +547,7 @@ export default function CheckoutPage() {
               <div className="mt-5 flex flex-col gap-5">
                 {Object.values(sellerGroups).map((group) => (
                   <div key={group.seller_id} className="border border-gray-200 rounded-2xl p-4">
-                    <p className="text-[13px] font-semibold text-gray-300 mb-3">
+                    <p className="text-[13px] font-semibold text-gray-500 mb-3">
                       {group.seller_name}
                     </p>
                     
@@ -874,7 +874,7 @@ export default function CheckoutPage() {
         <div className="space-y-3">
           {addresses.length === 0 ? (
             <div className="py-12 text-center">
-              <MapPin className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+              <MapPin className="w-12 h-12 mx-auto text-gray-500 mb-3" />
               <p className="text-[15px] text-gray-500">등록된 배송지가 없습니다.</p>
               <p className="text-[13px] text-gray-400 mt-1">새 배송지를 추가해주세요.</p>
             </div>
@@ -904,11 +904,11 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     <p className="text-[14px] text-gray-400 mb-1">{addr.phone}</p>
-                    <p className="text-[14px] text-gray-300 leading-relaxed">
+                    <p className="text-[14px] text-gray-500 leading-relaxed">
                       [{addr.postal_code}] {addr.address}
                     </p>
                     {addr.address_detail && (
-                      <p className="text-[14px] text-gray-300 leading-relaxed mt-0.5">
+                      <p className="text-[14px] text-gray-500 leading-relaxed mt-0.5">
                         {addr.address_detail}
                       </p>
                     )}
@@ -993,7 +993,7 @@ export default function CheckoutPage() {
               />
               <button
                 onClick={() => setShowPostcodePopup(true)}
-                className="px-5 py-3 border border-gray-200 rounded-2xl text-[14px] font-semibold text-gray-300 hover:bg-gray-50 transition-all whitespace-nowrap"
+                className="px-5 py-3 border border-gray-200 rounded-2xl text-[14px] font-semibold text-gray-500 hover:bg-gray-50 transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -1053,7 +1053,7 @@ export default function CheckoutPage() {
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              className="flex-1 py-4 bg-gray-50 text-gray-300 rounded-2xl text-[16px] font-bold hover:bg-[#333] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-gray-50 text-gray-500 rounded-2xl text-[16px] font-bold hover:bg-[#333] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

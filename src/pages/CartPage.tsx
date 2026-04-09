@@ -52,7 +52,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-[#333] bg-white px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-50"
+              className="flex-1 rounded-lg border border-[#333] bg-white px-4 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50"
             >
               취소
             </button>
@@ -88,7 +88,7 @@ export default function CartPage() {
           <div className="w-6" />
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
-          <ShoppingCart className="h-20 w-20 text-gray-300" />
+          <ShoppingCart className="h-20 w-20 text-gray-500" />
           <div>
             <p className="text-lg font-semibold text-gray-100">로그인이 필요합니다</p>
             <p className="mt-2 text-sm text-gray-500">장바구니를 이용하려면 로그인해 주세요</p>
