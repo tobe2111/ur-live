@@ -165,7 +165,11 @@ app.use('*', async (c, next) => {
   // /embed/ 경로는 외부 사이트에서 iframe으로 임베드 가능하도록 허용
   if (url.pathname.startsWith('/embed/')) {
     c.header('Content-Security-Policy', c.res.headers.get('Content-Security-Policy')?.replace("frame-ancestors 'self'", "frame-ancestors *") || '');
-    // X-Frame-Options 설정 안 함 (iframe 허용)
+    // X-Frame-Options 헤더 제거 (iframe 허용)
+    c.res.headers.delete('X-Frame-Options');
+  } else if (url.pathname.startsWith('/s/') || url.pathname.startsWith('/profile/') || url.pathname.startsWith('/live/')) {
+    // 셀러 공개 페이지 + 라이브: 같은 도메인 iframe 허용 (대시보드 미리보기)
+    c.header('X-Frame-Options', 'SAMEORIGIN');
   } else {
     c.header('X-Frame-Options', 'SAMEORIGIN');
   }

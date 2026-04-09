@@ -513,7 +513,7 @@ export default function SellerPage() {
                         {t('seller.copyLink')}
                       </button>
                       <a
-                        href={`/s/${getSellerId()}`}
+                        href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-0.5"
@@ -524,22 +524,23 @@ export default function SellerPage() {
                   </div>
                   <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">{t('seller.linkCopied')}</p>
 
-                  {/* 모바일 프레임 미리보기 */}
+                  {/* 공개 페이지 바로가기 (인라인 편집 가능) */}
                   <div className="flex justify-center">
-                    <div className="relative w-[220px] h-[400px] rounded-[24px] border-[3px] border-gray-300 bg-white shadow-lg overflow-hidden">
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-3 bg-gray-300 rounded-b-xl z-10" />
-                      <iframe
-                        src={`/s/${getSellerId()}`}
-                        title={t('seller.myPublicPage')}
-                        className="w-[375px] h-[700px] border-0 origin-top-left bg-white"
-                        style={{ transform: 'scale(0.587)', transformOrigin: 'top left' }}
-                      />
-                    </div>
+                    <a
+                      href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
+                      className="block w-full max-w-[280px] p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border border-pink-100 text-center hover:shadow-md transition-shadow"
+                    >
+                      <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+                        <span className="text-2xl">🏪</span>
+                      </div>
+                      <p className="text-sm font-bold text-gray-900">{t('seller.myPublicPage')}</p>
+                      <p className="text-xs text-gray-500 mt-1">탭하여 공개 페이지에서 바로 편집하세요</p>
+                    </a>
                   </div>
 
                   <div className="flex gap-2 mt-4">
                     <a
-                      href={`/s/${getSellerId()}`}
+                      href={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200"

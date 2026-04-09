@@ -316,6 +316,7 @@ function AppContent() {
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
             <Route path="/s/:sellerId" element={<SellerPublicPage />} />
+            <Route path="/profile/:sellerId" element={<SellerPublicPage />} />
             <Route path="/search" element={<SearchPage />} />
             
             {/* Public Auth 페이지들 */}

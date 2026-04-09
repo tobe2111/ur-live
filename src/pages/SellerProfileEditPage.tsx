@@ -83,7 +83,7 @@ export default function SellerProfileEditPage() {
   })
   
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'personal' | 'password'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'personal' | 'password'>('business')
   const [formData, setFormData] = useState({
     profile_image: '',
     bio: '',
@@ -103,7 +103,23 @@ export default function SellerProfileEditPage() {
       navigate('/seller/login')
       return
     }
-    
+
+    // 프로필/소개/SNS 편집은 공개 페이지에서 인라인 편집 가능
+    // URL에 ?tab=business 등이 없으면 공개 페이지로 리다이렉트
+    const urlParams = new URLSearchParams(window.location.search)
+    const tabParam = urlParams.get('tab')
+    if (!tabParam || tabParam === 'profile') {
+      const sellerId = localStorage.getItem('seller_id')
+      if (sellerId) {
+        const sellerSlug = localStorage.getItem('seller_username') || sellerId
+        navigate(`/profile/${sellerSlug}`, { replace: true })
+        return
+      }
+    }
+    if (tabParam === 'business' || tabParam === 'personal' || tabParam === 'password') {
+      setActiveTab(tabParam)
+    }
+
     loadProfile()
   }, [])
 

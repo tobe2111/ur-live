@@ -147,7 +147,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {/* Bottom */}
       <div className="px-3 py-4 border-t border-gray-100 space-y-0.5">
         <Link
-          to="/seller/profile"
+          to={`/profile/${localStorage.getItem('seller_username') || localStorage.getItem('seller_id') || ''}`}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
         >
           <Settings className="w-4 h-4" />
