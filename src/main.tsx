@@ -7,6 +7,7 @@ import { initSentry } from './lib/sentry'
 import { logRegionInfo, isKorea } from '@/shared/config/region'
 // ✅ Week 5 Day 2: 런타임 환경 변수 검증
 import { validateEnvForRuntime } from '@/shared/config/env-validator'
+import { initNativeFeatures, isNative } from '@/lib/native'
 
 // ✅ 런타임 환경 변수 검증 (Week 5 Day 2)
 validateEnvForRuntime(isKorea() ? 'KR' : 'GLOBAL')
@@ -37,6 +38,13 @@ if (!rootElement) {
   `
 } else {
   try {
+    // ✅ Capacitor 네이티브 앱 감지 → html class 추가
+    if (isNative()) {
+      document.documentElement.classList.add('native-app')
+    }
+    // ✅ 네이티브 기능 초기화 (스플래시, 상태바, 푸시, 딥링크)
+    initNativeFeatures()
+
     // ✅ React StrictMode 제거 (중복 마운트 방지)
     ReactDOM.createRoot(rootElement).render(
       <App />

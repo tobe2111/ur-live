@@ -73,7 +73,7 @@ export default function BottomNav() {
   return (
     <>
       {/* Nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard">
         <div className="max-w-screen-sm mx-auto pointer-events-auto">
           <nav
             className="bg-[#020202] border-t border-[#0A0A0A]"
