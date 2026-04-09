@@ -36,14 +36,14 @@ export default function MyVouchersPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#020202]">
+    <div className="min-h-screen bg-white">
       {/* 헤더 */}
-      <div className="sticky top-0 z-50 bg-[#020202] border-b border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
           <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10">
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          <h1 className="flex-1 text-center text-[18px] font-bold text-white pr-10">내 식사권</h1>
+          <h1 className="flex-1 text-center text-[18px] font-bold text-gray-900 pr-10">내 식사권</h1>
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export default function MyVouchersPage() {
         ) : vouchers.length === 0 ? (
           <div className="text-center py-20">
             <Ticket className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-white font-bold mb-1">아직 식사권이 없습니다</p>
+            <p className="text-gray-900 font-bold mb-1">아직 식사권이 없습니다</p>
             <p className="text-gray-500 text-sm mb-4">맛집 공동구매에 참여해보세요!</p>
             <button onClick={() => navigate('/browse?category=meal_voucher')} className="px-5 py-2.5 bg-pink-500 text-white rounded-full text-sm font-bold">
               맛집 둘러보기
@@ -66,7 +66,7 @@ export default function MyVouchersPage() {
             {vouchers.map(v => {
               const st = STATUS_MAP[v.status] || STATUS_MAP.unused
               return (
-                <div key={v.id} className={`bg-[#121212] rounded-2xl overflow-hidden border border-[#1A1A1A] ${v.status === 'unused' ? '' : 'opacity-60'}`}>
+                <div key={v.id} className={`bg-white rounded-2xl overflow-hidden border border-gray-200 ${v.status === 'unused' ? '' : 'opacity-60'}`}>
                   <div className="flex">
                     {/* 상품 이미지 */}
                     {v.product_image && (
@@ -79,7 +79,7 @@ export default function MyVouchersPage() {
                         {st.label}
                       </span>
                       {/* 상품명 */}
-                      <p className="text-sm font-bold text-white mt-1.5">{v.product_name}</p>
+                      <p className="text-sm font-bold text-gray-900 mt-1.5">{v.product_name}</p>
                       {/* 식당 */}
                       {v.restaurant_name && (
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
@@ -87,12 +87,12 @@ export default function MyVouchersPage() {
                         </p>
                       )}
                       {/* 바우처 코드 */}
-                      <div className="mt-2 bg-[#1A1A1A] rounded-lg px-3 py-2 flex items-center justify-between">
+                      <div className="mt-2 bg-gray-100 rounded-lg px-3 py-2 flex items-center justify-between">
                         <code className="text-sm font-mono font-bold text-pink-400">{v.code}</code>
                         {v.status === 'unused' && (
                           <button
                             onClick={() => navigator.clipboard?.writeText(v.code)}
-                            className="text-[10px] text-gray-500 hover:text-white"
+                            className="text-[10px] text-gray-500 hover:text-gray-900"
                           >
                             복사
                           </button>

@@ -46,12 +46,12 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
   const [open, setOpen] = useState(defaultOpen)
   return (
     <>
-      <div className="border-t border-[#1A1A1A]">
+      <div className="border-t border-gray-200">
         <button
           onClick={() => setOpen(!open)}
           className="w-full flex items-center justify-between px-5 py-4 text-left"
         >
-          <span className="text-sm font-semibold text-white">{title}</span>
+          <span className="text-sm font-semibold text-gray-900">{title}</span>
           <svg className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -80,7 +80,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
 
   return (
     <div>
-      <h2 className="text-sm font-bold text-white mb-4">
+      <h2 className="text-sm font-bold text-gray-900 mb-4">
         리뷰 {totalCount > 0 && <span className="text-gray-500 font-normal">({totalCount})</span>}
       </h2>
 
@@ -88,7 +88,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
       {totalCount > 0 ? (
         <div className="flex items-center gap-4 mb-4">
           <div className="text-center">
-            <p className="text-3xl font-bold text-white">{avgRating}</p>
+            <p className="text-3xl font-bold text-gray-900">{avgRating}</p>
             <div className="flex gap-0.5 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
                 <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-200'}`}>
@@ -104,7 +104,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
               return (
                 <div key={s} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 w-3">{s}</span>
-                  <div className="flex-1 h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden">
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -120,7 +120,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
       {reviews.length > 0 && (
         <div className="space-y-3 mt-3">
           {reviews.map((r: any) => (
-            <div key={r.id} className="border border-[#1A1A1A]/50 rounded-xl p-3">
+            <div key={r.id} className="border border-gray-200/50 rounded-xl p-3">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">
@@ -132,7 +132,7 @@ function ProductReviews({ productId }: { productId: number | string }) {
                 </div>
                 <span className="text-[10px] text-gray-500">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
               </div>
-              {r.content && <p className="text-xs text-white leading-relaxed">{r.content}</p>}
+              {r.content && <p className="text-xs text-gray-900 leading-relaxed">{r.content}</p>}
             </div>
           ))}
         </div>
@@ -312,7 +312,7 @@ export default function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#020202] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-white p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500">{error?.message || '상품을 찾을 수 없습니다.'}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">다시 시도</button>
@@ -346,7 +346,7 @@ export default function ProductDetailPage() {
   const allImages = [product.image_url, ...detailImages].filter(Boolean)
 
   return (
-    <div className="min-h-screen bg-[#020202]">
+    <div className="min-h-screen bg-white">
       {/* Mobile Header */}
       <MobileHeader
         onShare={handleShare}
@@ -356,7 +356,7 @@ export default function ProductDetailPage() {
 
       <main className="pb-20">
         {/* Product Images Carousel */}
-        <Suspense fallback={<div className="w-full h-96 bg-[#1A1A1A] animate-pulse" />}>
+        <Suspense fallback={<div className="w-full h-96 bg-gray-100 animate-pulse" />}>
           <ProductImageCarousel images={allImages} />
         </Suspense>
 
@@ -384,7 +384,7 @@ export default function ProductDetailPage() {
           <>
             <Separator />
             <div className="px-0">
-              <h2 className="text-sm font-bold text-white px-5 py-4">상세 이미지</h2>
+              <h2 className="text-sm font-bold text-gray-900 px-5 py-4">상세 이미지</h2>
               <div className="flex flex-col">
                 {detailImages.map((src, idx) => (
                   <img
@@ -402,14 +402,14 @@ export default function ProductDetailPage() {
 
         {/* 공동구매 진행률 (식사권일 때만) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
-          <div className="px-5 py-4 bg-[#121212] border-b border-[#1A1A1A]">
+          <div className="px-5 py-4 bg-white border-b border-gray-200">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-white">공동구매 진행 중</span>
+              <span className="text-sm font-bold text-gray-900">공동구매 진행 중</span>
               <span className="text-xs text-pink-400 font-bold">
                 {product.group_buy_current || 0}/{product.group_buy_target}명
               </span>
             </div>
-            <div className="w-full bg-[#1A1A1A] rounded-full h-2.5 overflow-hidden">
+            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }}
@@ -425,7 +425,7 @@ export default function ProductDetailPage() {
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title="식당 정보" defaultOpen={true}>
             <div className="space-y-2.5 text-xs text-gray-500">
-              <div className="flex"><span className="w-16 shrink-0 text-gray-400">식당명</span><span className="text-white font-medium">{product.restaurant_name}</span></div>
+              <div className="flex"><span className="w-16 shrink-0 text-gray-400">식당명</span><span className="text-gray-900 font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400">주소</span><span>{product.restaurant_address}</span></div>
               )}
@@ -478,7 +478,7 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-[#1A1A1A] animate-pulse" />}>
+      <Suspense fallback={<div className="fixed bottom-0 left-0 right-0 h-16 bg-gray-100 animate-pulse" />}>
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
@@ -494,7 +494,7 @@ export default function ProductDetailPage() {
           className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg max-w-sm transition-all ${
             toast.type === 'success' 
               ? 'bg-foreground text-background' 
-              : 'bg-destructive text-white'
+              : 'bg-destructive text-gray-900'
           }`}
         >
           <p className="text-sm font-medium text-center">{toast.message}</p>

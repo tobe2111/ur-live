@@ -5,18 +5,18 @@ export default function RefundPolicyPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-6 h-6" />
+    <div className="min-h-screen bg-white">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto px-5 py-4 flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-900">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold">환불 및 교환/반품 정책</h1>
+          <h1 className="text-lg font-extrabold text-gray-900">환불 및 교환/반품 정책</h1>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-8">
+      <div className="max-w-3xl mx-auto px-5 py-8">
+        <div className="space-y-8">
           
           {/* 회사 정보 */}
           <section className="bg-blue-50 border border-blue-200 rounded-lg p-5">

@@ -1971,3 +1971,85 @@ adminManagementRoutes.put('/settings/commission', cors(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// ── 리뷰 자동 생성 (어드민 전용) ──────────────────────────────────────
+const KOREAN_NAMES = ['김민수','이서연','박지훈','최유진','정도윤','강하은','조현우','윤서현','장민준','임지아','한서진','오재원','신다은','류태윤','송소율','홍지호','문채원','배승현','권나윤','백정우'];
+const REVIEW_TEMPLATES = [
+  '품질이 정말 좋아요! 다음에도 구매할게요.',
+  '배송이 빠르고 포장도 깔끔했어요.',
+  '가격 대비 만족스러워요. 추천합니다!',
+  '색상이 사진과 동일해요. 맘에 들어요.',
+  '사이즈가 딱 맞아요. 재구매 의사 있어요.',
+  '선물용으로 구매했는데 반응이 좋았어요.',
+  '라이브에서 보고 바로 구매했는데 만족해요!',
+  '생각보다 더 좋은 품질이에요.',
+  '가성비 최고! 친구한테도 추천했어요.',
+  '재질이 좋고 마감이 깔끔해요.',
+  '이 가격에 이 퀄리티면 대박이에요.',
+  '빠른 배송 감사합니다. 잘 쓸게요!',
+  '두 번째 구매인데 역시 만족스러워요.',
+  '디자인이 예쁘고 실용적이에요.',
+  '기대 이상으로 좋아요!',
+];
+
+adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const { product_id, count, avg_rating, options } = await c.req.json<{
+      product_id: number;
+      count: number;
+      avg_rating: number;
+      options?: string[];
+    }>();
+
+    if (!product_id || !count || count < 1 || count > 500) {
+      return c.json({ success: false, error: '상품 ID와 개수(1-500)가 필요합니다' }, 400);
+    }
+
+    // reviews 테이블 ensure
+    try {
+      await DB.prepare(`
+        CREATE TABLE IF NOT EXISTS reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          user_id TEXT,
+          user_name TEXT NOT NULL,
+          rating INTEGER NOT NULL,
+          content TEXT,
+          selected_option TEXT,
+          is_generated INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run();
+    } catch { /* exists */ }
+
+    let generated = 0;
+    const targetRating = avg_rating || 4.5;
+    const now = Date.now();
+
+    for (let i = 0; i < count; i++) {
+      // 평균 평점에 맞게 분포 생성 (±0.5 범위)
+      const rating = Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))));
+      const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+      const maskedName = name[0] + '*' + name[name.length - 1];
+      const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)];
+      const option = options && options.length > 0 ? options[Math.floor(Math.random() * options.length)] : null;
+
+      // 날짜 랜덤 (최근 90일 이내)
+      const daysAgo = Math.floor(Math.random() * 90);
+      const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+
+      try {
+        await DB.prepare(`
+          INSERT INTO reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at)
+          VALUES (?, ?, ?, ?, ?, 1, ?)
+        `).bind(product_id, maskedName, rating, content, option, reviewDate).run();
+        generated++;
+      } catch { /* skip */ }
+    }
+
+    return c.json({ success: true, data: { generated }, message: `${generated}개 리뷰가 생성되었습니다` });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});

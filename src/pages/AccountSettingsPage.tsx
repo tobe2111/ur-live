@@ -280,8 +280,8 @@ function ToggleItem({ icon, label, value, onChange }: { icon: React.ReactNode; l
         <span className="text-gray-600">{icon}</span>
         <span className="text-gray-900">{label}</span>
       </div>
-      <button onClick={onChange} className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${value ? 'bg-blue-500' : 'bg-gray-300'}`}>
-        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${value ? 'translate-x-6' : 'translate-x-0'}`} />
+      <button onClick={onChange} className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-blue-500' : 'bg-gray-300'}`}>
+        <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
     </div>
   );

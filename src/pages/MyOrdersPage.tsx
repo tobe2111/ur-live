@@ -230,7 +230,7 @@ export default function MyOrdersPage() {
       </header>
 
       {/* Tab Navigation */}
-      <div className="bg-[#121212] border-b border-[#e5e5ea]">
+      <div className="bg-white border-b border-[#e5e5ea]">
         <div className="w-full px-4 sm:px-6">
           <div className="flex space-x-1">
             <button
@@ -329,8 +329,8 @@ export default function MyOrdersPage() {
       {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-[#121212] rounded-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-[#121212] border-b border-[#e5e5ea] p-4 flex items-center justify-between">
+          <div className="bg-white rounded-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-[#e5e5ea] p-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-[#1d1d1f]">주문 상세</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
@@ -432,8 +432,14 @@ export default function MyOrdersPage() {
                   <div className="flex gap-2">
                     <span className="text-[#6e6e73] min-w-[60px]">주소</span>
                     <span className="font-medium text-[#1d1d1f]">
-                      [{selectedOrder.shipping_postal_code}] {selectedOrder.shipping_address}
-                      {selectedOrder.shipping_address_detail && `, ${selectedOrder.shipping_address_detail}`}
+                      {(() => {
+                        const addr = selectedOrder.shipping_address
+                        if (typeof addr === 'object' && addr !== null) {
+                          const a = addr as any
+                          return `[${a.postal_code || ''}] ${a.address1 || ''} ${a.address2 || ''}`
+                        }
+                        return `[${selectedOrder.shipping_postal_code || ''}] ${addr || ''} ${selectedOrder.shipping_address_detail || ''}`
+                      })()}
                     </span>
                   </div>
                   {selectedOrder.tracking_number && (
@@ -533,31 +539,31 @@ export default function MyOrdersPage() {
       {cancelModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
           <div 
-            className="bg-[#121212] rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
+            className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 animate-slideUp"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">
+              <h3 className="text-xl font-bold text-gray-900">
                 주문 취소
               </h3>
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="text-gray-400 hover:text-gray-400 transition-colors"
+                className="text-gray-500 hover:text-gray-500 transition-colors"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             {/* Order Info */}
-            <div className="mb-4 p-4 bg-[#0A0A0A] rounded-xl">
-              <p className="text-sm text-gray-400 mb-1">주문번호</p>
-              <p className="font-semibold text-white">{cancelModal.orderNumber}</p>
+            <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-500 mb-1">주문번호</p>
+              <p className="font-semibold text-gray-900">{cancelModal.orderNumber}</p>
             </div>
 
             {/* Cancel Reason */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-600 mb-2">
                 취소 사유 <span className="text-red-500">*</span>
               </label>
               <select
@@ -576,13 +582,13 @@ export default function MyOrdersPage() {
 
             {/* Partial Cancel */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-300 mb-2">환불 방식</label>
+              <label className="block text-sm font-medium text-gray-600 mb-2">환불 방식</label>
               <div className="flex gap-2 mb-3">
                 <button
                   type="button"
                   onClick={() => setIsPartialCancel(false)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#1A1A1A] text-gray-400 hover:bg-[#333]'
+                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-50 text-gray-500 hover:bg-[#333]'
                   }`}
                 >
                   전액 취소
@@ -591,7 +597,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(true)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-[#1A1A1A] text-gray-400 hover:bg-[#333]'
+                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-50 text-gray-500 hover:bg-[#333]'
                   }`}
                 >
                   부분 취소
@@ -625,7 +631,7 @@ export default function MyOrdersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="flex-1 py-3 px-4 bg-[#1A1A1A] text-gray-300 font-medium rounded-full hover:bg-[#333] transition-colors"
+                className="flex-1 py-3 px-4 bg-gray-50 text-gray-600 font-medium rounded-full hover:bg-[#333] transition-colors"
                 disabled={processing}
               >
                 닫기
