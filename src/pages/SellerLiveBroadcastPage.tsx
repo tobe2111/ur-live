@@ -36,6 +36,7 @@ import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import WebStreaming from '@/components/streaming/WebStreaming'
 import PrismQRCode from '@/components/streaming/PrismQRCode'
 import LiveControlPanel from '@/components/streaming/LiveControlPanel'
+import LiveChatPanel from '@/components/seller/LiveChatPanel'
 
 interface YouTubeChannel {
   id: number
@@ -575,10 +576,11 @@ export default function SellerLiveBroadcastPage() {
             {streams.filter(s => s.status !== 'ended').length > 0 && (
               <div>
                 <h3 className="text-sm font-bold text-gray-900 mb-3">진행 중인 방송</h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {streams.filter(s => s.status !== 'ended').map(stream => (
-                    <div key={stream.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                      <div className="flex items-center gap-3 mb-3">
+                    <div key={stream.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                      {/* 헤더 */}
+                      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stream.status === 'live' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
                           {stream.status === 'live' ? '● LIVE' : '예정'}
                         </span>
@@ -588,42 +590,114 @@ export default function SellerLiveBroadcastPage() {
                         )}
                       </div>
 
-                      {/* 상품 표시 모드 토글 */}
-                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg mb-3">
-                        <div>
-                          <p className="text-xs font-medium text-gray-900">상품 표시</p>
-                          <p className="text-[10px] text-gray-500">{(stream as any).product_display_mode === 'all' ? '전체 상품' : '현재 상품만'}</p>
-                        </div>
-                        <button onClick={async () => {
-                          const newMode = (stream as any).product_display_mode === 'all' ? 'current_only' : 'all'
-                          try {
-                            await api.put(`/api/seller/streams/${stream.id}/product-display`, { mode: newMode }, { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
-                            toast.success(newMode === 'all' ? '전체 상품 표시' : '현재 상품만 표시')
-                            ;(stream as any).product_display_mode = newMode
-                            setStreams([...streams])
-                          } catch { toast.error('변경 실패') }
-                        }} className={`relative w-9 h-5 rounded-full transition-colors ${(stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'}`}>
-                          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(stream as any).product_display_mode === 'all' ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                        </button>
-                      </div>
+                      {/* 라이브 중: 영상 + 채팅 좌우 분할 */}
+                      {stream.status === 'live' && (
+                        <div className="flex flex-col lg:flex-row">
+                          {/* 왼쪽: YouTube 영상 */}
+                          {stream.youtube_video_id && (
+                            <div className="lg:w-1/2 bg-black">
+                              <div className="aspect-video">
+                                <iframe
+                                  src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=0&mute=1`}
+                                  title="라이브"
+                                  className="w-full h-full"
+                                  allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              </div>
+                            </div>
+                          )}
 
-                      <div className="flex gap-2">
-                        {stream.status === 'scheduled' && (
-                          <Button onClick={() => startStream(stream.id)} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1">
-                            <Radio className="h-3.5 w-3.5 mr-1" /> 방송 시작
-                          </Button>
-                        )}
+                          {/* 오른쪽: 채팅 */}
+                          <div className={`${stream.youtube_video_id ? 'lg:w-1/2' : 'w-full'} flex flex-col border-t lg:border-t-0 lg:border-l border-gray-100`}>
+                            <LiveChatPanel streamId={stream.id} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 컨트롤 영역 */}
+                      <div className="p-4 space-y-3">
+                        {/* 상품 표시 + 토글 */}
+                        <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="text-xs font-medium text-gray-900">상품 표시</p>
+                            <p className="text-[10px] text-gray-500">{(stream as any).product_display_mode === 'all' ? '전체 상품' : '현재 상품만'}</p>
+                          </div>
+                          <button onClick={async () => {
+                            const newMode = (stream as any).product_display_mode === 'all' ? 'current_only' : 'all'
+                            try {
+                              await api.put(`/api/seller/streams/${stream.id}/product-display`, { mode: newMode }, { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
+                              toast.success(newMode === 'all' ? '전체 상품 표시' : '현재 상품만 표시')
+                              ;(stream as any).product_display_mode = newMode
+                              setStreams([...streams])
+                            } catch { toast.error('변경 실패') }
+                          }} className={`relative w-9 h-5 rounded-full transition-colors ${(stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(stream as any).product_display_mode === 'all' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+
+                        {/* 상품 변경 (드래그 앤 드롭 순서 변경) */}
                         {stream.status === 'live' && (
-                          <>
-                            <Button onClick={() => { setShowControlPanel(true); setNewStream(stream) }} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1">
-                              <Settings className="h-3.5 w-3.5 mr-1" /> 관리
-                            </Button>
-                            <Button onClick={() => endStream(stream.id)} size="sm" variant="destructive" className="flex-1">종료</Button>
-                          </>
+                          <div>
+                            <p className="text-xs font-medium text-gray-700 mb-1.5">소개 상품 <span className="text-gray-400 font-normal">(드래그로 순서 변경)</span></p>
+                            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                              {products.filter((p: any) => !p.is_supply_product).map((p, idx) => {
+                                const isCurrent = (stream as any).current_product_id === p.id
+                                return (
+                                  <button
+                                    key={p.id}
+                                    draggable
+                                    onDragStart={e => { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move' }}
+                                    onDragOver={e => e.preventDefault()}
+                                    onDrop={e => {
+                                      e.preventDefault()
+                                      const fromIdx = Number(e.dataTransfer.getData('text/plain'))
+                                      const filtered = products.filter((pp: any) => !pp.is_supply_product)
+                                      const reordered = [...filtered]
+                                      const [moved] = reordered.splice(fromIdx, 1)
+                                      reordered.splice(idx, 0, moved)
+                                      // products 배열 업데이트 (supply 제외 부분만 재정렬)
+                                      const supply = products.filter((pp: any) => pp.is_supply_product)
+                                      setProducts([...reordered, ...supply])
+                                    }}
+                                    onClick={async () => {
+                                      try {
+                                        const token = localStorage.getItem('seller_token')
+                                        await api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: p.id }, { headers: { Authorization: `Bearer ${token}` } })
+                                        ;(stream as any).current_product_id = p.id
+                                        setStreams([...streams])
+                                        toast.success(`${p.name} 소개 중`)
+                                      } catch { toast.error('변경 실패') }
+                                    }}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium shrink-0 active:scale-95 cursor-grab active:cursor-grabbing transition-all ${
+                                      isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-blue-300'
+                                    }`}
+                                  >
+                                    <span className="text-[9px] text-gray-400 w-3">{idx + 1}</span>
+                                    {p.image_url && <img src={p.image_url} alt="" className="w-6 h-6 rounded object-cover" />}
+                                    <span className="truncate max-w-[80px]">{p.name}</span>
+                                    {isCurrent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
                         )}
-                        <a href={`/live/${stream.id}`} target="_blank" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
-                          <ExternalLink className="h-4 w-4 text-gray-500" />
-                        </a>
+
+                        {/* 버튼 */}
+                        <div className="flex gap-2">
+                          {stream.status === 'scheduled' && (
+                            <Button onClick={() => startStream(stream.id)} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1">
+                              <Radio className="h-3.5 w-3.5 mr-1" /> 방송 시작
+                            </Button>
+                          )}
+                          {stream.status === 'live' && (
+                            <Button onClick={() => endStream(stream.id)} size="sm" variant="destructive" className="flex-1">방송 종료</Button>
+                          )}
+                          <a href={`/live/${stream.id}`} target="_blank" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
+                            <ExternalLink className="h-4 w-4 text-gray-500" />
+                          </a>
+                        </div>
                       </div>
                     </div>
                   ))}

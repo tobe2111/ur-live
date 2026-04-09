@@ -129,14 +129,34 @@ export default function SellerShortsPage() {
   return (
     <SellerLayout title={t('seller.shortsManage')}>
       <div className="max-w-2xl mx-auto">
-        {/* 등록 버튼 */}
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="w-full mb-5 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4" />
-          {t('seller.newShorts')}
-        </button>
+        {/* 버튼 그룹 */}
+        <div className="flex gap-2 mb-5">
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" />
+            {t('seller.newShorts')}
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                toast.success('YouTube 쇼츠 동기화 중...')
+                const res = await api.get('/api/seller/youtube/shorts/sync', { headers })
+                if (res.data.success) {
+                  toast.success(res.data.message || '동기화 완료')
+                  loadData()
+                } else {
+                  toast.error(res.data.error || '동기화 실패')
+                }
+              } catch { toast.error('YouTube 연동이 필요합니다') }
+            }}
+            className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.98]"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            동기화
+          </button>
+        </div>
 
         {/* 등록 폼 */}
         {showForm && (

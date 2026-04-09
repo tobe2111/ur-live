@@ -159,12 +159,12 @@ app.use('*', async (c, next) => {
     "object-src 'none'; " +
     "base-uri 'self'; " +
     "form-action 'self'; " +
-    "frame-ancestors 'none';"
+    "frame-ancestors 'self';"
   );
   const url = new URL(c.req.url);
   // /embed/ 경로는 외부 사이트에서 iframe으로 임베드 가능하도록 허용
   if (url.pathname.startsWith('/embed/')) {
-    c.header('Content-Security-Policy', c.res.headers.get('Content-Security-Policy')?.replace("frame-ancestors 'none'", "frame-ancestors *") || '');
+    c.header('Content-Security-Policy', c.res.headers.get('Content-Security-Policy')?.replace("frame-ancestors 'self'", "frame-ancestors *") || '');
     // X-Frame-Options 설정 안 함 (iframe 허용)
   } else {
     c.header('X-Frame-Options', 'SAMEORIGIN');
