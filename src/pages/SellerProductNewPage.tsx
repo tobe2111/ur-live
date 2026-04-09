@@ -84,6 +84,13 @@ export default function SellerProductNewPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    // 유효성 검사
+    if (!formData.name?.trim()) { setError('상품명을 입력해주세요'); return }
+    if (!formData.price || Number(formData.price) <= 0) { setError('가격은 0원보다 커야 합니다'); return }
+    if (Number(formData.price) > 100000000) { setError('가격이 너무 높습니다 (1억 이하)'); return }
+    if (Number(formData.stock) < 0) { setError('재고는 0 이상이어야 합니다'); return }
+
     setLoading(true)
 
     try {

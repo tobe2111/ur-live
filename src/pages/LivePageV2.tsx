@@ -779,7 +779,7 @@ function ReelCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
-      }).catch(() => {})
+      }).catch((e) => console.warn("[Poll]", e?.message || e))
     }, 30000)
 
     // Initial join
@@ -787,7 +787,7 @@ function ReelCard({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
-    }).catch(() => {})
+    }).catch((e) => console.warn("[Poll]", e?.message || e))
 
     return () => {
       clearInterval(heartbeatInterval)
@@ -796,7 +796,7 @@ function ReelCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
-      }).catch(() => {})
+      }).catch((e) => console.warn("[Poll]", e?.message || e))
     }
   }, [isActive, stream.id])
 
