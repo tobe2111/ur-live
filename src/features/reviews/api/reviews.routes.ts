@@ -156,7 +156,36 @@ reviewsRoutes.post('/', requireAuth(), async (c) => {
     createDashboardNotification(DB, 'seller', String(productInfo.seller_id), 'new_review', '새 리뷰', `${productInfo.name}: ★${body.rating}`, '/seller/products').catch(() => {});
   }
 
-  return c.json({ success: true, message: '리뷰가 등록되었습니다' }, 201);
+  // ── 리뷰 리워드: 딜 포인트 지급 ──
+  // 텍스트 리뷰: 50딜, 사진 리뷰: 100딜, 영상 리뷰: 200딜
+  try {
+    const hasImages = body.images && body.images.length > 0;
+    const hasVideo = body.images?.some(img => /\.(mp4|webm|mov)$/i.test(img));
+    const rewardAmount = hasVideo ? 200 : hasImages ? 100 : 50;
+    const rewardDesc = hasVideo ? '[리뷰리워드] 영상 리뷰 작성' : hasImages ? '[리뷰리워드] 사진 리뷰 작성' : '[리뷰리워드] 텍스트 리뷰 작성';
+
+    // user_points 테이블이 없으면 생성
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, total_charged INTEGER NOT NULL DEFAULT 0, total_donated INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS point_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, commission_amount INTEGER NOT NULL DEFAULT 0, points_amount INTEGER NOT NULL DEFAULT 0, balance_after INTEGER NOT NULL DEFAULT 0, description TEXT, payment_key TEXT, order_id TEXT, stream_id INTEGER, seller_id INTEGER, created_at DATETIME DEFAULT (datetime('now')))`).run().catch(() => {});
+
+    // 잔액 조회 또는 생성
+    const pts = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(user.id).first<{ balance: number }>();
+    const currentBalance = pts?.balance ?? 0;
+    const newBalance = currentBalance + rewardAmount;
+
+    if (pts) {
+      await DB.prepare('UPDATE user_points SET balance = ?, total_charged = total_charged + ?, updated_at = datetime(\'now\') WHERE user_id = ?')
+        .bind(newBalance, rewardAmount, user.id).run();
+    } else {
+      await DB.prepare('INSERT INTO user_points (user_id, balance, total_charged) VALUES (?, ?, ?)')
+        .bind(user.id, rewardAmount, rewardAmount).run();
+    }
+
+    await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(user.id, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
+  } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
+
+  return c.json({ success: true, message: '리뷰가 등록되었습니다', reward: true }, 201);
 });
 
 // PUT /api/reviews/:id — 리뷰 수정

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy } from 'lucide-react'
+import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 
 interface Seller {
@@ -411,6 +412,11 @@ export default function SellerPublicPage() {
               {seller.sns_instagram && <a href={seller.sns_instagram} target="_blank" rel="noopener" className="text-sm text-pink-500 mt-2 block">Instagram →</a>}
               {seller.sns_youtube && <a href={seller.sns_youtube} target="_blank" rel="noopener" className="text-sm text-red-500 mt-1 block">YouTube →</a>}
             </section>
+            {/* 서포터 랭킹 */}
+            <section>
+              <SupporterRanking sellerId={sellerId!} />
+            </section>
+
             <section>
               <h3 className="text-base font-bold text-gray-900 mb-2">식사권 이용안내</h3>
               <div className="text-sm text-gray-600 space-y-2">

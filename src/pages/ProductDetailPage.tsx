@@ -40,7 +40,8 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   return (
     <div className="mt-3 border border-gray-200 rounded-xl p-4">
-      <h3 className="text-sm font-bold text-gray-900 mb-3">리뷰 작성</h3>
+      <h3 className="text-sm font-bold text-gray-900 mb-1">리뷰 작성</h3>
+      <p className="text-xs text-pink-500 mb-3 font-medium">🎁 텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드 지급!</p>
       {/* 별점 */}
       <div className="flex gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(s => (
@@ -66,6 +67,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               if (res.data.success) {
                 setOpen(false); setContent(''); setRating(5)
                 onSubmitted()
+                if (res.data.reward) alert('리뷰가 등록되었습니다! 🎁 딜 포인트가 지급되었습니다.')
               } else {
                 alert(res.data.error || '리뷰 작성 실패')
               }

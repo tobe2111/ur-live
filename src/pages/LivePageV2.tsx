@@ -14,6 +14,8 @@ import { DonationEffect } from '@/components/LiveDonation'
 import { maskUserName } from '@/components/live/LiveUtils'
 import { TeamPointsBadge } from '@/components/live/TeamPointsBadge'
 import LiveDonation from '@/components/LiveDonation'
+import AuctionPanel from '@/components/live/AuctionPanel'
+import TimeDealPopup from '@/components/live/TimeDealPopup'
 import '@/utils/console-suppressor'
 
 // Axios-like error shape for catch blocks
@@ -1291,6 +1293,16 @@ function ReelCard({
 
         {/* Donation effects overlay */}
         <DonationEffect donations={donationEffects} />
+
+        {/* 라이브 경매 패널 */}
+        {!isSeller && (
+          <div className="pointer-events-auto absolute top-28 left-3 right-14 z-20">
+            <AuctionPanel streamId={stream.id} />
+          </div>
+        )}
+
+        {/* 타임딜 팝업 */}
+        <TimeDealPopup streamId={stream.id} />
 
         {/* Spacer pushes content to bottom */}
         <div className="flex-1" />

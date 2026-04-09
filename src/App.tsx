@@ -102,6 +102,8 @@ const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
+const ReferralPage = lazy(() => import('./pages/ReferralPage'))
+const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -606,6 +608,12 @@ function AppContent() {
             <Route path="/points/charge/fail" element={<PaymentFailPage />} />
             <Route path="/fail" element={<PaymentFailPage />} />
             
+            {/* 친구 초대 공동구매 */}
+            <Route path="/referral/:code" element={<ReferralPage />} />
+
+            {/* 맛집 지도 */}
+            <Route path="/restaurant-map" element={<RestaurantMapPage />} />
+
             {/* Terms Pages */}
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
