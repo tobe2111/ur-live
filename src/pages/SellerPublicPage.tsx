@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X } from 'lucide-react'
 import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
+import { nativeShare } from '@/lib/native'
 
 interface Seller {
   id: number; name: string; business_name?: string; profile_image?: string; bio?: string
@@ -44,6 +45,66 @@ export default function SellerPublicPage() {
     const storedSellerId = localStorage.getItem('seller_id')
     return userType === 'seller' && storedSellerId === sellerId
   })()
+
+  // ── 인라인 편집 상태 ──
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editBio, setEditBio] = useState('')
+  const [editKakao, setEditKakao] = useState('')
+  const [editInsta, setEditInsta] = useState('')
+  const [editYoutube, setEditYoutube] = useState('')
+  const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const startEdit = (field: string) => {
+    if (!isOwner) return
+    setEditingField(field)
+    if (field === 'name') setEditName(seller?.name || '')
+    if (field === 'bio') setEditBio(seller?.bio || '')
+    if (field === 'kakao') setEditKakao(seller?.kakao_chat_link || '')
+    if (field === 'instagram') setEditInsta(seller?.sns_instagram || '')
+    if (field === 'youtube') setEditYoutube(seller?.sns_youtube || '')
+  }
+
+  const saveEdit = async (field: string, value: string) => {
+    setSaving(true)
+    const token = localStorage.getItem('seller_token')
+    try {
+      const payload: Record<string, string> = {}
+      if (field === 'name') payload.name = value
+      if (field === 'bio') payload.bio = value
+      if (field === 'kakao') payload.kakao_chat_link = value
+      if (field === 'instagram') payload.sns_instagram = value
+      if (field === 'youtube') payload.sns_youtube = value
+
+      await api.put('/api/seller/profile', payload, { headers: { Authorization: `Bearer ${token}` } })
+      // 로컬 상태 업데이트
+      setSeller(prev => prev ? { ...prev, ...payload } : prev)
+      setEditingField(null)
+      toast.success('저장되었습니다')
+    } catch { toast.error('저장 실패') }
+    finally { setSaving(false) }
+  }
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const token = localStorage.getItem('seller_token')
+
+    // 이미지 → base64 or presigned upload
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const base64 = reader.result as string
+      setSaving(true)
+      try {
+        await api.put('/api/seller/profile', { profile_image: base64 }, { headers: { Authorization: `Bearer ${token}` } })
+        setSeller(prev => prev ? { ...prev, profile_image: base64 } : prev)
+        toast.success('프로필 이미지가 변경되었습니다')
+      } catch { toast.error('이미지 업로드 실패') }
+      finally { setSaving(false) }
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     if (!sellerId) return
@@ -117,7 +178,10 @@ export default function SellerPublicPage() {
         {/* 프로필 아바타 */}
         <div className="absolute -bottom-10 left-5">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-lg">
+            <div
+              className={`w-20 h-20 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
+              onClick={() => isOwner && fileInputRef.current?.click()}
+            >
               {seller.profile_image ? (
                 <img src={seller.profile_image} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -125,7 +189,13 @@ export default function SellerPublicPage() {
                   <span className="text-2xl font-bold text-white">{seller.name.charAt(0)}</span>
                 </div>
               )}
+              {isOwner && (
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
+              )}
             </div>
+            {isOwner && <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfileImageUpload} />}
             {liveNow && (
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">LIVE</span>
             )}
@@ -136,11 +206,23 @@ export default function SellerPublicPage() {
       {/* 셀러 정보 */}
       <div className="pt-14 px-5 pb-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-extrabold text-gray-900">{seller.name}</h1>
-          {isOwner && (
-            <button onClick={() => navigate('/seller/profile')} className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-600 font-medium hover:bg-gray-200">
-              <Pencil className="w-3 h-3" /> 프로필 편집
-            </button>
+          {editingField === 'name' ? (
+            <div className="flex items-center gap-2 flex-1">
+              <input
+                autoFocus
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                className="text-xl font-extrabold text-gray-900 bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1"
+                onKeyDown={e => e.key === 'Enter' && saveEdit('name', editName)}
+              />
+              <button onClick={() => saveEdit('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white"><Check className="w-3.5 h-3.5" /></button>
+              <button onClick={() => setEditingField(null)} className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          ) : (
+            <h1 className="text-xl font-extrabold text-gray-900 group" onClick={() => startEdit('name')}>
+              {seller.name}
+              {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
+            </h1>
           )}
         </div>
         {seller.business_name && (
@@ -149,8 +231,27 @@ export default function SellerPublicPage() {
             <span className="text-xs text-gray-500">{seller.business_name}</span>
           </div>
         )}
-        {seller.bio && (
-          <p className="text-sm text-gray-600 mt-2 leading-relaxed line-clamp-2">{seller.bio}</p>
+        {editingField === 'bio' ? (
+          <div className="mt-2">
+            <textarea
+              autoFocus
+              value={editBio}
+              onChange={e => setEditBio(e.target.value)}
+              rows={3}
+              className="w-full text-sm text-gray-600 bg-gray-50 border border-pink-300 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none"
+            />
+            <div className="flex gap-2 mt-1">
+              <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
+              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg">취소</button>
+            </div>
+          </div>
+        ) : (
+          <div className="group mt-2" onClick={() => startEdit('bio')}>
+            <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+              {seller.bio || (isOwner ? '소개글을 입력해주세요' : '')}
+            </p>
+            {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline opacity-0 group-hover:opacity-100 transition-opacity" />}
+          </div>
         )}
 
         {/* 통계 */}
@@ -404,13 +505,71 @@ export default function SellerPublicPage() {
         {tab === 'info' && (
           <div className="space-y-6">
             <section>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-bold text-gray-900">소개</h3>
-                {isOwner && <button onClick={() => navigate('/seller/profile')} className="text-xs text-blue-500 flex items-center gap-0.5"><Pencil className="w-3 h-3" /> 수정</button>}
+              <h3 className="text-base font-bold text-gray-900 mb-2">소개</h3>
+              {editingField === 'bio-info' ? (
+                <div>
+                  <textarea autoFocus value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
+                    className="w-full text-sm bg-gray-50 border border-pink-300 rounded-lg p-2 focus:outline-none resize-none" />
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={() => { saveEdit('bio', editBio); setEditingField(null) }} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
+                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg">취소</button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
+                  {seller.bio || (isOwner ? '소개글을 입력해주세요 (탭하여 편집)' : '소개글이 없습니다.')}
+                  {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-0 group-hover:opacity-100" />}
+                </p>
+              )}
+
+              {/* SNS 링크 */}
+              <div className="mt-3 space-y-2">
+                {/* Instagram */}
+                {editingField === 'instagram' ? (
+                  <div className="flex gap-2">
+                    <input autoFocus value={editInsta} onChange={e => setEditInsta(e.target.value)} placeholder="https://instagram.com/..."
+                      className="flex-1 px-2 py-1.5 border border-pink-300 rounded-lg text-sm bg-gray-50" />
+                    <button onClick={() => saveEdit('instagram', editInsta)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-gray-100 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                  </div>
+                ) : seller.sns_instagram ? (
+                  <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('instagram')}>
+                    <a href={seller.sns_instagram} target="_blank" rel="noopener" onClick={e => isOwner && e.preventDefault()} className="text-sm text-pink-500">Instagram →</a>
+                    {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" />}
+                  </div>
+                ) : isOwner ? (
+                  <button onClick={() => startEdit('instagram')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> Instagram 추가</button>
+                ) : null}
+
+                {/* YouTube */}
+                {editingField === 'youtube' ? (
+                  <div className="flex gap-2">
+                    <input autoFocus value={editYoutube} onChange={e => setEditYoutube(e.target.value)} placeholder="https://youtube.com/..."
+                      className="flex-1 px-2 py-1.5 border border-pink-300 rounded-lg text-sm bg-gray-50" />
+                    <button onClick={() => saveEdit('youtube', editYoutube)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-gray-100 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                  </div>
+                ) : seller.sns_youtube ? (
+                  <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('youtube')}>
+                    <a href={seller.sns_youtube} target="_blank" rel="noopener" onClick={e => isOwner && e.preventDefault()} className="text-sm text-red-500">YouTube →</a>
+                    {isOwner && <Pencil className="w-3 h-3 text-gray-300 opacity-0 group-hover:opacity-100" />}
+                  </div>
+                ) : isOwner ? (
+                  <button onClick={() => startEdit('youtube')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> YouTube 추가</button>
+                ) : null}
+
+                {/* 카카오 채팅 */}
+                {editingField === 'kakao' ? (
+                  <div className="flex gap-2">
+                    <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
+                      className="flex-1 px-2 py-1.5 border border-pink-300 rounded-lg text-sm bg-gray-50" />
+                    <button onClick={() => saveEdit('kakao', editKakao)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-gray-100 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                  </div>
+                ) : isOwner && !seller.kakao_chat_link ? (
+                  <button onClick={() => startEdit('kakao')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> 카카오 채팅 링크 추가</button>
+                ) : null}
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{seller.bio || '소개글이 없습니다.'}</p>
-              {seller.sns_instagram && <a href={seller.sns_instagram} target="_blank" rel="noopener" className="text-sm text-pink-500 mt-2 block">Instagram →</a>}
-              {seller.sns_youtube && <a href={seller.sns_youtube} target="_blank" rel="noopener" className="text-sm text-red-500 mt-1 block">YouTube →</a>}
             </section>
             {/* 서포터 랭킹 */}
             <section>
