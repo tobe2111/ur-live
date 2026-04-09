@@ -430,8 +430,8 @@ export default function SellerLiveBroadcastPage() {
                       <p className="text-sm font-medium text-gray-900">방송 예약</p>
                       <p className="text-xs text-gray-500">{isScheduled ? '예약 시간에 방송을 시작합니다' : '즉시 방송을 시작합니다'}</p>
                     </div>
-                    <button onClick={() => setIsScheduled(!isScheduled)} className={`relative w-11 h-6 rounded-full transition-colors ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isScheduled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <button onClick={() => setIsScheduled(!isScheduled)} className={`relative w-[44px] h-[24px] rounded-full transition-colors shrink-0 ${isScheduled ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                      <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform ${isScheduled ? 'translate-x-[20px]' : 'translate-x-0'}`} />
                     </button>
                   </div>
                   {isScheduled && (
@@ -631,8 +631,8 @@ export default function SellerLiveBroadcastPage() {
                               ;(stream as any).product_display_mode = newMode
                               setStreams([...streams])
                             } catch { toast.error('변경 실패') }
-                          }} className={`relative w-9 h-5 rounded-full transition-colors ${(stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'}`}>
-                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(stream as any).product_display_mode === 'all' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          }} className={`relative w-[44px] h-[24px] rounded-full transition-colors shrink-0 ${(stream as any).product_display_mode === 'all' ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                            <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm transition-transform ${(stream as any).product_display_mode === 'all' ? 'translate-x-[20px]' : 'translate-x-0'}`} />
                           </button>
                         </div>
 
