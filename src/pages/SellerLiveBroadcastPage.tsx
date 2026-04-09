@@ -636,25 +636,44 @@ export default function SellerLiveBroadcastPage() {
                           </button>
                         </div>
 
-                        {/* 상품 변경 */}
+                        {/* 상품 변경 (드래그 앤 드롭 순서 변경) */}
                         {stream.status === 'live' && (
                           <div>
-                            <p className="text-xs font-medium text-gray-700 mb-2">소개 상품</p>
+                            <p className="text-xs font-medium text-gray-700 mb-1.5">소개 상품 <span className="text-gray-400 font-normal">(드래그로 순서 변경)</span></p>
                             <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                              {products.filter((p: any) => !p.is_supply_product).map(p => {
+                              {products.filter((p: any) => !p.is_supply_product).map((p, idx) => {
                                 const isCurrent = (stream as any).current_product_id === p.id
                                 return (
-                                  <button key={p.id} onClick={async () => {
-                                    try {
-                                      const token = localStorage.getItem('seller_token')
-                                      await api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: p.id }, { headers: { Authorization: `Bearer ${token}` } })
-                                      ;(stream as any).current_product_id = p.id
-                                      setStreams([...streams])
-                                      toast.success(`${p.name} 소개 중`)
-                                    } catch { toast.error('변경 실패') }
-                                  }} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium shrink-0 active:scale-95 ${
-                                    isCurrent ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 text-gray-700 hover:border-blue-300'
-                                  }`}>
+                                  <button
+                                    key={p.id}
+                                    draggable
+                                    onDragStart={e => { e.dataTransfer.setData('text/plain', String(idx)); e.dataTransfer.effectAllowed = 'move' }}
+                                    onDragOver={e => e.preventDefault()}
+                                    onDrop={e => {
+                                      e.preventDefault()
+                                      const fromIdx = Number(e.dataTransfer.getData('text/plain'))
+                                      const filtered = products.filter((pp: any) => !pp.is_supply_product)
+                                      const reordered = [...filtered]
+                                      const [moved] = reordered.splice(fromIdx, 1)
+                                      reordered.splice(idx, 0, moved)
+                                      // products 배열 업데이트 (supply 제외 부분만 재정렬)
+                                      const supply = products.filter((pp: any) => pp.is_supply_product)
+                                      setProducts([...reordered, ...supply])
+                                    }}
+                                    onClick={async () => {
+                                      try {
+                                        const token = localStorage.getItem('seller_token')
+                                        await api.post(`/api/seller/streams/${stream.id}/change-product`, { productId: p.id }, { headers: { Authorization: `Bearer ${token}` } })
+                                        ;(stream as any).current_product_id = p.id
+                                        setStreams([...streams])
+                                        toast.success(`${p.name} 소개 중`)
+                                      } catch { toast.error('변경 실패') }
+                                    }}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium shrink-0 active:scale-95 cursor-grab active:cursor-grabbing transition-all ${
+                                      isCurrent ? 'border-red-500 bg-red-50 text-red-600 shadow-sm' : 'border-gray-200 text-gray-700 hover:border-blue-300'
+                                    }`}
+                                  >
+                                    <span className="text-[9px] text-gray-400 w-3">{idx + 1}</span>
                                     {p.image_url && <img src={p.image_url} alt="" className="w-6 h-6 rounded object-cover" />}
                                     <span className="truncate max-w-[80px]">{p.name}</span>
                                     {isCurrent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
