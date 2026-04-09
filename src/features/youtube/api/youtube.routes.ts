@@ -92,6 +92,7 @@ async function ensureYouTubeTables(DB: D1Database) {
     'youtube_url TEXT',
     'current_product_id INTEGER',
     'product_display_mode TEXT DEFAULT \'current_only\'',
+    'thumbnail_url TEXT',
   ]
   for (const col of columns) {
     try { await DB.prepare(`ALTER TABLE live_streams ADD COLUMN ${col}`).run() } catch { /* exists */ }
@@ -497,7 +498,7 @@ app.post('/live/create', async (c) => {
 
     const streamId = streamResult.meta.last_row_id
 
-    // Link products if provided
+    // Link products + 첫 상품 이미지를 방송 썸네일로 설정
     if (product_ids && product_ids.length > 0) {
       for (const productId of product_ids) {
         await c.env.DB.prepare(`
@@ -505,6 +506,19 @@ app.post('/live/create', async (c) => {
           VALUES (?, ?, CURRENT_TIMESTAMP)
         `).bind(streamId, productId).run()
       }
+
+      // 첫 번째 상품 이미지 → 방송 썸네일 + current_product_id 설정
+      try {
+        const firstProduct = await c.env.DB.prepare(
+          'SELECT id, image_url FROM products WHERE id = ?'
+        ).bind(product_ids[0]).first<{ id: number; image_url: string }>()
+
+        if (firstProduct?.image_url) {
+          await c.env.DB.prepare(
+            "UPDATE live_streams SET thumbnail_url = ?, current_product_id = ? WHERE id = ?"
+          ).bind(firstProduct.image_url, firstProduct.id, streamId).run()
+        }
+      } catch { /* thumbnail 컬럼 없을 수 있음 */ }
     }
 
     return c.json({
