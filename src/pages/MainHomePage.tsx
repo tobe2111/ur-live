@@ -161,13 +161,22 @@ function GroupBuySection() {
   return (
     <section className="px-4 py-4">
       {/* 공동구매 배너 */}
-      <button
-        onClick={() => navigate('/browse?category=meal_voucher')}
-        className="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-red-500 rounded-2xl p-4 mb-4 text-left active:scale-[0.98] transition-transform"
-      >
-        <p className="text-white text-lg font-extrabold">🍽️ 맛집 공동구매</p>
-        <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권, 최대 70% 할인!</p>
-      </button>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => navigate('/browse?category=meal_voucher')}
+          className="flex-1 bg-gradient-to-r from-orange-500 via-pink-500 to-red-500 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform"
+        >
+          <p className="text-white text-lg font-extrabold">🍽️ 맛집 공동구매</p>
+          <p className="text-white/80 text-xs mt-1">인플루언서 추천 맛집 식사권</p>
+        </button>
+        <button
+          onClick={() => navigate('/restaurant-map')}
+          className="w-[120px] bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform shrink-0"
+        >
+          <p className="text-white text-2xl">🗺️</p>
+          <p className="text-white text-xs font-bold mt-1">맛집 지도</p>
+        </button>
+      </div>
 
       {/* 지역 필터 */}
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-3">

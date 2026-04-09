@@ -467,6 +467,18 @@ app.route('/api/bulk-upload', bulkUploadRoutes);
 import { returnsRoutes } from '../features/returns/api/returns.routes';
 app.route('/api/returns', returnsRoutes);
 
+// ── 라이브 경매 ──
+import { auctionRoutes } from '../features/auction/api/auction.routes';
+app.route('/api/auction', auctionRoutes);
+
+// ── 타임딜 룰렛 ──
+import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
+app.route('/api/timedeal', timedealRoutes);
+
+// ── 친구 초대 공동구매 ──
+import { referralRoutes } from '../features/referral/api/referral.routes';
+app.route('/api/referral', referralRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);

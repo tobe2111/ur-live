@@ -77,6 +77,9 @@ export default function CheckoutPage() {
   
   // 결제 수단 선택
   const [paymentMethod, setPaymentMethod] = useState<'toss' | 'deal'>('toss')
+  const [couponCode, setCouponCode] = useState('')
+  const [couponDiscount, setCouponDiscount] = useState(0)
+  const [couponId, setCouponId] = useState<number | null>(null)
   const [dealBalance, setDealBalance] = useState(0)
   const [payingWithDeals, setPayingWithDeals] = useState(false)
 
@@ -142,7 +145,7 @@ export default function CheckoutPage() {
     return total + group.shipping_fee
   }, 0)
 
-  const totalAmount = subtotal + totalShippingFee
+  const totalAmount = subtotal + totalShippingFee - couponDiscount
 
   useEffect(() => { document.title = '주문/결제 - 유어딜' }, [])
 
@@ -606,6 +609,40 @@ export default function CheckoutPage() {
               </div>
             </section>
             
+            {/* 쿠폰 적용 */}
+            <section className="bg-white px-5 py-4 border-t border-gray-100">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-2">할인 쿠폰</h2>
+              <div className="flex gap-2">
+                <input
+                  value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="쿠폰 코드 입력"
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:border-blue-400 focus:outline-none"
+                />
+                <button
+                  onClick={async () => {
+                    if (!couponCode.trim()) return
+                    try {
+                      const res = await api.post('/api/coupons/apply', { code: couponCode.trim(), order_amount: totalAmount })
+                      if (res.data.success) {
+                        setCouponDiscount(res.data.data.discount)
+                        setCouponId(res.data.data.coupon_id)
+                        toast.success(`${res.data.data.name}: ${res.data.data.discount.toLocaleString()}원 할인`)
+                      } else {
+                        toast.error(res.data.error)
+                      }
+                    } catch (err: any) { toast.error(err?.response?.data?.error || '쿠폰 적용 실패') }
+                  }}
+                  className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
+                >
+                  적용
+                </button>
+              </div>
+              {couponDiscount > 0 && (
+                <p className="text-sm text-green-600 font-medium mt-2">✓ {couponDiscount.toLocaleString()}원 할인 적용됨</p>
+              )}
+            </section>
+
             {/* Divider */}
             <div className="h-2 bg-gray-50" />
 
@@ -617,20 +654,20 @@ export default function CheckoutPage() {
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => setPaymentMethod('toss')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
                     paymentMethod === 'toss'
-                      ? 'bg-white text-black'
-                      : 'bg-gray-50 text-gray-400'
+                      ? 'border-gray-900 bg-gray-900 text-white'
+                      : 'border-gray-200 bg-white text-gray-500'
                   }`}
                 >
                   카드/간편결제
                 </button>
                 <button
                   onClick={() => setPaymentMethod('deal')}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors border ${
                     paymentMethod === 'deal'
-                      ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white'
-                      : 'bg-gray-50 text-gray-400'
+                      ? 'border-pink-500 bg-gradient-to-r from-pink-500 to-red-500 text-white'
+                      : 'border-gray-200 bg-white text-gray-500'
                   }`}
                 >
                   딜로 결제
@@ -728,7 +765,7 @@ export default function CheckoutPage() {
                     userId={userId || ''}
                     clientKey={clientKey}
                     cartItems={cartItems}
-                    totalAmount={subtotal}
+                    totalAmount={subtotal - couponDiscount}
                     shippingFee={totalShippingFee}
                     onBeforePayment={handleBeforePayment}
                     onPaymentSuccess={(orderId, paymentKey, amount) => {
@@ -751,7 +788,7 @@ export default function CheckoutPage() {
                   <StripeCheckout
                     userId={userId || ''}
                     cartItems={cartItems}
-                    totalAmount={subtotal}
+                    totalAmount={subtotal - couponDiscount}
                     shippingFee={totalShippingFee}
                     onPaymentSuccess={(orderId, paymentIntentId, amount) => {
                       navigate(`/payment/success?orderId=${orderId}&paymentIntentId=${paymentIntentId}&amount=${amount}`)
@@ -790,6 +827,15 @@ export default function CheckoutPage() {
                       )}
                     </span>
                   </div>
+
+                  {couponDiscount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[14px] text-gray-400">쿠폰 할인</span>
+                      <span className="text-[14px] font-medium text-red-500">
+                        -{couponDiscount.toLocaleString()}원
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="my-5 h-px bg-[#333]" />
@@ -841,6 +887,15 @@ export default function CheckoutPage() {
                   )}
                 </span>
               </div>
+
+              {couponDiscount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[14px] text-gray-400">쿠폰 할인</span>
+                  <span className="text-[14px] font-medium text-red-500">
+                    -{couponDiscount.toLocaleString()}원
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="my-5 h-px bg-[#333]" />

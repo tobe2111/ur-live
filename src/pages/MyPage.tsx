@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import MobileFooter from '@/components/MobileFooter'
-import { 
-  User, 
-  MapPin, 
-  Package, 
-  Settings, 
-  LogOut, 
+import {
+  User,
+  MapPin,
+  Package,
+  Settings,
+  LogOut,
   ChevronRight,
   Mail,
-  Phone
+  Phone,
+  Bell,
+  Heart,
+  Ticket
 } from 'lucide-react'
 import { getUserId, getUserIdSync, getUserNameSync, getUserEmail, logout as authLogout } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
@@ -81,9 +84,60 @@ export default function MyPage() {
 
         {/* 메뉴 리스트 */}
         <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-100 mb-6">
+          {/* 알림 */}
+          <Link
+            to="/notifications"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
+                <Bell className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">알림</h3>
+                <p className="text-sm text-gray-500">새로운 소식을 확인하세요</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+
+          {/* 찜 목록 */}
+          <Link
+            to="/wishlist"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-pink-50 rounded-lg flex items-center justify-center">
+                <Heart className="w-5 h-5 text-pink-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">찜 목록</h3>
+                <p className="text-sm text-gray-500">관심 상품을 모아보세요</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+
+          {/* 내 바우처 */}
+          <Link
+            to="/my-vouchers"
+            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
+                <Ticket className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">내 바우처</h3>
+                <p className="text-sm text-gray-500">식사권/이용권을 확인하세요</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+
           {/* 배송지 관리 */}
-          <Link 
-            to="/mypage/addresses" 
+          <Link
+            to="/mypage/addresses"
             className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center space-x-3">

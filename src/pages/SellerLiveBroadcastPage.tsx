@@ -30,7 +30,8 @@ import {
   Monitor,
   Smartphone,
   Zap,
-  Key
+  Key,
+  Gavel
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import WebStreaming from '@/components/streaming/WebStreaming'
@@ -684,6 +685,11 @@ export default function SellerLiveBroadcastPage() {
                           </div>
                         )}
 
+                        {/* 경매 / 타임딜 컨트롤 (라이브 중만) */}
+                        {stream.status === 'live' && (
+                          <AuctionTimeDealControls streamId={stream.id} products={products.filter((p: any) => !p.is_supply_product)} />
+                        )}
+
                         {/* 버튼 */}
                         <div className="flex gap-2">
                           {stream.status === 'scheduled' && (
@@ -729,5 +735,133 @@ export default function SellerLiveBroadcastPage() {
         )}
       </div>
     </SellerLayout>
+  )
+}
+
+// ── 경매 / 타임딜 셀러 컨트롤 ──
+function AuctionTimeDealControls({ streamId, products }: { streamId: number; products: any[] }) {
+  const { t } = useTranslation()
+  const [showAuction, setShowAuction] = useState(false)
+  const [showTimeDeal, setShowTimeDeal] = useState(false)
+  const [auctionForm, setAuctionForm] = useState({ product_id: 0, title: '', start_price: 1000, min_increment: 1000, duration_seconds: 180 })
+  const [dealForm, setDealForm] = useState({ product_id: 0, discount_percent: 30, max_claims: 10, duration_seconds: 30 })
+  const [submitting, setSubmitting] = useState(false)
+  const token = localStorage.getItem('seller_token')
+
+  async function createAuction() {
+    if (!auctionForm.title || !auctionForm.start_price) { toast.error('제목과 시작가를 입력해주세요'); return }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/api/auction/create', { stream_id: streamId, ...auctionForm }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) { toast.success('경매가 시작되었습니다!'); setShowAuction(false) }
+      else toast.error(res.data.error)
+    } catch (err: any) { toast.error(err?.response?.data?.error || '경매 생성 실패') }
+    finally { setSubmitting(false) }
+  }
+
+  async function createTimeDeal() {
+    if (!dealForm.product_id) { toast.error('상품을 선택해주세요'); return }
+    setSubmitting(true)
+    try {
+      const res = await api.post('/api/timedeal/create', { stream_id: streamId, ...dealForm }, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.data.success) { toast.success(`타임딜 시작! ${dealForm.duration_seconds}초`); setShowTimeDeal(false) }
+      else toast.error(res.data.error)
+    } catch (err: any) { toast.error(err?.response?.data?.error || '타임딜 생성 실패') }
+    finally { setSubmitting(false) }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setShowAuction(!showAuction); setShowTimeDeal(false) }}
+          className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-colors ${showAuction ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}
+        >
+          <Gavel className="w-3.5 h-3.5" />
+          경매 시작
+        </button>
+        <button
+          onClick={() => { setShowTimeDeal(!showTimeDeal); setShowAuction(false) }}
+          className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-colors ${showTimeDeal ? 'bg-red-500 text-white' : 'bg-red-50 text-red-600 border border-red-200'}`}
+        >
+          <Zap className="w-3.5 h-3.5" />
+          타임딜
+        </button>
+      </div>
+
+      {showAuction && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-bold text-amber-800">경매 설정</p>
+          <input
+            value={auctionForm.title}
+            onChange={e => setAuctionForm(f => ({ ...f, title: e.target.value }))}
+            placeholder="경매 제목 (예: 한정판 세트)"
+            className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs bg-white"
+          />
+          <select
+            value={auctionForm.product_id}
+            onChange={e => setAuctionForm(f => ({ ...f, product_id: Number(e.target.value) }))}
+            className="w-full px-2.5 py-2 border border-amber-200 rounded-lg text-xs bg-white"
+          >
+            <option value={0}>상품 선택 (선택사항)</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-amber-700">시작가</label>
+              <input type="number" value={auctionForm.start_price} onChange={e => setAuctionForm(f => ({ ...f, start_price: Number(e.target.value) }))}
+                className="w-full px-2 py-1.5 border border-amber-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label className="text-[10px] text-amber-700">최소 증가</label>
+              <input type="number" value={auctionForm.min_increment} onChange={e => setAuctionForm(f => ({ ...f, min_increment: Number(e.target.value) }))}
+                className="w-full px-2 py-1.5 border border-amber-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label className="text-[10px] text-amber-700">시간(초)</label>
+              <input type="number" value={auctionForm.duration_seconds} onChange={e => setAuctionForm(f => ({ ...f, duration_seconds: Number(e.target.value) }))}
+                className="w-full px-2 py-1.5 border border-amber-200 rounded-lg text-xs bg-white" />
+            </div>
+          </div>
+          <button onClick={createAuction} disabled={submitting} className="w-full py-2 bg-amber-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+            {submitting ? '생성 중...' : '경매 시작하기'}
+          </button>
+        </div>
+      )}
+
+      {showTimeDeal && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-bold text-red-700">타임딜 설정</p>
+          <select
+            value={dealForm.product_id}
+            onChange={e => setDealForm(f => ({ ...f, product_id: Number(e.target.value) }))}
+            className="w-full px-2.5 py-2 border border-red-200 rounded-lg text-xs bg-white"
+          >
+            <option value={0}>상품 선택</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.price?.toLocaleString()}원)</option>)}
+          </select>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-red-600">할인율(%)</label>
+              <input type="number" value={dealForm.discount_percent} onChange={e => setDealForm(f => ({ ...f, discount_percent: Number(e.target.value) }))}
+                className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label className="text-[10px] text-red-600">수량</label>
+              <input type="number" value={dealForm.max_claims} onChange={e => setDealForm(f => ({ ...f, max_claims: Number(e.target.value) }))}
+                className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-xs bg-white" />
+            </div>
+            <div>
+              <label className="text-[10px] text-red-600">시간(초)</label>
+              <input type="number" value={dealForm.duration_seconds} onChange={e => setDealForm(f => ({ ...f, duration_seconds: Number(e.target.value) }))}
+                className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-xs bg-white" />
+            </div>
+          </div>
+          <button onClick={createTimeDeal} disabled={submitting || !dealForm.product_id} className="w-full py-2 bg-red-500 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+            {submitting ? '생성 중...' : `타임딜 시작 (${dealForm.duration_seconds}초)`}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

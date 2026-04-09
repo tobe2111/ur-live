@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy } from 'lucide-react'
+import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 
 interface Seller {
@@ -170,8 +171,9 @@ export default function SellerPublicPage() {
           </div>
         </div>
 
-        {/* CTA 버튼 */}
-        <div className="flex gap-2 mt-4">
+        {/* 팔로우 + CTA */}
+        <FollowButton sellerId={sellerId!} />
+        <div className="flex gap-2 mt-2">
           {seller.kakao_chat_link && (
             <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700">
               <MessageCircle className="w-4 h-4" /> {t('seller.oneOnOneInquiry')}
@@ -410,6 +412,11 @@ export default function SellerPublicPage() {
               {seller.sns_instagram && <a href={seller.sns_instagram} target="_blank" rel="noopener" className="text-sm text-pink-500 mt-2 block">Instagram →</a>}
               {seller.sns_youtube && <a href={seller.sns_youtube} target="_blank" rel="noopener" className="text-sm text-red-500 mt-1 block">YouTube →</a>}
             </section>
+            {/* 서포터 랭킹 */}
+            <section>
+              <SupporterRanking sellerId={sellerId!} />
+            </section>
+
             <section>
               <h3 className="text-base font-bold text-gray-900 mb-2">식사권 이용안내</h3>
               <div className="text-sm text-gray-600 space-y-2">
@@ -434,6 +441,38 @@ export default function SellerPublicPage() {
         </button>
       )}
     </div>
+  )
+}
+
+function FollowButton({ sellerId }: { sellerId: string }) {
+  const [following, setFollowing] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    api.get(`/api/social/follow/${sellerId}`).then(r => {
+      if (r.data.success) setFollowing(r.data.data.following)
+    }).catch(() => {})
+  }, [sellerId])
+
+  return (
+    <button
+      onClick={async () => {
+        setLoading(true)
+        try {
+          const res = await api.post(`/api/social/follow/${sellerId}`)
+          if (res.data.success) setFollowing(res.data.data.following)
+        } catch { /* 로그인 필요 */ }
+        finally { setLoading(false) }
+      }}
+      disabled={loading}
+      className={`w-full py-3 rounded-xl text-sm font-bold mt-4 transition-all active:scale-[0.98] ${
+        following
+          ? 'bg-gray-100 text-gray-600 border border-gray-200'
+          : 'bg-pink-500 text-white'
+      }`}
+    >
+      {following ? '✓ 팔로잉' : '+ 팔로우'}
+    </button>
   )
 }
 

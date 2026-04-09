@@ -40,7 +40,8 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
 
   return (
     <div className="mt-3 border border-gray-200 rounded-xl p-4">
-      <h3 className="text-sm font-bold text-gray-900 mb-3">리뷰 작성</h3>
+      <h3 className="text-sm font-bold text-gray-900 mb-1">리뷰 작성</h3>
+      <p className="text-xs text-pink-500 mb-3 font-medium">🎁 텍스트 50딜 · 사진 100딜 · 영상 200딜 리워드 지급!</p>
       {/* 별점 */}
       <div className="flex gap-1 mb-3">
         {[1, 2, 3, 4, 5].map(s => (
@@ -66,6 +67,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               if (res.data.success) {
                 setOpen(false); setContent(''); setRating(5)
                 onSubmitted()
+                if (res.data.reward) alert('리뷰가 등록되었습니다! 🎁 딜 포인트가 지급되었습니다.')
               } else {
                 alert(res.data.error || '리뷰 작성 실패')
               }
@@ -520,6 +522,9 @@ export default function ProductDetailPage() {
           <ProductNoticeSection />
         </AccordionSection>
 
+        {/* 친구 초대 공동구매 */}
+        <ReferralSection productId={product.id} />
+
         {/* 상품 리뷰 */}
         <AccordionSection title={`리뷰`} defaultOpen={true}>
           <ProductReviews productId={product.id} />
@@ -564,6 +569,71 @@ export default function ProductDetailPage() {
           <p className="text-sm font-medium text-center">{toast.message}</p>
         </div>
       )}
+    </div>
+  )
+}
+
+function ReferralSection({ productId }: { productId: number | string }) {
+  const navigate = useNavigate()
+  const [groups, setGroups] = useState<any[]>([])
+  const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    api.get(`/api/referral/product/${productId}`)
+      .then(r => { if (r.data.success) setGroups(r.data.data || []) })
+      .catch(() => {})
+  }, [productId])
+
+  const handleCreate = async () => {
+    setCreating(true)
+    try {
+      const res = await api.post('/api/referral/create', { product_id: Number(productId), target_count: 3, discount_percent: 10 })
+      if (res.data.success) {
+        navigate(`/referral/${res.data.data.invite_code}`)
+      } else {
+        alert(res.data.error || '그룹 생성 실패')
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.error || '로그인이 필요합니다')
+    } finally { setCreating(false) }
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-pink-50 to-red-50 rounded-2xl p-4 mx-4 mb-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">👫</span>
+        <h3 className="text-sm font-bold text-gray-900">친구 초대 공동구매</h3>
+        <span className="text-xs bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">10% 할인</span>
+      </div>
+      <p className="text-xs text-gray-500 mb-3">3명이 모이면 10% 추가 할인! 카카오로 친구를 초대하세요.</p>
+
+      {groups.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {groups.slice(0, 2).map((g: any) => (
+            <button
+              key={g.id}
+              onClick={() => navigate(`/referral/${g.invite_code}`)}
+              className="w-full flex items-center justify-between p-2.5 bg-white rounded-xl text-left"
+            >
+              <div>
+                <p className="text-xs font-medium text-gray-900">{g.creator_name}님의 그룹</p>
+                <p className="text-[10px] text-gray-400">{g.current_count}/{g.target_count}명 참여</p>
+              </div>
+              <div className="h-1.5 w-16 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-pink-500 rounded-full" style={{ width: `${(g.current_count / g.target_count) * 100}%` }} />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={handleCreate}
+        disabled={creating}
+        className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-red-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] disabled:opacity-50"
+      >
+        {creating ? '생성 중...' : '공동구매 그룹 만들기'}
+      </button>
     </div>
   )
 }

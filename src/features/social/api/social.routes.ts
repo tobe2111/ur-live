@@ -79,4 +79,46 @@ socialRoutes.put('/notifications/read-all', requireAuth(), async (c) => {
   return c.json({ success: true })
 })
 
+// ── 셀러 후원 랭킹 (서포터 뱃지) ──
+socialRoutes.get('/supporters/:sellerId', async (c) => {
+  const { DB } = c.env
+  const sellerId = c.req.param('sellerId')
+
+  // donations 테이블에서 셀러별 총 후원액 랭킹
+  try {
+    const { results } = await DB.prepare(`
+      SELECT donor_user_id, donor_name, SUM(amount) as total_amount, COUNT(*) as donation_count
+      FROM donations
+      WHERE seller_id = ? AND payment_status = 'completed'
+      GROUP BY donor_user_id
+      ORDER BY total_amount DESC
+      LIMIT 50
+    `).bind(sellerId).all()
+
+    const ranked = (results ?? []).map((r: any, i: number) => ({
+      ...r,
+      rank: i + 1,
+      badge: i === 0 ? 'crown' : i === 1 ? 'diamond' : i === 2 ? 'star' : null
+    }))
+
+    // 총 후원 통계
+    const stats = await DB.prepare(`
+      SELECT COUNT(DISTINCT donor_user_id) as supporter_count, SUM(amount) as total_donations
+      FROM donations WHERE seller_id = ? AND payment_status = 'completed'
+    `).bind(sellerId).first<{ supporter_count: number; total_donations: number }>()
+
+    return c.json({ success: true, data: { supporters: ranked, stats: stats || { supporter_count: 0, total_donations: 0 } } })
+  } catch {
+    return c.json({ success: true, data: { supporters: [], stats: { supporter_count: 0, total_donations: 0 } } })
+  }
+})
+
+// 셀러 팔로워 수
+socialRoutes.get('/followers/:sellerId', async (c) => {
+  const { DB } = c.env
+  await ensureTables(DB)
+  const count = await DB.prepare("SELECT COUNT(*) as cnt FROM seller_follows WHERE seller_id = ?").bind(c.req.param('sellerId')).first<{ cnt: number }>()
+  return c.json({ success: true, data: { count: count?.cnt ?? 0 } })
+})
+
 export { socialRoutes }
