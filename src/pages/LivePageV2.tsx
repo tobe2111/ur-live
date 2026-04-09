@@ -553,14 +553,15 @@ function ReelCard({
   // YouTube 라이브 채팅 폴링 (WebSocket 채팅과 통합)
   const [ytChatMessages, setYtChatMessages] = useState<ChatMessage[]>([])
 
+  const ytPageTokenRef = useRef('')
+
   useEffect(() => {
     if (stream.status !== 'live') return
     let active = true
-    let nextPageToken = ''
 
     const pollYouTubeChat = async () => {
       try {
-        const url = `/api/youtube/chat/chat/${stream.id}${nextPageToken ? `?pageToken=${nextPageToken}` : ''}`
+        const url = `/api/youtube/chat/chat/${stream.id}${ytPageTokenRef.current ? `?pageToken=${ytPageTokenRef.current}` : ''}`
         const res = await axios.get(url)
         if (res.data.success && res.data.data?.messages) {
           const ytMsgs: ChatMessage[] = res.data.data.messages.map((m: any) => ({
@@ -580,7 +581,7 @@ function ReelCard({
               return [...prev, ...newMsgs].slice(-50)
             })
           }
-          if (res.data.data.nextPageToken) nextPageToken = res.data.data.nextPageToken
+          if (res.data.data.nextPageToken) ytPageTokenRef.current = res.data.data.nextPageToken
         }
       } catch { /* YouTube 채팅 비활성 시 무시 */ }
     }
@@ -779,7 +780,7 @@ function ReelCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'heartbeat', watchDuration: watchSeconds }),
-      }).catch(() => {})
+      }).catch((e) => console.warn("[Poll]", e?.message || e))
     }, 30000)
 
     // Initial join
@@ -787,7 +788,7 @@ function ReelCard({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, action: 'join', deviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop' }),
-    }).catch(() => {})
+    }).catch((e) => console.warn("[Poll]", e?.message || e))
 
     return () => {
       clearInterval(heartbeatInterval)
@@ -796,7 +797,7 @@ function ReelCard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, action: 'leave', watchDuration: watchSeconds }),
-      }).catch(() => {})
+      }).catch((e) => console.warn("[Poll]", e?.message || e))
     }
   }, [isActive, stream.id])
 

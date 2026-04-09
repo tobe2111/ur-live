@@ -65,7 +65,9 @@ export class ProductRepository {
     const total = countRow?.count ?? 0;
 
     const rows = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT p.*, s.name as seller_name, s.slug as seller_slug
+      `SELECT p.*, s.name as seller_name, s.slug as seller_slug,
+              (SELECT AVG(rating) FROM product_reviews WHERE product_id = p.id) as avg_rating,
+              (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id) as review_count
        FROM products p
        LEFT JOIN sellers s ON p.seller_id = s.id
        ${where}

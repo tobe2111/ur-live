@@ -427,6 +427,14 @@ import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
 
+// ── 쿠폰 ──
+import { couponRoutes } from '../features/coupons/api/coupons.routes';
+app.route('/api/coupons', couponRoutes);
+
+// ── 소셜 (팔로우 + 알림) ──
+import { socialRoutes } from '../features/social/api/social.routes';
+app.route('/api/social', socialRoutes);
+
 // ── 상품 리뷰 ──
 import { reviewsRoutes } from '../features/reviews/api/reviews.routes';
 app.route('/api/reviews', reviewsRoutes);
