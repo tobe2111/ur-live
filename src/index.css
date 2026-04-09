@@ -385,6 +385,63 @@ html {
   }
 }
 
+/* ── Native App (Capacitor) 대응 ── */
+
+/* safe-area-bottom: 하단 고정 요소용 유틸리티 */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* 키보드 열릴 때 하단 고정 요소 숨기기 */
+body.keyboard-open .hide-on-keyboard {
+  display: none !important;
+}
+/* 키보드 열릴 때 하단 고정 요소 올리기 */
+body.keyboard-open .adjust-for-keyboard {
+  transform: translateY(calc(-1 * var(--keyboard-height, 0px)));
+}
+
+/* Capacitor 앱에서 스크롤 바운스 방지 (iOS) */
+html.native-app {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+html.native-app body {
+  overscroll-behavior: none;
+  /* iOS 상태바 영역 확보 */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* 네이티브 앱: 풀스크린 시 상태바 겹침 방지 */
+html.native-app .sticky.top-0 {
+  top: env(safe-area-inset-top, 0px);
+}
+
+/* 앱 내 터치 최적화 */
+html.native-app * {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+html.native-app input,
+html.native-app textarea,
+html.native-app select {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 앱 내 텍스트 선택 방지 (버튼, 라벨 등) */
+html.native-app button,
+html.native-app a,
+html.native-app label,
+html.native-app nav {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ============================================
    Mobile App Layout - PC에서 모바일 앱처럼
    ============================================ */

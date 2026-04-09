@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Share2, Check, Clock, Gift, Copy } from 'lucide-react
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
+import { nativeShare } from '@/lib/native'
 
 interface ReferralGroup {
   id: number; product_id: number; invite_code: string; creator_name: string
@@ -47,14 +48,10 @@ export default function ReferralPage() {
     finally { setJoining(false) }
   }
 
-  const handleShare = () => {
+  const handleShare = async () => {
     const url = `${window.location.origin}/referral/${code}`
-    if (navigator.share) {
-      navigator.share({ title: '친구 초대 공동구매', text: `함께 사면 ${group?.discount_percent}% 할인! 지금 참여하세요`, url })
-    } else {
-      navigator.clipboard.writeText(url)
-      toast.success('링크가 복사되었습니다')
-    }
+    await nativeShare({ title: '친구 초대 공동구매', text: `함께 사면 ${group?.discount_percent}% 할인! 지금 참여하세요`, url })
+    toast.success('링크가 복사되었습니다')
   }
 
   if (loading) {
@@ -99,7 +96,7 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4">
+      <div className="px-4 py-5 space-y-4 pb-28">
         {/* 상태 배너 */}
         <div className={`rounded-2xl p-5 text-center ${
           isAchieved ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' :

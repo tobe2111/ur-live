@@ -279,12 +279,18 @@ function AppContent() {
   // 🔄 다중 탭 동기화
   useMultiTabSync()
 
-  // Capacitor 네이티브 기능 초기화 (앱에서만 동작)
-  useEffect(() => {
-    import('./lib/native').then(m => m.initNativeFeatures()).catch(() => {})
-  }, [])
-
   const location = useLocation()
+
+  // 네이티브 앱: 페이지에 따라 상태바 스타일 변경
+  useEffect(() => {
+    import('./lib/native').then(({ setStatusBarStyle }) => {
+      // 화이트 테마 페이지는 light 상태바 (검은 텍스트)
+      const lightPages = ['/browse', '/checkout', '/mypage', '/user/', '/my-orders', '/account/', '/cart',
+        '/notifications', '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search']
+      const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
+      setStatusBarStyle(isLight ? 'light' : 'dark')
+    }).catch(() => {})
+  }, [location.pathname])
   const fullScreenPrefixes = ['/checkout', '/payment', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
