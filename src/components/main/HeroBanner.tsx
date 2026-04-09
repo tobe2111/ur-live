@@ -57,7 +57,7 @@ export default function HeroBanner() {
   if (loading) {
     return (
       <section className="relative w-full">
-        <div className="w-full aspect-[16/9] sm:aspect-[21/9] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse" />
+        <div className="w-full aspect-[2/1] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 animate-pulse" />
       </section>
     )
   }
@@ -96,11 +96,11 @@ export default function HeroBanner() {
           }}
           className="block"
         >
-          <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden">
+          <div className="relative w-full aspect-[2/1] overflow-hidden">
             <LazyImage
               src={banner.image_url}
               alt={banner.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
             {banner.description && (
@@ -133,11 +133,11 @@ export default function HeroBanner() {
                 }}
                 className="block"
               >
-                <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] overflow-hidden">
+                <div className="relative w-full aspect-[2/1] overflow-hidden">
                   <LazyImage
                     src={banner.image_url}
                     alt={banner.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   {banner.description && (

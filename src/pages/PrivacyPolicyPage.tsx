@@ -6,23 +6,29 @@ export default function PrivacyPolicyPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto p-6">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-3xl mx-auto px-5 py-8">
         {/* 헤더 */}
-        <div className="mb-6">
+        <div className="mb-8 border-b border-gray-200 pb-6">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-4"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span>뒤로가기</span>
+            <ArrowLeft className="w-4 h-4" />
+            돌아가기
           </button>
-          <h1 className="text-3xl font-bold">개인정보 처리방침</h1>
-          <p className="text-gray-600 mt-2">최종 수정일: 2024년 1월 15일</p>
+          <h1 className="text-2xl font-extrabold text-gray-900">개인정보 처리방침</h1>
+          <p className="text-sm text-gray-500 mt-2">시행일: 2024년 1월 15일 | 유어딜 (리스터코퍼레이션)</p>
         </div>
 
         {/* 본문 */}
-        <div className="bg-white rounded-lg border border-gray-200 p-8 space-y-8">
+        <div className="prose prose-sm prose-gray max-w-none space-y-8
+          [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:pb-2 [&_h2]:border-b [&_h2]:border-gray-100
+          [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-gray-800 [&_h3]:mt-4 [&_h3]:mb-2
+          [&_p]:text-sm [&_p]:text-gray-600 [&_p]:leading-relaxed
+          [&_li]:text-sm [&_li]:text-gray-600
+          [&_section]:mb-6
+          [&_table]:text-sm [&_th]:bg-gray-50 [&_th]:text-left [&_th]:p-3 [&_th]:font-semibold [&_td]:p-3 [&_td]:border-t [&_td]:border-gray-100">
           {/* 사업자 정보 */}
           <section className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm text-gray-700">
             <p><strong>사업자 정보</strong></p>
