@@ -1073,13 +1073,13 @@ sellerManagementRoutes.get('/public/:sellerId', async (c) => {
     const isNumeric = /^\d+$/.test(param);
     const seller = isNumeric
       ? await DB.prepare(
-          `SELECT id, username, slug, name, email, description, business_name, phone,
+          `SELECT id, username, slug, name, email, description, business_name, business_number, phone,
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
                   website_url, kakao_chat_link, status, created_at
            FROM sellers WHERE id = ? AND status = 'approved'`
         ).bind(param).first()
       : await DB.prepare(
-          `SELECT id, username, slug, name, email, description, business_name, phone,
+          `SELECT id, username, slug, name, email, description, business_name, business_number, phone,
                   profile_image, bio, sns_instagram, sns_youtube, sns_facebook, sns_twitter,
                   website_url, kakao_chat_link, status, created_at
            FROM sellers WHERE (slug = ? OR username = ?) AND status = 'approved'`

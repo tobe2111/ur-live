@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone } from 'lucide-react'
 import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
@@ -572,6 +572,40 @@ export default function SellerPublicPage() {
                 ) : null}
               </div>
             </section>
+            {/* 사업자 정보 + 연락처 */}
+            <section className="bg-gray-50 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-gray-900 mb-3">판매자 정보</h3>
+              <div className="text-sm text-gray-600 space-y-2">
+                {seller.business_name && (
+                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">상호</span><span className="text-xs">{seller.business_name}</span></div>
+                )}
+                {seller.name && (
+                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">담당자</span><span className="text-xs">{seller.name}</span></div>
+                )}
+                {(seller as any).business_number && (
+                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">사업자번호</span><span className="text-xs">{(seller as any).business_number}</span></div>
+                )}
+                {(seller as any).email && (
+                  <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">이메일</span><span className="text-xs">{(seller as any).email}</span></div>
+                )}
+              </div>
+              {/* 연락 수단 */}
+              <div className="flex gap-2 mt-3">
+                {seller.kakao_chat_link && (
+                  <a href={seller.kakao_chat_link} target="_blank" rel="noopener"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold active:scale-[0.97]">
+                    <MessageCircle className="w-3.5 h-3.5" /> 카카오 문의
+                  </a>
+                )}
+                {(seller as any).phone && (
+                  <a href={`tel:${(seller as any).phone}`}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold active:scale-[0.97]">
+                    <Phone className="w-3.5 h-3.5" /> 전화 문의
+                  </a>
+                )}
+              </div>
+            </section>
+
             {/* 서포터 랭킹 */}
             <section>
               <SupporterRanking sellerId={sellerId!} />
