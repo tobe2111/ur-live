@@ -195,26 +195,27 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* Not logged in */}
+                  {/* Not logged in — 셀러 전용 */}
                   {!isLoggedIn && (
                     <div className="space-y-3">
                       <p className="text-sm text-gray-400 mb-2">
-                        라이브 방송을 시작하려면 먼저 로그인해주세요.
+                        셀러 계정으로 로그인하세요.
                       </p>
 
                       <button
-                        onClick={() => { setSheetOpen(false); navigate('/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-yellow-300 text-gray-900 font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
-                      >
-                        카카오로 시작하기
-                      </button>
-
-                      <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 text-gray-700 font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
                         셀러 로그인
+                      </button>
+
+                      <button
+                        onClick={() => { setSheetOpen(false); navigate('/seller/register') }}
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                      >
+                        <UserPlus className="w-5 h-5" />
+                        셀러 회원가입
                       </button>
                     </div>
                   )}

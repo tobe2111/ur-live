@@ -225,24 +225,22 @@ function LiveChat({ messages, onChatClick }: { messages: ChatMessage[]; onChatCl
 
         return (
           <div key={msg.id} className="flex items-start gap-1 animate-fade-in">
-            {/* 소스 아이콘 */}
-            {isSystemMessage ? (
-              <span className="text-[9px] mt-0.5">🎉</span>
-            ) : isYouTube ? (
+            {/* YouTube 유저만 아이콘 표시 */}
+            {isYouTube && (
               <svg viewBox="0 0 24 24" fill="#FF0000" className="w-3.5 h-3.5 shrink-0 mt-0.5">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
               </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="#FEE500" className="w-3.5 h-3.5 shrink-0 mt-0.5">
-                <path d="M12 3c-5.523 0-10 3.694-10 8.25 0 2.904 1.887 5.46 4.726 6.924-.157.564-.57 2.044-.652 2.362-.101.395.145.39.305.284.125-.083 1.994-1.355 2.808-1.907A11.59 11.59 0 0 0 12 19.5c5.523 0 10-3.694 10-8.25S17.523 3 12 3z" />
-              </svg>
             )}
-            <p className="text-[11px] leading-[1.3]" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)' }}>
-              <span className="font-bold text-white/90">{msg.userName}</span>
-              <span className={`${isSystemMessage ? 'text-yellow-300 font-semibold' : 'text-white/70'}`}>
-                {' '}{msg.message}
-              </span>
-            </p>
+            {isSystemMessage ? (
+              <p className="text-[11px] leading-[1.3] text-yellow-300 font-semibold" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+                {msg.message}
+              </p>
+            ) : (
+              <p className="text-[11px] leading-[1.3]" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5)' }}>
+                <span className="font-bold text-white/90">{msg.userName}</span>
+                <span className="text-white/70"> {msg.message}</span>
+              </p>
+            )}
           </div>
         )
       })}
@@ -1515,10 +1513,10 @@ function ReelCard({
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
                   placeholder={isSeller ? "셀러 메시지를 입력하세요..." : "메시지를 입력하세요..."}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none ${
+                  className={`flex-1 rounded-xl border px-4 py-3 text-sm text-gray-900 focus:outline-none ${
                     isSeller
                       ? 'border-indigo-300 focus:border-indigo-500 bg-indigo-50/50'
-                      : 'border-gray-300 focus:border-red-500'
+                      : 'border-gray-300 focus:border-red-500 bg-white'
                   }`}
                   disabled={sendingMessage}
                 />

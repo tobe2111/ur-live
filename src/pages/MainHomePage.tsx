@@ -250,12 +250,19 @@ function ProductCard({ product }: { product: Product }) {
         )}
       </div>
       <div className="mt-1.5">
-        <p className="text-[11px] text-gray-300 leading-snug line-clamp-2">{product.name}</p>
-        <div className="mt-0.5 flex items-baseline gap-1">
+        <p className="text-[11px] text-gray-300 leading-snug line-clamp-1">{product.name}</p>
+        {product.original_price && product.original_price > product.price && (
+          <p className="text-[10px] text-gray-600 line-through mt-0.5">{product.original_price.toLocaleString()}원</p>
+        )}
+        <div className="flex items-baseline gap-1 mt-0.5">
           {discountRate > 0 && (
             <span className="text-[12px] font-extrabold text-red-500">{discountRate}%</span>
           )}
           <span className="text-[12px] font-extrabold text-white">{product.price.toLocaleString()}원</span>
+        </div>
+        <div className="flex items-center gap-0.5 mt-0.5">
+          <span className="text-yellow-400 text-[9px]">★</span>
+          <span className="text-[9px] text-gray-500">4.8 (128)</span>
         </div>
       </div>
     </div>
