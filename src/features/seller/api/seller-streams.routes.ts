@@ -607,3 +607,28 @@ sellerStreamsRoutes.put('/:id/product-display', async (c) => {
     return c.json({ success: false, error: (error as Error).message }, 500);
   }
 });
+
+// ── POST /api/seller/streams/:id/change-product — 실시간 상품 변경 ──
+sellerStreamsRoutes.post('/:id/change-product', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401);
+
+    const streamId = c.req.param('id');
+    const { productId } = await c.req.json<{ productId: number }>();
+
+    const stream = await c.env.DB.prepare(
+      'SELECT id FROM live_streams WHERE id = ? AND seller_id = ?'
+    ).bind(streamId, sellerId).first();
+
+    if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
+
+    await c.env.DB.prepare(
+      "UPDATE live_streams SET current_product_id = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(productId ?? null, streamId).run();
+
+    return c.json({ success: true, message: '상품이 변경되었습니다' });
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
