@@ -322,6 +322,18 @@ sellerStreamsRoutes.put('/:id', async (c) => {
       throw new Error('Failed to update stream');
     }
 
+    // ── 방송 시작 시 구독자에게 알림 발송 ──
+    if (body.status === 'live') {
+      try {
+        // 인앱 알림 + 알림톡 발송 (비동기, 실패해도 방송 시작에 영향 없음)
+        const notifyUrl = new URL(c.req.url);
+        notifyUrl.pathname = `/api/broadcast-notify/send/${streamId}`;
+        c.executionCtx?.waitUntil?.(
+          fetch(notifyUrl.toString(), { method: 'POST' }).catch(() => {})
+        );
+      } catch {}
+    }
+
     // 업데이트된 스트림 조회
     const updatedStream = await db.prepare(`
       SELECT
