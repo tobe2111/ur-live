@@ -985,7 +985,8 @@
     "stockHistoryIn": "Entree",
     "stockHistoryOut": "Sortie",
     "stockHistoryAdjust": "Ajustement",
-    "stockHistoryReturn": "Retour"
+    "stockHistoryReturn": "Retour",
+    "groupBuy": "Achat Groupé"
   },
   "nav": {
     "home": "Accueil",

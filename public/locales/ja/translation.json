@@ -1009,7 +1009,8 @@
     "stockHistoryIn": "入庫",
     "stockHistoryOut": "出庫",
     "stockHistoryAdjust": "調整",
-    "stockHistoryReturn": "返品"
+    "stockHistoryReturn": "返品",
+    "groupBuy": "共同購入"
   },
   "nav": {
     "home": "ホーム",

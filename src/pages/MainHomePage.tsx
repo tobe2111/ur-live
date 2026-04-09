@@ -409,12 +409,20 @@ export default function MainHomePage() {
                     )}
                   </div>
                 </div>
-                <p className="text-[11px] text-gray-500 line-clamp-2">{stream.title}</p>
+                <p className="text-[11px] text-gray-500 truncate">{stream.title}</p>
                 <button
-                  onClick={(e) => { e.stopPropagation() }}
-                  className="mt-2 w-full py-1.5 bg-[#121212] border border-red-200 rounded-lg text-[11px] font-bold text-red-500"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!stream.scheduled_at) return
+                    const start = new Date(stream.scheduled_at)
+                    const end = new Date(start.getTime() + 3600000) // +1시간
+                    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+                    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('🔴 ' + stream.title)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('유어딜 라이브 방송\n' + window.location.origin + '/live/' + stream.id)}`
+                    window.open(url, '_blank')
+                  }}
+                  className="mt-2 w-full py-1.5 bg-[#121212] border border-red-200 rounded-lg text-[11px] font-bold text-red-500 active:scale-95"
                 >
-                  방송 알림 받기
+                  📅 캘린더에 추가
                 </button>
               </button>
             ))}

@@ -377,4 +377,48 @@ groupBuyRoutes.post('/:code/use', async (c) => {
   return c.json({ success: true, message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️' })
 })
 
+// ── POST /api/group-buy/store-stats/:productId — 식당 사장 통계 (PIN 인증) ──
+groupBuyRoutes.post('/store-stats/:productId', async (c) => {
+  const { DB } = c.env
+  const productId = c.req.param('productId')
+  const { pin } = await c.req.json<{ pin: string }>()
+
+  try {
+    const product = await DB.prepare(
+      "SELECT id, name, restaurant_name, store_verify_pin, group_buy_target, group_buy_current FROM products WHERE id = ? AND category = 'meal_voucher'"
+    ).bind(productId).first<any>()
+
+    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
+    if (product.store_verify_pin && product.store_verify_pin !== pin) {
+      return c.json({ success: false, error: '비밀번호가 일치하지 않습니다' }, 403)
+    }
+
+    // 바우처 통계
+    const stats = await DB.prepare(`
+      SELECT
+        COUNT(*) as total_vouchers,
+        SUM(CASE WHEN status = 'used' THEN 1 ELSE 0 END) as used,
+        SUM(CASE WHEN status = 'unused' THEN 1 ELSE 0 END) as unused,
+        SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired
+      FROM vouchers WHERE product_id = ?
+    `).bind(productId).first<any>()
+
+    return c.json({
+      success: true,
+      data: {
+        product_name: product.name,
+        restaurant_name: product.restaurant_name,
+        total_vouchers: stats?.total_vouchers || 0,
+        used: stats?.used || 0,
+        unused: stats?.unused || 0,
+        expired: stats?.expired || 0,
+        group_buy_current: product.group_buy_current || 0,
+        group_buy_target: product.group_buy_target || 0,
+      },
+    })
+  } catch (err) {
+    return c.json({ success: false, error: '통계 조회 실패' }, 500)
+  }
+})
+
 export { groupBuyRoutes }
