@@ -114,21 +114,21 @@ export default function PointsChargePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#020202]">
+    <div className="min-h-screen bg-white">
       {/* 헤더 */}
-      <div className="bg-[#020202] border-b border-[#1A1A1A] sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="mx-auto max-w-lg px-5 py-4 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-white/10">
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          <h1 className="text-[18px] font-bold text-white">딜 충전</h1>
+          <h1 className="text-[18px] font-bold text-gray-900">딜 충전</h1>
         </div>
       </div>
 
@@ -154,17 +154,17 @@ export default function PointsChargePage() {
                   className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 transition-all ${
                     selected?.amount === opt.amount
                       ? 'border-pink-500 bg-pink-500/10'
-                      : 'border-[#1A1A1A] bg-[#121212] hover:border-[#333]'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}
                 >
-                  <span className="text-sm font-bold text-white">{opt.amount.toLocaleString()}원</span>
+                  <span className="text-sm font-bold text-gray-900">{opt.amount.toLocaleString()}원</span>
                   <span className="text-sm font-bold text-pink-400">{opt.points.toLocaleString()}딜</span>
                 </button>
               ))}
             </div>
-            <div className="mt-3 bg-amber-950/30 border border-amber-800/30 rounded-lg px-3 py-2.5">
+            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
               <p className="text-xs text-amber-400 font-medium">충전된 딜은 환불이 불가합니다.</p>
-              <p className="text-xs text-amber-500/70 mt-0.5">충전 전 금액을 확인해주세요. 딜은 라이브 방송 후원 및 상품 결제에만 사용 가능합니다.</p>
+              <p className="text-xs text-amber-600 mt-0.5">충전 전 금액을 확인해주세요. 딜은 라이브 방송 후원 및 상품 결제에만 사용 가능합니다.</p>
             </div>
           </div>
         )}
@@ -172,17 +172,17 @@ export default function PointsChargePage() {
         {/* 결제 위젯 영역 */}
         {showWidget && (
           <>
-            <div className="bg-[#121212] rounded-xl px-4 py-3 flex justify-between items-center">
+            <div className="bg-white rounded-xl px-4 py-3 flex justify-between items-center">
               <span className="text-sm text-gray-400">충전 금액</span>
               <span className="text-sm font-bold text-pink-400">{selected?.amount.toLocaleString()}원 → {selected?.points.toLocaleString()}딜</span>
             </div>
-            <div id="charge-payment-method" className="min-h-[200px] bg-[#121212] rounded-xl border border-[#1A1A1A] p-2" />
-            <div id="charge-agreement" className="min-h-[80px] bg-[#121212] rounded-xl border border-[#1A1A1A] p-2" />
+            <div id="charge-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
+            <div id="charge-agreement" className="min-h-[80px] bg-white rounded-xl border border-gray-200 p-2" />
             <p className="text-xs text-center text-amber-400 font-medium">결제 완료 시 충전된 딜은 환불이 불가합니다.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { setShowWidget(false); widgetsRef.current = null; orderRef.current = null }}
-                className="flex-1 py-4 bg-[#1A1A1A] text-gray-300 text-sm font-bold rounded-xl"
+                className="flex-1 py-4 bg-gray-50 text-gray-600 text-sm font-bold rounded-xl"
               >
                 뒤로
               </button>

@@ -313,14 +313,14 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isAuthReady && isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-gray-400">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}

@@ -44,15 +44,15 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="w-full max-w-sm rounded-lg bg-[#121212] p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex justify-center">{getIcon()}</div>
-        {title && <h2 className="mb-2 text-center text-lg font-bold text-white">{title}</h2>}
+        {title && <h2 className="mb-2 text-center text-lg font-bold text-gray-900">{title}</h2>}
         <p className="mb-6 text-center text-sm text-gray-400">{message}</p>
         <div className="flex gap-2">
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-lg border border-[#333] bg-[#121212] px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-[#0A0A0A]"
+              className="flex-1 rounded-lg border border-[#333] bg-white px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-50"
             >
               취소
             </button>
@@ -62,7 +62,7 @@ function CustomModal({ isOpen, onClose, onConfirm, title, message, type = 'alert
               if (onConfirm) onConfirm()
               onClose()
             }}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-blue-700"
           >
             확인
           </button>
@@ -79,8 +79,8 @@ export default function CartPage() {
   // 비로그인 상태: 장바구니 페이지는 보여주되 로그인 유도 UI 표시
   if (!loggedIn) {
     return (
-      <div className="flex flex-col bg-[#0A0A0A]">
-        <div className="flex items-center justify-between border-b bg-[#121212] px-4 py-4">
+      <div className="flex flex-col bg-gray-50">
+        <div className="flex items-center justify-between border-b bg-white px-4 py-4">
           <button onClick={() => navigate(-1)} className="text-gray-400">
             <X className="h-6 w-6" />
           </button>
@@ -95,7 +95,7 @@ export default function CartPage() {
           </div>
           <button
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
-            className="w-full max-w-xs rounded-lg bg-blue-600 py-3 text-sm font-bold text-white hover:bg-blue-700"
+            className="w-full max-w-xs rounded-lg bg-blue-600 py-3 text-sm font-bold text-gray-900 hover:bg-blue-700"
           >
             로그인하기
           </button>
@@ -387,7 +387,7 @@ function CartPageContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#121212]">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
           <p className="mt-4 text-sm text-gray-400">로딩 중...</p>
@@ -397,7 +397,7 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col bg-[#0A0A0A]">
+    <div className="flex flex-col bg-gray-50">
       {/* 🎯 분리된 Header 컴포넌트 */}
       <CartHeader
         itemCount={cartItems.length}
@@ -429,7 +429,7 @@ function CartPageContent() {
           </div>
 
           {/* 🎯 분리된 Summary 컴포넌트 */}
-          <div className="sticky bottom-0 bg-[#121212] border-t border-[#1A1A1A] p-4 space-y-4">
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 space-y-4">
             <CartSummary
               totalItems={totalItems}
               subtotal={subtotal}

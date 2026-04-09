@@ -41,18 +41,18 @@ function TeamPointsCard() {
     <div className="px-5 py-3">
       <div
         onClick={() => navigate('/points/charge')}
-        className="flex items-center justify-between bg-gradient-to-r from-pink-950/40 to-orange-950/40 rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-pink-800/30"
+        className="flex items-center justify-between bg-gradient-to-r from-pink-50 to-orange-50 rounded-2xl px-5 py-4 cursor-pointer active:scale-[0.98] transition-all border border-pink-100"
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">🎁</span>
           <div>
             <p className="text-[11px] text-gray-500 font-medium">내 딜 잔액</p>
-            <p className="text-lg font-bold text-white">
+            <p className="text-lg font-bold text-gray-900">
               {loading ? '...' : `${balance.toLocaleString()}딜`}
             </p>
           </div>
         </div>
-        <button className="px-3 py-1.5 text-xs font-bold text-pink-600 bg-[#121212] rounded-lg border border-pink-200">
+        <button className="px-3 py-1.5 text-xs font-bold text-pink-600 bg-white rounded-lg border border-pink-200">
           충전
         </button>
       </div>
@@ -153,7 +153,7 @@ export default function UserProfilePage() {
   // 🔄 로딩 중
   if (!isAuthReady || isProcessingToken) {
     return (
-      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
           <p className="text-gray-600">
@@ -171,7 +171,7 @@ export default function UserProfilePage() {
     // firebase_token이 있거나 처리 중이면 대기 (리다이렉트 방지)
     if (firebaseToken || isProcessingToken) {
       return (
-        <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+        <div className="min-h-screen bg-white flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
             <p className="text-gray-600">로그인 처리 중...</p>
@@ -195,13 +195,13 @@ export default function UserProfilePage() {
   }
 
   return (
-    <div className="bg-[#020202] flex flex-col">
+    <div className="bg-white flex flex-col">
       {/* Header with Back Button */}
-      <div className="sticky top-0 z-50 bg-[#121212] border-b border-[#1A1A1A]">
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center px-4 py-3">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#1A1A1A] transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-50 transition-colors"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -226,7 +226,7 @@ export default function UserProfilePage() {
       <div className="px-5 py-6 space-y-3">
         <button 
           onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#1A1A1A] bg-[#020202] py-3.5 text-sm font-medium text-gray-500 transition-colors active:bg-secondary"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3.5 text-sm font-medium text-gray-500 transition-colors active:bg-secondary"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -237,7 +237,7 @@ export default function UserProfilePage() {
         {/* Account Settings Button */}
         <button 
           onClick={() => navigate('/account/settings')}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#333] bg-[#121212] py-3.5 text-sm font-medium text-gray-300 transition-colors hover:bg-[#0A0A0A] active:bg-[#1A1A1A]"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 active:bg-gray-50"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
