@@ -99,6 +99,7 @@ const AdminCafe24Page = lazy(() => import('./pages/admin/AdminCafe24Page'))
 const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequestsPage'))
 const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
 const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
+const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -300,7 +301,7 @@ function AppContent() {
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/live" element={<LiveListPage />} />
-            <Route path="/live/:streamId" element={<LivePageV2 />} />
+            <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
@@ -513,12 +514,17 @@ function AppContent() {
                 <ErrorBoundary><AdminDealMonitorPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
+            <Route path="/admin/reviews" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminReviewsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={
               <ProtectedRoute requireUser>
-                <CheckoutPage />
+                <ErrorBoundary><CheckoutPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/mypage" element={
