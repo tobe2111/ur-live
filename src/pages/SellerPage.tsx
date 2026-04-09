@@ -524,28 +524,31 @@ export default function SellerPage() {
                   </div>
                   <p id="copy-toast" className="text-xs text-green-600 text-center mb-2 hidden">{t('seller.linkCopied')}</p>
 
-                  {/* 공개 페이지 링크 카드 (iframe 대신) */}
-                  <a
-                    href={`/s/${getSellerId()}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-100 rounded-2xl p-6 text-center hover:shadow-md transition-all active:scale-[0.98]"
-                  >
-                    <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center shadow-lg">
-                      <ArrowUpRight className="w-7 h-7 text-white" />
+                  {/* 모바일 프레임 미리보기 */}
+                  <div className="flex justify-center">
+                    <div className="relative w-[220px] h-[400px] rounded-[24px] border-[3px] border-gray-300 bg-white shadow-lg overflow-hidden">
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-3 bg-gray-300 rounded-b-xl z-10" />
+                      <iframe
+                        src={`/s/${getSellerId()}`}
+                        title={t('seller.myPublicPage')}
+                        className="w-[375px] h-[700px] border-0 origin-top-left bg-white"
+                        style={{ transform: 'scale(0.587)', transformOrigin: 'top left' }}
+                      />
                     </div>
-                    <p className="text-sm font-bold text-gray-900 mb-1">{t('seller.myPublicPage')}</p>
-                    <p className="text-xs text-gray-500">{window.location.origin}/s/{getSellerId()}</p>
-                    <div className="mt-3 inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
-                      <span>{t('seller.newTab')}</span>
-                      <ArrowUpRight className="w-3 h-3" />
-                    </div>
-                  </a>
+                  </div>
 
                   <div className="flex gap-2 mt-4">
+                    <a
+                      href={`/s/${getSellerId()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200"
+                    >
+                      {t('seller.newTab')} <ArrowUpRight className="w-3 h-3" />
+                    </a>
                     <Link
                       to="/seller/profile"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700"
                     >
                       {t('seller.editProfile')}
                     </Link>

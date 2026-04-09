@@ -588,6 +588,19 @@ export default function SellerLiveBroadcastPage() {
                         )}
                       </div>
 
+                      {/* 라이브 미리보기 */}
+                      {stream.status === 'live' && stream.youtube_video_id && (
+                        <div className="mb-3 rounded-lg overflow-hidden bg-black aspect-video">
+                          <iframe
+                            src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=0&mute=1&controls=0`}
+                            title="라이브 미리보기"
+                            className="w-full h-full"
+                            allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+
                       {/* 상품 표시 모드 토글 */}
                       <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg mb-3">
                         <div>
