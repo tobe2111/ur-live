@@ -100,6 +100,8 @@ const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequ
 const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
 const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
+const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 
 // Error 페이지들
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -519,6 +521,11 @@ function AppContent() {
                 <ErrorBoundary><AdminReviewsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
+            <Route path="/admin/coupons" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />
@@ -578,6 +585,11 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/account/deleted" element={<AccountDeletedPage />} />
+            <Route path="/notifications" element={
+              <ProtectedRoute requireUser>
+                <NotificationsPage />
+              </ProtectedRoute>
+            } />
             
             {/* Payment 페이지들 */}
             <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />
