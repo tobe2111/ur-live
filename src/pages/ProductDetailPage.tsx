@@ -24,6 +24,64 @@ import { ProgressiveImage } from '@/components/ui/progressive-image'
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
 const FloatingActionBar = lazy(() => import('@/components/product/floating-action-bar').then(m => ({ default: m.FloatingActionBar })))
 
+function ReviewForm({ productId, onSubmitted }: { productId: string | number; onSubmitted: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [rating, setRating] = useState(5)
+  const [content, setContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="w-full py-2.5 mt-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50">
+        리뷰 작성하기
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-3 border border-gray-200 rounded-xl p-4">
+      <h3 className="text-sm font-bold text-gray-900 mb-3">리뷰 작성</h3>
+      {/* 별점 */}
+      <div className="flex gap-1 mb-3">
+        {[1, 2, 3, 4, 5].map(s => (
+          <button key={s} onClick={() => setRating(s)} className={`text-xl ${s <= rating ? 'text-yellow-400' : 'text-gray-200'}`}>★</button>
+        ))}
+      </div>
+      {/* 내용 */}
+      <textarea
+        value={content}
+        onChange={e => setContent(e.target.value)}
+        placeholder="상품은 어떠셨나요? 최소 10자 이상 작성해주세요."
+        rows={3}
+        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:border-blue-400"
+      />
+      <div className="flex gap-2 mt-3">
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg font-medium">취소</button>
+        <button
+          disabled={content.length < 10 || submitting}
+          onClick={async () => {
+            setSubmitting(true)
+            try {
+              const res = await api.post('/api/reviews', { product_id: Number(productId), rating, content })
+              if (res.data.success) {
+                setOpen(false); setContent(''); setRating(5)
+                onSubmitted()
+              } else {
+                alert(res.data.error || '리뷰 작성 실패')
+              }
+            } catch (err: any) {
+              alert(err?.response?.data?.error || '리뷰 작성에 실패했습니다')
+            } finally { setSubmitting(false) }
+          }}
+          className="flex-[2] py-2 bg-blue-600 text-white text-sm rounded-lg font-bold disabled:opacity-40"
+        >
+          {submitting ? '등록 중...' : '리뷰 등록'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function GroupBuyCountdown({ deadline }: { deadline: string }) {
   const [remaining, setRemaining] = useState('')
   useEffect(() => {
@@ -115,6 +173,12 @@ function ProductReviews({ productId }: { productId: number | string }) {
       ) : (
         <p className="text-xs text-gray-500 py-6 text-center">아직 리뷰가 없습니다.</p>
       )}
+
+      {/* 리뷰 작성 */}
+      <ReviewForm productId={productId} onSubmitted={() => {
+        api.get(`/api/reviews/product/${productId}?limit=5`).then(r => { if (r.data.success) setReviews(r.data.data.reviews) })
+        api.get(`/api/reviews/product/${productId}/summary`).then(r => { if (r.data.success) setSummary(r.data.data) })
+      }} />
 
       {/* 리뷰 목록 */}
       {reviews.length > 0 && (

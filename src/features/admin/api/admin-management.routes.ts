@@ -2009,7 +2009,7 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
     // reviews 테이블 ensure
     try {
       await DB.prepare(`
-        CREATE TABLE IF NOT EXISTS reviews (
+        CREATE TABLE IF NOT EXISTS product_reviews (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           product_id INTEGER NOT NULL,
           user_id TEXT,
@@ -2041,7 +2041,7 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
 
       try {
         await DB.prepare(`
-          INSERT INTO reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at)
+          INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at)
           VALUES (?, ?, ?, ?, ?, 1, ?)
         `).bind(product_id, maskedName, rating, content, option, reviewDate).run();
         generated++;

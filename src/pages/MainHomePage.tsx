@@ -32,6 +32,9 @@ interface Product {
   group_buy_target?: number
   group_buy_current?: number
   group_buy_deadline?: string
+  sold_count?: number
+  avg_rating?: number
+  review_count?: number
 }
 
 // ── Category (퀵메뉴 통합) ──
@@ -262,7 +265,7 @@ function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="flex items-center gap-0.5 mt-0.5">
           <span className="text-yellow-400 text-[9px]">★</span>
-          <span className="text-[9px] text-gray-500">4.8 (128)</span>
+          <span className="text-[9px] text-gray-500">{((product as any).avg_rating || 4.8).toFixed(1)} ({(product as any).review_count || product.sold_count || 0})</span>
         </div>
       </div>
     </div>

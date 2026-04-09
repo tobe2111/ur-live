@@ -518,6 +518,19 @@ export default function MyOrdersPage() {
                 판매자 문의
               </button>
 
+              {/* 리뷰 작성 (배송완료 상태) */}
+              {['delivered', 'done'].includes(selectedOrder.status.toLowerCase()) && selectedOrder.items?.[0]?.product_id && (
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null)
+                    navigate(`/products/${selectedOrder.items?.[0]?.product_id || ''}`)
+                  }}
+                  className="w-full py-3 text-[15px] font-medium text-amber-600 border border-amber-300 rounded-xl hover:bg-amber-50 transition-colors"
+                >
+                  ★ 리뷰 작성하기
+                </button>
+              )}
+
               {/* Actions */}
               {['pending', 'paid', 'confirmed', 'done'].includes(selectedOrder.status.toLowerCase()) && (
                 <button
