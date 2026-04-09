@@ -2053,3 +2053,66 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }
 });
+
+// ── 리뷰 삭제 ──
+adminManagementRoutes.delete('/reviews/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const id = c.req.param('id');
+    await DB.prepare('DELETE FROM product_reviews WHERE id = ?').bind(id).run();
+    return c.json({ success: true, message: '리뷰가 삭제되었습니다' });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ── 리뷰 목록 (상품별) ──
+adminManagementRoutes.get('/reviews/product/:productId', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const productId = c.req.param('productId');
+    const { results } = await DB.prepare('SELECT * FROM product_reviews WHERE product_id = ? ORDER BY created_at DESC LIMIT 100').bind(productId).all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ── 생성된 리뷰 일괄 삭제 ──
+adminManagementRoutes.delete('/reviews/generated/:productId', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const productId = c.req.param('productId');
+    const result = await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(productId).run();
+    return c.json({ success: true, message: `${result.meta.changes}개 생성 리뷰 삭제됨` });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// ── 쿠폰 관리 ──
+adminManagementRoutes.get('/coupons', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    try { await DB.prepare(`CREATE TABLE IF NOT EXISTS coupons (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, value INTEGER NOT NULL, min_order_amount INTEGER DEFAULT 0, max_discount INTEGER, total_count INTEGER DEFAULT 0, used_count INTEGER DEFAULT 0, seller_id INTEGER, is_active INTEGER DEFAULT 1, starts_at DATETIME, expires_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`).run() } catch {}
+    const { results } = await DB.prepare('SELECT * FROM coupons ORDER BY created_at DESC').all();
+    return c.json({ success: true, data: results ?? [] });
+  } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
+});
+
+adminManagementRoutes.post('/coupons', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const { code, name, type, value, min_order_amount, max_discount, total_count, expires_at } = await c.req.json();
+    if (!code || !name || !type || !value) return c.json({ success: false, error: '필수 항목 누락' }, 400);
+    await DB.prepare(`INSERT INTO coupons (code, name, type, value, min_order_amount, max_discount, total_count, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(code, name, type, value, min_order_amount || 0, max_discount || null, total_count || 0, expires_at || null).run();
+    return c.json({ success: true, message: '쿠폰이 생성되었습니다' });
+  } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
+});
+
+adminManagementRoutes.delete('/coupons/:id', cors(), async (c) => {
+  try {
+    await c.env.DB.prepare('DELETE FROM coupons WHERE id = ?').bind(c.req.param('id')).run();
+    return c.json({ success: true });
+  } catch (err) { return c.json({ success: false, error: (err as Error).message }, 500); }
+});
