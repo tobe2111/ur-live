@@ -192,6 +192,55 @@ export default function SellerProductNewPage() {
             <Download className="w-4 h-4" />
             {t('seller.bulkUploadTemplate')}
           </button>
+
+          {/* 대량등록 */}
+          <div className="mt-3 flex items-center gap-3">
+            <label className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+              <FileText className="w-4 h-4" />
+              CSV 대량등록
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  try {
+                    const text = await file.text()
+                    const lines = text.split('\n').filter(l => l.trim())
+                    if (lines.length < 2) { toast.error('데이터가 없습니다'); return }
+
+                    const headers = lines[0].split(',').map(h => h.trim())
+                    const token = localStorage.getItem('seller_token')
+                    let success = 0, fail = 0
+
+                    for (let i = 1; i < lines.length; i++) {
+                      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+                      const row: Record<string, string> = {}
+                      headers.forEach((h, idx) => { row[h] = values[idx] || '' })
+
+                      try {
+                        await api.post('/api/seller/products', {
+                          name: row['name'] || row['상품명'],
+                          description: row['description'] || row['설명'] || '',
+                          price: Number(row['price'] || row['가격'] || 0),
+                          stock: Number(row['stock'] || row['재고'] || 0),
+                          image_url: row['image_url'] || row['이미지'] || '',
+                          category: row['category'] || row['카테고리'] || 'lifestyle',
+                        }, { headers: { Authorization: `Bearer ${token}` } })
+                        success++
+                      } catch { fail++ }
+                    }
+
+                    toast.success(`${success}개 등록 완료${fail > 0 ? `, ${fail}개 실패` : ''}`)
+                    if (success > 0) navigate('/seller/products')
+                  } catch { toast.error('CSV 파일을 읽을 수 없습니다') }
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <p className="text-xs text-gray-500">템플릿을 다운로드 후 작성하여 업로드하세요</p>
+          </div>
         </div>
 
         {/* Error Message */}
