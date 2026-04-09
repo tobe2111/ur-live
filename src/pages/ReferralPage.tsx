@@ -99,7 +99,7 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4">
+      <div className="px-4 py-5 space-y-4 pb-28">
         {/* 상태 배너 */}
         <div className={`rounded-2xl p-5 text-center ${
           isAchieved ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' :
