@@ -127,26 +127,7 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
   return c.json({ success: true, data: { current_count: newCount, target_count: group.target_count, achieved: newStatus === 'achieved' } });
 });
 
-// GET /api/referral/:code — 그룹 상세
-referralRoutes.get('/:code', optionalAuth(), async (c) => {
-  const { DB } = c.env;
-  await ensureTables(DB);
-
-  const code = c.req.param('code');
-  // code가 'my'나 'product'면 이 핸들러가 아닌 다른 핸들러가 처리해야 하므로 스킵
-  if (code === 'my' || code === 'product') return c.json({ success: false, error: 'Not found' }, 404);
-
-  const group = await DB.prepare('SELECT * FROM referral_groups WHERE invite_code = ?').bind(code).first<any>();
-  if (!group) return c.json({ success: false, error: '그룹을 찾을 수 없습니다' }, 404);
-
-  const product = await DB.prepare('SELECT id, name, price, image_url FROM products WHERE id = ?').bind(group.product_id).first();
-  const { results: members } = await DB.prepare('SELECT user_name, joined_at FROM referral_members WHERE group_id = ? ORDER BY joined_at')
-    .bind(group.id).all();
-
-  return c.json({ success: true, data: { ...group, product, members } });
-});
-
-// GET /api/referral/my — 내 그룹 목록
+// GET /api/referral/my — 내 그룹 목록 (MUST be before /:code)
 referralRoutes.get('/my', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
@@ -166,7 +147,7 @@ referralRoutes.get('/my', requireAuth(), async (c) => {
   return c.json({ success: true, data: results });
 });
 
-// GET /api/referral/product/:productId — 상품별 활성 그룹
+// GET /api/referral/product/:productId — 상품별 활성 그룹 (MUST be before /:code)
 referralRoutes.get('/product/:productId', async (c) => {
   const { DB } = c.env;
   await ensureTables(DB);
@@ -180,6 +161,22 @@ referralRoutes.get('/product/:productId', async (c) => {
   `).bind(productId).all();
 
   return c.json({ success: true, data: results });
+});
+
+// GET /api/referral/:code — 그룹 상세 (catch-all, after specific routes)
+referralRoutes.get('/:code', optionalAuth(), async (c) => {
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const code = c.req.param('code');
+  const group = await DB.prepare('SELECT * FROM referral_groups WHERE invite_code = ?').bind(code).first<any>();
+  if (!group) return c.json({ success: false, error: '그룹을 찾을 수 없습니다' }, 404);
+
+  const product = await DB.prepare('SELECT id, name, price, image_url FROM products WHERE id = ?').bind(group.product_id).first();
+  const { results: members } = await DB.prepare('SELECT user_name, joined_at FROM referral_members WHERE group_id = ? ORDER BY joined_at')
+    .bind(group.id).all();
+
+  return c.json({ success: true, data: { ...group, product, members } });
 });
 
 export { referralRoutes };
