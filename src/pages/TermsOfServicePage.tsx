@@ -17,16 +17,18 @@ export default function TermsOfServicePage() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>뒤로가기</span>
+            <span>{isKR ? '뒤로가기' : 'Back'}</span>
           </button>
-          <h1 className="text-3xl font-bold">이용약관</h1>
-          <p className="text-gray-600 mt-2">최종 수정일: 2024년 1월 15일</p>
+          <h1 className="text-3xl font-bold">{isKR ? '이용약관' : 'Terms of Service'}</h1>
+          <p className="text-gray-600 mt-2">{isKR ? '최종 수정일: 2024년 1월 15일' : 'Last updated: January 15, 2024'}</p>
         </div>
 
         {/* 본문 */}
         <div className="bg-white rounded-lg border border-gray-200 p-8 space-y-8">
-          <section>
-            <h2 className="text-2xl font-bold mb-4">제1조 (목적)</h2>
+          {isKR ? (
+            <>
+              <section>
+                <h2 className="text-2xl font-bold mb-4">제1조 (목적)</h2>
             <p className="text-gray-700 leading-relaxed mb-4">
               본 약관은 리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")이 제공하는 
               라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여 
@@ -186,13 +188,125 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-2xl font-bold mb-4">제13조 (재판권 및 준거법)</h2>
             <div className="space-y-3 text-gray-700 leading-relaxed">
-              <p>① 회사와 이용자 간에 발생한 전자상거래 분쟁에 관한 소송은 제소 당시의 이용자의 주소에 의하고, 
-                주소가 없는 경우에는 거소를 관할하는 지방법원의 전속관할로 합니다. 
-                다만, 제소 당시 이용자의 주소 또는 거소가 분명하지 않거나 외국 거주자의 경우에는 
+              <p>① 회사와 이용자 간에 발생한 전자상거래 분쟁에 관한 소송은 제소 당시의 이용자의 주소에 의하고,
+                주소가 없는 경우에는 거소를 관할하는 지방법원의 전속관할로 합니다.
+                다만, 제소 당시 이용자의 주소 또는 거소가 분명하지 않거나 외국 거주자의 경우에는
                 민사소송법상의 관할법원에 제기합니다.</p>
               <p>② 회사와 이용자 간에 제기된 전자상거래 소송에는 한국법을 적용합니다.</p>
             </div>
           </section>
+            </>
+          ) : (
+            <>
+              <section>
+                <h2 className="text-2xl font-bold mb-4">1. Purpose</h2>
+                <p className="text-gray-700 leading-relaxed mb-4">
+                  These Terms of Service ("Terms") govern your use of the YourDeal live commerce platform ("Service")
+                  operated by Lister Corporation ("Company"). By accessing or using the Service, you agree to be bound by these Terms.
+                </p>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-1 text-sm text-gray-700">
+                  <p><strong>Company Information</strong></p>
+                  <p>• Company: Lister Corporation</p>
+                  <p>• CEO: Jiwon Jung</p>
+                  <p>• Email: jiwon@ur-team.com</p>
+                  <p>• Phone: +82-507-0177-0432</p>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">2. Definitions</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <ol className="list-decimal list-inside space-y-2 ml-4">
+                    <li>"Service" refers to the live streaming commerce platform provided by the Company.</li>
+                    <li>"User" refers to any person who agrees to these Terms and enters into a service agreement.</li>
+                    <li>"Seller" refers to a User who sells products through the Service.</li>
+                    <li>"Buyer" refers to a User who purchases products through the Service.</li>
+                  </ol>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">3. Account Registration</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>You may register an account by providing accurate information and agreeing to these Terms.
+                    The Company may refuse registration if false information is provided.</p>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">4. Services Provided</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>The Company provides the following services:</p>
+                  <ol className="list-decimal list-inside space-y-2 ml-4">
+                    <li>Live streaming product showcase and sales</li>
+                    <li>Product search and purchase</li>
+                    <li>Payment processing and delivery</li>
+                    <li>Meal voucher group buying</li>
+                    <li>Real-time auction and time deals during live broadcasts</li>
+                  </ol>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">5. Purchases & Payments</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>Buyers may purchase products through the Service. Payment is processed via Stripe (international)
+                    or Toss Payments (Korea). All prices are displayed in the applicable currency.</p>
+                  <p>By making a purchase, you agree to pay the listed price plus any applicable shipping fees.</p>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">6. Refunds & Returns</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>Buyers may request a refund or exchange within 7 days of receiving the product, except when:</p>
+                  <ol className="list-decimal list-inside space-y-2 ml-4">
+                    <li>The product has been damaged due to the buyer's fault</li>
+                    <li>The product value has significantly decreased due to use or partial consumption</li>
+                    <li>The product cannot be resold due to the passage of time</li>
+                  </ol>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">7. User Obligations</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>Users must not:</p>
+                  <ol className="list-decimal list-inside space-y-2 ml-4">
+                    <li>Register false information</li>
+                    <li>Use another person's identity</li>
+                    <li>Infringe on intellectual property rights</li>
+                    <li>Post obscene, violent, or otherwise inappropriate content</li>
+                    <li>Interfere with the operation of the Service</li>
+                  </ol>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">8. Privacy</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>The Company collects and processes personal data in accordance with our Privacy Policy.
+                    We collect only the minimum information necessary to provide the Service.</p>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">9. Limitation of Liability</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>The Service is provided "as is." The Company shall not be liable for any indirect, incidental,
+                    or consequential damages arising from the use of the Service, to the extent permitted by law.</p>
+                </div>
+              </section>
+
+              <section>
+                <h2 className="text-2xl font-bold mb-4">10. Governing Law</h2>
+                <div className="space-y-3 text-gray-700 leading-relaxed">
+                  <p>These Terms shall be governed by and construed in accordance with the laws of the Republic of Korea.
+                    Any disputes shall be submitted to the jurisdiction of the competent courts in Korea.</p>
+                </div>
+              </section>
+            </>
+          )}
         </div>
 
         {/* 푸터 버튼 */}
@@ -201,7 +315,7 @@ export default function TermsOfServicePage() {
             onClick={() => navigate(-1)}
             className="px-8 py-3"
           >
-            확인
+            {isKR ? '확인' : 'OK'}
           </Button>
         </div>
       </div>

@@ -1,10 +1,11 @@
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { isKorea } from '@/shared/config/region'
 
 export default function PrivacyPolicyPage() {
   const navigate = useNavigate()
-  // TODO: isKorea() 분기로 글로벌 버전 Privacy Policy 추가
+  const isKR = isKorea()
 
   return (
     <div className="min-h-screen bg-white">
@@ -16,14 +17,75 @@ export default function PrivacyPolicyPage() {
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            돌아가기
+            {isKR ? '돌아가기' : 'Back'}
           </button>
-          <h1 className="text-2xl font-extrabold text-gray-900">개인정보 처리방침</h1>
+          <h1 className="text-2xl font-extrabold text-gray-900">{isKR ? '개인정보 처리방침' : 'Privacy Policy'}</h1>
           <p className="text-sm text-gray-500 mt-2">시행일: 2024년 1월 15일 | 유어딜 (리스터코퍼레이션)</p>
         </div>
 
-        {/* 본문 */}
-        <div className="prose prose-sm prose-gray max-w-none space-y-8
+        {!isKR && (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 space-y-8">
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">1. Information We Collect</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">We collect the following personal information to provide our Service:</p>
+              <ul className="list-disc ml-6 mt-2 space-y-1 text-sm text-gray-600">
+                <li>Account information: name, email, profile image (from Kakao/Google login)</li>
+                <li>Purchase information: shipping address, phone number, payment details</li>
+                <li>Usage data: browsing history, search queries, live stream viewing history</li>
+                <li>Device information: IP address, browser type, operating system</li>
+              </ul>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">2. How We Use Your Information</h2>
+              <ul className="list-disc ml-6 space-y-1 text-sm text-gray-600">
+                <li>To provide, maintain, and improve the Service</li>
+                <li>To process orders and payments</li>
+                <li>To send notifications about orders, broadcasts, and promotions</li>
+                <li>To prevent fraud and ensure security</li>
+                <li>To comply with legal obligations</li>
+              </ul>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">3. Data Sharing</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">We do not sell your personal information. We may share data with:</p>
+              <ul className="list-disc ml-6 mt-2 space-y-1 text-sm text-gray-600">
+                <li>Payment processors (Toss Payments, Stripe) for transaction processing</li>
+                <li>Shipping carriers for order delivery</li>
+                <li>Sellers for order fulfillment</li>
+                <li>Law enforcement when required by law</li>
+              </ul>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">4. Data Retention</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">We retain personal data for as long as necessary to provide the Service. Account data is deleted upon request. Transaction records are retained for 5 years as required by law.</p>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">5. Your Rights</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">You have the right to:</p>
+              <ul className="list-disc ml-6 mt-2 space-y-1 text-sm text-gray-600">
+                <li>Access your personal data</li>
+                <li>Request correction of inaccurate data</li>
+                <li>Request deletion of your account and data</li>
+                <li>Withdraw consent for data processing</li>
+                <li>Data portability (request a copy of your data)</li>
+              </ul>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">6. Cookies</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">We use cookies and similar technologies for authentication, preferences, and analytics. You can disable cookies in your browser settings.</p>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">7. Security</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">We implement industry-standard security measures including HTTPS encryption, secure authentication, and regular security audits.</p>
+            </section>
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-3">8. Contact</h2>
+              <p className="text-sm text-gray-600 leading-relaxed">For privacy inquiries, contact us at: jiwon@ur-team.com</p>
+            </section>
+          </div>
+        )}
+
+        {isKR && <div className="prose prose-sm prose-gray max-w-none space-y-8
           [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:pb-2 [&_h2]:border-b [&_h2]:border-gray-100
           [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-gray-800 [&_h3]:mt-4 [&_h3]:mb-2
           [&_p]:text-sm [&_p]:text-gray-600 [&_p]:leading-relaxed
@@ -279,7 +341,7 @@ export default function PrivacyPolicyPage() {
               <p className="ml-4 text-sm text-gray-600">- 해당 사항 없음</p>
             </div>
           </section>
-        </div>
+        </div>}
 
         {/* 푸터 버튼 */}
         <div className="mt-6 flex justify-center">
@@ -287,7 +349,7 @@ export default function PrivacyPolicyPage() {
             onClick={() => navigate(-1)}
             className="px-8 py-3"
           >
-            확인
+            {isKR ? '확인' : 'OK'}
           </Button>
         </div>
       </div>
