@@ -287,8 +287,8 @@ function AppContent() {
   useEffect(() => {
     import('./lib/native').then(({ setStatusBarStyle }) => {
       // 화이트 테마 페이지는 light 상태바 (검은 텍스트)
-      const lightPages = ['/browse', '/checkout', '/mypage', '/user/', '/my-orders', '/account/', '/cart',
-        '/notifications', '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search']
+      const lightPages = ['/browse', '/checkout', '/my-orders', '/account/', '/cart',
+        '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search']
       const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
       setStatusBarStyle(isLight ? 'light' : 'dark')
     }).catch(() => {})

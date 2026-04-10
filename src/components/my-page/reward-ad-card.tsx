@@ -104,14 +104,14 @@ export function RewardAdCard() {
 
   return (
     <div className="px-5 py-1">
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl px-5 py-4 border border-indigo-100">
+      <div className="bg-[#121212] rounded-2xl px-5 py-4 border border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
               <Play className="w-5 h-5 text-white fill-white" />
             </div>
             <div>
-              <p className="text-[13px] font-bold text-gray-900">광고 보고 딜 받기</p>
+              <p className="text-[13px] font-bold text-white">광고 보고 딜 받기</p>
               <p className="text-[11px] text-gray-500">
                 {isMaxed
                   ? '내일 다시 시청 가능합니다'
@@ -136,7 +136,7 @@ export function RewardAdCard() {
         </div>
 
         {/* 진행 바 */}
-        <div className="mt-3 bg-white/60 rounded-full h-1.5 overflow-hidden">
+        <div className="mt-3 bg-white/10 rounded-full h-1.5 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
             style={{ width: `${(status.todayCount / status.dailyLimit) * 100}%` }}

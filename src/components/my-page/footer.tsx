@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer className="bg-secondary/50 px-5 py-6">
+    <footer className="bg-[#0A0A0A] px-5 py-6">
       <div className="space-y-3">
         {/* 제휴/입점 문의 */}
         <p className="text-gray-500" style={{ fontSize: "8px", lineHeight: "1.6" }}>
