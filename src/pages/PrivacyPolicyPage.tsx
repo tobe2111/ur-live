@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 
 export default function PrivacyPolicyPage() {
   const navigate = useNavigate()
+  // TODO: isKorea() 분기로 글로벌 버전 Privacy Policy 추가
 
   return (
     <div className="min-h-screen bg-white">

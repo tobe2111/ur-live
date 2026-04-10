@@ -52,6 +52,9 @@ interface AddressCreateRequest {
   address: string;
   address_detail?: string;
   postal_code: string;
+  country?: string;
+  state?: string;
+  city?: string;
   is_default?: boolean;
 }
 
@@ -61,6 +64,9 @@ interface AddressUpdateRequest {
   address?: string;
   address_detail?: string;
   postal_code?: string;
+  country?: string;
+  state?: string;
+  city?: string;
   is_default?: boolean;
 }
 

@@ -1,9 +1,11 @@
 import { ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { isKorea } from '@/shared/config/region'
 
 export default function TermsOfServicePage() {
   const navigate = useNavigate()
+  const isKR = isKorea()
 
   return (
     <div className="min-h-screen bg-gray-50">

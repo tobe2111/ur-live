@@ -245,42 +245,47 @@ export function validatePhoneNumber(phone: unknown): string {
   if (typeof phone !== 'string') {
     throw new ValidationError('Phone number must be a string', 'phone', 'INVALID_TYPE');
   }
-  
-  // Remove all non-digit characters
-  const cleaned = phone.replace(/\D/g, '');
-  
-  if (!cleaned) {
+
+  const trimmed = phone.trim();
+  if (!trimmed) {
     throw new ValidationError('Phone number is required', 'phone', 'REQUIRED');
   }
-  
-  // Korean phone number formats: 010-XXXX-XXXX, 02-XXX-XXXX, etc.
-  if (cleaned.length < 9 || cleaned.length > 11) {
-    throw new ValidationError('Invalid phone number length', 'phone', 'INVALID_LENGTH');
+
+  // 국제 전화번호 (+로 시작) → 그대로 반환
+  if (trimmed.startsWith('+')) {
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length >= 7 && digits.length <= 15) return trimmed;
+    throw new ValidationError('Invalid international phone number', 'phone', 'INVALID_FORMAT');
   }
-  
-  // Format: 010-1234-5678
+
+  // 숫자만 추출
+  const cleaned = trimmed.replace(/\D/g, '');
+
+  if (!cleaned || cleaned.length < 7) {
+    throw new ValidationError('Phone number is too short', 'phone', 'INVALID_LENGTH');
+  }
+  if (cleaned.length > 15) {
+    throw new ValidationError('Phone number is too long', 'phone', 'INVALID_LENGTH');
+  }
+
+  // 한국 전화번호 포맷팅
   if (cleaned.startsWith('010') && cleaned.length === 11) {
     return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
   }
-  
-  // Format: 02-123-4567 or 031-123-4567
   if (cleaned.startsWith('02') && cleaned.length === 9) {
     return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}-${cleaned.slice(5)}`;
   }
-  
   if (cleaned.startsWith('02') && cleaned.length === 10) {
     return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
   }
-  
   if (cleaned.length === 10) {
     return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
-  
-  if (cleaned.length === 11 && !cleaned.startsWith('010')) {
+  if (cleaned.length === 11) {
     return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 7)}-${cleaned.slice(7)}`;
   }
-  
-  return cleaned; // Return cleaned version if format doesn't match
+
+  return trimmed; // 그 외 → 원본 반환
 }
 
 /**

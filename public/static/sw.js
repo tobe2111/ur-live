@@ -9,8 +9,8 @@ self.addEventListener('push', function(event) {
   console.log('[Service Worker] Push received:', event);
 
   let notificationData = {
-    title: '알림',
-    body: '새로운 알림이 도착했습니다.',
+    title: 'Notification',
+    body: 'You have a new notification.',
     icon: '/static/icon-192x192.png',
     badge: '/static/badge-72x72.png'
   };
