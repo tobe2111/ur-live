@@ -14,6 +14,10 @@ export function RewardAdCard() {
   const [loading, setLoading] = useState(false)
   const [rewarded, setRewarded] = useState<number | null>(null)
   const [newBalance, setNewBalance] = useState<number | null>(null)
+  const isNative = Capacitor.isNativePlatform()
+
+  // 웹에서는 표시하지 않음 (AdMob은 네이티브 앱에서만 동작)
+  if (!isNative) return null
 
   useEffect(() => {
     api.get('/api/points/ad-reward/status')
