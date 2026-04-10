@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Ticket,
   Heart,
+  Bell,
 } from "lucide-react"
 
 const menuItems = [
@@ -32,6 +33,12 @@ const menuItems = [
     path: "/wishlist",
   },
   {
+    icon: Bell,
+    title: "알림",
+    subtitle: "새로운 소식을 확인하세요",
+    path: "/notifications",
+  },
+  {
     icon: MapPin,
     title: "배송지 관리",
     subtitle: "배송 주소를 관리하세요",
@@ -47,19 +54,19 @@ const menuItems = [
     icon: FileText,
     title: "이용약관",
     subtitle: "",
-    path: "/terms-of-service",
+    path: "/terms",
   },
   {
     icon: Shield,
     title: "개인정보처리방침",
     subtitle: "",
-    path: "/privacy-policy",
+    path: "/privacy",
   },
   {
     icon: Truck,
     title: "배송 및 환불 정책",
     subtitle: "",
-    path: "/refund-policy",
+    path: "/shipping-policy",
   },
 ]
 

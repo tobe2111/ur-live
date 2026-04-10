@@ -2129,11 +2129,9 @@ const REVIEW_TEMPLATES = [
 adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const { product_id, count, avg_rating, options } = await c.req.json<{
-      product_id: number;
-      count: number;
-      avg_rating: number;
-      options?: string[];
+    const { product_id, product_name, product_price, product_category, count, avg_rating, options, mode } = await c.req.json<{
+      product_id: number; product_name?: string; product_price?: number; product_category?: string;
+      count: number; avg_rating: number; options?: string[]; mode?: 'template' | 'ai';
     }>();
 
     if (!product_id || !count || count < 1 || count > 20000) {
@@ -2160,7 +2158,88 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
     let generated = 0;
     const targetRating = avg_rating || 4.5;
     const now = Date.now();
-    const BATCH_SIZE = 50; // D1 batch 최대 크기
+    const BATCH_SIZE = 50;
+
+    // ── AI 모드: Claude API로 자연스러운 리뷰 생성 ──
+    if (mode === 'ai') {
+      const apiKey = (c.env as any).ANTHROPIC_API_KEY;
+      if (!apiKey) return c.json({ success: false, error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다. Cloudflare 환경변수에 추가해주세요.' }, 400);
+
+      const aiCount = Math.min(count, 500); // AI는 최대 500개
+      const batchSize = 50; // 한 번에 50개씩 생성 요청
+
+      for (let batchStart = 0; batchStart < aiCount; batchStart += batchSize) {
+        const batchCount = Math.min(batchSize, aiCount - batchStart);
+        const ratingsForBatch = Array.from({ length: batchCount }, () =>
+          Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))))
+        );
+
+        try {
+          const prompt = `한국 온라인 쇼핑몰의 상품 리뷰를 ${batchCount}개 작성해주세요.
+
+상품 정보:
+- 상품명: ${product_name || '상품'}
+- 가격: ${product_price ? product_price.toLocaleString() + '원' : '미정'}
+- 카테고리: ${product_category || '일반'}
+${options?.length ? '- 옵션: ' + options.join(', ') : ''}
+
+각 리뷰의 별점: ${ratingsForBatch.join(', ')}
+
+규칙:
+- 실제 구매자가 쓴 것처럼 자연스럽고 다양하게
+- 1~3문장 길이, 구어체
+- 별점 4-5점은 긍정, 3점은 보통, 1-2점은 부정
+- 약 20%는 텍스트 없이 빈 문자열("")만 (별점만 매기는 사람)
+- 이모지 가끔 사용 (30% 확률)
+- 반복되는 표현 최소화
+
+JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별점}
+빈 리뷰는 {"content": "", "rating": 별점}`;
+
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 4096,
+              messages: [{ role: 'user', content: prompt }],
+            }),
+          });
+
+          const data: any = await res.json();
+          const text = data?.content?.[0]?.text || '[]';
+
+          // JSON 파싱 (```json 블록 제거)
+          const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const reviews: { content: string; rating: number }[] = JSON.parse(jsonStr);
+
+          const stmts = reviews.map((r) => {
+            const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+            const maskedName = name[0] + '*' + name[name.length - 1];
+            const daysAgo = Math.floor(Math.random() * 90);
+            const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+            const option = options?.length ? options[Math.floor(Math.random() * options.length)] : null;
+
+            return DB.prepare(
+              'INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)'
+            ).bind(product_id, maskedName, r.rating, r.content || null, option, reviewDate);
+          });
+
+          await DB.batch(stmts);
+          generated += stmts.length;
+        } catch (e) {
+          console.error('[AI Review] Batch error:', e);
+        }
+      }
+
+      return c.json({ success: true, data: { generated }, message: `AI로 ${generated}개 리뷰가 생성되었습니다` });
+    }
+
+    // ── 템플릿 모드 ──
 
     for (let batchStart = 0; batchStart < count; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, count);
