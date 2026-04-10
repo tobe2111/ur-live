@@ -185,6 +185,12 @@ reviewsRoutes.post('/', requireAuth(), async (c) => {
       .bind(user.id, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
   } catch { /* 포인트 지급 실패해도 리뷰는 성공 */ }
 
+  // 실제 유저 리뷰 → sold_count 2~3 증가
+  try {
+    const inc = 2 + Math.round(Math.random());
+    await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(inc, body.product_id).run();
+  } catch {}
+
   return c.json({ success: true, message: '리뷰가 등록되었습니다', reward: true }, 201);
 });
 

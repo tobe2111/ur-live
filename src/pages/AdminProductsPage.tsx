@@ -31,6 +31,7 @@ interface Product {
   category: string
   seller_id?: number
   seller_name?: string
+  sold_count?: number
   created_at: string
 }
 
@@ -326,7 +327,7 @@ export default function AdminProductsPage() {
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="bg-gray-50">
-                    {['이미지', '상품명', '타입', '판매가 / 공급가', '재고', '상태', '액션'].map(h => (
+                    {['이미지', '상품명', '타입', '판매가 / 공급가', '재고', '판매 수', '상태', '액션'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -367,6 +368,25 @@ export default function AdminProductsPage() {
                         <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                           {product.stock > 0 ? `${product.stock}개` : '품절'}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="number"
+                          defaultValue={product.sold_count || 0}
+                          min={0}
+                          className="w-16 px-1.5 py-1 text-xs text-center border border-gray-200 rounded-lg focus:border-blue-400 focus:outline-none"
+                          onBlur={async (e) => {
+                            const val = Number(e.target.value)
+                            if (val === (product.sold_count || 0)) return
+                            try {
+                              const tk = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+                              await api.patch(`/api/admin/products/${product.id}`, { sold_count: val }, { headers: { Authorization: `Bearer ${tk}` } })
+                              product.sold_count = val
+                              toast.success(`판매 수 ${val}으로 변경`)
+                            } catch { toast.error('변경 실패') }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                        />
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button onClick={() => handleToggleActive(product.id, product.is_active)}>
