@@ -118,22 +118,32 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
         </p>
       )}
 
-      {/* 알림톡 전화번호 입력 (선택적) */}
-      {!subscribed && showPhoneInput && (
-        <div className="mt-2 flex gap-2">
-          <input
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="010-0000-0000 (카톡 알림)"
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-pink-300"
-          />
+      {/* 구독 후 추가 알림 옵션 */}
+      {subscribed && (
+        <div className="flex gap-1.5 mt-2">
+          {/* 카카오 캘린더 등록 */}
           <button
-            onClick={handleToggle}
-            disabled={loading}
-            className="px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg shrink-0"
+            onClick={async (e) => {
+              e.stopPropagation()
+              try {
+                const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
+                if (res.data.success) toast.success('카카오 캘린더에 등록됨!')
+                else toast.error(res.data.error || '캘린더 등록 실패')
+              } catch { toast.error('카카오 로그인이 필요합니다') }
+            }}
+            className="flex-1 flex items-center justify-center gap-1 py-2 bg-[#FEE500] text-[#3C1E1E] rounded-lg text-[10px] font-bold active:scale-95"
           >
-            신청
+            📅 카카오 캘린더
           </button>
+          {/* Google/Apple Calendar (.ics) */}
+          <a
+            href={`/api/kakao-social/calendar/ics/${streamId}`}
+            download
+            onClick={e => e.stopPropagation()}
+            className="flex-1 flex items-center justify-center gap-1 py-2 bg-white/10 border border-gray-700 text-gray-300 rounded-lg text-[10px] font-bold active:scale-95"
+          >
+            📅 캘린더 추가
+          </a>
         </div>
       )}
     </div>

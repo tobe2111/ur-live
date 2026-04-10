@@ -487,6 +487,10 @@ app.route('/api/referral', referralRoutes);
 import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 
+// ── 카카오 소셜 (메시지 + 캘린더) + 글로벌 (.ics) ──
+import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
+app.route('/api/kakao-social', kakaoSocialRoutes);
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);

@@ -341,6 +341,16 @@ sellerStreamsRoutes.put('/:id', async (c) => {
         c.executionCtx?.waitUntil?.(
           fetch(notifyUrl.toString(), { method: 'POST' }).catch(() => {})
         );
+        // 카카오톡 메시지 발송 (구독자 중 카카오 토큰 보유자)
+        const kakaoMsgUrl = new URL(c.req.url);
+        kakaoMsgUrl.pathname = `/api/kakao-social/message/send-to-subscribers`;
+        c.executionCtx?.waitUntil?.(
+          fetch(kakaoMsgUrl.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stream_id: Number(streamId) }),
+          }).catch(() => {})
+        );
       } catch {}
     }
 

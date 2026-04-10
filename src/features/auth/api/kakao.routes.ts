@@ -70,6 +70,13 @@ kakaoRoutes.get('/sync/callback', async (c) => {
 
       await kakaoService.updateFirebaseUID(user.id, firebaseUID);
 
+      // 카카오 access_token 저장 (메시지/캘린더 API용)
+      try {
+        await DB.prepare("ALTER TABLE users ADD COLUMN kakao_access_token TEXT").run();
+      } catch { /* already exists */ }
+      await DB.prepare("UPDATE users SET kakao_access_token = ? WHERE id = ?")
+        .bind(accessToken, user.id).run();
+
       // Set httpOnly session cookie on the redirect response
       try {
         const sessionCookie = await createSessionCookie(
