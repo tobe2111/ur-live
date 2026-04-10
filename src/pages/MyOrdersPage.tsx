@@ -582,7 +582,7 @@ export default function MyOrdersPage() {
               <select
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-4 py-3 border border-[#333] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">취소 사유를 선택해주세요</option>
                 <option value="단순 변심">단순 변심</option>
@@ -601,7 +601,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(false)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-50 text-gray-500 hover:bg-[#333]'
+                    !isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                   }`}
                 >
                   전액 취소
@@ -610,7 +610,7 @@ export default function MyOrdersPage() {
                   type="button"
                   onClick={() => setIsPartialCancel(true)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-50 text-gray-500 hover:bg-[#333]'
+                    isPartialCancel ? 'bg-[#007aff] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                   }`}
                 >
                   부분 취소
@@ -623,7 +623,7 @@ export default function MyOrdersPage() {
                   onChange={(e) => setCancelAmount(e.target.value)}
                   placeholder="취소할 금액 입력 (원)"
                   min="1"
-                  className="w-full px-4 py-3 border border-[#333] rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               )}
             </div>
@@ -644,7 +644,7 @@ export default function MyOrdersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setCancelModal({ isOpen: false, orderId: null, orderNumber: '' }); setCancelReason(''); setIsPartialCancel(false); setCancelAmount('') }}
-                className="flex-1 py-3 px-4 bg-gray-50 text-gray-600 font-medium rounded-full hover:bg-[#333] transition-colors"
+                className="flex-1 py-3 px-4 bg-gray-50 text-gray-600 font-medium rounded-full hover:bg-gray-100 transition-colors"
                 disabled={processing}
               >
                 닫기
