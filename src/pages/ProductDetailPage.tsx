@@ -229,9 +229,15 @@ export default function ProductDetailPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [reviewSummary, setReviewSummary] = useState<{ avg_rating: number; total_count: number } | null>(null)
 
   useEffect(() => {
     window.scrollTo(0, 0)
+    if (id) {
+      api.get(`/api/reviews/product/${id}/summary`).then(r => {
+        if (r.data.success) setReviewSummary(r.data.data)
+      }).catch(() => {})
+    }
   }, [id])
 
   useEffect(() => {
@@ -455,7 +461,10 @@ export default function ProductDetailPage() {
           originalPrice={product.original_price || undefined}
           discountRate={product.discount_rate || undefined}
           sellerName={(product as any).seller_name}
+          sellerId={(product as any).seller_id}
           soldCount={(product as any).sold_count}
+          reviewCount={reviewSummary?.total_count}
+          avgRating={reviewSummary?.avg_rating}
         />
 
         {/* Product Description */}
@@ -464,6 +473,16 @@ export default function ProductDetailPage() {
             <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
               {product.description}
             </p>
+          </div>
+        )}
+
+        {/* Long Description */}
+        {(product as any).long_description && (
+          <div className="px-5 py-4 border-t border-gray-100">
+            <h2 className="text-sm font-bold text-gray-900 mb-2">상품 상세</h2>
+            <div className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+              {(product as any).long_description}
+            </div>
           </div>
         )}
 

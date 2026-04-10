@@ -1,15 +1,18 @@
+import { Link } from 'react-router-dom'
+
 interface ProductHeaderProps {
   name: string;
   price: number;
   originalPrice?: number;
   discountRate?: number;
   sellerName?: string;
+  sellerId?: number | string;
   soldCount?: number;
   reviewCount?: number;
   avgRating?: number;
 }
 
-export function ProductHeader({ name, price, originalPrice, discountRate, sellerName, soldCount, reviewCount, avgRating }: ProductHeaderProps) {
+export function ProductHeader({ name, price, originalPrice, discountRate, sellerName, sellerId, soldCount, reviewCount, avgRating }: ProductHeaderProps) {
   const formatPrice = (p: number) => new Intl.NumberFormat('ko-KR').format(p)
 
   const hasDiscount = originalPrice && originalPrice > price
@@ -19,7 +22,13 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
     <div className="px-5 py-4">
       {/* Seller */}
       {sellerName && (
-        <p className="text-xs text-gray-500 mb-1">{sellerName}</p>
+        sellerId ? (
+          <Link to={`/s/${sellerId}`} className="text-xs text-pink-500 font-medium mb-1 block">
+            {sellerName} →
+          </Link>
+        ) : (
+          <p className="text-xs text-gray-500 mb-1">{sellerName}</p>
+        )
       )}
 
       {/* Product Name */}

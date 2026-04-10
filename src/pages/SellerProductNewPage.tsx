@@ -34,6 +34,7 @@ export default function SellerProductNewPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    long_description: '',
     price: '',
     stock: '',
     image_url: '',
@@ -104,6 +105,7 @@ export default function SellerProductNewPage() {
       const payload: Record<string, unknown> = {
         name: formData.name,
         description: formData.description,
+        long_description: formData.long_description || undefined,
         price: Number(formData.price),
         stock: Number(formData.stock),
         image_url: formData.image_url,
@@ -292,6 +294,22 @@ export default function SellerProductNewPage() {
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
+          </div>
+
+          {/* Long Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              상세 설명 (선택)
+            </label>
+            <textarea
+              name="long_description"
+              value={formData.long_description}
+              onChange={handleChange}
+              placeholder="상품의 자세한 설명, 소재, 사용법 등을 작성해주세요"
+              rows={6}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">상품 상세 페이지에 표시됩니다</p>
           </div>
 
           {/* Price & Stock */}

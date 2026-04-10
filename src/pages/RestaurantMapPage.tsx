@@ -56,8 +56,9 @@ export default function RestaurantMapPage() {
       window.kakao.maps.load(() => setSdkLoaded(true))
     }
     script.onerror = () => {
-      console.error('카카오맵 SDK 로드 실패')
+      console.error('카카오맵 SDK 로드 실패 — 목록 모드로 전환')
       setSdkLoaded(false)
+      setMapView(false) // 지도 실패 시 자동으로 목록 뷰
     }
     document.head.appendChild(script)
   }, [])
