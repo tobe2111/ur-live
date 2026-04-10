@@ -1426,6 +1426,102 @@ adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
 
 // ─── 라이브 스트림 관리 ──────────────────────────────────────────────────────
 
+// POST /api/admin/streams/replay — 다시보기 영상 생성
+adminManagementRoutes.post('/streams/replay', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const { seller_id, title, description, youtube_url, product_ids } = await c.req.json<{
+      seller_id: number; title: string; description?: string; youtube_url: string; product_ids?: number[];
+    }>();
+
+    if (!seller_id || !title || !youtube_url) {
+      return c.json({ success: false, error: '셀러, 제목, YouTube URL은 필수입니다' }, 400);
+    }
+
+    // YouTube URL → video ID 추출
+    let videoId = youtube_url;
+    const urlMatch = youtube_url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (urlMatch) videoId = urlMatch[1];
+
+    // 셀러 확인
+    const seller = await DB.prepare('SELECT id, name FROM sellers WHERE id = ?').bind(seller_id).first();
+    if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+
+    // 스트림 생성 (status: ended = 다시보기)
+    const result = await DB.prepare(`
+      INSERT INTO live_streams (seller_id, title, description, youtube_video_id, status, ended_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'ended', datetime('now'), datetime('now'), datetime('now'))
+    `).bind(seller_id, title, description || null, videoId).run();
+
+    const streamId = result.meta.last_row_id;
+
+    // 상품 연결
+    if (product_ids && product_ids.length > 0) {
+      try {
+        await DB.prepare(`CREATE TABLE IF NOT EXISTS stream_products (id INTEGER PRIMARY KEY AUTOINCREMENT, stream_id INTEGER NOT NULL, product_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(stream_id, product_id))`).run();
+      } catch {}
+
+      for (const pid of product_ids) {
+        await DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(streamId, pid).run();
+      }
+    }
+
+    return c.json({ success: true, data: { id: streamId, youtube_video_id: videoId } }, 201);
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/admin/streams — 전체 스트림 목록 (어드민용)
+adminManagementRoutes.get('/streams', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const status = c.req.query('status') || '';
+    let sql = `SELECT ls.*, s.name AS seller_name FROM live_streams ls LEFT JOIN sellers s ON s.id = ls.seller_id`;
+    const params: unknown[] = [];
+    if (status) { sql += ' WHERE ls.status = ?'; params.push(status); }
+    sql += ' ORDER BY ls.created_at DESC LIMIT 100';
+    const { results } = await DB.prepare(sql).bind(...params).all();
+    return c.json({ success: true, data: results || [] });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /api/admin/streams/:id — 스트림 수정 (어드민)
+adminManagementRoutes.put('/streams/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const id = c.req.param('id');
+    const body = await c.req.json<{ title?: string; description?: string; youtube_video_id?: string; status?: string; product_ids?: number[] }>();
+
+    const updates: string[] = [];
+    const vals: unknown[] = [];
+    if (body.title) { updates.push('title = ?'); vals.push(body.title); }
+    if (body.description !== undefined) { updates.push('description = ?'); vals.push(body.description); }
+    if (body.youtube_video_id) { updates.push('youtube_video_id = ?'); vals.push(body.youtube_video_id); }
+    if (body.status) { updates.push('status = ?'); vals.push(body.status); if (body.status === 'ended') updates.push("ended_at = datetime('now')"); }
+
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      vals.push(id);
+      await DB.prepare(`UPDATE live_streams SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
+    }
+
+    // 상품 업데이트
+    if (body.product_ids) {
+      await DB.prepare('DELETE FROM stream_products WHERE stream_id = ?').bind(id).run();
+      for (const pid of body.product_ids) {
+        await DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(id, pid).run();
+      }
+    }
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;
@@ -1973,7 +2069,28 @@ adminManagementRoutes.put('/settings/commission', cors(), async (c) => {
 });
 
 // ── 리뷰 자동 생성 (어드민 전용) ──────────────────────────────────────
-const KOREAN_NAMES = ['김민수','이서연','박지훈','최유진','정도윤','강하은','조현우','윤서현','장민준','임지아','한서진','오재원','신다은','류태윤','송소율','홍지호','문채원','배승현','권나윤','백정우'];
+const KOREAN_NAMES = [
+  '김민수','이서연','박지훈','최유진','정도윤','강하은','조현우','윤서현','장민준','임지아',
+  '한서진','오재원','신다은','류태윤','송소율','홍지호','문채원','배승현','권나윤','백정우',
+  '김서윤','이도현','박하린','최준서','정수아','강민재','조아인','윤재민','장하율','임시우',
+  '한예린','오건우','신유나','류지원','송현서','홍채은','문준혁','배소연','권태양','백서영',
+  '김지후','이하은','박건우','최서아','정민서','강유준','조서연','윤하진','장도영','임예진',
+  '한지우','오서현','신지민','류하윤','송태민','홍서준','문다인','배시현','권서윤','백하은',
+  '김태현','이지안','박서윤','최은우','정지호','강서영','조민준','윤다은','장서현','임건호',
+  '한수민','오채원','신도현','류서아','송하은','홍지민','문건우','배예린','권시우','백민서',
+  '김하율','이현서','박시은','최다인','정서준','강지안','조하은','윤예진','장태민','임채은',
+  '한도윤','오시우','신하린','류민재','송서영','홍건우','문지안','배도현','권하은','백서준',
+  '김예은','이시현','박다율','최하진','정유나','강민서','조태양','윤건우','장지민','임서윤',
+  '한시은','오지후','신서현','류예진','송도영','홍다은','문태현','배하진','권채원','백유나',
+  '김도윤','이하율','박민재','최서영','정건우','강시우','조지안','윤다인','장하은','임도현',
+  '한채은','오건호','신서아','류지민','송유나','홍서영','문시현','배건우','권다은','백태현',
+  '김서영','이다인','박유준','최하율','정예진','강건호','조서아','윤민재','장채은','임하진',
+  '한유나','오도현','신태민','류서영','송건우','홍하은','문다율','배서현','권지후','백서아',
+  '김채원','이건우','박하은','최시현','정서영','강다은','조도현','윤서아','장건우','임서영',
+  '한건호','오하율','신유나','류하은','송지민','홍태현','문서윤','배시우','권건우','백하율',
+  '김지민','이서영','박태현','최건우','정하은','강서아','조유나','윤지후','장서영','임태양',
+  '한다인','오서윤','신건호','류다은','송서아','홍시현','문하은','배지민','권서영','백도현',
+];
 const REVIEW_TEMPLATES = [
   '품질이 정말 좋아요! 다음에도 구매할게요.',
   '배송이 빠르고 포장도 깔끔했어요.',
@@ -1990,6 +2107,23 @@ const REVIEW_TEMPLATES = [
   '두 번째 구매인데 역시 만족스러워요.',
   '디자인이 예쁘고 실용적이에요.',
   '기대 이상으로 좋아요!',
+  '맛있어요~ 또 주문할게요!',
+  '양이 넉넉하고 맛도 좋아요.',
+  '포장이 꼼꼼해서 좋았어요.',
+  '가격이 착해요. 재구매 확정!',
+  '부모님께 보내드렸는데 좋아하세요.',
+  '신선하고 품질 좋아요!',
+  '다른 곳보다 훨씬 저렴해요.',
+  '퀄리티 대비 가격이 미쳤어요.',
+  '매장보다 맛있는 느낌이에요.',
+  '리뷰 보고 샀는데 만족합니다!',
+  '친구 추천으로 샀는데 대만족이에요.',
+  '포장 상태 완벽했어요.',
+  '집에서 편하게 즐길 수 있어서 좋아요.',
+  '라이브 때 할인 받아서 득템했어요!',
+  '아이들도 맛있다고 잘 먹어요.',
+  '', // 별점만 (텍스트 없음)
+  '', '', '', '', '', // 별점만 비율 높이기
 ];
 
 adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
@@ -2002,8 +2136,8 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
       options?: string[];
     }>();
 
-    if (!product_id || !count || count < 1 || count > 500) {
-      return c.json({ success: false, error: '상품 ID와 개수(1-500)가 필요합니다' }, 400);
+    if (!product_id || !count || count < 1 || count > 20000) {
+      return c.json({ success: false, error: '상품 ID와 개수(1-20000)가 필요합니다' }, 400);
     }
 
     // reviews 테이블 ensure
@@ -2026,26 +2160,31 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
     let generated = 0;
     const targetRating = avg_rating || 4.5;
     const now = Date.now();
+    const BATCH_SIZE = 50; // D1 batch 최대 크기
 
-    for (let i = 0; i < count; i++) {
-      // 평균 평점에 맞게 분포 생성 (±0.5 범위)
-      const rating = Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))));
-      const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
-      const maskedName = name[0] + '*' + name[name.length - 1];
-      const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)];
-      const option = options && options.length > 0 ? options[Math.floor(Math.random() * options.length)] : null;
+    for (let batchStart = 0; batchStart < count; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, count);
+      const stmts = [];
 
-      // 날짜 랜덤 (최근 90일 이내)
-      const daysAgo = Math.floor(Math.random() * 90);
-      const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+      for (let i = batchStart; i < batchEnd; i++) {
+        const rating = Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))));
+        const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const maskedName = name[0] + '*' + name[name.length - 1];
+        const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
+        const option = options && options.length > 0 ? options[Math.floor(Math.random() * options.length)] : null;
+        const daysAgo = Math.floor(Math.random() * 90);
+        const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+
+        stmts.push(
+          DB.prepare(`INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)`)
+            .bind(product_id, maskedName, rating, content, option, reviewDate)
+        );
+      }
 
       try {
-        await DB.prepare(`
-          INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at)
-          VALUES (?, ?, ?, ?, ?, 1, ?)
-        `).bind(product_id, maskedName, rating, content, option, reviewDate).run();
-        generated++;
-      } catch { /* skip */ }
+        await DB.batch(stmts);
+        generated += stmts.length;
+      } catch { /* partial batch fail */ }
     }
 
     return c.json({ success: true, data: { generated }, message: `${generated}개 리뷰가 생성되었습니다` });

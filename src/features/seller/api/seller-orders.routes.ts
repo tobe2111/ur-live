@@ -160,6 +160,34 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
        WHERE (id = ? OR order_number = ?) AND seller_id = ?`
     ).bind(dbStatus, orderId, orderId, sellerId).run();
 
+    // ── 유저에게 인앱 알림 발송 ──
+    if (result.meta.changes) {
+      try {
+        const orderInfo = await db.prepare(
+          `SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
+        ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
+        if (orderInfo?.user_id) {
+          const statusLabels: Record<string, string> = {
+            'CONFIRMED': '주문이 확인되었습니다',
+            'SHIPPING': '상품이 발송되었습니다',
+            'DELIVERED': '배송이 완료되었습니다',
+            'CANCELLED': '주문이 취소되었습니다',
+          };
+          const msg = statusLabels[dbStatus] || `주문 상태: ${dbStatus}`;
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS user_notifications (
+              id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, type TEXT NOT NULL,
+              title TEXT NOT NULL, message TEXT, link TEXT, is_read INTEGER DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP)
+          `).run().catch(() => {});
+          await db.prepare(`
+            INSERT INTO user_notifications (user_id, type, title, message, link)
+            VALUES (?, 'order_status', ?, ?, '/my-orders')
+          `).bind(orderInfo.user_id, msg, `주문번호: ${orderInfo.order_number}`).run();
+        }
+      } catch {}
+    }
+
     if (!result.meta.changes) {
       // 주문이 없거나 다른 셀러의 주문
       const exists = await db.prepare(

@@ -660,7 +660,14 @@ app.get('*', async (c) => {
 app.onError(errorHandler);
 
 // ============================================================
-// Export Worker - API routes only (_routes.json handles static files)
+// Export Worker + Scheduled Handler (Cron Triggers)
 // ============================================================
 
-export default app;
+import { handleScheduled } from './cron/scheduled-cleanup';
+
+export default {
+  fetch: app.fetch,
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(handleScheduled(env));
+  },
+};

@@ -260,11 +260,15 @@ pointsRoutes.post('/donate', requireAuth(), async (c) => {
 
   if (!stream) return c.json({ success: false, error: '스트림을 찾을 수 없습니다' }, 404);
 
-  // 포인트 차감
-  const newBalance = wallet.balance - amount;
-  await DB.prepare(
-    'UPDATE user_points SET balance = ?, total_donated = total_donated + ?, updated_at = datetime(\'now\') WHERE user_id = ?'
-  ).bind(newBalance, amount, user.id).run();
+  // 포인트 차감 (atomic: balance >= amount 조건으로 race condition 방지)
+  const deductResult = await DB.prepare(
+    'UPDATE user_points SET balance = balance - ?, total_donated = total_donated + ?, updated_at = datetime(\'now\') WHERE user_id = ? AND balance >= ?'
+  ).bind(amount, amount, user.id, amount).run();
+  if (!deductResult.meta.changes) {
+    return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)' }, 400);
+  }
+  const updatedWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(user.id).first<{ balance: number }>();
+  const newBalance = updatedWallet?.balance ?? 0;
 
   // 트랜잭션 기록
   await DB.prepare(`
@@ -473,10 +477,14 @@ pointsRoutes.post('/pay', requireAuth(), async (c) => {
   }
 
   try {
-    // 1. 딜 차감
-    const newBalance = wallet.balance - total_amount;
-    await DB.prepare('UPDATE user_points SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
-      .bind(newBalance, userId).run();
+    // 1. 딜 차감 (atomic: balance >= 조건으로 race condition 방지)
+    const deductRes = await DB.prepare('UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?')
+      .bind(total_amount, userId, total_amount).run();
+    if (!deductRes.meta.changes) {
+      return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400);
+    }
+    const afterWallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(userId).first<{ balance: number }>();
+    const newBalance = afterWallet?.balance ?? 0;
 
     // 2. 거래 기록
     await DB.prepare(

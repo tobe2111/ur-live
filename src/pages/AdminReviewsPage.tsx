@@ -28,7 +28,7 @@ export default function AdminReviewsPage() {
 
   async function generateReviews() {
     if (!selectedProduct) { toast.error('상품을 선택해주세요'); return }
-    if (count < 1 || count > 500) { toast.error('1~500 사이로 입력해주세요'); return }
+    if (count < 1 || count > 20000) { toast.error('1~20000 사이로 입력해주세요'); return }
 
     setGenerating(true)
     try {
@@ -88,7 +88,7 @@ export default function AdminReviewsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">생성 개수</label>
                 <input
                   type="number" value={count} onChange={e => setCount(Number(e.target.value))}
-                  min={1} max={500}
+                  min={1} max={20000}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
@@ -138,7 +138,7 @@ export default function AdminReviewsPage() {
           <p className="font-bold mb-1">⚠️ 주의사항</p>
           <p>• 생성된 리뷰는 is_generated=1로 표시되어 실제 유저 리뷰와 구분됩니다</p>
           <p>• 평점은 목표 평균 ±0.5 범위에서 자연스럽게 분포됩니다</p>
-          <p>• 한 번에 최대 500개까지 생성 가능합니다</p>
+          <p>• 한 번에 최대 20,000개까지 생성 가능합니다</p>
         </div>
       </div>
     </AdminLayout>
