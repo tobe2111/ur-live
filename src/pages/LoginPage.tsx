@@ -313,14 +313,14 @@ export default function LoginPage() {
   // 🔥 Early return: Prevent rendering while redirecting
   if (isAuthReady && isLoggedIn && hasRedirected.current) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#020202] flex items-center justify-center">
         <div className="text-gray-400">Redirecting...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center px-5 py-12">
       <div className="w-full max-w-[360px]">
 
         {/* Logo */}
@@ -415,7 +415,7 @@ export default function LoginPage() {
             <div className="text-center mt-8">
               <button
                 onClick={() => setShowEmailLogin(true)}
-                className="text-[13px] text-[#888] hover:text-[#111] underline underline-offset-4 decoration-1 font-light transition-colors"
+                className="text-[13px] text-gray-500 hover:text-white underline underline-offset-4 decoration-1 font-light transition-colors"
               >
                 {t('auth.loginWithEmail')}
               </button>
@@ -424,7 +424,7 @@ export default function LoginPage() {
             {/* Sign Up Link */}
             <div className="text-center text-[13px] text-[#aaa] mt-5 font-light">
               {t('auth.noAccount')}{' '}
-              <Link to="/register" className="text-[#111] font-medium hover:underline underline-offset-4 decoration-1">
+              <Link to="/register" className="text-white font-medium hover:underline underline-offset-4 decoration-1">
                 {t('common.signup')}
               </Link>
             </div>
@@ -442,7 +442,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 required
               />
@@ -457,7 +457,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                  className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                   placeholder={t('auth.passwordPlaceholder')}
                   required
                 />
@@ -479,7 +479,7 @@ export default function LoginPage() {
                   setShowForgotPassword(true)
                   setShowEmailLogin(false)
                 }}
-                className="text-[12px] text-[#888] hover:text-[#111] underline underline-offset-4 decoration-1 font-light"
+                className="text-[12px] text-gray-500 hover:text-white underline underline-offset-4 decoration-1 font-light"
               >
                 {t('auth.forgotPassword')}
               </button>
@@ -496,7 +496,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowEmailLogin(false)}
-              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
+              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
             >
               {t('common.back')}
             </button>
@@ -507,7 +507,7 @@ export default function LoginPage() {
         {showForgotPassword && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <p className="text-[14px] text-[#666] font-light leading-relaxed">
+              <p className="text-[14px] text-gray-400 font-light leading-relaxed">
                 {t('auth.resetPasswordDesc')}
               </p>
             </div>
@@ -520,7 +520,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 required
               />
@@ -540,7 +540,7 @@ export default function LoginPage() {
                 setShowForgotPassword(false)
                 setShowEmailLogin(true)
               }}
-              className="w-full h-[48px] border border-[#E0E0E0] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
+              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
             >
               {t('common.back')}
             </button>
