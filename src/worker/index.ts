@@ -642,7 +642,7 @@ app.get('*', async (c) => {
 <meta name="twitter:description" content="${og.desc}" />
 <meta name="twitter:image" content="${og.image}" />
 <meta name="robots" content="index, follow" />
-<meta name="naver-site-verification" content="naver-site-verification-placeholder" />
+<meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
 </head>
 <body>
 <div id="root"></div>

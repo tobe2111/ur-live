@@ -50,7 +50,7 @@ export default function SEO({
       <meta name="twitter:image" content={image} />
 
       {/* Naver */}
-      <meta name="naver-site-verification" content="naver-site-verification-placeholder" />
+      <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
 
       {/* JSON-LD */}
       {jsonLd && (
