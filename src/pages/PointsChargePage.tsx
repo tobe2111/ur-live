@@ -145,7 +145,7 @@ export default function PointsChargePage() {
         {/* 충전 금액 선택 */}
         {!showWidget && (
           <div>
-            <h2 className="text-sm font-semibold text-white mb-3">충전 금액 선택</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">충전 금액 선택</h2>
             <div className="space-y-2">
               {options.map(opt => (
                 <button
