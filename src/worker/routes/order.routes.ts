@@ -275,8 +275,7 @@ ordersRouter.post('/', async (c) => {
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error('[ORDERS] Create error:', errMsg, err);
-    // TODO: 디버깅 완료 후 errMsg 제거
-    return c.json({ success: false, error: errMsg || '주문 생성에 실패했습니다' }, 500);
+    return c.json({ success: false, error: '주문 생성에 실패했습니다' }, 500);
   }
 });
 

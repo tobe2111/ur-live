@@ -13,6 +13,7 @@ import type { Product, ProductOption } from '@/hooks/useProduct'
 // Import KREAM-style components
 import { MobileHeader } from '@/components/product/mobile-header'
 import { ProductHeader } from '@/components/product/product-header'
+import SEO, { productJsonLd } from '@/components/SEO'
 import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
@@ -413,6 +414,21 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title={product.name}
+        description={product.description?.slice(0, 160) || `${product.name} - 유어딜에서 최저가로 구매하세요`}
+        image={product.image_url}
+        url={`/products/${product.id}`}
+        type="product"
+        jsonLd={productJsonLd({
+          name: product.name,
+          price: product.price,
+          image: product.image_url,
+          description: product.description,
+          url: `/products/${product.id}`,
+          seller: (product as any).seller_name,
+        })}
+      />
       {/* Mobile Header */}
       <MobileHeader
         onShare={handleShare}

@@ -6,6 +6,7 @@ import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, E
 import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
+import SEO from '@/components/SEO'
 
 interface Seller {
   id: number; name: string; username?: string; slug?: string; business_name?: string; profile_image?: string; bio?: string
@@ -155,6 +156,12 @@ export default function SellerPublicPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title={seller.name}
+        description={seller.bio || `${seller.name} - 유어딜에서 라이브 방송과 상품을 만나보세요`}
+        image={seller.profile_image}
+        url={`/profile/${seller.username || seller.slug || seller.id}`}
+      />
       {/* 커버 + 프로필 */}
       <div className="relative">
         {/* 커버 이미지 */}

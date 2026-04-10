@@ -420,9 +420,20 @@ ordersRoutes.post('/:id/confirm', cors(), requireAuth(), async (c) => {
 
   await DB.prepare(`
     UPDATE orders
-    SET status = 'delivered', delivered_at = datetime('now'), updated_at = datetime('now')
+    SET status = 'delivered', delivered_at = datetime('now'),
+        settlement_status = 'confirmed', updated_at = datetime('now')
     WHERE id = ? AND status IN ('shipping', 'SHIPPING')
   `).bind(id).run();
+
+  // 셀러 정산 알림
+  try {
+    const orderInfo = await DB.prepare('SELECT seller_id, total_amount FROM orders WHERE id = ?').bind(id).first<{ seller_id: number; total_amount: number }>();
+    if (orderInfo?.seller_id) {
+      const { createDashboardNotification } = await import('@/features/notifications/api/dashboard-notifications.routes');
+      await createDashboardNotification(DB, 'seller', String(orderInfo.seller_id), 'purchase_confirmed',
+        '구매 확정', `주문 #${id} 구매 확정 (${orderInfo.total_amount?.toLocaleString()}원) — 정산 가능`, '/seller/settlements');
+    }
+  } catch {}
 
   return c.json({ success: true, data: { message: '구매확정이 완료되었습니다.' } });
 });
@@ -441,7 +452,8 @@ ordersRoutes.post('/internal/auto-confirm', cors(), async (c) => {
 
   const { meta } = await DB.prepare(`
     UPDATE orders
-    SET status = 'delivered', delivered_at = datetime('now'), updated_at = datetime('now')
+    SET status = 'delivered', delivered_at = datetime('now'),
+        settlement_status = 'confirmed', updated_at = datetime('now')
     WHERE status IN ('shipping', 'SHIPPING')
       AND shipped_at < datetime('now', '-14 days')
   `).run();

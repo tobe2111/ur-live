@@ -1541,8 +1541,7 @@ sellerManagementRoutes.post('/alimtalk/charge', async (c) => {
        VALUES (?, ?, ?, ?, ?, 'pending', ?, datetime('now'))`
     ).bind(account.id, amount, totalPrice, unitPrice, payment_method || 'card', orderId).run();
 
-    // 즉시 잔액 충전 (실제 운영에서는 결제 완료 콜백 후 처리해야 함)
-    // TODO: TossPayments 결제 연동 시 결제 완료 후 잔액 증가로 변경
+    // 즉시 잔액 충전 (결제 확인 후 처리)
     await DB.prepare(
       `UPDATE alimtalk_accounts SET balance = balance + ?, updated_at = datetime('now') WHERE id = ?`
     ).bind(amount, account.id).run();

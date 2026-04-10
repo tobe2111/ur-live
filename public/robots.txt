@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /seller/login
+Disallow: /seller/register
+Disallow: /api/
+Disallow: /checkout
+Disallow: /payment/
+Disallow: /account/
+Disallow: /embed/
+
+Sitemap: https://live.ur-team.com/sitemap.xml

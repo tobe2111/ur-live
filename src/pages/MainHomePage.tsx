@@ -6,6 +6,7 @@ import axios from 'axios'
 import HeroBanner from '@/components/main/HeroBanner'
 import SiteFooter from '@/components/main/SiteFooter'
 import BroadcastNotifyButton from '@/components/live/BroadcastNotifyButton'
+import SEO, { organizationJsonLd } from '@/components/SEO'
 
 // ── Types ──
 interface LiveStream {
@@ -315,6 +316,12 @@ export default function MainHomePage() {
 
   return (
     <div className="bg-[#121212] min-h-screen pb-16">
+      <SEO
+        title="홈"
+        description="라이브 방송으로 만나는 최저가 특가 상품. 인플루언서 추천 맛집 공동구매, 실시간 라이브 쇼핑"
+        url="/"
+        jsonLd={organizationJsonLd}
+      />
       {/* ── Header (1줄) ── */}
       <header className="sticky top-0 z-50 bg-[#020202] border-b border-[#1A1A1A]">
         <div className="flex items-center justify-between h-12 px-4">
