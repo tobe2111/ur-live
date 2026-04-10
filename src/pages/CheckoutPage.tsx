@@ -1108,7 +1108,7 @@ export default function CheckoutPage() {
                 setShowNewAddressForm(false)
                 setShowPostcodePopup(false)
               }}
-              className="flex-1 py-4 bg-gray-50 text-gray-500 rounded-2xl text-[16px] font-bold hover:bg-[#333] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-gray-50 text-gray-500 rounded-2xl text-[16px] font-bold hover:bg-gray-100 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

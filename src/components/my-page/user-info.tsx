@@ -5,29 +5,28 @@ interface UserInfoProps {
 
 export function UserInfo({ userName = '게스트', profileImage }: UserInfoProps) {
   return (
-    <div className="bg-white px-5 pt-10 pb-6">
+    <div className="bg-[#020202] px-5 pt-10 pb-6">
       <div className="text-center">
         <div className="mb-4 flex justify-center">
           {profileImage ? (
             <img
               src={profileImage}
               alt={userName}
-              className="w-20 h-20 rounded-full object-cover"
+              className="w-20 h-20 rounded-full object-cover border-2 border-[#333]"
               onError={(e) => {
-                // 이미지 로드 실패 시 이니셜 아바타로 교체
                 e.currentTarget.style.display = 'none'
                 e.currentTarget.nextElementSibling?.removeAttribute('style')
               }}
             />
           ) : null}
           <div
-            className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-gray-900 text-2xl font-bold"
+            className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold"
             style={profileImage ? { display: 'none' } : undefined}
           >
             {userName.charAt(0).toUpperCase()}
           </div>
         </div>
-        <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+        <h1 className="text-lg font-bold text-white tracking-tight">
           {userName}님
         </h1>
         <p className="text-sm text-gray-500 mt-1">
