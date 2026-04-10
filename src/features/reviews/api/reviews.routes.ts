@@ -57,13 +57,13 @@ reviewsRoutes.get('/product/:productId', async (c) => {
     SELECT r.id, r.rating, r.content, r.images, r.created_at,
            SUBSTR(r.user_id, 1, 3) || '***' AS user_name
     FROM product_reviews r
-    WHERE r.product_id = ? AND r.is_visible = 1
+    WHERE r.product_id = ? AND r.is_visible = 1 AND COALESCE(r.is_generated, 0) = 0
     ORDER BY r.created_at DESC
     LIMIT ? OFFSET ?
   `).bind(productId, limit, offset).all();
 
   const total = await DB.prepare(
-    'SELECT COUNT(*) as cnt FROM product_reviews WHERE product_id = ? AND is_visible = 1'
+    'SELECT COUNT(*) as cnt FROM product_reviews WHERE product_id = ? AND is_visible = 1 AND COALESCE(is_generated, 0) = 0'
   ).bind(productId).first<{ cnt: number }>();
 
   return c.json({
@@ -96,7 +96,7 @@ reviewsRoutes.get('/product/:productId/summary', async (c) => {
       SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as star_2,
       SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as star_1
     FROM product_reviews
-    WHERE product_id = ? AND is_visible = 1
+    WHERE product_id = ? AND is_visible = 1 AND COALESCE(is_generated, 0) = 0
   `).bind(productId).first();
 
   return c.json({ success: true, data: summary });

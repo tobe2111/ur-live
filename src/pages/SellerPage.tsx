@@ -7,7 +7,7 @@ import {
   TrendingUp, Clock,
   ChevronRight, RefreshCw, ArrowUpRight,
   AlertCircle, CheckCircle2, Truck, XCircle,
-  AlertTriangle, CreditCard, ArchiveRestore
+  AlertTriangle, CreditCard, ArchiveRestore, Users
 } from 'lucide-react'
 import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
@@ -120,6 +120,9 @@ export default function SellerPage() {
   // Stock alerts
   const [stockAlertCount, setStockAlertCount] = useState(0)
 
+  // 팔로워/구독자 수
+  const [followerCount, setFollowerCount] = useState(0)
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSellerAuthenticated()) {
@@ -175,10 +178,11 @@ export default function SellerPage() {
       const token = getSellerToken()
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
 
-      const [dashRes, streamsRes, stockRes] = await Promise.allSettled([
+      const [dashRes, streamsRes, stockRes, followerRes] = await Promise.allSettled([
         api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
         api.get('/api/seller/streams', { headers }),
-        api.get('/api/inventory/stock/alerts', { headers })
+        api.get('/api/inventory/stock/alerts', { headers }),
+        api.get(`/api/social/followers/${getSellerId()}`)
       ])
 
       if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
@@ -210,6 +214,9 @@ export default function SellerPage() {
       if (stockRes.status === 'fulfilled' && stockRes.value.data?.success) {
         const alerts = stockRes.value.data.data || []
         setStockAlertCount(Array.isArray(alerts) ? alerts.length : 0)
+      }
+      if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
+        setFollowerCount(followerRes.value.data.data?.count || 0)
       }
     } catch {
       // silent fail
@@ -468,7 +475,15 @@ export default function SellerPage() {
               {/* 알림 */}
               <div>
                 <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('seller.alerts')}</h2>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-4 gap-3">
+                  <Link
+                    to={`/profile/${localStorage.getItem('seller_username') || getSellerId()}`}
+                    className="bg-pink-50 rounded-xl p-3 text-center hover:bg-pink-100 transition-colors block"
+                  >
+                    <Users className="w-5 h-5 text-pink-600 mx-auto mb-1.5" />
+                    <p className="text-lg font-bold text-gray-900">{followerCount}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">팔로워</p>
+                  </Link>
                   <Link
                     to="/seller/products"
                     className="bg-amber-50 rounded-xl p-3 text-center hover:bg-amber-100 transition-colors block"
