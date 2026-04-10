@@ -268,25 +268,25 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const isUrgent = hours === 0 && minutes < 30
 
   return (
-    <div className={`rounded-2xl p-4 text-center ${isUrgent ? 'bg-red-50 border border-red-200' : 'bg-white shadow-sm'}`}>
+    <div className="rounded-2xl p-4 text-center bg-white shadow-sm">
       <div className="flex items-center justify-center gap-1.5 mb-1">
-        <Timer className={`w-4 h-4 ${isUrgent ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+        <Timer className={`w-4 h-4 ${isUrgent ? 'text-red-500' : 'text-gray-500'}`} />
         <span className={`text-xs font-medium ${isUrgent ? 'text-red-500' : 'text-gray-500'}`}>
           {isUrgent ? '마감 임박!' : '남은 시간'}
         </span>
       </div>
       <div className="flex items-center justify-center gap-2">
-        <div className={`px-3 py-2 rounded-lg ${isUrgent ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
+        <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
           <span className="text-xl font-mono font-bold">{String(hours).padStart(2, '0')}</span>
           <span className="text-[10px] block mt-0.5">시간</span>
         </div>
-        <span className={`text-xl font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}`}>:</span>
-        <div className={`px-3 py-2 rounded-lg ${isUrgent ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
+        <span className="text-xl font-bold text-gray-400">:</span>
+        <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
           <span className="text-xl font-mono font-bold">{String(minutes).padStart(2, '0')}</span>
           <span className="text-[10px] block mt-0.5">분</span>
         </div>
-        <span className={`text-xl font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}`}>:</span>
-        <div className={`px-3 py-2 rounded-lg ${isUrgent ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
+        <span className="text-xl font-bold text-gray-400">:</span>
+        <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900">
           <span className="text-xl font-mono font-bold">{String(seconds).padStart(2, '0')}</span>
           <span className="text-[10px] block mt-0.5">초</span>
         </div>
