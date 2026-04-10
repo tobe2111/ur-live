@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Bell, ShoppingCart, Heart, Truck, ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown, X } from 'lucide-react'
 import api from '@/lib/api'
+import SEO from '@/components/SEO'
 
 interface Product {
   id: number
@@ -76,6 +77,7 @@ export default function BrowsePage() {
 
   return (
     <div className="bg-white min-h-screen">
+      <SEO title="쇼핑" description="유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요" url="/browse" />
       {/* 상단 헤더: 검색바 + 아이콘 */}
       <div className="sticky top-0 z-50 bg-white px-4 py-2.5 border-b border-gray-100">
         <div className="flex items-center gap-3">

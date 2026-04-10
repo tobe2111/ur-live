@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Search, Ticket, Phone, ExternalLink, X, ChevronUp, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import SEO from '@/components/SEO'
 
 interface Restaurant {
   id: number; name: string; restaurant_name: string; restaurant_address: string
@@ -185,6 +186,7 @@ export default function RestaurantMapPage() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
+      <SEO title="맛집 지도" description="유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인" url="/restaurant-map" />
       {/* ═══ Header ═══ */}
       <div className="shrink-0 bg-white z-50 border-b border-gray-200">
         {/* Title + Search */}

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Play, ShoppingBag, Utensils, Users, Zap, Bell, Gift, MapPin, Star, Heart, Trophy, Gavel, Timer, Share2, ArrowRight, ChevronDown } from 'lucide-react'
+import SEO, { organizationJsonLd } from '@/components/SEO'
 
 const FEATURES = [
   {
@@ -63,6 +64,12 @@ export default function IntroducePage() {
 
   return (
     <div className="min-h-screen bg-[#020202] text-white overflow-x-hidden">
+      <SEO
+        title="서비스 소개"
+        description="유어딜 - 인플루언서 라이브 방송으로 최저가 맛집 식사권과 특가 상품을 공동구매하세요. 실시간 경매, 타임딜, 친구 초대 할인."
+        url="/introduce"
+        jsonLd={organizationJsonLd}
+      />
       {/* ═══ Hero ═══ */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 text-center">
         {/* 배경 그라데이션 */}
@@ -202,37 +209,6 @@ export default function IntroducePage() {
               무료로 셀러 등록 <ArrowRight className="w-5 h-5 inline ml-1" />
             </button>
             <p className="text-xs text-gray-500 mt-3">가입 즉시 판매 시작 · 기본 수수료 15%</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ 수수료 ═══ */}
-      <section className="py-20 px-6 bg-white/[0.02]">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-green-500 font-bold text-sm mb-2">PRICING</p>
-            <h2 className="text-3xl sm:text-4xl font-extrabold">투명한 수수료</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-              <ShoppingBag className="w-8 h-8 text-pink-500 mx-auto mb-3" />
-              <p className="text-3xl font-black text-white">15%</p>
-              <p className="text-sm text-gray-400 mt-1">상품 판매</p>
-              <p className="text-xs text-gray-600 mt-2">등급별 8%까지 인하</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-              <Utensils className="w-8 h-8 text-orange-500 mx-auto mb-3" />
-              <p className="text-3xl font-black text-white">5%</p>
-              <p className="text-sm text-gray-400 mt-1">맛집 바우처</p>
-              <p className="text-xs text-gray-600 mt-2">소상공인 우대</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-              <Heart className="w-8 h-8 text-red-500 mx-auto mb-3" />
-              <p className="text-3xl font-black text-white">15%</p>
-              <p className="text-sm text-gray-400 mt-1">후원</p>
-              <p className="text-xs text-gray-600 mt-2">1딜 = 1원</p>
-            </div>
           </div>
         </div>
       </section>

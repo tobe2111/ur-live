@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import { ErrorBoundary as SentryErrorBoundary } from '@sentry/react'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
@@ -665,11 +666,13 @@ function App() {
     <SentryErrorBoundary fallback={<ServerErrorPage />}>
       <ErrorBoundary>
         <ChunkErrorBoundary>
-          <QueryProvider>
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <AppContent />
-            </BrowserRouter>
-          </QueryProvider>
+          <HelmetProvider>
+            <QueryProvider>
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <AppContent />
+              </BrowserRouter>
+            </QueryProvider>
+          </HelmetProvider>
         </ChunkErrorBoundary>
       </ErrorBoundary>
     </SentryErrorBoundary>
