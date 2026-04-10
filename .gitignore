@@ -46,3 +46,11 @@ core
 # Capacitor native projects
 android/
 ios/
+
+# App signing & secrets
+*.keystore
+*.jks
+keystore.properties
+google-services.json
+GoogleService-Info.plist
+
