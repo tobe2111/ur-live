@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Users, Share2, Check, Clock, Gift, Copy } from 'lucide-react'
+import { ArrowLeft, Users, Share2, Check, Clock, Gift, Copy, Timer, ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -12,6 +12,26 @@ interface ReferralGroup {
   discount_per_person: number; status: string; expires_at: string
   product: { id: number; name: string; price: number; image_url: string } | null
   members: { user_name: string; joined_at: string }[]
+}
+
+function useCountdown(targetDate: Date) {
+  const [timeLeft, setTimeLeft] = useState(() => Math.max(0, targetDate.getTime() - Date.now()))
+
+  useEffect(() => {
+    if (timeLeft <= 0) return
+    const timer = setInterval(() => {
+      const diff = Math.max(0, targetDate.getTime() - Date.now())
+      setTimeLeft(diff)
+      if (diff <= 0) clearInterval(timer)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [targetDate])
+
+  const hours = Math.floor(timeLeft / 3600000)
+  const minutes = Math.floor((timeLeft % 3600000) / 60000)
+  const seconds = Math.floor((timeLeft % 60000) / 1000)
+
+  return { hours, minutes, seconds, isExpired: timeLeft <= 0 }
 }
 
 export default function ReferralPage() {
@@ -38,7 +58,6 @@ export default function ReferralPage() {
       const res = await api.post(`/api/referral/join/${code}`)
       if (res.data.success) {
         toast.success(res.data.data.achieved ? '목표 달성! 할인 혜택이 적용됩니다' : '참여 완료!')
-        // 새로고침
         const r = await api.get(`/api/referral/${code}`)
         if (r.data.success) setGroup(r.data.data)
       } else {
@@ -75,11 +94,11 @@ export default function ReferralPage() {
   const isAchieved = group.status === 'achieved'
   const isExpired = group.status === 'expired' || new Date(group.expires_at) < new Date()
   const progressPct = Math.min(100, (group.current_count / group.target_count) * 100)
-  const remaining = group.target_count - group.current_count
+  const remaining = Math.max(0, group.target_count - group.current_count)
   const discountPrice = group.product
     ? Math.round(group.product.price * (100 - group.discount_percent) / 100)
     : 0
-  const expiresDate = new Date(group.expires_at)
+  const alreadyJoined = group.members.some(m => m.user_name && userId)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -97,7 +116,7 @@ export default function ReferralPage() {
       </div>
 
       <div className="px-4 py-5 space-y-4 pb-28">
-        {/* 상태 배너 */}
+        {/* 상태 배너 + 카운트다운 */}
         <div className={`rounded-2xl p-5 text-center ${
           isAchieved ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' :
           isExpired ? 'bg-gray-200 text-gray-600' :
@@ -123,23 +142,31 @@ export default function ReferralPage() {
           )}
         </div>
 
+        {/* 실시간 카운트다운 */}
+        {!isExpired && !isAchieved && (
+          <CountdownTimer expiresAt={group.expires_at} />
+        )}
+
         {/* 상품 카드 */}
         {group.product && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <button
+            onClick={() => navigate(`/products/${group.product!.id}`)}
+            className="w-full bg-white rounded-2xl p-4 shadow-sm text-left active:scale-[0.98] transition-transform"
+          >
             <div className="flex gap-3">
               {group.product.image_url && (
                 <img src={group.product.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 line-clamp-2">{group.product.name}</p>
-                <div className="mt-2">
-                  <span className="text-xs text-gray-400 line-through mr-2">{group.product.price.toLocaleString()}원</span>
+                <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-lg font-bold text-red-500">{discountPrice.toLocaleString()}원</span>
-                  <span className="ml-1 text-xs text-red-500 font-bold">-{group.discount_percent}%</span>
+                  <span className="text-xs text-gray-400 line-through">{group.product.price.toLocaleString()}원</span>
+                  <span className="text-xs text-red-500 font-bold">-{group.discount_percent}%</span>
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         )}
 
         {/* 진행 상황 */}
@@ -175,12 +202,24 @@ export default function ReferralPage() {
           </div>
         </div>
 
-        {/* 만료 시간 */}
-        {!isExpired && !isAchieved && (
-          <p className="text-center text-xs text-gray-400">
-            마감: {expiresDate.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </p>
-        )}
+        {/* 혜택 안내 */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-2">공동구매 혜택</h3>
+          <div className="space-y-2 text-xs text-gray-600">
+            <div className="flex items-start gap-2">
+              <span className="text-pink-500 shrink-0">✓</span>
+              <span>{group.target_count}명이 모이면 <strong className="text-pink-500">{group.discount_percent}%</strong> 추가 할인</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-pink-500 shrink-0">✓</span>
+              <span>카카오톡으로 친구에게 링크를 공유하세요</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-pink-500 shrink-0">✓</span>
+              <span>목표 달성 후 할인가로 바로 구매 가능</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 하단 고정 버튼 */}
@@ -192,7 +231,7 @@ export default function ReferralPage() {
               className="flex items-center justify-center gap-1.5 px-5 py-3.5 bg-gray-100 rounded-xl text-gray-700 font-bold text-sm shrink-0"
             >
               <Copy className="w-4 h-4" />
-              초대 링크 복사
+              초대하기
             </button>
             <button
               onClick={handleJoin}
@@ -209,12 +248,49 @@ export default function ReferralPage() {
         <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 safe-area-bottom">
           <button
             onClick={() => navigate(`/products/${group.product!.id}`)}
-            className="w-full max-w-md mx-auto block py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-sm text-center active:scale-[0.98]"
+            className="w-full max-w-md mx-auto flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
           >
-            {discountPrice.toLocaleString()}원에 구매하기 ({group.discount_percent}% 할인 적용)
+            <ShoppingBag className="w-4 h-4" />
+            {discountPrice.toLocaleString()}원에 구매하기 ({group.discount_percent}% 할인)
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+/** 실시간 카운트다운 컴포넌트 */
+function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+  const { hours, minutes, seconds, isExpired } = useCountdown(new Date(expiresAt))
+
+  if (isExpired) return null
+
+  const isUrgent = hours === 0 && minutes < 30
+
+  return (
+    <div className={`rounded-2xl p-4 text-center ${isUrgent ? 'bg-red-50 border border-red-200' : 'bg-white shadow-sm'}`}>
+      <div className="flex items-center justify-center gap-1.5 mb-1">
+        <Timer className={`w-4 h-4 ${isUrgent ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
+        <span className={`text-xs font-medium ${isUrgent ? 'text-red-500' : 'text-gray-500'}`}>
+          {isUrgent ? '마감 임박!' : '남은 시간'}
+        </span>
+      </div>
+      <div className="flex items-center justify-center gap-2">
+        <div className={`px-3 py-2 rounded-lg ${isUrgent ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
+          <span className="text-xl font-mono font-bold">{String(hours).padStart(2, '0')}</span>
+          <span className="text-[10px] block mt-0.5">시간</span>
+        </div>
+        <span className={`text-xl font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}`}>:</span>
+        <div className={`px-3 py-2 rounded-lg ${isUrgent ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
+          <span className="text-xl font-mono font-bold">{String(minutes).padStart(2, '0')}</span>
+          <span className="text-[10px] block mt-0.5">분</span>
+        </div>
+        <span className={`text-xl font-bold ${isUrgent ? 'text-red-500' : 'text-gray-400'}`}>:</span>
+        <div className={`px-3 py-2 rounded-lg ${isUrgent ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-900'}`}>
+          <span className="text-xl font-mono font-bold">{String(seconds).padStart(2, '0')}</span>
+          <span className="text-[10px] block mt-0.5">초</span>
+        </div>
+      </div>
     </div>
   )
 }
