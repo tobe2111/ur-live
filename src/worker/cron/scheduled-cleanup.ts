@@ -145,6 +145,57 @@ export async function handleScheduled(env: Env) {
     results.auto_confirmed = meta.changes ?? 0;
   } catch {}
 
+  // ── 11. 예정 방송 30분 전 알림 발송 ──
+  try {
+    // 30분 이내 시작 예정 + 아직 알림 미발송인 방송 조회
+    const { results: upcomingStreams } = await DB.prepare(`
+      SELECT ls.id, ls.title, ls.seller_id, s.name AS seller_name
+      FROM live_streams ls
+      LEFT JOIN sellers s ON s.id = ls.seller_id
+      WHERE ls.status = 'scheduled'
+        AND ls.scheduled_at IS NOT NULL
+        AND ls.scheduled_at > datetime('now')
+        AND ls.scheduled_at <= datetime('now', '+35 minutes')
+        AND COALESCE(ls.pre_notified, 0) = 0
+    `).all<{ id: number; title: string; seller_id: number; seller_name: string }>();
+
+    if (upcomingStreams && upcomingStreams.length > 0) {
+      // pre_notified 컬럼 보장
+      try { await DB.prepare("ALTER TABLE live_streams ADD COLUMN pre_notified INTEGER DEFAULT 0").run() } catch {}
+
+      for (const stream of upcomingStreams) {
+        // 구독자에게 인앱 알림 발송
+        try {
+          const { results: subs } = await DB.prepare(
+            "SELECT user_id, user_name FROM broadcast_subscriptions WHERE stream_id = ? AND notify_inapp = 1"
+          ).bind(stream.id).all<{ user_id: string; user_name: string }>();
+
+          if (subs && subs.length > 0) {
+            const stmts = subs.map(sub =>
+              DB.prepare(`
+                INSERT INTO user_notifications (user_id, type, title, message, link)
+                VALUES (?, 'broadcast_reminder', ?, ?, ?)
+              `).bind(
+                sub.user_id,
+                `⏰ 30분 후 라이브! ${stream.seller_name || '셀러'}`,
+                stream.title,
+                `/live/${stream.id}`
+              )
+            );
+            // 50개씩 배치
+            for (let i = 0; i < stmts.length; i += 50) {
+              await DB.batch(stmts.slice(i, i + 50));
+            }
+          }
+        } catch {}
+
+        // 발송 완료 표시
+        await DB.prepare("UPDATE live_streams SET pre_notified = 1 WHERE id = ?").bind(stream.id).run();
+      }
+      results.pre_notifications_sent = upcomingStreams.length;
+    }
+  } catch {}
+
   console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
   return results;
 }

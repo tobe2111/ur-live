@@ -442,7 +442,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 required
               />
@@ -457,7 +457,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                  className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                   placeholder={t('auth.passwordPlaceholder')}
                   required
                 />
@@ -520,7 +520,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 required
               />
