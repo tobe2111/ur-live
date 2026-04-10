@@ -1426,6 +1426,102 @@ adminManagementRoutes.patch('/orders/bulk-status', cors(), async (c) => {
 
 // ─── 라이브 스트림 관리 ──────────────────────────────────────────────────────
 
+// POST /api/admin/streams/replay — 다시보기 영상 생성
+adminManagementRoutes.post('/streams/replay', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const { seller_id, title, description, youtube_url, product_ids } = await c.req.json<{
+      seller_id: number; title: string; description?: string; youtube_url: string; product_ids?: number[];
+    }>();
+
+    if (!seller_id || !title || !youtube_url) {
+      return c.json({ success: false, error: '셀러, 제목, YouTube URL은 필수입니다' }, 400);
+    }
+
+    // YouTube URL → video ID 추출
+    let videoId = youtube_url;
+    const urlMatch = youtube_url.match(/(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (urlMatch) videoId = urlMatch[1];
+
+    // 셀러 확인
+    const seller = await DB.prepare('SELECT id, name FROM sellers WHERE id = ?').bind(seller_id).first();
+    if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+
+    // 스트림 생성 (status: ended = 다시보기)
+    const result = await DB.prepare(`
+      INSERT INTO live_streams (seller_id, title, description, youtube_video_id, status, ended_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'ended', datetime('now'), datetime('now'), datetime('now'))
+    `).bind(seller_id, title, description || null, videoId).run();
+
+    const streamId = result.meta.last_row_id;
+
+    // 상품 연결
+    if (product_ids && product_ids.length > 0) {
+      try {
+        await DB.prepare(`CREATE TABLE IF NOT EXISTS stream_products (id INTEGER PRIMARY KEY AUTOINCREMENT, stream_id INTEGER NOT NULL, product_id INTEGER NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(stream_id, product_id))`).run();
+      } catch {}
+
+      for (const pid of product_ids) {
+        await DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(streamId, pid).run();
+      }
+    }
+
+    return c.json({ success: true, data: { id: streamId, youtube_video_id: videoId } }, 201);
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// GET /api/admin/streams — 전체 스트림 목록 (어드민용)
+adminManagementRoutes.get('/streams', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const status = c.req.query('status') || '';
+    let sql = `SELECT ls.*, s.name AS seller_name FROM live_streams ls LEFT JOIN sellers s ON s.id = ls.seller_id`;
+    const params: unknown[] = [];
+    if (status) { sql += ' WHERE ls.status = ?'; params.push(status); }
+    sql += ' ORDER BY ls.created_at DESC LIMIT 100';
+    const { results } = await DB.prepare(sql).bind(...params).all();
+    return c.json({ success: true, data: results || [] });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
+// PUT /api/admin/streams/:id — 스트림 수정 (어드민)
+adminManagementRoutes.put('/streams/:id', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const id = c.req.param('id');
+    const body = await c.req.json<{ title?: string; description?: string; youtube_video_id?: string; status?: string; product_ids?: number[] }>();
+
+    const updates: string[] = [];
+    const vals: unknown[] = [];
+    if (body.title) { updates.push('title = ?'); vals.push(body.title); }
+    if (body.description !== undefined) { updates.push('description = ?'); vals.push(body.description); }
+    if (body.youtube_video_id) { updates.push('youtube_video_id = ?'); vals.push(body.youtube_video_id); }
+    if (body.status) { updates.push('status = ?'); vals.push(body.status); if (body.status === 'ended') updates.push("ended_at = datetime('now')"); }
+
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      vals.push(id);
+      await DB.prepare(`UPDATE live_streams SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
+    }
+
+    // 상품 업데이트
+    if (body.product_ids) {
+      await DB.prepare('DELETE FROM stream_products WHERE stream_id = ?').bind(id).run();
+      for (const pid of body.product_ids) {
+        await DB.prepare('INSERT OR IGNORE INTO stream_products (stream_id, product_id) VALUES (?, ?)').bind(id, pid).run();
+      }
+    }
+
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: (err as Error).message }, 500);
+  }
+});
+
 adminManagementRoutes.delete('/streams/:id', cors(), async (c) => {
   try {
     const { DB } = c.env;

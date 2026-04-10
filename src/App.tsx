@@ -101,6 +101,7 @@ const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequ
 const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
 const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
+const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
 const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
@@ -529,6 +530,11 @@ function AppContent() {
             <Route path="/admin/reviews" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminReviewsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/replay" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminReplayPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/coupons" element={
