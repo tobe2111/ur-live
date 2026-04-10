@@ -231,6 +231,10 @@ export default function ProductDetailPage() {
   const [wishlistLoading, setWishlistLoading] = useState(false)
 
   useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [id])
+
+  useEffect(() => {
     if (product) {
       document.title = product.name + ' - 유어딜'
     }
@@ -450,12 +454,14 @@ export default function ProductDetailPage() {
           price={displayPrice}
           originalPrice={product.original_price || undefined}
           discountRate={product.discount_rate || undefined}
+          sellerName={(product as any).seller_name}
+          soldCount={(product as any).sold_count}
         />
 
         {/* Product Description */}
         {product.description && (
           <div className="px-5 py-3">
-            <p className="text-[13px] text-gray-400 leading-relaxed whitespace-pre-wrap">
+            <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
               {product.description}
             </p>
           </div>
