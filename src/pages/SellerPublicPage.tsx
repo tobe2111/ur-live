@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone, Sun, Moon } from 'lucide-react'
 import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
@@ -57,6 +57,24 @@ export default function SellerPublicPage() {
   const [editYoutube, setEditYoutube] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDark, setIsDark] = useState(true)
+
+  // 테마별 클래스 매핑
+  const T = isDark ? {
+    bg: 'bg-[#020202]', card: 'bg-[#121212]', cardAlt: 'bg-[#1A1A1A]',
+    text: 'text-white', textSub: 'text-gray-400', textMuted: 'text-gray-500',
+    border: 'border-[#1A1A1A]', borderAlt: 'border-[#2A2A2A]',
+    cover: 'from-pink-900/50 via-purple-900/40 to-orange-900/30',
+    avatarBorder: 'border-[#020202]', input: 'bg-[#121212] text-white',
+    btnOutline: 'border-[#2A2A2A] text-gray-300',
+  } : {
+    bg: 'bg-white', card: 'bg-white', cardAlt: 'bg-gray-50',
+    text: 'text-gray-900', textSub: 'text-gray-600', textMuted: 'text-gray-500',
+    border: 'border-gray-100', borderAlt: 'border-gray-200',
+    cover: 'from-pink-200 via-purple-100 to-orange-100',
+    avatarBorder: 'border-white', input: 'bg-gray-50 text-gray-900',
+    btnOutline: 'border-gray-200 text-gray-700',
+  }
 
   const startEdit = (field: string) => {
     if (!isOwner) return
@@ -127,13 +145,13 @@ export default function SellerPublicPage() {
   }, [sellerId])
 
   if (loading) return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
+    <div className="min-h-screen bg-[#020202] dark flex items-center justify-center">
       <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
     </div>
   )
 
   if (!seller) return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[#020202] dark flex flex-col items-center justify-center">
       <p className="text-gray-500">{t('seller.sellerNotFound')}</p>
       <button onClick={() => navigate('/')} className="mt-3 text-sm text-pink-500">{t('seller.goToHome')}</button>
     </div>
@@ -155,7 +173,7 @@ export default function SellerPublicPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`min-h-screen ${T.bg}`}>
       <SEO
         title={seller.name}
         description={seller.bio || `${seller.name} - 유어딜에서 라이브 방송과 상품을 만나보세요`}
@@ -165,7 +183,7 @@ export default function SellerPublicPage() {
       {/* 커버 + 프로필 */}
       <div className="relative">
         {/* 커버 이미지 */}
-        <div className="h-44 bg-gradient-to-br from-pink-200 via-purple-100 to-orange-100" />
+        <div className={`h-44 bg-gradient-to-br ${T.cover}`} />
 
         {/* 상단 네비 */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-safe pb-2 z-10">
@@ -173,6 +191,12 @@ export default function SellerPublicPage() {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
           <div className="flex gap-2">
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className="p-2 bg-black/20 rounded-full backdrop-blur-sm"
+            >
+              {isDark ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-white" />}
+            </button>
             <button onClick={() => {
               const url = window.location.href
               if (navigator.share) navigator.share({ title: seller.name, url })
@@ -187,14 +211,14 @@ export default function SellerPublicPage() {
         <div className="absolute -bottom-10 left-5">
           <div className="relative">
             <div
-              className={`w-20 h-20 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
+              className={`w-20 h-20 rounded-full border-4 ${T.avatarBorder} bg-gray-700 overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && fileInputRef.current?.click()}
             >
               {seller.profile_image ? (
                 <img src={seller.profile_image} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">{seller.name.charAt(0)}</span>
+                  <span className={`text-2xl font-bold ${T.text}`}>{seller.name.charAt(0)}</span>
                 </div>
               )}
               {isOwner && (
@@ -220,14 +244,14 @@ export default function SellerPublicPage() {
                 autoFocus
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
-                className="text-xl font-extrabold text-gray-900 bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1"
+                className={`text-xl font-extrabold ${T.text} bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1`}
                 onKeyDown={e => e.key === 'Enter' && saveEdit('name', editName)}
               />
               <button onClick={() => saveEdit('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white"><Check className="w-3.5 h-3.5" /></button>
               <button onClick={() => setEditingField(null)} className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
             </div>
           ) : (
-            <h1 className="text-xl font-extrabold text-gray-900 group" onClick={() => startEdit('name')}>
+            <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
               {seller.name}
               {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
             </h1>
@@ -246,16 +270,16 @@ export default function SellerPublicPage() {
               value={editBio}
               onChange={e => setEditBio(e.target.value)}
               rows={3}
-              className="w-full text-sm text-gray-600 bg-gray-50 border border-pink-300 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none"
+              className="w-full text-sm text-gray-400 bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none"
             />
             <div className="flex gap-2 mt-1">
               <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
-              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg">취소</button>
+              <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">취소</button>
             </div>
           </div>
         ) : (
           <div className="group mt-2" onClick={() => startEdit('bio')}>
-            <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+            <p className="text-sm text-gray-400 leading-relaxed line-clamp-2">
               {seller.bio || (isOwner ? '소개글을 입력해주세요' : '')}
             </p>
             {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline opacity-0 group-hover:opacity-100 transition-opacity" />}
@@ -263,18 +287,18 @@ export default function SellerPublicPage() {
         )}
 
         {/* 통계 */}
-        <div className="flex items-center gap-6 mt-4 py-3 border-y border-gray-100">
+        <div className="flex items-center gap-6 mt-4 py-3 border-y border-[#1A1A1A]">
           <div className="text-center flex-1">
             <p className="text-xs text-gray-500">{t('seller.tabProducts')}</p>
-            <p className="text-sm font-bold text-gray-900">{products.length}</p>
+            <p className={`text-sm font-bold ${T.text}`}>{products.length}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-xs text-gray-500">{t('seller.tabLive')}</p>
-            <p className="text-sm font-bold text-gray-900">{streams.length}</p>
+            <p className={`text-sm font-bold ${T.text}`}>{streams.length}</p>
           </div>
           <div className="text-center flex-1">
             <p className="text-xs text-gray-500">{t('seller.rating')}</p>
-            <p className="text-sm font-bold text-gray-900 flex items-center justify-center gap-0.5">
+            <p className={`text-sm font-bold ${T.text} flex items-center justify-center gap-0.5`}>
               <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" /> 5.0
             </p>
           </div>
@@ -284,13 +308,13 @@ export default function SellerPublicPage() {
         <FollowButton sellerId={sellerId!} />
         <div className="flex gap-2 mt-2">
           {seller.kakao_chat_link && (
-            <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700">
+            <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-300">
               <MessageCircle className="w-4 h-4" /> {t('seller.oneOnOneInquiry')}
             </a>
           )}
           <button
             onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-[#2A2A2A] rounded-xl text-sm font-medium text-gray-300"
           >
             <Heart className="w-4 h-4" /> {t('seller.donateButton')}
           </button>
@@ -298,14 +322,14 @@ export default function SellerPublicPage() {
       </div>
 
       {/* 탭 */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-100">
+      <div className={`sticky top-0 z-20 ${T.bg} border-b ${T.border}`}>
         <div className="flex">
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.key ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400'
+                tab === t.key ? `border-current ${T.text}` : `border-transparent ${T.textMuted}`
               }`}
             >
               {t.label}
@@ -323,7 +347,7 @@ export default function SellerPublicPage() {
             {mealVouchers.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-bold text-gray-900">🍽️ 추천 식사권</h2>
+                  <h2 className={`text-base font-bold ${T.text}`}>🍽️ 추천 식사권</h2>
                   <button onClick={() => setTab('vouchers')} className="text-xs text-gray-500 flex items-center">전체보기 <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
@@ -332,12 +356,12 @@ export default function SellerPublicPage() {
                     const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / p.group_buy_target!) * 100) : 0
                     return (
                       <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="shrink-0 w-44 text-left active:scale-[0.97]">
-                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100">
+                        <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1A1A1A]">
                           {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
                           {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{disc}%</span>}
                         </div>
                         <div className="mt-2">
-                          <p className="text-[12px] font-medium text-gray-900 line-clamp-1">{p.name}</p>
+                          <p className={`text-[12px] font-medium ${T.text} line-clamp-1`}>{p.name}</p>
                           {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
                           <span className="text-[13px] font-extrabold text-red-500">{p.price.toLocaleString()}원</span>
                           {(p.group_buy_target ?? 0) > 0 && (
@@ -358,12 +382,12 @@ export default function SellerPublicPage() {
             {shorts.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-bold text-gray-900">📹 맛집 리뷰 영상</h2>
+                  <h2 className={`text-base font-bold ${T.text}`}>📹 맛집 리뷰 영상</h2>
                   {isOwner && <button onClick={() => navigate('/seller/shorts')} className="text-xs text-blue-500 flex items-center gap-0.5"><Plus className="w-3 h-3" /> 영상 추가</button>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {shorts.slice(0, 4).map(s => (
-                    <div key={s.id} className="rounded-xl overflow-hidden bg-gray-100">
+                    <div key={s.id} className="rounded-xl overflow-hidden bg-[#1A1A1A]">
                       {s.youtube_video_id ? (
                         <div className="aspect-video">
                           <iframe
@@ -379,7 +403,7 @@ export default function SellerPublicPage() {
                         <div className="aspect-video bg-gray-200 flex items-center justify-center"><Play className="w-6 h-6 text-gray-400" /></div>
                       )}
                       <div className="p-2">
-                        <p className="text-[11px] font-medium text-gray-900 line-clamp-1">{s.title}</p>
+                        <p className={`text-[11px] font-medium ${T.text} line-clamp-1`}>{s.title}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-gray-500 flex items-center gap-0.5"><Eye className="w-3 h-3" />{s.view_count}</span>
                           {s.product_name && <span className="text-[10px] text-pink-500 font-medium">{s.product_name}</span>}
@@ -389,7 +413,7 @@ export default function SellerPublicPage() {
                   ))}
                 </div>
                 {shorts.length > 4 && (
-                  <button onClick={() => setTab('shorts')} className="w-full mt-3 py-2.5 text-sm text-gray-500 bg-gray-50 rounded-xl font-medium">
+                  <button onClick={() => setTab('shorts')} className="w-full mt-3 py-2.5 text-sm text-gray-500 bg-[#121212] rounded-xl font-medium">
                     영상 더보기 ({shorts.length}개)
                   </button>
                 )}
@@ -400,7 +424,7 @@ export default function SellerPublicPage() {
             {recentStreams.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-bold text-gray-900">라이브 <span className="text-pink-500">{streams.length}</span></h2>
+                  <h2 className={`text-base font-bold ${T.text}`}>라이브 <span className="text-pink-500">{streams.length}</span></h2>
                   <button onClick={() => setTab('live')} className="text-xs text-gray-500 flex items-center">더보기 <ChevronRight className="w-3 h-3" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -426,17 +450,17 @@ export default function SellerPublicPage() {
                 const disc = p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0
                 const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / p.group_buy_target!) * 100) : 0
                 return (
-                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-gray-50 rounded-xl text-left active:scale-[0.98]">
+                  <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-[#121212] rounded-xl text-left active:scale-[0.98]">
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0">
                       {p.image_url && <img src={p.image_url} alt="" className="w-full h-full object-cover" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 line-clamp-1">{p.name}</p>
+                      <p className={`text-sm font-bold ${T.text} line-clamp-1`}>{p.name}</p>
                       {p.restaurant_name && <p className="text-xs text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-3 h-3" />{p.restaurant_name}</p>}
                       {p.restaurant_address && <p className="text-[10px] text-gray-400 mt-0.5">{p.restaurant_address}</p>}
                       <div className="flex items-baseline gap-1.5 mt-1.5">
                         {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
-                        <span className="text-sm font-extrabold text-gray-900">{p.price.toLocaleString()}원</span>
+                        <span className={`text-sm font-extrabold ${T.text}`}>{p.price.toLocaleString()}원</span>
                         {p.original_price && <span className="text-xs text-gray-400 line-through">{p.original_price.toLocaleString()}원</span>}
                       </div>
                       {(p.group_buy_target ?? 0) > 0 && (
@@ -464,7 +488,7 @@ export default function SellerPublicPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {shorts.map(s => (
-                <div key={s.id} className="rounded-xl overflow-hidden bg-gray-100">
+                <div key={s.id} className="rounded-xl overflow-hidden bg-[#1A1A1A]">
                   {s.youtube_video_id ? (
                     <div className="aspect-video">
                       <iframe
@@ -480,7 +504,7 @@ export default function SellerPublicPage() {
                     <div className="aspect-video bg-gray-200 flex items-center justify-center"><Play className="w-6 h-6 text-gray-400" /></div>
                   )}
                   <div className="p-2">
-                    <p className="text-[11px] font-medium text-gray-900 line-clamp-2">{s.title}</p>
+                    <p className={`text-[11px] font-medium ${T.text} line-clamp-2`}>{s.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] text-gray-500 flex items-center gap-0.5"><Eye className="w-3 h-3" />{s.view_count}</span>
                       {s.product_name && (
@@ -513,18 +537,18 @@ export default function SellerPublicPage() {
         {tab === 'info' && (
           <div className="space-y-6">
             <section>
-              <h3 className="text-base font-bold text-gray-900 mb-2">소개</h3>
+              <h3 className={`text-base font-bold ${T.text} mb-2`}>소개</h3>
               {editingField === 'bio-info' ? (
                 <div>
                   <textarea autoFocus value={editBio} onChange={e => setEditBio(e.target.value)} rows={4}
-                    className="w-full text-sm bg-gray-50 border border-pink-300 rounded-lg p-2 focus:outline-none resize-none" />
+                    className="w-full text-sm bg-[#121212] border border-pink-500 rounded-lg p-2 focus:outline-none resize-none" />
                   <div className="flex gap-2 mt-1">
                     <button onClick={() => { saveEdit('bio', editBio); setEditingField(null) }} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">저장</button>
-                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg">취소</button>
+                    <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-[#1A1A1A] text-gray-500 text-xs rounded-lg">취소</button>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
+                <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
                   {seller.bio || (isOwner ? '소개글을 입력해주세요 (탭하여 편집)' : '소개글이 없습니다.')}
                   {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-0 group-hover:opacity-100" />}
                 </p>
@@ -536,9 +560,9 @@ export default function SellerPublicPage() {
                 {editingField === 'instagram' ? (
                   <div className="flex gap-2">
                     <input autoFocus value={editInsta} onChange={e => setEditInsta(e.target.value)} placeholder="https://instagram.com/..."
-                      className="flex-1 px-2 py-1.5 border border-pink-300 rounded-lg text-sm bg-gray-50" />
+                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212]" />
                     <button onClick={() => saveEdit('instagram', editInsta)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-gray-100 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : seller.sns_instagram ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('instagram')}>
@@ -553,9 +577,9 @@ export default function SellerPublicPage() {
                 {editingField === 'youtube' ? (
                   <div className="flex gap-2">
                     <input autoFocus value={editYoutube} onChange={e => setEditYoutube(e.target.value)} placeholder="https://youtube.com/..."
-                      className="flex-1 px-2 py-1.5 border border-pink-300 rounded-lg text-sm bg-gray-50" />
+                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212]" />
                     <button onClick={() => saveEdit('youtube', editYoutube)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-gray-100 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : seller.sns_youtube ? (
                   <div className="flex items-center gap-2 group" onClick={() => isOwner && startEdit('youtube')}>
@@ -570,9 +594,9 @@ export default function SellerPublicPage() {
                 {editingField === 'kakao' ? (
                   <div className="flex gap-2">
                     <input autoFocus value={editKakao} onChange={e => setEditKakao(e.target.value)} placeholder="https://open.kakao.com/..."
-                      className="flex-1 px-2 py-1.5 border border-pink-300 rounded-lg text-sm bg-gray-50" />
+                      className="flex-1 px-2 py-1.5 border border-pink-500 rounded-lg text-sm bg-[#121212]" />
                     <button onClick={() => saveEdit('kakao', editKakao)} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
-                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-gray-100 text-xs rounded-lg"><X className="w-3 h-3" /></button>
+                    <button onClick={() => setEditingField(null)} className="px-2 py-1.5 bg-[#1A1A1A] text-xs rounded-lg"><X className="w-3 h-3" /></button>
                   </div>
                 ) : isOwner && !seller.kakao_chat_link ? (
                   <button onClick={() => startEdit('kakao')} className="text-xs text-gray-400 flex items-center gap-1"><Plus className="w-3 h-3" /> 카카오 채팅 링크 추가</button>
@@ -580,9 +604,9 @@ export default function SellerPublicPage() {
               </div>
             </section>
             {/* 사업자 정보 + 연락처 */}
-            <section className="bg-gray-50 rounded-xl p-4">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">판매자 정보</h3>
-              <div className="text-sm text-gray-600 space-y-2">
+            <section className="bg-[#121212] rounded-xl p-4">
+              <h3 className={`text-sm font-bold ${T.text} mb-3`}>판매자 정보</h3>
+              <div className="text-sm text-gray-400 space-y-2">
                 {seller.business_name && (
                   <div className="flex"><span className="w-20 text-gray-400 shrink-0 text-xs">상호</span><span className="text-xs">{seller.business_name}</span></div>
                 )}
@@ -606,7 +630,7 @@ export default function SellerPublicPage() {
                 )}
                 {(seller as any).phone && (
                   <a href={`tel:${(seller as any).phone}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold active:scale-[0.97]">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#020202] border border-[#2A2A2A] text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
                     <Phone className="w-3.5 h-3.5" /> 전화 문의
                   </a>
                 )}
@@ -619,8 +643,8 @@ export default function SellerPublicPage() {
             </section>
 
             <section>
-              <h3 className="text-base font-bold text-gray-900 mb-2">식사권 이용안내</h3>
-              <div className="text-sm text-gray-600 space-y-2">
+              <h3 className={`text-base font-bold ${T.text} mb-2`}>식사권 이용안내</h3>
+              <div className="text-sm text-gray-400 space-y-2">
                 <div className="flex"><span className="w-20 text-gray-500 shrink-0">이용방법</span><span>구매 후 발급되는 바우처 코드를 식당에서 제시</span></div>
                 <div className="flex"><span className="w-20 text-gray-500 shrink-0">유효기간</span><span>상품별 상이 (상세 페이지 확인)</span></div>
                 <div className="flex"><span className="w-20 text-gray-500 shrink-0">환불</span><span>미사용 바우처에 한해 공동구매 마감 전 환불 가능</span></div>
@@ -668,7 +692,7 @@ function FollowButton({ sellerId }: { sellerId: string }) {
       disabled={loading}
       className={`w-full py-3 rounded-xl text-sm font-bold mt-4 transition-all active:scale-[0.98] ${
         following
-          ? 'bg-gray-100 text-gray-600 border border-gray-200'
+          ? 'bg-[#1A1A1A] text-gray-400 border border-[#2A2A2A]'
           : 'bg-pink-500 text-white'
       }`}
     >
@@ -684,11 +708,11 @@ function StreamCard({ stream, onClick }: { stream: LiveStream; onClick: () => vo
 
   return (
     <button onClick={onClick} className="text-left active:scale-[0.98] transition-transform">
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#1A1A1A]">
         {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />}
         {isLive ? (
           <span className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-            <span className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />LIVE
+            <span className="h-1.5 w-1.5 bg-[#020202] rounded-full animate-pulse" />LIVE
           </span>
         ) : stream.status === 'scheduled' ? (
           <span className="absolute top-2 left-2 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded">{t('seller.scheduledLabel')}</span>

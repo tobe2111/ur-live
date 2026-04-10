@@ -737,19 +737,23 @@ adminManagementRoutes.patch('/products/:id', cors(), async (c) => {
     const { DB } = c.env;
     const productId = c.req.param('id');
     const body = await c.req.json();
-    const { is_active } = body;
-    
-    // Check if product exists
+    const { is_active, sold_count } = body;
+
     const product = await executeQuery<IdRow>(DB, 'SELECT id FROM products WHERE id = ?', [productId]);
     if (product.length === 0) {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
-    
-    // Update is_active status
-    const activeValue = is_active ? 1 : 0;
-    await executeRun(DB, `UPDATE products SET is_active = ?, updated_at = datetime('now') WHERE id = ?`, [activeValue, productId]);
-    
-    return c.json({ success: true, data: { id: productId, is_active: activeValue } });
+
+    const updates: string[] = ["updated_at = datetime('now')"];
+    const params: unknown[] = [];
+
+    if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active ? 1 : 0); }
+    if (sold_count !== undefined) { updates.push('sold_count = ?'); params.push(Number(sold_count)); }
+
+    params.push(productId);
+    await executeRun(DB, `UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    return c.json({ success: true, data: { id: productId, ...(is_active !== undefined ? { is_active: is_active ? 1 : 0 } : {}), ...(sold_count !== undefined ? { sold_count: Number(sold_count) } : {}) } });
   } catch (err) {
     console.error('[Admin] patch product error:', err);
     return c.json({ success: false, error: (err as Error).message }, 500);
@@ -2236,6 +2240,10 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
         }
       }
 
+      // 리뷰 수에 비례하여 sold_count 증가 (리뷰 1개당 2~3명 구매)
+      const soldIncrement = generated * (2 + Math.round(Math.random()));
+      try { await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(soldIncrement, product_id).run() } catch {}
+
       return c.json({ success: true, data: { generated }, message: `AI로 ${generated}개 리뷰가 생성되었습니다` });
     }
 
@@ -2266,7 +2274,11 @@ JSON 배열로만 응답. 각 항목: {"content": "리뷰 내용", "rating": 별
       } catch { /* partial batch fail */ }
     }
 
-    return c.json({ success: true, data: { generated }, message: `${generated}개 리뷰가 생성되었습니다` });
+    // 리뷰 수에 비례하여 sold_count 증가 (리뷰 1개당 2~3명 구매)
+    const soldIncrement = generated * (2 + Math.round(Math.random()));
+    try { await DB.prepare('UPDATE products SET sold_count = COALESCE(sold_count, 0) + ? WHERE id = ?').bind(soldIncrement, product_id).run() } catch {}
+
+    return c.json({ success: true, data: { generated, sold_increment: soldIncrement }, message: `${generated}개 리뷰 + ${soldIncrement}명 구매 수 반영` });
   } catch (err) {
     return c.json({ success: false, error: (err as Error).message }, 500);
   }

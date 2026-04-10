@@ -135,7 +135,21 @@ timedealRoutes.post('/:id/claim', requireAuth(), async (c) => {
   await DB.prepare('INSERT INTO time_deal_claims (deal_id, user_id) VALUES (?, ?)').bind(dealId, user.id).run();
   await DB.prepare('UPDATE time_deals SET claimed_count = claimed_count + 1 WHERE id = ?').bind(dealId).run();
 
-  return c.json({ success: true, data: { deal_price: deal.deal_price, product_id: deal.product_id } });
+  // 장바구니에 타임딜 가격으로 자동 추가
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS cart_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, product_id INTEGER NOT NULL,
+      quantity INTEGER DEFAULT 1, price_snapshot INTEGER, option_id INTEGER, option_value TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(user_id, product_id, option_value)
+    )`).run().catch(() => {});
+
+    await DB.prepare(`
+      INSERT OR REPLACE INTO cart_items (user_id, product_id, quantity, price_snapshot, created_at)
+      VALUES (?, ?, 1, ?, datetime('now'))
+    `).bind(user.id, deal.product_id, deal.deal_price).run();
+  } catch {}
+
+  return c.json({ success: true, data: { deal_price: deal.deal_price, product_id: deal.product_id, added_to_cart: true } });
 });
 
 // GET /api/timedeal/:id

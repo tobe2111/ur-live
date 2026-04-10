@@ -182,7 +182,7 @@ broadcastNotifyRoutes.post('/send/:streamId', async (c) => {
             apikey: aligoApiKey,
             userid: aligoUserId,
             senderkey: aligoSenderKey,
-            tpl_code: 'TBD', // 실제 승인된 템플릿 코드로 교체 필요
+            tpl_code: (c.env as any).ALIMTALK_BROADCAST_TPL || 'TBD',
             sender: (c.env as any).ALIGO_SENDER_PHONE || '',
             receiver_1: sub.user_phone,
             recvname_1: sub.user_name || '고객',

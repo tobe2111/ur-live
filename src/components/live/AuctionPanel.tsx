@@ -43,7 +43,39 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
     }
   }, [auction?.id, auction?.status])
 
-  if (!auction || auction.status !== 'active') return null
+  if (!auction) return null
+
+  // 경매 종료 → 낙찰자에게 구매 버튼 표시
+  if (auction.status === 'ended' && auction.winner_name) {
+    return (
+      <div className="bg-gradient-to-br from-green-500/90 to-emerald-600/90 backdrop-blur-md rounded-2xl p-4 text-white shadow-lg">
+        <div className="text-center">
+          <p className="text-sm font-bold mb-1">경매 종료!</p>
+          <p className="text-xs opacity-80">👑 {auction.winner_name}님 낙찰</p>
+          <p className="text-2xl font-bold mt-2">{auction.current_price?.toLocaleString()}원</p>
+          <button
+            onClick={async () => {
+              try {
+                const res = await api.post(`/api/auction/${auction.id}/purchase`)
+                if (res.data.success) {
+                  const d = res.data.data
+                  // 낙찰가로 바로 결제 페이지 이동
+                  window.location.href = `/checkout?auction=${auction.id}&product=${d.product_id}&price=${d.auction_price}`
+                } else {
+                  toast.error(res.data.error)
+                }
+              } catch (err: any) { toast.error(err?.response?.data?.error || '구매 실패') }
+            }}
+            className="mt-3 w-full py-2.5 bg-white text-green-700 font-bold rounded-xl text-sm active:scale-[0.96]"
+          >
+            낙찰가로 구매하기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (auction.status !== 'active') return null
 
   const handleBid = async () => {
     if (bidding) return

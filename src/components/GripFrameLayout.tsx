@@ -52,16 +52,16 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
               </span>
             </div>
             <div className="hidden items-center gap-10 md:flex">
-              <a href="#" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
+              <a href="/introduce" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
                 서비스
               </a>
-              <a href="#" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
+              <a href="/seller/register" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
                 파트너
               </a>
-              <a href="#" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
+              <a href="/introduce" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
                 회사소개
               </a>
-              <a href="#" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
+              <a href="mailto:jiwon@ur-team.com" className="text-[11px] font-medium uppercase tracking-[0.15em] text-white/30 transition-colors hover:text-white">
                 문의하기
               </a>
             </div>

@@ -180,4 +180,41 @@ auctionRoutes.get('/:id', async (c) => {
   return c.json({ success: true, data: { ...auction, bids } });
 });
 
+// POST /api/auction/:id/purchase — 낙찰자 구매 (낙찰가로 주문 생성)
+auctionRoutes.post('/:id/purchase', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const auctionId = Number(c.req.param('id'));
+  const auction = await DB.prepare('SELECT * FROM live_auctions WHERE id = ?').bind(auctionId).first<any>();
+
+  if (!auction) return c.json({ success: false, error: '경매를 찾을 수 없습니다' }, 404);
+  if (auction.status !== 'ended') return c.json({ success: false, error: '아직 종료되지 않은 경매입니다' }, 400);
+  if (auction.winner_user_id !== String(user.id)) return c.json({ success: false, error: '낙찰자만 구매할 수 있습니다' }, 403);
+
+  // 상품 정보 조회
+  if (!auction.product_id) return c.json({ success: false, error: '연결된 상품이 없습니다' }, 400);
+
+  const product = await DB.prepare('SELECT id, name, price, image_url, seller_id FROM products WHERE id = ?')
+    .bind(auction.product_id).first<any>();
+  if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+
+  // 주문 생성 데이터 반환 (프론트에서 체크아웃으로 이동)
+  return c.json({
+    success: true,
+    data: {
+      product_id: product.id,
+      product_name: product.name,
+      product_image: product.image_url,
+      auction_price: auction.current_price, // 낙찰가
+      original_price: product.price,
+      seller_id: product.seller_id,
+      auction_id: auctionId,
+    }
+  });
+});
+
 export { auctionRoutes };

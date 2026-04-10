@@ -127,6 +127,30 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
   return c.json({ success: true, data: { current_count: newCount, target_count: group.target_count, achieved: newStatus === 'achieved' } });
 });
 
+// GET /api/referral/discount/:productId — 해당 상품에 대한 유저의 달성된 할인 조회
+referralRoutes.get('/discount/:productId', requireAuth(), async (c) => {
+  const user = getCurrentUser(c);
+  if (!user) return c.json({ success: true, data: null });
+
+  const { DB } = c.env;
+  await ensureTables(DB);
+
+  const productId = c.req.param('productId');
+
+  // 유저가 참여한 그룹 중 달성된 것 찾기
+  const group = await DB.prepare(`
+    SELECT g.id, g.discount_percent, g.discount_per_person, g.invite_code
+    FROM referral_groups g
+    JOIN referral_members m ON m.group_id = g.id
+    WHERE g.product_id = ? AND m.user_id = ? AND g.status = 'achieved'
+    ORDER BY g.created_at DESC LIMIT 1
+  `).bind(productId, user.id).first<any>();
+
+  if (!group) return c.json({ success: true, data: null });
+
+  return c.json({ success: true, data: { discount_percent: group.discount_percent, group_id: group.id, invite_code: group.invite_code } });
+});
+
 // GET /api/referral/my — 내 그룹 목록 (MUST be before /:code)
 referralRoutes.get('/my', requireAuth(), async (c) => {
   const user = getCurrentUser(c);
