@@ -1010,7 +1010,8 @@
     "stockHistoryOut": "出库",
     "stockHistoryAdjust": "调整",
     "stockHistoryReturn": "退货",
-    "groupBuy": "团购"
+    "groupBuy": "团购",
+    "mealVoucher": "餐券·团购"
   },
   "nav": {
     "home": "首页",

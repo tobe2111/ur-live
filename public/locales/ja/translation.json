@@ -1010,7 +1010,8 @@
     "stockHistoryOut": "出庫",
     "stockHistoryAdjust": "調整",
     "stockHistoryReturn": "返品",
-    "groupBuy": "共同購入"
+    "groupBuy": "共同購入",
+    "mealVoucher": "食事券・共同購入"
   },
   "nav": {
     "home": "ホーム",

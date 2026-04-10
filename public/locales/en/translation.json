@@ -1076,7 +1076,8 @@
     "stockHistoryOut": "Out",
     "stockHistoryAdjust": "Adjust",
     "stockHistoryReturn": "Return",
-    "groupBuy": "Group Buy"
+    "groupBuy": "Group Buy",
+    "mealVoucher": "Meal Voucher"
   },
   "nav": {
     "home": "Home",

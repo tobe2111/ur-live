@@ -1075,7 +1075,8 @@
     "stockHistoryOut": "출고",
     "stockHistoryAdjust": "조정",
     "stockHistoryReturn": "반품",
-    "groupBuy": "공동구매"
+    "groupBuy": "공동구매",
+    "mealVoucher": "식사권 · 공동구매"
   },
   "nav": {
     "home": "홈",
