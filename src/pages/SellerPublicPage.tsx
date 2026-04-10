@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone } from 'lucide-react'
+import { Loader2, ArrowLeft, Share2, Star, MessageCircle, Heart, ChevronRight, Eye, Play, Clock, MapPin, Pencil, Plus, Settings, Trophy, Camera, Check, X, Phone, Sun, Moon } from 'lucide-react'
 import SupporterRanking from '@/components/live/SupporterRanking'
 import { toast } from '@/hooks/useToast'
 import { nativeShare } from '@/lib/native'
@@ -57,6 +57,24 @@ export default function SellerPublicPage() {
   const [editYoutube, setEditYoutube] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDark, setIsDark] = useState(true)
+
+  // 테마별 클래스 매핑
+  const T = isDark ? {
+    bg: 'bg-[#020202]', card: 'bg-[#121212]', cardAlt: 'bg-[#1A1A1A]',
+    text: 'text-white', textSub: 'text-gray-400', textMuted: 'text-gray-500',
+    border: 'border-[#1A1A1A]', borderAlt: 'border-[#2A2A2A]',
+    cover: 'from-pink-900/50 via-purple-900/40 to-orange-900/30',
+    avatarBorder: 'border-[#020202]', input: 'bg-[#121212] text-white',
+    btnOutline: 'border-[#2A2A2A] text-gray-300',
+  } : {
+    bg: 'bg-white', card: 'bg-white', cardAlt: 'bg-gray-50',
+    text: 'text-gray-900', textSub: 'text-gray-600', textMuted: 'text-gray-500',
+    border: 'border-gray-100', borderAlt: 'border-gray-200',
+    cover: 'from-pink-200 via-purple-100 to-orange-100',
+    avatarBorder: 'border-white', input: 'bg-gray-50 text-gray-900',
+    btnOutline: 'border-gray-200 text-gray-700',
+  }
 
   const startEdit = (field: string) => {
     if (!isOwner) return
@@ -127,13 +145,13 @@ export default function SellerPublicPage() {
   }, [sellerId])
 
   if (loading) return (
-    <div className="min-h-screen bg-[#020202] flex items-center justify-center">
+    <div className="min-h-screen bg-[#020202] dark flex items-center justify-center">
       <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
     </div>
   )
 
   if (!seller) return (
-    <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-[#020202] dark flex flex-col items-center justify-center">
       <p className="text-gray-500">{t('seller.sellerNotFound')}</p>
       <button onClick={() => navigate('/')} className="mt-3 text-sm text-pink-500">{t('seller.goToHome')}</button>
     </div>
@@ -155,7 +173,7 @@ export default function SellerPublicPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#020202]">
+    <div className={`min-h-screen ${T.bg}`}>
       <SEO
         title={seller.name}
         description={seller.bio || `${seller.name} - 유어딜에서 라이브 방송과 상품을 만나보세요`}
@@ -165,7 +183,7 @@ export default function SellerPublicPage() {
       {/* 커버 + 프로필 */}
       <div className="relative">
         {/* 커버 이미지 */}
-        <div className="h-44 bg-gradient-to-br from-pink-900/50 via-purple-900/40 to-orange-900/30" />
+        <div className={`h-44 bg-gradient-to-br ${T.cover}`} />
 
         {/* 상단 네비 */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-safe pb-2 z-10">
@@ -173,6 +191,12 @@ export default function SellerPublicPage() {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
           <div className="flex gap-2">
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className="p-2 bg-black/20 rounded-full backdrop-blur-sm"
+            >
+              {isDark ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-white" />}
+            </button>
             <button onClick={() => {
               const url = window.location.href
               if (navigator.share) navigator.share({ title: seller.name, url })
@@ -187,7 +211,7 @@ export default function SellerPublicPage() {
         <div className="absolute -bottom-10 left-5">
           <div className="relative">
             <div
-              className={`w-20 h-20 rounded-full border-4 border-[#020202] bg-gray-700 overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
+              className={`w-20 h-20 rounded-full border-4 ${T.avatarBorder} bg-gray-700 overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
               onClick={() => isOwner && fileInputRef.current?.click()}
             >
               {seller.profile_image ? (
@@ -298,14 +322,14 @@ export default function SellerPublicPage() {
       </div>
 
       {/* 탭 */}
-      <div className="sticky top-0 z-20 bg-[#020202] border-b border-[#1A1A1A]">
+      <div className={`sticky top-0 z-20 ${T.bg} border-b ${T.border}`}>
         <div className="flex">
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.key ? 'border-gray-900 text-white' : 'border-transparent text-gray-400'
+                tab === t.key ? `border-current ${T.text}` : `border-transparent ${T.textMuted}`
               }`}
             >
               {t.label}
