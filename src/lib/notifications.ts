@@ -1,104 +1,42 @@
 /**
  * Notification Helper Functions
- * 
- * Centralized notification creation for consistent behavior across the app
+ * 소비자: user_notifications 테이블
+ * 셀러/어드민: dashboard_notifications 테이블
  */
 
-export interface CreateNotificationParams {
-  userId: number
-  type: string
-  title: string
-  message: string
-  linkUrl?: string
-}
-
-/**
- * Create a notification in the database
- */
-export async function createNotification(
-  db: D1Database,
-  params: CreateNotificationParams
-): Promise<{ success: boolean; error?: string; id?: number }> {
-  const { userId, type, title, message, linkUrl } = params
-  
+export async function notifyUser(DB: D1Database, userId: string, type: string, title: string, message?: string, link?: string) {
   try {
-    const result = await db.prepare(`
-      INSERT INTO notifications (user_id, type, title, message, link_url, created_at)
-      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    `).bind(userId, type, title, message, linkUrl || null).run()
-    
-    return {
-      success: true,
-      id: result.meta.last_row_id as number
-    }
-  } catch (error) {
-    console.error('[Notification] Failed to create:', error)
-    return {
-      success: false,
-      error: (error as Error).message
-    }
-  }
+    await DB.prepare(`INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)`)
+      .bind(userId, type, title, message ?? null, link ?? null).run();
+  } catch {}
 }
 
-/**
- * Notification Types & Templates
- */
-export const NotificationTemplates = {
-  // Seller notifications
-  seller_approved: (sellerName: string) => ({
-    title: '🎉 판매자 승인 완료',
-    message: `${sellerName}님, 축하합니다! 리스터코퍼레이션 판매자로 승인되었습니다.`,
-    linkUrl: '/seller'
-  }),
-  
-  seller_rejected: (reason: string) => ({
-    title: '판매자 승인 거부',
-    message: `죄송합니다. 판매자 승인이 거부되었습니다. 사유: ${reason}`,
-    linkUrl: '/seller/register'
-  }),
-  
-  // Order notifications
-  order_complete: (orderNumber: string) => ({
-    title: '주문 완료',
-    message: `주문번호 ${orderNumber}의 주문이 접수되었습니다.`,
-    linkUrl: `/orders/${orderNumber}`
-  }),
-  
-  order_shipped: (orderNumber: string) => ({
-    title: '배송 시작',
-    message: `주문번호 ${orderNumber}의 상품이 배송 시작되었습니다.`,
-    linkUrl: `/orders/${orderNumber}`
-  }),
-  
-  order_delivered: (orderNumber: string) => ({
-    title: '배송 완료',
-    message: `주문번호 ${orderNumber}의 상품이 배송 완료되었습니다.`,
-    linkUrl: `/orders/${orderNumber}`
-  }),
-  
-  // Refund notifications
-  refund_requested: (orderNumber: string) => ({
-    title: '환불 요청 접수',
-    message: `주문번호 ${orderNumber}의 환불이 접수되었습니다.`,
-    linkUrl: `/orders/${orderNumber}`
-  }),
-  
-  refund_complete: (orderNumber: string, amount: number) => ({
-    title: '환불 완료',
-    message: `주문번호 ${orderNumber}의 환불(₩${amount.toLocaleString()})이 완료되었습니다.`,
-    linkUrl: `/orders/${orderNumber}`
-  }),
-  
-  // Product notifications (for sellers)
-  product_low_stock: (productName: string, stock: number) => ({
-    title: '⚠️ 재고 부족 알림',
-    message: `${productName}의 재고가 ${stock}개 남았습니다.`,
-    linkUrl: '/seller/products'
-  }),
-  
-  product_sold_out: (productName: string) => ({
-    title: '❌ 품절 알림',
-    message: `${productName}이(가) 품절되었습니다.`,
-    linkUrl: '/seller/products'
-  })
+export async function notifySeller(DB: D1Database, sellerId: string | number, type: string, title: string, message?: string, link?: string) {
+  try {
+    await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('seller', ?, ?, ?, ?, ?)`)
+      .bind(String(sellerId), type, title, message ?? null, link ?? null).run();
+  } catch {}
 }
+
+export async function notifyAdmin(DB: D1Database, type: string, title: string, message?: string, link?: string) {
+  try {
+    await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('admin', NULL, ?, ?, ?, ?)`)
+      .bind(type, title, message ?? null, link ?? null).run();
+  } catch {}
+}
+
+// 팔로워들에게 알림 (셀러의 모든 팔로워)
+export async function notifyFollowers(DB: D1Database, sellerId: number, type: string, title: string, message?: string, link?: string) {
+  try {
+    const { results } = await DB.prepare('SELECT user_id FROM seller_follows WHERE seller_id = ?').bind(sellerId).all<{ user_id: string }>();
+    if (!results?.length) return;
+    const stmts = results.map(f =>
+      DB.prepare('INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
+        .bind(f.user_id, type, title, message ?? null, link ?? null)
+    );
+    for (let i = 0; i < stmts.length; i += 50) {
+      await DB.batch(stmts.slice(i, i + 50));
+    }
+  } catch {}
+}
+

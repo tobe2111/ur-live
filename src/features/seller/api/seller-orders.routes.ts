@@ -528,6 +528,16 @@ sellerOrdersRoutes.post('/products', async (c) => {
        FROM products WHERE id = ?`
     ).bind(result.meta.last_row_id).first<Record<string, unknown>>();
 
+    // 팔로워에게 새 상품 알림
+    if (newProduct) {
+      const { notifyFollowers } = await import('@/lib/notifications');
+      notifyFollowers(db, Number(sellerId), 'new_product',
+        `🛍️ 새 상품 등록!`,
+        `${(newProduct as any).name}`,
+        `/products/${(newProduct as any).id}`
+      ).catch(() => {});
+    }
+
     return c.json({ success: true, data: newProduct }, 201);
   } catch (error: unknown) {
     console.error('Create seller product error:', error);

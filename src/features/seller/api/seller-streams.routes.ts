@@ -233,6 +233,16 @@ sellerStreamsRoutes.post('/', async (c) => {
       WHERE id = ?
     `).bind(result.meta.last_row_id).first<Record<string, unknown>>();
 
+    // 팔로워에게 방송 예고 알림
+    try {
+      const { notifyFollowers } = await import('@/lib/notifications');
+      notifyFollowers(db, sellerId, 'stream_scheduled',
+        `📺 새 라이브 예고!`,
+        `${title}`,
+        `/live/${result.meta.last_row_id}`
+      ).catch(() => {});
+    } catch {}
+
     return c.json({
       success: true,
       message: 'Stream created successfully',

@@ -394,14 +394,9 @@ returnsRoutes.put('/:id/refund', requireAuth(), async (c) => {
   const returnId = c.req.param('id');
 
   const returnRecord = await DB.prepare(
-    'SELECT id, order_id, seller_id, status, refund_amount, reason FROM returns WHERE id = ?'
+    'SELECT id, order_id, user_id, seller_id, status, refund_amount, reason FROM returns WHERE id = ?'
   ).bind(returnId).first<{
-    id: number;
-    order_id: number;
-    seller_id: number | null;
-    status: string;
-    refund_amount: number;
-    reason: string;
+    id: number; order_id: number; user_id: string; seller_id: number | null; status: string; refund_amount: number; reason: string;
   }>();
 
   if (!returnRecord) {
@@ -473,6 +468,12 @@ returnsRoutes.put('/:id/refund', requireAuth(), async (c) => {
   await DB.prepare(`
     UPDATE orders SET status = 'REFUNDED', refund_status = 'completed', refunded_at = datetime('now'), updated_at = datetime('now') WHERE id = ?
   `).bind(returnRecord.order_id).run();
+
+  // 6. 소비자에게 환불 완료 알림
+  try {
+    const { notifyUser } = await import('@/lib/notifications');
+    notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${returnRecord.refund_amount?.toLocaleString()}원이 환불되었습니다`, '/my-orders').catch(() => {});
+  } catch {}
 
   return c.json({ success: true, message: '환불이 완료되었습니다' });
 });

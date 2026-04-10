@@ -196,6 +196,85 @@ export async function handleScheduled(env: Env) {
     }
   } catch {}
 
+  // ── 12. 셀러 재고 품절 임박 알림 (5개 이하) ──
+  try {
+    const { results: lowStock } = await DB.prepare(`
+      SELECT p.id, p.name, p.seller_id, COALESCE(p.stock, p.stock_quantity, 0) AS stock
+      FROM products p
+      WHERE p.is_active = 1 AND COALESCE(p.stock, p.stock_quantity, 0) BETWEEN 1 AND 5
+        AND p.seller_id IS NOT NULL
+        AND p.id NOT IN (
+          SELECT CAST(REPLACE(message, '재고 ', '') AS INTEGER) FROM dashboard_notifications
+          WHERE type = 'low_stock' AND created_at > datetime('now', '-24 hours')
+        )
+      LIMIT 20
+    `).all<{ id: number; name: string; seller_id: number; stock: number }>();
+
+    if (lowStock?.length) {
+      for (const p of lowStock) {
+        await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+          VALUES ('seller', ?, 'low_stock', ?, ?, '/seller/products')`)
+          .bind(String(p.seller_id), `⚠️ 재고 부족: ${p.name}`, `재고 ${p.stock}개 남음`).run();
+      }
+      results.low_stock_alerts = lowStock.length;
+    }
+  } catch {}
+
+  // ── 13. 쿠폰 만료 임박 알림 (D-1, 소비자) ──
+  try {
+    const { results: expiringCoupons } = await DB.prepare(`
+      SELECT c.id, c.code, c.name, c.expires_at
+      FROM coupons c
+      WHERE c.is_active = 1
+        AND c.expires_at IS NOT NULL
+        AND c.expires_at > datetime('now')
+        AND c.expires_at <= datetime('now', '+1 day')
+    `).all<{ id: number; code: string; name: string; expires_at: string }>();
+
+    if (expiringCoupons?.length) {
+      // 쿠폰을 사용하지 않은 유저들에게 알림
+      for (const coupon of expiringCoupons) {
+        const { results: users } = await DB.prepare(`
+          SELECT DISTINCT u.id FROM users u
+          WHERE u.id NOT IN (SELECT user_id FROM coupon_uses WHERE coupon_id = ?)
+          LIMIT 100
+        `).bind(coupon.id).all<{ id: string }>();
+
+        if (users?.length) {
+          const stmts = users.map(u =>
+            DB.prepare('INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)')
+              .bind(u.id, 'coupon_expiring', `🎫 쿠폰 만료 임박!`, `${coupon.name} 쿠폰이 내일 만료됩니다`, '/browse')
+          );
+          for (let i = 0; i < stmts.length; i += 50) {
+            await DB.batch(stmts.slice(i, i + 50));
+          }
+        }
+      }
+    }
+  } catch {}
+
+  // ── 14. 공동구매 달성 알림 (셀러 + 참여자) ──
+  try {
+    const { results: achievedGroups } = await DB.prepare(`
+      UPDATE products SET group_buy_status = 'achieved', updated_at = datetime('now')
+      WHERE category = 'meal_voucher'
+        AND group_buy_status = 'active'
+        AND group_buy_target > 0
+        AND group_buy_current >= group_buy_target
+      RETURNING id, name, seller_id
+    `).all<{ id: number; name: string; seller_id: number }>();
+
+    if (achievedGroups?.length) {
+      for (const g of achievedGroups) {
+        // 셀러 알림
+        await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link)
+          VALUES ('seller', ?, 'group_buy_achieved', ?, ?, '/seller/group-buy')`)
+          .bind(String(g.seller_id), '🎉 공동구매 목표 달성!', g.name).run();
+      }
+      results.group_buy_achieved = achievedGroups.length;
+    }
+  } catch {}
+
   console.log('[Cron] Scheduled cleanup:', JSON.stringify(results));
   return results;
 }

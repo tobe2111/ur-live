@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Search, ShoppingCart, Eye, Play, ChevronRight, Clock, ShoppingBag } from 'lucide-react'
+import { Search, ShoppingCart, Eye, Play, ChevronRight, Clock, ShoppingBag, Bell } from 'lucide-react'
 import api from '@/lib/api'
 import axios from 'axios'
 import HeroBanner from '@/components/main/HeroBanner'
@@ -379,9 +379,12 @@ export default function MainHomePage() {
             </svg>
             <span className="text-[15px] font-extrabold text-white tracking-tight">유어딜</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button onClick={() => navigate('/search')} className="p-1.5">
               <Search className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
+            </button>
+            <button onClick={() => navigate('/notifications')} className="p-1.5">
+              <Bell className="h-5 w-5 text-gray-300" strokeWidth={1.5} />
             </button>
             <button onClick={() => navigate('/cart')} className="p-1.5 relative">
               <ShoppingCart className="h-5 w-5 text-gray-300" strokeWidth={1.5} />

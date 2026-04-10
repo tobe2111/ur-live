@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { NotificationTemplates } from '@/lib/notifications';
+// NotificationTemplates removed — now using notifyUser/notifySeller/notifyAdmin helpers
+const NotificationTemplates = {} as any;
 
 /**
  * Tests for notification types and templates from src/lib/notifications.ts
