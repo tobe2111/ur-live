@@ -162,9 +162,12 @@ groupBuyRoutes.post('/join/:id', requireAuth(), async (c) => {
         return c.json({ success: false, error: `딜이 부족합니다 (보유: ${wallet?.balance ?? 0}딜)`, code: 'INSUFFICIENT_POINTS' }, 400)
       }
 
-      // 딜 차감
-      await DB.prepare('UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?')
-        .bind(totalAmount, userId).run()
+      // 딜 차감 (atomic: balance >= totalAmount 조건으로 race condition 방지)
+      const deductResult = await DB.prepare('UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?')
+        .bind(totalAmount, userId, totalAmount).run()
+      if (!deductResult.meta.changes) {
+        return c.json({ success: false, error: '딜이 부족합니다 (동시 결제 충돌)', code: 'INSUFFICIENT_POINTS' }, 400)
+      }
 
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)

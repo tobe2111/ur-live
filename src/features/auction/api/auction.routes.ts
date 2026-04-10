@@ -115,8 +115,14 @@ auctionRoutes.post('/:id/bid', requireAuth(), async (c) => {
   await DB.prepare('INSERT INTO auction_bids (auction_id, user_id, user_name, amount) VALUES (?, ?, ?, ?)')
     .bind(auctionId, user.id, user.name || '익명', amount).run();
 
-  await DB.prepare('UPDATE live_auctions SET current_price = ?, bid_count = bid_count + 1, winner_user_id = ?, winner_name = ? WHERE id = ?')
-    .bind(amount, user.id, user.name || '익명', auctionId).run();
+  // conditional update: current_price < amount 일 때만 갱신 (동시 입찰 race condition 방지)
+  const updateResult = await DB.prepare(
+    'UPDATE live_auctions SET current_price = ?, bid_count = bid_count + 1, winner_user_id = ?, winner_name = ? WHERE id = ? AND current_price < ?'
+  ).bind(amount, user.id, user.name || '익명', auctionId, amount).run();
+
+  if (!updateResult.meta.changes) {
+    return c.json({ success: false, error: '다른 입찰자가 더 높은 금액을 입찰했습니다. 다시 시도해주세요.' }, 409);
+  }
 
   return c.json({ success: true, data: { current_price: amount, bid_count: auction.bid_count + 1 } });
 });
