@@ -140,7 +140,8 @@ export default function SellerInventoryPage() {
       ])
 
       if (prodRes.data.success) {
-        setProducts(prodRes.data.data?.products || prodRes.data.data || [])
+        const all = prodRes.data.data?.products || prodRes.data.data || []
+        setProducts(all.filter((p: any) => !p.is_supply_product))
       }
       if (alertRes.data.success) {
         setAlerts(alertRes.data.data || [])

@@ -129,19 +129,27 @@ export default function SellerPublicPage() {
   useEffect(() => {
     if (!sellerId) return
     setLoading(true)
-    Promise.all([
-      api.get(`/api/sellers/${sellerId}/public`).catch(() => ({ data: { data: null } })),
-      api.get(`/api/products?seller_id=${sellerId}&limit=20`).catch(() => ({ data: { data: [] } })),
-      api.get(`/api/streams?seller_id=${sellerId}&limit=20`).catch(() => ({ data: { data: [] } })),
-      api.get(`/api/shorts/feed?limit=20`).catch(() => ({ data: { data: [] } })),
-    ]).then(([sellerRes, productsRes, streamsRes, shortsRes]) => {
-      setSeller(sellerRes.data.data)
-      setProducts(productsRes.data.data || [])
-      setStreams(streamsRes.data.data || [])
-      // 셀러의 쇼츠만 필터 (seller_id 매칭)
-      const allShorts = shortsRes.data.data || []
-      setShorts(allShorts.filter((s: any) => String(s.seller_id) === sellerId))
-    }).finally(() => setLoading(false))
+
+    // 먼저 셀러 정보 조회 (username/slug 지원)
+    api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
+      const sellerData = sellerRes.data.data
+      if (!sellerData) { setSeller(null); setLoading(false); return }
+      setSeller(sellerData)
+
+      // 셀러 ID로 나머지 데이터 조회
+      const numericId = sellerData.id
+      return Promise.all([
+        api.get(`/api/products?seller_id=${numericId}&limit=20`).catch(() => ({ data: { data: [] } })),
+        api.get(`/api/streams?seller_id=${numericId}&limit=20`).catch(() => ({ data: { data: [] } })),
+        api.get(`/api/shorts/feed?limit=20`).catch(() => ({ data: { data: [] } })),
+      ]).then(([productsRes, streamsRes, shortsRes]) => {
+        setProducts(productsRes.data.data || [])
+        setStreams(streamsRes.data.data || [])
+        const allShorts = shortsRes.data.data || []
+        setShorts(allShorts.filter((s: any) => String(s.seller_id) === String(numericId)))
+      })
+    }).catch(() => { setSeller(null) })
+      .finally(() => setLoading(false))
   }, [sellerId])
 
   if (loading) return (

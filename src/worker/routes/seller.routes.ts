@@ -83,17 +83,17 @@ sellersRouter.get('/:id', async (c) => {
   }
 });
 
-// GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증)
+// GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증, ID/username/slug 지원)
 sellersRouter.get('/:id/public', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
-    const sellerId = c.req.param('id');
+    const param = c.req.param('id');
 
-    // 프로덕션 DB 호환: SELECT * 사용 (컬럼 존재 여부 무관)
-    const seller = await qb.queryOne(
-      `SELECT * FROM sellers WHERE id = ?`,
-      [sellerId]
-    );
+    // 숫자면 ID, 아니면 slug 또는 username으로 조회
+    const isNumeric = /^\d+$/.test(param);
+    const seller = isNumeric
+      ? await qb.queryOne('SELECT * FROM sellers WHERE id = ?', [param])
+      : await qb.queryOne('SELECT * FROM sellers WHERE slug = ? OR username = ?', [param, param]);
 
     if (!seller) {
       return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);

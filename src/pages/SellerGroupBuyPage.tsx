@@ -44,11 +44,11 @@ export default function SellerGroupBuyPage() {
   }
 
   if (loading) {
-    return <SellerLayout title="공동구매 관리"><div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" /></div></SellerLayout>
+    return <SellerLayout title="식사권 · 공동구매"><div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" /></div></SellerLayout>
   }
 
   return (
-    <SellerLayout title="공동구매 관리">
+    <SellerLayout title="식사권 · 공동구매">
       <div className="max-w-3xl mx-auto space-y-5">
 
         {/* 요약 카드 */}
@@ -71,7 +71,7 @@ export default function SellerGroupBuyPage() {
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-900 font-bold mb-1">등록된 식사권이 없습니다</p>
             <p className="text-sm text-gray-500 mb-4">식사권 상품을 등록하고 공동구매를 시작하세요</p>
-            <button onClick={() => navigate('/seller/products/new')} className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold">식사권 등록하기</button>
+            <button onClick={() => navigate('/seller/meal-voucher/new')} className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold">식사권 등록하기</button>
           </div>
         ) : (
           <div className="space-y-3">

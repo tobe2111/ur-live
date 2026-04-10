@@ -986,7 +986,8 @@
     "stockHistoryOut": "Salida",
     "stockHistoryAdjust": "Ajuste",
     "stockHistoryReturn": "Devolucion",
-    "groupBuy": "Compra Grupal"
+    "groupBuy": "Compra Grupal",
+    "mealVoucher": "Voucher de Comida"
   },
   "nav": {
     "home": "Inicio",

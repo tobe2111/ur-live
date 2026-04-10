@@ -143,6 +143,50 @@ function LiveCard({ stream, onClick }: { stream: LiveStream; onClick: () => void
   )
 }
 
+// ── 날짜 헬퍼 ──
+function getDayLabel(date: Date): string {
+  const today = new Date()
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+
+  if (date.toDateString() === today.toDateString()) return `오늘 (${dayNames[date.getDay()]})`
+  if (date.toDateString() === tomorrow.toDateString()) return `내일 (${dayNames[date.getDay()]})`
+  return `${date.getMonth() + 1}/${date.getDate()} (${dayNames[date.getDay()]})`
+}
+
+// ── 날짜 탭 바 컴포넌트 ──
+function ScheduleDateTabs({ selectedDate, onSelect }: { selectedDate: Date | null; onSelect: (d: Date | null) => void }) {
+  const today = new Date()
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today); d.setDate(today.getDate() + i); return d
+  })
+  const dayLabels = ['오늘', '내일', '모레', '월', '화', '수', '목', '금', '토', '일']
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+
+  return (
+    <div className="flex gap-1 px-4 overflow-x-auto no-scrollbar">
+      {days.map((d, i) => {
+        const isSelected = selectedDate ? d.toDateString() === selectedDate.toDateString() : i === 0
+        const label = i === 0 ? '오늘' : i === 1 ? '내일' : i === 2 ? '모레' : dayNames[d.getDay()]
+        return (
+          <button
+            key={i}
+            onClick={() => onSelect(i === 0 && (!selectedDate || selectedDate.toDateString() === d.toDateString()) ? null : d)}
+            className={`flex flex-col items-center shrink-0 px-3 py-2 rounded-xl transition-all ${
+              isSelected
+                ? 'bg-red-500 text-white'
+                : 'text-gray-500'
+            }`}
+          >
+            <span className="text-[10px] font-medium">{label}</span>
+            <span className={`text-[16px] font-bold ${isSelected ? 'text-white' : 'text-gray-300'}`}>{d.getDate()}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── 맛집 공동구매 섹션 (지역 필터 포함) ──
 function GroupBuySection() {
   const navigate = useNavigate()
@@ -289,6 +333,7 @@ export default function MainHomePage() {
 
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
   const [scheduledStreams, setScheduledStreams] = useState<LiveStream[]>([])
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date | null>(null)
   const [endedStreams, setEndedStreams] = useState<LiveStream[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -402,46 +447,102 @@ export default function MainHomePage() {
         </div>
       </section>
 
-      {/* ── Scheduled Streams ── */}
+      {/* ── 라이브 예고 (그립 스타일) ── */}
       {scheduledStreams.length > 0 && (
-        <section className="px-4 pb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-blue-500" />
-              방송 예고
-            </h2>
+        <section className="pb-4">
+          <div className="flex items-center justify-between px-4 mb-3">
+            <h2 className="text-[15px] font-bold text-white">라이브 예고</h2>
             <button onClick={() => navigate('/live')} className="text-[12px] text-gray-500 flex items-center">
               더보기 <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {scheduledStreams.map(stream => (
-              <button
-                key={stream.id}
-                onClick={() => navigate(`/live/${stream.id}`)}
-                className="flex-shrink-0 w-[200px] bg-[#0A0A0A] rounded-xl p-3 text-left active:scale-[0.98] transition-transform"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-blue-600">{stream.seller_name?.charAt(0) || '?'}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-white truncate">{stream.seller_name || '셀러'}</p>
-                    {stream.scheduled_at && (
-                      <p className="text-[10px] text-blue-500 font-medium">
-                        {new Date(stream.scheduled_at).toLocaleString('ko-KR', {
-                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                        })}
-                      </p>
+
+          {/* 날짜 탭 바 */}
+          <ScheduleDateTabs
+            selectedDate={selectedScheduleDate}
+            onSelect={setSelectedScheduleDate}
+          />
+
+          {/* 예고 카드 가로 스크롤 */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1 mt-3">
+            {scheduledStreams
+              .filter(s => {
+                if (!selectedScheduleDate || !s.scheduled_at) return true
+                const streamDate = new Date(s.scheduled_at).toDateString()
+                return streamDate === selectedScheduleDate.toDateString()
+              })
+              .map(stream => {
+                const schedDate = stream.scheduled_at ? new Date(stream.scheduled_at) : null
+                const dayLabel = schedDate ? getDayLabel(schedDate) : ''
+                const timeLabel = schedDate ? schedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
+                const thumb = stream.youtube_video_id
+                  ? `https://img.youtube.com/vi/${stream.youtube_video_id}/hqdefault.jpg`
+                  : stream.thumbnail_url || stream.image_url || null
+
+                return (
+                  <button
+                    key={stream.id}
+                    onClick={() => navigate(`/live/${stream.id}`)}
+                    className="flex-shrink-0 w-[220px] bg-[#121212] rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform border border-[#1A1A1A]"
+                  >
+                    {/* 썸네일 */}
+                    <div className="relative aspect-[3/4] bg-[#0A0A0A]">
+                      {thumb ? (
+                        <img src={thumb} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-900/30 to-purple-900/30">
+                          <Play className="w-10 h-10 text-gray-600" />
+                        </div>
+                      )}
+
+                      {/* 셀러명 오버레이 */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                          <span className="text-[9px] font-bold text-white">{stream.seller_name?.charAt(0) || '?'}</span>
+                        </div>
+                        <span className="text-[11px] font-bold text-white drop-shadow-lg">{stream.seller_name || '셀러'}</span>
+                      </div>
+
+                      {/* 날짜/시간 오버레이 */}
+                      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-16 pb-3 px-3">
+                        <p className="text-[12px] text-white/80 font-medium">{dayLabel}</p>
+                        <p className="text-[22px] font-black text-white leading-tight">{timeLabel}</p>
+                      </div>
+                    </div>
+
+                    {/* 상품 정보 */}
+                    {stream.current_product && (
+                      <div className="px-3 py-2 flex items-center gap-2 border-t border-[#1A1A1A]">
+                        <div className="w-10 h-10 rounded-lg bg-[#1A1A1A] overflow-hidden shrink-0">
+                          {/* 상품 이미지 대체 */}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-gray-400 truncate">{stream.current_product.name}</p>
+                          <p className="text-[11px] font-bold text-white">{stream.current_product.price?.toLocaleString()}원</p>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </div>
-                <p className="text-[11px] text-gray-500 truncate">{stream.title}</p>
-                <div className="mt-2">
-                  <BroadcastNotifyButton streamId={stream.id} compact />
-                </div>
-              </button>
-            ))}
+
+                    {/* 제목 */}
+                    <div className="px-3 py-2">
+                      <p className="text-[11px] text-gray-400 line-clamp-2 leading-relaxed">{stream.title}</p>
+                    </div>
+
+                    {/* 방송 알림 받기 버튼 */}
+                    <div className="px-3 pb-3">
+                      <BroadcastNotifyButton streamId={stream.id} compact={false} />
+                    </div>
+                  </button>
+                )
+              })}
+            {scheduledStreams.filter(s => {
+              if (!selectedScheduleDate || !s.scheduled_at) return true
+              return new Date(s.scheduled_at).toDateString() === selectedScheduleDate.toDateString()
+            }).length === 0 && (
+              <div className="w-full text-center py-8">
+                <p className="text-xs text-gray-600">이 날짜에 예정된 방송이 없습니다</p>
+              </div>
+            )}
           </div>
         </section>
       )}

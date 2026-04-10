@@ -27,7 +27,7 @@ const NAV_GROUPS = [
     label: '판매',
     items: [
       { path: '/seller/products', labelKey: 'seller.products', icon: Package },
-      { path: '/seller/group-buy', labelKey: 'seller.groupBuy', icon: Ticket },
+      { path: '/seller/group-buy', labelKey: 'seller.mealVoucher', icon: Ticket },
       { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag },
       { path: '/seller/inventory', labelKey: 'seller.inventory', icon: BarChart3 },
     ],
