@@ -2136,8 +2136,8 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
       options?: string[];
     }>();
 
-    if (!product_id || !count || count < 1 || count > 500) {
-      return c.json({ success: false, error: '상품 ID와 개수(1-500)가 필요합니다' }, 400);
+    if (!product_id || !count || count < 1 || count > 20000) {
+      return c.json({ success: false, error: '상품 ID와 개수(1-20000)가 필요합니다' }, 400);
     }
 
     // reviews 테이블 ensure
@@ -2160,26 +2160,31 @@ adminManagementRoutes.post('/reviews/generate', cors(), async (c) => {
     let generated = 0;
     const targetRating = avg_rating || 4.5;
     const now = Date.now();
+    const BATCH_SIZE = 50; // D1 batch 최대 크기
 
-    for (let i = 0; i < count; i++) {
-      // 평균 평점에 맞게 분포 생성 (±0.5 범위)
-      const rating = Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))));
-      const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
-      const maskedName = name[0] + '*' + name[name.length - 1];
-      const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
-      const option = options && options.length > 0 ? options[Math.floor(Math.random() * options.length)] : null;
+    for (let batchStart = 0; batchStart < count; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, count);
+      const stmts = [];
 
-      // 날짜 랜덤 (최근 90일 이내)
-      const daysAgo = Math.floor(Math.random() * 90);
-      const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+      for (let i = batchStart; i < batchEnd; i++) {
+        const rating = Math.min(5, Math.max(1, Math.round(targetRating + (Math.random() - 0.5))));
+        const name = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const maskedName = name[0] + '*' + name[name.length - 1];
+        const content = REVIEW_TEMPLATES[Math.floor(Math.random() * REVIEW_TEMPLATES.length)] || null;
+        const option = options && options.length > 0 ? options[Math.floor(Math.random() * options.length)] : null;
+        const daysAgo = Math.floor(Math.random() * 90);
+        const reviewDate = new Date(now - daysAgo * 86400000).toISOString();
+
+        stmts.push(
+          DB.prepare(`INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)`)
+            .bind(product_id, maskedName, rating, content, option, reviewDate)
+        );
+      }
 
       try {
-        await DB.prepare(`
-          INSERT INTO product_reviews (product_id, user_name, rating, content, selected_option, is_generated, created_at)
-          VALUES (?, ?, ?, ?, ?, 1, ?)
-        `).bind(product_id, maskedName, rating, content, option, reviewDate).run();
-        generated++;
-      } catch { /* skip */ }
+        await DB.batch(stmts);
+        generated += stmts.length;
+      } catch { /* partial batch fail */ }
     }
 
     return c.json({ success: true, data: { generated }, message: `${generated}개 리뷰가 생성되었습니다` });
