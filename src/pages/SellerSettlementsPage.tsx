@@ -214,6 +214,14 @@ export default function SellerSettlementsPage() {
   return (
     <SellerLayout title={t('seller.revenue')} headerRight={headerRight}>
       <div className="max-w-7xl mx-auto">
+        {/* 정산 안내 */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-700">
+          <p className="font-bold mb-1">📋 정산 안내</p>
+          <p>• 정산 주기: <strong>매주 정산</strong> (월~일 매출 → 다음 주 정산)</p>
+          <p>• 구매 확정된 주문만 정산 대상입니다</p>
+          <p>• 플랫폼 수수료 15% 차감 후 정산됩니다</p>
+        </div>
+
         {/* Statistics Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
