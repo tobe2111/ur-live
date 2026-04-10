@@ -51,9 +51,11 @@ export class OrderRepository {
     //   - nullable 스키마 (0128 migration): null 전달 OK
     // 안전 전략: seller_id가 있으면 포함, 없으면 INSERT 컬럼 자체를 제외
     const hasSellerId = !!request.seller_id;
+    const hasStreamId = !!(request as any).live_stream_id;
     const columns = [
       'order_number', 'user_id',
       ...(hasSellerId ? ['seller_id'] : []),
+      ...(hasStreamId ? ['live_stream_id'] : []),
       'subtotal', 'shipping_fee', 'discount_amount', 'total_amount', 'currency',
       'status', 'shipping_name', 'shipping_phone', 'shipping_address', 'shipping_memo',
       'idempotency_key', 'locale',
@@ -64,6 +66,7 @@ export class OrderRepository {
       request.order_number,
       userId,
       ...(hasSellerId ? [request.seller_id] : []),
+      ...(hasStreamId ? [(request as any).live_stream_id] : []),
       subtotal,
       shippingFee,
       0,          // discount_amount

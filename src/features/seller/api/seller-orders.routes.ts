@@ -673,3 +673,30 @@ sellerOrdersRoutes.post('/products/:id/link-to-stream', async (c) => {
     return c.json({ success: false, error: (error as Error).message || 'Failed to link product' }, 500);
   }
 });
+
+// ─── PUT /api/seller/products/:id/pin — 바우처 인증 PIN 설정 ──────────────
+sellerOrdersRoutes.put('/products/:id/pin', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: '로그인 필요' }, 401);
+
+    const db = c.env.DB;
+    const productId = c.req.param('id');
+    const { pin } = await c.req.json<{ pin: string }>();
+
+    if (!pin || pin.length < 4) return c.json({ success: false, error: 'PIN은 4자리 이상이어야 합니다' }, 400);
+
+    // 소유권 확인
+    const product = await db.prepare('SELECT id FROM products WHERE id = ? AND seller_id = ?').bind(productId, sellerId).first();
+    if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
+
+    // store_verify_pin 컬럼 존재 보장
+    try { await db.prepare("ALTER TABLE products ADD COLUMN store_verify_pin TEXT").run() } catch {}
+
+    await db.prepare("UPDATE products SET store_verify_pin = ?, updated_at = datetime('now') WHERE id = ?").bind(pin, productId).run();
+
+    return c.json({ success: true, message: `PIN이 설정되었습니다: ${pin}` });
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500);
+  }
+});
