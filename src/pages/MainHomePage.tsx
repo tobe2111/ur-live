@@ -467,7 +467,7 @@ export default function MainHomePage() {
           />
 
           {/* 예고 카드 가로 스크롤 */}
-          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1 mt-3">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1 mt-3" style={{ WebkitOverflowScrolling: 'touch' }}>
             {scheduledStreams
               .filter(s => {
                 if (!selectedScheduleDate || !s.scheduled_at) return true
@@ -533,7 +533,7 @@ export default function MainHomePage() {
 
                     {/* 방송 알림 받기 버튼 */}
                     <div className="px-3 pb-3">
-                      <BroadcastNotifyButton streamId={stream.id} compact={false} />
+                      <BroadcastNotifyButton streamId={stream.id} compact />
                     </div>
                   </button>
                 )
