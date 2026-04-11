@@ -122,9 +122,9 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${row.kakao_access_token}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({ event }),
+      body: `event=${encodeURIComponent(JSON.stringify(event))}`,
     });
 
     const data: any = await res.json();
@@ -286,18 +286,17 @@ kakaoSocialRoutes.post('/test/calendar', async (c) => {
     const end = new Date(start.getTime() + 3600000);
 
     // 1. 일정 생성
+    const event = {
+      title: '🔴 유어딜 라이브 테스트',
+      time: { start_at: start.toISOString(), end_at: end.toISOString(), time_zone: 'Asia/Seoul' },
+      description: '카카오 캘린더 API 테스트',
+      reminders: [30],
+      color: 'RED',
+    };
     const createRes = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event: {
-          title: '🔴 유어딜 라이브 테스트',
-          time: { start_at: start.toISOString(), end_at: end.toISOString(), time_zone: 'Asia/Seoul' },
-          description: '카카오 캘린더 API 테스트',
-          reminders: [30],
-          color: 'RED',
-        },
-      }),
+      headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `event=${encodeURIComponent(JSON.stringify(event))}`,
     });
     const createData: any = await createRes.json();
 
