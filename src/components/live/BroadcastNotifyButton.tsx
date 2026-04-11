@@ -118,21 +118,20 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
         </p>
       )}
 
-      {/* 캘린더 추가 (항상 표시) */}
-      <div className="flex gap-1.5 mt-2">
-        {/* Google Calendar */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            // Google Calendar URL 생성
-            const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('🔴 유어딜 라이브')}&details=${encodeURIComponent(`https://live.ur-team.com/live/${streamId}`)}&sf=true`
-            window.open(calUrl, '_blank')
-          }}
-          className="flex-1 flex items-center justify-center gap-1 py-2 bg-white/10 border border-gray-700 text-gray-300 rounded-lg text-[10px] font-bold active:scale-95"
-        >
-          📅 캘린더 추가
-        </button>
-      </div>
+      {/* 카카오 캘린더 추가 */}
+      <button
+        onClick={async (e) => {
+          e.stopPropagation()
+          try {
+            const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
+            if (res.data.success) toast.success('카카오 캘린더에 등록됨!')
+            else toast.error(res.data.error || '캘린더 등록 실패')
+          } catch { toast.error('카카오 로그인이 필요합니다') }
+        }}
+        className="w-full flex items-center justify-center gap-1 py-2 mt-2 bg-[#FEE500]/20 text-[#FEE500] border border-[#FEE500]/30 rounded-lg text-[10px] font-bold active:scale-95"
+      >
+        📅 카카오 캘린더에 추가
+      </button>
     </div>
   )
 }
