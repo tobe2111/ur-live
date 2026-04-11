@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Calendar, CheckCircle, XCircle, Loader2, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
-// 테스트앱 키 (본앱과 별도)
+// 테스트앱 키
 const TEST_REST_API_KEY = '594661da7d2be9005172fb9a252f8ca4'
 const TEST_REDIRECT_URI = 'https://live.ur-team.com/admin/kakao-test/callback'
 
@@ -155,17 +155,52 @@ export default function AdminKakaoTestPage() {
           <p className="text-xs text-gray-500 mb-3">테스트앱 키로 로그인하여 메시지/캘린더 동의를 받습니다.</p>
 
           {accessToken ? (
-            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-3 rounded-lg">
-              <CheckCircle className="w-4 h-4" />
-              <span>토큰 확보됨: {accessToken.slice(0, 20)}...</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-3 rounded-lg">
+                <CheckCircle className="w-4 h-4" />
+                <span>토큰 확보됨: {accessToken.slice(0, 20)}...</span>
+              </div>
+              <button onClick={() => { setAccessToken(''); localStorage.removeItem('kakao_test_token') }}
+                className="text-xs text-gray-500 underline">토큰 초기화</button>
             </div>
           ) : (
-            <button
-              onClick={startKakaoLogin}
-              className="w-full py-3 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm active:scale-[0.97]"
-            >
-              카카오 로그인 (테스트앱)
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={startKakaoLogin}
+                className="w-full py-3 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm active:scale-[0.97]"
+              >
+                카카오 로그인 (테스트앱)
+              </button>
+
+              <div className="relative">
+                <div className="absolute inset-x-0 top-1/2 border-t border-gray-200" />
+                <p className="relative bg-white px-3 text-xs text-gray-400 text-center w-fit mx-auto">또는</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">카카오 개발자 콘솔 → 도구 → REST API 테스트에서 발급받은 토큰 입력:</p>
+                <div className="flex gap-2">
+                  <input
+                    id="manual-token"
+                    placeholder="access_token 붙여넣기"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900"
+                  />
+                  <button
+                    onClick={() => {
+                      const val = (document.getElementById('manual-token') as HTMLInputElement)?.value?.trim()
+                      if (val) { setAccessToken(val); localStorage.setItem('kakao_test_token', val); toast.success('토큰 설정 완료!') }
+                    }}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0"
+                  >
+                    설정
+                  </button>
+                </div>
+                <a href="https://developers.kakao.com/tool/rest-api/open/get/v2-user-me" target="_blank" rel="noopener"
+                  className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600">
+                  카카오 REST API 테스트 도구 열기 <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
           )}
         </div>
 
