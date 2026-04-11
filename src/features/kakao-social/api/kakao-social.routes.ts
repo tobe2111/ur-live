@@ -245,4 +245,76 @@ kakaoSocialRoutes.post('/message/send-to-subscribers', async (c) => {
   return c.json({ success: true, data: { sent } });
 });
 
+// ── POST /test/message — 테스트용 카카오 메시지 발송 (서버 경유) ──
+kakaoSocialRoutes.post('/test/message', async (c) => {
+  const { access_token } = await c.req.json<{ access_token: string }>();
+  if (!access_token) return c.json({ success: false, error: '토큰이 필요합니다' }, 400);
+
+  try {
+    const templateObject = JSON.stringify({
+      object_type: 'feed',
+      content: {
+        title: '🔴 유어딜 라이브 시작!',
+        description: '테스트 메시지입니다. 카카오 메시지 API 연동 확인용.',
+        image_url: 'https://live.ur-team.com/og-image.png',
+        link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
+      },
+      buttons: [{ title: '유어딜 바로가기', link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' } }],
+    });
+
+    const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `template_object=${encodeURIComponent(templateObject)}`,
+    });
+    const data: any = await res.json();
+
+    if (data.result_code === 0) return c.json({ success: true });
+    return c.json({ success: false, error: data.msg || JSON.stringify(data) });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+// ── POST /test/calendar — 테스트용 카카오 캘린더 (서버 경유) ──
+kakaoSocialRoutes.post('/test/calendar', async (c) => {
+  const { access_token } = await c.req.json<{ access_token: string }>();
+  if (!access_token) return c.json({ success: false, error: '토큰이 필요합니다' }, 400);
+
+  try {
+    const start = new Date(Date.now() + 3600000);
+    const end = new Date(start.getTime() + 3600000);
+
+    // 1. 일정 생성
+    const createRes = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: {
+          title: '🔴 유어딜 라이브 테스트',
+          time: { start_at: start.toISOString(), end_at: end.toISOString(), time_zone: 'Asia/Seoul' },
+          description: '카카오 캘린더 API 테스트',
+          reminders: [30],
+          color: 'RED',
+        },
+      }),
+    });
+    const createData: any = await createRes.json();
+
+    if (!createData.event_id) {
+      return c.json({ success: false, error: createData.msg || JSON.stringify(createData) });
+    }
+
+    // 2. 일정 삭제 (정리)
+    await fetch(`https://kapi.kakao.com/v2/api/calendar/delete/event?event_id=${createData.event_id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+
+    return c.json({ success: true, detail: `일정 생성 성공 (event_id: ${createData.event_id}) → 삭제 완료` });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
 export { kakaoSocialRoutes };

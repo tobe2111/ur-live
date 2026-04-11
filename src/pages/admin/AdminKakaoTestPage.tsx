@@ -22,44 +22,24 @@ export default function AdminKakaoTestPage() {
     window.location.href = url
   }
 
-  // Step 2: 카카오 메시지 테스트 (나에게 보내기)
+  // Step 2: 카카오 메시지 테스트 (나에게 보내기) — 서버 경유
   async function testMessage() {
-    if (!accessToken) { toast.error('먼저 카카오 로그인을 해주세요'); return }
+    if (!accessToken) { toast.error('먼저 토큰을 입력해주세요'); return }
     setLoading(true)
     try {
-      const templateObject = JSON.stringify({
-        object_type: 'feed',
-        content: {
-          title: '🔴 유어딜 라이브 시작!',
-          description: '테스트 메시지입니다. 카카오 메시지 API 연동 확인용.',
-          image_url: 'https://live.ur-team.com/og-image.png',
-          link: {
-            web_url: 'https://live.ur-team.com',
-            mobile_web_url: 'https://live.ur-team.com',
-          },
-        },
-        buttons: [{
-          title: '유어딜 바로가기',
-          link: { web_url: 'https://live.ur-team.com', mobile_web_url: 'https://live.ur-team.com' },
-        }],
-      })
-
-      const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+      const res = await fetch('/api/kakao-social/test/message', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `template_object=${encodeURIComponent(templateObject)}`,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken }),
       })
       const data: any = await res.json()
 
-      if (data.result_code === 0) {
+      if (data.success) {
         setResults(prev => [...prev, { step: '카카오톡 메시지', success: true, detail: '나에게 메시지 발송 성공!' }])
         toast.success('카카오톡 메시지 발송 성공!')
       } else {
-        setResults(prev => [...prev, { step: '카카오톡 메시지', success: false, detail: JSON.stringify(data) }])
-        toast.error(`실패: ${data.msg || JSON.stringify(data)}`)
+        setResults(prev => [...prev, { step: '카카오톡 메시지', success: false, detail: data.error || JSON.stringify(data) }])
+        toast.error(`실패: ${data.error}`)
       }
     } catch (err: any) {
       setResults(prev => [...prev, { step: '카카오톡 메시지', success: false, detail: err.message }])
@@ -67,57 +47,24 @@ export default function AdminKakaoTestPage() {
     } finally { setLoading(false) }
   }
 
-  // Step 3: 카카오 캘린더 테스트
+  // Step 3: 카카오 캘린더 테스트 — 서버 경유
   async function testCalendar() {
-    if (!accessToken) { toast.error('먼저 카카오 로그인을 해주세요'); return }
+    if (!accessToken) { toast.error('먼저 토큰을 입력해주세요'); return }
     setLoading(true)
     try {
-      // 1시간 후 일정 생성
-      const start = new Date(Date.now() + 3600000)
-      const end = new Date(start.getTime() + 3600000)
-
-      const event = {
-        title: '🔴 유어딜 라이브 테스트',
-        time: {
-          start_at: start.toISOString().replace('.000Z', 'Z'),
-          end_at: end.toISOString().replace('.000Z', 'Z'),
-          time_zone: 'Asia/Seoul',
-        },
-        description: '카카오 캘린더 API 테스트 일정입니다.',
-        reminders: [30],
-        color: 'RED',
-      }
-
-      const res = await fetch('https://kapi.kakao.com/v2/api/calendar/create/event', {
+      const res = await fetch('/api/kakao-social/test/calendar', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ event }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken }),
       })
       const data: any = await res.json()
 
-      if (data.event_id) {
-        setResults(prev => [...prev, { step: '카카오 캘린더', success: true, detail: `일정 생성 성공! event_id: ${data.event_id}` }])
-        toast.success('캘린더 일정 생성 성공!')
-
-        // 조회 테스트
-        const listRes = await fetch(`https://kapi.kakao.com/v2/api/calendar/events?from=${start.toISOString().split('T')[0]}&to=${end.toISOString().split('T')[0]}`, {
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        })
-        const listData: any = await listRes.json()
-        setResults(prev => [...prev, { step: '캘린더 조회', success: true, detail: `일정 ${listData.events?.length || 0}개 조회` }])
-
-        // 삭제 테스트 (정리)
-        await fetch(`https://kapi.kakao.com/v2/api/calendar/delete/event?event_id=${data.event_id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${accessToken}` },
-        })
-        setResults(prev => [...prev, { step: '캘린더 삭제', success: true, detail: '테스트 일정 삭제 완료' }])
+      if (data.success) {
+        setResults(prev => [...prev, { step: '카카오 캘린더', success: true, detail: data.detail || '일정 생성/조회/삭제 성공!' }])
+        toast.success('캘린더 테스트 성공!')
       } else {
-        setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: JSON.stringify(data) }])
-        toast.error(`실패: ${data.msg || JSON.stringify(data)}`)
+        setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: data.error || JSON.stringify(data) }])
+        toast.error(`실패: ${data.error}`)
       }
     } catch (err: any) {
       setResults(prev => [...prev, { step: '카카오 캘린더', success: false, detail: err.message }])
