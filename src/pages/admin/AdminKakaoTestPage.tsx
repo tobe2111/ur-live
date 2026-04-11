@@ -13,11 +13,12 @@ export default function AdminKakaoTestPage() {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<{ step: string; success: boolean; detail: string }[]>([])
 
-  // Step 1: 카카오 로그인 (테스트앱 키 + 메시지/캘린더 scope)
+  // Step 1: 카카오 로그인 (테스트앱 키 + 메시지 scope)
+  // talk_calendar는 "이용 중 동의"이므로 scope에서 제외 (자동 포함됨)
   function startKakaoLogin() {
     const state = encodeURIComponent(window.location.pathname)
-    const scope = 'talk_message,talk_calendar,talk_calendar_task'
-    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${TEST_REST_API_KEY}&redirect_uri=${encodeURIComponent(TEST_REDIRECT_URI)}&response_type=code&state=${state}&scope=${scope}`
+    // scope 없이 먼저 시도 (동의항목이 이미 설정되어 있으므로)
+    const url = `https://kauth.kakao.com/oauth/authorize?client_id=${TEST_REST_API_KEY}&redirect_uri=${encodeURIComponent(TEST_REDIRECT_URI)}&response_type=code&state=${state}`
     window.location.href = url
   }
 
