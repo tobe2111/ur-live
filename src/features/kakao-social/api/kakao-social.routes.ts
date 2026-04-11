@@ -104,6 +104,7 @@ kakaoSocialRoutes.post('/calendar/add', requireAuth(), async (c) => {
 
   try {
     const startAt = new Date(stream.scheduled_at);
+    startAt.setMinutes(Math.ceil(startAt.getMinutes() / 5) * 5, 0, 0);
     const endAt = new Date(startAt.getTime() + 60 * 60 * 1000); // +1시간
 
     const event = {
@@ -283,6 +284,8 @@ kakaoSocialRoutes.post('/test/calendar', async (c) => {
 
   try {
     const start = new Date(Date.now() + 3600000);
+    // 카카오 캘린더는 5분 단위 필수
+    start.setMinutes(Math.ceil(start.getMinutes() / 5) * 5, 0, 0);
     const end = new Date(start.getTime() + 3600000);
 
     // 1. 일정 생성
