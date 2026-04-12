@@ -1,9 +1,53 @@
 /**
- * Notification Helper Functions
- * 소비자: user_notifications 테이블
- * 셀러/어드민: dashboard_notifications 테이블
+ * 유어딜 알림 시스템 — 역할별 분리
+ *
+ * ┌─────────────┬──────────────┬────────────┬────────────┐
+ * │ 채널         │ 발송 주체     │ 비용       │ 대상        │
+ * ├─────────────┼──────────────┼────────────┼────────────┤
+ * │ 인앱 알림    │ 시스템 자동   │ 무료       │ 모든 유저    │
+ * │ 카카오 메시지 │ 시스템 자동   │ 무료       │ 카카오 유저  │
+ * │ 알림톡(주문)  │ 시스템 자동   │ 플랫폼 부담 │ 전화번호 유저│
+ * │ 알림톡(마케팅)│ 셀러 수동    │ 셀러 크레딧 │ 셀러 선택   │
+ * │ 카카오 캘린더 │ 유저 직접    │ 무료       │ 유저 본인   │
+ * │ 대시보드 알림 │ 시스템 자동   │ 무료       │ 셀러/어드민  │
+ * └─────────────┴──────────────┴────────────┴────────────┘
+ *
+ * 트리거 목록:
+ *
+ * [시스템 → 소비자]
+ * - 주문 상태 변경 (확인/배송/완료/취소) → 인앱 + 알림톡(주문)
+ * - 방송 시작 → 인앱 + 카카오 메시지 (구독자)
+ * - 방송 30분 전 → 인앱 (구독자)
+ * - 팔로우 셀러 새 상품 → 인앱 (팔로워)
+ * - 팔로우 셀러 방송 예고 → 인앱 (팔로워)
+ * - 환불 완료 → 인앱
+ * - 쿠폰 만료 임박 → 인앱 (크론)
+ * - 공동구매 달성 → 인앱
+ *
+ * [시스템 → 셀러]
+ * - 새 주문 → 대시보드
+ * - 새 리뷰 → 대시보드
+ * - 구매 확정/정산 가능 → 대시보드
+ * - 새 팔로워 → 대시보드
+ * - 후원 수령 → 대시보드
+ * - 재고 품절 임박 → 대시보드 (크론)
+ * - 공동구매 달성 → 대시보드 (크론)
+ * - 반품 신청 → 대시보드
+ *
+ * [시스템 → 어드민]
+ * - 새 주문 → 대시보드
+ * - 정산 신청 → 대시보드
+ * - 반품 신청 → 대시보드
+ * - 후원 발생 → 대시보드
+ *
+ * [셀러 → 소비자]
+ * - 브랜드메시지 (알림톡) → 셀러가 크레딧으로 직접 발송
+ *
+ * [유저 → 본인]
+ * - 카카오 캘린더 추가 → 유저가 직접 클릭
  */
 
+// ─── 인앱 알림 (소비자) ───────────────────────────────────────────
 export async function notifyUser(DB: D1Database, userId: string, type: string, title: string, message?: string, link?: string) {
   try {
     await DB.prepare(`INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)`)
@@ -11,6 +55,7 @@ export async function notifyUser(DB: D1Database, userId: string, type: string, t
   } catch {}
 }
 
+// ─── 대시보드 알림 (셀러) ───────────────────────────────────────────
 export async function notifySeller(DB: D1Database, sellerId: string | number, type: string, title: string, message?: string, link?: string) {
   try {
     await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('seller', ?, ?, ?, ?, ?)`)
@@ -18,6 +63,7 @@ export async function notifySeller(DB: D1Database, sellerId: string | number, ty
   } catch {}
 }
 
+// ─── 대시보드 알림 (어드민) ───────────────────────────────────────────
 export async function notifyAdmin(DB: D1Database, type: string, title: string, message?: string, link?: string) {
   try {
     await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('admin', NULL, ?, ?, ?, ?)`)
@@ -25,7 +71,7 @@ export async function notifyAdmin(DB: D1Database, type: string, title: string, m
   } catch {}
 }
 
-// 팔로워들에게 알림 (셀러의 모든 팔로워)
+// ─── 팔로워 일괄 알림 (소비자, 인앱) ────────────────────────────────────
 export async function notifyFollowers(DB: D1Database, sellerId: number, type: string, title: string, message?: string, link?: string) {
   try {
     const { results } = await DB.prepare('SELECT user_id FROM seller_follows WHERE seller_id = ?').bind(sellerId).all<{ user_id: string }>();
@@ -40,3 +86,42 @@ export async function notifyFollowers(DB: D1Database, sellerId: number, type: st
   } catch {}
 }
 
+// ─── 카카오톡 메시지 (소비자, 구독자 대상, 시스템 자동) ─────────────────
+// 방송 시작 시 kakao_access_token 보유 구독자에게 무료 메시지 발송
+// ※ 본앱 talk_message 권한 승인 + IP 문제 해결 후 동작
+export async function sendKakaoMessageToSubscribers(DB: D1Database, streamId: number, title: string, sellerName: string) {
+  try {
+    const { results: subs } = await DB.prepare(`
+      SELECT bs.user_id, u.kakao_access_token
+      FROM broadcast_subscriptions bs
+      JOIN users u ON CAST(bs.user_id AS TEXT) = CAST(u.id AS TEXT)
+      WHERE bs.stream_id = ? AND u.kakao_access_token IS NOT NULL
+    `).bind(streamId).all<{ user_id: string; kakao_access_token: string }>();
+
+    if (!subs?.length) return 0;
+
+    let sent = 0;
+    for (const sub of subs) {
+      try {
+        const templateObject = JSON.stringify({
+          object_type: 'feed',
+          content: {
+            title: `🔴 ${sellerName} 라이브 시작!`,
+            description: title,
+            image_url: 'https://live.ur-team.com/og-image.png',
+            link: { web_url: `https://live.ur-team.com/live/${streamId}`, mobile_web_url: `https://live.ur-team.com/live/${streamId}` },
+          },
+          buttons: [{ title: '시청하기', link: { web_url: `https://live.ur-team.com/live/${streamId}`, mobile_web_url: `https://live.ur-team.com/live/${streamId}` } }],
+        });
+
+        await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${sub.kakao_access_token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `template_object=${encodeURIComponent(templateObject)}`,
+        });
+        sent++;
+      } catch {}
+    }
+    return sent;
+  } catch { return 0; }
+}

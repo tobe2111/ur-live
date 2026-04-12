@@ -335,21 +335,23 @@ sellerStreamsRoutes.put('/:id', async (c) => {
     // ── 방송 시작 시 구독자에게 알림 발송 ──
     if (body.status === 'live') {
       try {
-        // 인앱 알림 + 알림톡 발송 (비동기, 실패해도 방송 시작에 영향 없음)
+        // 1. 인앱 알림 + 알림톡 발송 (비동기)
         const notifyUrl = new URL(c.req.url);
         notifyUrl.pathname = `/api/broadcast-notify/send/${streamId}`;
         c.executionCtx?.waitUntil?.(
           fetch(notifyUrl.toString(), { method: 'POST' }).catch(() => {})
         );
-        // 카카오톡 메시지 발송 (구독자 중 카카오 토큰 보유자)
-        const kakaoMsgUrl = new URL(c.req.url);
-        kakaoMsgUrl.pathname = `/api/kakao-social/message/send-to-subscribers`;
+
+        // 2. 카카오톡 메시지 발송 (구독자 중 카카오 토큰 보유자, 무료)
         c.executionCtx?.waitUntil?.(
-          fetch(kakaoMsgUrl.toString(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ stream_id: Number(streamId) }),
-          }).catch(() => {})
+          (async () => {
+            try {
+              const { sendKakaoMessageToSubscribers } = await import('@/lib/notifications');
+              const stream = await db.prepare('SELECT title FROM live_streams WHERE id = ?').bind(streamId).first<{ title: string }>();
+              const seller = await db.prepare('SELECT name FROM sellers WHERE id = ?').bind(sellerId).first<{ name: string }>();
+              await sendKakaoMessageToSubscribers(db, Number(streamId), stream?.title || '', seller?.name || '셀러');
+            } catch {}
+          })()
         );
       } catch {}
     }
