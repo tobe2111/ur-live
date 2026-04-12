@@ -118,6 +118,8 @@ export default function SellerLiveBroadcastPage() {
   // Quick start state
   const [quickTitle, setQuickTitle] = useState('')
   const [quickCreating, setQuickCreating] = useState(false)
+  const [quickProducts, setQuickProducts] = useState<number[]>([])
+  const [showQuickProducts, setShowQuickProducts] = useState(false)
 
   // Multi-RTMP destinations state
   const [rtmpDestinations, setRtmpDestinations] = useState<RtmpDestination[]>([])
@@ -336,15 +338,21 @@ export default function SellerLiveBroadcastPage() {
       toast.error('방송 제목을 입력해주세요.')
       return
     }
+    if (quickProducts.length === 0) {
+      toast.error('최소 1개 이상의 상품을 선택해주세요.')
+      return
+    }
     try {
       setQuickCreating(true)
       const res = await api.post('/api/seller/youtube/live/quick-create', {
         title: quickTitle.trim(),
-        product_ids: products.slice(0, 5).map(p => p.id), // 최근 상품 5개 자동 선택
+        product_ids: quickProducts,
       })
       if (res.data?.success) {
         toast.success('방송이 생성되었습니다! OBS/프리즘에서 방송 시작을 누르세요.')
         setQuickTitle('')
+        setQuickProducts([])
+        setShowQuickProducts(false)
         await loadData()
       } else {
         toast.error(res.data?.error || '방송 생성에 실패했습니다.')
@@ -570,12 +578,21 @@ export default function SellerLiveBroadcastPage() {
                     onChange={e => setQuickTitle(e.target.value)}
                     placeholder="방송 제목 입력..."
                     className="flex-1 px-4 py-3 bg-white border border-green-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-green-400"
-                    onKeyDown={e => e.key === 'Enter' && quickCreateStream()}
                     maxLength={100}
                   />
+                  <button
+                    onClick={() => setShowQuickProducts(!showQuickProducts)}
+                    className={`px-4 h-[46px] rounded-xl border text-[13px] font-medium shrink-0 transition-colors ${
+                      quickProducts.length > 0
+                        ? 'bg-green-100 border-green-300 text-green-700'
+                        : 'bg-white border-green-200 text-gray-500 hover:border-green-400'
+                    }`}
+                  >
+                    상품 {quickProducts.length > 0 ? `${quickProducts.length}개` : '선택'}
+                  </button>
                   <Button
                     onClick={quickCreateStream}
-                    disabled={quickCreating || !quickTitle.trim()}
+                    disabled={quickCreating || !quickTitle.trim() || quickProducts.length === 0}
                     className="bg-green-600 hover:bg-green-700 text-white px-6 h-[46px] text-[14px] font-semibold shrink-0"
                   >
                     {quickCreating ? (
@@ -588,9 +605,42 @@ export default function SellerLiveBroadcastPage() {
                     )}
                   </Button>
                 </div>
+
+                {/* Quick product selector */}
+                {showQuickProducts && (
+                  <div className="mt-3 bg-white border border-green-200 rounded-xl p-3 max-h-[200px] overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {products.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => setQuickProducts(prev =>
+                            prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id]
+                          )}
+                          className={`flex items-center gap-2 p-2 rounded-lg text-left text-[12px] transition-all border ${
+                            quickProducts.includes(p.id)
+                              ? 'border-green-500 bg-green-50'
+                              : 'border-gray-200 hover:border-green-300'
+                          }`}
+                        >
+                          {p.image_url ? (
+                            <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-gray-100 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-gray-800">{p.name}</p>
+                            <p className="text-green-600 font-bold">{p.price.toLocaleString()}원</p>
+                          </div>
+                          {quickProducts.includes(p.id) && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-green-600 mt-2 flex items-center gap-1">
                   <CheckCircle2 className="h-3 w-3" />
-                  최근 상품 5개가 자동 선택됩니다. 생성 후 OBS/프리즘에서 방송 시작만 누르세요.
+                  생성 후 OBS/프리즘에서 방송 시작만 누르세요.
                 </p>
               </div>
             )}
