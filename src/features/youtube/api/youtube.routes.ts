@@ -745,4 +745,182 @@ app.delete('/oauth/:id', async (c) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════════
+// Multi-platform RTMP Destinations
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/youtube/rtmp-destinations
+ * Get seller's saved RTMP destinations for multi-platform streaming
+ */
+app.get('/rtmp-destinations', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  try {
+    const rows = await c.env.DB.prepare(`
+      SELECT id, platform, label, rtmp_url, rtmp_key, is_active, created_at
+      FROM seller_rtmp_destinations
+      WHERE seller_id = ? AND is_active = 1
+      ORDER BY created_at DESC
+    `).bind(sellerId).all()
+
+    return c.json({ success: true, data: rows.results || [] })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/rtmp-destinations
+ * Add a new RTMP destination
+ */
+app.post('/rtmp-destinations', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const { platform, label, rtmp_url, rtmp_key } = await c.req.json()
+
+  if (!platform || !label || !rtmp_url || !rtmp_key) {
+    return c.json({ success: false, error: '모든 필드를 입력해주세요' }, 400)
+  }
+
+  try {
+    const result = await c.env.DB.prepare(`
+      INSERT INTO seller_rtmp_destinations (seller_id, platform, label, rtmp_url, rtmp_key)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(sellerId, platform, label, rtmp_url, rtmp_key).run()
+
+    return c.json({ success: true, data: { id: result.meta.last_row_id } })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500)
+  }
+})
+
+/**
+ * PUT /api/youtube/rtmp-destinations/:id
+ * Update an RTMP destination
+ */
+app.put('/rtmp-destinations/:id', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const id = parseInt(c.req.param('id'))
+  const { platform, label, rtmp_url, rtmp_key } = await c.req.json()
+
+  try {
+    await c.env.DB.prepare(`
+      UPDATE seller_rtmp_destinations
+      SET platform = ?, label = ?, rtmp_url = ?, rtmp_key = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND seller_id = ?
+    `).bind(platform, label, rtmp_url, rtmp_key, id, sellerId).run()
+
+    return c.json({ success: true })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500)
+  }
+})
+
+/**
+ * DELETE /api/youtube/rtmp-destinations/:id
+ * Remove an RTMP destination (soft delete)
+ */
+app.delete('/rtmp-destinations/:id', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const id = parseInt(c.req.param('id'))
+
+  try {
+    await c.env.DB.prepare(`
+      UPDATE seller_rtmp_destinations
+      SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND seller_id = ?
+    `).bind(id, sellerId).run()
+
+    return c.json({ success: true })
+  } catch (error: unknown) {
+    return c.json({ success: false, error: (error as Error).message }, 500)
+  }
+})
+
+/**
+ * POST /api/youtube/live/quick-create
+ * Quick-create a broadcast using persistent stream key (one-click)
+ */
+app.post('/live/quick-create', async (c) => {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+  const { title, product_ids } = await c.req.json()
+
+  if (!title) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
+
+  const clientId = c.env.YOUTUBE_CLIENT_ID
+  const clientSecret = c.env.YOUTUBE_CLIENT_SECRET
+  if (!clientId || !clientSecret) return c.json({ success: false, error: 'YouTube API not configured' }, 500)
+
+  try {
+    const youtubeService = new YouTubeAPIService(clientId, clientSecret)
+    const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
+    if (!accessToken) return c.json({ success: false, error: 'YouTube 인증이 필요합니다', error_code: 'YOUTUBE_AUTH_REQUIRED' }, 401)
+
+    // Must have persistent stream key
+    const sellerAuth = await c.env.DB.prepare(`
+      SELECT default_stream_id, default_rtmp_url, default_rtmp_key
+      FROM seller_youtube_oauth
+      WHERE seller_id = ? AND is_active = 1 AND default_stream_id IS NOT NULL
+      LIMIT 1
+    `).bind(sellerId).first() as any
+
+    if (!sellerAuth) {
+      return c.json({ success: false, error: '고정 RTMP 키가 없습니다. 먼저 일반 방송을 한 번 생성해주세요.' }, 400)
+    }
+
+    const liveSetup = await youtubeService.setupLiveStreamWithPersistentStream(
+      accessToken, title, '', sellerAuth.default_stream_id, new Date().toISOString()
+    )
+
+    const streamResult = await c.env.DB.prepare(`
+      INSERT INTO live_streams (
+        seller_id, title, description, status,
+        youtube_video_id, youtube_broadcast_id, youtube_stream_key, youtube_live_chat_id,
+        rtmp_url, rtmp_key, youtube_embed_url,
+        scheduled_at, created_at, updated_at
+      ) VALUES (?, ?, '', 'scheduled', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(
+      sellerId, title,
+      liveSetup.broadcast.id, liveSetup.broadcast.id,
+      liveSetup.stream.ingestionInfo.streamName,
+      liveSetup.broadcast.liveChatId || null,
+      liveSetup.rtmpUrl, liveSetup.rtmpKey, liveSetup.embedUrl
+    ).run()
+
+    const streamId = streamResult.meta.last_row_id
+
+    if (product_ids && product_ids.length > 0) {
+      for (const productId of product_ids) {
+        await c.env.DB.prepare(`
+          INSERT INTO stream_products (stream_id, product_id, created_at)
+          VALUES (?, ?, CURRENT_TIMESTAMP)
+        `).bind(streamId, productId).run()
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        stream_id: streamId,
+        youtube_url: liveSetup.youtubeUrl,
+        rtmp_url: sellerAuth.default_rtmp_url,
+        rtmp_key: sellerAuth.default_rtmp_key,
+        status: 'scheduled'
+      }
+    })
+  } catch (error: unknown) {
+    console.error('[YouTube Quick Create] Error:', error)
+    return c.json({ success: false, error: (error as Error).message }, 500)
+  }
+})
+
 export default app

@@ -5,6 +5,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import { loginWithFirebaseToken, logout } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
+import api from '@/lib/api'
 import { UserInfo } from '@/components/my-page/user-info'
 import { MenuList } from '@/components/my-page/menu-list'
 import { Footer } from '@/components/my-page/footer'
@@ -20,12 +21,10 @@ function TeamPointsCard() {
   const [balance, setBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    import('@/lib/api').then(({ default: api }) => {
-      api.get('/api/points/balance')
-        .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
-        .catch(() => {})
-        .finally(() => setLoading(false))
-    })
+    api.get('/api/points/balance')
+      .then(r => { if (r.data.success) setBalance(r.data.data.balance) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
   return (
     <div className="px-5 py-3">

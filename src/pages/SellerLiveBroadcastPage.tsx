@@ -29,7 +29,13 @@ import {
   Monitor,
   Smartphone,
   Zap,
-  Key
+  Key,
+  Plus,
+  X,
+  Wifi,
+  WifiOff,
+  Globe,
+  Tv
 } from 'lucide-react'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import WebStreaming from '@/components/streaming/WebStreaming'
@@ -74,6 +80,25 @@ interface LiveStream {
   ended_at?: string
 }
 
+interface RtmpDestination {
+  id: number
+  platform: string
+  label: string
+  rtmp_url: string
+  rtmp_key: string
+}
+
+const PLATFORM_OPTIONS = [
+  { value: 'tiktok', label: 'TikTok 라이브', icon: '🎵', color: 'bg-black text-white' },
+  { value: 'instagram', label: 'Instagram 라이브', icon: '📸', color: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' },
+  { value: 'twitch', label: 'Twitch', icon: '🟣', color: 'bg-purple-600 text-white' },
+  { value: 'facebook', label: '페이스북 라이브', icon: '📘', color: 'bg-blue-600 text-white' },
+  { value: 'naver', label: '네이버 쇼핑라이브', icon: '🟢', color: 'bg-green-500 text-white' },
+  { value: 'afreeca', label: '아프리카TV', icon: '🔵', color: 'bg-blue-500 text-white' },
+  { value: 'kick', label: 'Kick', icon: '💚', color: 'bg-green-600 text-white' },
+  { value: 'custom', label: '커스텀 RTMP', icon: '🔗', color: 'bg-gray-600 text-white' },
+]
+
 export default function SellerLiveBroadcastPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -89,6 +114,16 @@ export default function SellerLiveBroadcastPage() {
   const [showControlPanel, setShowControlPanel] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [connectingYouTube, setConnectingYouTube] = useState(false)
+
+  // Quick start state
+  const [quickTitle, setQuickTitle] = useState('')
+  const [quickCreating, setQuickCreating] = useState(false)
+
+  // Multi-RTMP destinations state
+  const [rtmpDestinations, setRtmpDestinations] = useState<RtmpDestination[]>([])
+  const [showAddDest, setShowAddDest] = useState(false)
+  const [destForm, setDestForm] = useState({ platform: 'tiktok', label: '', rtmp_url: '', rtmp_key: '' })
+  const [savingDest, setSavingDest] = useState(false)
 
   // Form state
   const [title, setTitle] = useState('')
@@ -108,10 +143,11 @@ export default function SellerLiveBroadcastPage() {
       setLoadError(null)
 
       // Load all data in parallel for faster loading
-      const [channelsRes, productsRes, streamsRes] = await Promise.allSettled([
+      const [channelsRes, productsRes, streamsRes, destRes] = await Promise.allSettled([
         api.get('/api/seller/youtube/channels'),
         api.get('/api/seller/products'),
         api.get('/api/seller/streams'),
+        api.get('/api/seller/youtube/rtmp-destinations'),
       ])
 
       if (channelsRes.status === 'fulfilled' && channelsRes.value.data?.success) {
@@ -124,6 +160,10 @@ export default function SellerLiveBroadcastPage() {
 
       if (streamsRes.status === 'fulfilled' && streamsRes.value.data?.success) {
         setStreams(streamsRes.value.data.data || [])
+      }
+
+      if (destRes.status === 'fulfilled' && destRes.value.data?.success) {
+        setRtmpDestinations(destRes.value.data.data || [])
       }
     } catch (error: any) {
       console.error('[LiveBroadcast] Failed to load data:', error)
@@ -246,8 +286,9 @@ export default function SellerLiveBroadcastPage() {
       }
     }
 
-    // 10초마다 상태 확인
-    const interval = setInterval(pollStatus, 10000)
+    // 5초마다 상태 확인 (빠른 감지)
+    pollStatus()
+    const interval = setInterval(pollStatus, 5000)
     return () => clearInterval(interval)
   }, [streams])
 
@@ -287,6 +328,65 @@ export default function SellerLiveBroadcastPage() {
     navigator.clipboard.writeText(rtmpText)
     setCopiedRTMP(true)
     setTimeout(() => setCopiedRTMP(false), 2000)
+  }
+
+  // ── Quick create (one-click with persistent key) ──
+  async function quickCreateStream() {
+    if (!quickTitle.trim()) {
+      toast.error('방송 제목을 입력해주세요.')
+      return
+    }
+    try {
+      setQuickCreating(true)
+      const res = await api.post('/api/seller/youtube/live/quick-create', {
+        title: quickTitle.trim(),
+        product_ids: products.slice(0, 5).map(p => p.id), // 최근 상품 5개 자동 선택
+      })
+      if (res.data?.success) {
+        toast.success('방송이 생성되었습니다! OBS/프리즘에서 방송 시작을 누르세요.')
+        setQuickTitle('')
+        await loadData()
+      } else {
+        toast.error(res.data?.error || '방송 생성에 실패했습니다.')
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || '방송 생성에 실패했습니다.')
+    } finally {
+      setQuickCreating(false)
+    }
+  }
+
+  // ── RTMP Destination Management ──
+  async function addRtmpDestination() {
+    if (!destForm.label.trim() || !destForm.rtmp_url.trim() || !destForm.rtmp_key.trim()) {
+      toast.error('모든 필드를 입력해주세요.')
+      return
+    }
+    try {
+      setSavingDest(true)
+      const res = await api.post('/api/seller/youtube/rtmp-destinations', destForm)
+      if (res.data?.success) {
+        toast.success('플랫폼이 추가되었습니다.')
+        setShowAddDest(false)
+        setDestForm({ platform: 'tiktok', label: '', rtmp_url: '', rtmp_key: '' })
+        await loadData()
+      }
+    } catch {
+      toast.error('추가에 실패했습니다.')
+    } finally {
+      setSavingDest(false)
+    }
+  }
+
+  async function removeRtmpDestination(id: number) {
+    if (!confirm('이 플랫폼 설정을 삭제하시겠습니까?')) return
+    try {
+      await api.delete(`/api/seller/youtube/rtmp-destinations/${id}`)
+      setRtmpDestinations(prev => prev.filter(d => d.id !== id))
+      toast.success('삭제되었습니다.')
+    } catch {
+      toast.error('삭제에 실패했습니다.')
+    }
   }
 
   function toggleProduct(productId: number) {
@@ -448,6 +548,281 @@ export default function SellerLiveBroadcastPage() {
                     </p>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* ── Quick Start (persistent key users) ── */}
+            {channels.some(ch => ch.has_persistent_key) && !showSetup && !newStream && (
+              <div className="apple-card p-5 sm:p-6 mb-8 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Zap className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-[#1d1d1f]">빠른 방송 시작</h3>
+                    <p className="text-[12px] text-[#6e6e73]">OBS/프리즘에 RTMP 키가 설정되어 있다면, 제목만 입력하고 바로 시작하세요</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={quickTitle}
+                    onChange={e => setQuickTitle(e.target.value)}
+                    placeholder="방송 제목 입력..."
+                    className="flex-1 px-4 py-3 bg-white border border-green-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-green-400"
+                    onKeyDown={e => e.key === 'Enter' && quickCreateStream()}
+                    maxLength={100}
+                  />
+                  <Button
+                    onClick={quickCreateStream}
+                    disabled={quickCreating || !quickTitle.trim()}
+                    className="bg-green-600 hover:bg-green-700 text-white px-6 h-[46px] text-[14px] font-semibold shrink-0"
+                  >
+                    {quickCreating ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Radio className="h-4 w-4 mr-1.5" />
+                        생성
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-green-600 mt-2 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  최근 상품 5개가 자동 선택됩니다. 생성 후 OBS/프리즘에서 방송 시작만 누르세요.
+                </p>
+              </div>
+            )}
+
+            {/* ── Active Streams with Live Preview ── */}
+            {streams.filter(s => s.status !== 'ended').length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
+                  진행 중인 방송
+                </h3>
+                <div className="space-y-4">
+                  {streams.filter(s => s.status !== 'ended').map(stream => (
+                    <div key={stream.id} className="apple-card overflow-hidden">
+                      {/* Live Preview Embed */}
+                      {stream.status === 'live' && stream.youtube_video_id && (
+                        <div className="aspect-video bg-black">
+                          <iframe
+                            src={`https://www.youtube.com/embed/${stream.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1`}
+                            title={stream.title}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; encrypted-media; gyroscope"
+                            allowFullScreen
+                          />
+                        </div>
+                      )}
+
+                      {/* Waiting for encoder indicator */}
+                      {stream.status === 'scheduled' && (
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4 flex items-center gap-3 border-b border-amber-200/50">
+                          <div className="relative">
+                            <Wifi className="h-5 w-5 text-amber-600" />
+                            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
+                          </div>
+                          <div>
+                            <p className="text-[13px] font-semibold text-amber-800">인코더 연결 대기 중...</p>
+                            <p className="text-[11px] text-amber-600">OBS/프리즘에서 방송 시작을 누르면 자동으로 라이브가 시작됩니다</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="text-[17px] font-semibold text-[#1d1d1f]">
+                                {stream.title}
+                              </h4>
+                              <Badge className={stream.status === 'live' ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'}>
+                                {stream.status === 'live' ? '● LIVE' : '⏳ 대기'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-[13px] text-[#6e6e73]">
+                              {stream.status === 'live' && (
+                                <div className="flex items-center gap-1">
+                                  <Eye className="h-3.5 w-3.5" />
+                                  {stream.viewer_count.toLocaleString()}명 시청
+                                </div>
+                              )}
+                              {stream.started_at && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  시작: {formatKSTTime(stream.started_at)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RTMP info for scheduled streams */}
+                        {stream.status === 'scheduled' && stream.rtmp_url && stream.rtmp_key && (
+                          <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
+                            <p className="text-[11px] font-semibold text-[#6e6e73] mb-2">RTMP 설정 정보</p>
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_url}</code>
+                                <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_url || ''); toast.success('URL 복사됨') }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
+                              </div>
+                              <div className="flex gap-2">
+                                <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_key}</code>
+                                <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_key || ''); toast.success('키 복사됨') }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 flex-wrap">
+                          {stream.status === 'scheduled' && (
+                            <Button onClick={() => startStream(stream.id)} className="bg-red-600 hover:bg-red-700 text-white">
+                              <Radio className="h-4 w-4 mr-2" />
+                              수동 방송 시작
+                            </Button>
+                          )}
+                          {stream.status === 'live' && (
+                            <>
+                              <Button
+                                onClick={() => { setShowControlPanel(true); setNewStream(stream) }}
+                                className="bg-[#007aff] hover:bg-[#0051d5] text-white"
+                              >
+                                <Settings className="h-4 w-4 mr-2" />
+                                방송 관리
+                              </Button>
+                              <Button onClick={() => endStream(stream.id)} variant="destructive">
+                                방송 종료
+                              </Button>
+                            </>
+                          )}
+                          <a href={stream.youtube_url || `https://youtube.com/watch?v=${stream.youtube_video_id}`} target="_blank" rel="noopener noreferrer"
+                            className="px-4 py-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 text-[13px] font-medium">
+                            <Youtube className="h-4 w-4 text-red-600" /> YouTube
+                          </a>
+                          <a href={`/live/${stream.id}`} target="_blank" rel="noopener noreferrer"
+                            className="px-4 py-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 text-[13px] font-medium">
+                            <Eye className="h-4 w-4" /> Ur Live
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── Multi-Platform RTMP Destinations ── */}
+            {channels.length > 0 && (
+              <div className="apple-card p-5 sm:p-6 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Globe className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-[15px] font-bold text-[#1d1d1f]">멀티 플랫폼 동시 송출</h3>
+                      <p className="text-[12px] text-[#6e6e73]">OBS multi-rtmp 또는 프리즘에서 사용할 RTMP 대상을 관리하세요</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setShowAddDest(!showAddDest)}
+                    variant="outline"
+                    className="text-[13px] h-9"
+                  >
+                    {showAddDest ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4 mr-1" />}
+                    {showAddDest ? '닫기' : '플랫폼 추가'}
+                  </Button>
+                </div>
+
+                {/* Add form */}
+                {showAddDest && (
+                  <div className="bg-[#f5f5f7] rounded-xl p-4 mb-4 space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {PLATFORM_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setDestForm(f => ({ ...f, platform: opt.value, label: opt.label }))}
+                          className={`p-2.5 rounded-lg text-center text-[12px] font-medium transition-all border-2 ${
+                            destForm.platform === opt.value
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-transparent bg-white hover:border-gray-300'
+                          }`}
+                        >
+                          <span className="text-lg block mb-1">{opt.icon}</span>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={destForm.label}
+                      onChange={e => setDestForm(f => ({ ...f, label: e.target.value }))}
+                      placeholder="표시 이름 (예: 틱톡 메인 계정)"
+                      className="w-full px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <input
+                      value={destForm.rtmp_url}
+                      onChange={e => setDestForm(f => ({ ...f, rtmp_url: e.target.value }))}
+                      placeholder="RTMP 서버 URL (예: rtmp://live.tiktok.com/...)"
+                      className="w-full px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <input
+                      value={destForm.rtmp_key}
+                      onChange={e => setDestForm(f => ({ ...f, rtmp_key: e.target.value }))}
+                      placeholder="스트림 키"
+                      className="w-full px-3 py-2.5 bg-white border border-[#e5e5ea] rounded-lg text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    <Button
+                      onClick={addRtmpDestination}
+                      disabled={savingDest || !destForm.label.trim() || !destForm.rtmp_url.trim() || !destForm.rtmp_key.trim()}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10"
+                    >
+                      {savingDest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                      저장
+                    </Button>
+                  </div>
+                )}
+
+                {/* Saved destinations */}
+                {rtmpDestinations.length > 0 ? (
+                  <div className="space-y-2">
+                    {rtmpDestinations.map(dest => {
+                      const platformInfo = PLATFORM_OPTIONS.find(p => p.value === dest.platform) || PLATFORM_OPTIONS[PLATFORM_OPTIONS.length - 1]
+                      return (
+                        <div key={dest.id} className="flex items-center gap-3 bg-white border border-[#e5e5ea] rounded-lg p-3">
+                          <span className="text-xl">{platformInfo.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-[#1d1d1f] truncate">{dest.label}</p>
+                            <p className="text-[11px] text-[#6e6e73] font-mono truncate">{dest.rtmp_url}</p>
+                          </div>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(`URL: ${dest.rtmp_url}\nKey: ${dest.rtmp_key}`); toast.success('RTMP 정보 복사됨') }}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="RTMP 정보 복사"
+                          >
+                            <Copy className="h-4 w-4 text-gray-500" />
+                          </button>
+                          <button
+                            onClick={() => removeRtmpDestination(dest.id)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  !showAddDest && (
+                    <div className="text-center py-6 text-[#6e6e73]">
+                      <Tv className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-[13px]">등록된 플랫폼이 없습니다</p>
+                      <p className="text-[11px] mt-1">각 플랫폼 대시보드에서 RTMP URL과 스트림 키를 받아 추가하세요</p>
+                    </div>
+                  )
+                )}
               </div>
             )}
 
@@ -964,121 +1339,6 @@ export default function SellerLiveBroadcastPage() {
                       취소
                     </Button>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Active Streams */}
-            {streams.filter(s => s.status !== 'ended').length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-[21px] font-semibold text-[#1d1d1f] mb-4">
-                  진행 중인 방송
-                </h3>
-                <div className="space-y-4">
-                  {streams.filter(s => s.status !== 'ended').map(stream => (
-                    <div key={stream.id} className="apple-card p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="text-[17px] font-semibold text-[#1d1d1f]">
-                              {stream.title}
-                            </h4>
-                            <Badge
-                              className={`
-                                ${stream.status === 'live'
-                                  ? 'bg-red-600 text-white'
-                                  : 'bg-orange-500 text-white'
-                                }
-                              `}
-                            >
-                              {stream.status === 'live' ? 'LIVE' : '예정'}
-                            </Badge>
-                          </div>
-                          <p className="text-[13px] text-[#6e6e73] mb-3">
-                            {stream.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-[13px] text-[#6e6e73]">
-                            <div className="flex items-center gap-1">
-                              <Eye className="h-3.5 w-3.5" />
-                              {stream.viewer_count.toLocaleString()}
-                            </div>
-                            {stream.started_at && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                시작: {formatKSTTime(stream.started_at)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {/* RTMP 정보 (예정 상태일 때 표시 - OBS/프리즘 설정용) */}
-                      {stream.status === 'scheduled' && stream.rtmp_url && stream.rtmp_key && (
-                        <div className="bg-[#f5f5f7] rounded-lg p-4 mb-4">
-                          <p className="text-[11px] font-semibold text-[#6e6e73] mb-2">OBS/프리즘 RTMP 설정</p>
-                          <div className="space-y-2">
-                            <div className="flex gap-2">
-                              <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_url}</code>
-                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_url || ''); toast.success('URL 복사됨') }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                            </div>
-                            <div className="flex gap-2">
-                              <code className="flex-1 px-2 py-1.5 bg-white border border-[#e5e5ea] rounded text-[12px] font-mono truncate">{stream.rtmp_key}</code>
-                              <button onClick={() => { navigator.clipboard.writeText(stream.rtmp_key || ''); toast.success('키 복사됨') }} className="px-2 py-1.5 bg-white border border-[#e5e5ea] rounded hover:bg-[#e5e5ea] transition-colors"><Copy className="h-3.5 w-3.5" /></button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2 flex-wrap">
-                        {stream.status === 'scheduled' && (
-                          <Button
-                            onClick={() => startStream(stream.id)}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            <Radio className="h-4 w-4 mr-2" />
-                            방송 시작
-                          </Button>
-                        )}
-                        {stream.status === 'live' && (
-                          <>
-                            <Button
-                              onClick={() => {
-                                setShowControlPanel(true)
-                                setNewStream(stream)
-                              }}
-                              className="bg-[#007aff] hover:bg-[#0051d5] text-white"
-                            >
-                              <Settings className="h-4 w-4 mr-2" />
-                              방송 관리
-                            </Button>
-                            <Button
-                              onClick={() => endStream(stream.id)}
-                              variant="destructive"
-                            >
-                              방송 종료
-                            </Button>
-                          </>
-                        )}
-                        <a
-                          href={stream.youtube_url || `https://youtube.com/watch?v=${stream.youtube_video_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 text-[13px] font-medium"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          YouTube
-                        </a>
-                        <a
-                          href={`/live/${stream.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-4 py-2 bg-white border border-[#e5e5ea] rounded-lg hover:bg-[#f5f5f7] transition-colors flex items-center gap-2 text-[13px] font-medium"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ur Live
-                        </a>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
