@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
-  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Star, Ticket, Play, BookOpen
+  Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Star, Ticket, Play, BookOpen, Building2
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
 import DashboardNotificationBell from './DashboardNotificationBell'
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { path: '/admin/replay',       label: '다시보기 관리', icon: Play },
   { path: '/admin/coupons',      label: '쿠폰 관리',   icon: Ticket },
   { path: '/admin/blog',         label: '블로그 관리',  icon: BookOpen },
+  { path: '/admin/agencies',     label: '에이전시 관리', icon: Building2 },
 ]
 
 interface AdminLayoutProps {

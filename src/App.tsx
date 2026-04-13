@@ -103,10 +103,18 @@ const AdminKakaoTestCallbackPage = lazy(() => import('./pages/admin/AdminKakaoTe
 const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequestsPage'))
 const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
 const AdminBlogPage = lazy(() => import('./pages/AdminBlogPage'))
+const AdminAgencyPage = lazy(() => import('./pages/AdminAgencyPage'))
 const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
 const AdminCouponsPage = lazy(() => import('./pages/AdminCouponsPage'))
+// Agency 페이지들
+const AgencyLoginPage = lazy(() => import('./pages/AgencyLoginPage'))
+const AgencyPage = lazy(() => import('./pages/AgencyPage'))
+const AgencySellersPage = lazy(() => import('./pages/AgencySellersPage'))
+const AgencyOrdersPage = lazy(() => import('./pages/AgencyOrdersPage'))
+const AgencyStreamsPage = lazy(() => import('./pages/AgencyStreamsPage'))
+
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
@@ -562,6 +570,18 @@ function AppContent() {
                 <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
+            <Route path="/admin/agencies" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminAgencyPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+
+            {/* Agency 대시보드 */}
+            <Route path="/agency/login" element={<AgencyLoginPage />} />
+            <Route path="/agency" element={<AgencyPage />} />
+            <Route path="/agency/sellers" element={<AgencySellersPage />} />
+            <Route path="/agency/orders" element={<AgencyOrdersPage />} />
+            <Route path="/agency/streams" element={<AgencyStreamsPage />} />
             
             {/* 장바구니: 비로그인도 접근 가능 (결제 시에만 로그인 필요) */}
             <Route path="/cart" element={<CartPage />} />
