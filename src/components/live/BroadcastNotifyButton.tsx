@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, BellRing, Check } from 'lucide-react'
+import { Bell, BellRing, Check, CalendarPlus } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -13,6 +13,7 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
   const [subscribed, setSubscribed] = useState(false)
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [calLoading, setCalLoading] = useState(false)
   const [showPhoneInput, setShowPhoneInput] = useState(false)
   const [phone, setPhone] = useState('')
   const userId = getUserIdSync()
@@ -27,6 +28,21 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
       })
       .catch(() => {})
   }, [streamId])
+
+  const handleAddCalendar = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!userId) { toast.error('로그인이 필요합니다'); return }
+    setCalLoading(true)
+    try {
+      const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
+      if (res.data.success) toast.success('카카오 캘린더에 등록되었습니다!')
+      else toast.error(res.data.error || '캘린더 등록 실패')
+    } catch {
+      toast.error('카카오 로그인이 필요합니다')
+    } finally {
+      setCalLoading(false)
+    }
+  }
 
   const handleToggle = async () => {
     if (!userId) {
@@ -58,22 +74,32 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
   if (compact) {
     return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          handleToggle()
-        }}
-        disabled={loading}
-        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
-          subscribed
-            ? 'bg-pink-100 text-pink-600'
-            : 'bg-[#1a1a1a] text-white border border-gray-700'
-        }`}
-      >
-        {subscribed ? <BellRing className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
-        {subscribed ? '알림 ON' : '알림'}
-        {count > 0 && <span className="text-[10px] opacity-70">{count}</span>}
-      </button>
+      <div className="flex flex-col gap-1.5">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            handleToggle()
+          }}
+          disabled={loading}
+          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95 ${
+            subscribed
+              ? 'bg-pink-100 text-pink-600'
+              : 'bg-[#1a1a1a] text-white border border-gray-700'
+          }`}
+        >
+          {subscribed ? <BellRing className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
+          {subscribed ? '알림 ON' : '알림'}
+          {count > 0 && <span className="text-[10px] opacity-70">{count}</span>}
+        </button>
+        <button
+          onClick={handleAddCalendar}
+          disabled={calLoading}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500]/15 text-[#b8a800] border border-[#FEE500]/30 transition-all active:scale-95 disabled:opacity-50"
+        >
+          <CalendarPlus className="w-3 h-3" />
+          {calLoading ? '추가 중...' : '캘린더'}
+        </button>
+      </div>
     )
   }
 
@@ -120,17 +146,12 @@ export default function BroadcastNotifyButton({ streamId, compact = false }: Pro
 
       {/* 카카오 캘린더 추가 */}
       <button
-        onClick={async (e) => {
-          e.stopPropagation()
-          try {
-            const res = await api.post('/api/kakao-social/calendar/add', { stream_id: streamId })
-            if (res.data.success) toast.success('카카오 캘린더에 등록됨!')
-            else toast.error(res.data.error || '캘린더 등록 실패')
-          } catch { toast.error('카카오 로그인이 필요합니다') }
-        }}
-        className="w-full flex items-center justify-center gap-1 py-2 mt-2 bg-[#FEE500]/20 text-[#FEE500] border border-[#FEE500]/30 rounded-lg text-[10px] font-bold active:scale-95"
+        onClick={handleAddCalendar}
+        disabled={calLoading}
+        className="w-full flex items-center justify-center gap-1.5 py-2 mt-2 bg-[#FEE500]/20 text-[#FEE500] border border-[#FEE500]/30 rounded-lg text-[11px] font-bold active:scale-95 disabled:opacity-50"
       >
-        📅 카카오 캘린더에 추가
+        <CalendarPlus className="w-3.5 h-3.5" />
+        {calLoading ? '추가 중...' : '카카오 캘린더에 추가'}
       </button>
     </div>
   )
