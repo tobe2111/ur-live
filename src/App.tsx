@@ -102,6 +102,7 @@ const AdminKakaoTestPage = lazy(() => import('./pages/admin/AdminKakaoTestPage')
 const AdminKakaoTestCallbackPage = lazy(() => import('./pages/admin/AdminKakaoTestCallbackPage'))
 const AdminSampleRequestsPage = lazy(() => import('./pages/admin/AdminSampleRequestsPage'))
 const AdminAdScraperPage = lazy(() => import('./pages/admin/AdminAdScraperPage'))
+const AdminBlogPage = lazy(() => import('./pages/AdminBlogPage'))
 const AdminDealMonitorPage = lazy(() => import('./pages/AdminDealMonitorPage'))
 const AdminReviewsPage = lazy(() => import('./pages/AdminReviewsPage'))
 const AdminReplayPage = lazy(() => import('./pages/AdminReplayPage'))
@@ -528,6 +529,11 @@ function AppContent() {
             <Route path="/admin/ad-scraper" element={
               <ProtectedRoute requireAdmin>
                 <ErrorBoundary><AdminAdScraperPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/blog" element={
+              <ProtectedRoute requireAdmin>
+                <ErrorBoundary><AdminBlogPage /></ErrorBoundary>
               </ProtectedRoute>
             } />
             <Route path="/admin/deals" element={

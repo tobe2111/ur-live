@@ -491,6 +491,11 @@ app.route('/api/broadcast-notify', broadcastNotifyRoutes);
 import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
 app.route('/api/kakao-social', kakaoSocialRoutes);
 
+// ── 블로그 (어드민 CRUD + 공개 조회) ──
+import { blogRoutes } from '../features/blog/api/blog.routes';
+app.route('/api/admin/blog', blogRoutes);
+app.route('/api/blog', blogRoutes); // public 엔드포인트 접근용
+
 // YouTube / Live streaming
 // Register at both paths for backward-compatibility with older frontend deployments
 app.route('/api/seller/youtube', youtubeRoutes);
