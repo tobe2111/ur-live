@@ -344,14 +344,16 @@ export class YouTubeAPIService {
     title: string,
     description: string,
     persistentStreamId: string,
-    scheduledStartTime: string = new Date().toISOString()
+    scheduledStartTime: string = new Date().toISOString(),
+    privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
   ): Promise<YouTubeLiveSetup> {
     // Create broadcast only (no new stream)
     const broadcast = await this.createBroadcast(
       accessToken,
       title,
       description,
-      scheduledStartTime
+      scheduledStartTime,
+      privacyStatus
     )
 
     // Get existing persistent stream info
@@ -399,14 +401,16 @@ export class YouTubeAPIService {
     accessToken: string,
     title: string,
     description: string,
-    scheduledStartTime: string = new Date().toISOString()
+    scheduledStartTime: string = new Date().toISOString(),
+    privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
   ): Promise<YouTubeLiveSetup> {
     // Create broadcast
     const broadcast = await this.createBroadcast(
       accessToken,
       title,
       description,
-      scheduledStartTime
+      scheduledStartTime,
+      privacyStatus
     )
 
     // Create stream
