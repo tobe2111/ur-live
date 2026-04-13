@@ -25,7 +25,7 @@ import { ALLOWED_ORIGINS } from '@/shared/constants'
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', cors({ origin: [...ALLOWED_ORIGINS], credentials: true }))
 
-// ── 테이블 자동 생성 ──────────────────────────────────────────
+// ── 테이블 자동 생성 + 시드 ────────────────────────────────────
 async function ensureAgencyTables(DB: D1Database) {
   await DB.prepare(`
     CREATE TABLE IF NOT EXISTS agencies (
@@ -49,6 +49,15 @@ async function ensureAgencyTables(DB: D1Database) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(agency_id, seller_id)
     )
+  `).run().catch(() => {})
+
+  // 기본 관리자 에이전시 계정 자동 생성 (없을 때만)
+  // password: 358533aa!! (PBKDF2-SHA256)
+  await DB.prepare(`
+    INSERT OR IGNORE INTO agencies (name, contact_name, email, password_hash, phone, status)
+    VALUES ('유어딜 본사', '정지원', 'tobe2111@naver.com',
+      'Hp10HtQcreH8k3VM66eVng==$vd4rPNOmPnF2evLhKdMo8nuiMNbL2xJZIL91mId6aOo=',
+      '010-0000-0000', 'active')
   `).run().catch(() => {})
 }
 
