@@ -108,6 +108,17 @@ export default function AdminAgencyPage() {
     }
   }
 
+  async function handleApprove(a: Agency) {
+    await api.patch(`/api/admin/agencies/${a.id}`, { status: 'active' }, { headers })
+    fetchAgencies()
+  }
+
+  async function handleReject(a: Agency) {
+    if (!confirm(`"${a.name}" 에이전시 가입을 거절하시겠습니까?`)) return
+    await api.patch(`/api/admin/agencies/${a.id}`, { status: 'rejected' }, { headers })
+    fetchAgencies()
+  }
+
   async function handleToggleStatus(a: Agency) {
     const newStatus = a.status === 'active' ? 'inactive' : 'active'
     await api.patch(`/api/admin/agencies/${a.id}`, { status: newStatus }, { headers })
@@ -148,14 +159,60 @@ export default function AdminAgencyPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-400">
           불러오는 중...
         </div>
-      ) : agencies.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <p className="text-gray-500 text-sm mb-1">등록된 에이전시가 없습니다.</p>
-          <p className="text-gray-400 text-xs">에이전시 추가 버튼으로 생성하세요.</p>
-        </div>
       ) : (
+        <>
+        {/* 승인 대기 섹션 */}
+        {agencies.filter(a => a.status === 'pending').length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">승인 대기</span>
+              <span className="bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                {agencies.filter(a => a.status === 'pending').length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {agencies.filter(a => a.status === 'pending').map(a => (
+                <div key={a.id} className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-center justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900">{a.name}</p>
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">대기중</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{a.contact_name} · {a.email} {a.phone && `· ${a.phone}`}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">신청일: {new Date(a.created_at).toLocaleDateString('ko-KR')}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                    <button
+                      onClick={() => handleApprove(a)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" /> 승인
+                    </button>
+                    <button
+                      onClick={() => handleReject(a)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-300 text-red-500 hover:bg-red-50 text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> 거절
+                    </button>
+                    <button onClick={() => handleDelete(a)} className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 전체 에이전시 목록 */}
+        {agencies.filter(a => a.status !== 'pending').length === 0 && agencies.filter(a => a.status === 'pending').length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <p className="text-gray-500 text-sm mb-1">등록된 에이전시가 없습니다.</p>
+            <p className="text-gray-400 text-xs">에이전시 추가 버튼으로 생성하세요.</p>
+          </div>
+        ) : (
         <div className="space-y-3">
-          {agencies.map(a => (
+          {agencies.filter(a => a.status !== 'pending').map(a => (
             <div key={a.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {/* Agency row */}
               <div className="flex items-center justify-between px-5 py-4">
@@ -167,9 +224,11 @@ export default function AdminAgencyPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-gray-900">{a.name}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        a.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        a.status === 'active'   ? 'bg-green-100 text-green-700' :
+                        a.status === 'rejected' ? 'bg-red-100 text-red-600' :
+                        'bg-gray-100 text-gray-500'
                       }`}>
-                        {a.status === 'active' ? '활성' : '비활성'}
+                        {a.status === 'active' ? '승인' : a.status === 'rejected' ? '거절' : '비활성'}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{a.contact_name} · {a.email}</p>
@@ -276,6 +335,8 @@ export default function AdminAgencyPage() {
             </div>
           ))}
         </div>
+        )}
+        </>
       )}
 
       {/* Modal */}
