@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
 
@@ -147,9 +147,9 @@ export default function AgencyLoginPage() {
 
           <p className="text-center text-xs text-gray-500 mt-6">
             에이전시 계정이 없으신가요?{' '}
-            <a href="mailto:support@urdeal.kr" className="text-blue-600 hover:underline">
-              관리자에게 문의
-            </a>
+            <Link to="/agency/register" className="text-blue-600 hover:underline font-medium">
+              가입 신청
+            </Link>
           </p>
         </div>
       </div>

@@ -124,7 +124,7 @@ app.post('/login', cors(), async (c) => {
   if (agency.status === 'rejected') return c.json({ success: false, error: '가입이 거절된 계정입니다. 관리자에게 문의해주세요.' }, 403)
   if (agency.status !== 'active') return c.json({ success: false, error: '비활성화된 계정입니다.' }, 403)
 
-  const valid = await verifyPassword(password, agency.password_hash)
+  const { valid } = await verifyPassword(password, agency.password_hash)
   if (!valid) return c.json({ success: false, error: '이메일 또는 비밀번호가 올바르지 않습니다.' }, 401)
 
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email)
