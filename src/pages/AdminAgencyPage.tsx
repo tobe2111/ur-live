@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
-import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp, CheckCircle, XCircle } from 'lucide-react'
 
 interface Agency {
   id: number
@@ -108,6 +108,12 @@ export default function AdminAgencyPage() {
     }
   }
 
+  async function handleToggleStatus(a: Agency) {
+    const newStatus = a.status === 'active' ? 'inactive' : 'active'
+    await api.patch(`/api/admin/agencies/${a.id}`, { status: newStatus }, { headers })
+    fetchAgencies()
+  }
+
   async function handleDelete(a: Agency) {
     if (!confirm(`"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`)) return
     await api.delete(`/api/admin/agencies/${a.id}`, { headers })
@@ -173,6 +179,21 @@ export default function AdminAgencyPage() {
                   <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
                     셀러 {a.seller_count}명
                   </span>
+                  {/* 승인/거절 토글 */}
+                  <button
+                    onClick={() => handleToggleStatus(a)}
+                    title={a.status === 'active' ? '비활성(거절)으로 변경' : '활성(승인)으로 변경'}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      a.status === 'active'
+                        ? 'bg-green-50 text-green-600 hover:bg-red-50 hover:text-red-500'
+                        : 'bg-gray-100 text-gray-500 hover:bg-green-50 hover:text-green-600'
+                    }`}
+                  >
+                    {a.status === 'active'
+                      ? <><CheckCircle className="w-3.5 h-3.5" /> 승인됨</>
+                      : <><XCircle className="w-3.5 h-3.5" /> 거절됨</>
+                    }
+                  </button>
                   <button
                     onClick={() => openEdit(a)}
                     className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
