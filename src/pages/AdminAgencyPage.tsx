@@ -1,0 +1,329 @@
+import { useEffect, useState } from 'react'
+import AdminLayout from '@/components/AdminLayout'
+import api from '@/lib/api'
+import { Plus, Pencil, Trash2, UserPlus, UserMinus, ChevronDown, ChevronUp } from 'lucide-react'
+
+interface Agency {
+  id: number
+  name: string
+  contact_name: string
+  email: string
+  phone: string | null
+  status: string
+  seller_count: number
+  created_at: string
+}
+
+interface Seller {
+  id: number
+  name: string
+  business_name: string
+  email: string
+}
+
+type ModalMode = 'create' | 'edit' | null
+
+const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active' }
+
+export default function AdminAgencyPage() {
+  const [agencies, setAgencies] = useState<Agency[]>([])
+  const [unassigned, setUnassigned] = useState<Seller[]>([])
+  const [agencySellers, setAgencySellers] = useState<Record<number, Seller[]>>({})
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [modal, setModal] = useState<ModalMode>(null)
+  const [editTarget, setEditTarget] = useState<Agency | null>(null)
+  const [form, setForm] = useState(initForm)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const token = localStorage.getItem('admin_token')
+  const headers = { Authorization: `Bearer ${token}` }
+
+  async function fetchAgencies() {
+    const r = await api.get('/api/admin/agencies', { headers })
+    setAgencies(r.data.data || [])
+  }
+
+  async function fetchUnassigned() {
+    const r = await api.get('/api/admin/agencies/unassigned-sellers', { headers })
+    setUnassigned(r.data.data || [])
+  }
+
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([fetchAgencies(), fetchUnassigned()])
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function toggleExpand(agencyId: number) {
+    if (expanded === agencyId) { setExpanded(null); return }
+    setExpanded(agencyId)
+    if (!agencySellers[agencyId]) {
+      const r = await api.get(`/api/admin/agencies/${agencyId}/sellers`, { headers })
+      setAgencySellers(prev => ({ ...prev, [agencyId]: r.data.data || [] }))
+    }
+  }
+
+  async function refreshAgencySellers(agencyId: number) {
+    const r = await api.get(`/api/admin/agencies/${agencyId}/sellers`, { headers })
+    setAgencySellers(prev => ({ ...prev, [agencyId]: r.data.data || [] }))
+    fetchAgencies()
+    fetchUnassigned()
+  }
+
+  function openCreate() {
+    setForm(initForm)
+    setEditTarget(null)
+    setError('')
+    setModal('create')
+  }
+
+  function openEdit(a: Agency) {
+    setForm({ name: a.name, contact_name: a.contact_name, email: a.email, password: '', phone: a.phone || '', status: a.status })
+    setEditTarget(a)
+    setError('')
+    setModal('edit')
+  }
+
+  async function handleSave() {
+    setError('')
+    setSaving(true)
+    try {
+      if (modal === 'create') {
+        await api.post('/api/admin/agencies', form, { headers })
+      } else if (editTarget) {
+        const payload: Record<string, string> = {
+          name: form.name, contact_name: form.contact_name, phone: form.phone, status: form.status
+        }
+        if (form.password) payload.password = form.password
+        await api.patch(`/api/admin/agencies/${editTarget.id}`, payload, { headers })
+      }
+      setModal(null)
+      fetchAgencies()
+    } catch (err: any) {
+      setError(err.response?.data?.error || '저장 실패')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(a: Agency) {
+    if (!confirm(`"${a.name}" 에이전시를 삭제하시겠습니까? 소속 셀러 배정도 모두 해제됩니다.`)) return
+    await api.delete(`/api/admin/agencies/${a.id}`, { headers })
+    fetchAgencies()
+    fetchUnassigned()
+  }
+
+  async function assignSeller(agencyId: number, sellerId: number) {
+    await api.post(`/api/admin/agencies/${agencyId}/sellers`, { seller_id: sellerId }, { headers })
+    refreshAgencySellers(agencyId)
+  }
+
+  async function removeSeller(agencyId: number, sellerId: number) {
+    await api.delete(`/api/admin/agencies/${agencyId}/sellers/${sellerId}`, { headers })
+    refreshAgencySellers(agencyId)
+  }
+
+  return (
+    <AdminLayout title="에이전시 관리">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">총 {agencies.length}개 에이전시</p>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          에이전시 추가
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-400">
+          불러오는 중...
+        </div>
+      ) : agencies.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <p className="text-gray-500 text-sm mb-1">등록된 에이전시가 없습니다.</p>
+          <p className="text-gray-400 text-xs">에이전시 추가 버튼으로 생성하세요.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {agencies.map(a => (
+            <div key={a.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {/* Agency row */}
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-indigo-600 font-bold text-sm">{a.name.charAt(0)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900">{a.name}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        a.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {a.status === 'active' ? '활성' : '비활성'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{a.contact_name} · {a.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+                    셀러 {a.seller_count}명
+                  </span>
+                  <button
+                    onClick={() => openEdit(a)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(a)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => toggleExpand(a.id)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+                  >
+                    {expanded === a.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Expanded: seller management */}
+              {expanded === a.id && (
+                <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Assigned sellers */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-2">소속 셀러</p>
+                      {(agencySellers[a.id] || []).length === 0 ? (
+                        <p className="text-xs text-gray-400">소속 셀러가 없습니다.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {agencySellers[a.id].map(s => (
+                            <div key={s.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100">
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-gray-900 truncate">{s.business_name || s.name}</p>
+                                <p className="text-xs text-gray-400">{s.email}</p>
+                              </div>
+                              <button
+                                onClick={() => removeSeller(a.id, s.id)}
+                                className="ml-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
+                                title="소속 해제"
+                              >
+                                <UserMinus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Unassigned sellers */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 mb-2">배정 가능한 셀러</p>
+                      {unassigned.length === 0 ? (
+                        <p className="text-xs text-gray-400">배정 가능한 셀러가 없습니다.</p>
+                      ) : (
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                          {unassigned.map(s => (
+                            <div key={s.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100">
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium text-gray-900 truncate">{s.business_name || s.name}</p>
+                                <p className="text-xs text-gray-400">{s.email}</p>
+                              </div>
+                              <button
+                                onClick={() => assignSeller(a.id, s.id)}
+                                className="ml-2 p-1 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors flex-shrink-0"
+                                title="소속 추가"
+                              >
+                                <UserPlus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-5">
+              {modal === 'create' ? '에이전시 추가' : '에이전시 수정'}
+            </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
+            )}
+
+            <div className="space-y-4">
+              {[
+                { key: 'name', label: '에이전시명', placeholder: '(주)베스트에이전시', required: true },
+                { key: 'contact_name', label: '담당자명', placeholder: '홍길동', required: true },
+                { key: 'email', label: '이메일', placeholder: 'agency@example.com', required: true },
+                { key: 'password', label: modal === 'create' ? '비밀번호' : '비밀번호 (변경 시만 입력)', placeholder: '8자 이상', required: modal === 'create' },
+                { key: 'phone', label: '전화번호', placeholder: '010-1234-5678', required: false },
+              ].map(({ key, label, placeholder, required }) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+                  </label>
+                  <input
+                    type={key === 'password' ? 'password' : key === 'email' ? 'email' : 'text'}
+                    value={form[key as keyof typeof form]}
+                    onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+
+              {modal === 'edit' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">상태</label>
+                  <select
+                    value={form.status}
+                    onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="active">활성</option>
+                    <option value="inactive">비활성</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setModal(null)}
+                className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {saving ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
+  )
+}

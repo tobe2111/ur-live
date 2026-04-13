@@ -13,11 +13,14 @@ const FRAME_PAGES = [
   '/introduce'
 ]
 
-// 모바일 레이아웃에서 제외할 페이지들 (셀러/어드민 - PC 전체 화면 필요)
+// 모바일 레이아웃에서 제외할 페이지들 (셀러/어드민/라이브 - PC 전체 화면 필요)
 const EXCLUDE_MOBILE_LAYOUT = [
   '/seller',     // 셀러 대시보드
   '/admin',      // 어드민 대시보드
+  '/agency',     // 에이전시 대시보드
   '/checkout',   // 결제 페이지 (배송지 정보가 길어서 PC 전체 화면 필요)
+  '/live',       // 라이브 페이지 (영상이 전체 화면 채워야 함)
+  '/embed',      // 임베드 라이브
 ]
 
 export default function FrameWrapper({ children }: FrameWrapperProps) {

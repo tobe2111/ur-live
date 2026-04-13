@@ -397,7 +397,7 @@ app.post('/live/create', async (c) => {
     }, 401)
   }
 
-  const { title, description, product_ids, scheduled_start_time } = await c.req.json()
+  const { title, description, product_ids, scheduled_start_time, privacy_status } = await c.req.json()
 
   if (!title) {
     return c.json({
@@ -416,12 +416,15 @@ app.post('/live/create', async (c) => {
     }, 500)
   }
 
+  const privacyStatus: 'public' | 'unlisted' | 'private' =
+    privacy_status === 'unlisted' || privacy_status === 'private' ? privacy_status : 'public'
+
   try {
     const youtubeService = new YouTubeAPIService(clientId, clientSecret)
-    
+
     // Get valid access token
     const accessToken = await getValidAccessToken(c.env.DB, sellerId, youtubeService)
-    
+
     if (!accessToken) {
       return c.json({
         success: false,
@@ -449,7 +452,8 @@ app.post('/live/create', async (c) => {
         title,
         description || '',
         sellerAuth.default_stream_id,
-        scheduledTime
+        scheduledTime,
+        privacyStatus
       )
     } else {
       // First time or no persistent stream — create new + save as default
@@ -457,7 +461,8 @@ app.post('/live/create', async (c) => {
         accessToken,
         title,
         description || '',
-        scheduledTime
+        scheduledTime,
+        privacyStatus
       )
 
       // Save as persistent stream for future use
